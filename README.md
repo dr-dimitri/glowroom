@@ -1,0 +1,2 @@
+# picedit
+Bildbearbeitung für MacOs
