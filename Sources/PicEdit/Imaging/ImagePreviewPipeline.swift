@@ -1,0 +1,258 @@
+import AppKit
+import Foundation
+import ImageIO
+
+/// File identity and rendering size determine whether a preview can be reused.
+struct PreviewRequest: Hashable, Sendable {
+    let url: URL
+    let modifiedAt: Date
+    let pixelSize: Int
+    let fileSize: Int64
+    let allowsEmbeddedPreview: Bool
+
+    init(url: URL, modifiedAt: Date, pixelSize: Int, fileSize: Int64 = 0, allowsEmbeddedPreview: Bool = true) {
+        self.url = url.standardizedFileURL
+        self.modifiedAt = modifiedAt
+        self.pixelSize = min(max(pixelSize, 64), 4_096)
+        self.fileSize = fileSize
+        self.allowsEmbeddedPreview = allowsEmbeddedPreview
+    }
+
+    func hasSameOriginal(as other: PreviewRequest) -> Bool {
+        url == other.url && modifiedAt == other.modifiedAt && fileSize == other.fileSize && allowsEmbeddedPreview == other.allowsEmbeddedPreview
+    }
+}
+
+enum PreviewPriority: Int, Sendable {
+    case thumbnail
+    case selected
+}
+
+/// CGImage is immutable. AppKit images are constructed on the main actor.
+struct PreviewBitmap: @unchecked Sendable {
+    let image: CGImage
+    var byteCost: Int { image.bytesPerRow * image.height }
+}
+
+enum PreviewFailure: LocalizedError, Sendable {
+    case unavailable
+    case unsupportedOrDamaged
+
+    var errorDescription: String? {
+        switch self {
+        case .unavailable:
+            return "Das Original ist nicht verfügbar oder kann nicht gelesen werden."
+        case .unsupportedOrDamaged:
+            return "Für diese Datei konnte keine Bildvorschau erstellt werden."
+        }
+    }
+}
+
+/// Shares work and bounded caches between the grid, filmstrip and loupe.
+/// A canceled synchronous ImageIO decoder retains its slot until it returns.
+actor ImagePreviewPipeline {
+    static let shared = ImagePreviewPipeline(
+        diskCache: PreviewDiskCache(directory: PreviewDiskCache.defaultDirectory)
+    )
+
+    private struct CacheEntry {
+        let bitmap: PreviewBitmap
+        var lastAccess: UInt64
+    }
+
+    private struct Job {
+        let request: PreviewRequest
+        var priority: PreviewPriority
+        var waiters: [UUID: CheckedContinuation<PreviewBitmap, Error>]
+        var task: Task<Void, Never>?
+        var startedAsThumbnail = false
+    }
+
+    private let concurrencyLimit: Int
+    private let memoryLimit: Int
+    private let diskCache: PreviewDiskCache?
+    private let decoder: @Sendable (PreviewRequest) throws -> PreviewBitmap
+    private let entryLimit = 256
+    private var cache: [PreviewRequest: CacheEntry] = [:]
+    private var cacheBytes = 0
+    private var accessCounter: UInt64 = 0
+    private var jobs: [UUID: Job] = [:]
+    private var currentJob: [PreviewRequest: UUID] = [:]
+    private var pending: [UUID] = []
+    private var running = 0
+    private var runningThumbnails = 0
+
+    init(
+        concurrencyLimit: Int = 3,
+        memoryLimit: Int = 96 * 1_024 * 1_024,
+        diskCache: PreviewDiskCache? = nil,
+        decoder: @escaping @Sendable (PreviewRequest) throws -> PreviewBitmap = { try PreviewDecoder.decode($0) }
+    ) {
+        self.concurrencyLimit = max(1, concurrencyLimit)
+        self.memoryLimit = max(0, memoryLimit)
+        self.diskCache = diskCache
+        self.decoder = decoder
+    }
+
+    func image(for request: PreviewRequest, priority: PreviewPriority = .thumbnail) async throws -> PreviewBitmap {
+        try Task.checkCancellation()
+        if let bitmap = cachedImage(for: request) { return bitmap }
+
+        let waiterID = UUID()
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                guard !Task.isCancelled else {
+                    continuation.resume(throwing: CancellationError())
+                    return
+                }
+                enqueue(request, priority: priority, waiterID: waiterID, continuation: continuation)
+            }
+        } onCancel: {
+            Task { await self.cancel(request, waiterID: waiterID) }
+        }
+    }
+
+    private func cachedImage(for request: PreviewRequest) -> PreviewBitmap? {
+        // Reuse the smallest adequate bitmap, including larger grid/loupe images.
+        let key = cache[request] != nil ? request : cache.keys.filter {
+            $0.hasSameOriginal(as: request) && $0.pixelSize >= request.pixelSize
+        }.min { $0.pixelSize < $1.pixelSize }
+        guard let key, var entry = cache[key] else { return nil }
+        accessCounter &+= 1
+        entry.lastAccess = accessCounter
+        cache[key] = entry
+        return entry.bitmap
+    }
+
+    private func enqueue(
+        _ request: PreviewRequest,
+        priority: PreviewPriority,
+        waiterID: UUID,
+        continuation: CheckedContinuation<PreviewBitmap, Error>
+    ) {
+        if let jobID = currentJob[request], var job = jobs[jobID] {
+            job.waiters[waiterID] = continuation
+            if priority.rawValue > job.priority.rawValue { job.priority = priority }
+            jobs[jobID] = job
+        } else {
+            let jobID = UUID()
+            jobs[jobID] = Job(request: request, priority: priority, waiters: [waiterID: continuation])
+            currentJob[request] = jobID
+            pending.append(jobID)
+        }
+        startPendingJobs()
+    }
+
+    private func cancel(_ request: PreviewRequest, waiterID: UUID) {
+        guard let jobID = currentJob[request], var job = jobs[jobID],
+              let continuation = job.waiters.removeValue(forKey: waiterID) else { return }
+        continuation.resume(throwing: CancellationError())
+        if job.waiters.isEmpty {
+            currentJob.removeValue(forKey: request)
+            if let task = job.task {
+                jobs[jobID] = job
+                task.cancel()
+            } else {
+                jobs.removeValue(forKey: jobID)
+                pending.removeAll { $0 == jobID }
+            }
+        } else {
+            jobs[jobID] = job
+        }
+        startPendingJobs()
+    }
+
+    private func startPendingJobs() {
+        while running < concurrencyLimit, !pending.isEmpty {
+            // Keep one decoder available for the selected photo. Within each
+            // priority, preserve arrival order to avoid starving visible cells.
+            let selectedIndex = pending.firstIndex { jobs[$0]?.priority == .selected }
+            guard let index = selectedIndex ?? (runningThumbnails < max(1, concurrencyLimit - 1) ? 0 : nil) else { break }
+            let jobID = pending.remove(at: index)
+            guard var job = jobs[jobID] else { continue }
+            let request = job.request
+            let diskCache = self.diskCache
+            let decoder = self.decoder
+            running += 1
+            job.startedAsThumbnail = job.priority == .thumbnail
+            if job.startedAsThumbnail { runningThumbnails += 1 }
+            job.task = Task.detached(priority: job.priority == .selected ? .userInitiated : .utility) { [weak self] in
+                var shouldStore = false
+                var cachedAs = request
+                let result: Result<PreviewBitmap, Error>
+                do {
+                    try Task.checkCancellation()
+                    var persisted: PreviewBitmap?
+                    if let diskCache {
+                        // A previous session may have cached only a larger grid
+                        // or loupe rendition. Reuse it before opening the RAW.
+                        let sizes = [request.pixelSize] + [256, 512, 1_024, 1_536, 2_400, 4_096].filter { $0 > request.pixelSize }
+                        for size in sizes {
+                            try Task.checkCancellation()
+                            let candidate = PreviewRequest(url: request.url, modifiedAt: request.modifiedAt,
+                                                           pixelSize: size, fileSize: request.fileSize, allowsEmbeddedPreview: request.allowsEmbeddedPreview)
+                            if let bitmap = await diskCache.image(for: candidate) {
+                                persisted = bitmap
+                                cachedAs = candidate
+                                break
+                            }
+                        }
+                    }
+                    if let bitmap = persisted {
+                        try Task.checkCancellation()
+                        result = .success(bitmap)
+                    } else {
+                        try Task.checkCancellation()
+                        let bitmap = try decoder(request)
+                        try Task.checkCancellation()
+                        shouldStore = true
+                        result = .success(bitmap)
+                    }
+                } catch {
+                    result = .failure(error)
+                }
+                let wasNeeded = await self?.complete(jobID, result: result, cachedAs: cachedAs) ?? false
+                // Display immediately; compression and disk I/O follow off-main.
+                if shouldStore, wasNeeded, case let .success(bitmap) = result {
+                    await diskCache?.store(bitmap, for: request)
+                }
+                await self?.finish(jobID)
+            }
+            jobs[jobID] = job
+        }
+    }
+
+    @discardableResult
+    private func complete(_ jobID: UUID, result: Result<PreviewBitmap, Error>, cachedAs: PreviewRequest) -> Bool {
+        guard var job = jobs[jobID] else { return false }
+        if currentJob[job.request] == jobID { currentJob.removeValue(forKey: job.request) }
+        let wasNeeded = !job.waiters.isEmpty
+        if case let .success(bitmap) = result, wasNeeded { insert(bitmap, for: cachedAs) }
+        for continuation in job.waiters.values { continuation.resume(with: result) }
+        job.waiters.removeAll()
+        jobs[jobID] = job
+        return wasNeeded
+    }
+
+    private func finish(_ jobID: UUID) {
+        guard let job = jobs.removeValue(forKey: jobID) else { return }
+        running -= 1
+        if job.startedAsThumbnail { runningThumbnails -= 1 }
+        // Keep the slot until persistence finishes, too: a slow disk must not
+        // accumulate an unbounded queue of bitmaps waiting to be compressed.
+        startPendingJobs()
+    }
+
+    private func insert(_ bitmap: PreviewBitmap, for request: PreviewRequest) {
+        guard bitmap.byteCost <= memoryLimit else { return }
+        if let old = cache.removeValue(forKey: request) { cacheBytes -= old.bitmap.byteCost }
+        while cacheBytes + bitmap.byteCost > memoryLimit || cache.count >= entryLimit {
+            guard let oldest = cache.min(by: { $0.value.lastAccess < $1.value.lastAccess }) else { break }
+            cacheBytes -= oldest.value.bitmap.byteCost
+            cache.removeValue(forKey: oldest.key)
+        }
+        accessCounter &+= 1
+        cache[request] = CacheEntry(bitmap: bitmap, lastAccess: accessCounter)
+        cacheBytes += bitmap.byteCost
+    }
+}

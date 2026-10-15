@@ -1,2 +1,134 @@
-# picedit
-Bildbearbeitung für MacOs
+# PicEdit
+
+Eine native Fotobibliothek für macOS, entwickelt mit SwiftUI und AppKit. Die Anwendung unterstützt das Sichten, Organisieren und nicht destruktive Anpassen vorhandener Bilder: Ordner hinzufügen, Vorschauen durchsehen, einzelne Bilder groß anzeigen, Tonwerte und Präsenz anpassen, Rauschen mindern und Favoriten sowie Bewertungen verwalten. Die dunkle Oberfläche orientiert sich am Bibliotheksbereich professioneller Fotoanwendungen.
+
+## Starten
+
+Voraussetzungen: **macOS 14 oder neuer** und Xcode oder die Apple Command Line Tools mit Swift 5.9 oder neuer. Falls die Entwicklungswerkzeuge fehlen, lassen sie sich mit `xcode-select --install` installieren. PicEdit benötigt keine zusätzlichen Pakete und keinen Online-Dienst.
+
+```sh
+swift run PicEdit
+```
+
+Ein reguläres App-Bundle erzeugen und öffnen:
+
+```sh
+./scripts/build-app.sh
+open dist/PicEdit.app
+```
+
+Für einen schnelleren Entwicklungsbuild kann `./scripts/build-app.sh --debug` verwendet werden. Das Skript baut für den aktuellen Mac, setzt das App-Icon und signiert das Bundle lokal, sofern `codesign` verfügbar ist. Diese lokale Signatur ersetzt keine Apple-Notarisierung für die Verteilung auf andere Macs.
+
+Optional setzt `PICEDIT_BUILD_PATH` ein separates Build-Verzeichnis. Mit neueren Swift-Versionen kann `PICEDIT_BUILD_SYSTEM=swiftbuild` explizit Apples Swift-Build-System auswählen; ohne diese Variable gilt der Standard der installierten Swift-Version.
+
+## Bibliothek verwenden
+
+1. Mit **Ordner hinzufügen** oder **⌘O** einen Bilderordner auswählen.
+2. Bilder in der Rasteransicht sichten und die Einzelansicht öffnen.
+3. Bilder als Favoriten markieren oder mit einem bis fünf Sternen bewerten.
+
+Unter **Ordner** lassen sich die eingebundenen Ordner über den Pfeil aufklappen. Die Baumansicht zeigt auch verschachtelte und leere Unterordner. Ein Klick auf einen Ordner zeigt seine Bilder einschließlich der darunterliegenden Ordner; die Zahl rechts gibt diese Gesamtanzahl an. Neue oder entfernte Unterordner werden beim Aktualisieren berücksichtigt.
+
+Änderungen am Inhalt verknüpfter Ordner werden mit **Ordner aktualisieren** oder **⇧⌘R** erneut eingelesen. Neue Bilder erscheinen anschließend in der Bibliothek; Bewertungen und Favoriten vorhandener Bilder bleiben erhalten. Die erste Version überwacht Ordner nicht automatisch.
+
+Die Bibliothek **verknüpft** vorhandene Dateien. Sie kopiert die Originale nicht und verändert sie nicht. Auch das Entfernen eines Ordners aus der Bibliothek löscht keine Bilder auf dem Datenträger. Verschobene, gelöschte oder vorübergehend nicht verfügbare Dateien können erst wieder geöffnet werden, wenn sie am verknüpften Speicherort verfügbar sind.
+
+Bibliotheksdaten, Bewertungen und Favoriten werden lokal unter `~/Library/Application Support/PicEdit/catalog.json` gespeichert. Die Originalbilder bleiben in ihren bisherigen Ordnern.
+
+Die Bildvorschau verwendet Apples ImageIO. Gängige Formate wie JPEG, PNG, TIFF und HEIC werden unterstützt, sofern das System sie lesen kann. RAW-Unterstützung hängt von der macOS-Version und dem jeweiligen Kameraformat ab; ein vorhandenes RAW-Dateiformat garantiert daher noch keine darstellbare Vorschau.
+
+### RAW-Vorschauen und Performance
+
+Für RAW-Dateien verwendet PicEdit eine eingebettete Kameravorschau, wenn deren Auflösung ausreicht. Andernfalls erzeugt ImageIO die Vorschau aus dem Original. Die Einzelbildansicht lädt zuerst eine kleine Vorschau und verfeinert sie anschließend bis zur bisherigen Zielgröße von 2400 Pixeln. Kamera-Vorschauen können sich in Farbe und Tonwerten von einer späteren RAW-Entwicklung unterscheiden.
+
+Raster und Filmstreifen teilen sich einen begrenzten Arbeitsspeicher-Cache. Zusätzlich werden Vorschauen unter `~/Library/Caches/PicEdit/Previews-v2` gespeichert, damit sie nach einem Neustart wieder verfügbar sind. Der Festplatten-Cache ist auf 512 MiB begrenzt und entfernt ältere Vorschauen automatisch. Pfad, Änderungszeit, Dateigröße und Vorschauauflösung bestimmen die Gültigkeit; nach Änderungen am Original den Ordner aktualisieren. Auch größere bereits vorhandene Vorschauen werden wiederverwendet.
+
+Das ausgewählte Bild erhält Vorrang vor wartenden Rasterbildern. Höchstens drei Lade- und Speichervorgänge laufen parallel; bei der Standardeinstellung bleibt ein Platz für das ausgewählte Bild frei. Nicht mehr benötigte Anfragen werden abgebrochen. Filter, Sortierung und Ordnerbäume werden zwischen unveränderten Bibliotheksansichten wiederverwendet.
+
+| Tastenkürzel | Funktion |
+| --- | --- |
+| ⌘O | Ordner hinzufügen |
+| ⇧⌘R | Ordner aktualisieren |
+| Pfeiltasten | Bildauswahl bewegen |
+| Leertaste | Zwischen Raster und Einzelansicht wechseln |
+| 1–5 | Sterne vergeben |
+| 0 | Bewertung entfernen |
+| F | Favorit umschalten |
+
+## Entwickeln und prüfen
+
+Die automatisierten Tests verwenden Swift Testing und benötigen **Swift 6 oder neuer**. Das Testskript setzt lokale Compiler-Caches und berücksichtigt die Plugin-Erkennung der Apple Command Line Tools:
+
+```sh
+./scripts/test.sh
+swift build
+./scripts/test-image-pipeline.sh
+```
+
+Mit einer vollständigen, normal eingerichteten Xcode-Installation ist alternativ `swift test` möglich. Optional setzt `PICEDIT_TEST_BUILD_PATH` ein separates Build-Verzeichnis für die Pakettests.
+
+Die Tests prüfen unter anderem Vorschau-Priorisierung und Abbruch, persistente Cache-Gültigkeit und Größenlimits, Transparenz und Farbprofile, Bibliotheks-Cache-Invalidierung sowie rekursiven Import, überlappende Ordner, Aktualisierung, Bewertungen, Favoriten, gespeicherte Kataloge und den Umgang mit beschädigten Dateien. Sie verwenden eigene temporäre Testordner und verändern weder persönliche Originalbilder noch den regulären PicEdit-Katalog. Der separate Vorschautest prüft EXIF-Orientierung, Größenbegrenzung, Cache-Verhalten, Abbruch sowie defekte und fehlende Dateien anhand synthetischer Testbilder.
+
+Eine kleine, rein synthetische Beispielsammlung kann ohne zusätzliche Abhängigkeiten erzeugt werden. Das Zielverzeichnis muss ausdrücklich angegeben werden; bestehende Dateien werden nicht überschrieben:
+
+```sh
+swift scripts/make-demo-library.swift /tmp/PicEdit-Demo
+```
+
+Anschließend `/tmp/PicEdit-Demo` in PicEdit hinzufügen. Die Beispielbilder sind programmatisch gezeichnet und enthalten keine persönlichen Fotos.
+
+Für einen vollständig getrennten Testkatalog lässt sich ein anderes Datenverzeichnis übergeben:
+
+```sh
+swift run PicEdit --catalog-directory /tmp/PicEdit-Testkatalog
+```
+
+Die Bibliotheksberechnungen lassen sich unabhängig vom RAW-Decoder mit 10.000 synthetischen Einträgen messen:
+
+```sh
+./scripts/benchmark-library.sh
+```
+
+Das Skript verwendet einen eigenen temporären Katalog; seine Zeiten messen Filterung, Sortierung und Ordnerbäume, nicht das Laden von Bildern.
+
+Für einen Vergleich der ImageIO-Ladewege mit ausdrücklich angegebenen, lokal verfügbaren RAW-Dateien:
+
+```sh
+xcrun swiftc -O -parse-as-library scripts/benchmark-raw-previews.swift -o /tmp/picedit-raw-benchmark
+/tmp/picedit-raw-benchmark --iterations 3 --sizes 512,2400 /Pfad/zum/Bild.CR3
+```
+
+Das Werkzeug misst erzwungene Neuerzeugung, eingebettete Vorschau und ImageIO-Fallback separat. Auflösung und erfolgreiche Decodierung müssen beim Vergleich berücksichtigt werden. Cloud-Platzhalter und unlesbare Dateien werden übersprungen; Zugriff durch die App bedeutet nicht automatisch Zugriff für ein Terminal-Werkzeug. Die tatsächliche Beschleunigung hängt vom Kameraformat, der eingebetteten Vorschau und dem Cache-Zustand ab.
+
+## Entwickeln: Tonwert, Präsenz und Entrauschen
+
+Wähle ein Foto und öffne **Entwickeln** (oder **⌘D**). Die Regler arbeiten nicht destruktiv; Originaldateien werden weder überschrieben noch verschoben.
+
+| Bereich | Regler |
+| --- | --- |
+| Tonwert | Belichtung (−5 bis +5 EV), Kontrast, Lichter, Tiefen, Weiß, Schwarz |
+| Präsenz | Struktur, Klarheit, Dunst entfernen, Dynamik, Sättigung |
+| Entrauschen | Luminanz und Farbe, jeweils 0–100 |
+
+Die Werte lassen sich über Schieberegler oder Zahlenfelder ändern. **Vorher anzeigen** vergleicht mit derselben Bildbasis ohne Anpassungen. Eine Reglerbewegung oder abgeschlossene Zahleneingabe bildet einen Rückgängig-Schritt; die Pfeile unten wiederholen oder widerrufen Änderungen pro Foto. Die Kreis-Pfeile setzen einzelne Bereiche zurück, **Zurücksetzen** alle Regler. Ein Doppelklick auf eine Reglerbeschriftung setzt diesen Wert auf null. Rückgängig-Verläufe gelten für die laufende Sitzung; die aktuellen Werte bleiben nach einem Neustart erhalten.
+
+Raster, Filmstreifen und Einzelansicht zeigen die gespeicherten Bearbeitungen. Die RAW-Basis im Entwickeln-Modul wird aus dem Original erzeugt, ohne eine eingebettete Kamera-Vorschau als Bearbeitungsbasis zu verwenden. Bearbeitungsbasen werden verlustfrei zwischengespeichert. Reglerbewegungen verwenden diese Basis erneut; veraltete Renderaufträge können neuere Ergebnisse nicht überschreiben.
+
+Die Filter verwenden Core Image und eigene Tonwert-/Kontrastberechnungen. Ihre Bedienung orientiert sich an Lightroom Classic, die Ergebnisse sind nicht identisch mit Adobes Entwicklungsengine. Entrauschen ist eine klassische, getrennte Luminanz-/Farbrauschminderung, keine KI-Funktion. Bearbeitet wird derzeit die Vorschau mit bis zu 2400 Pixeln langer Kante; vollständige RAW-Entwicklung mit Belichtungsreserve aus Sensordaten, Vollauflösungsexport, Weißabgleich, Zuschnitt und Masken sind noch nicht enthalten.
+
+## Datenbank und Backups
+
+Die Reglerwerte stehen pro Foto in **`~/Library/Application Support/PicEdit/edits.sqlite`**. SQLite verwendet WAL, `synchronous=FULL`, Transaktionen und fortlaufende Versionen pro Bild. Mehrere schnelle Änderungen werden nach einer kurzen Eingabepause zusammengefasst. Beim Beenden wird auf ausstehende Speichervorgänge gewartet. Konflikte oder Schreibfehler werden angezeigt; ungespeicherte Werte bleiben im Speicher und können über **Entwickeln → Änderungen erneut speichern** erneut geschrieben werden.
+
+Der vorhandene Bibliothekskatalog mit Ordnern, Metadaten, Bewertungen und Favoriten bleibt in `catalog.json`. Beide Dateien liegen bei `--catalog-directory` im angegebenen Test-/Datenverzeichnis.
+
+- **Automatisch:** Nach dem ersten erfolgreichen Speichern an einem Tag entsteht ein geprüftes Backup unter `EditBackups` im Datenverzeichnis. Die letzten sieben automatischen Sicherungen bleiben erhalten.
+- **Manuell:** Über das Backup-Symbol oben rechts oder **Entwickeln → Bearbeitungen sichern …** einen Zielort auswählen, beispielsweise ein externes Laufwerk. Manuelle Sicherungen werden nicht automatisch gelöscht.
+- **Wiederherstellen:** **Backup wiederherstellen …** öffnet eine Sicherungsdatei. Vor der Übernahme werden Integrität, Schema und Werte geprüft und der bisherige Zustand separat gesichert. Ungültige Dateien verändern die vorhandenen Bearbeitungen nicht.
+- **Beschädigte Datenbank:** Ein gültiges Backup kann auch bei nicht mehr startfähiger Bearbeitungsdatenbank wiederhergestellt werden. Die beschädigte Datenbank und ihre Begleitdateien bleiben im Unterordner `Recovery` erhalten.
+
+**Diese Backups enthalten ausschließlich die Bearbeitungswerte. Originalbilder, `catalog.json` und der entbehrliche Vorschau-Cache sind nicht enthalten.** Fotoordner und Katalog separat sichern, etwa mit der vorhandenen Mac-Sicherung. Eine lokale Sicherung auf demselben Datenträger schützt nicht vor dessen Ausfall; hierfür die manuelle Sicherung auf ein anderes Laufwerk speichern.
+
+Die Sicherung verwendet die [SQLite Online Backup API](https://sqlite.org/backup.html), damit auch noch im WAL stehende Änderungen in einer eigenständig lesbaren Datei enthalten sind. Eine laufende Datenbank wird nicht einfach mit ihren WAL-Dateien kopiert.
+
+Die Renderer-Tests prüfen mit synthetischen Bildern Richtung und Wirkung der Regler, Rauschvarianz, Tonwertverläufe, Transparenz und Farbprofile. Datenbank-/Controller-Tests decken unter anderem Neustart, Schreibkonflikte, schnelle Bildwechsel, gleichzeitige Speicherversuche, fehlgeschlagene Writes, Backup-Rotation, beschädigte Sicherungen und Wiederherstellung ab. Core Image benötigt für diese Tests eine normale macOS-Sitzung; eine restriktive Ausführungssandbox kann den Renderer blockieren.
