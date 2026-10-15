@@ -26,6 +26,7 @@ struct DevelopInspector: View {
                         Toggle("Vorher anzeigen", isOn: $library.comparesOriginal)
                             .toggleStyle(.switch).controlSize(.small).font(.system(size: 11))
                             .help("Zeigt das Bild ohne deine Einstellungen. Die Bearbeitung bleibt gespeichert.")
+                        autoToneSection(assetID: asset.id)
                         adjustmentSection("Tonwert", controls: Array(Adjustment.allCases.prefix(6)), assetID: asset.id)
                         adjustmentSection("Präsenz", controls: Array(Adjustment.allCases.dropFirst(6).prefix(5)), assetID: asset.id)
                         adjustmentSection("Entrauschen", controls: Array(Adjustment.allCases.suffix(2)), assetID: asset.id)
@@ -60,6 +61,49 @@ struct DevelopInspector: View {
         if editor.isSaving { return "Wird gespeichert …" }
         if editor.hasPendingChanges { return "Änderungen werden gesichert …" }
         return "Alle Änderungen gespeichert"
+    }
+
+    private func autoToneSection(assetID: String) -> some View {
+        let amount = editor.settings(for: assetID).autoToneAmount
+        return VStack(alignment: .leading, spacing: 10) {
+            Toggle(isOn: Binding(
+                get: { editor.settings(for: assetID).autoToneAmount > 0 },
+                set: { enabled in
+                    NSApp.keyWindow?.makeFirstResponder(nil)
+                    editor.endEditing(assetID: assetID)
+                    var settings = editor.settings(for: assetID)
+                    settings.autoToneAmount = enabled ? 100 : 0
+                    editor.setSettings(settings, for: assetID)
+                }
+            )) {
+                Label("Tonwert-Automatik", systemImage: "wand.and.stars")
+                    .font(.system(size: 11, weight: .medium))
+            }.toggleStyle(.switch).controlSize(.small)
+                .help("Gleicht Lichter und Schatten passend zu diesem Foto aus. Manuelle Regler bleiben zusätzlich wirksam.")
+
+            if amount > 0 {
+                HStack {
+                    Text("Stärke")
+                    Spacer()
+                    Text("\(Int(amount)) %").monospacedDigit().foregroundStyle(Theme.accent)
+                }.font(.system(size: 10)).foregroundStyle(Theme.muted)
+                Slider(value: Binding(
+                    get: { editor.settings(for: assetID).autoToneAmount },
+                    set: { newValue in
+                        var settings = editor.settings(for: assetID)
+                        settings.autoToneAmount = newValue
+                        editor.setSettings(settings, for: assetID)
+                    }
+                ), in: 1...100, step: 1, onEditingChanged: { editing in
+                    if editing { editor.beginEditing(assetID: assetID) }
+                    else { editor.endEditing(assetID: assetID) }
+                }).controlSize(.mini).accessibilityLabel("Automatik-Stärke")
+            }
+            Text("Helle Bereiche zügeln, Schatten öffnen. Schwarz, Weiß und Kontrast bleiben erhalten.")
+                .font(.system(size: 10)).foregroundStyle(Theme.muted).lineSpacing(3)
+        }.disabled(!editor.canEdit || !library.canModify || library.comparesOriginal)
+            .padding(12)
+            .background(Theme.accent.opacity(0.06), in: RoundedRectangle(cornerRadius: 8))
     }
 
     private func adjustmentSection(_ title: String, controls: [Adjustment], assetID: String) -> some View {

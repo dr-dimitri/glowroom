@@ -32,3 +32,17 @@ Review der Implementierung für Bibliothek und Ordnerbaum, RAW-Vorschauen, Tonwe
 ## Bekannte Funktionsgrenzen
 
 Die Verarbeitung betrifft derzeit Vorschauen bis 2400 Pixel langer Kante. Die Filter bieten klassische Bildkorrekturen, keine identische Adobe-RAW-Engine und kein KI-Entrauschen. Ein Vollauflösungsexport ist noch nicht implementiert. Die Backups enthalten Bearbeitungswerte; Originalbilder und der bestehende Bibliothekskatalog `catalog.json` müssen separat gesichert werden. Undo-Verläufe gelten für die Sitzung, aktuelle Reglerwerte werden dauerhaft gespeichert. Bearbeitungen sind an die vorhandenen pfadbasierten Bildkennungen gebunden.
+
+## Ergänzung: Tonwert-Automatik
+
+Die Automatik analysiert eine auf höchstens 256 Pixel lange Kante begrenzte, nach Transparenz gewichtete Vorschau. Eine monotone Tonwertkurve gleicht Schatten und Lichter aus, behält Schwarz und Weiß bei und verstärkt bei geringer Tonwertspreizung behutsam den Kontrast. Die Analyse erfolgt auf der unveränderten Bildbasis, die Korrektur vor den manuellen Tonwertreglern. Sie verwendet keine räumliche Maskierung, die Halos an Kanten erzeugen könnte.
+
+Im Review wurde ein relevanter Sonderfall korrigiert: Eine kleine dunkle Fläche vor überwiegend hellem Hintergrund darf durch die Korrektur der mittleren Helligkeit nicht noch dunkler werden. Zusätzlich zu robusten Quantilen berücksichtigt die Analyse deshalb die dunklen und hellen Bildanteile; die Anker der Kurve schützen die jeweilige Korrekturrichtung. Umgekehrt gilt das für kleine helle Flächen in dunklen Bildern.
+
+Ein zusätzlicher Farbtest fand neue Maximalwerte in zuvor nicht abgeschnittenen Farbkanälen stark gesättigter Motive beim Aufhellen. Die Farbkorrektur hält dafür einen kleinen Abstand zur Kanalgrenze; eine Regression prüft gesättigte rote, grüne und blaue Motive. Die bestehende Verarbeitung weiter Farbräume bleibt erhalten.
+
+Die neue Einstellung wird nur bei fehlendem Feld als ausgeschaltet interpretiert. Alte Datenbanken und Backups bleiben lesbar, während ungültige oder unvollständige Datensätze weiter abgewiesen werden. Die Automatik ist Bestandteil von Cache-Identität, Undo/Redo, vollständigem Zurücksetzen und Sicherungen. Ein eigener Controller-Test prüft den Stärkeregler als zusammenhängenden Undo-Schritt, erhaltene manuelle Werte, Bildwechsel und Neustart. Separate Datenbanktests prüfen ältere Nutzdaten und die neue Einstellung über Neustart, Backup und Wiederherstellung.
+
+Abschließende Prüfung: **102 Tests erfolgreich** (72 App-/Renderer-/Controller-Tests und 30 Core-/Datenbanktests), darunter 12 gezielte Tests der Automatik. Release-Build und Signaturprüfung erfolgreich. Im getrennten synthetischen UI-Katalog wurden Schalter, Stärke, Rückgängig, Bildwechsel und Vorher-Vergleich bedient; nach dem Neustart blieb die Stärke von 51 % erhalten und die korrigierte Vorschau wurde angezeigt.
+
+Vollständig ausgebrannte Lichter oder vollständig schwarze Bildbereiche enthalten keine rekonstruierbare Zeichnung. Die Automatik kann vorhandene Tonwerte ausgleichen; starke nachfolgende manuelle Reglerwerte können weiterhin über- oder unterbelichten.

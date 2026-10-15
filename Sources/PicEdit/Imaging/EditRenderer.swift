@@ -55,6 +55,12 @@ enum EditRenderer {
             }
             try Task.checkCancellation()
 
+            if settings.autoToneAmount > 0 {
+                image = try AutoToneRenderer.apply(to: image, original: original,
+                                                   amount: settings.autoToneAmount, extent: extent)
+            }
+            try Task.checkCancellation()
+
             if settings.exposure != 0 || settings.contrast != 0 || settings.highlights != 0 || settings.shadows != 0 ||
                 settings.whites != 0 || settings.blacks != 0 || settings.dehaze != 0 || settings.vibrance != 0 || settings.saturation != 0 {
                 guard let result = toneKernel?.apply(extent: extent, arguments: [

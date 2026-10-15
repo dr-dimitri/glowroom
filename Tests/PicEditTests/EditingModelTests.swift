@@ -74,6 +74,40 @@ final class EditingModelTests {
     }
 
     @Test
+    func autoToneKeepsManualEditsAndSupportsGroupedUndoResetAndReload() async throws {
+        let model = EditingModel(directory: directory)
+        try await waitLoaded(model)
+        let manual = EditSettings(exposure: 0.25, highlights: -12, texture: 18, colorNoiseReduction: 20)
+        model.setSettings(manual, for: "A")
+        var automatic = manual
+        automatic.autoToneAmount = 100
+        model.setSettings(automatic, for: "A")
+        model.beginEditing(assetID: "A")
+        for amount in stride(from: 95, through: 55, by: -5) {
+            automatic.autoToneAmount = Double(amount)
+            model.setSettings(automatic, for: "A")
+        }
+        model.endEditing(assetID: "A")
+        model.undo(assetID: "A")
+        #expect(model.settings(for: "A").autoToneAmount == 100)
+        model.undo(assetID: "A")
+        #expect(model.settings(for: "A") == manual)
+        model.redo(assetID: "A")
+        model.redo(assetID: "A")
+        #expect(model.settings(for: "A") == automatic)
+        #expect(model.settings(for: "B").isNeutral)
+        model.reset(assetID: "A")
+        #expect(model.settings(for: "A").isNeutral)
+        model.undo(assetID: "A")
+        #expect(model.settings(for: "A") == automatic)
+        #expect(await model.flush())
+        let reloaded = EditingModel(directory: directory)
+        try await waitLoaded(reloaded)
+        #expect(reloaded.settings(for: "A") == automatic)
+        #expect(reloaded.settings(for: "B").isNeutral)
+    }
+
+    @Test
     func concurrentFlushAndCancellationStillPersistEditsArrivingDuringSave() async throws {
         let store = ControlledEditStore()
         let model = EditingModel(database: store)

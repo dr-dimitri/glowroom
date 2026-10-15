@@ -110,6 +110,10 @@ Wähle ein Foto und öffne **Entwickeln** (oder **⌘D**). Die Regler arbeiten n
 | Präsenz | Struktur, Klarheit, Dunst entfernen, Dynamik, Sättigung |
 | Entrauschen | Luminanz und Farbe, jeweils 0–100 |
 
+**Tonwert-Automatik** gleicht sehr helle und dunkle Bildbereiche anhand der Helligkeitsverteilung des jeweiligen Fotos aus. Aktiviere den Schalter oberhalb der Tonwertregler und passe die **Stärke** bei Bedarf an. Die Korrektur erhält Schwarz und Weiß und vermeidet Tonwertumkehrungen; bereits ausgewogene Bilder werden zurückhaltender verändert. Aus vollständig weißen oder schwarzen Flächen kann sie keine verlorenen Details rekonstruieren.
+
+Die Automatik wirkt vor den manuellen Reglern. Vorhandene Einstellungen bleiben erhalten und lassen sich weiter verfeinern; starke manuelle Korrekturen können weiterhin zu Über- oder Unterbelichtung führen. Schalter und Stärke werden pro Foto gespeichert, in Backups aufgenommen und von Vorher-Vergleich, Rückgängig/Wiederholen und vollständigem Zurücksetzen berücksichtigt. Bestehende Bearbeitungen und ältere Backups öffnen sich mit ausgeschalteter Automatik.
+
 Die Werte lassen sich über Schieberegler oder Zahlenfelder ändern. **Vorher anzeigen** vergleicht mit derselben Bildbasis ohne Anpassungen. Eine Reglerbewegung oder abgeschlossene Zahleneingabe bildet einen Rückgängig-Schritt; die Pfeile unten wiederholen oder widerrufen Änderungen pro Foto. Die Kreis-Pfeile setzen einzelne Bereiche zurück, **Zurücksetzen** alle Regler. Ein Doppelklick auf eine Reglerbeschriftung setzt diesen Wert auf null. Rückgängig-Verläufe gelten für die laufende Sitzung; die aktuellen Werte bleiben nach einem Neustart erhalten.
 
 Raster, Filmstreifen und Einzelansicht zeigen die gespeicherten Bearbeitungen. Die RAW-Basis im Entwickeln-Modul wird aus dem Original erzeugt, ohne eine eingebettete Kamera-Vorschau als Bearbeitungsbasis zu verwenden. Bearbeitungsbasen werden verlustfrei zwischengespeichert. Reglerbewegungen verwenden diese Basis erneut; veraltete Renderaufträge können neuere Ergebnisse nicht überschreiben.
