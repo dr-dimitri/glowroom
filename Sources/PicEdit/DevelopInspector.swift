@@ -5,6 +5,7 @@ struct DevelopInspector: View {
     @ObservedObject var library: LibraryModel
     @EnvironmentObject private var editor: EditingModel
     @EnvironmentObject private var assistant: AIAssistantModel
+    @EnvironmentObject private var imageAnalysis: ImageAnalysisModel
 
     var body: some View {
         VStack(spacing: 0) {
@@ -28,6 +29,7 @@ struct DevelopInspector: View {
                             .toggleStyle(.switch).controlSize(.small).font(.system(size: 11))
                             .help("Zeigt das Bild ohne deine Einstellungen. Die Bearbeitung bleibt gespeichert.")
                         AIAssistantSection(model: assistant, comparesOriginal: library.comparesOriginal)
+                        ImageAnalysisSection(model: imageAnalysis)
                         autoToneSection(assetID: asset.id)
                         adjustmentSection("Tonwert", controls: Array(Adjustment.allCases.prefix(6)), assetID: asset.id)
                         adjustmentSection("Präsenz", controls: Array(Adjustment.allCases.dropFirst(6).prefix(5)), assetID: asset.id)

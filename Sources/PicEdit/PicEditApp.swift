@@ -8,6 +8,7 @@ struct PicEditApp: App {
     @StateObject private var library: LibraryModel
     @StateObject private var editor: EditingModel
     @StateObject private var assistant: AIAssistantModel
+    @StateObject private var imageAnalysis: ImageAnalysisModel
     @StateObject private var exporter = JPEGExportModel()
     private let dataDirectory: URL
 
@@ -28,6 +29,8 @@ struct PicEditApp: App {
         _assistant = StateObject(wrappedValue: AIAssistantModel(provider: provider, coordinator: coordinator,
                                                              editor: editor, library: library,
                                                              maximumPromptBytes: LocalAIEditingPrompt.maximumUserTextBytes))
+        _imageAnalysis = StateObject(wrappedValue: ImageAnalysisModel(service: LocalImageAnalysisFactory.makeService(),
+                                                                    editor: editor, library: library))
     }
 
     var body: some Scene {
@@ -36,6 +39,7 @@ struct PicEditApp: App {
                 .environmentObject(editor)
                 .environmentObject(exporter)
                 .environmentObject(assistant)
+                .environmentObject(imageAnalysis)
                 .frame(minWidth: 1000, minHeight: 660)
                 .preferredColorScheme(.dark)
                 .onAppear { delegate.library = library; delegate.editor = editor; delegate.exporter = exporter; NSApp.setActivationPolicy(.regular); NSApp.activate(ignoringOtherApps: true) }

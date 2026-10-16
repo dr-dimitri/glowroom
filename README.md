@@ -181,6 +181,14 @@ Ein Vorschlag zeigt Ausgangs- und Zielwerte samt Delta sowie eine **KI-Vorschau 
 
 Raster, Filmstreifen, Speicherstatus und JPEG-Export verwenden die übernommenen Werte. Ein Export während der KI-Vorschau enthält deshalb die aktuelle Bearbeitung vor dem Vorschlag. Der Provider erhält ausschließlich Anweisung und Reglerwerte, keine Bildpixel, Dateinamen, Pfade oder EXIF-Daten. PicEdit startet keinen Modelldownload und verwendet keinen Cloudfallback. Prompts und Antworten werden nicht protokolliert oder dauerhaft gespeichert. Einrichtung, Buildmatrix und ausdrücklich aktivierbare Modelltests stehen in der [Assistentendokumentation](docs/LOCAL-AI-ASSISTANT.md).
 
+### Lokale Bildanalyse
+
+Im separaten Bereich **Bildanalyse** mit **Bild lokal analysieren** eine Beschreibung und sichtbare Attribute vorschlagen lassen. Voraussetzung sind ein Build mit SDK 27, macOS 27 und ein verfügbares Apple-Systemmodell mit Deutsch- und Bildunterstützung. **Bildfähigkeit erneut prüfen** aktualisiert die Verfügbarkeitsanzeige. Die übrige App und der Textassistent haben ihre bisherigen Systemvoraussetzungen.
+
+Standard ist die **Originalvorschau**, unabhängig von den Reglern. **Bearbeitete Vorschau** analysiert ausdrücklich die übernommenen Reglerwerte. Nicht angenommene Lookvorschläge sind keine Analysegrundlage. Die Eingabe ist auf 1024 Pixel lange Kante und 16 MiB Rasterdaten begrenzt; Dateipfade und EXIF-Daten werden nicht an das Modell übergeben. **Analyse abbrechen** beendet das Warten, **Analyse verwerfen** entfernt das Ergebnis. Bildwechsel und veraltete Quellen entwerten Antworten; bei bearbeiteter Eingabe gelten zusätzlich die Bearbeitungsrevisionen.
+
+Beschreibung und Attribute bleiben als **noch nicht bestätigt** gekennzeichnet. Sie ändern keine Regler, Originale oder gespeicherten Metadaten. **Analysebezug** zeigt Anbieter, Modell, Eingabemaße und Rasterprüfsumme. Aussagen zu Identität, Gesundheit oder einem nicht belegten Aufnahmeort werden nicht bestätigt. SDK-Gates, lokale Ausführung, Datenbezug und Prüfgrenzen stehen in der [Bildanalyse-Dokumentation](docs/AI-IMAGE-ANALYSIS.md).
+
 ## JPEG-Export
 
 Wähle ein oder mehrere Fotos und klicke oben auf **Exportieren**, nutze **Ablage → Foto als JPEG exportieren …** beziehungsweise **Ausgewählte Fotos als JPEG exportieren …** oder **⇧⌘E**. Der Export steht auch im Kontextmenü der Bilder im Raster, Filmstreifen und in der Einzelansicht. Gehört das angeklickte Bild zur Auswahl, werden alle ausgewählten Bilder exportiert; andernfalls wird dieses Bild ausgewählt und exportiert. Der Dialog gliedert die Optionen wie in Lightroom in Speicherort, Dateieinstellungen und Bildgröße.
