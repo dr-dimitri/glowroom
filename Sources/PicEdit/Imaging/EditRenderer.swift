@@ -109,6 +109,52 @@ enum EditRenderer {
     private static let interactive = Session(cacheIntermediates: true, lowPriority: false)
     private static let background = Session(cacheIntermediates: false, lowPriority: true)
 
+    /// The preview decoder may return a larger cached base than requested.
+    /// Callers requiring a hard output limit must use these actual raster sizes.
+    static func outputSize(_ bitmap: PreviewBitmap, maximumPixelSize: Int?) throws -> (width: Int, height: Int) {
+        let width = bitmap.image.width
+        let height = bitmap.image.height
+        guard width > 0, height > 0 else { throw EditRenderError.unavailable }
+        guard let maximumPixelSize else { return (width, height) }
+        guard maximumPixelSize > 0, maximumPixelSize <= 4_096 else { throw EditRenderError.oversizedPreview }
+        let longest = max(width, height)
+        guard longest > maximumPixelSize else { return (width, height) }
+        let scale = Double(maximumPixelSize) / Double(longest)
+        return (max(1, min(maximumPixelSize, Int((Double(width) * scale).rounded()))),
+                max(1, min(maximumPixelSize, Int((Double(height) * scale).rounded()))))
+    }
+
+    /// Runs only inside AdjustedPreviewPipeline's existing worker. Reuses the
+    /// lane's CIContext and preserves the developed base's profile and alpha.
+    static func resized(_ bitmap: PreviewBitmap, width: Int, height: Int,
+                        priority: PreviewPriority) throws -> PreviewBitmap {
+        try Task.checkCancellation()
+        let original = bitmap.image
+        guard width > 0, height > 0, width <= original.width, height <= original.height,
+              width <= 4_096, height <= 4_096 else { throw EditRenderError.oversizedPreview }
+        guard width != original.width || height != original.height else { return bitmap }
+        return try autoreleasepool {
+            let transform = CGAffineTransform(scaleX: CGFloat(width) / CGFloat(original.width),
+                                              y: CGFloat(height) / CGFloat(original.height))
+            let image = CIImage(cgImage: original).transformed(by: transform, highQualityDownsample: true)
+            let extent = CGRect(x: 0, y: 0, width: width, height: height)
+            let colorSpace = original.colorSpace ?? CGColorSpace(name: CGColorSpace.sRGB)!
+            let highPrecision = original.bitsPerComponent > 8
+            let format: CIFormat
+            switch colorSpace.model {
+            case .rgb: format = highPrecision ? .RGBA16 : .RGBA8
+            case .monochrome: format = highPrecision ? .LA16 : .LA8
+            default: throw EditRenderError.unavailable
+            }
+            let session = priority == .selected ? interactive : background
+            guard let result = session.context.createCGImage(image.cropped(to: extent), from: extent,
+                                                             format: format, colorSpace: colorSpace, deferred: false)
+            else { throw EditRenderError.unavailable }
+            try Task.checkCancellation()
+            return PreviewBitmap(image: result)
+        }
+    }
+
     static func render(_ bitmap: PreviewBitmap, settings: EditSettings,
                        priority: PreviewPriority = .selected) throws -> PreviewBitmap {
         try Task.checkCancellation()

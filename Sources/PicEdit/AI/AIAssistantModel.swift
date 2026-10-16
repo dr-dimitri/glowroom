@@ -33,9 +33,13 @@ final class AIAssistantModel: ObservableObject {
     @Published private(set) var state: State = .idle
     @Published private(set) var availability: AIAvailability?
     @Published private(set) var result: AIProposalResult?
+    @Published private(set) var lookGroup: AILookGroupResult?
+    @Published private(set) var selectedLookID: AILookID?
+    @Published private(set) var mode: AIEditingMode = .single
     @Published var comparison: Comparison = .proposal
 
     let maximumPromptBytes: Int
+    let cards: AILookCardStore
     private let provider: any AIEditingProvider
     private let coordinator: AIRequestCoordinator
     private let snapshot: @MainActor () -> AIEditingSnapshot?
@@ -44,7 +48,7 @@ final class AIAssistantModel: ObservableObject {
     private let sourceReadable: @Sendable (AIEditingSnapshot) async -> Bool
     private var subscriptions: Set<AnyCancellable> = []
     private var requestTask: Task<Void, Never>?
-    private var requestID: UUID?
+    private(set) var requestID: UUID?
     private var requestSnapshot: AIEditingSnapshot?
     private var availabilityCheckID = UUID()
 
@@ -53,6 +57,7 @@ final class AIAssistantModel: ObservableObject {
          snapshot: @escaping @MainActor () -> AIEditingSnapshot?,
          accept: @escaping @MainActor (AIProposalResult) -> Bool,
          commitInput: @escaping @MainActor () -> Void = {},
+         cards: AILookCardStore? = nil,
          sourceReadable: @escaping @Sendable (AIEditingSnapshot) async -> Bool = { await AIAssistantModel.checkSource($0) }) {
         self.provider = provider
         self.coordinator = coordinator
@@ -60,6 +65,7 @@ final class AIAssistantModel: ObservableObject {
         self.snapshot = snapshot
         self.accept = accept
         self.commitInput = commitInput
+        self.cards = cards ?? AILookCardStore()
         self.sourceReadable = sourceReadable
     }
 
@@ -100,18 +106,50 @@ final class AIAssistantModel: ObservableObject {
     }
 
     var canGenerate: Bool {
-        state != .generating && availability == .available && promptProblem == nil && snapshot() != nil
+        canStart && provider.capabilities.contains(.textEditing) && promptProblem == nil
+    }
+
+    var lookPromptProblem: String? {
+        prompt.utf8.count > maximumLookPromptBytes ? "Der optionale Zusatztext ist zu lang (höchstens \(maximumLookPromptBytes) UTF-8-Bytes)." : nil
+    }
+
+    private var maximumLookPromptBytes: Int { min(maximumPromptBytes, 2_048) }
+
+    var canGenerateLooks: Bool {
+        canStart && provider.capabilities.contains(.lookSuggestions) && lookPromptProblem == nil
+    }
+
+    private var canStart: Bool {
+        state != .generating && availability == .available && snapshot() != nil
+    }
+
+    var activeProposalResult: AIProposalResult? {
+        if let lookGroup, let selectedLookID,
+           let selected = lookGroup.validation.variants.first(where: { $0.proposal.id == selectedLookID }) {
+            return AIProposalResult(request: lookGroup.request,
+                                    validation: .changes(proposal: selected.proposal.proposal, settings: selected.target))
+        }
+        return result
     }
 
     var canAccept: Bool {
-        guard state == .previewing, let result,
+        guard state == .previewing, let result = activeProposalResult,
               case .changes = result.validation else { return false }
         return snapshot() == result.request.snapshot
     }
 
     var changes: [Change] {
-        guard let result, case .changes(_, let target) = result.validation else { return [] }
-        let baseline = result.request.snapshot.settings
+        guard let result = activeProposalResult, case .changes(_, let target) = result.validation else { return [] }
+        return changes(from: result.request.snapshot.settings, to: target)
+    }
+
+    func changes(for lookID: AILookID) -> [Change] {
+        guard let lookGroup,
+              let look = lookGroup.validation.variants.first(where: { $0.proposal.id == lookID }) else { return [] }
+        return changes(from: lookGroup.request.snapshot.settings, to: look.target)
+    }
+
+    private func changes(from baseline: EditSettings, to target: EditSettings) -> [Change] {
         return EditParameter.allCases.compactMap { parameter in
             let before = parameter.value(in: baseline)
             let after = parameter.value(in: target)
@@ -120,7 +158,7 @@ final class AIAssistantModel: ObservableObject {
     }
 
     var explanation: String? {
-        guard let result, case .changes(let proposal, _) = result.validation else { return nil }
+        guard let result = activeProposalResult, case .changes(let proposal, _) = result.validation else { return nil }
         return proposal.explanation
     }
 
@@ -129,7 +167,7 @@ final class AIAssistantModel: ObservableObject {
     func displaySettings(assetID: String, committed: EditSettings, developing: Bool,
                          comparesOriginal: Bool) -> EditSettings {
         if comparesOriginal { return .neutral }
-        guard developing, comparison == .proposal, canAccept, let result,
+        guard developing, comparison == .proposal, canAccept, let result = activeProposalResult,
               result.request.snapshot.assetID == assetID,
               case .changes(_, let target) = result.validation else { return committed }
         return target
@@ -141,22 +179,41 @@ final class AIAssistantModel: ObservableObject {
         let value = await provider.availability()
         guard !Task.isCancelled, availabilityCheckID == checkID else { return }
         availability = value
-        guard requestID == nil, result == nil else { return }
+        guard requestID == nil, result == nil, lookGroup == nil else { return }
         state = restingState
     }
 
     func generate() {
+        generate(mode: .single)
+    }
+
+    func generateLooks() {
+        generate(mode: .lookGroup)
+    }
+
+    private enum Response {
+        case single(AIProposalResult)
+        case looks(AILookGroupResult)
+    }
+
+    private func generate(mode: AIEditingMode) {
         guard state != .generating else { return }
         commitInput()
         discard()
+        self.mode = mode
         guard availability == .available else { return }
+        let capability: AIProviderCapabilities = mode == .single ? .textEditing : .lookSuggestions
+        guard provider.capabilities.contains(capability) else {
+            state = .failed(AIEditingError.unsupportedCapability.localizedDescription)
+            return
+        }
         guard let baseline = snapshot() else {
             state = .failed("Die Bearbeitung ist zurzeit gesperrt. Warte, bis Laden, Sicherung oder Wiederherstellung abgeschlossen sind.")
             return
         }
-        let request = AIEditingRequest(prompt: prompt, snapshot: baseline)
-        do { try request.validate(maximumPromptBytes: maximumPromptBytes) }
-        catch { state = .failed(promptProblem ?? error.localizedDescription); return }
+        let request = AIEditingRequest(prompt: prompt, snapshot: baseline, mode: mode)
+        do { try request.validate(maximumPromptBytes: mode == .lookGroup ? maximumLookPromptBytes : maximumPromptBytes) }
+        catch { state = .failed((mode == .single ? promptProblem : lookPromptProblem) ?? error.localizedDescription); return }
         let id = request.id
         requestID = id
         requestSnapshot = baseline
@@ -169,14 +226,24 @@ final class AIAssistantModel: ObservableObject {
                     throw AssistantError.unreadableSource
                 }
                 try Task.checkCancellation()
-                let result = try await coordinator.proposal(for: request)
+                let response: Response
+                switch mode {
+                case .single: response = .single(try await coordinator.proposal(for: request))
+                case .lookGroup: response = .looks(try await coordinator.lookGroup(for: request))
+                }
                 try Task.checkCancellation()
                 guard let self, self.requestID == id else { return }
                 guard self.snapshot() == baseline else { self.discard(); return }
                 self.requestTask = nil
                 self.requestID = nil
                 self.requestSnapshot = nil
-                self.result = result
+                switch response {
+                case .single(let result): self.result = result
+                case .looks(let group):
+                    self.lookGroup = group
+                    self.selectedLookID = .natural
+                    self.cards.begin(group: group, selectedID: .natural)
+                }
                 self.comparison = .proposal
                 self.state = .previewing
             } catch {
@@ -201,12 +268,20 @@ final class AIAssistantModel: ObservableObject {
 
     @discardableResult
     func acceptProposal() -> Bool {
-        guard canAccept, let candidate = result else { contextDidChange(); return false }
+        guard canAccept, let candidate = activeProposalResult else { contextDidChange(); return false }
         // Consume first, so reentrancy or a second button action cannot apply it
         // twice. The synchronous editor gate rechecks locks and the full token.
-        result = nil
-        state = restingState
+        discard()
         return accept(candidate)
+    }
+
+    func selectLook(_ id: AILookID) {
+        guard state == .previewing, let lookGroup,
+              snapshot() == lookGroup.request.snapshot,
+              lookGroup.validation.variants.contains(where: { $0.proposal.id == id }) else { contextDidChange(); return }
+        selectedLookID = id
+        comparison = .proposal
+        cards.select(id: id)
     }
 
     func discard() {
@@ -215,12 +290,15 @@ final class AIAssistantModel: ObservableObject {
         requestTask?.cancel()
         requestTask = nil
         result = nil
+        lookGroup = nil
+        selectedLookID = nil
+        cards.clear()
         comparison = .proposal
         state = restingState
     }
 
     func contextDidChange() {
-        if let expected = requestSnapshot ?? result?.request.snapshot, snapshot() != expected { discard() }
+        if let expected = requestSnapshot ?? activeProposalResult?.request.snapshot, snapshot() != expected { discard() }
         else { objectWillChange.send() }
     }
 

@@ -27,7 +27,7 @@ struct LocalAIProviderEvaluationTests {
     })
     func twelveGermanTasks() async throws {
         let provider = LocalAIEditingProviderFactory.makeProvider()
-        let coordinator = AIRequestCoordinator(provider: provider, budget: AIResourceBudget())
+        let coordinator = AIRequestCoordinator(provider: provider, budget: .shared)
         // Serial model work is intentional: one shared inference slot and isolated sessions.
         for (index, item) in Self.cases.enumerated() {
             let started = ProcessInfo.processInfo.systemUptime

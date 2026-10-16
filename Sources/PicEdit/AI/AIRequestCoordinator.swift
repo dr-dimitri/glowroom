@@ -8,6 +8,16 @@ struct AIProposalResult: Equatable, Sendable {
     let validation: EditProposalValidationResult
 }
 
+struct AILookGroupResult: Equatable, Sendable {
+    let request: AIEditingRequest
+    let validation: AIValidatedLookGroup
+}
+
+private enum AIRequestValidation: Sendable {
+    case single(EditProposalValidationResult)
+    case looks(AIValidatedLookGroup)
+}
+
 /// Latest-context scheduling with one actual provider call and one pending
 /// context. A canceled, non-cooperative provider keeps its slot and resource
 /// lease until it really returns. All inference runs outside MainActor.
@@ -24,11 +34,12 @@ actor AIRequestCoordinator {
     private struct Context: Hashable {
         let prompt: String
         let snapshot: AIEditingSnapshot
+        let mode: AIEditingMode
     }
 
     private struct Waiter {
         let request: AIEditingRequest
-        let continuation: CheckedContinuation<AIProposalResult, Error>
+        let continuation: CheckedContinuation<AIRequestValidation, Error>
     }
 
     private struct Job {
@@ -54,12 +65,25 @@ actor AIRequestCoordinator {
     }
 
     func proposal(for request: AIEditingRequest) async throws -> AIProposalResult {
+        guard request.mode == .single else { throw AIEditingError.invalidRequest }
+        guard case .single(let validation) = try await perform(request) else { throw AIEditingError.invalidRequest }
+        return AIProposalResult(request: request, validation: validation)
+    }
+
+    func lookGroup(for request: AIEditingRequest) async throws -> AILookGroupResult {
+        guard request.mode == .lookGroup else { throw AIEditingError.invalidRequest }
+        guard case .looks(let validation) = try await perform(request) else { throw AIEditingError.invalidRequest }
+        return AILookGroupResult(request: request, validation: validation)
+    }
+
+    private func perform(_ request: AIEditingRequest) async throws -> AIRequestValidation {
         try Task.checkCancellation()
         try request.validate(maximumPromptBytes: budget.limits.maximumPromptBytes)
-        guard provider.capabilities.contains(.textEditing) else { throw AIEditingError.unsupportedCapability }
+        let capability: AIProviderCapabilities = request.mode == .single ? .textEditing : .lookSuggestions
+        guard provider.capabilities.contains(capability) else { throw AIEditingError.unsupportedCapability }
         let waiterID = UUID()
-        let result: AIProposalResult = try await withTaskCancellationHandler {
-            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<AIProposalResult, Error>) in
+        let result: AIRequestValidation = try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<AIRequestValidation, Error>) in
                 guard !Task.isCancelled else {
                     continuation.resume(throwing: CancellationError())
                     return
@@ -101,8 +125,8 @@ actor AIRequestCoordinator {
     }
 
     private func enqueue(_ request: AIEditingRequest, waiterID: UUID,
-                         continuation: CheckedContinuation<AIProposalResult, Error>) {
-        let context = Context(prompt: request.prompt, snapshot: request.snapshot)
+                         continuation: CheckedContinuation<AIRequestValidation, Error>) {
+        let context = Context(prompt: request.prompt, snapshot: request.snapshot, mode: request.mode)
         let waiter = Waiter(request: request, continuation: continuation)
         if var job = running, job.context == context, !job.waiters.isEmpty {
             job.waiters[waiterID] = waiter
@@ -149,7 +173,7 @@ actor AIRequestCoordinator {
         let validator = self.validator
         job.task = Task.detached(priority: .userInitiated) { [weak self] in
             var lease: AIResourceBudget.Lease?
-            let result: Result<EditProposalValidationResult, Error>
+            let result: Result<AIRequestValidation, Error>
             do {
                 try Task.checkCancellation()
                 let availability = await provider.availability()
@@ -162,7 +186,12 @@ actor AIRequestCoordinator {
                 guard data.count <= budget.limits.maximumResponseBytes else {
                     throw AIEditingError.invalidResponse(.responseTooLarge)
                 }
-                result = .success(try validator.validate(data, against: request.snapshot.settings))
+                switch request.mode {
+                case .single:
+                    result = .success(.single(try validator.validate(data, against: request.snapshot.settings)))
+                case .lookGroup:
+                    result = .success(.looks(try validator.validateLookGroup(data, against: request.snapshot.settings)))
+                }
             } catch is CancellationError {
                 result = .failure(CancellationError())
             } catch let error as AIEditingError {
@@ -178,11 +207,11 @@ actor AIRequestCoordinator {
         running = job
     }
 
-    private func finish(_ jobID: UUID, result: Result<EditProposalValidationResult, Error>) {
+    private func finish(_ jobID: UUID, result: Result<AIRequestValidation, Error>) {
         guard let job = running, job.id == jobID else { return }
         running = nil
         for waiter in job.waiters.values {
-            waiter.continuation.resume(with: result.map { AIProposalResult(request: waiter.request, validation: $0) })
+            waiter.continuation.resume(with: result)
         }
         startNext()
         publishState()

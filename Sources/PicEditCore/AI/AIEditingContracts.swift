@@ -9,6 +9,7 @@ public struct AIProviderCapabilities: OptionSet, Hashable, Sendable {
     public static let textEditing = Self(rawValue: 1 << 0)
     public static let imageUnderstanding = Self(rawValue: 1 << 1)
     public static let imageGeneration = Self(rawValue: 1 << 2)
+    public static let lookSuggestions = Self(rawValue: 1 << 3)
 }
 
 public enum AIUnavailableReason: String, Hashable, Sendable {
@@ -79,7 +80,15 @@ extension AIEditingError: LocalizedError {
         case .temporaryModelFailure: return "Das lokale Systemmodell ist vorübergehend beschäftigt. Bitte die Anfrage erneut starten."
         case .invalidRequest: return "Die KI-Anfrage ist ungültig."
         case .staleSnapshot: return "Der Bild- oder Bearbeitungsstand hat sich inzwischen geändert."
-        case .invalidResponse: return "Der KI-Vorschlag enthält ungültige oder nicht unterstützte Daten."
+        case .invalidResponse(let reason):
+            switch reason {
+            case .invalidLookCount, .invalidLookID:
+                return "Die KI hat keine vollständige Gruppe mit den drei erwarteten Looks geliefert. Bitte erneut versuchen."
+            case .invalidLookName: return "Ein KI-Look hat keinen gültigen kurzen Namen. Bitte erneut versuchen."
+            case .ineffectiveLook: return "Ein KI-Look verändert den Ausgangsstand nicht. Bitte die drei Looks erneut erstellen."
+            case .duplicateLookTargets: return "Zwei KI-Looks ergeben denselben Stand. Bitte die drei Looks erneut erstellen."
+            default: return "Der KI-Vorschlag enthält ungültige oder nicht unterstützte Daten."
+            }
         case .providerFailure: return "Der KI-Anbieter konnte keinen Vorschlag erstellen."
         }
     }
@@ -156,15 +165,21 @@ public struct AIEditingSnapshot: Hashable, Sendable {
 }
 
 /// IDs and context are generated exclusively by the app, never decoded from model output.
+public enum AIEditingMode: String, Hashable, Sendable {
+    case single, lookGroup
+}
+
 public struct AIEditingRequest: Hashable, Sendable {
     public let id: UUID
     public let prompt: String
     public let snapshot: AIEditingSnapshot
+    public let mode: AIEditingMode
 
-    public init(id: UUID = UUID(), prompt: String, snapshot: AIEditingSnapshot) {
+    public init(id: UUID = UUID(), prompt: String, snapshot: AIEditingSnapshot, mode: AIEditingMode = .single) {
         self.id = id
         self.prompt = prompt
         self.snapshot = snapshot
+        self.mode = mode
     }
 
     /// Validate app inputs before availability checks or provider work. This is deliberately
@@ -172,7 +187,7 @@ public struct AIEditingRequest: Hashable, Sendable {
     public func validate(maximumPromptBytes: Int = 16_384) throws {
         guard maximumPromptBytes > 0,
               prompt.utf8.count <= maximumPromptBytes,
-              !prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+              mode == .lookGroup || !prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         else { throw AIEditingError.invalidRequest }
         try snapshot.validate()
     }

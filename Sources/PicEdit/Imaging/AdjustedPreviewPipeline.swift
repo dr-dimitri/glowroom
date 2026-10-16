@@ -8,11 +8,40 @@ import PicEditCore
 actor AdjustedPreviewPipeline {
     static let shared = AdjustedPreviewPipeline()
 
+    struct State: Equatable, Sendable {
+        let runningSelected: Int
+        let runningBackground: Int
+        let queuedCount: Int
+        let waiterCount: Int
+        let cachedBytes: Int
+        let cachedCount: Int
+    }
+
     private struct Key: Hashable {
-        let request: PreviewRequest
+        let sourceURL: URL
+        let modifiedAt: Date
+        let fileSize: Int64
+        let allowsEmbeddedPreview: Bool
         let settings: EditSettings
         let width: Int
         let height: Int
+        let outputWidth: Int
+        let outputHeight: Int
+
+        init(request: PreviewRequest, settings: EditSettings, width: Int, height: Int,
+             outputWidth: Int, outputHeight: Int) {
+            // Once the actual source raster is known, the decoder's requested
+            // size is not render identity. Cards and thumbnails can share it.
+            sourceURL = request.url
+            modifiedAt = request.modifiedAt
+            fileSize = request.fileSize
+            allowsEmbeddedPreview = request.allowsEmbeddedPreview
+            self.settings = settings
+            self.width = width
+            self.height = height
+            self.outputWidth = outputWidth
+            self.outputHeight = outputHeight
+        }
     }
     private struct Entry {
         let bitmap: PreviewBitmap
@@ -43,20 +72,26 @@ actor AdjustedPreviewPipeline {
     }
 
     init(maximumConcurrentRenders: Int = AdjustedPreviewPipeline.recommendedConcurrentRenders,
-         renderer: (@Sendable (PreviewBitmap, EditSettings) throws -> PreviewBitmap)? = nil) {
+         renderer: (@Sendable (PreviewBitmap, EditSettings) throws -> PreviewBitmap)? = nil,
+         priorityRenderer: (@Sendable (PreviewBitmap, EditSettings, PreviewPriority) throws -> PreviewBitmap)? = nil) {
         self.maximumConcurrentRenders = min(2, max(1, maximumConcurrentRenders))
-        if let renderer { self.renderer = { source, settings, _ in try renderer(source, settings) } }
+        if let priorityRenderer { self.renderer = priorityRenderer }
+        else if let renderer { self.renderer = { source, settings, _ in try renderer(source, settings) } }
         else { self.renderer = { try EditRenderer.render($0, settings: $1, priority: $2) } }
     }
 
     func image(
         _ source: PreviewBitmap, request: PreviewRequest, settings: EditSettings,
-        priority: PreviewPriority = .thumbnail
+        priority: PreviewPriority = .thumbnail, maximumOutputPixelSize: Int? = nil
     ) async throws -> PreviewBitmap {
         try Task.checkCancellation()
         let normalized = settings.normalized
-        guard !normalized.isNeutral else { return source }
-        let key = Key(request: request, settings: normalized, width: source.image.width, height: source.image.height)
+        // Small geometry calculations stay serial; another worker would cost
+        // more than this constant-size calculation. Scaling uses the render slot.
+        let size = try EditRenderer.outputSize(source, maximumPixelSize: maximumOutputPixelSize)
+        guard !normalized.isNeutral || size.width != source.image.width || size.height != source.image.height else { return source }
+        let key = Key(request: request, settings: normalized, width: source.image.width, height: source.image.height,
+                      outputWidth: size.width, outputHeight: size.height)
         sequence &+= 1
         if var entry = cache[key] {
             entry.access = sequence
@@ -75,6 +110,14 @@ actor AdjustedPreviewPipeline {
         } onCancel: {
             Task { await self.cancel(waiterID) }
         }
+    }
+
+    /// Content-free diagnostics for bounded-worker/cache verification.
+    func state() -> State {
+        State(runningSelected: running.values.filter { $0 == .selected }.count,
+              runningBackground: running.values.filter { $0 == .thumbnail }.count,
+              queuedCount: pending.count, waiterCount: waiterJobs.count,
+              cachedBytes: bytes, cachedCount: cache.count)
     }
 
     private func enqueue(
@@ -130,11 +173,16 @@ actor AdjustedPreviewPipeline {
             let settings = job.key.settings
             let priority = job.priority
             let renderer = self.renderer
+            let outputWidth = job.key.outputWidth
+            let outputHeight = job.key.outputHeight
             job.task = Task.detached(priority: priority == .selected ? .userInitiated : .utility) { [weak self] in
                 let result: Result<PreviewBitmap, Error>
                 do {
                     try Task.checkCancellation()
-                    let bitmap = try renderer(source, settings, priority)
+                    // Downsample the shared developed source, never a camera
+                    // thumbnail. It occupies this same bounded worker/CI lane.
+                    let input = try EditRenderer.resized(source, width: outputWidth, height: outputHeight, priority: priority)
+                    let bitmap = settings.isNeutral ? input : try renderer(input, settings, priority)
                     try Task.checkCancellation()
                     result = .success(bitmap)
                 } catch {
