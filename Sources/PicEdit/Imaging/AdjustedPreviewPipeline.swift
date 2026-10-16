@@ -2,8 +2,9 @@ import Foundation
 import PicEditCore
 
 /// Coordinates shared renders without blocking scheduling or cancellation.
-/// One render worker bounds Core Image intermediates and GPU contention while
-/// independent original decodes and disk I/O continue in the preview pipeline.
+/// At most one selected-photo and one background render can overlap. Separate
+/// lanes prevent a synchronous thumbnail from blocking interactive edits while
+/// bounding Core Image intermediates and GPU contention.
 actor AdjustedPreviewPipeline {
     static let shared = AdjustedPreviewPipeline()
 
@@ -28,17 +29,24 @@ actor AdjustedPreviewPipeline {
     private var bytes = 0
     private var sequence: UInt64 = 0
     private let limit = 32 * 1_024 * 1_024
-    private let renderer: @Sendable (PreviewBitmap, EditSettings) throws -> PreviewBitmap
+    private let renderer: @Sendable (PreviewBitmap, EditSettings, PreviewPriority) throws -> PreviewBitmap
     private var jobs: [UUID: Job] = [:]
     private var currentJob: [Key: UUID] = [:]
     private var waiterJobs: [UUID: UUID] = [:]
     private var pending: [UUID] = []
-    private var running: UUID?
+    private let maximumConcurrentRenders: Int
+    private var running: [UUID: PreviewPriority] = [:]
 
-    init(renderer: @escaping @Sendable (PreviewBitmap, EditSettings) throws -> PreviewBitmap = {
-        try EditRenderer.render($0, settings: $1)
-    }) {
-        self.renderer = renderer
+    static var recommendedConcurrentRenders: Int {
+        let resources = ProcessInfo.processInfo
+        return resources.activeProcessorCount >= 4 && resources.physicalMemory >= 8 * 1_024 * 1_024 * 1_024 ? 2 : 1
+    }
+
+    init(maximumConcurrentRenders: Int = AdjustedPreviewPipeline.recommendedConcurrentRenders,
+         renderer: (@Sendable (PreviewBitmap, EditSettings) throws -> PreviewBitmap)? = nil) {
+        self.maximumConcurrentRenders = min(2, max(1, maximumConcurrentRenders))
+        if let renderer { self.renderer = { source, settings, _ in try renderer(source, settings) } }
+        else { self.renderer = { try EditRenderer.render($0, settings: $1, priority: $2) } }
     }
 
     func image(
@@ -109,27 +117,33 @@ actor AdjustedPreviewPipeline {
     }
 
     private func startNext() {
-        guard running == nil, !pending.isEmpty else { return }
-        let index = pending.firstIndex { jobs[$0]?.priority == .selected } ?? 0
-        let jobID = pending.remove(at: index)
-        guard var job = jobs[jobID] else { return }
-        running = jobID
-        let source = job.source
-        let settings = job.key.settings
-        let renderer = self.renderer
-        job.task = Task.detached(priority: job.priority == .selected ? .userInitiated : .utility) { [weak self] in
-            let result: Result<PreviewBitmap, Error>
-            do {
-                try Task.checkCancellation()
-                let bitmap = try renderer(source, settings)
-                try Task.checkCancellation()
-                result = .success(bitmap)
-            } catch {
-                result = .failure(error)
+        while running.count < maximumConcurrentRenders, !pending.isEmpty {
+            let selected = running.values.contains(.selected) ? nil : pending.firstIndex { jobs[$0]?.priority == .selected }
+            let thumbnail = running.values.contains(.thumbnail) ? nil : pending.firstIndex { jobs[$0]?.priority == .thumbnail }
+            guard let index = selected ?? thumbnail else { return }
+            let jobID = pending.remove(at: index)
+            guard var job = jobs[jobID] else { continue }
+            // Keep the originally assigned lane through cancellation and priority
+            // upgrades: the synchronous renderer still occupies those resources.
+            running[jobID] = job.priority
+            let source = job.source
+            let settings = job.key.settings
+            let priority = job.priority
+            let renderer = self.renderer
+            job.task = Task.detached(priority: priority == .selected ? .userInitiated : .utility) { [weak self] in
+                let result: Result<PreviewBitmap, Error>
+                do {
+                    try Task.checkCancellation()
+                    let bitmap = try renderer(source, settings, priority)
+                    try Task.checkCancellation()
+                    result = .success(bitmap)
+                } catch {
+                    result = .failure(error)
+                }
+                await self?.finish(jobID, result: result)
             }
-            await self?.finish(jobID, result: result)
+            jobs[jobID] = job
         }
-        jobs[jobID] = job
     }
 
     private func finish(_ jobID: UUID, result: Result<PreviewBitmap, Error>) {
@@ -140,7 +154,7 @@ actor AdjustedPreviewPipeline {
             waiterJobs.removeValue(forKey: waiterID)
             continuation.resume(with: result)
         }
-        running = nil
+        running.removeValue(forKey: jobID)
         startNext()
     }
 

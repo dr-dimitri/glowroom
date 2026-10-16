@@ -45,6 +45,20 @@ struct AutoToneCurve: Sendable {
         try Task.checkCancellation()
         let amount = amount.isFinite ? min(1, max(0, amount / 100)) : 0
         guard amount > 0 else { return Self(ordinates: abscissae) }
+        let analysis = try AutoToneAnalysisCache.shared.analysis(for: image)
+        try Task.checkCancellation()
+        return Self(ordinates: zip(abscissae, analysis.offsets).map { $0 + amount * $1 })
+    }
+}
+
+/// Scene analysis does not depend on any edit slider, including auto-tone amount.
+/// Keep the offsets rather than a full-strength curve so all amounts use exactly
+/// the same arithmetic as an uncached analysis.
+struct AutoToneAnalysis: Sendable {
+    let offsets: [Double]
+
+    static func analyze(_ image: CGImage) throws -> Self {
+        try Task.checkCancellation()
         // The workload is bounded independently of RAW dimensions. The same
         // sampling scale is used for the small and large progressive previews.
         let scale = min(1, 256 / Double(max(image.width, image.height)))
@@ -85,7 +99,7 @@ struct AutoToneCurve: Sendable {
                 highlightEvidence += max(0, (luminance - 0.75) / 0.25) * coverage
             }
         }
-        guard weight > 0 else { return Self(ordinates: abscissae) }
+        guard weight > 0 else { return Self(offsets: [Double](repeating: 0, count: 7)) }
         func percentile(_ fraction: Double) -> Double {
             var accumulated = 0.0
             for (index, frequency) in histogram.enumerated() {
@@ -122,7 +136,96 @@ struct AutoToneCurve: Sendable {
                        shadows > 0 ? max(0.070 * shadows, lowInner) : lowInner, middle,
                        highlights > 0 ? min(-0.070 * highlights, highInner) : highInner,
                        highlights > 0 ? min(-0.045 * highlights, highOuter) : highOuter, 0]
-        return Self(ordinates: zip(abscissae, offsets).map { $0 + amount * $1 })
+        return Self(offsets: offsets)
+    }
+}
+
+/// A small identity cache shares the original's analysis across slider changes.
+/// Weak source references avoid extending the decoded preview's lifetime and
+/// prevent a reused object address from matching a different image. The caller's
+/// bounded render workers provide concurrency; this cache creates no worker pool.
+final class AutoToneAnalysisCache: @unchecked Sendable {
+    static let shared = AutoToneAnalysisCache()
+
+    private final class Entry {
+        weak var image: CGImage?
+        var analysis: AutoToneAnalysis?
+        var lastAccess: UInt64
+
+        init(image: CGImage, lastAccess: UInt64) {
+            self.image = image
+            self.lastAccess = lastAccess
+        }
+    }
+
+    private let condition = NSCondition()
+    private let maximumEntries: Int
+    private let analyzeImage: @Sendable (CGImage) throws -> AutoToneAnalysis
+    // All mutable state, including each entry, is protected by condition.
+    private var entries: [ObjectIdentifier: Entry] = [:]
+    private var access: UInt64 = 0
+
+    init(maximumEntries: Int = 8,
+         analyze: @escaping @Sendable (CGImage) throws -> AutoToneAnalysis = { try AutoToneAnalysis.analyze($0) }) {
+        self.maximumEntries = max(1, maximumEntries)
+        self.analyzeImage = analyze
+    }
+
+    func analysis(for image: CGImage) throws -> AutoToneAnalysis {
+        let identity = ObjectIdentifier(image)
+        while true {
+            try Task.checkCancellation()
+            condition.lock()
+            entries = entries.filter { $0.value.image != nil }
+            access &+= 1
+            if let entry = entries[identity], entry.image === image {
+                entry.lastAccess = access
+                if let analysis = entry.analysis {
+                    condition.unlock()
+                    try Task.checkCancellation()
+                    return analysis
+                }
+                // Joining a short CPU analysis does not schedule another worker.
+                // A timed wait lets a canceled preview leave promptly even while
+                // the shared producer is inside an uninterruptible bitmap draw.
+                _ = condition.wait(until: Date(timeIntervalSinceNow: 0.01))
+                condition.unlock()
+                continue
+            }
+            if entries.count >= maximumEntries,
+               let oldest = entries.filter({ $0.value.analysis != nil })
+                .min(by: { $0.value.lastAccess < $1.value.lastAccess })?.key {
+                entries.removeValue(forKey: oldest)
+            }
+            guard entries.count < maximumEntries else {
+                // Never evict an in-flight producer or grow beyond the bound.
+                // Normally unreachable with the render pipeline's worker limit.
+                condition.unlock()
+                let result = try analyzeImage(image)
+                try Task.checkCancellation()
+                return result
+            }
+            let entry = Entry(image: image, lastAccess: access)
+            entries[identity] = entry
+            condition.unlock()
+            do {
+                let analysis = try analyzeImage(image)
+                try Task.checkCancellation()
+                condition.lock()
+                if entries[identity] === entry { entry.analysis = analysis }
+                condition.broadcast()
+                condition.unlock()
+                return analysis
+            } catch {
+                condition.lock()
+                if entries[identity] === entry { entries.removeValue(forKey: identity) }
+                condition.broadcast()
+                condition.unlock()
+                // A canceled or failed producer must not poison future requests;
+                // remaining waiters can retry with their own cancellation state.
+                throw error
+            }
+        }
     }
 }
 

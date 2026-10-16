@@ -10,13 +10,15 @@ Stand: 16. Oktober 2026. Originalbilder werden weiterhin ausschließlich gelesen
 - `LibraryCatalogWorker` übernimmt Pfadauflösung, Importabgleich und Ordnerentfernung. Ein Importabgleich wird bei zwischenzeitlichen Katalogänderungen wiederholt; dadurch bleiben neue Bewertungen und Favoriten erhalten. Angenommene Entfernungen werden vor dem Beenden vollständig gespeichert.
 - `LibraryProjectionWorker` berechnet Filter, Sortierung, Bildindex, Favoritenzahl und Ordnerbäume außerhalb des MainActor. Ein Actor begrenzt die Arbeit auf eine Berechnung gleichzeitig und verwendet Struktur-Caches erneut. Schnelle Änderungen werden zusammengefasst; ein Abbruch und eine Anfragenummer verhindern die Veröffentlichung überholter Ergebnisse. Swift-Sortierung selbst ist nicht unterbrechbar; der nachfolgende Abbruchcheck verwirft ihr Ergebnis. Die UI zeigt während der Aktualisierung einen Fortschrittsindikator und behält vorhandene Bilder bis zum neuen Ergebnis.
 - Die bestehende Decodier-Pipeline hat drei Worker und reserviert nach Möglichkeit einen Platz für das ausgewählte Bild. Laufende größere Decodierungen können nun kleinere Anfragen desselben Originals mitbedienen. Jede wartende Ansicht kann ihren eigenen Bezug abbrechen.
-- `AdjustedPreviewPipeline` verwaltet Anfragen in einem ansprechbaren Actor und rendert auf einem separaten Worker. Ausgewählte Bilder stehen vor wartenden Vorschaubildern; identische Bearbeitungen teilen sich Arbeit. Ein bereits laufender synchroner Core-Image-Aufruf behält seinen Platz bis zum tatsächlichen Ende. Das verhindert zusätzliche GPU-Arbeit und unkontrolliertes Wachstum der Zwischenbilder bei Abbruch.
-- Der einzelne Render-Worker läuft parallel zu Decodierung und Cache-Ein-/Ausgabe. Core Image verwendet weiterhin einen gemeinsamen Kontext und wählt seinen verfügbaren Ausführungspfad selbst. Farbprofil-, Transparenz- und Filterberechnung wurden nicht verändert. Der kleine Auto-Tonwert-Histogrammschritt bleibt bewusst eine CPU-Reduktion ohne zusätzlichen Pool oder GPU-Rücklesen.
+- `AdjustedPreviewPipeline` verwaltet Anfragen in einem ansprechbaren Actor und rendert außerhalb des MainActor. Ab vier aktiven CPU-Kernen und 8 GiB physischem RAM dürfen höchstens eine ausgewählte Bearbeitung und eine Hintergrundvorschau gleichzeitig laufen, sonst insgesamt eine. Ausgewählte Bilder stehen vor wartenden Vorschaubildern; identische Bearbeitungen teilen sich Arbeit. Ein bereits laufender synchroner Core-Image-Aufruf behält seinen Platz bis zum tatsächlichen Ende. Das verhindert zusätzliche GPU-Arbeit und unkontrolliertes Wachstum der Zwischenbilder bei Abbruch.
+- Die Render-Worker laufen parallel zu Decodierung und Cache-Ein-/Ausgabe. Zwei wiederverwendete Core-Image-Kontexte unterscheiden interaktive und niedrige Hintergrundpriorität. Core Image wählt seinen verfügbaren Ausführungspfad selbst; auf dem geprüften M2 Pro wird Metal verwendet. Der interaktive Kontext behält höchstens eine Bildbasis bis 64 MiB und ihren unveränderten Entrauschungs-/Auto-Tonwert-Graph. Das Rendern einer anderen oder größeren Basis gibt diese Referenzen frei. Farbprofil-, Transparenz- und Filterberechnung bleiben erhalten. Der kleine Auto-Tonwert-Histogrammschritt bleibt eine CPU-Reduktion ohne zusätzlichen Pool oder GPU-Rücklesen; bis zu acht Ergebnisse werden anhand schwacher Bildreferenzen geteilt. [Messungen und Grenzen](EDITING-PERFORMANCE.md) dokumentieren die zusätzliche Optimierung.
 - SQLite-Schreibvorgänge, Revisionen, Sicherungen und Wiederherstellung bleiben auf ihrem Datenbank-Actor geordnet. Beim Beenden werden der unabhängige JSON-Katalog und die Bearbeitungsdatenbank gleichzeitig abgeschlossen; beide Ergebnisse müssen vorliegen. Backup-Zielauflösung läuft innerhalb des geschützten Backup-Ablaufs im Hintergrund.
 
 Die Limits sind Arbeitsbudgets, keine harte Obergrenze für interne Threads von ImageIO/Core Image oder ihren Speicherbedarf. Eine laufende synchrone Betriebssystemoperation kann erst nach ihrer Rückkehr auf Abbruch reagieren.
 
 ## Prüfung
+
+Die ergänzende Prüfung der GPU-Bearbeitung und des Analyse-Caches ist im [Bearbeitungs-Performancebericht](EDITING-PERFORMANCE.md#prüfung) dokumentiert. Die folgenden Ergebnisse beziehen sich auf den vorangegangenen Parallelisierungsstand `b8d1247`.
 
 118 Tests bestanden, verteilt auf 97 Bibliotheks-/Persistenz-/Scheduling-/Cache-Tests und 21 tatsächliche Render-/Auto-Tonwert-Tests. Neue Fälle prüfen begrenzte Überlappung, deterministische Metadaten, Abbruch und Fehler beim Scannen, überholte Filteranfragen, schnelle Metadatenänderungen, angenommene Ordnerentfernung beim Beenden, Priorisierung und unabhängigen Abbruch geteilter Render-/Decodier-Anfragen sowie parallelen Abschluss beider Speicherbereiche.
 
@@ -25,7 +27,7 @@ PICEDIT_TEST_BUILD_PATH=/tmp/picedit-tests scripts/test.sh --jobs 4
 scripts/test-image-pipeline.sh
 scripts/benchmark-library.sh
 scripts/benchmark-scanner.sh 120 5
-scripts/benchmark-editing.sh
+PICEDIT_BENCHMARK_SESSION_API=1 scripts/benchmark-editing.sh
 ```
 
 Der separate Vorschau-Smoke-Test (unter anderem Orientierung, Cache-Grenzen und 40 Abbrüche) und der Release-Build von `dist/PicEdit.app` waren ebenfalls erfolgreich. Apples `dsymutil` benötigte für den Release-Build die Ausführung außerhalb der Sandbox.
@@ -60,7 +62,7 @@ Für genau diese synthetische Last entspricht das etwa 3,65-fachem warmem Durchs
 
 Beim neuen Modell werden Ordnerbäume bereits beim Öffnen vorbereitet; ein Teil der Arbeit wurde also zeitlich verlagert. Die Werte belegen keinen gleich großen Gewinn für die gesamte Startzeit. Während des neuen Messabschnitts betrug der größte beobachtete Abstand eines auf 1 ms eingestellten MainActor-Timers 6,13 ms (14 Stichproben); Spitzen-RSS des Prozesses 54,7 MiB. Das ist eine begrenzte Reaktionsfähigkeits-Stichprobe, keine garantierte Framezeit.
 
-### Schnelle Regleränderungen
+### Schnelle Regleränderungen (Stand `b8d1247`)
 
 Eine synthetische Basis mit 2400 × 1600 Pixeln, 24 Änderungen im Abstand von 10 ms, vorhandene Zusammenfassung über 45 ms. Tatsächliche Core-Image-Filter: Auto-Tonwerte, Struktur, Klarheit, Farbrauschminderung und Belichtung.
 

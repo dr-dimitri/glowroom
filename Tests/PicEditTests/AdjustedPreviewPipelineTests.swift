@@ -10,7 +10,7 @@ struct AdjustedPreviewPipelineTests {
     func selectedEditRunsBeforeQueuedThumbnails() async throws {
         let probe = RenderProbe()
         defer { probe.releaseAll() }
-        let pipeline = AdjustedPreviewPipeline(renderer: { try probe.render($0, settings: $1) })
+        let pipeline = AdjustedPreviewPipeline(maximumConcurrentRenders: 1, renderer: { try probe.render($0, settings: $1) })
         let source = try fixture()
         let first = Task { try await pipeline.image(source, request: request, settings: settings(1)) }
         try await wait { probe.started == [1] }
@@ -31,7 +31,7 @@ struct AdjustedPreviewPipelineTests {
     func sharedRenderSurvivesOneCancelledWaiter() async throws {
         let probe = RenderProbe()
         defer { probe.releaseAll() }
-        let pipeline = AdjustedPreviewPipeline(renderer: { try probe.render($0, settings: $1) })
+        let pipeline = AdjustedPreviewPipeline(maximumConcurrentRenders: 1, renderer: { try probe.render($0, settings: $1) })
         let source = try fixture()
         let first = Task { try await pipeline.image(source, request: request, settings: settings(1)) }
         try await wait { probe.started == [1] }
@@ -51,7 +51,7 @@ struct AdjustedPreviewPipelineTests {
     func cancelledRenderRetainsSlotAndObsoleteQueuedEditsNeverRun() async throws {
         let probe = RenderProbe()
         defer { probe.releaseAll() }
-        let pipeline = AdjustedPreviewPipeline(renderer: { try probe.render($0, settings: $1) })
+        let pipeline = AdjustedPreviewPipeline(maximumConcurrentRenders: 1, renderer: { try probe.render($0, settings: $1) })
         let source = try fixture()
         let first = Task { try await pipeline.image(source, request: request, settings: settings(1)) }
         try await wait { probe.started == [1] }
@@ -77,7 +77,7 @@ struct AdjustedPreviewPipelineTests {
     func cancelledGenerationCannotRemoveItsReplacementWaiter() async throws {
         let probe = RenderProbe()
         defer { probe.releaseAll() }
-        let pipeline = AdjustedPreviewPipeline(renderer: { try probe.render($0, settings: $1) })
+        let pipeline = AdjustedPreviewPipeline(maximumConcurrentRenders: 1, renderer: { try probe.render($0, settings: $1) })
         let source = try fixture()
         let first = Task { try await pipeline.image(source, request: request, settings: settings(1)) }
         try await wait { probe.started == [1] }
@@ -94,7 +94,7 @@ struct AdjustedPreviewPipelineTests {
     @Test
     func failedRenderReleasesWorkerAndCanBeRetried() async throws {
         let source = try fixture()
-        let pipeline = AdjustedPreviewPipeline(renderer: { bitmap, settings in
+        let pipeline = AdjustedPreviewPipeline(maximumConcurrentRenders: 1, renderer: { bitmap, settings in
             if settings.exposure == 1 { throw EditRenderError.unavailable }
             return bitmap
         })
@@ -106,6 +106,31 @@ struct AdjustedPreviewPipelineTests {
         }
         let result = try await pipeline.image(source, request: request, settings: settings(2))
         #expect(result.image === source.image)
+    }
+
+    @Test
+    func selectedRenderingOverlapsOneThumbnailWithoutExceedingTwoWorkers() async throws {
+        let probe = RenderProbe()
+        defer { probe.releaseAll() }
+        let pipeline = AdjustedPreviewPipeline(maximumConcurrentRenders: 2, renderer: { try probe.render($0, settings: $1) })
+        let source = try fixture()
+        let first = Task { try await pipeline.image(source, request: request, settings: settings(1)) }
+        try await wait { probe.started == [1] }
+        let thumbnail = Task { try await pipeline.image(source, request: request, settings: settings(2)) }
+        let selected = Task { try await pipeline.image(source, request: request, settings: settings(3), priority: .selected) }
+        try await wait { probe.started == [1, 3] }
+        #expect(probe.maximumActive == 2)
+        // Cancellation resumes this waiter immediately, but must not permit a
+        // third worker while its synchronous thumbnail is still blocked.
+        first.cancel()
+        await expectCancelled(first)
+        try await Task.sleep(for: .milliseconds(20))
+        #expect(probe.started == [1, 3])
+        probe.releaseAll()
+        _ = try await selected.value
+        _ = try await thumbnail.value
+        #expect(probe.started == [1, 3, 2])
+        #expect(probe.maximumActive == 2)
     }
 
     private var request: PreviewRequest {

@@ -18,14 +18,105 @@ enum EditRenderError: LocalizedError {
 /// and kernels are reusable; the mutable filter objects are local to each call.
 /// This is a preview renderer, not a full-resolution export or a RAW developer.
 enum EditRenderer {
-    private static let context: CIContext? = CIContext(options: [
-        .workingColorSpace: CGColorSpace(name: CGColorSpace.extendedLinearSRGB)!,
-        .workingFormat: CIFormat.RGBAh,
-        .cacheIntermediates: false,
-        .priorityRequestLow: true
-    ])
+    /// Reuse the selected photo's unchanged filter prefix across slider values.
+    /// Core Image still chooses its available GPU/CPU implementation. A single
+    /// retained source (up to 64 MiB) bounds decoded-image retention. Core Image
+    /// manages its temporary texture budget; render concurrency is bounded above.
+    final class Session: @unchecked Sendable {
+        let context: CIContext
+        private let cachesPrefix: Bool
+        private let lock = NSLock()
+        private var original: CGImage?
+        private var base: CIImage?
+        private var denoised: CIImage?
+        private var balanced: CIImage?
+        private var noise: NoiseKey?
+        private var autoAmount: Double?
+        private let sourceByteLimit = 64 * 1_024 * 1_024
 
-    static func render(_ bitmap: PreviewBitmap, settings: EditSettings) throws -> PreviewBitmap {
+        private struct NoiseKey: Equatable {
+            let luminance: Double
+            let color: Double
+        }
+
+        init(cacheIntermediates: Bool = false, lowPriority: Bool, softwareRenderer: Bool = false) {
+            cachesPrefix = cacheIntermediates
+            var options: [CIContextOption: Any] = [
+                .workingColorSpace: CGColorSpace(name: CGColorSpace.extendedLinearSRGB)!,
+                .workingFormat: CIFormat.RGBAh,
+                .cacheIntermediates: cacheIntermediates,
+                .priorityRequestLow: lowPriority,
+                .name: lowPriority ? "PicEdit background" : "PicEdit interactive"
+            ]
+            // Diagnostic preference only: some platforms ignore this option.
+            // The automatic production path retains Core Image's own fallback.
+            if softwareRenderer { options[.useSoftwareRenderer] = true }
+            context = CIContext(options: options)
+        }
+
+        fileprivate func prefix(_ bitmap: PreviewBitmap, settings: EditSettings, extent: CGRect, scale: Double) throws -> CIImage {
+            guard cachesPrefix, bitmap.byteCost <= sourceByteLimit else {
+                if cachesPrefix {
+                    lock.lock()
+                    original = nil
+                    base = nil
+                    denoised = nil
+                    balanced = nil
+                    noise = nil
+                    autoAmount = nil
+                    context.clearCaches()
+                    lock.unlock()
+                }
+                return try EditRenderer.prefix(CIImage(cgImage: bitmap.image), original: bitmap.image,
+                                               settings: settings, extent: extent, scale: scale)
+            }
+            // Only immutable graph construction and the small cached histogram
+            // analysis are serialized. GPU rendering runs after releasing the lock.
+            lock.lock()
+            defer { lock.unlock() }
+            try Task.checkCancellation()
+            if original !== bitmap.image {
+                original = bitmap.image
+                base = CIImage(cgImage: bitmap.image)
+                denoised = nil
+                balanced = nil
+                noise = nil
+                autoAmount = nil
+                // Old-photo intermediates cannot help this source. This is a
+                // thread-safe cache hint; in-flight renders keep their resources.
+                context.clearCaches()
+            }
+            let noiseKey = NoiseKey(luminance: settings.luminanceNoiseReduction, color: settings.colorNoiseReduction)
+            if noise != noiseKey {
+                denoised = try EditRenderer.denoise(base!, settings: settings, extent: extent, scale: scale)
+                noise = noiseKey
+                balanced = nil
+                autoAmount = nil
+            }
+            if autoAmount != settings.autoToneAmount {
+                let input = denoised!
+                balanced = settings.autoToneAmount > 0
+                    ? try AutoToneRenderer.apply(to: input, original: bitmap.image, amount: settings.autoToneAmount, extent: extent)
+                    : input
+                autoAmount = settings.autoToneAmount
+            }
+            try Task.checkCancellation()
+            return balanced!
+        }
+    }
+
+    private static let interactive = Session(cacheIntermediates: true, lowPriority: false)
+    private static let background = Session(cacheIntermediates: false, lowPriority: true)
+
+    static func render(_ bitmap: PreviewBitmap, settings: EditSettings,
+                       priority: PreviewPriority = .selected) throws -> PreviewBitmap {
+        try Task.checkCancellation()
+        let settings = settings.normalized
+        guard !settings.isNeutral else { return bitmap }
+        return try render(bitmap, settings: settings, session: priority == .selected ? interactive : background)
+    }
+
+    static func render(_ bitmap: PreviewBitmap, settings: EditSettings, session: Session) throws -> PreviewBitmap {
         try Task.checkCancellation()
         let settings = settings.normalized
         guard !settings.isNeutral else { return bitmap }
@@ -34,31 +125,12 @@ enum EditRenderer {
               original.width <= 4_096, original.height <= 4_096 else {
             throw EditRenderError.oversizedPreview
         }
-        guard let context else { throw EditRenderError.unavailable }
 
         return try autoreleasepool {
             let extent = CGRect(x: 0, y: 0, width: original.width, height: original.height)
-            var image = CIImage(cgImage: original)
-            // Keep spatial effects comparable when the progressive preview is
-            // replaced by the larger rendition, without excessive tiny-image blur.
+            // Keep spatial effects comparable at progressive preview sizes.
             let scale = max(0.25, Double(max(original.width, original.height)) / 1_600)
-
-            if settings.luminanceNoiseReduction > 0 || settings.colorNoiseReduction > 0 {
-                let luminance = settings.luminanceNoiseReduction / 100
-                let chroma = settings.colorNoiseReduction / 100
-                let lumaBlur = luminance > 0 ? blur(image, radius: (1 + 2 * luminance) * scale, extent: extent) : image
-                let chromaBlur = chroma > 0 ? blur(image, radius: (2 + 4 * chroma) * scale, extent: extent) : image
-                guard let result = denoiseKernel?.apply(extent: extent, arguments: [image, lumaBlur, chromaBlur, luminance, chroma]) else {
-                    throw EditRenderError.unavailable
-                }
-                image = result
-            }
-            try Task.checkCancellation()
-
-            if settings.autoToneAmount > 0 {
-                image = try AutoToneRenderer.apply(to: image, original: original,
-                                                   amount: settings.autoToneAmount, extent: extent)
-            }
+            var image = try session.prefix(bitmap, settings: settings, extent: extent, scale: scale)
             try Task.checkCancellation()
 
             if settings.exposure != 0 || settings.contrast != 0 || settings.highlights != 0 || settings.shadows != 0 ||
@@ -91,12 +163,33 @@ enum EditRenderer {
             case .monochrome: format = highPrecision ? .LA16 : .LA8
             default: throw EditRenderError.unavailable
             }
-            guard let rendered = context.createCGImage(image.cropped(to: extent), from: extent, format: format, colorSpace: colorSpace) else {
+            guard let rendered = session.context.createCGImage(image.cropped(to: extent), from: extent, format: format, colorSpace: colorSpace, deferred: false) else {
                 throw EditRenderError.unavailable
             }
             try Task.checkCancellation()
             return PreviewBitmap(image: rendered)
         }
+    }
+
+    private static func prefix(_ image: CIImage, original: CGImage, settings: EditSettings,
+                               extent: CGRect, scale: Double) throws -> CIImage {
+        let denoised = try denoise(image, settings: settings, extent: extent, scale: scale)
+        try Task.checkCancellation()
+        return settings.autoToneAmount > 0
+            ? try AutoToneRenderer.apply(to: denoised, original: original, amount: settings.autoToneAmount, extent: extent)
+            : denoised
+    }
+
+    private static func denoise(_ image: CIImage, settings: EditSettings, extent: CGRect, scale: Double) throws -> CIImage {
+        guard settings.luminanceNoiseReduction > 0 || settings.colorNoiseReduction > 0 else { return image }
+        let luminance = settings.luminanceNoiseReduction / 100
+        let chroma = settings.colorNoiseReduction / 100
+        let lumaBlur = luminance > 0 ? blur(image, radius: (1 + 2 * luminance) * scale, extent: extent) : image
+        let chromaBlur = chroma > 0 ? blur(image, radius: (2 + 4 * chroma) * scale, extent: extent) : image
+        guard let result = denoiseKernel?.apply(extent: extent, arguments: [image, lumaBlur, chromaBlur, luminance, chroma]) else {
+            throw EditRenderError.unavailable
+        }
+        return result
     }
 
     private static func blur(_ image: CIImage, radius: Double, extent: CGRect) -> CIImage {
