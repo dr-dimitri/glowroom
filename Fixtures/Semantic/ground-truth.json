@@ -1,0 +1,490 @@
+{
+  "assets": [
+    {
+      "color": "red",
+      "height": 256,
+      "id": "fixture-01",
+      "kind": "house",
+      "path": "fixtures/fixture-01.png",
+      "png_sha256": "2165f709e54be4b580926041162b1b09e487f5fa7bcda87e9b9e6e65afdccaf8",
+      "rgb_sha256": "d91d25e2aeb5cdd1d6d02f80a0b078fd65d87837cdd3c3a6801c66eb7a5911ba",
+      "width": 256
+    },
+    {
+      "color": "blue",
+      "height": 256,
+      "id": "fixture-02",
+      "kind": "house",
+      "path": "fixtures/fixture-02.png",
+      "png_sha256": "db87c070d950d1c57d0ab74f45531c35f1f26932c84f605a8dd6be8f304b4f42",
+      "rgb_sha256": "60c8234cc51c324b9bdd7b04826454994d4e16a3a4e924e98f1ddd66d69161a3",
+      "width": 256
+    },
+    {
+      "color": "green",
+      "height": 256,
+      "id": "fixture-03",
+      "kind": "house",
+      "path": "fixtures/fixture-03.png",
+      "png_sha256": "e80204a1607f6e2bd0b5bb20dd99bdfb4e92eb323b68e8ebee7df38e71228b3d",
+      "rgb_sha256": "2cde22e628603ba682a7bfa1f5722800ffab81263d14374d15d105b7d68498e1",
+      "width": 256
+    },
+    {
+      "color": "yellow",
+      "height": 256,
+      "id": "fixture-04",
+      "kind": "house",
+      "path": "fixtures/fixture-04.png",
+      "png_sha256": "53574005a022945212e49c4786718ecd19aa34d6e59507eeb26cf61617f704b7",
+      "rgb_sha256": "8ec389d7777507a181aec570ae53507fc21b4f93b7c70edda0f802a97ef4f3cf",
+      "width": 256
+    },
+    {
+      "color": "purple",
+      "height": 256,
+      "id": "fixture-05",
+      "kind": "house",
+      "path": "fixtures/fixture-05.png",
+      "png_sha256": "bc803269b1655dac82bc4f96090246a9abb2d31aaefd9db8b2a019ce9bcdbea6",
+      "rgb_sha256": "17bc7441a204371ec897a843cbd84d934096c1e847cc6d15e8d35b873b86b69c",
+      "width": 256
+    },
+    {
+      "color": "red",
+      "height": 256,
+      "id": "fixture-06",
+      "kind": "car",
+      "path": "fixtures/fixture-06.png",
+      "png_sha256": "00a6e97eea52b872ff9d069a93e3a236e32f0389a05bd949297882f34c8ac63e",
+      "rgb_sha256": "81a60ad7cb66cde247075b7985c36c98da253a90305fc91a8119dbebfc9d49d9",
+      "width": 256
+    },
+    {
+      "color": "blue",
+      "height": 256,
+      "id": "fixture-07",
+      "kind": "car",
+      "path": "fixtures/fixture-07.png",
+      "png_sha256": "b218b78f2efd05ced8297de56fdd19b1e2e2c572ade68695621ce5963246f80e",
+      "rgb_sha256": "708b5a87c981a3edda32276368897709bde26da16d46f91b7a217f4b9c83f291",
+      "width": 256
+    },
+    {
+      "color": "green",
+      "height": 256,
+      "id": "fixture-08",
+      "kind": "car",
+      "path": "fixtures/fixture-08.png",
+      "png_sha256": "a85c3f30e08d0daaeddb54b02e9c79e2a7ef738be34466cc20810d73d6db3008",
+      "rgb_sha256": "e01b66c454a083a180e73e253669860f53191f23fd1109ef67dbdc76482bc5e7",
+      "width": 256
+    },
+    {
+      "color": "yellow",
+      "height": 256,
+      "id": "fixture-09",
+      "kind": "car",
+      "path": "fixtures/fixture-09.png",
+      "png_sha256": "20a49739c2ebd41674832eabd96166621b2f8360ea96a8a33179b7f7ab0b2b82",
+      "rgb_sha256": "596dd6e4cb45bdcf9835e8c2dd594035a9e5dbf14c14e57939d4516b3a6c9d08",
+      "width": 256
+    },
+    {
+      "color": "purple",
+      "height": 256,
+      "id": "fixture-10",
+      "kind": "car",
+      "path": "fixtures/fixture-10.png",
+      "png_sha256": "69658e8f36f476d3424bd9292c18aa73d48afb447b8e336ab6196c4362c672fa",
+      "rgb_sha256": "9dbe8bd6db825c2213dac530fd1fdfa27ebad36147a47fcaed9bf82bfc247880",
+      "width": 256
+    },
+    {
+      "color": "red",
+      "height": 256,
+      "id": "fixture-11",
+      "kind": "tree",
+      "path": "fixtures/fixture-11.png",
+      "png_sha256": "84fc7e296a2635212d8a1a75554c5503981638fbf52b8317739d540e481df86a",
+      "rgb_sha256": "3cd12e3de07d60f359c514a29b1d5110abfae60edf42bf1de90c75899b943de0",
+      "width": 256
+    },
+    {
+      "color": "blue",
+      "height": 256,
+      "id": "fixture-12",
+      "kind": "tree",
+      "path": "fixtures/fixture-12.png",
+      "png_sha256": "5b25d0c7a85f8e4226a177332569c33dc2a32ef02802d16beddd7f87c8cbd55c",
+      "rgb_sha256": "7c397211c5b752e70d4c7e0da84f185327e7f6567fb2aaaeca9b728c3392df18",
+      "width": 256
+    },
+    {
+      "color": "green",
+      "height": 256,
+      "id": "fixture-13",
+      "kind": "tree",
+      "path": "fixtures/fixture-13.png",
+      "png_sha256": "f8c275f2426c2829edec5b783ea48f7388ee143c874ddd606a1f0e1359c17132",
+      "rgb_sha256": "b8b0a18d632aef2812ffdb91fc7d5bd6d3dfbff3952fbe5dba60b04a4472bc84",
+      "width": 256
+    },
+    {
+      "color": "yellow",
+      "height": 256,
+      "id": "fixture-14",
+      "kind": "tree",
+      "path": "fixtures/fixture-14.png",
+      "png_sha256": "ace7e3ea95ccd58a1bfb449ad6394bb77a0b9af11fcfad29418ec3012554b1b5",
+      "rgb_sha256": "a49e43f70911861f1e31cf71e60eeab4ea4577279979e4457573e558de179742",
+      "width": 256
+    },
+    {
+      "color": "purple",
+      "height": 256,
+      "id": "fixture-15",
+      "kind": "tree",
+      "path": "fixtures/fixture-15.png",
+      "png_sha256": "a8965668925e38e59528e42894a1cefdf7cf8985d20b1f2b15114f5bbcb1cd81",
+      "rgb_sha256": "b4973f1fb005a5ddbdb6da4910a7c8fcfbb434fcc12a8bd995b5fd23a76f7209",
+      "width": 256
+    },
+    {
+      "color": "red",
+      "height": 256,
+      "id": "fixture-16",
+      "kind": "flower",
+      "path": "fixtures/fixture-16.png",
+      "png_sha256": "e1e368e6909bdec5480bd2e21dad86a6325a71bee9734b3dc4a6e83227509640",
+      "rgb_sha256": "432430a0483c643b6af54aa08fca58981abfdf7d76db7dccd279a5cf2ad98868",
+      "width": 256
+    },
+    {
+      "color": "blue",
+      "height": 256,
+      "id": "fixture-17",
+      "kind": "flower",
+      "path": "fixtures/fixture-17.png",
+      "png_sha256": "f494a9f094e71d7c13d2578292ab79a981364784334de99761079c3ba35af102",
+      "rgb_sha256": "abb21e6eb8a203cd2708f6e0737764bd259529f7fb0b2f3b9a5e0d815757fb19",
+      "width": 256
+    },
+    {
+      "color": "green",
+      "height": 256,
+      "id": "fixture-18",
+      "kind": "flower",
+      "path": "fixtures/fixture-18.png",
+      "png_sha256": "f84d6d7a3f6d1153af1b59bae825bd9f11e578d151315c99cfffd4a3ac6c2b51",
+      "rgb_sha256": "7aeeb3ff1caf1da7280a2673ae65d5f0b2e5dee07cae878f690e529962e179a3",
+      "width": 256
+    },
+    {
+      "color": "yellow",
+      "height": 256,
+      "id": "fixture-19",
+      "kind": "flower",
+      "path": "fixtures/fixture-19.png",
+      "png_sha256": "9e06d0d84c9d23f487dc1c4546d40fb568cd4d4611ca2cc3a10772de5092ec0e",
+      "rgb_sha256": "61e5886c967247c9457b046cd73226fe8ed5a32cda2dc9c43f132ec6e60e6ea2",
+      "width": 256
+    },
+    {
+      "color": "purple",
+      "height": 256,
+      "id": "fixture-20",
+      "kind": "flower",
+      "path": "fixtures/fixture-20.png",
+      "png_sha256": "c30a1700697b3f5034d58713680a9b0e3d1d041d59e7fdaa1e86d8c0f53e90e9",
+      "rgb_sha256": "3d52f7df7a24093a7b8157db6bc7d94646bec2a5937d6bca801717f6ea2292a8",
+      "width": 256
+    },
+    {
+      "color": "red",
+      "height": 256,
+      "id": "fixture-21",
+      "kind": "boat",
+      "path": "fixtures/fixture-21.png",
+      "png_sha256": "13d395686a1c7ef05828c8b24bd086171d4957b67dd29802fd947360df9966ae",
+      "rgb_sha256": "0260c4515e0223cf429ae062faf00e9722616f133c660e1e514ff9773b7973ba",
+      "width": 256
+    },
+    {
+      "color": "blue",
+      "height": 256,
+      "id": "fixture-22",
+      "kind": "boat",
+      "path": "fixtures/fixture-22.png",
+      "png_sha256": "793a0586ecd589d8b215328a96f3075817df82b10fa4c8aec015e49c13a247d5",
+      "rgb_sha256": "15566554f4bc8652b6dd5c389d3c0afde288f9c0c4e7332a918d62dcb9ac51ff",
+      "width": 256
+    },
+    {
+      "color": "green",
+      "height": 256,
+      "id": "fixture-23",
+      "kind": "boat",
+      "path": "fixtures/fixture-23.png",
+      "png_sha256": "e4d467f954c8f13796fd1b8426edc9a245edd5ddc7ca7c42cf6fac033a391dbe",
+      "rgb_sha256": "1b648eb5b86bab39a28a500e35ced4ec613c947cd22e30613b8bdde6f86b5407",
+      "width": 256
+    },
+    {
+      "color": "yellow",
+      "height": 256,
+      "id": "fixture-24",
+      "kind": "boat",
+      "path": "fixtures/fixture-24.png",
+      "png_sha256": "f6aaacad6e5273acb8bd5d9cadda8e4ae32a3100dc588b75238709df256cc3aa",
+      "rgb_sha256": "2f088bde08bb7f1cf7f5b202decfe6dbf8466ceb03c5895070bce7a4127f3826",
+      "width": 256
+    },
+    {
+      "color": "purple",
+      "height": 256,
+      "id": "fixture-25",
+      "kind": "boat",
+      "path": "fixtures/fixture-25.png",
+      "png_sha256": "7c5234bd7d5cdaea3e20845ed7eabbf4c57e593fa95674a9a2cdf1a32713b247",
+      "rgb_sha256": "4c60c9496b2433ce9db6173bdfad14f1b51669256c55f9d39a7adddd13beb087",
+      "width": 256
+    },
+    {
+      "color": "red",
+      "height": 256,
+      "id": "fixture-26",
+      "kind": "star",
+      "path": "fixtures/fixture-26.png",
+      "png_sha256": "61ccf2632eb0040f39bce5a9245e355cfff320ad93a6845a4fa7c71bb56cde12",
+      "rgb_sha256": "40cd41e78dd01b668af5efc3e6bae5c570c89eeccfd8f29dd7e7882700a8f397",
+      "width": 256
+    },
+    {
+      "color": "blue",
+      "height": 256,
+      "id": "fixture-27",
+      "kind": "star",
+      "path": "fixtures/fixture-27.png",
+      "png_sha256": "92676fe22c2592fa132c46b2e527b89626f56f2c8826e7fd8d669e809cb4fc61",
+      "rgb_sha256": "906ef1af25d91e7b3242902e2f211794f8906dbbae0fb255205a210a8a42ed77",
+      "width": 256
+    },
+    {
+      "color": "green",
+      "height": 256,
+      "id": "fixture-28",
+      "kind": "star",
+      "path": "fixtures/fixture-28.png",
+      "png_sha256": "c7ca17cdf9ae3716e5eb407ec748f2b0437a5588dfd2dc3f11bdb8e5bbfd45aa",
+      "rgb_sha256": "a26c9765a2a2c49078bb090f759ae8596b4f6703e31aa424195c37f69ab6473f",
+      "width": 256
+    },
+    {
+      "color": "yellow",
+      "height": 256,
+      "id": "fixture-29",
+      "kind": "star",
+      "path": "fixtures/fixture-29.png",
+      "png_sha256": "4588a133fa5293672154fa63a61c3866c6ccb3a95cb78157b584e6d0a9d02bd7",
+      "rgb_sha256": "240e1205b1bc8a1039223309e1af14c7a4a7059a7e4e1b7cc76ea1860e2690ed",
+      "width": 256
+    },
+    {
+      "color": "purple",
+      "height": 256,
+      "id": "fixture-30",
+      "kind": "star",
+      "path": "fixtures/fixture-30.png",
+      "png_sha256": "68db627d1000abca4850855082881e8f49781e95b62299da43bf292e749a5f82",
+      "rgb_sha256": "87528b943aede5e0d827d1782aa8af6722b42e4dda6a44b9dc16b2722973b458",
+      "width": 256
+    }
+  ],
+  "description": "Frozen before first model inference; programmatically drawn synthetic objects, no user photos or embedded words.",
+  "negative_queries": [
+    {
+      "de": "ein Elefant",
+      "en": "an elephant"
+    },
+    {
+      "de": "ein Flugzeug",
+      "en": "an airplane"
+    },
+    {
+      "de": "eine Geige",
+      "en": "a violin"
+    },
+    {
+      "de": "ein Fußball",
+      "en": "a soccer ball"
+    },
+    {
+      "de": "eine Schnecke",
+      "en": "a snail"
+    }
+  ],
+  "queries": [
+    {
+      "de": "ein rotes Haus",
+      "en": "a red house",
+      "id": "q-01",
+      "relevant_asset_ids": [
+        "fixture-01"
+      ]
+    },
+    {
+      "de": "ein blaues Haus",
+      "en": "a blue house",
+      "id": "q-02",
+      "relevant_asset_ids": [
+        "fixture-02"
+      ]
+    },
+    {
+      "de": "ein grünes Haus",
+      "en": "a green house",
+      "id": "q-03",
+      "relevant_asset_ids": [
+        "fixture-03"
+      ]
+    },
+    {
+      "de": "ein gelbes Haus",
+      "en": "a yellow house",
+      "id": "q-04",
+      "relevant_asset_ids": [
+        "fixture-04"
+      ]
+    },
+    {
+      "de": "ein violettes Haus",
+      "en": "a purple house",
+      "id": "q-05",
+      "relevant_asset_ids": [
+        "fixture-05"
+      ]
+    },
+    {
+      "de": "ein rotes Auto",
+      "en": "a red car",
+      "id": "q-06",
+      "relevant_asset_ids": [
+        "fixture-06"
+      ]
+    },
+    {
+      "de": "ein blaues Auto",
+      "en": "a blue car",
+      "id": "q-07",
+      "relevant_asset_ids": [
+        "fixture-07"
+      ]
+    },
+    {
+      "de": "ein grünes Auto",
+      "en": "a green car",
+      "id": "q-08",
+      "relevant_asset_ids": [
+        "fixture-08"
+      ]
+    },
+    {
+      "de": "ein gelbes Auto",
+      "en": "a yellow car",
+      "id": "q-09",
+      "relevant_asset_ids": [
+        "fixture-09"
+      ]
+    },
+    {
+      "de": "ein violettes Auto",
+      "en": "a purple car",
+      "id": "q-10",
+      "relevant_asset_ids": [
+        "fixture-10"
+      ]
+    },
+    {
+      "de": "eine rote Blume",
+      "en": "a red flower",
+      "id": "q-11",
+      "relevant_asset_ids": [
+        "fixture-16"
+      ]
+    },
+    {
+      "de": "eine blaue Blume",
+      "en": "a blue flower",
+      "id": "q-12",
+      "relevant_asset_ids": [
+        "fixture-17"
+      ]
+    },
+    {
+      "de": "eine grüne Blume",
+      "en": "a green flower",
+      "id": "q-13",
+      "relevant_asset_ids": [
+        "fixture-18"
+      ]
+    },
+    {
+      "de": "eine gelbe Blume",
+      "en": "a yellow flower",
+      "id": "q-14",
+      "relevant_asset_ids": [
+        "fixture-19"
+      ]
+    },
+    {
+      "de": "eine violette Blume",
+      "en": "a purple flower",
+      "id": "q-15",
+      "relevant_asset_ids": [
+        "fixture-20"
+      ]
+    },
+    {
+      "de": "ein rotes Boot",
+      "en": "a red boat",
+      "id": "q-16",
+      "relevant_asset_ids": [
+        "fixture-21"
+      ]
+    },
+    {
+      "de": "ein blaues Boot",
+      "en": "a blue boat",
+      "id": "q-17",
+      "relevant_asset_ids": [
+        "fixture-22"
+      ]
+    },
+    {
+      "de": "ein grünes Boot",
+      "en": "a green boat",
+      "id": "q-18",
+      "relevant_asset_ids": [
+        "fixture-23"
+      ]
+    },
+    {
+      "de": "ein gelbes Boot",
+      "en": "a yellow boat",
+      "id": "q-19",
+      "relevant_asset_ids": [
+        "fixture-24"
+      ]
+    },
+    {
+      "de": "ein violettes Boot",
+      "en": "a purple boat",
+      "id": "q-20",
+      "relevant_asset_ids": [
+        "fixture-25"
+      ]
+    }
+  ],
+  "version": 1
+}

@@ -1,0 +1,29 @@
+warning: 'picedit': dependency 'swift-collections' is not used by any target
+◇ Test run started.
+↳ Testing Library Version: 2084
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite "Semantic offline tokenizer parity" started.
+◇ Test officialConfigAPIHasAll58ExactFrozenTokens() started.
+✔ Test officialConfigAPIHasAll58ExactFrozenTokens() passed after 6.987 seconds.
+✔ Suite "Semantic offline tokenizer parity" passed after 6.987 seconds.
+✔ Test run with 1 test in 1 suite passed after 6.987 seconds.
+real 9.91
+user 9.63
+sys 0.98
+           359841792  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              227221  page reclaims
+                6627  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   1  signals received
+                 868  voluntary context switches
+               10001  involuntary context switches
+            22795568  instructions retired
+             9780145  cycles elapsed
+             1655216  peak memory footprint

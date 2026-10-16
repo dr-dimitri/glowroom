@@ -8,7 +8,8 @@ actor AIResourceBudget {
     static let shared = AIResourceBudget()
 
     struct Limits: Equatable, Sendable {
-        /// The initial text-only backend admits one local inference globally.
+        /// Text, image analysis, semantic inference and model compilation share
+        /// one admission slot; native work owns it until its actual return.
         let maximumConcurrentLocalInferences = 1
         let maximumPromptBytes: Int
         let maximumResponseBytes: Int
@@ -17,6 +18,10 @@ actor AIResourceBudget {
             self.maximumPromptBytes = max(1, maximumPromptBytes)
             self.maximumResponseBytes = max(1, maximumResponseBytes)
         }
+    }
+
+    enum Priority: Int, Sendable {
+        case background, interactive
     }
 
     struct Lease: Hashable, Sendable {
@@ -30,6 +35,7 @@ actor AIResourceBudget {
 
     private struct Waiter {
         let id: UUID
+        let priority: Priority
         let continuation: CheckedContinuation<Lease, Error>
     }
 
@@ -42,7 +48,7 @@ actor AIResourceBudget {
         self.limits = limits
     }
 
-    func acquireLocalInference() async throws -> Lease {
+    func acquireLocalInference(priority: Priority = .interactive) async throws -> Lease {
         try Task.checkCancellation()
         let id = UUID()
         let lease: Lease = try await withTaskCancellationHandler {
@@ -55,7 +61,7 @@ actor AIResourceBudget {
                     leases.insert(id)
                     continuation.resume(returning: Lease(id: id))
                 } else {
-                    waiting.append(Waiter(id: id, continuation: continuation))
+                    waiting.append(Waiter(id: id, priority: priority, continuation: continuation))
                 }
                 publishState()
             }
@@ -74,7 +80,11 @@ actor AIResourceBudget {
     func release(_ lease: Lease) {
         guard leases.remove(lease.id) != nil else { return }
         if !waiting.isEmpty {
-            let next = waiting.removeFirst()
+            // A running native inference cannot be preempted safely. At its
+            // actual return, selected/query work precedes queued index work;
+            // preserve FIFO within either class rather than starting more pools.
+            let index = waiting.firstIndex { $0.priority == .interactive } ?? 0
+            let next = waiting.remove(at: index)
             leases.insert(next.id)
             next.continuation.resume(returning: Lease(id: next.id))
         }

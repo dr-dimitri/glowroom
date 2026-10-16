@@ -1,0 +1,11 @@
+{
+  "fixed_before_first_coreml_prediction": true,
+  "normalized_cosine_distance_maximum": 0.001,
+  "token_ids_exact": true,
+  "quality_top5_minimum_fraction_each_language": 0.8,
+  "quality_language_gap_maximum_fraction": 0.1,
+  "runtime_files_maximum_bytes": 1073741824,
+  "extra_peak_rss_maximum_bytes": 1610612736,
+  "warm_full_query_10000_vectors_p95_maximum_seconds": 0.5,
+  "comment": "All coreml image and query fixtures must satisfy normalized cosine distance versus pinned PyTorch reference; .all and .cpuOnly separately. No fixture or query changes after reference inference."
+}

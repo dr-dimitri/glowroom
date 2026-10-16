@@ -1,0 +1,15 @@
+{
+  "description": "Frozen PyTorch embeddings of only the synthetic fixtures, not model parameters",
+  "files": [
+    {
+      "path": "reference-images.f32",
+      "bytes": 92160,
+      "sha256": "09d50c18b84838ce411b41dfd2117f867f5e1a764a1f4c575b163a9b3446f2cf"
+    },
+    {
+      "path": "reference-queries.f32",
+      "bytes": 153600,
+      "sha256": "0075898ad59ba97e3ffcb0d40709289f72b283b754cef9fe89020f67120d7bdc"
+    }
+  ]
+}

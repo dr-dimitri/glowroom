@@ -13,15 +13,18 @@ struct JPEGExportRequest: Sendable {
     let options: JPEGExportOptions
     let overwriteExisting: Bool
     let protectedSourceURLs: [URL]
+    let protectedDirectoryFamilies: [ManagedDirectoryFamily]
 
     init(sourceURL: URL, destinationURL: URL, settings: EditSettings, options: JPEGExportOptions,
-         overwriteExisting: Bool = false, protectedSourceURLs: [URL] = []) {
+         overwriteExisting: Bool = false, protectedSourceURLs: [URL] = [],
+         protectedDirectoryFamilies: [ManagedDirectoryFamily] = []) {
         self.sourceURL = sourceURL
         self.destinationURL = destinationURL
         self.settings = settings
         self.options = options
         self.overwriteExisting = overwriteExisting
         self.protectedSourceURLs = protectedSourceURLs
+        self.protectedDirectoryFamilies = protectedDirectoryFamilies
     }
 }
 
@@ -49,7 +52,7 @@ enum JPEGExportError: LocalizedError, Equatable {
         case .unsupportedOrDamaged: "Das Originalformat wird nicht unterstützt oder die Bilddatei ist beschädigt."
         case .incompleteOriginal: "Das Original konnte nicht in seiner vollständigen Auflösung decodiert werden."
         case .destinationExists: "Am gewählten Ziel existiert bereits eine Datei."
-        case .protectedOriginal: "Ein Originalbild darf durch den Export nicht ersetzt werden. Wähle einen anderen Dateinamen."
+        case .protectedOriginal: "Originalbilder und geschützte Anwendungsdateien dürfen durch den Export nicht ersetzt werden. Wähle ein anderes Ziel."
         case .invalidDestination: "Das Exportziel muss eine reguläre Datei in einem vorhandenen Ordner sein. Symbolische Verknüpfungen sind nicht zulässig."
         case .insufficientMemory: "Für diese Original- und Ausgabeauflösung reicht das sichere Export-Speicherbudget nicht aus. Wähle kleinere Ausgabemaße oder einen Rechner mit mehr Arbeitsspeicher."
         case .renderingFailed: "Die JPEG-Ausgabe konnte nicht gerendert werden."
@@ -237,10 +240,17 @@ actor JPEGExporter {
     }
 
     private func originalIdentities(_ request: JPEGExportRequest, destination: URL) throws -> Set<FileIdentity> {
+        for family in request.protectedDirectoryFamilies {
+            try Task.checkCancellation()
+            if ManagedFileProtection.containsDestination(destination, in: family) { throw JPEGExportError.protectedOriginal }
+        }
         let canonicalDestination = destination.resolvingSymlinksInPath()
         var identities = Set<FileIdentity>()
         for (index, original) in ([request.sourceURL] + request.protectedSourceURLs).enumerated() {
             if index % 64 == 0 { try Task.checkCancellation() }
+            if original.hasDirectoryPath, ManagedFileProtection.containsDestination(destination, in: original) {
+                throw JPEGExportError.protectedOriginal
+            }
             let canonical = original.standardizedFileURL.resolvingSymlinksInPath()
             guard canonical != canonicalDestination else { throw JPEGExportError.protectedOriginal }
             if let identity = FileIdentity.read(canonical) { identities.insert(identity) }

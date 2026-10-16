@@ -1,11 +1,35 @@
 import Foundation
 import PicEditCore
 
+enum LibrarySearchMode: String, CaseIterable, Identifiable, Sendable {
+    case literal, semantic
+    var id: Self { self }
+    var label: String { self == .literal ? "Wörtlich" : "Semantisch" }
+}
+
 struct LibraryProjectionKey: Equatable, Sendable {
     let selection: LibrarySelection
     let query: String
     let sort: PhotoSort
     let minimumRating: Int
+    let searchMode: LibrarySearchMode
+    let semanticQuery: String
+    let topK: Int
+
+    init(selection: LibrarySelection, query: String, sort: PhotoSort, minimumRating: Int,
+         searchMode: LibrarySearchMode = .literal, semanticQuery: String = "", topK: Int = 100) {
+        self.selection = selection; self.query = query; self.sort = sort; self.minimumRating = minimumRating
+        self.searchMode = searchMode; self.semanticQuery = semanticQuery
+        self.topK = min(500, max(1, topK))
+    }
+    var usesSemanticRanking: Bool { searchMode == .semantic && !semanticQuery.isEmpty }
+}
+
+struct LibraryProjectionCandidates: Sendable {
+    let snapshotSessionID: UUID
+    let generation: Int
+    let base: LibraryProjection
+    var assets: [PhotoAsset] { base.assets }
 }
 
 struct LibraryProjection: Sendable {
@@ -104,6 +128,49 @@ actor LibraryProjectionWorker {
         try Task.checkCancellation()
         return LibraryProjection(key: key, assets: visible, indices: indices, favoriteCount: favoriteCount,
                                  trees: trees, treeFolders: treeFolders, evaluatedAt: date, expiresAt: expiresAt)
+    }
+
+    func candidates(_ catalog: LibraryCatalog, snapshotSessionID: UUID, generation: Int,
+                    key: LibraryProjectionKey, date: Date, overrides: [UUID: LibraryFolder]) throws -> LibraryProjectionCandidates {
+        // The existing sole worker applies every literal/navigation predicate
+        // before scoring, and provides the stable fallback order at top-K ties.
+        let base = try project(catalog, generation: generation, key: key, date: date, overrides: overrides)
+        return LibraryProjectionCandidates(snapshotSessionID: snapshotSessionID, generation: generation, base: base)
+    }
+
+    func rank(_ candidates: LibraryProjectionCandidates, result: SemanticSearchResult, topK: Int) throws -> LibraryProjection {
+        try Task.checkCancellation()
+        guard result.catalogSessionID == candidates.snapshotSessionID,
+              result.catalogGeneration == candidates.generation,
+              result.candidateAssetIDs.count == candidates.assets.count else { throw SemanticEmbeddingError.staleSource }
+        guard result.hits.count <= min(500, max(1, topK)) else { throw SemanticEmbeddingError.invalidVector }
+        try result.modelDescriptor.validate()
+        var ordinal: [String: Int] = [:]
+        for (index, asset) in candidates.assets.enumerated() {
+            if index % 256 == 0 { try Task.checkCancellation() }
+            guard result.candidateAssetIDs[index] == asset.id else { throw SemanticEmbeddingError.staleSource }
+            ordinal[asset.id] = index
+        }
+        var seen: Set<String> = []
+        for (index, hit) in result.hits.enumerated() {
+            if index % 256 == 0 { try Task.checkCancellation() }
+            guard hit.score.isFinite, ordinal[hit.assetID] != nil, seen.insert(hit.assetID).inserted else {
+                throw SemanticEmbeddingError.invalidVector
+            }
+        }
+        let ranked = result.hits.sorted {
+            $0.score == $1.score ? ordinal[$0.assetID]! < ordinal[$1.assetID]! : $0.score > $1.score
+        }
+        return replacingAssets(candidates.base, with: ranked.map { candidates.assets[ordinal[$0.assetID]!] })
+    }
+
+    func empty(_ candidates: LibraryProjectionCandidates) -> LibraryProjection {
+        replacingAssets(candidates.base, with: [])
+    }
+
+    private func replacingAssets(_ base: LibraryProjection, with assets: [PhotoAsset]) -> LibraryProjection {
+        LibraryProjection(key: base.key, assets: assets, indices: base.indices, favoriteCount: base.favoriteCount,
+                          trees: base.trees, treeFolders: base.treeFolders, evaluatedAt: base.evaluatedAt, expiresAt: base.expiresAt)
     }
 
     static func directoryPrefix(_ url: URL) -> String {

@@ -4,7 +4,7 @@ Eine native Fotobibliothek für macOS, entwickelt mit SwiftUI und AppKit. Die An
 
 ## Starten
 
-Voraussetzungen: **macOS 14 oder neuer** und Xcode oder die Apple Command Line Tools mit Swift 5.9 oder neuer. Falls die Entwicklungswerkzeuge fehlen, lassen sie sich mit `xcode-select --install` installieren. PicEdit benötigt keine zusätzlichen Pakete und keinen Online-Dienst.
+Voraussetzungen: **macOS 14 oder neuer** und Xcode oder die Apple Command Line Tools mit **Swift 6.1 oder neuer**. Falls die Entwicklungswerkzeuge fehlen, lassen sie sich mit `xcode-select --install` installieren. SwiftPM löst die in `Package.resolved` festgehaltenen Swift-Bibliotheken auf; dafür ist beim ersten Build Internetzugang oder ein bereits gefüllter lokaler Paketcache nötig. Die laufende App benötigt für Bibliothek und lokale Bearbeitung keinen Online-Dienst.
 
 ```sh
 swift run PicEdit
@@ -81,6 +81,14 @@ Das ausgewählte Bild erhält Vorrang vor wartenden Rasterbildern. Höchstens dr
 | 0 | Bewertung entfernen |
 | F | Favorit umschalten |
 
+### Lokale semantische Bildsuche
+
+**Wörtlich** bleibt der Suchstandard und benötigt kein Modell. **Semantisch** sucht nach deutschen oder englischen Bildbeschreibungen in echten lokalen Bild-/Text-Embeddings, etwa „rotes Haus“. Ordner, Favoriten, Zeitraum, Mindestbewertung und das getrennte optionale wörtliche Filterfeld gelten gemeinsam vor der Relevanzsuche. Eine leere Bildsuche zeigt die normale Bibliothek. Standard sind höchstens 100 Treffer, einstellbar bis 500; bei gleichen Scores gilt die gewählte Sortierung. Scores sind keine Wahrscheinlichkeiten.
+
+Unter **Lokales Suchmodell und Suchindex → Verwalten** ein geprüftes lokales Modellpaket auswählen und Quelle, Größe, Lizenz und temporären Platzbedarf vor dem Import prüfen. Es gibt keinen automatischen Download und keine eingebauten Modellgewichte. Das reproduzierbare Entwicklerwerkzeug und die festgelegte SigLIP2-Revision sind in [SEMANTIC-SEARCH.md](docs/SEMANTIC-SEARCH.md) beschrieben. Die App akzeptiert ausschließlich das dort gepinnte Paket und arbeitet danach ohne Netz. Aktiv installierte Modelldateien benötigen höchstens 1 GiB; Import und lokale Kompilierung benötigen zusätzlichen temporären Speicher. Die erste Produktversion nutzt den gemessenen CPU-Pfad.
+
+Danach den **Indexumfang** ausdrücklich wählen und **Suchindex vorbereiten** starten. Es gibt keinen vollständigen Bildscan beim Appstart. Fortschritt und gültige, fehlende beziehungsweise veraltete Einträge bleiben sichtbar. **Abbrechen** erhält abgeschlossene Einträge; **Index fortsetzen** arbeitet daran weiter. **Neu aufbauen** erhält die letzte gültige Modellgeneration bis zur erfolgreichen Aktivierung. Indexeinträge und Modell lassen sich getrennt entfernen. Unbekannte oder beschädigte Indexdateien werden vor einem bewussten Neuaufbau gemeldet und konservativ aufbewahrt. Originalbilder, bestätigte Bearbeitungen und die wörtliche Suche bleiben unabhängig nutzbar.
+
 ## Entwickeln und prüfen
 
 Die [KI-Verträge und sicheren Vorschläge](docs/AI-CONTRACTS.md) definieren providerunabhängige Antworten, strenge Reglerprüfung, versionsgebundene Vorschläge und begrenzte Hintergrundaufträge. Der optionale [lokale Entwicklungsassistent](docs/LOCAL-AI-ASSISTANT.md) übersetzt Text in vorhandene Reglerwerte. Er benötigt einen Build mit FoundationModels-Unterstützung sowie macOS 26 und ein bereitgestelltes Apple-Intelligence-Systemmodell. Die übrige App bleibt ab macOS 14 ohne Online-Dienst, Modellinstallation oder Zugangsdaten nutzbar.
@@ -107,7 +115,7 @@ Nach jeder Umsetzungsanforderung sind die betroffene Dokumentation zu aktualisie
 
 Während der Umsetzung oder beim Review gefundene Bugs ohne Zusammenhang mit der aktuellen Umsetzung werden jeweils als eigenes Issue im Issue-Tracker des Repositorys erfasst und nicht im aktuellen Änderungsumfang behoben. Vorher nach bestehenden Issues suchen und bei einem bereits erfassten Bug das vorhandene Issue verlinken. Das Issue enthält Reproduktionsschritte, erwartetes und tatsächliches Verhalten sowie die betroffenen Stellen; im Abschlussbericht wird darauf verwiesen. Fehlt der Zugriff auf den Issue-Tracker, das Hindernis melden und den vollständigen Issue-Entwurf aufbewahren. Die verbindlichen Projektvorgaben stehen in [AGENTS.md](AGENTS.md).
 
-Die automatisierten Tests verwenden Swift Testing und benötigen **Swift 6 oder neuer**. Das Testskript setzt lokale Compiler-Caches und berücksichtigt die Plugin-Erkennung der Apple Command Line Tools:
+Die automatisierten Tests verwenden Swift Testing und benötigen **Swift 6.1 oder neuer**. Das Testskript setzt lokale Compiler-Caches und berücksichtigt die Plugin-Erkennung der Apple Command Line Tools:
 
 ```sh
 ./scripts/test.sh

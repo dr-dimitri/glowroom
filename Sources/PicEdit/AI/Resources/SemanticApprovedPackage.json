@@ -1,0 +1,85 @@
+{
+  "descriptor": {
+    "dimension": 768,
+    "maximumTextTokens": 64,
+    "modelID": "google/siglip2-base-patch32-256",
+    "normalizationVersion": 1,
+    "preprocessingVersion": 1,
+    "releaseID": "siglip2-base-p32-256-fp32-image-fp16-text-v1",
+    "sourceRevision": "94dffa8cb1179de3e03f091dbc3917e5d5a9ae84",
+    "tokenizerVersion": "gemma-json-swift-transformers-e37cacea-v1"
+  },
+  "files": [
+    {
+      "bytes": 11347,
+      "path": "licenses/APACHE-2.0.txt",
+      "sha256": "648b81e6c6f9975c3b6cf6d630229b6c8d6f1ddaef55f5770f576adda19f3495"
+    },
+    {
+      "bytes": 636,
+      "path": "licenses/CONVERSION-NOTICE.txt",
+      "sha256": "7ebf8aba1427f4b9d9a7893304bff0ea621a6515a16b8a3c77c0360eaafdcabc"
+    },
+    {
+      "bytes": 3375,
+      "path": "licenses/MODEL-CARD.md",
+      "sha256": "6eed8501b5d87ea439336a98a9567bcd46b05a3562b36d1207c0f21c6da6b38b"
+    },
+    {
+      "bytes": 123281,
+      "path": "models/image.mlpackage/Data/com.apple.CoreML/model.mlmodel",
+      "sha256": "2e832f61dfb25bf234f4efffdfd6910cf620032ed7bea6365228547acee0c25d"
+    },
+    {
+      "bytes": 375860288,
+      "path": "models/image.mlpackage/Data/com.apple.CoreML/weights/weight.bin",
+      "sha256": "24d70143078c10a42f3e3067d918cd0b07838c18f9d76789a5ec43fbe9253000"
+    },
+    {
+      "bytes": 617,
+      "path": "models/image.mlpackage/Manifest.json",
+      "sha256": "cfa029d4e8ce39924a178dede58145e97aa16d6bed5ecb7b9a67ed3c6d7f6a0d"
+    },
+    {
+      "bytes": 127557,
+      "path": "models/text.mlpackage/Data/com.apple.CoreML/model.mlmodel",
+      "sha256": "ec95a2cdb969b0916e4c50128fa6612a4285359b95d08b3d13b0937232285ce5"
+    },
+    {
+      "bytes": 564620224,
+      "path": "models/text.mlpackage/Data/com.apple.CoreML/weights/weight.bin",
+      "sha256": "02e7470e5a09c7dccc5d64a83c86b1667ba876965b40f3076272f40107261fc4"
+    },
+    {
+      "bytes": 617,
+      "path": "models/text.mlpackage/Manifest.json",
+      "sha256": "3718fe94471716c2e9dad16930e5e829bd8a18e53d34509b9f9175bc361e2568"
+    },
+    {
+      "bytes": 298,
+      "path": "tokenizer/config.json",
+      "sha256": "52deee7a2d6fb2e73c45720d9c4056f0e4dc582ef84524aac229c6d5aa348dee"
+    },
+    {
+      "bytes": 394,
+      "path": "tokenizer/preprocessor_config.json",
+      "sha256": "d14ba2ee3fd816f3de8abaddc31953565128eaf37c73ad4bed32101a98465aff"
+    },
+    {
+      "bytes": 636,
+      "path": "tokenizer/special_tokens_map.json",
+      "sha256": "baec30ea10906f16adb8c18af7a34023002c1746542612b8b41c9f09e1351351"
+    },
+    {
+      "bytes": 34363039,
+      "path": "tokenizer/tokenizer.json",
+      "sha256": "cb9140fae3ac5122c972d37adf83e1248471a38147ad76f8215c8872c6fd8322"
+    },
+    {
+      "bytes": 47164,
+      "path": "tokenizer/tokenizer_config.json",
+      "sha256": "14afe629fe4959b9e0d51e1852b8d9f7ad074f90a1a7125a4fcdd17f06e78fc8"
+    }
+  ],
+  "schemaVersion": 1
+}

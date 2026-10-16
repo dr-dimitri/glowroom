@@ -173,6 +173,13 @@ set +m
 BIN_PATH="$(swift build "${BUILD_ARGS[@]}" --show-bin-path)"
 cp "$BIN_PATH/PicEdit" "$APP/Contents/MacOS/PicEdit"
 chmod 755 "$APP/Contents/MacOS/PicEdit"
+
+# SwiftPM dependency and application resources are independent immutable bundles.
+# Bundle.module resolves them from the application Resources directory at runtime.
+for RESOURCE_BUNDLE in "$BIN_PATH"/*.bundle; do
+    [[ -d "$RESOURCE_BUNDLE" ]] || continue
+    cp -R "$RESOURCE_BUNDLE" "$APP/Contents/Resources/"
+done
 plutil -lint "$APP/Contents/Info.plist"
 
 if command -v codesign >/dev/null 2>&1; then

@@ -1,0 +1,3 @@
+usage: convert-model.py [-h] --tower {image,text} --source SOURCE --output
+                        OUTPUT
+convert-model.py: error: coremltools must be exactly 8.3
