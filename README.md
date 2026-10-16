@@ -83,9 +83,9 @@ Das ausgewählte Bild erhält Vorrang vor wartenden Rasterbildern. Höchstens dr
 
 ## Entwickeln und prüfen
 
-Nach jeder Umsetzungsanforderung sind die betroffene Dokumentation zu aktualisieren, geeignete Tests auszuführen und ein sauberer, vollständiger lokaler App-Build erfolgreich abzuschließen. Der Abschluss erfolgt in dieser Reihenfolge:
+Nach jeder Umsetzungsanforderung sind die betroffene Dokumentation zu aktualisieren, geeignete Tests auszuführen und ein sauberer, vollständiger lokaler App-Build erfolgreich abzuschließen. Nach jeder umgesetzten Änderung ist außerdem ein Review verpflichtend. Der Abschluss erfolgt in dieser Reihenfolge:
 
-1. Änderungen und Dokumentation fertigstellen und die passenden Tests ausführen.
+1. Änderungen und Dokumentation fertigstellen. Den finalen Diff einschließlich betroffener Schnittstellen, Tests und Dokumentation reviewen, zur Umsetzung gehörende Befunde beheben und die Korrekturen erneut prüfen. Die passenden Tests ausführen.
 2. Vor dem Bereinigen sicherstellen, dass keine Builds oder Tests mehr auf die betroffenen Verzeichnisse zugreifen. Einen vorhandenen Build-Lock wie oben beschrieben prüfen; laufende Prozesse und deren Ergebnisse nicht löschen.
 3. Alte generierte Build-Ergebnisse entfernen und das vollständige App-Bundle neu bauen. Für die Standardverzeichnisse im Repository-Stamm:
 
@@ -95,7 +95,9 @@ Nach jeder Umsetzungsanforderung sind die betroffene Dokumentation zu aktualisie
    ```
 
    Das Build-Skript bereinigt vorherige Ergebnisse nicht automatisch. Bei `PICEDIT_BUILD_PATH`, `PICEDIT_TEST_BUILD_PATH` oder anderen benutzerdefinierten Build-Verzeichnissen die tatsächlich verwendeten Pfade vorab prüfen und deren alte generierte Ergebnisse ebenfalls gezielt entfernen. Relative `PICEDIT_BUILD_PATH`-Angaben beziehen sich auf den Repository-Stamm. Nur bestätigte Build-Artefakte löschen; Quelldateien und persönliche Daten bleiben erhalten. Bereinigung und anschließender Build laufen wegen ihrer Abhängigkeit nacheinander; das Build-Skript parallelisiert seine unabhängigen Arbeitsschritte selbst.
-4. Nach erfolgreicher Prüfung den Diff kontrollieren, ausschließlich die zur Aufgabe gehörenden Änderungen aussagekräftig committen und auf den zugehörigen Remote-Branch pushen, anschließend den Git-Status prüfen. Im Abschlussbericht Commit, Branch und Build-/Testergebnis nennen; verbleibende Hindernisse ausdrücklich dokumentieren.
+4. Nach abgeschlossenem Review und erfolgreicher Prüfung den Diff kontrollieren, ausschließlich die zur Aufgabe gehörenden Änderungen aussagekräftig committen und auf den zugehörigen Remote-Branch pushen, anschließend den Git-Status prüfen. Im Abschlussbericht Commit, Branch, Review-Ergebnis und Build-/Testergebnis nennen; verbleibende Hindernisse ausdrücklich dokumentieren.
+
+Während der Umsetzung oder beim Review gefundene Bugs ohne Zusammenhang mit der aktuellen Umsetzung werden jeweils als eigenes Issue im Issue-Tracker des Repositorys erfasst und nicht im aktuellen Änderungsumfang behoben. Vorher nach bestehenden Issues suchen und bei einem bereits erfassten Bug das vorhandene Issue verlinken. Das Issue enthält Reproduktionsschritte, erwartetes und tatsächliches Verhalten sowie die betroffenen Stellen; im Abschlussbericht wird darauf verwiesen. Fehlt der Zugriff auf den Issue-Tracker, das Hindernis melden und den vollständigen Issue-Entwurf aufbewahren. Die verbindlichen Projektvorgaben stehen in [AGENTS.md](AGENTS.md).
 
 Die automatisierten Tests verwenden Swift Testing und benötigen **Swift 6 oder neuer**. Das Testskript setzt lokale Compiler-Caches und berücksichtigt die Plugin-Erkennung der Apple Command Line Tools:
 
