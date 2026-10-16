@@ -87,6 +87,7 @@ final class AIAssistantModel: ObservableObject {
                       // Close the original comparison before applying a clearly
                       // labelled proposal; the proposal never changes this flag.
                       library.comparesOriginal = false
+                      library.comparesCurrentSourceWithoutSettings = false
                       return editor.acceptAIProposal(result, in: library)
                   }, commitInput: { [weak editor, weak library] in
                       NSApp?.keyWindow?.makeFirstResponder(nil)
@@ -344,10 +345,11 @@ final class AIAssistantModel: ObservableObject {
     }
 
     private nonisolated static func checkSource(_ snapshot: AIEditingSnapshot) async -> Bool {
-        guard await AIAssistantSourceReader.shared.isReadable(snapshot), !Task.isCancelled,
-              case .original(let source) = snapshot.source else { return false }
-        let request = PreviewRequest(url: URL(fileURLWithPath: source.standardizedPath), modifiedAt: source.modifiedAt,
-                                     pixelSize: 2_400, fileSize: source.fileSize, allowsEmbeddedPreview: false)
+        guard !Task.isCancelled else { return false }
+        if case .original = snapshot.source {
+            guard await AIAssistantSourceReader.shared.isReadable(snapshot) else { return false }
+        }
+        let request = PreviewRequest(source: snapshot.source, pixelSize: 2_400, allowsEmbeddedPreview: false)
         do {
             // Exactly the Develop preview's request: share its decoded or
             // in-flight basis and reject damaged formats before model work.

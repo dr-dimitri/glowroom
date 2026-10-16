@@ -340,10 +340,50 @@ struct PhotoMetadataModelTests {
         #expect(await f.model.finishSaving())
     }
 
-    private func fixture(store: MetadataUIStore = MetadataUIStore(), selected: Bool = true) -> MetadataUIFixture {
+    @Test func admittedMetadataDraftDrainsBeforeSharedMaintenanceEvenAfterClosing() async throws {
+        let gate = CatalogLifecycleGate(requiresRecovery: false)
+        let f = fixture(lifecycle: gate)
+        try await wait { f.model.canEditManual }
+        await f.store.setWritesBlocked(true)
+        f.model.editManualFields(PhotoTextFields(title: "Angenommen"))
+        var granted = false
+        let maintenance = Task {
+            let admission = try await gate.beginMaintenance(.backup(UUID()))
+            granted = true
+            return admission
+        }
+        try await wait { await f.store.hasBlockedWrite }
+        #expect(!granted)
+        f.model.beginTermination()
+        await f.store.releaseWrite()
+        #expect(await f.model.finishSaving())
+        let admission = try await maintenance.value
+        #expect(granted)
+        #expect(await f.store.records["a"]?.manualDraft?.fields.title == "Angenommen")
+        try await gate.finishMaintenance(admission)
+    }
+
+    @Test func maintenanceRejectsNewMetadataDraftBeforeTaskAndPreservesRawCorrection() async throws {
+        let gate = CatalogLifecycleGate(requiresRecovery: false)
+        let f = fixture(lifecycle: gate)
+        try await wait { f.model.canEditManual }
+        let admission = try await gate.beginMaintenance(.backup(UUID()))
+        let fields = PhotoTextFields(title: "Noch nicht angenommen")
+        f.model.editManualFields(fields)
+        #expect(!f.model.isSaving && f.model.errorMessage != nil)
+        #expect(f.model.manualFields == fields)
+        #expect(await f.store.manualDrafts.isEmpty)
+        try await gate.finishMaintenance(admission)
+        f.model.editManualFields(fields)
+        try await wait { !f.model.isSaving }
+        #expect(await f.store.manualDrafts.count == 1)
+        #expect(await f.store.records["a"]?.manualDraft?.fields == fields)
+    }
+
+    private func fixture(store: MetadataUIStore = MetadataUIStore(), selected: Bool = true, lifecycle: CatalogLifecycleGate? = nil) -> MetadataUIFixture {
         let context = MetadataUIContext(value: selected ? metadataContext("a") : nil)
         let suggestor = MetadataUISuggestor()
-        let model = PhotoMetadataModel(store: store, suggestor: suggestor, currentContext: { context.value },
+        let model = PhotoMetadataModel(store: store, suggestor: suggestor, lifecycle: lifecycle, currentContext: { context.value },
             canModifyLibrary: { context.value?.canModify ?? true },
             protection: { MetadataFileProtectionSnapshot(originalURLs: [], managedFileURLs: [], managedDirectoryURLs: []) },
             selectAsset: { if context.value?.assetID != $0 { context.value = metadataContext($0, selection: 100) } })

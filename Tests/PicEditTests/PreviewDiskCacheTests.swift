@@ -42,7 +42,7 @@ final class PreviewDiskCacheTests {
         let directory = root.appendingPathComponent("EditingCache")
         let cache = PreviewDiskCache(directory: directory)
         let base = request()
-        let editing = PreviewRequest(url: base.url, modifiedAt: base.modifiedAt, pixelSize: base.pixelSize,
+        let editing = PreviewRequest(url: try #require(base.url), modifiedAt: base.modifiedAt, pixelSize: base.pixelSize,
                                      fileSize: base.fileSize, allowsEmbeddedPreview: false)
         let original = try bitmap(alpha: false)
         await cache.store(original, for: editing)
@@ -66,7 +66,7 @@ final class PreviewDiskCacheTests {
             request(date: original.modifiedAt.addingTimeInterval(1)),
             request(fileSize: original.fileSize + 1),
             request(pixelSize: original.pixelSize * 2),
-            PreviewRequest(url: original.url, modifiedAt: original.modifiedAt, pixelSize: original.pixelSize,
+            PreviewRequest(url: try #require(original.url), modifiedAt: original.modifiedAt, pixelSize: original.pixelSize,
                            fileSize: original.fileSize, allowsEmbeddedPreview: false)
         ]
         for variant in variants {

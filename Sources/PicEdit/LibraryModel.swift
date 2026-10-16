@@ -74,7 +74,9 @@ final class LibraryModel: ObservableObject {
     @Published var minimumRating = 0 { didSet { scheduleProjection() } }
     @Published var gridSize: Double = 210
     @Published var isDeveloping = false
-    @Published var comparesOriginal = false
+    @Published var comparesOriginal = false { didSet { if comparesOriginal { comparesCurrentSourceWithoutSettings = false } } }
+    @Published var comparesCurrentSourceWithoutSettings = false { didSet { if comparesCurrentSourceWithoutSettings { comparesOriginal = false } } }
+    var editingRenderIntent: EditingRenderIntent { comparesOriginal ? .importedOriginal : comparesCurrentSourceWithoutSettings ? .currentSourceWithoutSettings : .currentEditing }
     @Published var showsDetail = false
     @Published var showsInspector = true
     @Published private(set) var isLoading = true
@@ -90,9 +92,19 @@ final class LibraryModel: ObservableObject {
     }
     private let catalogWorker = LibraryCatalogWorker()
     private var mutationTask: Task<Void, Never>?
+    private var loadingTask: Task<Void, Never>?
+    private var recoveryTask: Task<Void, Never>?
     @Published private(set) var isUpdatingCatalog = false {
         didSet { if oldValue != isUpdatingCatalog { advanceAISelectionGeneration() } }
     }
+    var synchronizeEditing: (@MainActor () async throws -> Void)?
+    var invalidateEditingSources: (@MainActor () -> Void)?
+    let lifecycle: CatalogLifecycleGate?
+    private let coordinatorLoader: (@Sendable () async throws -> any CatalogMutationCoordinating)?
+    @Published private(set) var coordinationError: String?
+    private var coordinationIDs = Set<UUID>()
+    var hasCoordinatedRecovery: Bool { !coordinationIDs.isEmpty }
+    @Published private(set) var isRetryingCoordination = false
     private let writer: CatalogWriter
     @Published private(set) var metadataSearchState: PhotoMetadataSearchState = .loading(version: .initial)
     @Published private(set) var metadataGeneration: PhotoMetadataVersion = .initial
@@ -112,9 +124,16 @@ final class LibraryModel: ObservableObject {
     private var metadataProtectedSourceURLs: [URL] = []
     private var catalogSaveTasks: [UUID: Task<Void, Never>] = [:]
     private var revision = 0
+    private var catalogNeedsSave = false
     private var importTask: Task<Void, Never>?
     private var activeScopes: [UUID: URL] = [:]
-    private var queuedFolders: [URL] = []
+    private struct AcceptedImport {
+        let urls: [URL]
+        let previousSelection: LibrarySelection?
+        let admission: CatalogAcceptedWriteAdmission?
+    }
+    private var queuedImports: [AcceptedImport] = []
+    private let folderScanner: @Sendable (LibraryFolder) async throws -> ScanResult
     private let now: () -> Date
 
     // A separate selection generation rejects A → B → A even when both assets
@@ -137,12 +156,18 @@ final class LibraryModel: ObservableObject {
 
     init(repository: CatalogRepository = CatalogRepository(), now: @escaping () -> Date = Date.init,
          semanticSearch: (any SemanticSearchServing)? = nil,
-         metadataStore: (any PhotoMetadataStoring)? = nil) {
+         metadataStore: (any PhotoMetadataStoring)? = nil,
+         lifecycle: CatalogLifecycleGate? = nil,
+         coordinator: (@Sendable () async throws -> any CatalogMutationCoordinating)? = nil,
+         editingDependencies: (@Sendable () async throws -> EditingModelDependencies)? = nil,
+         folderScanner: @escaping @Sendable (LibraryFolder) async throws -> ScanResult = { try await FolderScanner().scan(folder: $0) }) {
+        self.lifecycle = lifecycle; self.coordinatorLoader = coordinator
         let metadataSession = UUID()
         metadataCatalogSessionID = metadataSession
         self.metadataStore = metadataStore; metadataDirectory = repository.directory
-        writer = CatalogWriter(repository: repository, metadataStore: metadataStore, sessionID: metadataSession)
-        self.now = now
+        writer = CatalogWriter(repository: repository, metadataStore: metadataStore, sessionID: metadataSession,
+            lifecycle: lifecycle, coordinator: coordinator, editingDependencies: editingDependencies)
+        self.now = now; self.folderScanner = folderScanner
         self.semanticSearch = semanticSearch
         if let semanticSearch {
             semanticUpdatesTask = Task { [weak self] in
@@ -160,7 +185,7 @@ final class LibraryModel: ObservableObject {
                 }
             }
         }
-        Task { await load() }
+        loadingTask = Task { await load() }
     }
 
     deinit {
@@ -186,7 +211,7 @@ final class LibraryModel: ObservableObject {
     /// A pending relocation fences catalog writes, while unrelated editorial
     /// records remain editable. Resolution itself must remain reachable.
     var canModifyCatalog: Bool { canModify && !metadataCatalogChanges.contains { $0.state == .staged || $0.state == .conflicted } }
-    var canResolvePhotoMetadataCatalogChanges: Bool { canModify && !isImporting && metadataStore != nil }
+    var canResolvePhotoMetadataCatalogChanges: Bool { !isClosing && !isImporting && metadataStore != nil && (canModify || hasCoordinatedRecovery) }
 
     func photoMetadataSelectionContext(for assetID: String? = nil) -> PhotoMetadataSelectionContext? {
         let asset: PhotoAsset?
@@ -213,16 +238,37 @@ final class LibraryModel: ObservableObject {
 
     func retryPhotoMetadataReconciliation() async throws {
         guard canResolvePhotoMetadataCatalogChanges else { throw isClosing ? PhotoMetadataError.closing : .catalogReadOnly }
-        let accepted = Task { try await writer.retryMetadataReconciliation() }
+        let accepted = try acceptedCatalogOperation { try await self.writer.retryMetadataReconciliation() }
         let id = UUID()
         catalogSaveTasks[id] = Task { _ = try? await accepted.value; catalogSaveTasks.removeValue(forKey: id) }
         do { applyPhotoMetadataCatalogResult(try await accepted.value) }
         catch { metadataError = (error as? PhotoMetadataError) ?? .storageFailure; throw error }
     }
 
-    func resolvePhotoMetadataCatalogChange(_ operation: MetadataCatalogResolutionOperation) async throws -> MetadataReconciliationResult {
+    func resolvePhotoMetadataCatalogChange(_ operation: MetadataCatalogResolutionOperation, alreadyAccepted: Bool = false) async throws -> MetadataReconciliationResult {
         guard canResolvePhotoMetadataCatalogChanges else { throw isClosing ? PhotoMetadataError.closing : .catalogReadOnly }
-        let accepted = Task { try await writer.resolve(operation) }
+        if coordinationIDs.contains(operation.changeID), let coordinatorLoader {
+            isRetryingCoordination = true
+            defer { isRetryingCoordination = false }
+            let accepted = Task { () throws -> MetadataReconciliationResult in
+                let coordinator = try await coordinatorLoader()
+                let result = try await coordinator.resolveMetadataConflict(operation, coordinationID: operation.changeID)
+                guard let metadata = result.metadata else { throw CatalogCoordinationError.recoveryRequired }
+                _ = try await coordinator.recoverAndOpen()
+                return metadata
+            }
+            let id = UUID()
+            catalogSaveTasks[id] = Task { _ = try? await accepted.value; catalogSaveTasks.removeValue(forKey: id) }
+            let result: MetadataReconciliationResult
+            do { result = try await accepted.value }
+            catch { await loadCoordinationInspection(); throw error }
+            coordinationIDs.remove(operation.changeID); coordinationError = nil; isReadOnly = false; isLoading = true
+            await load()
+            return result
+        }
+        let accepted: Task<CatalogWriteMetadata, Error>
+        if alreadyAccepted { accepted = Task { try await writer.resolve(operation) } }
+        else { accepted = try acceptedCatalogOperation { try await self.writer.resolve(operation) } }
         let id = UUID()
         catalogSaveTasks[id] = Task { _ = try? await accepted.value; catalogSaveTasks.removeValue(forKey: id) }
         do {
@@ -561,21 +607,30 @@ final class LibraryModel: ObservableObject {
     }
 
     private func load() async {
-        var updatedFolderStructure = false
+        defer { loadingTask = nil; isLoading = false }
         do {
-            let loaded = try await writer.load()
-            activeScopes = loaded.scopes
-            catalog = loaded.catalog
-            applyPhotoMetadataCatalogResult(loaded.metadata)
-            updatedFolderStructure = loaded.updated
-            await waitForProjection()
-            reconcileSelection()
+            if let lifecycle { startupAdmission = try await lifecycle.waitForStartup() }
+            let admission = try registerCatalogWrite()
+            try await withCatalogAdmission(admission) { try await self.loadAcceptedCatalog() }
         } catch {
             isReadOnly = true
+            if coordinatorLoader != nil { invalidateEditingSources?(); coordinationError = error.localizedDescription; await loadCoordinationInspection() }
             errorMessage = "Der Katalog konnte nicht geöffnet werden. Die vorhandene Datei bleibt unverändert.\n\n\(error.localizedDescription)"
         }
-        isLoading = false
-        if updatedFolderStructure { persist() }
+    }
+
+    private func loadAcceptedCatalog() async throws {
+        let loaded = try await writer.load()
+        if loaded.editingRemapped { try await synchronizeEditing?() }
+        activeScopes = loaded.scopes
+        // Persist refreshed bookmark/tree metadata under the same admission as
+        // loading. No later Task may lose the initial relocation's protection.
+        let hasPendingRelocation = loaded.metadata.changes.contains { $0.state == .staged || $0.state == .conflicted }
+        if loaded.updated && !hasPendingRelocation { applyPhotoMetadataCatalogResult(try await saveAcceptedCatalog(loaded.catalog)) }
+        else { applyPhotoMetadataCatalogResult(loaded.metadata) }
+        catalog = loaded.catalog; catalogNeedsSave = false
+        await waitForProjection()
+        reconcileSelection()
     }
 
     func chooseFolders() {
@@ -592,72 +647,98 @@ final class LibraryModel: ObservableObject {
 
     func importFolders(_ urls: [URL], preservingSelection previousSelection: LibrarySelection? = nil) {
         guard canModifyCatalog, !isImporting, !urls.isEmpty else { return }
+        do {
+            let admission = try registerCatalogWrite()
+            startImport(AcceptedImport(urls: urls, previousSelection: previousSelection, admission: admission))
+        } catch { errorMessage = error.localizedDescription }
+    }
+
+    private func startImport(_ accepted: AcceptedImport) {
         advanceAISelectionGeneration()
         isImporting = true
         notice = nil
         importTask = Task {
-            var total = 0
-            var skipped = 0
-            var failures: [String] = []
             defer {
-                isImporting = false
-                importStatus = ""
-                importTask = nil
-                let queued = queuedFolders
-                queuedFolders = []
-                if !Task.isCancelled && !queued.isEmpty { importFolders(queued) }
-            }
-            for (offset, originalURL) in urls.enumerated() {
-                if Task.isCancelled { break }
-                importStatus = "\(offset + 1)/\(urls.count) · \(originalURL.lastPathComponent) wird eingelesen …"
-                let prepared = await catalogWorker.prepareImport(originalURL, folders: folders)
-                let folder = prepared.folder, started = prepared.startedScope, url = folder.url
-                do {
-                    let result = try await FolderScanner().scan(folder: folder)
-                    try Task.checkCancellation()
-                    // Overlapping folders are committed in input order; their shared
-                    // asset ownership depends on the preceding result. Parallelism
-                    // lives in the scanner rather than a second nested worker pool.
-                    while true {
-                        let generation = catalogGeneration
-                        let merged = try await catalogWorker.merge(result, folder: folder, into: catalog)
-                        try Task.checkCancellation()
-                        // Ratings/favorites may change while the merge runs. Retry
-                        // against the latest snapshot so accepted edits survive.
-                        guard generation == catalogGeneration else { continue }
-                        catalog = merged.catalog
-                        total += merged.addedCount
-                        break
-                    }
-                    skipped += result.skippedFiles
-                    if started {
-                        if activeScopes[folder.id] == nil { activeScopes[folder.id] = originalURL }
-                        else { originalURL.stopAccessingSecurityScopedResource() }
-                    }
-                    if previousSelection == nil {
-                        selection = .folder(folder.id)
-                        search = ""
-                        minimumRating = 0
-                    }
-                    persist()
-                    await waitForProjection()
-                } catch is CancellationError {
-                    if started { originalURL.stopAccessingSecurityScopedResource() }
-                    break
-                } catch {
-                    if started { originalURL.stopAccessingSecurityScopedResource() }
-                    failures.append("\(url.lastPathComponent): \(error.localizedDescription)")
+                isImporting = false; importStatus = ""; importTask = nil
+                if Task.isCancelled { queuedImports = [] }
+                else if !queuedImports.isEmpty {
+                    // Already accepted while the first scan was active. Keep
+                    // that exact registration even if maintenance is now waiting.
+                    let next = queuedImports.removeFirst()
+                    startImport(next)
                 }
             }
-            notice = Task.isCancelled ? "Import abgebrochen. Bereits eingelesene Ordner bleiben erhalten." : "\(total) neue Fotos hinzugefügt" + (skipped > 0 ? " · \(skipped) nicht lesbare Bilder übersprungen" : "")
-            if !failures.isEmpty { errorMessage = failures.joined(separator: "\n\n") }
+            do {
+                try await withCatalogAdmission(accepted.admission) { await self.importAcceptedFolders(accepted) }
+            } catch { errorMessage = error.localizedDescription }
         }
+    }
+
+    private func importAcceptedFolders(_ accepted: AcceptedImport) async {
+        var total = 0, skipped = 0
+        var failures: [String] = []
+        for (offset, originalURL) in accepted.urls.enumerated() {
+            if Task.isCancelled { break }
+            importStatus = "\(offset + 1)/\(accepted.urls.count) · \(originalURL.lastPathComponent) wird eingelesen …"
+            let prepared = await catalogWorker.prepareImport(originalURL, folders: folders)
+            let folder = prepared.folder, started = prepared.startedScope, url = folder.url
+            do {
+                let result = try await folderScanner(folder)
+                try Task.checkCancellation()
+                // Dependent overlapping folders commit in input order; the
+                // existing scanner owns the bounded parallel metadata reads.
+                while true {
+                    let generation = catalogGeneration
+                    let merged = try await catalogWorker.merge(result, folder: folder, into: catalog)
+                    try Task.checkCancellation()
+                    // Accepted ratings during the scan/merge must survive.
+                    guard generation == catalogGeneration else { continue }
+                    try await publishImportedCatalog(merged.catalog)
+                    total += merged.addedCount
+                    break
+                }
+                skipped += result.skippedFiles
+                if started {
+                    if activeScopes[folder.id] == nil { activeScopes[folder.id] = originalURL }
+                    else { originalURL.stopAccessingSecurityScopedResource() }
+                }
+                if accepted.previousSelection == nil {
+                    selection = .folder(folder.id); search = ""; minimumRating = 0
+                }
+                await waitForProjection()
+            } catch is CancellationError {
+                if started { originalURL.stopAccessingSecurityScopedResource() }
+                break
+            } catch {
+                if started { originalURL.stopAccessingSecurityScopedResource() }
+                failures.append("\(url.lastPathComponent): \(error.localizedDescription)")
+            }
+        }
+        notice = Task.isCancelled ? "Import abgebrochen. Bereits eingelesene Ordner bleiben erhalten." : "\(total) neue Fotos hinzugefügt" + (skipped > 0 ? " · \(skipped) nicht lesbare Bilder übersprungen" : "")
+        if !failures.isEmpty { errorMessage = failures.joined(separator: "\n\n") }
+    }
+
+    private func publishImportedCatalog(_ next: LibraryCatalog) async throws {
+        // Block only this dependent commit, not the scan. On a failed save no
+        // new original reference is published solely in the UI and then hidden
+        // from a backup rotation's final persisted-catalog protection check.
+        isUpdatingCatalog = true
+        defer { isUpdatingCatalog = false }
+        let value = try await saveAcceptedCatalog(next)
+        catalog = next; catalogNeedsSave = false
+        applyPhotoMetadataCatalogResult(value)
     }
 
     func enqueueFolders(_ urls: [URL]) {
         guard canModifyCatalog else { return }
         if isImporting {
-            queuedFolders.append(contentsOf: urls.filter { !queuedFolders.contains($0) })
+            let queuedURLs = Set(queuedImports.flatMap(\.urls))
+            let unique = urls.filter { !queuedURLs.contains($0) }
+            guard !unique.isEmpty else { return }
+            do {
+                let admission = try registerCatalogWrite()
+                queuedImports.append(AcceptedImport(urls: unique, previousSelection: nil, admission: admission))
+            } catch { errorMessage = error.localizedDescription }
         } else { importFolders(urls) }
     }
 
@@ -676,21 +757,29 @@ final class LibraryModel: ObservableObject {
 
     func removeFolder(_ id: UUID) {
         guard canModifyCatalog, !isImporting else { return }
-        isUpdatingCatalog = true
-        let snapshot = catalog
-        mutationTask = Task {
-            catalog = await catalogWorker.removing(id, from: snapshot)
-            activeScopes.removeValue(forKey: id)?.stopAccessingSecurityScopedResource()
-            switch selection {
-            case .folder(let selectedFolder), .subfolder(let selectedFolder, _):
-                if selectedFolder == id { selection = .all }
-            default: break
+        do {
+            let admission = try registerCatalogWrite()
+            let snapshot = catalog
+            isUpdatingCatalog = true
+            mutationTask = Task {
+                defer { isUpdatingCatalog = false; mutationTask = nil }
+                do {
+                    try await withCatalogAdmission(admission) {
+                        let next = await self.catalogWorker.removing(id, from: snapshot)
+                        let value = try await self.saveAcceptedCatalog(next)
+                        self.catalog = next; self.catalogNeedsSave = false
+                        self.applyPhotoMetadataCatalogResult(value)
+                        self.activeScopes.removeValue(forKey: id)?.stopAccessingSecurityScopedResource()
+                        switch self.selection {
+                        case .folder(let selectedFolder), .subfolder(let selectedFolder, _):
+                            if selectedFolder == id { self.selection = .all }
+                        default: break
+                        }
+                        self.notice = "Ordner aus der Bibliothek entfernt. Originaldateien bleiben erhalten."
+                    }
+                } catch { errorMessage = "Änderungen konnten nicht gespeichert werden.\n\n" + error.localizedDescription }
             }
-            isUpdatingCatalog = false
-            mutationTask = nil
-            persist()
-            notice = "Ordner aus der Bibliothek entfernt. Originaldateien bleiben erhalten."
-        }
+        } catch { errorMessage = error.localizedDescription }
     }
 
     private func assetIndex(for id: String?) -> Int? {
@@ -701,14 +790,22 @@ final class LibraryModel: ObservableObject {
 
     func setRating(_ rating: Int, for id: String? = nil) {
         guard canModifyCatalog, let index = assetIndex(for: id ?? selectedID) else { return }
-        catalog.assets[index].rating = min(5, max(0, rating))
-        persist()
+        do {
+            let admission = try registerCatalogWrite()
+            catalogNeedsSave = true
+            catalog.assets[index].rating = min(5, max(0, rating))
+            persist(admission: admission)
+        } catch { errorMessage = error.localizedDescription }
     }
 
     func toggleFavorite(_ id: String? = nil) {
         guard canModifyCatalog, let index = assetIndex(for: id ?? selectedID) else { return }
-        catalog.assets[index].isFavorite.toggle()
-        persist()
+        do {
+            let admission = try registerCatalogWrite()
+            catalogNeedsSave = true
+            catalog.assets[index].isFavorite.toggle()
+            persist(admission: admission)
+        } catch { errorMessage = error.localizedDescription }
     }
 
     func contains(_ asset: PhotoAsset, in folder: LibraryFolder) -> Bool {
@@ -808,15 +905,83 @@ final class LibraryModel: ObservableObject {
         if let asset = asset ?? selectedAsset { NSWorkspace.shared.activateFileViewerSelecting([asset.fileURL]) }
     }
 
-    private func persist() {
-        guard canModifyCatalog else { return }
+    private func saveAcceptedCatalog(_ snapshot: LibraryCatalog) async throws -> CatalogWriteMetadata {
         revision += 1
-        let snapshot = catalog, number = revision
-        let id = UUID()
+        let value = try await writer.save(snapshot, revision: revision)
+        if catalog == snapshot { catalogNeedsSave = false }
+        return value
+    }
+
+    private func persist(admission: CatalogAcceptedWriteAdmission?) {
+        revision += 1
+        let snapshot = catalog, number = revision, id = UUID()
+        // Registration happened synchronously BEFORE the caller changed local
+        // state. Keep it alive until this exact background publication returns.
         catalogSaveTasks[id] = Task {
             defer { catalogSaveTasks.removeValue(forKey: id) }
-            do { applyPhotoMetadataCatalogResult(try await writer.save(snapshot, revision: number)) }
-            catch { errorMessage = "Änderungen konnten nicht gespeichert werden.\n\n\(error.localizedDescription)" }
+            do {
+                let value = try await withCatalogAdmission(admission) { try await self.writer.save(snapshot, revision: number) }
+                if catalog == snapshot { catalogNeedsSave = false }
+                applyPhotoMetadataCatalogResult(value)
+            } catch { errorMessage = "Änderungen konnten nicht gespeichert werden.\n\n" + error.localizedDescription }
+        }
+    }
+
+    private func withCatalogAdmission<T: Sendable>(_ admission: CatalogAcceptedWriteAdmission?,
+        operation: @MainActor @Sendable () async throws -> T) async throws -> T {
+        if let lifecycle, let admission { return try await lifecycle.withAcceptedWrite(admission) { try await operation() } }
+        return try await operation()
+    }
+
+    private func acceptedCatalogOperation<T: Sendable>(_ operation: @escaping @MainActor @Sendable () async throws -> T) throws -> Task<T, Error> {
+        let admission = try registerCatalogWrite()
+        return Task { try await withCatalogAdmission(admission, operation: operation) }
+    }
+
+    func inspectCoordinatedMetadataConflict(coordinationID: UUID, conflictID: UUID) async throws -> CatalogMetadataConflictRecords {
+        guard coordinationIDs.contains(coordinationID), let coordinatorLoader else { throw CatalogCoordinationError.invalidCapability }
+        return try await (try await coordinatorLoader()).inspectMetadataConflict(coordinationID: coordinationID, conflictID: conflictID)
+    }
+    private func loadCoordinationInspection() async {
+        guard let coordinatorLoader else { return }
+        do {
+            let coordinator = try await coordinatorLoader()
+            let pending = try await coordinator.pending().filter { $0.value.disposition == .active }
+            coordinationIDs = Set(pending.map { $0.value.body.operationID })
+            let current = try await writer.recoveryCatalog()
+            catalog = current.catalog; metadataCatalogReference = current.reference
+            var receipts: [MetadataCatalogChangeReceipt] = []
+            if let metadata = metadataStore as? any CoordinatedPhotoMetadataStoring {
+                for journal in pending {
+                    if let participant = journal.value.body.requiredParticipants.first(where: { $0.store.kind == .photoMetadata }),
+                       let value = try await metadata.inspectCatalogChange(id: journal.value.body.operationID,
+                           expectedRequestSHA256: participant.requestSHA256.sha256) { receipts.append(value.receipt) }
+                }
+            }
+            metadataCatalogChanges = receipts
+            metadataBlockedAssetIDs = Set(receipts.flatMap(\.blockedAssetIDs))
+            metadataProtectedSourceURLs = receipts.flatMap(\.protectedSourceURLs)
+            await waitForProjection()
+        } catch { coordinationError = error.localizedDescription }
+    }
+
+    private var startupAdmission: CatalogStartupAdmission?
+    private func registerCatalogWrite() throws -> CatalogAcceptedWriteAdmission? {
+        guard let lifecycle else { return nil }
+        guard let startupAdmission else { throw CatalogLifecycleError.recoveryRequired }
+        return try lifecycle.registerAcceptedWrite(domain: .catalog, session: startupAdmission)
+    }
+    func retryCoordinatedRecovery() {
+        guard !isClosing, !isRetryingCoordination, let coordinatorLoader else { return }
+        isRetryingCoordination = true
+        recoveryTask = Task {
+            defer { isRetryingCoordination = false; recoveryTask = nil }
+            do {
+                let coordinator = try await coordinatorLoader()
+                _ = try await coordinator.recoverAndOpen()
+                isReadOnly = false; coordinationError = nil; isLoading = true
+                await load()
+            } catch { coordinationError = error.localizedDescription; await loadCoordinationInspection() }
         }
     }
 
@@ -831,7 +996,7 @@ final class LibraryModel: ObservableObject {
 
     func beginTermination() {
         projectionNeedsResumption = projectionNeedsResumption || projectionTask != nil || deferredProjectionTask != nil
-        isClosing = true; importTask?.cancel(); queuedFolders = []
+        isClosing = true; importTask?.cancel(); queuedImports = []
         projectionTask?.cancel(); projectionTask = nil; isProjecting = false
         deferredProjectionTask?.cancel(); deferredProjectionTask = nil
         semanticStatusTask?.cancel(); semanticOperationTask?.cancel(); semanticImportReview = nil
@@ -844,7 +1009,11 @@ final class LibraryModel: ObservableObject {
         if let metadataStore { Task { applyPhotoMetadataSearchState(await metadataStore.searchState()) } }
     }
 
-    func finishSaving() async -> Bool {
+    func drainAcceptedCatalogOperations() async {
+        // Initial bookmark loading can own an accepted joint relocation. A quit
+        // observes its actual completion rather than cancelling or skipping it.
+        if let loadingTask { await loadingTask.value }
+        if let recoveryTask { await recoveryTask.value }
         if let semanticShutdownTask { await semanticShutdownTask.value }
         importTask?.cancel()
         if let importTask { await importTask.value }
@@ -853,9 +1022,16 @@ final class LibraryModel: ObservableObject {
             let tasks = Array(catalogSaveTasks.values)
             for task in tasks { await task.value }
         }
-        guard !isLoading && !isReadOnly else { return true }
-        revision += 1
-        do { applyPhotoMetadataCatalogResult(try await writer.save(catalog, revision: revision)); return true }
+    }
+
+    func finishSaving() async -> Bool {
+        await drainAcceptedCatalogOperations()
+        guard !isLoading && !isReadOnly, catalogNeedsSave else { return true }
+        do {
+            let admission = try registerCatalogWrite()
+            try await withCatalogAdmission(admission) { self.applyPhotoMetadataCatalogResult(try await self.saveAcceptedCatalog(self.catalog)) }
+            return true
+        }
         catch { errorMessage = "Der Katalog konnte nicht gespeichert werden: \(error.localizedDescription)"; return false }
     }
 }

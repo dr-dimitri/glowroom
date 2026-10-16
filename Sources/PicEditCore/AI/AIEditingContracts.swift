@@ -113,6 +113,7 @@ public struct AIOriginalSourceFingerprint: Hashable, Sendable {
 /// Future immutable generated sources can extend this contract in their own feature.
 public enum AISourceIdentity: Hashable, Sendable {
     case original(AIOriginalSourceFingerprint)
+    case artifact(ArtifactSourceFingerprint)
 }
 
 /// App-owned epochs distinguish equal settings after undo/restore or A→B→A selection.
@@ -139,12 +140,16 @@ public struct AIEditingSnapshot: Hashable, Sendable {
     public let source: AISourceIdentity
     public let settings: EditSettings
     public let token: AIEditingToken
+    /// Absent only for imported-original analysis independent of the edit store.
+    public let persistedVersion: EditingExpectedState?
 
-    public init(assetID: String, source: AISourceIdentity, settings: EditSettings, token: AIEditingToken) {
+    public init(assetID: String, source: AISourceIdentity, settings: EditSettings, token: AIEditingToken,
+                persistedVersion: EditingExpectedState? = nil) {
         self.assetID = assetID
         self.source = source
         self.settings = settings
         self.token = token
+        self.persistedVersion = persistedVersion
     }
 
     /// Constant-size metadata/control checks also used at app acceptance. Prompt policy is
@@ -160,6 +165,9 @@ public struct AIEditingSnapshot: Hashable, Sendable {
             guard fingerprint.isFileURL, fingerprint.standardizedPath.hasPrefix("/"),
                   fingerprint.fileSize >= 0, fingerprint.modifiedAt.timeIntervalSinceReferenceDate.isFinite
             else { throw AIEditingError.invalidRequest }
+        case .artifact(let fingerprint):
+            guard fingerprint.schemaVersion == 1, fingerprint.raster.format.orientation == .up,
+                  persistedVersion != nil else { throw AIEditingError.invalidRequest }
         }
     }
 }

@@ -38,9 +38,15 @@ final class ImageAnalysisPreparationTests {
         try FileManager.default.setAttributes([.modificationDate: fingerprint.modifiedAt], ofItemAtPath: url.path)
         let stampAfter = try await preparer.sourceStamp(for: request)
         #expect(stampBefore != stampAfter)
-        #expect(stampBefore.byteCount == stampAfter.byteCount)
-        #expect(stampBefore.modifiedSeconds == stampAfter.modifiedSeconds)
-        #expect(abs(stampBefore.modifiedNanoseconds - stampAfter.modifiedNanoseconds) < 5_000)
+        guard case .original(let nativeBefore) = stampBefore,
+              case .original(let nativeAfter) = stampAfter else {
+            Issue.record("Expected native original source stamps")
+            return
+        }
+        #expect(nativeBefore.inode != nativeAfter.inode)
+        #expect(nativeBefore.byteCount == nativeAfter.byteCount)
+        #expect(nativeBefore.modifiedSeconds == nativeAfter.modifiedSeconds)
+        #expect(abs(nativeBefore.modifiedNanoseconds - nativeAfter.modifiedNanoseconds) < 5_000)
         let second = try await service.analyze(request)
         #expect(await provider.callCount == 2)
         #expect(first.provenance.rasterSHA256 != second.provenance.rasterSHA256)

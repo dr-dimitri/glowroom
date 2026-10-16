@@ -40,7 +40,7 @@ extension PhotoMetadataRepository {
             for url in journal.receipt.protectedSourceURLs { try check.checkFile(url) }
         }
     }
-    public func prepareImport(source:URL,protection:MetadataFileProtectionSnapshot) throws -> MetadataImportReview {
+    func _metadata_prepareImport(source:URL,protection:MetadataFileProtectionSnapshot) throws -> MetadataImportReview {
         let db = try connection()
         try PhotoMetadataFiles.checkDestination(source,protection:protection,extra:protectedStoreURLs()) { try self.checkProtectedSources($0,on:db) }
         retainedReview = nil
@@ -72,7 +72,7 @@ extension PhotoMetadataRepository {
             conflictAssetByID:Dictionary(uniqueKeysWithValues:conflicts.map { ($0.id,$0.assetID) }),accountedCost:cost,touchedAt:now)
         return summary
     }
-    public func discardImport(reviewID:UUID) { if retainedReview?.summary.id == reviewID { retainedReview = nil } }
+    func _metadata_discardImport(reviewID:UUID) { if retainedReview?.summary.id == reviewID { retainedReview = nil } }
     static func importedOrigin(_ origin:MetadataFieldOrigin,exportID:UUID,revision:Int64) -> MetadataFieldOrigin {
         let originalAI:MetadataAIFieldOrigin?
         switch origin { case .manual:originalAI = nil;case .confirmedAI(let a):originalAI = a;case .imported(let a):originalAI = a.originalAI }
@@ -108,7 +108,7 @@ extension PhotoMetadataRepository {
                 state:.outdated,createdAt:d.createdAt,modifiedAt:Date(),editedFields:d.editedFields)
         }
     }
-    public func commitImport(_ operation:MetadataImportOperation) throws -> MetadataCommitResult {
+    func _metadata_commitImport(_ operation:MetadataImportOperation) throws -> MetadataCommitResult {
         guard PhotoMetadataValidation.digest(operation.reviewContentSHA256),
               Set(operation.decisions.map(\.conflictID)).count == operation.decisions.count else { throw PhotoMetadataError.validation(.invalidDecision) }
         for decision in operation.decisions {
@@ -154,7 +154,7 @@ extension PhotoMetadataRepository {
         if retainedReview?.summary.id == operation.reviewID { retainedReview = nil }
         refreshSearch(db); return .init(receipt:result,searchState:state)
     }
-    public func exportConfirmed(destination:URL,protection:MetadataFileProtectionSnapshot) throws -> MetadataExportResult {
+    func _metadata_exportConfirmed(destination:URL,protection:MetadataFileProtectionSnapshot) throws -> MetadataExportResult {
         let db = try connection(), exportID = UUID(), now = Date()
         let envelope = try PhotoMetadataPortableJSON.encoder().encode(MetadataJSONDocument(exportID:exportID,exportedAt:now,entries:[]))
         let marker = Data("\"entries\":[]".utf8)

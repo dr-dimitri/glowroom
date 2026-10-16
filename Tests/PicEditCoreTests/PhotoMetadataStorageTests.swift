@@ -7,7 +7,7 @@ import Testing
 @Suite("Owned metadata SQLite preserves untrusted bytes")
 struct PhotoMetadataStorageTests {
     @Test func existingForeignAndUnknownVersionRemainByteExact() async throws {
-        for version in [Int32(0),Int32(2)] {
+        for version in [Int32(0),Int32(PhotoMetadataSQLite.schemaVersion+1)] {
             let directory = MetadataFixture.directory(); try FileManager.default.createDirectory(at:directory,withIntermediateDirectories:true)
             let url = directory.appendingPathComponent("photo-metadata.sqlite")
             try metadataSQL(url,"CREATE TABLE foreign_data(value TEXT);INSERT INTO foreign_data VALUES('keep');PRAGMA application_id=\(version == 0 ? 42 : PhotoMetadataSQLite.applicationID);PRAGMA user_version=\(version)")

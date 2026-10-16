@@ -119,7 +119,7 @@ final class AIEditingSnapshotTests {
     func failedRestoreAndCompletedBackupDoNotRevivePreMaintenanceProposals() async throws {
         let (library, _, _) = try await fixture()
         let store = AISnapshotEditStore(failRestore: true)
-        let editing = EditingModel(database: store)
+        let editing = EditingModel(database: LegacySnapshotTestAdapter(store))
         try await waitUntil { !editing.isLoading }
         let initial = try #require(editing.aiSnapshot(in: library))
         #expect(!(await editing.restoreBackup(from: directory.appendingPathComponent("bad.sqlite"))))
@@ -228,13 +228,13 @@ final class AIEditingSnapshotTests {
     @Test
     func loadingReadOnlyAndRevisionExhaustionCannotApplyAProposal() async throws {
         let (library, _, _) = try await fixture()
-        let failed = EditingModel(database: AISnapshotEditStore(failLoad: true))
+        let failed = EditingModel(database: LegacySnapshotTestAdapter(AISnapshotEditStore(failLoad: true)))
         #expect(failed.aiSnapshot(in: library) == nil)
         try await waitUntil { !failed.isLoading }
         #expect(failed.aiSnapshot(in: library) == nil)
         let id = try #require(library.selectedID)
         let exhaustedStore = AISnapshotEditStore(revisions: [id: .max])
-        let exhausted = EditingModel(database: exhaustedStore)
+        let exhausted = EditingModel(database: LegacySnapshotTestAdapter(exhaustedStore))
         try await waitUntil { !exhausted.isLoading }
         let snapshot = try #require(exhausted.aiSnapshot(in: library))
         #expect(!exhausted.acceptAIProposal(try proposal(snapshot), in: library))
@@ -267,7 +267,7 @@ final class AIEditingSnapshotTests {
         try repository.save(LibraryCatalog(folders: [folder], assets: assets))
         let library = LibraryModel(repository: repository)
         let store = AISnapshotEditStore()
-        let editing = EditingModel(database: store)
+        let editing = EditingModel(database: LegacySnapshotTestAdapter(store))
         try await waitUntil { !library.isLoading && !library.isProjecting && !editing.isLoading }
         library.selectedID = assets[0].id
         return (library, editing, store)
@@ -284,7 +284,7 @@ final class AIEditingSnapshotTests {
 
 private enum AISnapshotTestError: Error { case injected, timeout }
 
-private actor AISnapshotEditStore: EditingPersistence {
+private actor AISnapshotEditStore: LegacySnapshotTestStore {
     private var settings: [String: EditSettings] = [:]
     private var revisionsByAsset: [String: Int64]
     private let failLoad: Bool

@@ -22,10 +22,10 @@ struct LocalPhotoMetadataSuggestor: PhotoMetadataSuggesting {
             cachePolicy: request.rasterPolicy == .refreshRaster ? .refreshRaster : .reuseValidated)
         let payload = try await service.metadata(analysis)
         try Task.checkCancellation()
-        guard payload.request == analysis, payload.provenance.source == request.context.source,
+        guard payload.request == analysis, payload.provenance.source == .original(request.context.source),
               payload.provenance.inputKind == .originalPreview else { throw ImageAnalysisError.staleSource }
         let fields = try PhotoMetadataModelResponseValidator.validate(payload.data)
-        let observed = payload.sourceStamp
+        guard case .original(let observed) = payload.sourceStamp else { throw ImageAnalysisError.invalidRequest }
         let native = MetadataNativeSourceStamp(identity: MetadataFileIdentity(device: Int64(observed.device), inode: observed.inode),
             byteCount: observed.byteCount,
             modifiedAt: MetadataTimestamp(seconds: observed.modifiedSeconds, nanoseconds: Int32(observed.modifiedNanoseconds)),
@@ -45,8 +45,9 @@ extension MetadataSourceFingerprint {
 
 extension MetadataAnalysisProvenance {
     static func metadata(_ source: ImageAnalysisProvenance) -> Self {
-        Self(providerID: source.providerID, modelID: source.modelID, modelVersion: source.modelVersion,
-            analyzedAt: source.analyzedAt, source: .metadata(source.source),
+        guard case .original(let original) = source.source else { preconditionFailure("Metadata requires imported-original provenance") }
+        return Self(providerID: source.providerID, modelID: source.modelID, modelVersion: source.modelVersion,
+            analyzedAt: source.analyzedAt, source: .metadata(original),
             raster: MetadataRasterIdentity(sha256: source.rasterSHA256, pixelWidth: source.pixelWidth,
                 pixelHeight: source.pixelHeight, byteCount: source.byteCount, colorProfile: source.colorProfile,
                 colorProfileSHA256: source.colorProfileSHA256, orientation: source.orientation,

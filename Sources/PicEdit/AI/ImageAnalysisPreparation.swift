@@ -4,7 +4,7 @@ import Darwin
 import Foundation
 import PicEditCore
 
-struct ImageAnalysisSourceStamp: Hashable, Sendable {
+struct ImageAnalysisNativeSourceStamp: Hashable, Sendable {
     let device: Int32
     let inode: UInt64
     let byteCount: Int64
@@ -15,6 +15,23 @@ struct ImageAnalysisSourceStamp: Hashable, Sendable {
 
     var cacheRevision: String {
         "\(device):\(inode):\(byteCount):\(modifiedSeconds):\(modifiedNanoseconds):\(changedSeconds):\(changedNanoseconds)"
+    }
+}
+
+enum ImageAnalysisSourceStamp: Hashable, Sendable {
+    case original(ImageAnalysisNativeSourceStamp)
+    case artifact(ArtifactSourceFingerprint)
+    init(device: Int32, inode: UInt64, byteCount: Int64, modifiedSeconds: Int64, modifiedNanoseconds: Int64,
+         changedSeconds: Int64, changedNanoseconds: Int64) {
+        self = .original(.init(device: device, inode: inode, byteCount: byteCount,
+            modifiedSeconds: modifiedSeconds, modifiedNanoseconds: modifiedNanoseconds,
+            changedSeconds: changedSeconds, changedNanoseconds: changedNanoseconds))
+    }
+    var cacheRevision: String {
+        switch self {
+        case .original(let value): return value.cacheRevision
+        case .artifact(let value): return "artifact:" + value.storeID.canonicalString + ":" + value.artifactID.canonicalString + ":" + value.manifestSHA256.sha256
+        }
     }
 }
 
@@ -46,6 +63,10 @@ struct ImageAnalysisPreparer: ImageAnalysisPreparing {
 
     func sourceStamp(for request: ImageAnalysisRequest) async throws -> ImageAnalysisSourceStamp {
         try Task.checkCancellation()
+        if case .artifact(let fingerprint) = request.snapshot.source {
+            guard request.inputKind == .editedPreview else { throw ImageAnalysisError.invalidRequest }
+            return .artifact(fingerprint)
+        }
         guard case .original(let fingerprint) = request.snapshot.source else { throw ImageAnalysisError.invalidRequest }
         let url = URL(fileURLWithPath: fingerprint.standardizedPath)
         let access = url.startAccessingSecurityScopedResource()
@@ -70,14 +91,12 @@ struct ImageAnalysisPreparer: ImageAnalysisPreparing {
     func prepare(_ request: ImageAnalysisRequest) async throws -> PreparedImageAnalysisInput {
         try request.validate()
         let before = try await sourceStamp(for: request)
-        guard case .original(let original) = request.snapshot.source else { throw ImageAnalysisError.invalidRequest }
         // Explicit reanalysis must bypass both bounded raster caches even if
         // a source manages to retain every native stamp field.
         let revision = request.cachePolicy == .refreshRaster
             ? before.cacheRevision + "|fresh:" + request.id.uuidString : before.cacheRevision
-        let preview = PreviewRequest(url: URL(fileURLWithPath: original.standardizedPath), modifiedAt: original.modifiedAt,
-                                     pixelSize: Self.maximumPixelSize, fileSize: original.fileSize, allowsEmbeddedPreview: false,
-                                     sourceRevision: revision)
+        let preview = PreviewRequest(source: request.snapshot.source, pixelSize: Self.maximumPixelSize,
+            allowsEmbeddedPreview: false, sourceRevision: revision)
         let source = try await imagePipeline.image(for: preview, priority: .selected)
         let settings = request.inputKind == .originalPreview ? EditSettings.neutral : request.snapshot.settings
         let bitmap = try await renderPipeline.image(source, request: preview, settings: settings,

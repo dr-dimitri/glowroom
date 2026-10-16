@@ -324,8 +324,10 @@ struct AILookPreviewTests {
     }
 }
 
+private let lookPreviewURL = URL(fileURLWithPath: "/tmp/look-preview-synthetic.raw")
+
 private func lookRequest(pixelSize: Int = 2_400) -> PreviewRequest {
-    PreviewRequest(url: URL(fileURLWithPath: "/tmp/look-preview-synthetic.raw"),
+    PreviewRequest(url: lookPreviewURL,
                    modifiedAt: Date(timeIntervalSince1970: 123), pixelSize: pixelSize,
                    fileSize: 100, allowsEmbeddedPreview: false)
 }
@@ -333,7 +335,7 @@ private func lookRequest(pixelSize: Int = 2_400) -> PreviewRequest {
 private func lookGroup(index: Int = 0) -> AILookGroupResult {
     let baseline = EditSettings.neutral
     let request = AIEditingRequest(prompt: "", snapshot: AIEditingSnapshot(assetID: "synthetic",
-        source: .original(AIOriginalSourceFingerprint(fileURL: lookRequest().url,
+        source: .original(AIOriginalSourceFingerprint(fileURL: lookPreviewURL,
             modifiedAt: lookRequest().modifiedAt, fileSize: 100)), settings: baseline,
         token: AIEditingToken(editSessionID: UUID(), editGeneration: UInt64(index),
                               selectionSessionID: UUID(), selectionGeneration: 0)), mode: .lookGroup)

@@ -14,13 +14,13 @@ struct PreviewPipelineTests {
         let small = try await pipeline.image(for: request("same", size: 256))
         #expect(image.image === small.image)
         #expect(probe.started.count == 1)
-        _ = try await pipeline.image(for: PreviewRequest(url: large.url, modifiedAt: large.modifiedAt,
+        _ = try await pipeline.image(for: PreviewRequest(url: try #require(large.url), modifiedAt: large.modifiedAt,
                                                         pixelSize: 256, fileSize: 99))
-        _ = try await pipeline.image(for: PreviewRequest(url: large.url,
+        _ = try await pipeline.image(for: PreviewRequest(url: try #require(large.url),
                                                         modifiedAt: large.modifiedAt.addingTimeInterval(1), pixelSize: 256))
         #expect(probe.started.count == 3)
         // A camera-rendered browsing preview must not become the editing base.
-        _ = try await pipeline.image(for: PreviewRequest(url: large.url, modifiedAt: large.modifiedAt,
+        _ = try await pipeline.image(for: PreviewRequest(url: try #require(large.url), modifiedAt: large.modifiedAt,
                                                         pixelSize: 256, allowsEmbeddedPreview: false))
         #expect(probe.started.count == 4)
     }
@@ -138,7 +138,7 @@ private final class DecodeProbe: @unchecked Sendable {
     func decode(_ request: PreviewRequest) throws -> PreviewBitmap {
         let gate = DispatchSemaphore(value: 0)
         lock.lock()
-        names.append(request.url.lastPathComponent)
+        names.append(request.displayName)
         let shouldWait = blocking
         if shouldWait { gates.append(gate) }
         lock.unlock()

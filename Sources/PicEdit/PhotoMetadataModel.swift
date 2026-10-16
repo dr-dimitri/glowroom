@@ -30,6 +30,7 @@ final class PhotoMetadataModel: ObservableObject {
         let proposalID: UUID?
         let baseConfirmedRevision: Int64
         var version: MetadataRecordVersion
+        let admission: CatalogAcceptedWriteAdmission?
     }
 
     @Published private(set) var context: PhotoMetadataSelectionContext?
@@ -55,12 +56,16 @@ final class PhotoMetadataModel: ObservableObject {
     @Published var proposalTagPolicy: MetadataTagPolicy = .append
     @Published var manualConflictReviewed = false
 
+    private let lifecycle: CatalogLifecycleGate?
+    private var startup: CatalogStartupAdmission?
     private let store: any PhotoMetadataStoring
     private let suggestor: any PhotoMetadataSuggesting
     private let currentContext: @MainActor () -> PhotoMetadataSelectionContext?
     private let canModifyLibrary: @MainActor () -> Bool
     private let protection: @MainActor () -> MetadataFileProtectionSnapshot
     private let selectAsset: @MainActor (String) -> Void
+    private let coordinatedRecovery: @MainActor () -> Bool
+    private let comparisonLoader: (@MainActor (UUID, UUID) async throws -> CatalogMetadataConflictRecords)?
     private let canResolveCatalog: @MainActor () -> Bool
     private let catalogResolver: (@MainActor (MetadataCatalogResolutionOperation) async throws -> MetadataReconciliationResult)?
     private var reviewedConflicts = Set<UUID>()
@@ -83,19 +88,23 @@ final class PhotoMetadataModel: ObservableObject {
     private var writerProposalID: UUID?
     private var acceptedAction: Task<Bool, Never>?
     private var acceptedRetry: (context: PhotoMetadataSelectionContext?, generation: UInt64,
-        operation: @MainActor () async throws -> MetadataCommitResult)?
+        operation: @MainActor @Sendable () async throws -> MetadataCommitResult)?
     private var readAction: Task<Void, Never>?
     private var readActionID = UUID()
 
-    init(store: any PhotoMetadataStoring, suggestor: any PhotoMetadataSuggesting,
+    init(store: any PhotoMetadataStoring, suggestor: any PhotoMetadataSuggesting, lifecycle: CatalogLifecycleGate? = nil,
          currentContext: @escaping @MainActor () -> PhotoMetadataSelectionContext?,
          canModifyLibrary: @escaping @MainActor () -> Bool,
          protection: @escaping @MainActor () -> MetadataFileProtectionSnapshot,
          selectAsset: @escaping @MainActor (String) -> Void = { _ in },
          canResolveCatalog: @escaping @MainActor () -> Bool = { false },
+         coordinatedRecovery: @escaping @MainActor () -> Bool = { false },
+         comparisonLoader: (@MainActor (UUID, UUID) async throws -> CatalogMetadataConflictRecords)? = nil,
          catalogResolver: (@MainActor (MetadataCatalogResolutionOperation) async throws -> MetadataReconciliationResult)? = nil) {
+        self.lifecycle = lifecycle
         self.store = store; self.suggestor = suggestor; self.currentContext = currentContext
         self.canModifyLibrary = canModifyLibrary; self.protection = protection; self.selectAsset = selectAsset
+        self.coordinatedRecovery = coordinatedRecovery; self.comparisonLoader = comparisonLoader
         self.canResolveCatalog = canResolveCatalog; self.catalogResolver = catalogResolver
         synchronizeContext()
         if loadTask == nil { loadRecord() }
@@ -103,11 +112,13 @@ final class PhotoMetadataModel: ObservableObject {
 
     convenience init(store: any PhotoMetadataStoring, suggestor: any PhotoMetadataSuggesting,
                      library: LibraryModel, editor: EditingModel) {
-        self.init(store: store, suggestor: suggestor,
+        self.init(store: store, suggestor: suggestor, lifecycle: library.lifecycle,
             currentContext: { library.photoMetadataSelectionContext() }, canModifyLibrary: { library.canModify },
             protection: { library.photoMetadataFileProtection() }, selectAsset: { library.selectedID = $0 },
             canResolveCatalog: { library.canResolvePhotoMetadataCatalogChanges },
-            catalogResolver: { try await library.resolvePhotoMetadataCatalogChange($0) })
+            coordinatedRecovery: { library.hasCoordinatedRecovery },
+            comparisonLoader: { try await library.inspectCoordinatedMetadataConflict(coordinationID: $0, conflictID: $1) },
+            catalogResolver: { try await library.resolvePhotoMetadataCatalogChange($0, alreadyAccepted: true) })
         library.objectWillChange.sink { [weak self] in
             Task { @MainActor [weak self] in self?.synchronizeContext() }
         }.store(in: &subscriptions)
@@ -196,6 +207,8 @@ final class PhotoMetadataModel: ObservableObject {
         guard let context else {
             isLoading = false
             loadTask = Task { [weak self, store] in
+                do { try await self?.waitForStartup() }
+                catch { self?.errorMessage = Self.message(error); return }
                 let state = await store.searchState()
                 guard let self, self.loadID == id, !Task.isCancelled else { return }
                 if case .unavailable(_, let reason) = state {
@@ -208,12 +221,14 @@ final class PhotoMetadataModel: ObservableObject {
         isLoading = true
         loadTask = Task { [weak self, store] in
             do {
+                try await self?.waitForStartup()
                 let value = try await store.record(assetID: context.assetID)
                 guard let self, !Task.isCancelled, self.loadID == id else { return }
                 if let current = self.record, current.version.recordRevision > (value?.version.recordRevision ?? 0) {
                     self.storeReady = true; self.isLoading = false; return
                 }
                 self.record = value; self.storeReady = true; self.isLoading = false
+                if !self.manualDirty && !self.proposalDirty && !self.hasPendingRetry && self.recovery == nil { self.lastWriteFailed = false }
                 self.manualFields = value?.manualDraft?.fields ?? value?.confirmed ?? .empty
                 self.proposalFields = value?.draft?.fields ?? .empty
                 self.manualDirty = false; self.proposalDirty = false
@@ -249,9 +264,12 @@ final class PhotoMetadataModel: ObservableObject {
         // Admission happens synchronously while the library context authorizes
         // this exact asset. Selection/closing afterwards cannot cancel it.
         guard context == currentContext(), context.canModify, !context.isClosing else { return }
+        let admission: CatalogAcceptedWriteAdmission?
+        do { admission = try registerMetadataWrite() }
+        catch { errorMessage = Self.message(error); return }
         draftIntent = DraftIntent(context: context, fields: fields, generation: formGeneration, proposalID: proposalID,
             baseConfirmedRevision: record?.manualDraft?.baseConfirmedRevision ?? record?.confirmedRevision ?? 0,
-            version: record?.version ?? .absent)
+            version: record?.version ?? .absent, admission: admission)
         guard draftWriter == nil else { return }
         writerAssetID = context.assetID; writerProposalID = proposalID; updateSaving()
         draftWriter = Task { await self.drainDrafts() }
@@ -267,13 +285,14 @@ final class PhotoMetadataModel: ObservableObject {
             draftIntent = nil
             let header = MetadataCommandHeader(assetID: intent.context.assetID, expectedVersion: intent.version)
             do {
-                let result: MetadataCommitResult
-                if let proposalID = intent.proposalID {
-                    result = try await store.saveAIDraft(MetadataAIDraftOperation(header: header,
-                        mutation: .editExisting(draftID: proposalID, fields: intent.fields)))
-                } else {
-                    result = try await store.saveManualDraft(MetadataManualDraftOperation(header: header,
-                        mutation: .save(fields: intent.fields, baseConfirmedRevision: intent.baseConfirmedRevision)))
+                let result = try await execute(intent.admission) { [store] in
+                    if let proposalID = intent.proposalID {
+                        return try await store.saveAIDraft(MetadataAIDraftOperation(header: header,
+                            mutation: .editExisting(draftID: proposalID, fields: intent.fields)))
+                    } else {
+                        return try await store.saveManualDraft(MetadataManualDraftOperation(header: header,
+                            mutation: .save(fields: intent.fields, baseConfirmedRevision: intent.baseConfirmedRevision)))
+                    }
                 }
                 if let target = result.receipt.affected.first(where: { $0.assetID == intent.context.assetID })?.version,
                    var pending = draftIntent, pending.context.assetID == intent.context.assetID, pending.version == intent.version {
@@ -448,18 +467,21 @@ final class PhotoMetadataModel: ObservableObject {
     }
 
     private func accept(context: PhotoMetadataSelectionContext?,
-                        operation: @escaping @MainActor () async throws -> MetadataCommitResult) {
+                        operation: @escaping @MainActor @Sendable () async throws -> MetadataCommitResult) {
         guard acceptedAction == nil, draftWriter == nil, !hasPendingRetry, !isClosing, recovery == nil, canModifyLibrary() else { return }
         if let context { guard context == currentContext(), context.canModify, !context.isClosing else { return } }
         startAccepted(context: context, generation: formGeneration, operation: operation)
     }
 
     private func startAccepted(context: PhotoMetadataSelectionContext?, generation: UInt64,
-                               operation: @escaping @MainActor () async throws -> MetadataCommitResult) {
+                               operation: @escaping @MainActor @Sendable () async throws -> MetadataCommitResult) {
+        let admission: CatalogAcceptedWriteAdmission?
+        do { admission = try registerMetadataWrite() }
+        catch { errorMessage = Self.message(error); return }
         acceptedAction = Task {
             var success = false
             do {
-                let result = try await operation()
+                let result = try await execute(admission, operation: operation)
                 self.notice = "Bildinformationen gespeichert."
                 self.apply(result, context: context, generation: generation)
                 self.lastWriteFailed = false; self.acceptedRetry = nil; self.hasPendingRetry = false
@@ -528,11 +550,16 @@ final class PhotoMetadataModel: ObservableObject {
         needsLoadResumption = false
         Task { await refreshAvailability() }
     }
-    func finishSaving() async -> Bool {
+    func drainAcceptedWrites() async -> Bool {
         let drafted = await draftWriter?.value ?? true
         let accepted = await acceptedAction?.value ?? true
+        return drafted && accepted && recovery == nil && !hasPendingRetry && !lastWriteFailed && !manualDirty && !proposalDirty
+    }
+
+    func finishSaving() async -> Bool {
+        let accepted = await drainAcceptedWrites()
         let saved = await store.finishSaving()
-        return drafted && accepted && saved && recovery == nil && !hasPendingRetry && !lastWriteFailed && !manualDirty && !proposalDirty
+        return accepted && saved
     }
 
     func inspectImport(source: URL) {
@@ -573,12 +600,15 @@ final class PhotoMetadataModel: ObservableObject {
     func exportConfirmed(destination: URL) {
         guard canManage else { return }
         let protection = protection()
+        let admission: CatalogAcceptedWriteAdmission?
+        do { admission = try registerMetadataWrite() }
+        catch { errorMessage = Self.message(error); return }
         acceptedAction = Task {
             let accessed = destination.startAccessingSecurityScopedResource()
             defer { if accessed { destination.stopAccessingSecurityScopedResource() } }
             var success = false
             do {
-                let result = try await store.exportConfirmed(destination: destination, protection: protection)
+                let result = try await execute(admission) { [store] in try await store.exportConfirmed(destination: destination, protection: protection) }
                 notice = "\(result.entryCount) bestätigte Bildinformationen exportiert."
                 success = true
             } catch { errorMessage = Self.message(error) }
@@ -601,8 +631,15 @@ final class PhotoMetadataModel: ObservableObject {
         readAction?.cancel(); let id = UUID(); readActionID = id; catalogComparison = nil
         readAction = Task {
             do {
-                let old = try await store.record(assetID: conflict.oldAssetID)
-                let new = try await store.record(assetID: conflict.newAssetID)
+                let old: PhotoMetadataRecord?, new: PhotoMetadataRecord?
+                if coordinatedRecovery(), let comparisonLoader {
+                    let records = try await comparisonLoader(review.change.changeID, conflictID)
+                    guard records.receipt.changeID == review.change.changeID, records.conflict.id == conflictID else { throw PhotoMetadataError.revisionConflict }
+                    old = records.source; new = records.destination
+                } else {
+                    old = try await store.record(assetID: conflict.oldAssetID)
+                    new = try await store.record(assetID: conflict.newAssetID)
+                }
                 guard !Task.isCancelled, !isClosing, readActionID == id, catalogReview?.id == reviewID else { return }
                 guard (old?.version ?? .absent) == conflict.sourceVersion,
                       (new?.version ?? .absent) == conflict.destinationVersion else { throw PhotoMetadataError.revisionConflict }
@@ -622,6 +659,9 @@ final class PhotoMetadataModel: ObservableObject {
         guard let review = catalogReview, review.id == id, !isClosing, !isSaving, !hasPendingRetry,
               !manualDirty, !proposalDirty, canResolveCatalog(), let resolver = catalogResolver,
               assignments.isSubset(of: reviewedConflicts) else { return }
+        let admission: CatalogAcceptedWriteAdmission?
+        do { admission = coordinatedRecovery() ? nil : try registerMetadataWrite(domain: .catalog) }
+        catch { errorMessage = Self.message(error); return }
         catalogReview = nil; catalogComparison = nil
         acceptedAction = Task {
             let operation = await Task.detached {
@@ -635,7 +675,7 @@ final class PhotoMetadataModel: ObservableObject {
             }.value
             var success = false
             do {
-                let result = try await resolver(operation)
+                let result = try await execute(admission) { try await resolver(operation) }
                 if case .unavailable(_, let reason) = result.searchState {
                     notice = "Zuordnung abgeschlossen; Textsuche nicht verfügbar: " + Self.message(reason)
                 } else { notice = "Bildinformationen ausdrücklich zugeordnet oder getrennt erhalten." }
@@ -645,6 +685,20 @@ final class PhotoMetadataModel: ObservableObject {
             return success
         }
         updateSaving()
+    }
+
+    private func waitForStartup() async throws {
+        if let lifecycle, startup == nil { startup = try await lifecycle.waitForStartup() }
+    }
+    private func registerMetadataWrite(domain: CatalogWriterDomain = .photoMetadata) throws -> CatalogAcceptedWriteAdmission? {
+        guard let lifecycle else { return nil }
+        guard let startup else { throw ArtifactContractError.staleEpoch }
+        return try lifecycle.registerAcceptedWrite(domain: domain, session: startup)
+    }
+    private func execute<T: Sendable>(_ admission: CatalogAcceptedWriteAdmission?,
+        operation: @escaping @MainActor @Sendable () async throws -> T) async throws -> T {
+        if let lifecycle, let admission { return try await lifecycle.withAcceptedWrite(admission) { try await operation() } }
+        return try await operation()
     }
 
     static func message(_ error: Error) -> String {

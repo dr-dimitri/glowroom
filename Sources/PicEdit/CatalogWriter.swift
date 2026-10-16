@@ -26,6 +26,10 @@ struct CatalogWriteMetadata: Sendable {
 actor CatalogWriter {
     typealias FolderResolver = @Sendable (LibraryFolder) async -> (LibraryFolder, URL?)
     let repository: CatalogRepository
+    private let lifecycle: CatalogLifecycleGate?
+    private let coordinatorLoader: (@Sendable () async throws -> any CatalogMutationCoordinating)?
+    private let editingDependencies: (@Sendable () async throws -> EditingModelDependencies)?
+    private let verifier = AssetRemapVerifier()
     private let metadata: (any PhotoMetadataStoring)?
     private let sessionID: UUID
     private let resolver: FolderResolver
@@ -40,7 +44,11 @@ actor CatalogWriter {
 
     init(repository: CatalogRepository, metadataStore: (any PhotoMetadataStoring)? = nil,
          sessionID: UUID = UUID(), folderResolver: FolderResolver? = nil,
-         checkpoint: @escaping @Sendable (CatalogWriteCheckpoint) throws -> Void = { _ in }) {
+         checkpoint: @escaping @Sendable (CatalogWriteCheckpoint) throws -> Void = { _ in },
+         lifecycle: CatalogLifecycleGate? = nil,
+         coordinator: (@Sendable () async throws -> any CatalogMutationCoordinating)? = nil,
+         editingDependencies: (@Sendable () async throws -> EditingModelDependencies)? = nil) {
+        self.lifecycle = lifecycle; self.coordinatorLoader = coordinator; self.editingDependencies = editingDependencies
         self.repository = repository; metadata = metadataStore; self.sessionID = sessionID
         resolver = folderResolver ?? { await Self.resolve($0) }; self.checkpoint = checkpoint
     }
@@ -49,7 +57,9 @@ actor CatalogWriter {
         let scopes: [UUID: URL]
         let updated: Bool
         let metadata: CatalogWriteMetadata
+        var editingRemapped = false
     }
+    func recoveryCatalog() throws -> StoredLibraryCatalog { try repository.loadStored() }
     private func enter() async {
         if busy { await withCheckedContinuation { waiters.append($0) } }
         else { busy = true }
@@ -60,6 +70,10 @@ actor CatalogWriter {
     private var hasPendingChange: Bool { changes.contains { $0.state == .staged || $0.state == .conflicted } }
 
     func load() async throws -> LoadedCatalog {
+        if let lifecycle { return try await lifecycle.withRepositoryAccess(domain: .catalog) { try await self.loadImpl() } }
+        return try await loadImpl()
+    }
+    private func loadImpl() async throws -> LoadedCatalog {
         await enter(); defer { leave() }
         let stored = try repository.loadStored(); persisted = stored
         let resolved = await withTaskGroup(of: (Int, LibraryFolder, URL?).self) { group in
@@ -108,6 +122,9 @@ actor CatalogWriter {
                     if let record = try await metadata.record(assetID: old.id) { historical[old.id] = record }
                 }
             } catch { metadataError = Self.metadataError(error) }
+        }
+        if coordinatorLoader != nil, !movedAssets.isEmpty {
+            return try await loadCoordinated(stored: stored, resolvedCatalog: catalog, scopes: scopes, movedAssets: movedAssets)
         }
         let before = await snapshot(stored.catalog, reference: stored.reference)
         var reconciliation: MetadataReconciliationResult?
@@ -172,6 +189,10 @@ actor CatalogWriter {
     }
 
     func save(_ catalog: LibraryCatalog, revision: Int) async throws -> CatalogWriteMetadata {
+        if let lifecycle { return try await lifecycle.withRepositoryAccess(domain: .catalog) { try await self.saveImpl(catalog, revision: revision) } }
+        return try await saveImpl(catalog, revision: revision)
+    }
+    private func saveImpl(_ catalog: LibraryCatalog, revision: Int) async throws -> CatalogWriteMetadata {
         await enter(); defer { leave() }
         if revision <= lastRevision {
             return metadataResult(reference: persisted?.reference ?? .absent, reconciliation: nil, error: nil)
@@ -201,6 +222,10 @@ actor CatalogWriter {
     }
 
     func retryMetadataReconciliation() async throws -> CatalogWriteMetadata {
+        if let lifecycle { return try await lifecycle.withRepositoryAccess(domain: .catalog) { try await self.retryMetadataReconciliationImpl() } }
+        return try await retryMetadataReconciliationImpl()
+    }
+    private func retryMetadataReconciliationImpl() async throws -> CatalogWriteMetadata {
         await enter(); defer { leave() }
         let current = try repository.loadStored()
         // Retry repairs metadata only. It cannot rebase an older in-memory
@@ -216,6 +241,10 @@ actor CatalogWriter {
     }
 
     func resolve(_ operation: MetadataCatalogResolutionOperation) async throws -> CatalogWriteMetadata {
+        if let lifecycle { return try await lifecycle.withRepositoryAccess(domain: .catalog) { try await self.resolveImpl(operation) } }
+        return try await resolveImpl(operation)
+    }
+    private func resolveImpl(_ operation: MetadataCatalogResolutionOperation) async throws -> CatalogWriteMetadata {
         await enter(); defer { leave() }
         guard let metadata else { throw PhotoMetadataError.storageFailure }
         let current = try repository.loadStored()
@@ -255,5 +284,138 @@ actor CatalogWriter {
         if folder.subdirectoryPaths.isEmpty,
            let paths = try? await FolderScanner().scanSubdirectories(folder: folder), !paths.isEmpty { folder.subdirectoryPaths = paths }
         return (folder, scope)
+    }
+}
+
+extension CatalogWriter {
+    private func loadCoordinated(stored: StoredLibraryCatalog, resolvedCatalog: LibraryCatalog, scopes: [UUID: URL],
+        movedAssets: [(PhotoAsset, PhotoAsset, LibraryFolder, LibraryFolder, String)]) async throws -> LoadedCatalog {
+        guard let lifecycle, let coordinatorLoader, let editingDependencies else { throw CatalogCoordinationError.recoveryRequired }
+        let coordinator = try await coordinatorLoader()
+        let dependencies = try await editingDependencies()
+        let maintenance = try await lifecycle.promoteCurrentAcceptedWrite(to: .coordination(UUID()))
+        do {
+            let result = try await lifecycle.withMaintenance(maintenance) {
+                try await self.finishCoordinatedMoves(stored: stored, resolvedCatalog: resolvedCatalog, scopes: scopes,
+                    movedAssets: movedAssets, dependencies: dependencies, coordinator: coordinator, maintenance: maintenance)
+            }
+            try await lifecycle.finishMaintenance(maintenance)
+            return result
+        } catch {
+            // The gate itself refuses to unlock any still-armed durable work.
+            // A failed observer cannot release that recovery fence.
+            try? await lifecycle.finishMaintenance(maintenance)
+            throw error
+        }
+    }
+    private func finishCoordinatedMoves(stored: StoredLibraryCatalog, resolvedCatalog: LibraryCatalog, scopes: [UUID: URL],
+        movedAssets: [(PhotoAsset, PhotoAsset, LibraryFolder, LibraryFolder, String)],
+        dependencies: EditingModelDependencies, coordinator: any CatalogMutationCoordinating,
+        maintenance: CatalogMaintenanceAdmission) async throws -> LoadedCatalog {
+        var current = stored
+        var latest: MetadataReconciliationResult?
+        var editingRemapped = false
+        let folderIDs = Set(movedAssets.map { $0.2.id }).sorted { $0.uuidString < $1.uuidString }
+        for folderID in folderIDs {
+            let moves = movedAssets.filter { $0.2.id == folderID }
+            guard let first = moves.first, let bookmark = first.2.bookmarkData else { throw ArtifactContractError.sourceChanged }
+            var after = current.catalog
+            if let index = after.folders.firstIndex(where: { $0.id == folderID }) { after.folders[index] = first.3 }
+            let byOld = Dictionary(uniqueKeysWithValues: moves.map { ($0.0.id, $0.1) })
+            for index in after.assets.indices { if let replacement = byOld[after.assets[index].id] { after.assets[index] = replacement } }
+            let prepared = try repository.prepare(after)
+            let operationID = UUID()
+            let payload = CatalogPreparedPayloadIdentity(operationID: operationID, rootOwnerID: try repository.coordinationRootIdentity(),
+                before: current.reference, after: prepared.reference)
+            let state = try await dependencies.database.loadState()
+            var editingEntries: [OriginalAssetRemapEntry] = []
+            var expectedEditing: [String: EditingExpectedState] = [:]
+            var metadataMoves: [MetadataRelocation] = []
+            var expectedMetadata: [String: MetadataRecordVersion] = [:]
+            for (old, new, oldFolder, newFolder, relative) in moves {
+                let variants = try await dependencies.database.variants(for: old.id)
+                if state.byAsset[old.id] != nil || !variants.isEmpty {
+                    var original: OriginalSourceFingerprint?
+                    let snapshots = state.byAsset[old.id].map { [$0.snapshot] } ?? []
+                    if let artifacts = dependencies.artifacts {
+                        for snapshot in snapshots + variants.map(\.snapshot) {
+                            if case .artifact(let id) = snapshot.source,
+                               let found = try await historicalOriginal(id, path: old.fileURL.standardizedFileURL.path, store: artifacts) {
+                                original = found; break
+                            }
+                        }
+                    }
+                    // A reachable old file is independent native evidence. A
+                    // missing legacy path with no historical proof is a conflict.
+                    if original == nil { original = try? AssetRemapVerifier.capture(old.fileURL, referenceDate: old.modifiedAt) }
+                    guard let original else { throw ArtifactContractError.sourceChanged }
+                    let relocated = try AssetRemapVerifier.capture(new.fileURL, referenceDate: new.modifiedAt)
+                    editingEntries.append(.init(oldAssetID: old.id, newAssetID: new.id, relativePath: relative,
+                        previous: original, relocated: relocated))
+                    for id in [old.id, new.id] {
+                        expectedEditing[id] = try state.byAsset[id].map { EditingExpectedState($0) }
+                            ?? EditingExpectedState(storeEpoch: state.storeEpoch, revision: state.tombstones[id], snapshot: nil)
+                    }
+                }
+                if let metadata {
+                    let oldRecord = try await metadata.record(assetID: old.id), newRecord = try await metadata.record(assetID: new.id)
+                    let previous = oldRecord?.associationSource ?? oldRecord?.confirmedSource ?? oldRecord?.draft?.source ?? MetadataCatalogSources.source(old)
+                    let fresh = MetadataCatalogSources.source(new)
+                    metadataMoves.append(.init(oldAssetID: old.id, newAssetID: new.id, oldSource: previous, newSource: fresh,
+                        proof: .init(folderID: folderID, bookmarkSHA256: Self.digest(oldFolder.bookmarkData ?? Data()),
+                            oldRoot: oldFolder.url, newRoot: newFolder.url, relativePath: relative,
+                            verification: MetadataCatalogSources.verification(before: previous, after: fresh))))
+                    expectedMetadata[old.id] = oldRecord?.version ?? .absent
+                    expectedMetadata[new.id] = newRecord?.version ?? .absent
+                }
+            }
+            let editing: VerifiedAssetRemap?
+            if editingEntries.isEmpty { editing = nil }
+            else {
+                let proposal = try AssetRemapProposal(operationID: .init(rawValue: operationID), catalog: payload,
+                    folderID: folderID, bookmarkSHA256: .init(sha256: Self.digest(bookmark)), bookmarkData: bookmark,
+                    resolvedFolderURL: first.3.url, catalogSessionID: sessionID, catalogGeneration: UInt64(generation),
+                    expectedStoreEpoch: state.storeEpoch, expectedByAsset: expectedEditing, entries: editingEntries, resolvedBookmarkData: first.3.bookmarkData)
+                editing = try await verifier.verify(proposal)
+            }
+            let command = metadata.map { _ in MetadataCatalogChange(id: operationID, before: current.reference, after: prepared.reference,
+                relocations: metadataMoves, expectedRecords: expectedMetadata.keys.sorted().map { .init(assetID: $0, version: expectedMetadata[$0]!) }) }
+            if editing == nil && command == nil {
+                let stage = try repository.stage(prepared)
+                defer { repository.discard(stage) }
+                try repository.publish(stage, expected: current.reference)
+                current = try repository.loadStored(); persisted = current
+                continue
+            }
+            var participant: CatalogParticipantPreparation?
+            do {
+                let preparation = try await coordinator.prepare(catalog: prepared, expected: current.reference,
+                    editing: editing, metadata: command, maintenance: maintenance)
+                participant = preparation
+                let armed = try await coordinator.arm(preparation)
+                let outcome = try await coordinator.finish(armed)
+                guard outcome.disposition == .completed else { throw CatalogCoordinationError.recoveryRequired }
+                editingRemapped = editingRemapped || outcome.editing != nil
+                latest = outcome.metadata
+                if let latest { changes = latest.changes }
+                current = try repository.loadStored(); persisted = current
+            } catch {
+                if let participant { _ = try? await coordinator.abort(participant) }
+                throw error
+            }
+        }
+        return LoadedCatalog(catalog: current.catalog, scopes: scopes, updated: false,
+            metadata: metadataResult(reference: current.reference, reconciliation: latest, error: nil), editingRemapped: editingRemapped)
+    }
+    private func historicalOriginal(_ id: GeneratedArtifactID, path: String, store: any GeneratedArtifactStoring) async throws -> OriginalSourceFingerprint? {
+        var next = id, seen = Set<GeneratedArtifactID>()
+        while seen.count < 128, seen.insert(next).inserted {
+            let artifact = try await store.descriptor(next)
+            switch artifact.provenance.parentSource {
+            case .original(let value): return value.standardizedPath == path ? value : nil
+            case .artifact(let value): next = value.artifactID
+            }
+        }
+        throw ArtifactContractError.corruptArtifact
     }
 }

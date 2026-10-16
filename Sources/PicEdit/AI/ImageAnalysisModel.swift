@@ -23,7 +23,8 @@ final class ImageAnalysisModel: ObservableObject {
     @Published private(set) var result: ImageAnalysisResult?
 
     private let service: any ImageAnalysisServing
-    private let snapshot: @MainActor () -> AIEditingSnapshot?
+    private let snapshot: @MainActor (ImageAnalysisInputKind) -> AIEditingSnapshot?
+    private var snapshotByKind: (@MainActor (ImageAnalysisInputKind) -> AIEditingSnapshot?)?
     private let commitInput: @MainActor () -> Void
     private var lifecycleID = UUID()
     private var request: ImageAnalysisRequest?
@@ -35,18 +36,22 @@ final class ImageAnalysisModel: ObservableObject {
          snapshot: @escaping @MainActor () -> AIEditingSnapshot?,
          commitInput: @escaping @MainActor () -> Void = {}) {
         self.service = service
-        self.snapshot = snapshot
+        self.snapshot = { _ in snapshot() }
         self.commitInput = commitInput
     }
 
     convenience init(service: any ImageAnalysisServing, editor: EditingModel, library: LibraryModel) {
         self.init(service: service, snapshot: { [weak editor, weak library] in
             guard let editor, let library else { return nil }
-            return editor.aiSnapshot(in: library)
+            return editor.aiSnapshot(in: library, intent: .importedOriginal)
         }, commitInput: { [weak editor, weak library] in
             NSApp?.keyWindow?.makeFirstResponder(nil)
             if let assetID = library?.selectedID { editor?.endEditing(assetID: assetID) }
         })
+        self.snapshotByKind = { [weak editor, weak library] kind in
+            guard let editor, let library else { return nil }
+            return editor.aiSnapshot(in: library, intent: kind == .originalPreview ? .importedOriginal : .currentEditing)
+        }
         // Epoch checks are deferred until @Published's complete mutation has
         // finished. Manual settings changes leave original analysis current.
         editor.objectWillChange.merge(with: library.objectWillChange).sink { [weak self] in
@@ -62,9 +67,9 @@ final class ImageAnalysisModel: ObservableObject {
 
     deinit { task?.cancel() }
 
-    var canAnalyze: Bool { state != .analyzing && availability == .available && snapshot() != nil }
+    var canAnalyze: Bool { state != .analyzing && availability == .available && currentSnapshot() != nil }
     var executionLocation: String { service.descriptor.executionLocation }
-    var contextAvailable: Bool { snapshot() != nil }
+    var contextAvailable: Bool { currentSnapshot() != nil }
 
     func refreshAvailability() async {
         let checkID = UUID()
@@ -80,7 +85,7 @@ final class ImageAnalysisModel: ObservableObject {
         if inputKind == .editedPreview { commitInput() }
         discard()
         guard availability == .available else { return }
-        guard let current = snapshot() else {
+        guard let current = currentSnapshot() else {
             state = .failed("Die Bildanalyse ist während Laden, Sicherung, Wiederherstellung oder Schließen nicht verfügbar.")
             return
         }
@@ -138,8 +143,13 @@ final class ImageAnalysisModel: ObservableObject {
     }
 
     private func isCurrent(_ request: ImageAnalysisRequest) -> Bool {
-        guard let current = snapshot() else { return false }
+        guard let current = currentSnapshot() else { return false }
         return request.matches(current: current, lifecycleID: lifecycleID)
+    }
+
+    private func currentSnapshot() -> AIEditingSnapshot? {
+        if let snapshotByKind { return snapshotByKind(inputKind) }
+        return snapshot(inputKind)
     }
 
     private var restingState: State {

@@ -198,7 +198,7 @@ final class AIAssistantModelTests {
         assistant.generate()
         try await wait { if case .failed = assistant.state { return true }; return false }
         #expect(await provider.startedCalls == 2)
-        let readOnly = EditingModel(database: AssistantEditStore(failLoad: true))
+        let readOnly = EditingModel(database: LegacySnapshotTestAdapter(AssistantEditStore(failLoad: true)))
         try await wait { !readOnly.isLoading }
         let locked = AIAssistantModel(provider: provider, coordinator: AIRequestCoordinator(provider: provider),
                                       editor: readOnly, library: library)
@@ -259,7 +259,7 @@ final class AIAssistantModelTests {
         try repository.save(LibraryCatalog(folders: [folder], assets: assets))
         let library = LibraryModel(repository: repository)
         let store = AssistantEditStore()
-        let editor = EditingModel(database: store)
+        let editor = EditingModel(database: LegacySnapshotTestAdapter(store))
         try await wait { !library.isLoading && !library.isProjecting && !editor.isLoading }
         library.selectedID = assets[0].id
         library.isDeveloping = true
@@ -311,7 +311,7 @@ private actor AssistantProvider: AIEditingProvider {
     }
 }
 
-private actor AssistantEditStore: EditingPersistence {
+private actor AssistantEditStore: LegacySnapshotTestStore {
     private var values: [String: EditSettings] = [:]
     private var revisionsByAsset: [String: Int64] = [:]
     private let failLoad: Bool

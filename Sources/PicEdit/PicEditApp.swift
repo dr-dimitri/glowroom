@@ -13,6 +13,7 @@ struct PicEditApp: App {
     @StateObject private var photoMetadata: PhotoMetadataModel
     @StateObject private var exporter = JPEGExportModel()
     private let dataDirectory: URL
+    private let artifactBootstrap: ArtifactAppBootstrap
 
     init() {
         let args = ProcessInfo.processInfo.arguments
@@ -23,9 +24,16 @@ struct PicEditApp: App {
         let repository = CatalogRepository(directory: directory)
         dataDirectory = repository.directory
         let semantic = try? SemanticSearchService(directory: repository.directory)
-        let metadataStore = PhotoMetadataRepository(directory: repository.directory)
-        let library = LibraryModel(repository: repository, semanticSearch: semantic, metadataStore: metadataStore)
-        let editor = EditingModel(directory: repository.directory)
+        let bootstrap = ArtifactAppBootstrap(directory: repository.directory)
+        artifactBootstrap = bootstrap
+        let metadataStore = bootstrap.metadata
+        let library = LibraryModel(repository: repository, semanticSearch: semantic, metadataStore: metadataStore,
+            lifecycle: bootstrap.gate, coordinator: { try await bootstrap.coordinator() },
+            editingDependencies: { try await bootstrap.editingDependencies() })
+        let editor = EditingModel(directory: repository.directory, loader: { try await bootstrap.editingDependencies() })
+        editor.library = library
+        library.synchronizeEditing = { [weak editor] in try await editor?.reloadAfterCatalogChange() }
+        library.invalidateEditingSources = { [weak editor] in editor?.invalidateSourcesForCoordination() }
         let provider = LocalAIEditingProviderFactory.makeProvider()
         let coordinator = AIRequestCoordinator(provider: provider)
         _library = StateObject(wrappedValue: library)
@@ -68,6 +76,9 @@ struct PicEditApp: App {
                     if let review = photoMetadata.catalogReview {
                         PhotoMetadataCatalogReviewPresenter(model: photoMetadata, review: review).id(review.id)
                     }
+                }
+                .onChange(of: library.isRetryingCoordination) { _, retrying in
+                    if !retrying, library.coordinationError == nil { editor.retryLoading(); photoMetadata.retryLoading() }
                 }
                 .onAppear { delegate.photoMetadata = photoMetadata; delegate.library = library; delegate.editor = editor; delegate.exporter = exporter; delegate.aiSettings = aiSettings; NSApp.setActivationPolicy(.regular); NSApp.activate(ignoringOtherApps: true) }
         }
@@ -113,7 +124,7 @@ struct PicEditApp: App {
                     library.showsDetail = true
                     library.showsInspector = true
                 }.keyboardShortcut("d", modifiers: .command).disabled(library.selectedAsset == nil || editor.isLoading)
-                Button(library.comparesOriginal ? "Bearbeitung anzeigen" : "Vorher anzeigen") { library.comparesOriginal.toggle() }
+                Button(library.comparesOriginal ? "Bearbeitung anzeigen" : "Importiertes Original anzeigen") { library.comparesOriginal.toggle() }
                     .disabled(!library.isDeveloping || library.selectedAsset == nil)
                 Divider()
                 Button("Bearbeitung rückgängig") { if let id = library.selectedID { editor.undo(assetID: id) } }
@@ -207,12 +218,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         editor?.beginTermination()
         Task {
             let success = await Self.finishSaving(catalog: {
-                await library.finishSaving()
+                await library.drainAcceptedCatalogOperations()
+                return true
             }, edits: { [editor] in
-                guard let editor, !(editor.isReadOnly && !editor.hasPendingChanges) else { return true }
-                return await editor.flush()
+                guard let editor else { return true }
+                return await editor.finishSaving()
             }, metadata: { [photoMetadata] in
-                await photoMetadata?.finishSaving() ?? true
+                await photoMetadata?.drainAcceptedWrites() ?? true
+            }, finalize: { [photoMetadata] in
+                // No editor auto-maintenance remains now. Only real dirty
+                // catalog retries and final metadata validation register anew.
+                async let catalogSaved = library.finishSaving()
+                async let metadataSaved = photoMetadata?.finishSaving() ?? true
+                let saved = await (catalogSaved, metadataSaved)
+                return saved.0 && saved.1
             })
             if success { sender.reply(toApplicationShouldTerminate: true) }
             else {
@@ -231,14 +250,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     static func finishSaving(catalog: @escaping @MainActor @Sendable () async -> Bool,
                              edits: @escaping @MainActor @Sendable () async -> Bool,
-                             metadata: @escaping @MainActor @Sendable () async -> Bool = { true }) async -> Bool {
-        // Catalog, edits and photo metadata own different files and serialize
-        // their own mutations. Drain all three concurrently and await every result
-        // before allowing termination, even when one store reports a failure.
+                             metadata: @escaping @MainActor @Sendable () async -> Bool = { true },
+                             finalize: @escaping @MainActor @Sendable () async -> Bool = { true }) async -> Bool {
+        // Accepted catalog/metadata work must progress while the editor's
+        // automatic backup drains their registrations. New finalization writes
+        // depend on the real end of that shared-gate maintenance and run later.
         async let catalogSaved = catalog()
         async let editsSaved = edits()
         async let metadataSaved = metadata()
         let results = await (catalogSaved, editsSaved, metadataSaved)
-        return results.0 && results.1 && results.2
+        let finalized = await finalize()
+        return results.0 && results.1 && results.2 && finalized
     }
 }

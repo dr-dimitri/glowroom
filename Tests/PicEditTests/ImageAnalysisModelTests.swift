@@ -238,7 +238,7 @@ final class ImageAnalysisModelTests {
         try repository.save(LibraryCatalog(folders: [folder], assets: assets))
         let library = LibraryModel(repository: repository)
         let store = AnalysisUIEditStore(initial: [assets[0].id: EditSettings(exposure: 0.4, saturation: 10)])
-        let editor = EditingModel(database: store)
+        let editor = EditingModel(database: LegacySnapshotTestAdapter(store))
         try await wait { !library.isLoading && !library.isProjecting && !editor.isLoading }
         library.selectedID = assets[0].id
         library.isDeveloping = true
@@ -289,7 +289,7 @@ private actor AnalysisUIService: ImageAnalysisServing {
     func fail(_ id: UUID, error: Error) { pending.removeValue(forKey: id)?.1.resume(throwing: error) }
 }
 
-private actor AnalysisUIEditStore: EditingPersistence {
+private actor AnalysisUIEditStore: LegacySnapshotTestStore {
     private var values: [String: EditSettings]
     private let initial: [String: EditSettings]
     private var revisionsByAsset: [String: Int64] = [:]

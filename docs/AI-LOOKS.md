@@ -6,7 +6,7 @@
 
 **Drei Looks erstellen** fordert gemeinsam die Stile „Natürlich“, „Kontrastreich“ und „Entsättigt“ an. Ein zusätzlicher Wunsch ist optional und auf 2048 UTF-8-Bytes begrenzt. Die drei gleichartigen Karten bleiben in dieser Reihenfolge. Ihre Auswahl ändert ausschließlich die unverbindliche Hauptvorschau. Alle Reglerangaben und Deltas werden aus Ausgang und validiertem Ziel berechnet; Varianten bauen nicht aufeinander auf.
 
-Der Vergleich mit der aktuellen Bearbeitung sowie **Vorher anzeigen** für das Original ohne Regler bleiben erreichbar. Ein Auswahlwechsel ruft das Modell nicht erneut auf und speichert nichts. **Übernehmen** konsumiert die ganze Vorschlagsgruppe und übernimmt die ausgewählte Variante als einen Undo-Schritt. **Verwerfen**, Bild-/Reglerwechsel, Undo/Redo, Wartung/Restore und Schließen entwerten alle drei Varianten und geben die gruppeneigenen Bildreferenzen frei. Raster, Filmstreifen und JPEG-Export verwenden bis zur Übernahme weiterhin die übernommenen Werte.
+Der Vergleich mit der aktuellen Bearbeitung sowie **Importiertes Original anzeigen** und **Aktuelle Quelle ohne Regler** bleiben erreichbar. Die beiden Quellenvergleiche zeigen das importierte Original beziehungsweise die aktive Bildbasis ohne zusätzliche Regler. Ein Auswahlwechsel ruft das Modell nicht erneut auf und speichert nichts. **Übernehmen** konsumiert die ganze Vorschlagsgruppe und übernimmt die ausgewählte Variante als einen Undo-Schritt. **Verwerfen**, Bild-/Reglerwechsel, Undo/Redo, Wartung/Restore und Schließen entwerten alle drei Varianten und geben die gruppeneigenen Bildreferenzen frei. Raster, Filmstreifen und JPEG-Export verwenden bis zur Übernahme weiterhin die übernommenen Werte.
 
 ## Gemeinsamer Vertrag und Grenzen
 

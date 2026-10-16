@@ -18,7 +18,7 @@ actor AdjustedPreviewPipeline {
     }
 
     private struct Key: Hashable {
-        let sourceURL: URL
+        let sourceIdentity: AISourceIdentity
         let modifiedAt: Date
         let fileSize: Int64
         let allowsEmbeddedPreview: Bool
@@ -33,7 +33,7 @@ actor AdjustedPreviewPipeline {
              outputWidth: Int, outputHeight: Int) {
             // Once the actual source raster is known, the decoder's requested
             // size is not render identity. Cards and thumbnails can share it.
-            sourceURL = request.url
+            sourceIdentity = request.source
             modifiedAt = request.modifiedAt
             fileSize = request.fileSize
             allowsEmbeddedPreview = request.allowsEmbeddedPreview
@@ -183,8 +183,19 @@ actor AdjustedPreviewPipeline {
                     try Task.checkCancellation()
                     // Downsample the shared developed source, never a camera
                     // thumbnail. It occupies this same bounded worker/CI lane.
+                    var phase: ArtifactResourceLease?
+                    if let resources = source.resourceOwner {
+                        phase = try await resources.acquire(kind: .codec,
+                            bytes: Int64(source.byteCost) * 4 + Int64(outputWidth) * Int64(outputHeight) * 32,
+                            priority: priority == .selected ? .interactive : .background,
+                            retaining: source.memoryOwnership.map { [$0] } ?? [])
+                    }
                     let input = try EditRenderer.resized(source, width: outputWidth, height: outputHeight, priority: priority)
-                    let bitmap = settings.isNeutral ? input : try renderer(input, settings, priority)
+                    var bitmap = settings.isNeutral ? input : try renderer(input, settings, priority)
+                    if let resources = source.resourceOwner, let phase {
+                        let memory = try await resources.retain(bytes: Int64(bitmap.byteCost) * 2, from: phase)
+                        bitmap = try bitmap.retainingArtifactMemory(memory, owner: resources)
+                    }
                     try Task.checkCancellation()
                     result = .success(bitmap)
                 } catch {
@@ -206,6 +217,18 @@ actor AdjustedPreviewPipeline {
         }
         running.removeValue(forKey: jobID)
         startNext()
+    }
+
+    func retireArtifactCaches() {
+        // Only bounded cache references retire. Views and in-flight native
+        // renders continue to retain their actual provider memory reservations.
+        let obsolete = cache.keys.filter { key in
+            if case .artifact = key.sourceIdentity { return true }
+            return false
+        }
+        for key in obsolete {
+            if let entry = cache.removeValue(forKey: key) { bytes -= entry.bitmap.byteCost }
+        }
     }
 
     private func insert(_ bitmap: PreviewBitmap, for key: Key) {

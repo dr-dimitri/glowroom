@@ -12,8 +12,9 @@ struct PhotoMetadataRepositoryHooks: Sendable {
 /// Durable editorial metadata only. This actor serializes short accepted SQL
 /// writes; independently prepared image analysis/catalog work remains outside it.
 /// No file I/O occurs in init, so one shared instance can be composed on MainActor.
-public actor PhotoMetadataRepository: PhotoMetadataStoring {
+public actor PhotoMetadataRepository: CoordinatedPhotoMetadataStoring {
     public nonisolated let fileURL: URL
+    let lifecycleGate:CatalogLifecycleGate?
     let sql: PhotoMetadataSQLite
     let hooks: PhotoMetadataRepositoryHooks
     let session = UUID()
@@ -26,34 +27,36 @@ public actor PhotoMetadataRepository: PhotoMetadataStoring {
     var snapshotAttemptedGeneration: Int64?
     var observers: [UUID:AsyncStream<PhotoMetadataSearchState>.Continuation] = [:]
     var retainedReview: PhotoMetadataRetainedReview?
-    public init(directory:URL) {
+    public init(directory:URL,gate:CatalogLifecycleGate? = nil) {
+        lifecycleGate = gate
         sql = PhotoMetadataSQLite(directory:directory); fileURL = sql.fileURL
         hooks = .init(); state = .loading(version:.initial)
     }
     init(directory:URL,hooks:PhotoMetadataRepositoryHooks) {
+        lifecycleGate = nil
         sql = PhotoMetadataSQLite(directory:directory); fileURL = sql.fileURL
         self.hooks = hooks; state = .loading(version:.initial)
     }
-    public func record(assetID:String) throws -> PhotoMetadataRecord? {
+    func _metadata_record(assetID:String) throws -> PhotoMetadataRecord? {
         try PhotoMetadataValidation.identifier(assetID)
         let db = try connection(); return try readRow(assetID,on:db)?.value
     }
-    public func searchState() -> PhotoMetadataSearchState {
+    func _metadata_searchState() -> PhotoMetadataSearchState {
         do {
             let db = try connection()
             if !loaded || state.version.generation != UInt64(searchGeneration) { refreshSearch(db) }
         } catch { publishUnavailable(error) }
         return state
     }
-    public func updates() -> AsyncStream<PhotoMetadataSearchState> {
-        let id = UUID(), initial = searchState()
+    func _metadata_updates() -> AsyncStream<PhotoMetadataSearchState> {
+        let id = UUID(), initial = _metadata_searchState()
         return AsyncStream(bufferingPolicy:.bufferingNewest(1)) { continuation in
             observers[id] = continuation; continuation.yield(initial)
             continuation.onTermination = { [weak self] _ in Task { await self?.removeObserver(id) } }
         }
     }
     func removeObserver(_ id:UUID) { observers.removeValue(forKey:id) }
-    public func finishSaving() -> Bool {
+    func _metadata_finishSaving() -> Bool {
         // UI owns and drains accepted Tasks before calling this barrier. Actor
         // transactions themselves never suspend and cannot remain half-finished.
         do { _ = try connection(); return true } catch { publishUnavailable(error); return false }
@@ -99,6 +102,14 @@ public actor PhotoMetadataRepository: PhotoMetadataStoring {
             if [.staged,.conflicted].contains(journal.receipt.state) { pending += 1 }
         }
         guard pending <= 1 else { throw PhotoMetadataError.corruptStore }
+        if try PhotoMetadataSQLite.version(db) == 2 {
+            _ = try metadataIdentity(db)
+            try PhotoMetadataSQLite.rows(db,"SELECT c.id,c.coordinator_sha,j.id FROM metadata_coordinations c LEFT JOIN metadata_catalog_changes j ON j.id=c.id") {s in
+                let id = try PhotoMetadataSQLite.text(s,0,maximum:36),sha = try PhotoMetadataSQLite.text(s,1,maximum:64)
+                guard let uuid = UUID(uuidString:id),id == uuid.uuidString.lowercased(),PhotoMetadataValidation.digest(sha),
+                      try PhotoMetadataSQLite.text(s,2,maximum:36) == id else {throw PhotoMetadataError.corruptStore}
+            }
+        }
     }
     func readRow(_ id:String,on db:OpaquePointer) throws -> PhotoMetadataRow? {
         try PhotoMetadataSQLite.statement(db,"SELECT record FROM metadata_records WHERE asset_id=?") { s in
@@ -244,7 +255,7 @@ public actor PhotoMetadataRepository: PhotoMetadataStoring {
         do { current = try readRow(assetID,on:db)?.value } catch { publishUnavailable(error) }
         return .init(receipt:result,currentRecord:current,searchState:state)
     }
-    public func saveManualDraft(_ operation:MetadataManualDraftOperation) throws -> MetadataCommitResult {
+    func _metadata_saveManualDraft(_ operation:MetadataManualDraftOperation) throws -> MetadataCommitResult {
         let mutation:MetadataManualDraftMutation
         switch operation.mutation {
         case .save(let fields,let base): mutation = .save(fields:try PhotoTextNormalization.normalize(fields),baseConfirmedRevision:base)
@@ -262,7 +273,7 @@ public actor PhotoMetadataRepository: PhotoMetadataStoring {
             }
         }
     }
-    public func saveAIDraft(_ operation:MetadataAIDraftOperation) throws -> MetadataCommitResult {
+    func _metadata_saveAIDraft(_ operation:MetadataAIDraftOperation) throws -> MetadataCommitResult {
         let mutation:MetadataAIDraftMutation
         switch operation.mutation {
         case .createSuggested(let id,let fields,let source):
@@ -291,7 +302,7 @@ public actor PhotoMetadataRepository: PhotoMetadataStoring {
             }
         }
     }
-    public func setDraftState(_ operation:MetadataDraftStateOperation) throws -> MetadataCommitResult {
+    func _metadata_setDraftState(_ operation:MetadataDraftStateOperation) throws -> MetadataCommitResult {
         try perform(id:operation.header.id,assetID:operation.header.assetID,expected:operation.header.expectedVersion,
             kind:"draftState",payload:operation,searchable:false) { row,_ in
             guard let draft = row.draft, draft.id == operation.draftID, draft.revision == operation.expectedDraftRevision,
@@ -301,7 +312,7 @@ public actor PhotoMetadataRepository: PhotoMetadataStoring {
                 fields:draft.fields,source:draft.source,state:.rejected,createdAt:draft.createdAt,modifiedAt:Date(),editedFields:draft.editedFields)
         }
     }
-    public func confirm(_ operation:MetadataConfirmOperation) throws -> MetadataCommitResult {
+    func _metadata_confirm(_ operation:MetadataConfirmOperation) throws -> MetadataCommitResult {
         guard !operation.fields.isEmpty else { throw PhotoMetadataError.validation(.invalidFieldSelection) }
         let fields = try PhotoTextNormalization.normalize(operation.values)
         try PhotoMetadataValidation.source(operation.source)
