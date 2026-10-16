@@ -1,5 +1,7 @@
 # JPEG-Export
 
+Eine unverbindliche KI-Vorschau ist kein übernommener Bearbeitungsstand. Der Exportdialog erfasst weiterhin ausschließlich `EditingModel.settings(for:)`; erst nach „Übernehmen“ fließen die vorgeschlagenen Regler in einen neu geöffneten Export ein. Der Originalvergleich und der Vergleich mit dem KI-Ausgangsstand ändern die Exportquelle nicht.
+
 Der Dialog orientiert sich an den Bereichen Speicherort, Dateieinstellungen und Bildgröße des [Lightroom-Exportdialogs](https://helpx.adobe.com/lightroom-classic/desktop/export-photos/export-files-disk-or-cd.html). Er exportiert die ausgewählten Fotos mit den beim Öffnen erfassten Bearbeitungsständen. Raster, Einzelansicht und Filmstreifen bieten den Export im Kontextmenü an. Ein Kontextklick auf ein ausgewähltes Bild verwendet die bestehende Auswahl; ein nicht ausgewähltes Bild wird einzeln ausgewählt und exportiert.
 
 ## Verarbeitung

@@ -1,6 +1,6 @@
 # KI-Verträge und sichere Vorschläge
 
-Die Grundlage aus [Issue #2](https://github.com/dr-dimitri/picedit/issues/2) trennt Modellantworten, vorläufige Vorschläge und angenommene Bearbeitungen. Sie enthält noch keinen echten Modellprovider, keine Cloudanbindung und keine neue Bedienoberfläche. PicEdit benötigt dafür weder Zugangsdaten noch neue Pakete oder Apple Intelligence; das Deploymentziel bleibt macOS 14 und das Paket bei Swift tools 5.9. Die automatisierten Tests verwenden wie bisher Swift Testing mit Swift 6 oder neuer.
+Die Grundlage aus [Issue #2](https://github.com/dr-dimitri/picedit/issues/2) trennt Modellantworten, vorläufige Vorschläge und angenommene Bearbeitungen. Der darauf aufbauende [lokale Textprovider und Entwicklungsassistent](LOCAL-AI-ASSISTANT.md) verwendet diese Verträge und den vorhandenen Speicher-/Renderpfad. Die Grundlage selbst benötigt weder Zugangsdaten noch neue Pakete oder Apple Intelligence; das Deploymentziel bleibt macOS 14 und das Paket bei Swift tools 5.9. Die automatisierten Tests verwenden wie bisher Swift Testing mit Swift 6 oder neuer.
 
 ## Datenfluss und Verantwortlichkeiten
 
@@ -10,7 +10,7 @@ Die Grundlage aus [Issue #2](https://github.com/dr-dimitri/picedit/issues/2) tre
 2. Ein `AIEditingRequest` verbindet diesen Snapshot mit einer appseitigen Auftrags-ID und der Benutzeranweisung. Modelltexte erzeugen oder ersetzen diese Identität nicht.
 3. Der injizierte `AIEditingProvider` meldet Verfügbarkeit und ausdrücklich getrennte Fähigkeiten für Textbearbeitung, Bildverständnis und Bildgenerierung. Die Auftragssteuerung startet nur eine unterstützte und verfügbare Textbearbeitungsaufgabe.
 4. `EditProposalValidator` prüft die Antwort vollständig. Ein gültiger Patch ergibt einen vorläufigen Zielstand, ein leerer oder wirkungsloser Patch das Ergebnis `noChange`. Bis zu einer bewussten Übernahme ändern sich weder Regler, Undo noch Datenbank.
-5. Vor einer späteren Vorschauveröffentlichung und unmittelbar vor der Übernahme wird der Snapshot erneut gegen die App geprüft. Eine erfolgreiche Übernahme verwendet den normalen Bearbeitungspfad genau einmal. Die bereits angenommene Speicherung gehört anschließend dem vorhandenen `EditingModel` und ist unabhängig von einem Abbruch der KI-Anfrage.
+5. Vor der Vorschauveröffentlichung und unmittelbar vor der Übernahme wird der Snapshot erneut gegen die App geprüft. Eine erfolgreiche Übernahme verwendet den normalen Bearbeitungspfad genau einmal. Die bereits angenommene Speicherung gehört anschließend dem vorhandenen `EditingModel` und ist unabhängig von einem Abbruch der KI-Anfrage.
 
 ## Antwortschema 1
 
@@ -68,4 +68,4 @@ Für gezielte Prüfungen kann `scripts/test.sh` mit einem eigenen `PICEDIT_TEST_
 PICEDIT_TEST_BUILD_PATH=/tmp/picedit-ai-tests ./scripts/test.sh --jobs 4 --filter AI
 ```
 
-Nächste Schritte der [Roadmap](https://github.com/dr-dimitri/picedit/issues/1): der echte lokale Textprovider in [Issue #3](https://github.com/dr-dimitri/picedit/issues/3), die bewusste Vorschau-/Übernahmeoberfläche in [Issue #4](https://github.com/dr-dimitri/picedit/issues/4) und drei Lookvarianten in [Issue #5](https://github.com/dr-dimitri/picedit/issues/5). Diese Aufgaben verwenden den Vertrag, statt eigene Modell- oder Speicherpfade einzuführen.
+Der echte lokale Textprovider aus [Issue #3](https://github.com/dr-dimitri/picedit/issues/3) und die bewusste Vorschau-/Übernahmeoberfläche aus [Issue #4](https://github.com/dr-dimitri/picedit/issues/4) sind in der [Assistentendokumentation](LOCAL-AI-ASSISTANT.md) beschrieben. Anschließend ergänzt [Issue #5](https://github.com/dr-dimitri/picedit/issues/5) drei Lookvarianten. Diese Aufgaben verwenden denselben Vertrag und Speicherpfad.

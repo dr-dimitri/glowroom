@@ -119,6 +119,7 @@ private struct PhotoContextMenu: View {
 struct DetailView: View {
     @ObservedObject var model: LibraryModel
     @EnvironmentObject private var editor: EditingModel
+    @EnvironmentObject private var assistant: AIAssistantModel
     @ViewState<Bool> private var zoomed = false
     var body: some View {
         VStack(spacing: 0) {
@@ -126,19 +127,19 @@ struct DetailView: View {
                 HStack {
                     Button { model.showsDetail = false } label: { Label("Übersicht", systemImage: "chevron.left").font(.system(size: 11)) }.buttonStyle(.plain)
                     Spacer()
-                    Text(asset.fileName + (model.comparesOriginal ? " · Vorher" : "")).font(.system(size: 11)).foregroundStyle(Theme.muted).lineLimit(1)
+                    Text(asset.fileName + previewLabel).font(.system(size: 11)).foregroundStyle(Theme.muted).lineLimit(1)
                     Spacer()
                     Button { zoomed.toggle() } label: { Label(zoomed ? "Einpassen" : "Vergrößern", systemImage: zoomed ? "minus.magnifyingglass" : "plus.magnifyingglass").font(.system(size: 10)) }.buttonStyle(.plain).foregroundStyle(Theme.muted)
                 }.padding(.horizontal, 23).frame(height: 46)
                 GeometryReader { geometry in
                     if zoomed {
                         ScrollView([.horizontal, .vertical]) {
-                            PhotoPreview(url: asset.fileURL, modifiedAt: asset.modifiedAt, fileSize: asset.fileSize, settings: model.comparesOriginal ? .neutral : editor.settings(for: asset.id), developing: model.isDeveloping)
+                            PhotoPreview(url: asset.fileURL, modifiedAt: asset.modifiedAt, fileSize: asset.fileSize, settings: previewSettings(for: asset.id), developing: model.isDeveloping)
                                 .frame(width: max(1, geometry.size.width * 2), height: max(1, geometry.size.height * 2))
                                 .onTapGesture(count: 2) { zoomed = false }
                         }
                     } else {
-                        PhotoPreview(url: asset.fileURL, modifiedAt: asset.modifiedAt, fileSize: asset.fileSize, settings: model.comparesOriginal ? .neutral : editor.settings(for: asset.id), developing: model.isDeveloping)
+                        PhotoPreview(url: asset.fileURL, modifiedAt: asset.modifiedAt, fileSize: asset.fileSize, settings: previewSettings(for: asset.id), developing: model.isDeveloping)
                             .padding(.horizontal, 25).padding(.vertical, 10)
                             .frame(width: geometry.size.width, height: geometry.size.height)
                             .onTapGesture(count: 2) { zoomed = true }
@@ -154,6 +155,19 @@ struct DetailView: View {
             }
         }.frame(maxWidth: .infinity, maxHeight: .infinity).background(Color.black.opacity(0.14))
             .onChange(of: model.selectedID) { _, _ in zoomed = false }
+    }
+
+    private var previewLabel: String {
+        if model.comparesOriginal { return " · Vorher" }
+        if model.isDeveloping, assistant.canAccept {
+            return assistant.comparison == .proposal ? " · KI-Vorschau · noch nicht übernommen" : " · Aktuelle Bearbeitung"
+        }
+        return ""
+    }
+
+    private func previewSettings(for assetID: String) -> EditSettings {
+        assistant.displaySettings(assetID: assetID, committed: editor.settings(for: assetID),
+                                  developing: model.isDeveloping, comparesOriginal: model.comparesOriginal)
     }
 
     private var filmstrip: some View {
