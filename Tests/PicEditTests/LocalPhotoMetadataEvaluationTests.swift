@@ -11,6 +11,12 @@ struct LocalPhotoMetadataEvaluationTests {
         ProcessInfo.processInfo.environment["PICEDIT_RUN_PHOTO_METADATA_EVALUATION"] == "1"
     })
     func twoUnlabeledSyntheticImagesProduceNativeMetadataAndExplicitFreshness() async throws {
+        // A background is not a round object: the old substring "rund"
+        // accidentally matched "Hintergrund" and could admit a missing shape.
+        #expect(!metadataSmokeFeatures("Ein grünes Dreieck und eine gelbe Fläche vor weißem Hintergrund.", alternate: true).shapes)
+        #expect(!metadataSmokeFeatures("Rotes Quadrat und blaues Rechteck vor weißem Hintergrund.", alternate: false).shapes)
+        #expect(metadataSmokeFeatures("Grünes Dreieck und gelbe Scheibe.", alternate: true).shapes)
+        let clock = ContinuousClock()
         let native = LocalImageAnalysisFactory.makeProvider()
         if case .unavailable(let reason) = await native.availability() {
             Issue.record("Native metadata smoke unavailable: \(reason.localizedDescription)")
@@ -36,27 +42,25 @@ struct LocalPhotoMetadataEvaluationTests {
                 selectionSessionID: token.selectionSessionID, selectionGeneration: token.selectionGeneration,
                 catalogSessionID: token.editSessionID, catalogGeneration: 1, canModify: true, isClosing: false)
             let request = PhotoMetadataSuggestionRequest(context: context, lifecycleID: UUID(), formGeneration: 0, expectedVersion: .absent)
-            let start = ProcessInfo.processInfo.systemUptime
+            let start = clock.now
             let result = try await suggestor.suggest(request)
-            let elapsed = ProcessInfo.processInfo.systemUptime - start
+            let elapsed = metadataSmokeSeconds(start.duration(to: clock.now))
             let fields = result.fields
             #expect(result.request.id == request.id && result.source.original == .metadata(source))
             #expect(try PhotoTextNormalization.normalize(fields, requireSuggestionContent: true) == fields)
             #expect(!fields.title.isEmpty && !fields.description.isEmpty && !fields.tags.isEmpty && fields.language == "de_DE")
-            let text = ([fields.title, fields.description] + fields.tags).joined(separator: " ").lowercased()
-            let colors = index == 0 ? text.contains("rot") && text.contains("blau") : text.contains("grün") && text.contains("gelb")
-            let shapes = index == 0 ? (text.contains("kreis") || text.contains("rund")) && (text.contains("quadrat") || text.contains("rechteck"))
-                : text.contains("dreieck") && (text.contains("kreis") || text.contains("oval") || text.contains("rund"))
+            let text = ([fields.title, fields.description] + fields.tags).joined(separator: " ")
+            let (colors, shapes) = metadataSmokeFeatures(text, alternate: index == 1)
             #expect(colors && shapes, "A schema-valid constant caption cannot satisfy both unseen input rasters")
             let provenance = try #require(result.source.analyzedRaster)
             #expect(provenance.providerID == provider.descriptor.providerID && provenance.modelID == provider.descriptor.modelID)
             #expect(provenance.raster.pixelWidth == 512 && provenance.raster.pixelHeight == 320)
             #expect(provenance.raster.byteCount <= ImageAnalysisPreparer.maximumRasterBytes)
             #expect(provenance.metadataPromptVersion == 1 && provenance.metadataSchemaVersion == 1)
-            let cachedStart = ProcessInfo.processInfo.systemUptime
+            let cachedStart = clock.now
             let cached = try await suggestor.suggest(PhotoMetadataSuggestionRequest(context: context, lifecycleID: UUID(),
                 formGeneration: 1, expectedVersion: .absent))
-            let cachedTime = ProcessInfo.processInfo.systemUptime - cachedStart
+            let cachedTime = metadataSmokeSeconds(cachedStart.duration(to: clock.now))
             #expect(cached.fields == fields && cached.source == result.source)
             #expect(await provider.metadataCalls == index + 1)
             #expect(await provider.analysisCalls == 0)
@@ -116,4 +120,17 @@ private func metadataSyntheticShapes(alternate: Bool) throws -> PreviewBitmap {
         context.fill(CGRect(x: 300, y: 80, width: 150, height: 150))
     }
     return PreviewBitmap(image: try #require(context.makeImage()))
+}
+
+private func metadataSmokeFeatures(_ text: String, alternate: Bool) -> (colors: Bool, shapes: Bool) {
+    let words = text.lowercased().split(whereSeparator: { !$0.isLetter })
+    func has(_ stems: [String]) -> Bool { words.contains { word in stems.contains { word.hasPrefix($0) } } }
+    if alternate {
+        return (has(["grün"]) && has(["gelb"]), has(["dreieck"]) && has(["kreis", "oval", "rund", "scheib"]))
+    }
+    return (has(["rot"]) && has(["blau"]), has(["kreis", "rund"]) && has(["quadrat", "rechteck"]))
+}
+private func metadataSmokeSeconds(_ duration: Duration) -> Double {
+    let value = duration.components
+    return Double(value.seconds) + Double(value.attoseconds) / 1_000_000_000_000_000_000
 }

@@ -151,6 +151,19 @@ struct PhotoMetadataJSONTests {
             managedDirectoryFamilies:[.init(parent:URL(fileURLWithPath:"/",isDirectory:true),childNamePrefix:directory.standardizedFileURL.resolvingSymlinksInPath().path.split(separator:"/")[0].description)])
         #expect(throws:PhotoMetadataError.protectedPath) { try PhotoMetadataFiles.checkDestination(target,protection:immediateRootFamily,extra:[]) }
     }
+    @Test func existingFamilyRootAliasesProtectPhysicalTargetsAndDanglingDestinations() throws {
+        let directory = MetadataFixture.directory(), parent = directory.appendingPathComponent("FamilyNames",isDirectory:true)
+        let physical = directory.appendingPathComponent("PhysicalOutsideFamilyNames",isDirectory:true)
+        try FileManager.default.createDirectory(at:parent,withIntermediateDirectories:true)
+        try FileManager.default.createDirectory(at:physical,withIntermediateDirectories:true)
+        #expect(symlink(physical.path,parent.appendingPathComponent("managed-alias").path) == 0)
+        #expect(symlink("../MissingPhysical/deep",parent.appendingPathComponent("managed-offline").path) == 0)
+        let protection = MetadataFileProtectionSnapshot(originalURLs:[],managedFileURLs:[],managedDirectoryURLs:[],
+            managedDirectoryFamilies:[.init(parent:parent,childNamePrefix:"managed-")])
+        for target in [physical.appendingPathComponent("export.json"),directory.appendingPathComponent("MissingPhysical/deep/export.json")] {
+            #expect(throws:PhotoMetadataError.protectedPath) { try PhotoMetadataFiles.checkDestination(target,protection:protection,extra:[]) }
+        }
+    }
     @Test func missingLeavesAndDirectoryRootsUseNativeReachablePrefixComparison() throws {
         let directory = MetadataFixture.directory()
         try FileManager.default.createDirectory(at:directory,withIntermediateDirectories:true)
@@ -175,6 +188,34 @@ struct PhotoMetadataJSONTests {
             let physical = URL(fileURLWithPath:privatePath,isDirectory:true).appendingPathComponent("not-yet/another/image.png")
             #expect(FilePathComparison.canonicalPath(abbreviated) == FilePathComparison.canonicalPath(physical))
             #expect(throws:PhotoMetadataError.protectedPath) { try PhotoMetadataFiles.checkDestination(abbreviated,protection:.init(originalURLs:[physical],managedFileURLs:[],managedDirectoryURLs:[]),extra:[]) }
+        }
+    }
+    @Test func missingOriginalDirectoryAndFamilyUseTheReachableVolumesCaseSemantics() throws {
+        let directory = MetadataFixture.directory()
+        try FileManager.default.createDirectory(at:directory,withIntermediateDirectories:true)
+        let original = directory.appendingPathComponent("Missing/Original.JPG")
+        let variant = directory.appendingPathComponent("missing/original.jpg")
+        let firstKey = try #require(FilePathComparison.protectionKey(original))
+        let secondKey = try #require(FilePathComparison.protectionKey(variant))
+        let sensitive = pathconf(directory.path,_PC_CASE_SENSITIVE)
+        #expect(sensitive == 0 || sensitive == 1)
+        #expect((firstKey == secondKey) == (sensitive == 0))
+        // Membership comparison remains case preserving even on this volume.
+        #expect(FilePathComparison.canonicalPath(original) != FilePathComparison.canonicalPath(variant))
+        let originalProtection = MetadataFileProtectionSnapshot(originalURLs:[original],managedFileURLs:[],managedDirectoryURLs:[])
+        let root = directory.appendingPathComponent("Missing/ModelRoot",isDirectory:true)
+        let rootVariant = directory.appendingPathComponent("missing/modelroot",isDirectory:false)
+        let rootProtection = MetadataFileProtectionSnapshot(originalURLs:[],managedFileURLs:[],managedDirectoryURLs:[root])
+        let familyProtection = MetadataFileProtectionSnapshot(originalURLs:[],managedFileURLs:[],managedDirectoryURLs:[],
+            managedDirectoryFamilies:[.init(parent:directory.appendingPathComponent("Missing",isDirectory:true),childNamePrefix:"Model")])
+        if sensitive == 0 {
+            #expect(throws:PhotoMetadataError.protectedPath) { try PhotoMetadataFiles.checkDestination(variant,protection:originalProtection,extra:[]) }
+            #expect(throws:PhotoMetadataError.protectedPath) { try PhotoMetadataFiles.checkDestination(rootVariant,protection:rootProtection,extra:[]) }
+            #expect(throws:PhotoMetadataError.protectedPath) { try PhotoMetadataFiles.checkDestination(rootVariant,protection:familyProtection,extra:[]) }
+        } else {
+            try PhotoMetadataFiles.checkDestination(variant,protection:originalProtection,extra:[])
+            try PhotoMetadataFiles.checkDestination(rootVariant,protection:rootProtection,extra:[])
+            try PhotoMetadataFiles.checkDestination(rootVariant,protection:familyProtection,extra:[])
         }
     }
     @Test func importReviewExpiryUsesContinuousElapsedTimeWithoutWriting() async throws {

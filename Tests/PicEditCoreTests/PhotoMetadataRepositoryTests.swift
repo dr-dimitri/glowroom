@@ -157,6 +157,26 @@ struct PhotoMetadataRepositoryTests {
         _ = try await restart.recoverCatalogChanges(persistedCatalog:f.snapshot(source:changed,generation:4))
         #expect(try await restart.record(assetID:f.id)?.sourceChanged == true)
     }
+    @Test func staleActorManualDraftPreservesAnExternallyReconciledOrphanAndSearchState() async throws {
+        let f = try MetadataFixture(); try await f.bind(); _ = try await f.confirm(.init(title:"Confirmed searchable title"))
+        try Data("{\"removedByOtherActor\":true}".utf8).write(to:f.directory.appendingPathComponent("catalog.json"))
+        let removed = MetadataCatalogSnapshot(catalogSessionID:f.session,catalogGeneration:2,
+            persistedReference:try PhotoMetadataFiles.reference(f.directory.appendingPathComponent("catalog.json")),assets:[])
+        let other = PhotoMetadataRepository(directory:f.directory)
+        _ = try await other.reconcile(removed)
+        let before = try #require(try await f.repository.record(assetID:f.id))
+        #expect(before.isOrphaned)
+        let search = await f.repository.searchState()
+        _ = try await f.repository.saveManualDraft(.init(header:.init(assetID:f.id,expectedVersion:before.version),
+            mutation:.save(fields:.init(title:"Only this draft changes"),baseConfirmedRevision:before.confirmedRevision)))
+        let after = try #require(try await other.record(assetID:f.id))
+        #expect(after.isOrphaned && after.confirmed == before.confirmed)
+        #expect(after.manualDraft?.fields.title == "Only this draft changes")
+        #expect(after.confirmedRevision == before.confirmedRevision)
+        #expect(await f.repository.searchState() == search)
+        if case .available(let snapshot) = await f.repository.searchState() { #expect(snapshot.confirmedByAssetID[f.id] == nil) }
+        else { Issue.record("Expected valid search snapshot without orphan") }
+    }
     @Test func draftTypingDoesNotRebuildUnchangedConfirmedSearchSnapshot() async throws {
         let counter = MetadataCounter(); var hooks = PhotoMetadataRepositoryHooks()
         hooks.beforeSearchSnapshot = { counter.increment() }

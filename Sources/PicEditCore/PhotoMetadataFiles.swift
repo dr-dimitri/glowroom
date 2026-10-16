@@ -89,10 +89,13 @@ enum PhotoMetadataFiles {
     /// so a large catalog/orphan history never needs a second full URL array.
     struct DestinationCheck {
         let canonicalPath: String
+        let protectionKey: String
         let identity: (dev_t,ino_t)?
         init(_ url: URL) throws {
             guard url.isFileURL, !url.path.utf8.contains(0) else { throw PhotoMetadataError.protectedPath }
             canonicalPath = FilePathComparison.canonicalPath(url)
+            guard let key = FilePathComparison.protectionKey(url) else { throw PhotoMetadataError.protectedPath }
+            protectionKey = key
             var target = stat()
             if lstat(url.path,&target) == 0 {
                 guard target.st_mode & S_IFMT == S_IFREG, target.st_nlink == 1 else { throw PhotoMetadataError.protectedPath }
@@ -104,8 +107,9 @@ enum PhotoMetadataFiles {
         func checkFile(_ candidate: URL) throws {
             if Task.isCancelled { throw PhotoMetadataError.cancelled }
             guard candidate.isFileURL else { return }
-            if candidate.hasDirectoryPath, try PhotoMetadataFiles.contains(canonicalPath,in:candidate) { throw PhotoMetadataError.protectedPath }
-            if FilePathComparison.canonicalPath(candidate) == canonicalPath { throw PhotoMetadataError.protectedPath }
+            if candidate.hasDirectoryPath, try PhotoMetadataFiles.contains(canonicalPath,key:protectionKey,in:candidate) { throw PhotoMetadataError.protectedPath }
+            guard let candidateKey = FilePathComparison.protectionKey(candidate) else { throw PhotoMetadataError.protectedPath }
+            if candidateKey == protectionKey { throw PhotoMetadataError.protectedPath }
             if let identity, let other = PhotoMetadataFiles.fileIdentity(candidate), identity.0 == other.0, identity.1 == other.1 { throw PhotoMetadataError.protectedPath }
         }
     }
@@ -118,17 +122,51 @@ enum PhotoMetadataFiles {
         for candidate in protection.managedFileURLs { try autoreleasepool { try check.checkFile(candidate) } }
         for candidate in extra { try autoreleasepool { try check.checkFile(candidate) } }
         for directory in protection.managedDirectoryURLs {
-            if try contains(check.canonicalPath,in:directory) { throw PhotoMetadataError.protectedPath }
+            if try contains(check.canonicalPath,key:check.protectionKey,in:directory) { throw PhotoMetadataError.protectedPath }
         }
         for family in protection.managedDirectoryFamilies {
             guard !family.childNamePrefix.isEmpty else { throw PhotoMetadataError.protectedPath }
-            if try visitPathAndParentDirectories(of:check.canonicalPath, { current in
-                guard current.path != "/" else { return false }
-                let parent = URL(fileURLWithPath:(current.path as NSString).deletingLastPathComponent,isDirectory:true)
-                return (FilePathComparison.canonicalPath(parent) == FilePathComparison.canonicalPath(family.parent) || sameDirectory(parent,family.parent)) && current.lastPathComponent.hasPrefix(family.childNamePrefix)
-            }) { throw PhotoMetadataError.protectedPath }
+            guard let parentKey = FilePathComparison.protectionKey(family.parent),
+                  let nameKey = FilePathComparison.protectionNameKey(family.childNamePrefix,at:family.parent) else { throw PhotoMetadataError.protectedPath }
+            let prefix = (parentKey.hasSuffix("/") ? parentKey : parentKey + "/") + nameKey
+            // Include the absent family root itself and use its volume's case
+            // semantics for the prefix, rather than a global lowercase path.
+            if check.protectionKey.hasPrefix(prefix) { throw PhotoMetadataError.protectedPath }
+            if try existingFamilyAliasContains(check,family:family,namePrefixKey:nameKey) { throw PhotoMetadataError.protectedPath }
         }
         try additionalProtection(check)
+    }
+    /// A named family child may itself be an alias (/var -> /private/var).
+    /// Compare matching existing children to the physical target as well. Only
+    /// this one managed parent is streamed, never an image tree or URL array.
+    private static func existingFamilyAliasContains(_ check: DestinationCheck, family:MetadataProtectedDirectoryFamily,
+                                                    namePrefixKey:String) throws -> Bool {
+        let fd = Darwin.open(family.parent.path,O_RDONLY | O_DIRECTORY | O_CLOEXEC | O_NONBLOCK)
+        if fd < 0, errno == ENOENT { return false }
+        guard fd >= 0 else { throw PhotoMetadataError.protectedPath }
+        guard let stream = fdopendir(fd) else { Darwin.close(fd); throw PhotoMetadataError.protectedPath }
+        defer { closedir(stream) }
+        var count = 0
+        while true {
+            if Task.isCancelled { throw PhotoMetadataError.cancelled }
+            errno = 0
+            guard let entry = readdir(stream) else {
+                guard errno == 0 else { throw PhotoMetadataError.protectedPath }; return false
+            }
+            count += 1; guard count <= 4_096 else { throw PhotoMetadataError.protectedPath }
+            let name = withUnsafeBytes(of:entry.pointee.d_name) { raw in
+                String(bytes:raw.prefix(Int(entry.pointee.d_namlen)),encoding:.utf8)
+            }
+            guard let name else { throw PhotoMetadataError.protectedPath }
+            if name == "." || name == ".." { continue }
+            guard let nameKey = FilePathComparison.protectionNameKey(name,at:family.parent) else { throw PhotoMetadataError.protectedPath }
+            if nameKey.hasPrefix(namePrefixKey) {
+                let matches = try autoreleasepool {
+                    try contains(check.canonicalPath,key:check.protectionKey,in:family.parent.appendingPathComponent(name,isDirectory:true))
+                }
+                if matches { return true }
+            }
+        }
     }
     private static func fileIdentity(_ url: URL) -> (dev_t,ino_t)? {
         let descriptor = Darwin.open(url.path,O_RDONLY | O_NONBLOCK | O_CLOEXEC)
@@ -138,9 +176,9 @@ enum PhotoMetadataFiles {
     private static func sameDirectory(_ lhs: URL, _ rhs: URL) -> Bool {
         guard let l = fileIdentity(lhs), let r = fileIdentity(rhs) else { return false }; return l.0 == r.0 && l.1 == r.1
     }
-    private static func contains(_ path: String, in directory: URL) throws -> Bool {
-        let rootPath = FilePathComparison.canonicalPath(directory)
-        if path == rootPath || path.hasPrefix(rootPath == "/" ? "/" : rootPath + "/") { return true }
+    private static func contains(_ path: String, key: String, in directory: URL) throws -> Bool {
+        guard let rootKey = FilePathComparison.protectionKey(directory) else { throw PhotoMetadataError.protectedPath }
+        if key == rootKey || key.hasPrefix(rootKey == "/" ? "/" : rootKey + "/") { return true }
         return try visitPathAndParentDirectories(of:path) { current in sameDirectory(current,directory) }
     }
     /// Ascend lexical absolute paths, not Foundation's URL parent operation:

@@ -260,7 +260,6 @@ public actor PhotoMetadataRepository: PhotoMetadataStoring {
                 row.manualDraft = .init(revision:row.version.manualDraftRevision,baseConfirmedRevision:base,fields:fields,modifiedAt:Date())
             case .discard: row.manualDraft = nil
             }
-            row.isOrphaned = catalog != nil ? catalogByID[row.assetID] == nil : row.isOrphaned
         }
     }
     public func saveAIDraft(_ operation:MetadataAIDraftOperation) throws -> MetadataCommitResult {
@@ -279,6 +278,7 @@ public actor PhotoMetadataRepository: PhotoMetadataStoring {
             switch mutation {
             case .createSuggested(let id,let fields,let source):
                 try ensureSource(source,assetID:row.assetID,on:db); try row.advance(ai:true)
+                row.isOrphaned = catalog != nil ? catalogByID[row.assetID] == nil : row.isOrphaned
                 row.draft = .init(id:id,revision:row.version.aiDraftRevision,baseConfirmedRevision:row.version.confirmedRevision,
                     fields:fields,source:source,state:.pending,createdAt:now,modifiedAt:now)
             case .editExisting(let id,let fields):
@@ -289,7 +289,6 @@ public actor PhotoMetadataRepository: PhotoMetadataStoring {
                 row.draft = .init(id:id,revision:row.version.aiDraftRevision,baseConfirmedRevision:draft.baseConfirmedRevision,
                     fields:fields,source:draft.source,state:.edited,createdAt:draft.createdAt,modifiedAt:now,editedFields:changed)
             }
-            row.isOrphaned = catalog != nil ? catalogByID[row.assetID] == nil : row.isOrphaned
         }
     }
     public func setDraftState(_ operation:MetadataDraftStateOperation) throws -> MetadataCommitResult {

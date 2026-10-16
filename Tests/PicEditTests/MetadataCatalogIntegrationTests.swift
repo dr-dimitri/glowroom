@@ -104,12 +104,22 @@ struct MetadataCatalogIntegrationTests {
         let store = PhotoMetadataRepository(directory: fixture.repository.directory)
         let newURL = destination.appendingPathComponent(old.fileURL.lastPathComponent)
         let newID = newURL.resolvingSymlinksInPath().standardizedFileURL.path
-        var new = old; new.id = newID; new.fileURL = newURL
-        // Explicit confirmed blank content still owns a revision and blocks
-        // automatic assignment. This is intentionally seeded before binding.
-        _ = try await store.confirm(.init(header: .init(assetID: newID, expectedVersion: .absent), values: .empty,
-            fields: [.title], source: MetadataCatalogSources.source(new), origin: .manual(expectedManualDraftRevision: nil, reviewedConfirmedRevision: 0)))
-        let writer = fixture.movedWriter(store: store, destination: destination)
+        // A fresh actor must bind its actual catalog map before source-sensitive
+        // writes. Import a previously confirmed orphan tombstone through the
+        // real portable path, rather than confirming an unbound destination.
+        let session = UUID()
+        _ = try await CatalogWriter(repository: fixture.repository, metadataStore: store, sessionID: session,
+            folderResolver: { ($0, nil) }).load()
+        let tombstoneURL = fixture.root.appendingPathComponent("prior-destination-tombstone.json")
+        let date = Date(timeIntervalSince1970: 1_700_000_000)
+        let document = MetadataJSONDocument(exportID: UUID(), exportedAt: date,
+            entries: [.init(assetID: newID, fields: .empty, originalRevision: 1, confirmedAt: date, provenance: .init())])
+        let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .secondsSince1970
+        try encoder.encode(document).write(to: tombstoneURL)
+        let review = try await store.prepareImport(source: tombstoneURL,
+            protection: .init(originalURLs: [], managedFileURLs: [], managedDirectoryURLs: []))
+        _ = try await store.commitImport(.init(reviewID: review.id, reviewContentSHA256: review.contentSHA256, decisions: []))
+        let writer = fixture.movedWriter(store: store, destination: destination, sessionID: session)
         let loaded = try await writer.load()
         let receipt = try #require(loaded.metadata.changes.first)
         #expect(receipt.state == .conflicted)
@@ -120,9 +130,13 @@ struct MetadataCatalogIntegrationTests {
         var changed = loaded.catalog; changed.assets[0].rating = 5
         await #expect(throws: PhotoMetadataError.relocationInProgress) { _ = try await writer.save(changed, revision: 2) }
         let conflict = try #require(receipt.conflicts.first)
+        // As in the real conflict review, bind the rows actually displayed now.
+        // Reconciliation itself may have advanced orphan/source flag revisions.
+        let sourceVersion = try await store.record(assetID: old.id)?.version ?? .absent
+        let destinationVersion = try await store.record(assetID: newID)?.version ?? .absent
         let result = try await writer.resolve(.init(changeID: receipt.changeID, expectedChangeRevision: receipt.revision,
             persistedReference: loaded.metadata.reference, decisions: [.init(conflictID: conflict.id,
-                sourceVersion: conflict.sourceVersion, destinationVersion: conflict.destinationVersion, action: .keepSeparate)]))
+                sourceVersion: sourceVersion, destinationVersion: destinationVersion, action: .keepSeparate)]))
         #expect(result.changes.isEmpty)
         #expect(try await store.record(assetID: old.id)?.confirmed.title == "Bestätigter Berg")
         #expect(try await store.record(assetID: newID)?.confirmed.title == "")
@@ -151,10 +165,13 @@ struct MetadataCatalogIntegrationTests {
         model.minimumRating = 5; await model.waitForProjection()
         #expect(model.visibleAssets.isEmpty, "Other filters remain AND conditions")
         model.minimumRating = 0
+        guard case .available(let metadataSnapshot) = model.metadataSearchState else {
+            Issue.record("Expected a current confirmed metadata search snapshot"); return
+        }
         let projection = try await LibraryProjectionWorker().candidates(model.catalog, snapshotSessionID: UUID(), generation: 1,
             key: .init(selection: .all, query: "Morgenlicht", sort: .name, minimumRating: 0,
                        searchMode: .semantic, semanticQuery: "mountain"), date: Date(), overrides: [:],
-            metadata: try #require(available(model.metadataSearchState)))
+            metadata: metadataSnapshot)
         #expect(projection.assets.map(\.id) == [asset.id], "Confirmed predicate is applied before semantic ranking")
         #expect(await model.finishSaving())
     }
@@ -234,9 +251,6 @@ struct MetadataCatalogIntegrationTests {
         for _ in 0..<2_000 { if !model.isLoading { break }; try await Task.sleep(nanoseconds: 1_000_000) }
         #expect(!model.isLoading); await model.waitForProjection()
     }
-    private func available(_ state: PhotoMetadataSearchState) -> PhotoMetadataSearchSnapshot? {
-        if case .available(let snapshot) = state { return snapshot }; return nil
-    }
 }
 
 private enum SimulatedCrash: Error { case stop }
@@ -267,9 +281,9 @@ private struct Fixture {
         let destination = root.appendingPathComponent("New", isDirectory: true)
         try FileManager.default.moveItem(at: folder.url, to: destination); return destination
     }
-    func movedWriter(store: PhotoMetadataRepository, destination: URL,
+    func movedWriter(store: PhotoMetadataRepository, destination: URL, sessionID: UUID = UUID(),
                      checkpoint: @escaping @Sendable (CatalogWriteCheckpoint) throws -> Void = { _ in }) -> CatalogWriter {
-        CatalogWriter(repository: repository, metadataStore: store, folderResolver: { original in
+        CatalogWriter(repository: repository, metadataStore: store, sessionID: sessionID, folderResolver: { original in
             var changed = original; changed.url = destination; return (changed, nil)
         }, checkpoint: checkpoint)
     }
