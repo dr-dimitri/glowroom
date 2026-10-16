@@ -144,6 +144,38 @@ public struct EditProposalValidator: Sendable {
 
 private func invalid(_ category: AIProposalValidationError) -> AIEditingError { .invalidResponse(category) }
 
+/// Reuses the bounded JSON grammar, without treating a model string as trusted
+/// metadata or allowing duplicate/unknown keys and model-provided provenance.
+public struct ImageAnalysisSuggestionValidator: Sendable {
+    public let maximumResponseBytes: Int
+    public init(maximumResponseBytes: Int = 16_384) { self.maximumResponseBytes = maximumResponseBytes }
+
+    public func validate(_ data: Data) throws -> ImageAnalysisSuggestions {
+        guard maximumResponseBytes > 0 else { throw ImageAnalysisError.invalidRequest }
+        guard data.count <= maximumResponseBytes else { throw ImageAnalysisError.invalidResponse }
+        do {
+            var parser = BoundedJSONParser(bytes: Array(data), maximumDepth: 6, maximumValues: 96)
+            guard case .object(let root) = try parser.parse(),
+                  Set(root.keys) == ["schemaVersion", "description", "attributes"],
+                  case .number("1") = root["schemaVersion"],
+                  case .string(let description) = root["description"],
+                  case .array(let entries) = root["attributes"], entries.count <= 12 else {
+                throw ImageAnalysisError.invalidResponse
+            }
+            let attributes = try entries.map { entry -> ImageAnalysisAttribute in
+                guard case .object(let fields) = entry, Set(fields.keys) == ["category", "value"],
+                      case .string(let rawCategory) = fields["category"],
+                      let category = ImageAnalysisAttributeCategory(rawValue: rawCategory),
+                      case .string(let value) = fields["value"] else { throw ImageAnalysisError.invalidResponse }
+                return ImageAnalysisAttribute(category: category, value: value)
+            }
+            let suggestions = ImageAnalysisSuggestions(description: description, attributes: attributes)
+            try suggestions.validate()
+            return suggestions
+        } catch { throw ImageAnalysisError.invalidResponse }
+    }
+}
+
 private indirect enum JSONValue {
     case object([String: JSONValue])
     case array([JSONValue])

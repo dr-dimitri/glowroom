@@ -22,6 +22,7 @@ actor AdjustedPreviewPipeline {
         let modifiedAt: Date
         let fileSize: Int64
         let allowsEmbeddedPreview: Bool
+        let sourceRevision: String?
         let settings: EditSettings
         let width: Int
         let height: Int
@@ -36,6 +37,7 @@ actor AdjustedPreviewPipeline {
             modifiedAt = request.modifiedAt
             fileSize = request.fileSize
             allowsEmbeddedPreview = request.allowsEmbeddedPreview
+            sourceRevision = request.sourceRevision
             self.settings = settings
             self.width = width
             self.height = height
