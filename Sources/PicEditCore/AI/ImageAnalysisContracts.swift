@@ -1,5 +1,7 @@
 import Foundation
 
+public enum ImageAnalysisCachePolicy: String, Hashable, Sendable { case reuseValidated, refreshRaster }
+
 public enum ImageAnalysisInputKind: String, Codable, Hashable, Sendable {
     case originalPreview, editedPreview
 }
@@ -63,14 +65,17 @@ public struct ImageAnalysisRequest: Hashable, Sendable {
     public let inputKind: ImageAnalysisInputKind
     public let language: String
     public let lifecycleID: UUID
+    public let cachePolicy: ImageAnalysisCachePolicy
 
     public init(id: UUID = UUID(), snapshot: AIEditingSnapshot,
-                inputKind: ImageAnalysisInputKind = .originalPreview, language: String = "de_DE", lifecycleID: UUID) {
+                inputKind: ImageAnalysisInputKind = .originalPreview, language: String = "de_DE", lifecycleID: UUID,
+                cachePolicy: ImageAnalysisCachePolicy = .reuseValidated) {
         self.id = id
         self.snapshot = snapshot
         self.inputKind = inputKind
         self.language = language
         self.lifecycleID = lifecycleID
+        self.cachePolicy = cachePolicy
     }
 
     public func validate() throws {

@@ -5,6 +5,14 @@ protocol ImageAnalysisProvider: Sendable {
     var descriptor: ImageAnalysisProviderDescriptor { get }
     func availability() async -> ImageAnalysisAvailability
     func analyze(_ input: PreparedImageAnalysisInput) async throws -> Data
+    func metadata(_ input: PreparedImageAnalysisInput) async throws -> Data
+}
+
+extension ImageAnalysisProvider {
+    // Older injected providers do not acquire an invented metadata capability.
+    func metadata(_ input: PreparedImageAnalysisInput) async throws -> Data {
+        throw ImageAnalysisError.unavailable(.unsupportedCapability)
+    }
 }
 
 struct UnavailableImageAnalysisProvider: ImageAnalysisProvider {
@@ -15,7 +23,9 @@ struct UnavailableImageAnalysisProvider: ImageAnalysisProvider {
 }
 
 enum LocalImageAnalysisFactory {
-    static func makeService() -> any ImageAnalysisServing {
+    static func makeService() -> any ImageAnalysisServing { makeSharedService() }
+
+    static func makeSharedService() -> ImageAnalysisService {
         ImageAnalysisService(provider: makeProvider())
     }
 

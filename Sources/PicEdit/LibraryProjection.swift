@@ -1,5 +1,4 @@
 import Foundation
-import Darwin
 import PicEditCore
 
 enum LibrarySearchMode: String, CaseIterable, Identifiable, Sendable {
@@ -57,7 +56,7 @@ actor LibraryProjectionWorker {
     private var comparisonPaths: [URL: String] = [:]
 
     func project(_ catalog: LibraryCatalog, generation: Int, key: LibraryProjectionKey,
-                 date: Date, overrides: [UUID: LibraryFolder]) throws -> LibraryProjection {
+                 date: Date, overrides: [UUID: LibraryFolder], metadata: PhotoMetadataSearchSnapshot? = nil) throws -> LibraryProjection {
         try Task.checkCancellation()
         if cachedGeneration != generation {
             var nextIndices: [String: Int] = [:]
@@ -115,10 +114,13 @@ actor LibraryProjectionWorker {
             case .recent: included = recentIDs.contains(asset.folderID)
             case .folder, .subfolder: included = prefix.map { comparisonPaths[asset.fileURL]?.hasPrefix($0) ?? false } ?? false
             }
-            if included && asset.rating >= key.minimumRating && (key.query.isEmpty ||
-                [asset.fileName, asset.cameraModel ?? "", asset.format].contains { $0.localizedStandardContains(key.query) }) {
-                visible.append(asset)
+            guard included, asset.rating >= key.minimumRating else { continue }
+            if key.query.isEmpty { visible.append(asset); continue }
+            var values = [asset.fileName, asset.cameraModel ?? "", asset.format]
+            if let fields = metadata?.confirmedByAssetID[asset.id] {
+                values += [fields.title, fields.description] + fields.tags
             }
+            if values.contains(where: { $0.localizedStandardContains(key.query) }) { visible.append(asset) }
         }
         // Swift's sort is not interruptible; only one sort can run on this actor.
         visible.sort { lhs, rhs in
@@ -139,10 +141,10 @@ actor LibraryProjectionWorker {
     }
 
     func candidates(_ catalog: LibraryCatalog, snapshotSessionID: UUID, generation: Int,
-                    key: LibraryProjectionKey, date: Date, overrides: [UUID: LibraryFolder]) throws -> LibraryProjectionCandidates {
+                    key: LibraryProjectionKey, date: Date, overrides: [UUID: LibraryFolder], metadata: PhotoMetadataSearchSnapshot? = nil) throws -> LibraryProjectionCandidates {
         // The existing sole worker applies every literal/navigation predicate
         // before scoring, and provides the stable fallback order at top-K ties.
-        let base = try project(catalog, generation: generation, key: key, date: date, overrides: overrides)
+        let base = try project(catalog, generation: generation, key: key, date: date, overrides: overrides, metadata: metadata)
         return LibraryProjectionCandidates(snapshotSessionID: snapshotSessionID, generation: generation, base: base)
     }
 
@@ -181,43 +183,10 @@ actor LibraryProjectionWorker {
                           trees: base.trees, treeFolders: base.treeFolders, comparisonPaths: base.comparisonPaths, evaluatedAt: base.evaluatedAt, expiresAt: base.expiresAt)
     }
 
-    // Foundation's private-directory abbreviation depends on whether the whole
-    // path exists. Resolve the reachable prefix instead, then append the lexical
-    // remainder, so offline/missing originals retain exactly the same membership.
-    // Call only from the catalog/projection workers; UI reads the resulting map.
-    // Persisted asset IDs and source URLs are never changed by this comparison.
-    static func filePath(_ url: URL) -> String {
-        var prefix = url
-        var remainder: [String] = []
-        var followedLinks = 0
-        while true {
-            if let resolved = prefix.withUnsafeFileSystemRepresentation({ pointer -> String? in
-                guard let pointer, let actual = realpath(pointer, nil) else { return nil }
-                defer { free(actual) }
-                return String(cString: actual)
-            }) {
-                var components = resolved.split(separator: "/").map(String.init)
-                for component in remainder.reversed() {
-                    if component == ".." { if !components.isEmpty { components.removeLast() } }
-                    else if component != "." && !component.isEmpty { components.append(component) }
-                }
-                return "/" + components.joined(separator: "/")
-            }
-            // A dangling link still has a meaningful lexical destination. This
-            // also preserves aliases when their target folder is temporarily off line.
-            if let target = try? FileManager.default.destinationOfSymbolicLink(atPath: prefix.path) {
-                followedLinks += 1
-                guard followedLinks <= 40 else { return url.path }
-                prefix = target.hasPrefix("/") ? URL(fileURLWithPath: target) :
-                    URL(fileURLWithPath: target, relativeTo: prefix.deletingLastPathComponent()).absoluteURL
-                continue
-            }
-            let parent = prefix.deletingLastPathComponent()
-            guard parent.path != prefix.path else { return url.path }
-            remainder.append(prefix.lastPathComponent)
-            prefix = parent
-        }
-    }
+    // One shared native comparison implementation for catalog membership,
+    // missing originals and durable metadata relocation proof validation.
+    // The worker builds UI comparison maps; persisted paths stay unchanged.
+    static func filePath(_ url: URL) -> String { FilePathComparison.canonicalPath(url) }
 
     static func directoryPrefix(_ url: URL) -> String { directoryPrefix(filePath(url)) }
     private static func directoryPrefix(_ path: String) -> String {

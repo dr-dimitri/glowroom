@@ -10,6 +10,7 @@ struct PicEditApp: App {
     @StateObject private var assistant: AIAssistantModel
     @StateObject private var aiSettings: AIProviderSettings
     @StateObject private var imageAnalysis: ImageAnalysisModel
+    @StateObject private var photoMetadata: PhotoMetadataModel
     @StateObject private var exporter = JPEGExportModel()
     private let dataDirectory: URL
 
@@ -22,7 +23,8 @@ struct PicEditApp: App {
         let repository = CatalogRepository(directory: directory)
         dataDirectory = repository.directory
         let semantic = try? SemanticSearchService(directory: repository.directory)
-        let library = LibraryModel(repository: repository, semanticSearch: semantic)
+        let metadataStore = PhotoMetadataRepository(directory: repository.directory)
+        let library = LibraryModel(repository: repository, semanticSearch: semantic, metadataStore: metadataStore)
         let editor = EditingModel(directory: repository.directory)
         let provider = LocalAIEditingProviderFactory.makeProvider()
         let coordinator = AIRequestCoordinator(provider: provider)
@@ -35,8 +37,10 @@ struct PicEditApp: App {
         aiSettings.attach(assistant)
         _assistant = StateObject(wrappedValue: assistant)
         _aiSettings = StateObject(wrappedValue: aiSettings)
-        _imageAnalysis = StateObject(wrappedValue: ImageAnalysisModel(service: LocalImageAnalysisFactory.makeService(),
-                                                                    editor: editor, library: library))
+        let vision = LocalImageAnalysisFactory.makeSharedService()
+        _imageAnalysis = StateObject(wrappedValue: ImageAnalysisModel(service: vision, editor: editor, library: library))
+        _photoMetadata = StateObject(wrappedValue: PhotoMetadataModel(store: metadataStore,
+            suggestor: LocalPhotoMetadataSuggestor(service: vision), library: library, editor: editor))
     }
 
     var body: some Scene {
@@ -46,6 +50,7 @@ struct PicEditApp: App {
                 .environmentObject(exporter)
                 .environmentObject(assistant)
                 .environmentObject(imageAnalysis)
+                .environmentObject(photoMetadata)
                 .frame(minWidth: 1000, minHeight: 660)
                 .preferredColorScheme(.dark)
                 .background {
@@ -54,7 +59,17 @@ struct PicEditApp: App {
                             .id(consent.id)
                     }
                 }
-                .onAppear { delegate.library = library; delegate.editor = editor; delegate.exporter = exporter; delegate.aiSettings = aiSettings; NSApp.setActivationPolicy(.regular); NSApp.activate(ignoringOtherApps: true) }
+                .background {
+                    if let review = photoMetadata.importReview {
+                        PhotoMetadataImportPresenter(model: photoMetadata, review: review).id(review.id)
+                    }
+                }
+                .background {
+                    if let review = photoMetadata.catalogReview {
+                        PhotoMetadataCatalogReviewPresenter(model: photoMetadata, review: review).id(review.id)
+                    }
+                }
+                .onAppear { delegate.photoMetadata = photoMetadata; delegate.library = library; delegate.editor = editor; delegate.exporter = exporter; delegate.aiSettings = aiSettings; NSApp.setActivationPolicy(.regular); NSApp.activate(ignoringOtherApps: true) }
         }
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 1440, height: 900)
@@ -71,6 +86,18 @@ struct PicEditApp: App {
                 .disabled(library.selectedIDs.isEmpty || library.isProjecting || editor.isLoading || editor.isRestoring || editor.isClosing || exporter.isPresented)
             }
             CommandMenu("Bibliothek") {
+                Button("Bildinformationen exportieren …") { PhotoMetadataImportExportActions.export(using: photoMetadata) }
+                    .disabled(!photoMetadata.canManage)
+                Button("Bildinformationen importieren …") { PhotoMetadataImportExportActions.import(using: photoMetadata) }
+                    .disabled(!photoMetadata.canManage)
+                Menu("Ordnerzuordnungen für Bildinformationen prüfen") {
+                    ForEach(library.metadataCatalogChanges.filter { !$0.conflicts.isEmpty }, id: \.changeID) { change in
+                        Button("\(change.conflicts.count) offene Zuordnungen") {
+                            photoMetadata.inspectCatalogChange(change, reference: library.metadataCatalogReference)
+                        }
+                    }
+                }.disabled(!library.canResolvePhotoMetadataCatalogChanges || library.metadataCatalogChanges.allSatisfy { $0.conflicts.isEmpty })
+                Divider()
                 Button("Ordner aktualisieren") { library.refreshCurrentFolder() }
                     .keyboardShortcut("r", modifiers: [.command, .shift])
                     .disabled(!library.canModify || library.isImporting || library.folders.isEmpty)
@@ -152,6 +179,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     weak var editor: EditingModel?
     weak var exporter: JPEGExportModel?
     weak var aiSettings: AIProviderSettings?
+    weak var photoMetadata: PhotoMetadataModel?
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         guard let library else { return .terminateNow }
@@ -174,6 +202,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Commit an active numeric field while edits are still accepted.
         NSApp.keyWindow?.makeFirstResponder(nil)
         aiSettings?.revoke()
+        photoMetadata?.beginTermination()
         library.beginTermination()
         editor?.beginTermination()
         Task {
@@ -182,6 +211,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }, edits: { [editor] in
                 guard let editor, !(editor.isReadOnly && !editor.hasPendingChanges) else { return true }
                 return await editor.flush()
+            }, metadata: { [photoMetadata] in
+                await photoMetadata?.finishSaving() ?? true
             })
             if success { sender.reply(toApplicationShouldTerminate: true) }
             else {
@@ -191,7 +222,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 alert.addButton(withTitle: "Zurück zu PicEdit")
                 alert.addButton(withTitle: "Trotzdem beenden")
                 let shouldQuit = alert.runModal() == .alertSecondButtonReturn
-                if !shouldQuit { library.cancelTermination(); editor?.cancelTermination() }
+                if !shouldQuit { library.cancelTermination(); editor?.cancelTermination(); photoMetadata?.cancelTermination() }
                 sender.reply(toApplicationShouldTerminate: shouldQuit)
             }
         }
@@ -199,13 +230,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     static func finishSaving(catalog: @escaping @MainActor @Sendable () async -> Bool,
-                             edits: @escaping @MainActor @Sendable () async -> Bool) async -> Bool {
-        // The catalog and edit database own different files and serialize their
-        // own mutations. Drain both concurrently, but always await both results
+                             edits: @escaping @MainActor @Sendable () async -> Bool,
+                             metadata: @escaping @MainActor @Sendable () async -> Bool = { true }) async -> Bool {
+        // Catalog, edits and photo metadata own different files and serialize
+        // their own mutations. Drain all three concurrently and await every result
         // before allowing termination, even when one store reports a failure.
         async let catalogSaved = catalog()
         async let editsSaved = edits()
-        let results = await (catalogSaved, editsSaved)
-        return results.0 && results.1
+        async let metadataSaved = metadata()
+        let results = await (catalogSaved, editsSaved, metadataSaved)
+        return results.0 && results.1 && results.2
     }
 }

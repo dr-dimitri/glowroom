@@ -118,6 +118,47 @@ final class SemanticLibraryTests {
         #expect(await model.finishSaving())
     }
 
+    @Test func confirmedMetadataChangesReplaceCandidatesAndRejectAnOldSemanticReply() async throws {
+        let folder = LibraryFolder(url: directory.appendingPathComponent("MetadataPhotos"), subdirectoryPaths: ["Empty"])
+        let photos = [PhotoAsset(folderID: folder.id, fileURL: folder.url.appendingPathComponent("first.raw")),
+                      PhotoAsset(folderID: folder.id, fileURL: folder.url.appendingPathComponent("second.raw"))]
+        let repository = CatalogRepository(directory: directory.appendingPathComponent("MetadataCatalog"))
+        try repository.save(.init(folders: [folder], assets: photos))
+        let metadata = PhotoMetadataRepository(directory: repository.directory)
+        let service = SemanticLibraryFake(blocked: true)
+        let model = LibraryModel(repository: repository, semanticSearch: service, metadataStore: metadata)
+        try await wait { !model.isLoading && !model.isProjecting }
+        func confirm(_ asset: PhotoAsset, title: String) async throws {
+            let version = try await metadata.record(assetID: asset.id)?.version ?? .absent
+            _ = try await metadata.confirm(.init(header: .init(assetID: asset.id, expectedVersion: version),
+                values: .init(title: title), fields: [.title], source: MetadataCatalogSources.source(asset),
+                origin: .manual(expectedManualDraftRevision: nil, reviewedConfirmedRevision: version.confirmedRevision)))
+        }
+        try await confirm(photos[0], title: "Wald")
+        try await confirm(photos[1], title: "Meer")
+        let initial = await metadata.searchState().version
+        try await wait { model.metadataGeneration == initial }
+        model.semanticLiteralFilter = "Wald"; model.semanticQuery = "trees"; model.searchMode = .semantic
+        try await wait { await service.calls.last?.candidateIDs == [photos[0].id] }
+        let old = try #require(await service.calls.last)
+        let catalog = model.catalog
+        try await confirm(photos[0], title: "Meer")
+        try await confirm(photos[1], title: "Wald")
+        try await wait { await service.calls.last?.candidateIDs == [photos[1].id] }
+        let current = try #require(await service.calls.last)
+        #expect(current.id != old.id)
+        #expect(model.catalog == catalog, "A text generation does not mutate the image catalog or request an index rebuild")
+        #expect(await service.preparedScopes.isEmpty)
+        await service.complete(current.id, only: photos[1].id)
+        await model.waitForProjection()
+        #expect(model.visibleAssets.map(\.id) == [photos[1].id])
+        await service.complete(old.id, only: photos[0].id)
+        await Task.yield()
+        #expect(model.visibleAssets.map(\.id) == [photos[1].id], "An uncooperative reply cannot restore former metadata candidates")
+        model.beginTermination()
+        #expect(await model.finishSaving())
+    }
+
     @Test func explicitIndexScopeUsesFullCandidatesAndImportRequiresOwnConfirmation() async throws {
         let (model, service, folders, _) = try await fixture()
         model.selection = .folder(folders[0].id)

@@ -18,8 +18,12 @@ enum JPEGExportActions {
         guard !assets.isEmpty else { return }
         for asset in assets { editor.endEditing(assetID: asset.id) }
         let settings = Dictionary(uniqueKeysWithValues: assets.map { ($0.id, editor.settings(for: $0.id)) })
+        let protection = library.photoMetadataFileProtection()
         exporter.present(assets: assets, settingsByAsset: settings,
-                         protectedSourceURLs: library.assets.map(\.fileURL) + editor.cloudProtectedURLs + editor.semanticProtectedURLs,
-                         protectedDirectoryFamilies: editor.semanticProtectedDirectoryFamilies)
+                         protectedSourceURLs: protection.originalURLs + protection.managedFileURLs + protection.managedDirectoryURLs
+                            + editor.cloudProtectedURLs + editor.semanticProtectedURLs,
+                         protectedDirectoryFamilies: protection.managedDirectoryFamilies.map {
+                            ManagedDirectoryFamily(parent: $0.parent, childNamePrefix: $0.childNamePrefix)
+                         } + editor.semanticProtectedDirectoryFamilies)
     }
 }

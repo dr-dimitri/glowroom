@@ -6,6 +6,7 @@ struct DevelopInspector: View {
     @EnvironmentObject private var editor: EditingModel
     @EnvironmentObject private var assistant: AIAssistantModel
     @EnvironmentObject private var imageAnalysis: ImageAnalysisModel
+    @EnvironmentObject private var photoMetadata: PhotoMetadataModel
 
     var body: some View {
         VStack(spacing: 0) {
@@ -30,6 +31,7 @@ struct DevelopInspector: View {
                             .help("Zeigt das Bild ohne deine Einstellungen. Die Bearbeitung bleibt gespeichert.")
                         AIAssistantSection(model: assistant, comparesOriginal: library.comparesOriginal)
                         ImageAnalysisSection(model: imageAnalysis)
+                        PhotoMetadataSection(model: photoMetadata)
                         autoToneSection(assetID: asset.id)
                         adjustmentSection("Tonwert", controls: Array(Adjustment.allCases.prefix(6)), assetID: asset.id)
                         adjustmentSection("Präsenz", controls: Array(Adjustment.allCases.dropFirst(6).prefix(5)), assetID: asset.id)

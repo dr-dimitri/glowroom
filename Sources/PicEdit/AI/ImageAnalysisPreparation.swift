@@ -71,9 +71,13 @@ struct ImageAnalysisPreparer: ImageAnalysisPreparing {
         try request.validate()
         let before = try await sourceStamp(for: request)
         guard case .original(let original) = request.snapshot.source else { throw ImageAnalysisError.invalidRequest }
+        // Explicit reanalysis must bypass both bounded raster caches even if
+        // a source manages to retain every native stamp field.
+        let revision = request.cachePolicy == .refreshRaster
+            ? before.cacheRevision + "|fresh:" + request.id.uuidString : before.cacheRevision
         let preview = PreviewRequest(url: URL(fileURLWithPath: original.standardizedPath), modifiedAt: original.modifiedAt,
                                      pixelSize: Self.maximumPixelSize, fileSize: original.fileSize, allowsEmbeddedPreview: false,
-                                     sourceRevision: before.cacheRevision)
+                                     sourceRevision: revision)
         let source = try await imagePipeline.image(for: preview, priority: .selected)
         let settings = request.inputKind == .originalPreview ? EditSettings.neutral : request.snapshot.settings
         let bitmap = try await renderPipeline.image(source, request: preview, settings: settings,

@@ -1,0 +1,236 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-16",
+  "issue": 7,
+  "platform": {
+    "os": "macOS 27.0.1 (26A434)",
+    "hardware": "Apple M2 Pro, 12 CPU cores, 16 GiB RAM",
+    "compiler": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)\nTarget: arm64-apple-macosx27.0.0",
+    "runtimeScope": "Tests run on this macOS 27 host. SDK 26.5 compilation does not attest execution on macOS 26."
+  },
+  "standardTests": {
+    "appTests": 394,
+    "coreTests": 130,
+    "explicitOptInSkips": 13,
+    "result": "PASS on final source/test state"
+  },
+  "nativeVision": {
+    "result": "PASS",
+    "actualMetadataCalls": 3,
+    "generalAnalysisCalls": 0,
+    "syntheticRasters": 2,
+    "pixelSize": [
+      512,
+      320
+    ],
+    "samples": [
+      {
+        "case": 1,
+        "nativeSeconds": 3.519,
+        "cachedSeconds": 0.0007,
+        "processHighWaterRSSBytes": 49987584
+      },
+      {
+        "case": 2,
+        "nativeSeconds": 2.42,
+        "cachedSeconds": 0.0006,
+        "processHighWaterRSSBytes": 53526528
+      }
+    ],
+    "actualOutputs": [
+      {
+        "tags": [
+          "Kreis",
+          "Rechteck",
+          "Farbe"
+        ],
+        "language": "de_DE",
+        "description": "Ein roter Kreis und ein blaues Rechteck auf weißem Hintergrund.",
+        "title": "Rot-Blau"
+      },
+      {
+        "tags": [
+          "Dreieck",
+          "Scheibe",
+          "Farbe"
+        ],
+        "language": "de_DE",
+        "description": "Auf weißem Hintergrund stehen ein grünes Dreieck und eine gelbe Scheibe nebeneinander.",
+        "title": "Grünes Dreieck, gelbe Scheibe"
+      }
+    ],
+    "checks": [
+      "strict schema and German fields",
+      "pixel-dependent distinct colors and shapes with word tokens",
+      "background is not accepted as a round shape",
+      "source/native stamp/raster provenance",
+      "two cache hits without native calls",
+      "explicit raster refresh calls native provider again with unchanged pixel hash",
+      "one maximum active metadata call"
+    ],
+    "limits": [
+      "Only two synthetic motifs; no photographic, RAW, multilingual or cross-hardware quality claim.",
+      "Per-process RSS excludes out-of-process system-model and GPU memory.",
+      "No local metadata confirmation or Cloud request in this model smoke.",
+      "Continuous-clock measurements from one run; no cold-storage or throughput comparison."
+    ]
+  },
+  "storageLoad": {
+    "result": "PASS",
+    "rawReportSHA256": "ef06cfa5a5639dd429312235bc6e3689c226904d63d3c634e9f9af2e78e0cd35",
+    "measurements": {
+      "baseRSSBytes": 11304960,
+      "commitMilliseconds": 5886.636958,
+      "committedCount": 10000,
+      "debugBuild": true,
+      "existingExportBytesPreserved": true,
+      "exportBytes": 15989027,
+      "exportMilliseconds": 14056.629833,
+      "exportedCount": 10000,
+      "highWaterBeforeImportBytes": 11321344,
+      "highWaterRSSBytes": 259899392,
+      "inputBytes": 11689020,
+      "largeEntryCount": 8481,
+      "largeInputBytes": 57695263,
+      "largeReviewMilliseconds": 7569.068375,
+      "largeReviewResult": "safely rejected at accounted 128 MiB review budget",
+      "lateInvalidEntryRejectedWithoutWrites": true,
+      "overByteLimitRejected": true,
+      "overEntryLimitRejected": true,
+      "overflowSeedMilliseconds": 230719.827875,
+      "overflowSeededCount": 10000,
+      "oversizedExportMilliseconds": 36244.136792,
+      "oversizedExportRejected": true,
+      "restartSampleMilliseconds": 10101.712,
+      "reviewMilliseconds": 2587.541334,
+      "roundtripCount": 10000,
+      "roundtripMilliseconds": 9758.011541,
+      "scope": "Synthetic orphan metadata only; no photos, RAW, model or GUI. Process RSS high-water is cumulative, not an exact review-budget cap."
+    },
+    "limits": [
+      "Synthetic orphan text records; no image or semantic-search benchmark.",
+      "Debug build; generated source files were just written, not a cold-SSD workload.",
+      "One measured run. RSS high-water is cumulative across all stress cases, not a per-review physical-memory guarantee.",
+      "Large review rejection is expected safe behavior, not silent partial import."
+    ]
+  },
+  "sourceSHA256": {
+    "Sources/PicEdit/AI/AppleImageAnalysisProvider.swift": "3bb272bf85c154f77fa68273dea7771c1d72542b24c4a2b7b5067f1dfb10c756",
+    "Sources/PicEdit/AI/ApplePhotoMetadataAdapter.swift": "8a0a33ea2ba12667c8d42f6d03b183644a352501e65ec75110fb526b3de49538",
+    "Sources/PicEdit/AI/ImageAnalysisPreparation.swift": "39879e6a6c7386468dfc6328773d38b66adce2b297062f6195fc734ff6a98e10",
+    "Sources/PicEdit/AI/ImageAnalysisService.swift": "d026501d2a5a1462e2d05bd6f78d08c4af67504780363d9e560ae45dd24c1709",
+    "Sources/PicEdit/AI/LocalImageAnalysisProvider.swift": "e3ec2709699f572eab0608362eeaeaa0245d45184fce63adf5b1592b6b9cf969",
+    "Sources/PicEdit/AI/PhotoMetadataSuggestor.swift": "0ac76adb6f8c9407302d99bc8932cfd1dfe5817f56212a1e8d38ac94a579cb71",
+    "Sources/PicEdit/CatalogWriter.swift": "522a222038efa92fb1a5a090700392950066b5cd0d903adb1ce21021a613b6ae",
+    "Sources/PicEdit/DevelopInspector.swift": "874680daec677ec828509587c261e57e0959665e088c4a66164b0fe92fdd6d5f",
+    "Sources/PicEdit/EditingModel.swift": "e0f8ab4b90af785bda54ab99145669debf5cfe585291637538e08f0ccca848cf",
+    "Sources/PicEdit/InspectorView.swift": "09a54b7a3ac3224eaf44059dd12c4eeb1c698433dbabb8860721fb67809d821d",
+    "Sources/PicEdit/JPEGExportActions.swift": "8defaad15fabbd1fbe7c6510f3bb37e752c571e20d156a4e4b9a52265be1ec2d",
+    "Sources/PicEdit/LibraryModel.swift": "684469dbbfa42e414206069980a6a3ad4dafa30cb3468c66b9023b9cc2dc69b6",
+    "Sources/PicEdit/LibraryProjection.swift": "fd3f55bf82576bf8b3307a359465c53777bb8d46fcde0ff460bfb704fabcafb5",
+    "Sources/PicEdit/ManagedFileProtection.swift": "0d02119e261d62bc57e801337c5d4c38254a53d38567b629771a15da06cd0e33",
+    "Sources/PicEdit/MetadataCatalogSources.swift": "dbc7c841f43343c976a224938ea34a53d969f07fe20945575ea965036933cd32",
+    "Sources/PicEdit/MetadataTagEditorState.swift": "d2e13df4cc0a906188254dd9f00480a18cae0e352d56a7b1e5f1359dac87463d",
+    "Sources/PicEdit/PhotoMetadataAppContracts.swift": "28dfa15efba58787111a70733f7307fa643f50f574bbed6d5a9020d9a8b486c1",
+    "Sources/PicEdit/PhotoMetadataCatalogReview.swift": "0443b842036a2c97f941ff19265eee94a55360a267601917c680493dc9be9ac5",
+    "Sources/PicEdit/PhotoMetadataImportExportActions.swift": "fa9dc496d318d5b5d40633a00972c6f4a78e62790f7f99da66654a99a838498b",
+    "Sources/PicEdit/PhotoMetadataModel.swift": "653bc717139903e411829fc12a00cc807308f05246cef8e959332f1fbec298c3",
+    "Sources/PicEdit/PhotoMetadataSection.swift": "3a6a5d94826e6051d5f62c8693e1ba30403f020f560979edee578324c7608e29",
+    "Sources/PicEdit/PicEditApp.swift": "8603b176ef07d39bbd4f191865ea77bb98a502a2fb79e96e33fac3619d0a1505",
+    "Sources/PicEditCore/AI/ImageAnalysisContracts.swift": "b4a9ef22e6305f87bb3e9888faf8345dd8fc6687be492dac4ea9a29b51d554e8",
+    "Sources/PicEditCore/CatalogFileIO.swift": "d03d6971b03e7f366061f0b30b917c01be25140e57538cd11ac4d05ae230a5e6",
+    "Sources/PicEditCore/CatalogRepository.swift": "ae56025f1eb19a6a5bf3be7d3fcdde169f2ca03ebdad3618975114f4e16ae7b3",
+    "Sources/PicEditCore/FilePathComparison.swift": "42ea9214b1a615f91f2e2c69bf5189d04fa37544d9c15ddafc829f8ec8fbb10c",
+    "Sources/PicEditCore/PhotoMetadataFiles.swift": "f1ecf4be470201b8ba6ec523e6e61585a639c867d6d67e00f9f65fe16801ee61",
+    "Sources/PicEditCore/PhotoMetadataJSON.swift": "2733c60b37cd18087debc313b5e6cb3fdabfdd2a142938f4066437a145613038",
+    "Sources/PicEditCore/PhotoMetadataRepository.swift": "e4ffee3d6437df182d583eb079edb3b7370888e144bf73522429b06837f0eab0",
+    "Sources/PicEditCore/PhotoMetadataRepositoryCatalog.swift": "f5be18349ac1bbb6f4cdc494caf07f8f875b834742fefd3184d5050aa6cc3f09",
+    "Sources/PicEditCore/PhotoMetadataRepositoryJSON.swift": "2a1f253e23f6cf7ead908488f5da0d1960d83880a5e141a9ad4e072f246eb56a",
+    "Sources/PicEditCore/PhotoMetadataSQLite.swift": "13839abdcfa85cde32500d9209d91ebd7ba9a882b9aa9db79f138a2fe339e9f3",
+    "Sources/PicEditCore/PhotoMetadataValidation.swift": "75937dcff9041c57eada63c93fcb975a42c8200b57da520497bcc01aff6c1a78",
+    "Sources/PicEditCore/PhotoTextMetadata.swift": "a4b3e146ee244d85b2ab1dc9aedbe8cce9a97cfbf6b34ba93d8f167f78de4156",
+    "Tests/PicEditCoreTests/CatalogPublicationTests.swift": "55dbeea07a71ad0941e1baabe21fb4c28a3d1cab02ca89478292585d7ab78379",
+    "Tests/PicEditCoreTests/PhotoMetadataCatalogTests.swift": "80265e523cd82fa88364cc9022549419e3b792e64c3d10059dbcfca160e2baf9",
+    "Tests/PicEditCoreTests/PhotoMetadataJSONTests.swift": "4a43fb53a436952230a5015eca402a5d1fea406cd95b14fb40a95d1c0f8c7882",
+    "Tests/PicEditCoreTests/PhotoMetadataLoadEvaluationTests.swift": "203892629024d61059a5c2c2117a94ef271f9fddafb0ae1ac907e11ec663551c",
+    "Tests/PicEditCoreTests/PhotoMetadataRepositoryTests.swift": "e4152c50b5a60a3235ff5e915f3a62bc939f3b49249a64d077c117b340e64447",
+    "Tests/PicEditCoreTests/PhotoMetadataStorageTests.swift": "2047c14b480059ad252de379f3606b9b773a9a0cee64e2e79ed9f4fb96e93ce7",
+    "Tests/PicEditCoreTests/PicEditCoreTests.swift": "e5fd62a30f8d754845f098fcc8bd670f25e75ac7476cfdc09704d9fa6b2e114b",
+    "Tests/PicEditTests/LocalPhotoMetadataEvaluationTests.swift": "e1fdbd780348bdd6e445e1aa20fe72b3331a38874603aa7538281e2478b6b597",
+    "Tests/PicEditTests/MetadataCatalogIntegrationTests.swift": "bf2ea46db5aad7b78ac2655c6d2b64e6b31b4e829903aa51bfe9ccb86df10571",
+    "Tests/PicEditTests/MetadataManagedFilesTests.swift": "edf61674e9b045a16caad2e8f33bd135b3f9559ee64064ececbfaf90ad0a6c07",
+    "Tests/PicEditTests/MetadataTagEditorTests.swift": "fc52911542cece5dd10ddacab3042905a0f17f4ee93a00d8fdb1542b8b3a5e0e",
+    "Tests/PicEditTests/PhotoMetadataModelTests.swift": "755c2ffd91fb7f774b427a4b36287b902a4a5b51ee34386daf94a6987d675611",
+    "Tests/PicEditTests/PhotoMetadataSuggestorTests.swift": "d3bfa0583cda950a41b5d263660d8ac9697c870d1e18b4ebbcee6ac1ad965dfd",
+    "Tests/PicEditTests/PhotoMetadataTerminationTests.swift": "036bec7ba8e99633e0a8cea2bf7c0e53ec6d9f681b2a537cd4ab3fb988b537a4",
+    "Tests/PicEditTests/SemanticLibraryTests.swift": "6dc48926803f4e2a28df60a5b1e882797c654dce5f9b205171427674c9c945cc"
+  },
+  "sourceManifestSHA256": "e0dedbba310f7495074c826c980df1423460332712f941d42707ffb61235f61b",
+  "cleanBuild": {
+    "result": "PASS",
+    "command": "PICEDIT_BUILD_JOBS=3 ./scripts/build-app.sh with explicit clean .build-app path",
+    "fullScriptSeconds": 145.51,
+    "compilerSeconds": 113.73,
+    "oldOutputsRemoved": [
+      ".build",
+      ".build-app",
+      "dist/PicEdit.app",
+      "three isolated metadata test build directories"
+    ],
+    "activeProcessAndLockCheck": "PASS; cleanup refused a live test during earlier dry-run; performed only after all test processes ended",
+    "codesignDeepStrict": "PASS",
+    "minimumSystemVersion": "14.0",
+    "foundationModelsLoadCommand": "LC_LOAD_WEAK_DYLIB",
+    "logSHA256": "56d934e4487efa1872a3327dc70334aa909e7fccea7bc0c10bd6f3c70fbb392f"
+  },
+  "manualUI": {
+    "result": "PASS",
+    "bundleID": "de.wolfgangbauer.picedit.metadatauitest",
+    "scope": "Isolated catalog with 12 synthetic JPEGs; no personal catalog or photos. Separate test bundle cloned from the clean release app.",
+    "checks": [
+      "manual title/description/two newline-delimited tags confirmed as revision 1",
+      "confirmed title yields exactly one literal search result",
+      "switch A to B shows no confirmed text on B; return to A restores confirmed fields",
+      "normal quit drains stores; SQLite confirms exact title and tags",
+      "explicit restart with same isolated catalog shows confirmed revision and fields",
+      "all 12 original SHA256 values unchanged",
+      "test app quit and actual process exit verified"
+    ],
+    "notExercised": [
+      "GUI model generation (covered by separate native raster smoke)",
+      "Cloud activation or calls",
+      "GUI import conflict and bookmark relocation (covered by state/integration tests)"
+    ],
+    "toolLimit": "Initial UI binding took an unexpectedly long tool roundtrip; no UI timing or responsiveness benchmark is claimed."
+  },
+  "compatibility": {
+    "sdk26": {
+      "result": "PASS",
+      "appTests": 52,
+      "coreTests": 56
+    },
+    "fallback": {
+      "result": "PASS",
+      "appTests": 52,
+      "coreTests": 56
+    }
+  },
+  "logSHA256": {
+    "picedit-metadata-full-suite-final.log": "9345b3688ff6edf2f2472106636a06eeb159846550f5fdd395ec0c033f80608c",
+    "picedit-metadata-sdk26-final.log": "4ac5f9275d2e10a449fc57da91d8695334b4c6eb18b2969179c4ad2ec61fa942",
+    "picedit-metadata-fallback-final.log": "10072401618236406e3a139507515ebb545ce999934320a7c03699499baf75e9",
+    "picedit-metadata-native-evaluation-final.log": "ba2cd78b15f50a86175dea9de085b405a9f9d9536a391d5bf89c8e8b4b98038b",
+    "picedit-metadata-load-evaluation.log": "e20d77a677c2b45fa2ff0292050a614543c3ed6918fab7882061d7c25280ef5f"
+  },
+  "review": {
+    "result": "PASS",
+    "scope": "Final integrated diff, interfaces, README and metadata documentation; independent UI/Core/integration reviews plus root inspection. All confirmed findings corrected and rechecked.",
+    "unrelatedTrackedBug": "https://github.com/dr-dimitri/picedit/issues/27"
+  },
+  "resolvedValidationFailures": {
+    "earlyTestCompilations": "Two early test compilations failed on an escaping closure annotation and a missing Core import; corrected. Final native/standard/SDK/fallback builds pass.",
+    "abortedThirdTestRun": "An implementation bug in Foundation URL-parent traversal caused a CPU loop; own test helper was stopped with SIGTERM. Strict-progress bounded native traversal and root regressions now pass.",
+    "fourthIntegratedRun": "One real family-alias protection failure and one unbound-actor test fixture failed. Native alias-family protection was fixed; fixture now imports a legitimate orphan tombstone without weakening CAS. Fifth and final runs pass.",
+    "nativeSmokeDiagnostic": "A substring assertion could count Hintergrund as a round shape. Whole-word stems, explicit negative cases and continuous-clock diagnostics replaced it; the actual native smoke was repeated successfully."
+  }
+}
