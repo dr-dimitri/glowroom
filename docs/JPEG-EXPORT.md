@@ -8,7 +8,7 @@ Der Dialog orientiert sich an den Bereichen Speicherort, Dateieinstellungen und 
 
 ## Verarbeitung
 
-`JPEGExportModel` hält Eingaben, Status, Abbruch und Bestätigung für vorhandene Zieldateien auf dem MainActor. Ein unveränderlicher `JPEGExportRequest` enthält Original, Bearbeitungen, Ausgabemaße, Qualität, Farbraum und Ziel. Bei einer Überschreibbestätigung wird genau dieser Auftrag erneut verwendet.
+`JPEGExportModel` hält Eingaben, Status, Abbruch und Bestätigung für vorhandene Zieldateien auf dem MainActor. Ein unveränderlicher `JPEGExportRequest` enthält Original, Bearbeitungen, Ausgabemaße, Qualität, Farbraum und Ziel. Bei einer Überschreibbestätigung wird genau dieser Auftrag erneut verwendet. Der Originalschutz bleibt dagegen aktuell: Jeder Auftrag behält den Zugriff auf die Schutzinstanz seiner Bibliothek, auch bei Stapelfortsetzung und erneutem Versuch.
 
 Mehrere Bilder erhalten gemeinsame Exportoptionen und automatisch eindeutige Dateinamen auf Basis von `Originalname-bearbeitet.jpg`. Namenskollisionen innerhalb der Auswahl werden unabhängig von Groß-/Kleinschreibung und Unicode-Normalisierung durch Zahlenzusätze aufgelöst. Die sichtbare Bildreihenfolge bestimmt die Reihenfolge der Aufträge. Bei Namenskonflikten mit vorhandenen Dateien wird jeder betroffene Auftrag ausdrücklich bestätigt; die übrige Warteschlange behält ihre angenommenen Ziele und Optionen. Ein Fehler pausiert den Stapel für einen erneuten Versuch. Ein Abbruch stoppt die verbleibenden Aufträge und zeigt bereits erfolgreich veröffentlichte Ergebnisse weiter an.
 
@@ -28,9 +28,15 @@ Ein exklusiv erzeugtes temporäres JPEG liegt im Zielordner; ImageIO schreibt ü
 
 Kanonische Pfade und Geräte-/Inode-Identitäten schützen das Quellbild und die bekannten importierten Originale auch bei alternativen Pfaden oder Hardlinks. Symbolische Links als Zieldatei werden abgewiesen. Ein fehlgeschlagener oder vor der Veröffentlichung abgebrochener Auftrag entfernt seine temporäre Datei und erhält eine bereits vorhandene Ausgabe. Nach erfolgreicher atomarer Veröffentlichung wird Erfolg gemeldet, auch wenn unmittelbar danach ein Abbruch eingeht.
 
+Vor jedem Versuch und nach der Kodierung liest der Hintergrundexport den aktuellen gespeicherten Katalog und berücksichtigt zusätzliche Originalpfade aus laufender Wiederherstellung. Die abschließende Prüfung der Katalogreferenz und die atomare Veröffentlichung teilen sich den nativen Publikationslock mit allen kooperierenden Katalogschreibern. Ein neuer Katalogstand zwischen Schutzprüfung und Lock führt zu einem sicheren Fehler und kann erneut versucht werden.
+
+Schon angenommene Imports werden vor dem Start ihres Scans registriert, einschließlich wartender Importbatches. Solange ein solcher Import oder eine Neuzuordnung von Originalpfaden läuft, veröffentlicht der Export keine Datei. Ein bereits offener Dialog bleibt erhalten und meldet, dass der Vorgang nach Abschluss wiederholt werden kann. Die Registrierung bleibt bei Abbruch bis zur tatsächlichen Rückkehr laufender Arbeit bestehen; noch nicht gestartete Batches geben sie frei. Eine kurze gemeinsame Sperre schützt die Generation dieser Registrierung bis zum finalen Dateicheck und Rename. Kataloglesen, Identitätsprüfung, Warten auf den nativen Lock und Rendering liegen außerhalb dieser Sperre und außerhalb des MainActors. Ein fehlerhaft geöffneter Katalog sperrt auch bereits offene Exportdialoge.
+
 Synchrones Systemrendering ist nicht jederzeit unterbrechbar. Der Dialog bleibt während eines angeforderten Abbruchs deshalb beschäftigt, bis der Export tatsächlich zurückgekehrt ist. PicEdit verhindert das Beenden während dieser Phase. Andere Programme sollten Quelle und Ziel während eines Exports nicht gleichzeitig umbenennen oder ersetzen; es besteht keine prozessübergreifende Schreibsperre für externe Anwendungen.
 
 ## Prüfung
+
+Regressionen für [Issue #27](https://github.com/dr-dimitri/picedit/issues/27) verwenden ausschließlich synthetische Bilder und eigene temporäre Kataloge: verspätete Imports bei offenem Dialog und Überschreibbestätigung, ein noch blockierter Scanner nach der Kodierung, wartende und abgebrochene Importbatches, neue Originale und Hardlinks vor Start/nach Rendering/nach dem finalen Snapshot, zwischenzeitlich abgeschlossene Annahmen sowie neue Wiederherstellungs-Schutzpfade. Sie prüfen erhaltene Originalbytes, entfernte temporäre JPEGs und die Möglichkeit eines späteren erlaubten Exports. Build- und Laufergebnisse des integrierten Standes stehen in [REVIEW.md](REVIEW.md).
 
 Geprüft am 16. Oktober 2026 in einer normalen macOS-Sitzung mit Core Image:
 

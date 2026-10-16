@@ -275,10 +275,13 @@ internal final class CatalogCoordinationFiles: @unchecked Sendable {
             try self.requireOperation(operation)
             try self.requireNamed(file.handle.value, parent: operation.directory.value, name: "catalog.json")
             let prepared = try self.preparedCatalog(operation)
+            let payloadOwnership = try EditingDatabaseAccess.reserveNativeFile()
+            let payloadFD = try self.duplicate(file.handle.value)
+            let payload = CatalogDirectoryHandle(payloadFD, editingOwnership: payloadOwnership.own(payloadFD))
             return StagedLibraryCatalog(id: operation.descriptor.payload.operationID, prepared: prepared,
                 root: CatalogDirectoryHandle(try self.duplicate(operation.root.catalog.value)),
                 stage: CatalogDirectoryHandle(try self.duplicate(operation.directory.value)), name: "catalog.json",
-                payload: CatalogDirectoryHandle(try self.duplicate(file.handle.value)),
+                payload: payload,
                 validateAdditionalBoundary: { try self.requireOperation(operation) })
         }, openOriginalBytes: {
             try self.requireOperation(operation)

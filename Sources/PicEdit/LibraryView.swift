@@ -85,7 +85,7 @@ struct LibraryView: View {
                     JPEGExportActions.present(using: exporter, library: model, editor: editor)
                 } label: { Label("Exportieren", systemImage: "square.and.arrow.up") }
                     .foregroundStyle(Theme.muted)
-                    .disabled(model.selectedIDs.isEmpty || model.isProjecting || editor.isLoading || editor.isRestoring || editor.isClosing || exporter.isPresented)
+                    .disabled(model.selectedIDs.isEmpty || !model.canExportJPEG || model.isProjecting || editor.isLoading || editor.isRestoring || editor.isClosing || exporter.isPresented)
                     .help("Ausgewählte Fotos als JPEG exportieren · ⇧⌘E")
                 Menu {
                     Button("Bearbeitungen sichern …") { EditingBackupActions.create(using: editor) }.disabled(!editor.canBackUp)

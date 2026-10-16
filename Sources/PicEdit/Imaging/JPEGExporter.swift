@@ -14,10 +14,12 @@ struct JPEGExportRequest: Sendable {
     let overwriteExisting: Bool
     let protectedSourceURLs: [URL]
     let protectedDirectoryFamilies: [ManagedDirectoryFamily]
+    let catalogProtection: JPEGExportCatalogProtection?
 
     init(sourceURL: URL, destinationURL: URL, settings: EditSettings, options: JPEGExportOptions,
          overwriteExisting: Bool = false, protectedSourceURLs: [URL] = [],
-         protectedDirectoryFamilies: [ManagedDirectoryFamily] = []) {
+         protectedDirectoryFamilies: [ManagedDirectoryFamily] = [],
+         catalogProtection: JPEGExportCatalogProtection? = nil) {
         self.sourceURL = sourceURL
         self.destinationURL = destinationURL
         self.settings = settings
@@ -25,6 +27,7 @@ struct JPEGExportRequest: Sendable {
         self.overwriteExisting = overwriteExisting
         self.protectedSourceURLs = protectedSourceURLs
         self.protectedDirectoryFamilies = protectedDirectoryFamilies
+        self.catalogProtection = catalogProtection
     }
 }
 
@@ -40,6 +43,9 @@ enum JPEGExportError: LocalizedError, Equatable {
     case incompleteOriginal
     case destinationExists
     case protectedOriginal
+    case catalogBusy
+    case catalogChanged
+    case catalogUnavailable
     case invalidDestination
     case insufficientMemory
     case renderingFailed
@@ -53,6 +59,9 @@ enum JPEGExportError: LocalizedError, Equatable {
         case .incompleteOriginal: "Das Original konnte nicht in seiner vollständigen Auflösung decodiert werden."
         case .destinationExists: "Am gewählten Ziel existiert bereits eine Datei."
         case .protectedOriginal: "Originalbilder und geschützte Anwendungsdateien dürfen durch den Export nicht ersetzt werden. Wähle ein anderes Ziel."
+        case .catalogBusy: "Die Bibliothek liest oder ordnet Originalbilder gerade neu. Warte bis zum Abschluss und versuche den Export erneut."
+        case .catalogChanged: "Die Bibliothek wurde während der Exportprüfung geändert. Die Zieldatei bleibt erhalten. Versuche den Export erneut."
+        case .catalogUnavailable: "Der Originalschutz ist derzeit nicht verfügbar. Behebe zuerst den Bibliotheksfehler und versuche den Export erneut."
         case .invalidDestination: "Das Exportziel muss eine reguläre Datei in einem vorhandenen Ordner sein. Symbolische Verknüpfungen sind nicht zulässig."
         case .insufficientMemory: "Für diese Original- und Ausgabeauflösung reicht das sichere Export-Speicherbudget nicht aus. Wähle kleinere Ausgabemaße oder einen Rechner mit mehr Arbeitsspeicher."
         case .renderingFailed: "Die JPEG-Ausgabe konnte nicht gerendert werden."
@@ -70,6 +79,7 @@ actor JPEGExporter {
 
     private let memoryBudget: UInt64
     private let beforePublication: @Sendable () throws -> Void
+    private let beforeCatalogPublication: @Sendable () throws -> Void
     private lazy var context = CIContext(options: [
         .workingColorSpace: CGColorSpace(name: CGColorSpace.extendedLinearSRGB)!,
         .workingFormat: CIFormat.RGBAh,
@@ -78,13 +88,15 @@ actor JPEGExporter {
         .name: "PicEdit JPEG export"
     ])
 
-    init(memoryBudget: UInt64? = nil, beforePublication: @escaping @Sendable () throws -> Void = {}) {
+    init(memoryBudget: UInt64? = nil, beforePublication: @escaping @Sendable () throws -> Void = {},
+         beforeCatalogPublication: @escaping @Sendable () throws -> Void = {}) {
         // Planning bound for decoded pixels, spatial intermediates, and output.
         // Core Image/ImageIO manage their own internal allocations; this is not
         // an operating-system memory quota. No full-size image cache is retained.
         self.memoryBudget = memoryBudget ?? min(8 * 1_024 * 1_024 * 1_024,
                                                ProcessInfo.processInfo.physicalMemory / 4)
         self.beforePublication = beforePublication
+        self.beforeCatalogPublication = beforeCatalogPublication
     }
 
     func export(_ request: JPEGExportRequest) throws -> JPEGExportResult {
@@ -109,12 +121,17 @@ actor JPEGExporter {
             guard directory >= 0 else { throw JPEGExportError.fileSystem(errno) }
             defer { close(directory) }
 
-            // Capture original inode identities once. A pathname, a symlinked
-            // parent, or another hard link must never bypass original protection.
+            // Edits remain frozen; protection includes the current durable
+            // catalog on every attempt, including an overwrite confirmation.
             let targetURL = parent.appendingPathComponent(filename)
-            let protectedIdentities = try originalIdentities(request, destination: targetURL)
-            try validateDestination(directory: directory, filename: filename,
-                                    protectedIdentities: protectedIdentities, overwrite: request.overwriteExisting)
+            do {
+                let initialProtection = try request.catalogProtection?.snapshot()
+                let initialCatalog = try request.catalogProtection?.repository.loadStored()
+                let identities = try originalIdentities(request, destination: targetURL, catalog: initialCatalog,
+                                                        extra: initialProtection?.protectedSourceURLs ?? [])
+                try validateDestination(directory: directory, filename: filename,
+                                        protectedIdentities: identities, overwrite: request.overwriteExisting)
+            }
             try Task.checkCancellation()
 
             guard FileManager.default.isReadableFile(atPath: request.sourceURL.path) else {
@@ -217,37 +234,50 @@ actor JPEGExporter {
             // tests after encoding. Production uses the default empty hook.
             try beforePublication()
             try Task.checkCancellation()
-            // Another application may have atomically replaced an imported
-            // original while RAW development was running. Refresh identities
-            // before an approved replacement instead of trusting old inodes.
-            let finalIdentities = request.overwriteExisting
-                ? try originalIdentities(request, destination: targetURL) : protectedIdentities
-            try validateDestination(directory: directory, filename: filename,
-                                    protectedIdentities: finalIdentities, overwrite: request.overwriteExisting)
-            try Task.checkCancellation()
-
-            // The commit point is one rename in the pinned parent directory.
-            // RENAME_EXCL remains race-safe if another process creates the target
-            // after validation. After success, report success even if cancellation
-            // arrives: the accepted atomic publication must not be misreported.
-            let flags = request.overwriteExisting ? UInt32(0) : UInt32(RENAME_EXCL)
-            guard renameatx_np(directory, temporaryName, directory, filename, flags) == 0 else {
-                if errno == EEXIST { throw JPEGExportError.destinationExists }
-                throw JPEGExportError.fileSystem(errno)
+            // Refresh both catalog membership and original inode identities.
+            // The native catalog lock excludes cooperative publishers through
+            // rename; the tiny admission lock excludes an import accepted after
+            // this snapshot. Neither lock spans decoding/rendering or an await.
+            let finalProtection = try request.catalogProtection?.snapshot()
+            let finalCatalog = try request.catalogProtection?.repository.loadStored()
+            let finalIdentities = try originalIdentities(request, destination: targetURL, catalog: finalCatalog,
+                                                         extra: finalProtection?.protectedSourceURLs ?? [])
+            try beforeCatalogPublication()
+            func publish() throws {
+                try validateDestination(directory: directory, filename: filename,
+                                        protectedIdentities: finalIdentities, overwrite: request.overwriteExisting)
+                try Task.checkCancellation()
+                let flags = request.overwriteExisting ? UInt32(0) : UInt32(RENAME_EXCL)
+                guard renameatx_np(directory, temporaryName, directory, filename, flags) == 0 else {
+                    if errno == EEXIST { throw JPEGExportError.destinationExists }
+                    throw JPEGExportError.fileSystem(errno)
+                }
             }
+            if let protection = request.catalogProtection, let finalCatalog, let finalProtection {
+                try protection.repository.withPublicationLock { actual in
+                    guard actual == finalCatalog.reference else { throw JPEGExportError.catalogChanged }
+                    try protection.withPublication(generation: finalProtection.generation, publish)
+                }
+            } else {
+                try publish()
+            }
+            // Rename is the commit point, even if cancellation arrives now.
             return JPEGExportResult(url: destination, width: size.width, height: size.height)
         }
     }
 
-    private func originalIdentities(_ request: JPEGExportRequest, destination: URL) throws -> Set<FileIdentity> {
+    private func originalIdentities(_ request: JPEGExportRequest, destination: URL,
+                                    catalog: StoredLibraryCatalog? = nil, extra: [URL] = []) throws -> Set<FileIdentity> {
         for family in request.protectedDirectoryFamilies {
             try Task.checkCancellation()
             if ManagedFileProtection.containsDestination(destination, in: family) { throw JPEGExportError.protectedOriginal }
         }
         let canonicalDestination = destination.resolvingSymlinksInPath()
         var identities = Set<FileIdentity>()
-        for (index, original) in ([request.sourceURL] + request.protectedSourceURLs).enumerated() {
+        var index = 0
+        func include(_ original: URL) throws {
             if index % 64 == 0 { try Task.checkCancellation() }
+            index += 1
             if original.hasDirectoryPath, ManagedFileProtection.containsDestination(destination, in: original) {
                 throw JPEGExportError.protectedOriginal
             }
@@ -255,6 +285,10 @@ actor JPEGExporter {
             guard canonical != canonicalDestination else { throw JPEGExportError.protectedOriginal }
             if let identity = FileIdentity.read(canonical) { identities.insert(identity) }
         }
+        try include(request.sourceURL)
+        for original in request.protectedSourceURLs { try include(original) }
+        for original in extra { try include(original) }
+        if let catalog { for asset in catalog.catalog.assets { try include(asset.fileURL) } }
         return identities
     }
 

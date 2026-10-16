@@ -96,7 +96,7 @@ struct PicEditApp: App {
                     JPEGExportActions.present(using: exporter, library: library, editor: editor)
                 }
                 .keyboardShortcut("e", modifiers: [.command, .shift])
-                .disabled(library.selectedIDs.isEmpty || library.isProjecting || editor.isLoading || editor.isRestoring || editor.isClosing || exporter.isPresented)
+                .disabled(library.selectedIDs.isEmpty || !library.canExportJPEG || library.isProjecting || editor.isLoading || editor.isRestoring || editor.isClosing || exporter.isPresented)
             }
             CommandMenu("Bibliothek") {
                 Button("Bildinformationen exportieren …") { PhotoMetadataImportExportActions.export(using: photoMetadata) }

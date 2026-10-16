@@ -85,7 +85,10 @@ final class LibraryModel: ObservableObject {
     @Published var notice: String?
     @Published var errorMessage: String?
     @Published private(set) var isReadOnly = false {
-        didSet { if oldValue != isReadOnly { advanceAISelectionGeneration() } }
+        didSet {
+            jpegExportProtection.setUnavailable(isReadOnly)
+            if oldValue != isReadOnly { advanceAISelectionGeneration() }
+        }
     }
     @Published private(set) var isClosing = false {
         didSet { if oldValue != isClosing { advanceAISelectionGeneration() } }
@@ -106,6 +109,8 @@ final class LibraryModel: ObservableObject {
     var hasCoordinatedRecovery: Bool { !coordinationIDs.isEmpty }
     @Published private(set) var isRetryingCoordination = false
     private let writer: CatalogWriter
+    let jpegExportProtection: JPEGExportCatalogProtection
+    var canExportJPEG: Bool { !isLoading && !isImporting && !isUpdatingCatalog && !isRetryingCoordination && !isClosing && !isReadOnly }
     @Published private(set) var metadataSearchState: PhotoMetadataSearchState = .loading(version: .initial)
     @Published private(set) var metadataGeneration: PhotoMetadataVersion = .initial
     @Published private(set) var metadataCatalogReference: MetadataCatalogFileReference = .absent
@@ -121,7 +126,9 @@ final class LibraryModel: ObservableObject {
     private var metadataWriterSequence: UInt64 = 0
     private var metadataCatalogError: PhotoMetadataError?
     private var metadataBlockedAssetIDs: Set<String> = []
-    private var metadataProtectedSourceURLs: [URL] = []
+    private var metadataProtectedSourceURLs: [URL] = [] {
+        didSet { jpegExportProtection.updateProtectedSources(metadataProtectedSourceURLs) }
+    }
     private var catalogSaveTasks: [UUID: Task<Void, Never>] = [:]
     private var revision = 0
     private var catalogNeedsSave = false
@@ -131,6 +138,7 @@ final class LibraryModel: ObservableObject {
         let urls: [URL]
         let previousSelection: LibrarySelection?
         let admission: CatalogAcceptedWriteAdmission?
+        let exportProtection: JPEGExportCatalogProtection.Admission
     }
     private var queuedImports: [AcceptedImport] = []
     private let folderScanner: @Sendable (LibraryFolder) async throws -> ScanResult
@@ -165,6 +173,7 @@ final class LibraryModel: ObservableObject {
         let metadataSession = UUID()
         metadataCatalogSessionID = metadataSession
         self.metadataStore = metadataStore; metadataDirectory = repository.directory
+        jpegExportProtection = JPEGExportCatalogProtection(repository: repository)
         writer = CatalogWriter(repository: repository, metadataStore: metadataStore, sessionID: metadataSession,
             lifecycle: lifecycle, coordinator: coordinator, editingDependencies: editingDependencies)
         self.now = now; self.folderScanner = folderScanner
@@ -238,6 +247,8 @@ final class LibraryModel: ObservableObject {
 
     func retryPhotoMetadataReconciliation() async throws {
         guard canResolvePhotoMetadataCatalogChanges else { throw isClosing ? PhotoMetadataError.closing : .catalogReadOnly }
+        let exportProtection = jpegExportProtection.acceptCatalogChange()
+        defer { withExtendedLifetime(exportProtection) {} }
         let accepted = try acceptedCatalogOperation { try await self.writer.retryMetadataReconciliation() }
         let id = UUID()
         catalogSaveTasks[id] = Task { _ = try? await accepted.value; catalogSaveTasks.removeValue(forKey: id) }
@@ -247,6 +258,8 @@ final class LibraryModel: ObservableObject {
 
     func resolvePhotoMetadataCatalogChange(_ operation: MetadataCatalogResolutionOperation, alreadyAccepted: Bool = false) async throws -> MetadataReconciliationResult {
         guard canResolvePhotoMetadataCatalogChanges else { throw isClosing ? PhotoMetadataError.closing : .catalogReadOnly }
+        let exportProtection = jpegExportProtection.acceptCatalogChange()
+        defer { withExtendedLifetime(exportProtection) {} }
         if coordinationIDs.contains(operation.changeID), let coordinatorLoader {
             isRetryingCoordination = true
             defer { isRetryingCoordination = false }
@@ -607,6 +620,8 @@ final class LibraryModel: ObservableObject {
     }
 
     private func load() async {
+        let exportProtection = jpegExportProtection.acceptCatalogChange()
+        defer { withExtendedLifetime(exportProtection) {} }
         defer { loadingTask = nil; isLoading = false }
         do {
             if let lifecycle { startupAdmission = try await lifecycle.waitForStartup() }
@@ -648,8 +663,10 @@ final class LibraryModel: ObservableObject {
     func importFolders(_ urls: [URL], preservingSelection previousSelection: LibrarySelection? = nil) {
         guard canModifyCatalog, !isImporting, !urls.isEmpty else { return }
         do {
+            let exportProtection = jpegExportProtection.acceptCatalogChange()
             let admission = try registerCatalogWrite()
-            startImport(AcceptedImport(urls: urls, previousSelection: previousSelection, admission: admission))
+            startImport(AcceptedImport(urls: urls, previousSelection: previousSelection, admission: admission,
+                                      exportProtection: exportProtection))
         } catch { errorMessage = error.localizedDescription }
     }
 
@@ -659,6 +676,7 @@ final class LibraryModel: ObservableObject {
         notice = nil
         importTask = Task {
             defer {
+                withExtendedLifetime(accepted.exportProtection) {}
                 isImporting = false; importStatus = ""; importTask = nil
                 if Task.isCancelled { queuedImports = [] }
                 else if !queuedImports.isEmpty {
@@ -736,8 +754,10 @@ final class LibraryModel: ObservableObject {
             let unique = urls.filter { !queuedURLs.contains($0) }
             guard !unique.isEmpty else { return }
             do {
+                let exportProtection = jpegExportProtection.acceptCatalogChange()
                 let admission = try registerCatalogWrite()
-                queuedImports.append(AcceptedImport(urls: unique, previousSelection: nil, admission: admission))
+                queuedImports.append(AcceptedImport(urls: unique, previousSelection: nil, admission: admission,
+                                                    exportProtection: exportProtection))
             } catch { errorMessage = error.localizedDescription }
         } else { importFolders(urls) }
     }
@@ -973,8 +993,10 @@ final class LibraryModel: ObservableObject {
     }
     func retryCoordinatedRecovery() {
         guard !isClosing, !isRetryingCoordination, let coordinatorLoader else { return }
+        let exportProtection = jpegExportProtection.acceptCatalogChange()
         isRetryingCoordination = true
         recoveryTask = Task {
+            defer { withExtendedLifetime(exportProtection) {} }
             defer { isRetryingCoordination = false; recoveryTask = nil }
             do {
                 let coordinator = try await coordinatorLoader()

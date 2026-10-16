@@ -11,6 +11,7 @@ struct LibraryAdmissionTests {
         defer { f.model.cancelImport(); Task { await f.scanner.releaseAll() }; try? FileManager.default.removeItem(at: f.directory) }
         f.model.importFolders([f.folders[0]])
         f.model.enqueueFolders([f.folders[1]])
+        #expect(throws: JPEGExportError.catalogBusy) { try f.model.jpegExportProtection.snapshot() }
         // These calls all precede the first import Task running. Both batches
         // must already be registered; no later registration may race maintenance.
         var granted = false
@@ -24,12 +25,15 @@ struct LibraryAdmissionTests {
         await f.scanner.releaseNext()
         try await wait { await f.scanner.callCount == 2 }
         #expect(!granted)
+        #expect(throws: JPEGExportError.catalogBusy) { try f.model.jpegExportProtection.snapshot() }
         await f.scanner.releaseNext()
         let (cap, persisted) = try await maintenance.value
         #expect(persisted.assets.count == 2)
         #expect(Set(persisted.assets.map(\.fileName)) == ["First.png", "Second.png"])
         #expect(f.model.catalog == persisted)
         try await f.gate.finishMaintenance(cap)
+        try await wait { !f.model.isImporting }
+        _ = try f.model.jpegExportProtection.snapshot()
     }
 
     @Test func cancelDropsUnstartedQueuedAdmissionButDrainsActualScanner() async throws {
@@ -39,6 +43,7 @@ struct LibraryAdmissionTests {
         f.model.enqueueFolders([f.folders[1]])
         try await wait { await f.scanner.callCount == 1 }
         f.model.cancelImport()
+        #expect(throws: JPEGExportError.catalogBusy) { try f.model.jpegExportProtection.snapshot() }
         var granted = false
         let maintenance = Task {
             let cap = try await f.gate.beginMaintenance(.backup(UUID()))
@@ -53,6 +58,7 @@ struct LibraryAdmissionTests {
         #expect(try f.repository.load().assets.isEmpty)
         try await f.gate.finishMaintenance(cap)
         try await wait { !f.model.isImporting }
+        _ = try f.model.jpegExportProtection.snapshot()
     }
 
     @Test func editorialAcceptancePrecedesMutationAndMaintenanceRejectsAllNewCatalogActions() async throws {
@@ -76,6 +82,7 @@ struct LibraryAdmissionTests {
         #expect(await f.scanner.callCount == 0)
         #expect(f.model.errorMessage != nil)
         try await f.gate.finishMaintenance(cap)
+        _ = try f.model.jpegExportProtection.snapshot()
     }
 
     @Test func ratingsAcceptedDuringScanSurviveTheImportCommit() async throws {
