@@ -6,6 +6,108 @@ import Testing
 @Suite("AI request scheduling", .timeLimit(.minutes(1)))
 struct AIRequestCoordinatorTests {
     @Test
+    func lookGroupSharesOneCallAndBindsEachOriginalRequest() async throws {
+        let provider = GatedAIProvider(capabilities: [.lookSuggestions])
+        let coordinator = AIRequestCoordinator(provider: provider, budget: AIResourceBudget())
+        let a = request(prompt: "", mode: .lookGroup)
+        let b = request(prompt: "", mode: .lookGroup)
+        let first = Task { try await coordinator.lookGroup(for: a) }
+        await provider.waitUntilStarted(a.id)
+        let second = Task { try await coordinator.lookGroup(for: b) }
+        await wait(coordinator) { $0.waiterCount == 2 }
+        await provider.complete(a.id, with: validLookResponse)
+        let firstResult = try await first.value
+        let secondResult = try await second.value
+        #expect(firstResult.request == a)
+        #expect(secondResult.request == b)
+        #expect(firstResult.validation == secondResult.validation)
+        #expect(firstResult.validation.variants.map(\.proposal.id) == AILookID.allCases)
+        #expect(await provider.statistics().started == [a.id])
+    }
+
+    @Test
+    func singleAndLookModesNeverCoalesceAndKeepTheSameWorkerSlot() async throws {
+        let provider = GatedAIProvider(capabilities: [.textEditing, .lookSuggestions])
+        let coordinator = AIRequestCoordinator(provider: provider, budget: AIResourceBudget())
+        let single = request(prompt: "same text")
+        let looks = request(prompt: "same text", mode: .lookGroup)
+        let first = Task { try await coordinator.proposal(for: single) }
+        await provider.waitUntilStarted(single.id)
+        let second = Task { try await coordinator.lookGroup(for: looks) }
+        await wait(coordinator) { $0.queuedRequestID == looks.id }
+        await expectError(first, .superseded)
+        #expect(await provider.statistics().started == [single.id])
+        await provider.complete(single.id, with: validResponse)
+        await provider.waitUntilStarted(looks.id)
+        await provider.complete(looks.id, with: validLookResponse)
+        #expect(try await second.value.request == looks)
+        #expect(await provider.statistics().maximumActive == 1)
+    }
+
+    @Test
+    func twentyLookRequestsRemainBoundedAfterCancellation() async throws {
+        let provider = GatedAIProvider(capabilities: [.lookSuggestions])
+        let budget = AIResourceBudget()
+        let coordinator = AIRequestCoordinator(provider: provider, budget: budget)
+        let original = request(prompt: "", mode: .lookGroup)
+        let first = Task { try await coordinator.lookGroup(for: original) }
+        await provider.waitUntilStarted(original.id)
+        first.cancel()
+        await expectCancelled(first)
+        var latest: Task<AILookGroupResult, Error>?
+        var lastRequest: AIEditingRequest?
+        for index in 0..<20 {
+            let nextRequest = request(prompt: "look \(index)", mode: .lookGroup)
+            let next = Task { try await coordinator.lookGroup(for: nextRequest) }
+            await wait(coordinator) { state in
+                #expect(state.runningCount <= 1 && state.queuedCount <= 1)
+                return state.queuedRequestID == nextRequest.id
+            }
+            if let latest { await expectError(latest, .superseded) }
+            latest = next
+            lastRequest = nextRequest
+        }
+        #expect(await provider.statistics().started == [original.id])
+        await wait(budget) { $0.activeInferences == 1 }
+        let finalRequest = try #require(lastRequest)
+        let final = try #require(latest)
+        await provider.complete(original.id, with: validLookResponse)
+        await provider.waitUntilStarted(finalRequest.id)
+        await provider.complete(finalRequest.id, with: validLookResponse)
+        #expect(try await final.value.request == finalRequest)
+        #expect(await provider.statistics().maximumActive == 1)
+        await wait(budget) { $0.activeInferences == 0 }
+    }
+
+    @Test
+    func invalidGroupPublishesNoPartialResultAndReleasesTheSharedBudget() async throws {
+        let provider = GatedAIProvider(capabilities: [.textEditing, .lookSuggestions])
+        let budget = AIResourceBudget()
+        let coordinator = AIRequestCoordinator(provider: provider, budget: budget)
+        let looks = request(prompt: "", mode: .lookGroup)
+        let groupTask = Task { try await coordinator.lookGroup(for: looks) }
+        await provider.waitUntilStarted(looks.id)
+        await provider.complete(looks.id, with: Data(String(decoding: validLookResponse, as: UTF8.self).replacingOccurrences(of: "desaturated", with: "natural").utf8))
+        await expectError(groupTask, .invalidResponse(.invalidLookID))
+        await wait(budget) { $0.activeInferences == 0 }
+        let single = request()
+        let retry = Task { try await coordinator.proposal(for: single) }
+        await provider.waitUntilStarted(single.id)
+        await provider.complete(single.id, with: validResponse)
+        #expect(try await retry.value.request == single)
+    }
+
+    @Test
+    func modeAndCapabilityChecksPrecedeAnyProviderWork() async {
+        let provider = GatedAIProvider()
+        let coordinator = AIRequestCoordinator(provider: provider, budget: AIResourceBudget())
+        await expectError(Task { try await coordinator.lookGroup(for: request()) }, .invalidRequest)
+        await expectError(Task { try await coordinator.proposal(for: request(mode: .lookGroup)) }, .invalidRequest)
+        await expectError(Task { try await coordinator.lookGroup(for: request(mode: .lookGroup)) }, .unsupportedCapability)
+        #expect(await provider.statistics().availabilityCalls == 0)
+        #expect(await provider.statistics().started.isEmpty)
+    }
+    @Test
     func validatesAndBindsResultsToEachSharedRequest() async throws {
         let provider = GatedAIProvider()
         let coordinator = AIRequestCoordinator(provider: provider, budget: AIResourceBudget())
@@ -271,14 +373,18 @@ struct AIRequestCoordinatorTests {
         Data(#"{"schemaVersion":1,"changes":[{"parameter":"shadows","value":30}]}"#.utf8)
     }
 
-    private func request(prompt: String = "Lift shadows") -> AIEditingRequest {
+    private var validLookResponse: Data {
+        Data(#"{"schemaVersion":1,"variants":[{"id":"natural","name":"Natürlich","proposal":{"schemaVersion":1,"changes":[{"parameter":"contrast","value":8}]}},{"id":"contrasty","name":"Kontrastreich","proposal":{"schemaVersion":1,"changes":[{"parameter":"contrast","value":35}]}},{"id":"desaturated","name":"Entsättigt","proposal":{"schemaVersion":1,"changes":[{"parameter":"saturation","value":-35}]}}]}"#.utf8)
+    }
+
+    private func request(prompt: String = "Lift shadows", mode: AIEditingMode = .single) -> AIEditingRequest {
         AIEditingRequest(prompt: prompt, snapshot: AIEditingSnapshot(assetID: "asset-1",
             source: .original(AIOriginalSourceFingerprint(fileURL: URL(fileURLWithPath: "/tmp/ai-test.raw"),
                 modifiedAt: Date(timeIntervalSince1970: 100), fileSize: 10)),
             settings: .neutral,
             token: AIEditingToken(editSessionID: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!,
                 editGeneration: 0, selectionSessionID: UUID(uuidString: "00000000-0000-0000-0000-000000000002")!,
-                selectionGeneration: 0)))
+                selectionGeneration: 0)), mode: mode)
     }
 
     private func wait(_ coordinator: AIRequestCoordinator, until predicate: (AIRequestCoordinator.State) -> Bool) async {
@@ -296,12 +402,12 @@ struct AIRequestCoordinatorTests {
         Issue.record("Resource state stream ended before the expected state")
     }
 
-    private func expectCancelled(_ task: Task<AIProposalResult, Error>) async {
+    private func expectCancelled<T: Sendable>(_ task: Task<T, Error>) async {
         do { _ = try await task.value; Issue.record("Canceled caller received a proposal") }
         catch is CancellationError {} catch { Issue.record("Expected cancellation, received \(error)") }
     }
 
-    private func expectError(_ task: Task<AIProposalResult, Error>, _ expected: AIEditingError) async {
+    private func expectError<T: Sendable>(_ task: Task<T, Error>, _ expected: AIEditingError) async {
         do { _ = try await task.value; Issue.record("Expected \(expected), received a proposal") }
         catch let error as AIEditingError { #expect(error == expected) }
         catch { Issue.record("Expected \(expected), received \(error)") }

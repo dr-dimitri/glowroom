@@ -23,6 +23,10 @@ public struct EditProposalValidator: Sendable {
         var parser = BoundedJSONParser(bytes: Array(data), maximumDepth: maximumNestingDepth,
                                        maximumValues: maximumJSONValues)
         let value = try parser.parse()
+        return try validate(proposal(from: value), against: settings)
+    }
+
+    private func proposal(from value: JSONValue) throws -> EditProposal {
         guard case .object(let root) = value else { throw invalid(.invalidType) }
         try requireFields(root, allowed: ["schemaVersion", "changes", "explanation"],
                           required: ["schemaVersion", "changes"])
@@ -47,8 +51,60 @@ public struct EditProposalValidator: Sendable {
         } else {
             explanation = nil
         }
-        return try validate(EditProposal(schemaVersion: version, changes: changes, explanation: explanation),
-                            against: settings)
+        return EditProposal(schemaVersion: version, changes: changes, explanation: explanation)
+    }
+
+    /// Uses the same bounded parser as single edits: nested patches do not cross a
+    /// second, more permissive JSONDecoder boundary. Whole-group validation is atomic.
+    public func validateLookGroup(_ data: Data, against settings: EditSettings) throws -> AIValidatedLookGroup {
+        try validateLimits()
+        guard data.count <= maximumResponseBytes else { throw invalid(.responseTooLarge) }
+        var parser = BoundedJSONParser(bytes: Array(data), maximumDepth: maximumNestingDepth,
+                                       maximumValues: maximumJSONValues)
+        guard case .object(let root) = try parser.parse() else { throw invalid(.invalidType) }
+        try requireFields(root, allowed: ["schemaVersion", "variants"], required: ["schemaVersion", "variants"])
+        guard case .number(let rawVersion) = root["schemaVersion"], let version = Int(rawVersion) else {
+            throw invalid(.invalidType)
+        }
+        guard version == AILookProposalGroup.currentSchemaVersion else { throw invalid(.unsupportedSchemaVersion) }
+        guard case .array(let variants) = root["variants"] else { throw invalid(.invalidType) }
+        guard variants.count == AILookID.allCases.count else { throw invalid(.invalidLookCount) }
+        let looks = try variants.map { value -> AILookProposal in
+            guard case .object(let fields) = value else { throw invalid(.invalidType) }
+            try requireFields(fields, allowed: ["id", "name", "proposal"], required: ["id", "name", "proposal"])
+            guard case .string(let rawID) = fields["id"] else { throw invalid(.invalidType) }
+            guard let id = AILookID(rawValue: rawID) else { throw invalid(.invalidLookID) }
+            guard case .string(let name) = fields["name"], let patch = fields["proposal"] else {
+                throw invalid(.invalidType)
+            }
+            return AILookProposal(id: id, name: name, proposal: try proposal(from: patch))
+        }
+        return try validateLookGroup(AILookProposalGroup(schemaVersion: version, variants: looks), against: settings)
+    }
+
+    public func validateLookGroup(_ group: AILookProposalGroup, against settings: EditSettings) throws -> AIValidatedLookGroup {
+        try validateLimits()
+        guard group.schemaVersion == AILookProposalGroup.currentSchemaVersion else { throw invalid(.unsupportedSchemaVersion) }
+        guard group.variants.count == AILookID.allCases.count else { throw invalid(.invalidLookCount) }
+        guard Set(group.variants.map(\.id)) == Set(AILookID.allCases) else { throw invalid(.invalidLookID) }
+        let patchValidator = EditProposalValidator(maximumResponseBytes: maximumResponseBytes,
+                                                  maximumExplanationBytes: min(512, maximumExplanationBytes),
+                                                  maximumNestingDepth: maximumNestingDepth,
+                                                  maximumJSONValues: maximumJSONValues)
+        var targets = Set<EditSettings>()
+        var validated: [AILookID: AIValidatedLook] = [:]
+        // Three tiny dependent validations remain serial: each must succeed before publishing
+        // any group, and scheduling workers would cost more than these bounded scalar checks.
+        for look in group.variants {
+            guard !look.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                  look.name.utf8.count <= 64 else { throw invalid(.invalidLookName) }
+            guard case .changes(_, let target) = try patchValidator.validate(look.proposal, against: settings) else {
+                throw invalid(.ineffectiveLook)
+            }
+            guard targets.insert(target).inserted else { throw invalid(.duplicateLookTargets) }
+            validated[look.id] = AIValidatedLook(proposal: look, target: target)
+        }
+        return AIValidatedLookGroup(variants: AILookID.allCases.compactMap { validated[$0] })
     }
 
     public func validate(_ proposal: EditProposal, against settings: EditSettings) throws -> EditProposalValidationResult {

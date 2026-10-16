@@ -41,4 +41,5 @@ public enum AIProposalValidationError: String, Error, Hashable, Sendable {
     case duplicateField, unknownField, missingField, invalidType
     case unsupportedSchemaVersion, unknownParameter, duplicateParameter
     case nonFiniteValue, outOfRange, explanationTooLong, tooManyChanges, invalidBaseline
+    case invalidLookCount, invalidLookID, invalidLookName, ineffectiveLook, duplicateLookTargets
 }

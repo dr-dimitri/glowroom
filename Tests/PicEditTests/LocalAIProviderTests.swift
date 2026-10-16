@@ -8,6 +8,45 @@ import FoundationModels
 
 @Suite("Local AI provider adapter", .timeLimit(.minutes(1)))
 struct LocalAIProviderTests {
+    @Test
+    func oneGroupedGenerationUsesAnIsolatedLookPromptAndStrictValidation() async throws {
+        let runtime = FakeLocalModelRuntime(output: Self.lookOutput)
+        let provider = LocalAIEditingProvider(runtime: runtime)
+        #expect(provider.capabilities.contains(.lookSuggestions))
+        let request = providerRequest(prompt: "", settings: EditSettings(exposure: 0.7, shadows: 12), mode: .lookGroup)
+        let data = try await provider.proposal(for: request)
+        let group = try EditProposalValidator().validateLookGroup(data, against: request.snapshot.settings)
+        #expect(group.variants.map(\.proposal.id) == AILookID.allCases)
+        #expect(Set(group.variants.map(\.target)).count == 3)
+        #expect(group.variants.allSatisfy { $0.target.exposure == 0.7 && $0.target.shadows == 12 })
+        #expect(await runtime.callCount == 1)
+        let prompt = try #require(await runtime.lastPrompt)
+        #expect(prompt.mode == .lookGroup)
+        #expect(prompt.systemInstructions == LocalAIEditingPrompt.lookInstructions)
+        let object = try #require(JSONSerialization.jsonObject(with: Data(prompt.data.utf8)) as? [String: Any])
+        #expect(object["responseType"] as? String == "threeLookRecipes")
+        #expect(object["lookStyles"] as? [String] == AILookID.allCases.map(\.rawValue))
+        #expect(object["userText"] as? String == "")
+        #expect(!prompt.data.contains("private-photo.nef"))
+        #expect(!prompt.data.contains(request.id.uuidString))
+    }
+
+    @Test
+    func invalidOrPartialGroupedOutputIsNeverFilledOrReturned() async {
+        var variants = Self.lookOutput.variants
+        variants[2] = .init(id: "desaturated", name: "Entsättigt", changes: [.init(parameter: "contrast", value: 8)], explanation: "")
+        let duplicate = LocalAIModelOutput(status: .proposal, changes: [], explanation: "", variants: variants)
+        await expectError(.invalidResponse(.duplicateLookTargets)) {
+            try await LocalAIEditingProvider(runtime: FakeLocalModelRuntime(output: duplicate)).proposal(for: providerRequest(prompt: "", mode: .lookGroup))
+        }
+        let partial = LocalAIModelOutput(status: .proposal, changes: [], explanation: "", variants: Array(variants.prefix(2)))
+        await expectError(.invalidResponse(.invalidLookCount)) {
+            try await LocalAIEditingProvider(runtime: FakeLocalModelRuntime(output: partial)).proposal(for: providerRequest(prompt: "", mode: .lookGroup))
+        }
+        await expectError(.invalidResponse(.invalidType)) {
+            try await LocalAIEditingProvider(runtime: FakeLocalModelRuntime(output: Self.lookOutput)).proposal(for: providerRequest())
+        }
+    }
     @Test(arguments: [AIUnavailableReason.unsupportedSystem, .sdkUnavailable, .unsupportedHardware,
                       .disabled, .modelUnavailable, .unsupportedLanguage, .unknown])
     func unavailableReasonsNeverInvokeGeneration(_ reason: AIUnavailableReason) async throws {
@@ -142,6 +181,7 @@ struct LocalAIProviderTests {
     @available(macOS 26.0, *)
     func appleAvailabilityAndErrorCategories() throws {
         _ = try AppleSystemModelRuntime.generationSchema()
+        _ = try AppleSystemModelRuntime.lookGenerationSchema()
         #expect(AppleSystemModelRuntime.availability(.available, supportsGerman: true) == .available)
         #expect(AppleSystemModelRuntime.availability(.available, supportsGerman: false) == .unavailable(.unsupportedLanguage))
         #expect(AppleSystemModelRuntime.availability(.unavailable(.deviceNotEligible), supportsGerman: true) == .unavailable(.unsupportedHardware))
@@ -170,11 +210,34 @@ struct LocalAIProviderTests {
         #expect(throws: AIEditingError.invalidResponse(.responseTooLarge)) {
             try AppleSystemModelRuntime.output(from: Data(repeating: 0x20, count: 65_537))
         }
+        #expect(throws: AIEditingError.invalidResponse(.malformedJSON)) {
+            try AppleSystemModelRuntime.output(from: Data(#"{"status":"proposal","variants":[{"id":"natural"}]}"#.utf8), mode: .lookGroup)
+        }
+    }
+
+    @Test
+    @available(macOS 26.0, *)
+    func guidedGroupCapabilityQuestionsOverrideInconsistentRecipeStatus() throws {
+        let data = Data(#"{"requestsWhiteBalance":true,"requestsImageAnalysis":false,"status":"proposal","variants":[]}"#.utf8)
+        let output = try AppleSystemModelRuntime.output(from: data, mode: .lookGroup)
+        if case .whiteBalance = output.status {} else { Issue.record("Expected a typed white balance rejection") }
+        let image = Data(#"{"requestsWhiteBalance":false,"requestsImageAnalysis":true,"status":"proposal","variants":[]}"#.utf8)
+        if case .imageAnalysis = try AppleSystemModelRuntime.output(from: image, mode: .lookGroup).status {} else {
+            Issue.record("Expected a typed image-analysis rejection")
+        }
     }
     #endif
 
     private func output(_ changes: [LocalAIModelOutput.Change]) -> LocalAIModelOutput {
         LocalAIModelOutput(status: .proposal, changes: changes, explanation: "")
+    }
+
+    private static var lookOutput: LocalAIModelOutput {
+        LocalAIModelOutput(status: .proposal, changes: [], explanation: "", variants: [
+            .init(id: "natural", name: "Natürlich", changes: [.init(parameter: "contrast", value: 8)], explanation: "Zurückhaltendes Textrezept."),
+            .init(id: "contrasty", name: "Kontrastreich", changes: [.init(parameter: "contrast", value: 35)], explanation: "Stärkerer Kontrast."),
+            .init(id: "desaturated", name: "Entsättigt", changes: [.init(parameter: "saturation", value: -35)], explanation: "Geringere Farbsättigung.")
+        ])
     }
 
     private func expectError(_ expected: AIEditingError,
@@ -214,10 +277,10 @@ private actor FakeLocalModelRuntime: LocalAIModelRuntime {
     }
 }
 
-func providerRequest(prompt: String = "Helle die Schatten auf", settings: EditSettings = .neutral) -> AIEditingRequest {
+func providerRequest(prompt: String = "Helle die Schatten auf", settings: EditSettings = .neutral, mode: AIEditingMode = .single) -> AIEditingRequest {
     AIEditingRequest(prompt: prompt, snapshot: AIEditingSnapshot(assetID: "private-asset-id",
         source: .original(AIOriginalSourceFingerprint(fileURL: URL(fileURLWithPath: "/private/private-photo.nef"),
                                                      modifiedAt: Date(timeIntervalSince1970: 123), fileSize: 100)),
         settings: settings, token: AIEditingToken(editSessionID: UUID(), editGeneration: 0,
-                                                 selectionSessionID: UUID(), selectionGeneration: 0)))
+                                                 selectionSessionID: UUID(), selectionGeneration: 0)), mode: mode)
 }

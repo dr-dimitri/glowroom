@@ -16,6 +16,14 @@ Stand: 16. Oktober 2026. Originalbilder werden weiterhin ausschließlich gelesen
 
 Die Limits sind Arbeitsbudgets, keine harte Obergrenze für interne Threads von ImageIO/Core Image oder ihren Speicherbedarf. Eine laufende synchrone Betriebssystemoperation kann erst nach ihrer Rückkehr auf Abbruch reagieren.
 
+## KI-Lookvorschläge
+
+Die [drei lokalen Looks](AI-LOOKS.md) teilen einen gruppierten Modellaufruf und den bestehenden Inferenzplatz mit dem Einzelassistenten. Der Gruppenmodus ist Teil der Auftragsidentität. Unterschiedliche Looks lösen keine drei gleichzeitigen Modellsitzungen aus; ein laufender abgebrochener Aufruf behält seinen Platz bis zur echten Rückkehr. Abhängige Annahme und SQLite-Speicherung bleiben geordnet.
+
+Die Hauptvorschau rendert nur die aktive Variante mit ausgewählter Priorität und höchstens 2400 Pixeln langer Kante. Kleine Karten entstehen aus derselben Entwicklungsbasis innerhalb der bisherigen Renderplätze mit nachrangiger Priorität und höchstens 512 Pixeln. Die UI hält höchstens drei Karten mit insgesamt 8 MiB, der globale Rendercache bleibt bei 32 MiB und 32 Einträgen. Es entstehen kein zusätzlicher Workerpool, keine weitere RAW-Decodierung pro Look und keine parallele CPU-Ersatzberechnung derselben GPU-Arbeit. Quellen-/Ziel-/Rasteridentität erlaubt Wiederverwendung unabhängig vom Prompt. Verwerfen, Kontextwechsel und Memory Pressure geben eigene Kartenreferenzen frei.
+
+Verträge/Provider, UI sowie Rendering/Kartenspeicher wurden in getrennten Verantwortungsbereichen parallel entwickelt und anschließend gemeinsam geprüft. Modell-/GPU-Messungen laufen seriell, damit sie sich nicht gegenseitig verfälschen. Kleine Gruppenvalidierung und Kartenverwaltung bleiben geordnet, weil drei Elemente keinen zusätzlichen Workeraufwand rechtfertigen. Reproduzierbare Messung und ihre Grenzen stehen im [Look-Prüfbericht](AI-LOOKS.md#prüfung).
+
 ## Prüfung
 
 Die ergänzende Prüfung der GPU-Bearbeitung und des Analyse-Caches ist im [Bearbeitungs-Performancebericht](EDITING-PERFORMANCE.md#prüfung) dokumentiert. Die folgenden Ergebnisse beziehen sich auf den vorangegangenen Parallelisierungsstand `b8d1247`.

@@ -151,10 +151,10 @@ private struct AsyncPhotoView: View {
                 // Coalesce continuous slider events while retaining the previous
                 // display; only the current settings may replace it.
                 if !settings.isNeutral { try await Task.sleep(for: .milliseconds(45)) }
-                let bitmap: PreviewBitmap
-                if identity.settings.isNeutral { bitmap = sourceBitmap }
-                else { bitmap = try await AdjustedPreviewPipeline.shared.image(sourceBitmap, request: request,
-                                                                               settings: identity.settings, priority: priority) }
+                // A cached source can exceed request.pixelSize. Enforce the
+                // actual output limit even for neutral/original comparisons.
+                let bitmap = try await AdjustedPreviewPipeline.shared.image(sourceBitmap, request: request,
+                    settings: identity.settings, priority: priority, maximumOutputPixelSize: request.pixelSize)
                 try Task.checkCancellation()
                 guard renderIdentity == identity else { return }
                 displayed = Displayed(identity: identity, image: NSImage(cgImage: bitmap.image,
