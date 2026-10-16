@@ -104,7 +104,7 @@ private struct PhotoContextMenu: View {
         Button("In Einzelbildansicht öffnen") { model.select(asset); model.showsDetail = true }
         Button(exportCount > 1 ? "\(exportCount) Fotos als JPEG exportieren …" : "Foto als JPEG exportieren …") {
             JPEGExportActions.present(using: exporter, library: model, editor: editor, contextAsset: asset)
-        }.disabled(model.isProjecting || editor.isLoading || editor.isRestoring || editor.isClosing || exporter.isPresented)
+        }.disabled(!model.canExportJPEG || model.isProjecting || editor.isLoading || editor.isRestoring || editor.isClosing || exporter.isPresented)
         Button("Im Finder anzeigen") { model.reveal(asset) }
         Divider()
         Button(asset.isFavorite ? "Aus Favoriten entfernen" : "Als Favorit markieren") { model.toggleFavorite(asset.id) }.disabled(!model.canModify)

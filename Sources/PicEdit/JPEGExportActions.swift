@@ -5,7 +5,7 @@ import PicEditCore
 enum JPEGExportActions {
     static func present(using exporter: JPEGExportModel, library: LibraryModel, editor: EditingModel,
                         contextAsset: PhotoAsset? = nil) {
-        guard !exporter.isPresented, !library.isProjecting, !editor.isLoading, !editor.isRestoring, !editor.isClosing else { return }
+        guard !exporter.isPresented, library.canExportJPEG, !library.isProjecting, !editor.isLoading, !editor.isRestoring, !editor.isClosing else { return }
         // Commit a focused numeric adjustment before changing the active photo
         // or freezing any of the selected photos' edits.
         NSApp.keyWindow?.makeFirstResponder(nil)
@@ -28,6 +28,7 @@ enum JPEGExportActions {
                             + editor.cloudProtectedURLs + editor.semanticProtectedURLs,
                          protectedDirectoryFamilies: protection.managedDirectoryFamilies.map {
                             ManagedDirectoryFamily(parent: $0.parent, childNamePrefix: $0.childNamePrefix)
-                         } + editor.semanticProtectedDirectoryFamilies)
+                         } + editor.semanticProtectedDirectoryFamilies,
+                         catalogProtection: library.jpegExportProtection)
     }
 }

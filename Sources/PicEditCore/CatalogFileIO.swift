@@ -22,8 +22,14 @@ public final class PreparedLibraryCatalog: Sendable {
 
 internal final class CatalogDirectoryHandle: @unchecked Sendable {
     let descriptor: Int32
-    init(_ descriptor: Int32) { self.descriptor = descriptor }
-    deinit { close(descriptor) }
+    private let editingOwnership: EditingNativeFileReservation?
+    init(_ descriptor: Int32, editingOwnership: EditingNativeFileReservation? = nil) {
+        self.descriptor = descriptor; self.editingOwnership = editingOwnership
+    }
+    deinit {
+        if let editingOwnership { editingOwnership.close() }
+        else { close(descriptor) }
+    }
 }
 
 /// Not Codable or publicly constructible: only the repository can mint a stage.
@@ -64,13 +70,13 @@ internal enum CatalogFileIO {
     }
     static func digest(_ bytes: Data) -> String { SHA256.hash(data: bytes).map { String(format: "%02x", $0) }.joined() }
 
-    static func readCatalog(directory: URL) throws -> Contents {
+    static func readCatalog(directory: URL, beforeOpen: () throws -> Void = {}) throws -> Contents {
         guard directory.isFileURL else { throw CatalogRepositoryError.invalidCatalog("Kein lokales Datenverzeichnis.") }
         let root = open(directory.path, O_RDONLY | O_DIRECTORY | O_CLOEXEC)
         if root < 0 && errno == ENOENT { return Contents(data: nil, reference: .absent) }
         guard root >= 0 else { throw posix("Katalogverzeichnis öffnen") }
         defer { close(root) }
-        return try read(root: root, name: "catalog.json", missingAllowed: true)
+        return try read(root: root, name: "catalog.json", missingAllowed: true, beforeOpen: beforeOpen)
     }
 
     static func stage(_ prepared: PreparedLibraryCatalog, directory: URL, id: UUID) throws -> StagedLibraryCatalog {
@@ -84,11 +90,13 @@ internal enum CatalogFileIO {
         guard stageFD >= 0 else { throw CatalogRepositoryError.invalidStage }
         let stage = CatalogDirectoryHandle(stageFD)
         let name = id.uuidString.lowercased() + ".catalog.json"
+        let ownership = try EditingDatabaseAccess.reserveNativeFile()
         let file = openat(stageFD, name, O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC | O_NOFOLLOW, 0o600)
         guard file >= 0 else { throw CatalogRepositoryError.invalidStage }
+        ownership.own(file)
         var completed = false
         defer {
-            if !completed { removeOwnedPayload(file: file, root: stageFD, name: name); close(file) }
+            if !completed { removeOwnedPayload(file: file, root: stageFD, name: name); ownership.close() }
         }
         try prepared.bytes.withUnsafeBytes { bytes in
             var offset = 0
@@ -102,7 +110,7 @@ internal enum CatalogFileIO {
         guard fsync(file) == 0, fsync(stageFD) == 0, fsync(rootFD) == 0 else { throw posix("Katalog-Staging sichern") }
         completed = true
         return StagedLibraryCatalog(id: id, prepared: prepared, root: root, stage: stage, name: name,
-                                    payload: CatalogDirectoryHandle(file))
+                                    payload: CatalogDirectoryHandle(file, editingOwnership: ownership))
     }
 
     static func publish(_ stage: StagedLibraryCatalog, directory: URL, expected: MetadataCatalogFileReference) throws {
@@ -126,14 +134,14 @@ internal enum CatalogFileIO {
         }
     }
 
-    static func withPublicationLock<Result>(directory: URL,
+    static func withPublicationLock<Result>(directory: URL, beforeLockOpen: () throws -> Void = {},
         operation: (MetadataCatalogFileReference) throws -> Result) throws -> Result {
         guard directory.isFileURL else { throw CatalogRepositoryError.invalidStage }
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let root = open(directory.path, O_RDONLY | O_DIRECTORY | O_CLOEXEC)
         guard root >= 0 else { throw posix("Katalogverzeichnis öffnen") }
         defer { close(root) }
-        return try locked(root: root, operation: operation)
+        return try locked(root: root, beforeOpen: beforeLockOpen, operation: operation)
     }
 
     /// Read through the locked native root. The boundary check is used after
@@ -162,11 +170,22 @@ internal enum CatalogFileIO {
 
     /// Shared by catalog publication and metadata JSON final publication. No
     /// async calls or callbacks into this repository are allowed while held.
-    private static func locked<Result>(root: Int32,
+    private static func locked<Result>(root: Int32, beforeOpen: () throws -> Void = {},
         operation: (MetadataCatalogFileReference) throws -> Result) throws -> Result {
+        // Reject a stable alias without opening it, including SQLite stores
+        // outside EditingDatabaseAccess. A raced replacement still needs the
+        // reserved native owner before any post-open validation can throw.
+        if let named = try entry(root: root, name: lockName) {
+            guard named.st_mode & S_IFMT == S_IFREG, named.st_nlink == 1 else {
+                throw CatalogRepositoryError.concurrentModification
+            }
+        }
+        try beforeOpen()
+        let ownership = try EditingDatabaseAccess.reserveNativeFile()
         let lock = openat(root, lockName, O_RDWR | O_CREAT | O_CLOEXEC | O_NOFOLLOW, 0o600)
         guard lock >= 0 else { throw CatalogRepositoryError.concurrentModification }
-        defer { close(lock) }
+        ownership.own(lock)
+        defer { ownership.close() }
         var lockStat = stat()
         guard fstat(lock, &lockStat) == 0, lockStat.st_mode & S_IFMT == S_IFREG, lockStat.st_nlink == 1 else {
             throw CatalogRepositoryError.concurrentModification
@@ -199,12 +218,24 @@ internal enum CatalogFileIO {
         if ownsPayload(file: file, root: root, name: name) { _ = unlinkat(root, name, 0) }
     }
 
-    private static func read(root: Int32, name: String, missingAllowed: Bool, captureBytes: Bool = true) throws -> Contents {
+    private static func read(root: Int32, name: String, missingAllowed: Bool, captureBytes: Bool = true,
+                             beforeOpen: () throws -> Void = {}) throws -> Contents {
+        if let named = try entry(root: root, name: name) {
+            guard named.st_mode & S_IFMT == S_IFREG, named.st_nlink == 1,
+                  named.st_size >= 0, named.st_size <= maximumBytes else { throw CatalogRepositoryError.sizeLimit }
+        }
+        // Internal, synchronous seam for deterministic namespace-race tests.
+        // It holds no native file and introduces no mutable process-wide hook.
+        try beforeOpen()
+        let ownership = try EditingDatabaseAccess.reserveNativeFile()
         let file = openat(root, name, O_RDONLY | O_CLOEXEC | O_NOFOLLOW | O_NONBLOCK)
         if file < 0 && errno == ENOENT && missingAllowed { return Contents(data: nil, reference: .absent) }
         guard file >= 0 else { throw posix("Katalogdatei öffnen") }
-        let handle = FileHandle(fileDescriptor: file, closeOnDealloc: true)
-        defer { try? handle.close() }
+        ownership.own(file)
+        defer { ownership.close() }
+        // FileHandle only borrows: closing any fd for an active SQLite inode
+        // releases this process's fcntl locks, even when validation rejects it.
+        let handle = FileHandle(fileDescriptor: file, closeOnDealloc: false)
         var initial = stat()
         guard fstat(file, &initial) == 0, initial.st_mode & S_IFMT == S_IFREG, initial.st_nlink == 1,
               initial.st_size >= 0, initial.st_size <= maximumBytes else { throw CatalogRepositoryError.sizeLimit }
@@ -225,6 +256,12 @@ internal enum CatalogFileIO {
             throw CatalogRepositoryError.concurrentModification
         }
         return Contents(data: captureBytes ? bytes : nil, reference: .present(sha256: hasher.finalize().map { String(format: "%02x", $0) }.joined(), byteCount: Int64(byteCount)))
+    }
+    private static func entry(root: Int32, name: String) throws -> stat? {
+        var value = stat()
+        if fstatat(root, name, &value, AT_SYMLINK_NOFOLLOW) == 0 { return value }
+        if errno == ENOENT { return nil }
+        throw posix("Katalogdatei prüfen")
     }
     private static func sameDirectory(_ a: Int32, _ b: Int32) -> Bool {
         var one = stat(), two = stat()

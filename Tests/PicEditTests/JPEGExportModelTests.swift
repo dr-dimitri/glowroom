@@ -94,7 +94,9 @@ struct JPEGExportModelTests {
         var settings = EditSettings.neutral
         settings.shadows = 25
         let families = [ManagedDirectoryFamily(parent: URL(fileURLWithPath: "/tmp/picedit-managed", isDirectory: true), childNamePrefix: "quarantine-")]
-        model.present(asset: asset("existing.jpg"), settings: settings, protectedDirectoryFamilies: families)
+        let protection = JPEGExportCatalogProtection(repository: CatalogRepository(directory: URL(fileURLWithPath: "/tmp/picedit-unused-export-model-catalog")))
+        model.present(asset: asset("existing.jpg"), settings: settings, protectedDirectoryFamilies: families,
+                      catalogProtection: protection)
         model.filename = "chosen.jpg"
         model.qualityText = "77"
         model.startExport()
@@ -119,6 +121,10 @@ struct JPEGExportModelTests {
         #expect(retry.settings == initial.settings)
         #expect(initial.protectedDirectoryFamilies == families)
         #expect(retry.protectedDirectoryFamilies == families)
+        #expect(initial.catalogProtection === protection && retry.catalogProtection === protection)
+        let admission = protection.acceptCatalogChange()
+        #expect(throws: JPEGExportError.catalogBusy) { try retry.catalogProtection?.snapshot() }
+        withExtendedLifetime(admission) {}
         await probe.succeed(width: 600, height: 400)
         try await wait { !model.isExporting }
         #expect(model.result?.url == initial.destinationURL)
@@ -273,7 +279,8 @@ struct JPEGExportModelTests {
         let probe = ExportProbe()
         let model = JPEGExportModel(preferences: nil, export: { try await probe.export($0) })
         let assets = [asset("first.jpg"), asset("second.jpg"), asset("third.jpg")]
-        model.present(assets: assets, settingsByAsset: [:])
+        let protection = JPEGExportCatalogProtection(repository: CatalogRepository(directory: URL(fileURLWithPath: "/tmp/picedit-unused-export-model-catalog")))
+        model.present(assets: assets, settingsByAsset: [:], catalogProtection: protection)
         model.qualityText = "72"
         model.startExport()
         try await wait { await probe.count == 1 }
@@ -290,11 +297,13 @@ struct JPEGExportModelTests {
         let retry = try #require(await probe.lastRequest)
         #expect(retry.overwriteExisting && retry.destinationURL == existing.destinationURL)
         #expect(retry.options.quality == 72)
+        #expect(retry.catalogProtection === protection)
         await probe.succeed(width: 600, height: 400)
         try await wait { await probe.count == 4 }
         let remainder = try #require(await probe.lastRequest)
         #expect(!remainder.overwriteExisting && remainder.sourceURL == assets[2].fileURL)
         #expect(remainder.options.quality == 72)
+        #expect(remainder.catalogProtection === protection)
         await probe.succeed(width: 600, height: 400)
         try await wait { !model.isExporting }
         #expect(model.completedCount == 3 && model.result != nil)

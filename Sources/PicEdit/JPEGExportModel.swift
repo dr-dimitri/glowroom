@@ -38,6 +38,7 @@ final class JPEGExportModel: ObservableObject {
         let settings: EditSettings
         let protectedSourceURLs: [URL]
         let protectedDirectoryFamilies: [ManagedDirectoryFamily]
+        let catalogProtection: JPEGExportCatalogProtection?
         let exportFilename: String
     }
     private var snapshots: [Snapshot] = []
@@ -110,13 +111,15 @@ final class JPEGExportModel: ObservableObject {
     }
 
     func present(asset: PhotoAsset, settings: EditSettings, protectedSourceURLs: [URL] = [],
-                 protectedDirectoryFamilies: [ManagedDirectoryFamily] = []) {
+                 protectedDirectoryFamilies: [ManagedDirectoryFamily] = [],
+                 catalogProtection: JPEGExportCatalogProtection? = nil) {
         present(assets: [asset], settingsByAsset: [asset.id: settings], protectedSourceURLs: protectedSourceURLs,
-                protectedDirectoryFamilies: protectedDirectoryFamilies)
+                protectedDirectoryFamilies: protectedDirectoryFamilies, catalogProtection: catalogProtection)
     }
 
     func present(assets: [PhotoAsset], settingsByAsset: [String: EditSettings], protectedSourceURLs: [URL] = [],
-                 protectedDirectoryFamilies: [ManagedDirectoryFamily] = []) {
+                 protectedDirectoryFamilies: [ManagedDirectoryFamily] = [],
+                 catalogProtection: JPEGExportCatalogProtection? = nil) {
         guard !isExporting, !assets.isEmpty else { return }
         operationID = UUID()
         var filenames = Set<String>()
@@ -133,7 +136,8 @@ final class JPEGExportModel: ObservableObject {
             return Snapshot(sourceURL: asset.fileURL, name: asset.fileName,
                 width: asset.pixelWidth, height: asset.pixelHeight,
                 settings: (settingsByAsset[asset.id] ?? .neutral).normalized,
-                protectedSourceURLs: protectedSourceURLs, protectedDirectoryFamilies: protectedDirectoryFamilies, exportFilename: name)
+                protectedSourceURLs: protectedSourceURLs, protectedDirectoryFamilies: protectedDirectoryFamilies,
+                catalogProtection: catalogProtection, exportFilename: name)
         }
         filename = snapshots[0].exportFilename
         result = nil
@@ -184,7 +188,7 @@ final class JPEGExportModel: ObservableObject {
                 JPEGExportRequest(sourceURL: snapshot.sourceURL,
                     destinationURL: destinationDirectory.appendingPathComponent(singleFilename ?? snapshot.exportFilename),
                     settings: snapshot.settings, options: options, protectedSourceURLs: snapshot.protectedSourceURLs,
-                    protectedDirectoryFamilies: snapshot.protectedDirectoryFamilies)
+                    protectedDirectoryFamilies: snapshot.protectedDirectoryFamilies, catalogProtection: snapshot.catalogProtection)
             }
             savePreferences(options)
             results = []
@@ -200,7 +204,8 @@ final class JPEGExportModel: ObservableObject {
         // and retain the frozen remainder of a batch across each confirmation.
         let retry = JPEGExportRequest(sourceURL: request.sourceURL, destinationURL: request.destinationURL,
             settings: request.settings, options: request.options, overwriteExisting: true,
-            protectedSourceURLs: request.protectedSourceURLs, protectedDirectoryFamilies: request.protectedDirectoryFamilies)
+            protectedSourceURLs: request.protectedSourceURLs, protectedDirectoryFamilies: request.protectedDirectoryFamilies,
+            catalogProtection: request.catalogProtection)
         let requests = [retry] + remainingRequests
         remainingRequests = []
         begin(requests)

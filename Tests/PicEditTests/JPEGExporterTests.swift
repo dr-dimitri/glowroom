@@ -314,11 +314,181 @@ struct JPEGExporterTests {
         #expect(try SHA256.hash(data: Data(contentsOf: source)) == originalHash)
     }
 
+    @MainActor @Test(arguments: [false, true])
+    func delayedAcceptedImportProtectsAnOpenDialogAndOverwriteRetry(overwritePrompt: Bool) async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("picedit-jpeg-import-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let source = try fixture(directory, name: "source.png")
+        let importDirectory = directory.appendingPathComponent("Import", isDirectory: true)
+        try FileManager.default.createDirectory(at: importDirectory, withIntermediateDirectories: true)
+        let target = try fixture(importDirectory, name: "source-bearbeitet.jpg", type: .jpeg)
+        let before = try Data(contentsOf: target)
+        let repository = CatalogRepository(directory: directory.appendingPathComponent("Catalog", isDirectory: true))
+        let folder = LibraryFolder(url: directory)
+        let asset = PhotoAsset(folderID: folder.id, fileURL: source)
+        try repository.save(LibraryCatalog(folders: [folder], assets: [asset]))
+        let scanner = JPEGImportScanner(target: target)
+        let library = LibraryModel(repository: repository, folderScanner: { await scanner.scan($0) })
+        defer { library.cancelImport(); Task { await scanner.release() } }
+        try await waitForLibrary { !library.isLoading && !library.isProjecting }
+        let model = JPEGExportModel(preferences: nil)
+        model.present(asset: asset, settings: .neutral, protectedSourceURLs: [source],
+                      catalogProtection: library.jpegExportProtection)
+        model.destinationDirectory = importDirectory
+        if overwritePrompt {
+            model.startExport()
+            try await waitForLibrary { model.needsOverwriteConfirmation }
+        }
+        library.importFolders([importDirectory])
+        // Import acceptance is synchronous; the scanner has not run yet.
+        #expect(!library.canExportJPEG)
+        if overwritePrompt { model.confirmOverwrite() } else { model.startExport() }
+        try await waitForLibrary { !model.isExporting }
+        #expect(model.errorMessage == JPEGExportError.catalogBusy.localizedDescription)
+        #expect(model.result == nil && !model.needsOverwriteConfirmation)
+        try await waitForLibrary { await scanner.started }
+        #expect(try Data(contentsOf: target) == before)
+        await scanner.release()
+        try await waitForLibrary { !library.isImporting && !library.isProjecting }
+        #expect(library.assets.contains { $0.fileURL == target })
+        model.startExport()
+        try await waitForLibrary { !model.isExporting }
+        #expect(model.errorMessage == JPEGExportError.protectedOriginal.localizedDescription)
+        #expect(model.result == nil && !model.needsOverwriteConfirmation)
+        #expect(try Data(contentsOf: target) == before)
+        #expect(try temporaryOutputs(in: importDirectory).isEmpty)
+    }
+
+    @MainActor @Test
+    func importAcceptedAfterEncodingPreventsFinalRenameWhileScanIsPending() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("picedit-jpeg-pending-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let source = try fixture(directory, name: "source.png")
+        let target = try fixture(directory, name: "late-original.jpg", type: .jpeg)
+        let before = try Data(contentsOf: target)
+        let repository = CatalogRepository(directory: directory.appendingPathComponent("Catalog", isDirectory: true))
+        try repository.save(LibraryCatalog())
+        let scanner = JPEGImportScanner(target: target)
+        let library = LibraryModel(repository: repository, folderScanner: { await scanner.scan($0) })
+        defer { library.cancelImport(); Task { await scanner.release() } }
+        try await waitForLibrary { !library.isLoading && !library.isProjecting }
+        let boundary = PublicationGate()
+        defer { boundary.release() }
+        let exporter = JPEGExporter(beforePublication: { boundary.block() })
+        let request = JPEGExportRequest(sourceURL: source, destinationURL: target, settings: .neutral,
+            options: .init(), overwriteExisting: true, catalogProtection: library.jpegExportProtection)
+        let task = Task { try await exporter.export(request) }
+        let reached = await boundary.waitUntilBlocked()
+        #expect(reached)
+        guard reached else { boundary.release(); _ = try? await task.value; return }
+        library.importFolders([directory])
+        boundary.release()
+        await #expect(throws: JPEGExportError.catalogBusy) { try await task.value }
+        #expect(try Data(contentsOf: target) == before)
+        #expect(try temporaryOutputs(in: directory).isEmpty)
+        try await waitForLibrary { await scanner.started }
+        await scanner.release()
+        try await waitForLibrary { !library.isImporting }
+        await #expect(throws: JPEGExportError.protectedOriginal) { try await JPEGExporter().export(request) }
+        #expect(try Data(contentsOf: target) == before)
+    }
+
+    @Test(arguments: ["before-start", "after-render", "after-snapshot"], [false, true])
+    func currentCatalogProtectsLateOriginalsAndHardlinks(phase: String, hardlink: Bool) async throws {
+        try await withDirectory { directory in
+            let source = try fixture(directory, name: "source.png")
+            let imported = try fixture(directory, name: "late-original.jpg", type: .jpeg)
+            let target = hardlink ? directory.appendingPathComponent("alias.jpg") : imported
+            if hardlink { try FileManager.default.linkItem(at: imported, to: target) }
+            let before = try Data(contentsOf: imported)
+            let repository = CatalogRepository(directory: directory.appendingPathComponent("Catalog", isDirectory: true))
+            let folder = LibraryFolder(url: directory)
+            let initial = LibraryCatalog(folders: [folder], assets: [PhotoAsset(folderID: folder.id, fileURL: source)])
+            var changed = initial
+            changed.assets.append(PhotoAsset(folderID: folder.id, fileURL: imported))
+            let importedCatalog = changed
+            try repository.save(initial)
+            let protection = JPEGExportCatalogProtection(repository: repository)
+            let request = JPEGExportRequest(sourceURL: source, destinationURL: target, settings: .neutral,
+                options: .init(), overwriteExisting: true, catalogProtection: protection)
+            if phase == "before-start" { try repository.save(importedCatalog) }
+            let exporter = JPEGExporter(beforePublication: {
+                if phase == "after-render" { try repository.save(importedCatalog) }
+            }, beforeCatalogPublication: {
+                if phase == "after-snapshot" { try repository.save(importedCatalog) }
+            })
+            let expected: JPEGExportError = phase == "after-snapshot" ? .catalogChanged : .protectedOriginal
+            await #expect(throws: expected) { try await exporter.export(request) }
+            #expect(try Data(contentsOf: imported) == before)
+            #expect(try Data(contentsOf: target) == before)
+            #expect(try temporaryOutputs(in: directory).isEmpty)
+        }
+    }
+
+    @Test func acceptedChangeEpochRejectsFinalPublicationEvenAfterItFinishes() async throws {
+        try await withDirectory { directory in
+            let source = try fixture(directory, name: "source.png")
+            let target = directory.appendingPathComponent("ordinary.jpg")
+            let before = Data("ordinary previous output".utf8)
+            try before.write(to: target)
+            let repository = CatalogRepository(directory: directory.appendingPathComponent("Catalog", isDirectory: true))
+            try repository.save(LibraryCatalog())
+            let protection = JPEGExportCatalogProtection(repository: repository)
+            let request = JPEGExportRequest(sourceURL: source, destinationURL: target, settings: .neutral,
+                options: .init(), overwriteExisting: true, catalogProtection: protection)
+            let exporter = JPEGExporter(beforeCatalogPublication: {
+                // Both transitions occur after the final snapshot. A busy-only
+                // check would miss this completed/cancelled accepted mutation.
+                let admission = protection.acceptCatalogChange()
+                withExtendedLifetime(admission) {}
+            })
+            await #expect(throws: JPEGExportError.catalogChanged) { try await exporter.export(request) }
+            #expect(try Data(contentsOf: target) == before)
+            #expect(try temporaryOutputs(in: directory).isEmpty)
+            _ = try await JPEGExporter().export(request)
+            #expect(try decode(target).width == 64)
+        }
+    }
+
+    @Test(arguments: [false, true])
+    func freshRecoveryProtectionAndUnavailableStateStopAnAlreadyRenderingExport(unavailable: Bool) async throws {
+        try await withDirectory { directory in
+            let source = try fixture(directory, name: "source.png")
+            let target = directory.appendingPathComponent("ordinary.jpg")
+            let before = Data("preserve recovery source".utf8)
+            try before.write(to: target)
+            let repository = CatalogRepository(directory: directory.appendingPathComponent("Catalog", isDirectory: true))
+            try repository.save(LibraryCatalog())
+            let protection = JPEGExportCatalogProtection(repository: repository)
+            let request = JPEGExportRequest(sourceURL: source, destinationURL: target, settings: .neutral,
+                options: .init(), overwriteExisting: true, catalogProtection: protection)
+            let exporter = JPEGExporter(beforePublication: {
+                if unavailable { protection.setUnavailable(true) }
+                else { protection.updateProtectedSources([target]) }
+            })
+            await #expect(throws: unavailable ? JPEGExportError.catalogUnavailable : .protectedOriginal) {
+                try await exporter.export(request)
+            }
+            #expect(try Data(contentsOf: target) == before)
+            #expect(try temporaryOutputs(in: directory).isEmpty)
+        }
+    }
+
     private func withDirectory(_ operation: (URL) async throws -> Void) async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("picedit-jpeg-tests-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: directory) }
         try await operation(directory)
+    }
+
+    @MainActor private func waitForLibrary(_ condition: () async -> Bool) async throws {
+        let deadline = ContinuousClock.now.advanced(by: .seconds(10))
+        while !(await condition()) {
+            guard ContinuousClock.now < deadline else { throw PublicationFailure.injected }
+            try await Task.sleep(for: .milliseconds(5))
+        }
     }
 
     private func fixture(_ directory: URL, name: String, width: Int = 64, height: Int = 48,
@@ -398,4 +568,17 @@ struct JPEGExporterTests {
             }
         }
     }
+}
+
+private actor JPEGImportScanner {
+    let target: URL
+    private(set) var started = false
+    private var continuation: CheckedContinuation<Void, Never>?
+    init(target: URL) { self.target = target }
+    func scan(_ folder: LibraryFolder) async -> ScanResult {
+        started = true
+        await withCheckedContinuation { continuation = $0 }
+        return ScanResult(assets: [PhotoAsset(folderID: folder.id, fileURL: target)], skippedFiles: 0)
+    }
+    func release() { continuation?.resume(); continuation = nil }
 }
