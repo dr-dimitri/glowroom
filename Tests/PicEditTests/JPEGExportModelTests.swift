@@ -194,6 +194,174 @@ struct JPEGExportModelTests {
         #expect(model.result?.width == 321 && model.result?.height == 123)
     }
 
+    @Test
+    func batchFreezesEveryEditAndOptionsAndReservesUniqueNames() async throws {
+        let probe = ExportProbe()
+        let model = JPEGExportModel(preferences: nil, export: { try await probe.export($0) })
+        let assets = [asset("one/photo.CR3"), asset("two/PHOTO.jpg"), asset("three/photo.CR3")]
+        var first = EditSettings.neutral
+        first.exposure = 0.8
+        var second = EditSettings.neutral
+        second.shadows = 30
+        var edits = [assets[0].id: first, assets[1].id: second]
+        let protected = assets.map(\.fileURL)
+        model.present(assets: assets, settingsByAsset: edits, protectedSourceURLs: protected)
+        edits[assets[1].id] = .neutral
+        model.qualityText = "81"
+        let directory = URL(fileURLWithPath: "/tmp/picedit-batch-output", isDirectory: true)
+        model.destinationDirectory = directory
+        #expect(model.sourceCount == 3 && model.estimatedSize == nil && model.canExport)
+        model.startExport()
+        try await wait { await probe.count == 1 }
+        model.qualityText = "5"
+        model.destinationDirectory = URL(fileURLWithPath: "/tmp/later-batch-output", isDirectory: true)
+        #expect(model.completedCount == 0)
+        await probe.succeed(width: 600, height: 400)
+        try await wait { await probe.count == 2 }
+        #expect(model.completedCount == 1 && model.result == nil && model.isExporting)
+        let secondRequest = try #require(await probe.lastRequest)
+        #expect(secondRequest.settings == second)
+        #expect(secondRequest.options.quality == 81)
+        #expect(secondRequest.protectedSourceURLs == protected)
+        await probe.succeed(width: 600, height: 400)
+        try await wait { await probe.count == 3 }
+        let thirdRequest = try #require(await probe.lastRequest)
+        #expect(thirdRequest.settings == .neutral)
+        await probe.succeed(width: 600, height: 400)
+        try await wait { !model.isExporting }
+        let requests = await probe.allRequests
+        #expect(requests.map { $0.destinationURL.lastPathComponent } ==
+                ["photo-bearbeitet.jpg", "PHOTO-bearbeitet-2.jpg", "photo-bearbeitet-3.jpg"])
+        #expect(requests.allSatisfy { $0.destinationURL.deletingLastPathComponent() == directory })
+        #expect(requests.first?.settings == first)
+        #expect(model.completedCount == 3 && model.result != nil && !model.wasCancelled)
+    }
+
+    @Test
+    func generatedBatchNamesRespectByteLimitsAndKeepWholeCharacters() async throws {
+        let probe = ExportProbe()
+        let model = JPEGExportModel(preferences: nil, export: { try await probe.export($0) })
+        let asciiName = String(repeating: "a", count: 245)
+        let unicodeName = String(repeating: "🇩🇪", count: 30)
+        let assets = [asset("one/\(asciiName).jpg"), asset("two/\(asciiName).CR3"),
+                      asset("three/\(unicodeName).jpg"), asset("four/\(unicodeName).CR3")]
+        model.present(assets: assets, settingsByAsset: [:])
+        model.startExport()
+        for count in 1...assets.count {
+            try await wait { await probe.count == count }
+            await probe.succeed(width: 600, height: 400)
+        }
+        try await wait { !model.isExporting }
+        let requests = await probe.allRequests
+        let filenames = requests.map { $0.destinationURL.lastPathComponent }
+        let shortenedASCII = String(repeating: "a", count: 220)
+        let shortenedUnicode = String(unicodeName.prefix(27))
+        #expect(filenames == ["\(shortenedASCII)-bearbeitet.jpg", "\(shortenedASCII)-bearbeitet-2.jpg",
+                              "\(shortenedUnicode)-bearbeitet.jpg", "\(shortenedUnicode)-bearbeitet-2.jpg"])
+        #expect(filenames.allSatisfy { $0.utf8.count <= 255 })
+        #expect(Set(filenames).count == assets.count)
+        #expect(model.completedCount == assets.count)
+    }
+
+    @Test
+    func batchOverwriteConfirmationResumesTheFrozenRemainder() async throws {
+        let probe = ExportProbe()
+        let model = JPEGExportModel(preferences: nil, export: { try await probe.export($0) })
+        let assets = [asset("first.jpg"), asset("second.jpg"), asset("third.jpg")]
+        model.present(assets: assets, settingsByAsset: [:])
+        model.qualityText = "72"
+        model.startExport()
+        try await wait { await probe.count == 1 }
+        await probe.succeed(width: 600, height: 400)
+        try await wait { await probe.count == 2 }
+        let existing = try #require(await probe.lastRequest)
+        await probe.fail(JPEGExportError.destinationExists)
+        try await wait { model.needsOverwriteConfirmation }
+        #expect(model.completedCount == 1 && !model.canExport)
+        model.qualityText = "1"
+        model.dismissOverwritePrompt()
+        model.confirmOverwrite()
+        try await wait { await probe.count == 3 }
+        let retry = try #require(await probe.lastRequest)
+        #expect(retry.overwriteExisting && retry.destinationURL == existing.destinationURL)
+        #expect(retry.options.quality == 72)
+        await probe.succeed(width: 600, height: 400)
+        try await wait { await probe.count == 4 }
+        let remainder = try #require(await probe.lastRequest)
+        #expect(!remainder.overwriteExisting && remainder.sourceURL == assets[2].fileURL)
+        #expect(remainder.options.quality == 72)
+        await probe.succeed(width: 600, height: 400)
+        try await wait { !model.isExporting }
+        #expect(model.completedCount == 3 && model.result != nil)
+    }
+
+    @Test
+    func batchCancellationRecordsCommittedFilesAndDoesNotStartTheRemainder() async throws {
+        let probe = ExportProbe()
+        let model = JPEGExportModel(preferences: nil, export: { try await probe.export($0) })
+        let assets = [asset("first.jpg"), asset("second.jpg"), asset("third.jpg")]
+        model.present(assets: assets, settingsByAsset: [:])
+        model.startExport()
+        try await wait { await probe.count == 1 }
+        await probe.succeed(width: 600, height: 400)
+        try await wait { await probe.count == 2 }
+        model.cancel()
+        #expect(model.isCancelling && model.isExporting)
+        // The second export may already have atomically published its result.
+        await probe.succeed(width: 600, height: 400)
+        try await wait { !model.isExporting }
+        #expect(await probe.count == 2)
+        #expect(model.completedCount == 2 && model.wasCancelled && model.isPresented)
+        #expect(model.result?.url.lastPathComponent == "second-bearbeitet.jpg")
+        model.cancel()
+        #expect(!model.isPresented)
+    }
+
+    @Test
+    func failedBatchRetriesOnlyItsUnfinishedFrozenRequests() async throws {
+        let probe = ExportProbe()
+        let model = JPEGExportModel(preferences: nil, export: { try await probe.export($0) })
+        let assets = [asset("first.jpg"), asset("second.jpg")]
+        model.present(assets: assets, settingsByAsset: [:])
+        model.qualityText = "76"
+        model.startExport()
+        try await wait { await probe.count == 1 }
+        await probe.succeed(width: 600, height: 400)
+        try await wait { await probe.count == 2 }
+        let failed = try #require(await probe.lastRequest)
+        await probe.fail(ExportProbeError.failed)
+        try await wait { !model.isExporting }
+        #expect(model.hasPausedBatch && model.canExport && model.errorMessage != nil)
+        #expect(model.completedCount == 1 && model.result == nil)
+        model.qualityText = "invalid"
+        model.startExport()
+        try await wait { await probe.count == 3 }
+        let retry = try #require(await probe.lastRequest)
+        #expect(retry.sourceURL == failed.sourceURL && retry.options.quality == 76)
+        #expect(retry.destinationURL == failed.destinationURL)
+        await probe.succeed(width: 600, height: 400)
+        try await wait { !model.isExporting }
+        #expect(model.completedCount == 2 && !model.hasPausedBatch && model.errorMessage == nil)
+    }
+
+    @Test
+    func decliningABatchOverwriteKeepsCommittedResultsVisible() async throws {
+        let probe = ExportProbe()
+        let model = JPEGExportModel(preferences: nil, export: { try await probe.export($0) })
+        model.present(assets: [asset("first.jpg"), asset("second.jpg")], settingsByAsset: [:])
+        model.startExport()
+        try await wait { await probe.count == 1 }
+        await probe.succeed(width: 600, height: 400)
+        try await wait { await probe.count == 2 }
+        await probe.fail(JPEGExportError.destinationExists)
+        try await wait { model.needsOverwriteConfirmation }
+        model.declineOverwrite()
+        model.confirmOverwrite()
+        #expect(await probe.count == 2)
+        #expect(model.completedCount == 1 && model.wasCancelled && model.result != nil)
+        #expect(!model.canExport && !model.needsOverwriteConfirmation && model.isPresented)
+    }
+
     private func asset(_ name: String, width: Int = 600, height: Int = 400) -> PhotoAsset {
         PhotoAsset(folderID: UUID(), fileURL: URL(fileURLWithPath: "/tmp/picedit-export-model-input/\(name)"),
                    pixelWidth: width, pixelHeight: height)
@@ -215,6 +383,7 @@ private actor ExportProbe {
     private var waiter: CheckedContinuation<JPEGExportResult, Error>?
     var count: Int { requests.count }
     var lastRequest: JPEGExportRequest? { requests.last }
+    var allRequests: [JPEGExportRequest] { requests }
 
     func export(_ request: JPEGExportRequest) async throws -> JPEGExportResult {
         requests.append(request)

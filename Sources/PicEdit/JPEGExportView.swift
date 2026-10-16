@@ -24,7 +24,7 @@ struct JPEGExportView: View {
                         summary
                     }.padding(24)
                 }
-                .disabled(model.isExporting || model.needsOverwriteConfirmation)
+                .disabled(model.isExporting || model.needsOverwriteConfirmation || model.hasPausedBatch)
             }
             Divider().overlay(Theme.line)
             footer
@@ -75,9 +75,18 @@ struct JPEGExportView: View {
                         .controlSize(.small).accessibilityLabel("Exportordner auswählen")
                 }
             }
-            row("Dateiname") {
-                TextField("Bild-bearbeitet.jpg", text: $model.filename)
-                    .textFieldStyle(.roundedBorder).accessibilityLabel("Dateiname mit JPEG-Endung")
+            if model.isBatch {
+                row("Dateinamen") {
+                    Text("Originalname-bearbeitet.jpg")
+                        .font(.system(size: 12)).frame(maxWidth: .infinity, alignment: .leading)
+                }
+                Text("Gleiche Namen erhalten eine fortlaufende Nummer. Vorhandene Dateien werden nur nach Bestätigung ersetzt.")
+                    .font(.system(size: 10)).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
+            } else {
+                row("Dateiname") {
+                    TextField("Bild-bearbeitet.jpg", text: $model.filename)
+                        .textFieldStyle(.roundedBorder).accessibilityLabel("Dateiname mit JPEG-Endung")
+                }
             }
             HStack(spacing: 5) {
                 Image(systemName: "folder").accessibilityHidden(true)
@@ -166,13 +175,18 @@ struct JPEGExportView: View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: "photo").foregroundStyle(Theme.accent).accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 5) {
-                if let size = model.estimatedSize {
+                if model.isBatch {
+                    Text("\(model.sourceCount) Bilder mit gemeinsamen Exporteinstellungen")
+                        .font(.system(size: 12, weight: .medium))
+                } else if let size = model.estimatedSize {
                     Text("Voraussichtlich \(size.width) × \(size.height) Pixel")
                         .font(.system(size: 12, weight: .medium))
                 } else {
                     Text("Ausgabegröße wird beim Export ermittelt").font(.system(size: 12, weight: .medium))
                 }
-                Text("Original: \(model.sourceDimensions)").font(.system(size: 10)).foregroundStyle(Theme.muted)
+                if !model.isBatch {
+                    Text("Original: \(model.sourceDimensions)").font(.system(size: 10)).foregroundStyle(Theme.muted)
+                }
                 Text("Exportiert die Bearbeitung beim Öffnen dieses Dialogs.")
                     .font(.system(size: 10)).foregroundStyle(Theme.muted)
             }
@@ -183,11 +197,18 @@ struct JPEGExportView: View {
 
     private func success(_ result: JPEGExportResult) -> some View {
         VStack(spacing: 13) {
-            Image(systemName: "checkmark.circle")
+            Image(systemName: model.wasCancelled ? "stop.circle" : "checkmark.circle")
                 .font(.system(size: 38, weight: .light)).foregroundStyle(Theme.accent).accessibilityHidden(true)
-            Text("JPEG exportiert").font(.system(size: 20, weight: .semibold))
-            Text(result.url.lastPathComponent).font(.system(size: 13)).lineLimit(2).textSelection(.enabled)
-            Text("\(result.width) × \(result.height) Pixel").font(.system(size: 11)).foregroundStyle(Theme.muted)
+            Text(model.isBatch ? "\(model.completedCount) von \(model.sourceCount) JPEGs exportiert" : "JPEG exportiert")
+                .font(.system(size: 20, weight: .semibold))
+            if model.isBatch {
+                Text(model.wasCancelled ? "Export abgebrochen. Bereits exportierte Bilder bleiben gespeichert." : result.url.deletingLastPathComponent().path)
+                    .font(.system(size: 12)).foregroundStyle(Theme.muted).multilineTextAlignment(.center)
+                    .textSelection(.enabled)
+            } else {
+                Text(result.url.lastPathComponent).font(.system(size: 13)).lineLimit(2).textSelection(.enabled)
+                Text("\(result.width) × \(result.height) Pixel").font(.system(size: 11)).foregroundStyle(Theme.muted)
+            }
             Button("Im Finder anzeigen") { model.revealResult() }.padding(.top, 3)
         }.padding(24).frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -198,6 +219,14 @@ struct JPEGExportView: View {
                 Label(message, systemImage: "exclamationmark.triangle")
                     .font(.system(size: 11)).foregroundStyle(.orange)
                     .fixedSize(horizontal: false, vertical: true)
+            }
+            if model.isBatch, model.isExporting || model.hasPausedBatch || model.needsOverwriteConfirmation {
+                VStack(alignment: .leading, spacing: 5) {
+                    ProgressView(value: Double(model.completedCount), total: Double(model.sourceCount))
+                        .accessibilityLabel("Exportfortschritt")
+                    Text("\(model.completedCount) von \(model.sourceCount) exportiert · \(model.currentFilename)")
+                        .font(.system(size: 10)).foregroundStyle(Theme.muted).lineLimit(1).truncationMode(.middle)
+                }
             }
             HStack(spacing: 12) {
                 if model.isExporting {
@@ -215,7 +244,7 @@ struct JPEGExportView: View {
                     Button(model.isExporting ? "Export abbrechen" : "Abbrechen") { model.cancel() }
                         .keyboardShortcut(.cancelAction).disabled(model.isCancelling)
                     if !model.isExporting {
-                        Button("Exportieren") { model.startExport() }.buttonStyle(AccentButton())
+                        Button(model.hasPausedBatch ? "Erneut versuchen" : "Exportieren") { model.startExport() }.buttonStyle(AccentButton())
                             .keyboardShortcut(.defaultAction).disabled(!model.canExport)
                     }
                 }

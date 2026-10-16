@@ -3,8 +3,8 @@ import Combine
 import Foundation
 import PicEditCore
 
-/// Owns one export from the captured edit settings through the final filesystem
-/// result. Cancellation keeps this lifecycle open until the exporter returns.
+/// Owns exports from captured edit settings through their final filesystem
+/// results. Cancellation keeps this lifecycle open until the exporter returns.
 @MainActor
 final class JPEGExportModel: ObservableObject {
     typealias ExportOperation = @Sendable (JPEGExportRequest) async throws -> JPEGExportResult
@@ -13,6 +13,10 @@ final class JPEGExportModel: ObservableObject {
     @Published private(set) var isExporting = false
     @Published private(set) var isCancelling = false
     @Published private(set) var result: JPEGExportResult?
+    @Published private(set) var results: [JPEGExportResult] = []
+    @Published private(set) var currentFilename = ""
+    @Published private(set) var hasPausedBatch = false
+    @Published private(set) var wasCancelled = false
     @Published private(set) var errorMessage: String?
     @Published private(set) var needsOverwriteConfirmation = false
     @Published var destinationDirectory: URL
@@ -33,11 +37,13 @@ final class JPEGExportModel: ObservableObject {
         let height: Int
         let settings: EditSettings
         let protectedSourceURLs: [URL]
+        let exportFilename: String
     }
-    private var snapshot: Snapshot?
+    private var snapshots: [Snapshot] = []
     private var operationID = UUID()
     private var exportTask: Task<Void, Never>?
     private var pendingOverwrite: JPEGExportRequest?
+    private var remainingRequests: [JPEGExportRequest] = []
     private let exportOperation: ExportOperation
     private let preferences: UserDefaults?
     private let preferencePrefix = "JPEGExport."
@@ -69,26 +75,33 @@ final class JPEGExportModel: ObservableObject {
 
     deinit { exportTask?.cancel() }
 
-    var sourceName: String { snapshot?.name ?? "" }
+    var sourceCount: Int { snapshots.count }
+    var isBatch: Bool { sourceCount > 1 }
+    var completedCount: Int { results.count }
+    var sourceName: String { isBatch ? "\(sourceCount) Bilder ausgewählt" : snapshots.first?.name ?? "" }
     var sourceDimensions: String {
-        guard let snapshot, snapshot.width > 0, snapshot.height > 0 else { return "Originalgröße wird beim Export ermittelt" }
+        guard !isBatch else { return "Individuelle Originalgrößen" }
+        guard let snapshot = snapshots.first, snapshot.width > 0, snapshot.height > 0 else { return "Originalgröße wird beim Export ermittelt" }
         return "\(snapshot.width) × \(snapshot.height) Pixel"
     }
     var estimatedSize: JPEGPixelSize? {
-        guard let snapshot, snapshot.width > 0, snapshot.height > 0, let options = try? makeOptions() else { return nil }
+        guard !isBatch, let snapshot = snapshots.first, snapshot.width > 0, snapshot.height > 0,
+              let options = try? makeOptions() else { return nil }
         return try? options.outputSize(sourceWidth: snapshot.width, sourceHeight: snapshot.height)
     }
     var overwriteFilename: String { pendingOverwrite?.destinationURL.lastPathComponent ?? "" }
     var canExport: Bool {
-        isPresented && snapshot != nil && !isExporting && pendingOverwrite == nil && !needsOverwriteConfirmation && result == nil && validationMessage == nil
+        isPresented && !snapshots.isEmpty && !isExporting && pendingOverwrite == nil && !needsOverwriteConfirmation && result == nil && validationMessage == nil
     }
     var validationMessage: String? {
-        guard snapshot != nil else { return "Wähle ein Foto für den Export aus." }
+        guard !snapshots.isEmpty else { return "Wähle ein Foto für den Export aus." }
+        // Retrying a paused batch uses its accepted options and destinations.
+        guard !hasPausedBatch else { return nil }
         do {
-            _ = try validatedFilename()
+            if !isBatch { _ = try validatedFilename() }
             guard destinationDirectory.isFileURL else { throw InputError.message("Wähle einen lokalen Zielordner aus.") }
             let options = try makeOptions()
-            if let snapshot, snapshot.width > 0, snapshot.height > 0 {
+            for snapshot in snapshots where snapshot.width > 0 && snapshot.height > 0 {
                 _ = try options.outputSize(sourceWidth: snapshot.width, sourceHeight: snapshot.height)
             }
             return nil
@@ -96,22 +109,44 @@ final class JPEGExportModel: ObservableObject {
     }
 
     func present(asset: PhotoAsset, settings: EditSettings, protectedSourceURLs: [URL] = []) {
-        guard !isExporting else { return }
+        present(assets: [asset], settingsByAsset: [asset.id: settings], protectedSourceURLs: protectedSourceURLs)
+    }
+
+    func present(assets: [PhotoAsset], settingsByAsset: [String: EditSettings], protectedSourceURLs: [URL] = []) {
+        guard !isExporting, !assets.isEmpty else { return }
         operationID = UUID()
-        snapshot = Snapshot(sourceURL: asset.fileURL, name: asset.fileName,
-                            width: asset.pixelWidth, height: asset.pixelHeight,
-                            settings: settings.normalized, protectedSourceURLs: protectedSourceURLs)
-        filename = asset.fileURL.deletingPathExtension().lastPathComponent + "-bearbeitet.jpg"
+        var filenames = Set<String>()
+        snapshots = assets.map { asset in
+            let base = Self.exportBasename(for: asset.fileURL)
+            var name = base + ".jpg"
+            var suffix = 2
+            // Reserve names case-insensitively, including Unicode normalization,
+            // so different originals cannot replace each other on common volumes.
+            while !filenames.insert(name.precomposedStringWithCanonicalMapping.lowercased()).inserted {
+                name = "\(base)-\(suffix).jpg"
+                suffix += 1
+            }
+            return Snapshot(sourceURL: asset.fileURL, name: asset.fileName,
+                width: asset.pixelWidth, height: asset.pixelHeight,
+                settings: (settingsByAsset[asset.id] ?? .neutral).normalized,
+                protectedSourceURLs: protectedSourceURLs, exportFilename: name)
+        }
+        filename = snapshots[0].exportFilename
         result = nil
+        results = []
+        currentFilename = ""
         errorMessage = nil
         pendingOverwrite = nil
+        remainingRequests = []
         needsOverwriteConfirmation = false
+        hasPausedBatch = false
+        wasCancelled = false
         isCancelling = false
         isPresented = true
     }
 
     func chooseDirectory() {
-        guard isPresented, !isExporting else { return }
+        guard isPresented, !isExporting, !hasPausedBatch, pendingOverwrite == nil else { return }
         let generation = operationID
         let panel = NSOpenPanel()
         panel.title = "Exportordner auswählen"
@@ -129,14 +164,26 @@ final class JPEGExportModel: ObservableObject {
     }
 
     func startExport() {
-        guard isPresented, !isExporting, pendingOverwrite == nil, !needsOverwriteConfirmation, result == nil, let snapshot else { return }
+        guard isPresented, !isExporting, pendingOverwrite == nil, !needsOverwriteConfirmation,
+              result == nil, !snapshots.isEmpty else { return }
+        if hasPausedBatch {
+            let requests = remainingRequests
+            remainingRequests = []
+            begin(requests)
+            return
+        }
         do {
             if let message = validationMessage { throw InputError.message(message) }
-            let request = JPEGExportRequest(sourceURL: snapshot.sourceURL,
-                destinationURL: destinationDirectory.appendingPathComponent(try validatedFilename()),
-                settings: snapshot.settings, options: try makeOptions(), protectedSourceURLs: snapshot.protectedSourceURLs)
-            savePreferences(request.options)
-            begin(request)
+            let options = try makeOptions()
+            let singleFilename = isBatch ? nil : try validatedFilename()
+            let requests = snapshots.map { snapshot in
+                JPEGExportRequest(sourceURL: snapshot.sourceURL,
+                    destinationURL: destinationDirectory.appendingPathComponent(singleFilename ?? snapshot.exportFilename),
+                    settings: snapshot.settings, options: options, protectedSourceURLs: snapshot.protectedSourceURLs)
+            }
+            savePreferences(options)
+            results = []
+            begin(requests)
         } catch { errorMessage = error.localizedDescription }
     }
 
@@ -144,11 +191,14 @@ final class JPEGExportModel: ObservableObject {
         guard !isExporting, let request = pendingOverwrite else { return }
         pendingOverwrite = nil
         needsOverwriteConfirmation = false
-        // Use the exact destination, options and edit snapshot shown in the
-        // confirmation, even if another binding changed while it was displayed.
-        begin(JPEGExportRequest(sourceURL: request.sourceURL, destinationURL: request.destinationURL,
+        // Use the exact destination, options and edits shown in the confirmation,
+        // and retain the frozen remainder of a batch across each confirmation.
+        let retry = JPEGExportRequest(sourceURL: request.sourceURL, destinationURL: request.destinationURL,
             settings: request.settings, options: request.options, overwriteExisting: true,
-            protectedSourceURLs: request.protectedSourceURLs))
+            protectedSourceURLs: request.protectedSourceURLs)
+        let requests = [retry] + remainingRequests
+        remainingRequests = []
+        begin(requests)
     }
 
     // SwiftUI may dismiss the presentation binding before invoking a button.
@@ -158,7 +208,13 @@ final class JPEGExportModel: ObservableObject {
     func declineOverwrite() {
         guard !isExporting else { return }
         pendingOverwrite = nil
+        remainingRequests = []
         needsOverwriteConfirmation = false
+        hasPausedBatch = false
+        if !results.isEmpty {
+            wasCancelled = true
+            result = results.last
+        }
     }
 
     func cancel() {
@@ -169,52 +225,110 @@ final class JPEGExportModel: ObservableObject {
         } else {
             operationID = UUID()
             pendingOverwrite = nil
+            remainingRequests = []
             needsOverwriteConfirmation = false
-            isPresented = false
+            hasPausedBatch = false
+            if result == nil, !results.isEmpty {
+                wasCancelled = true
+                result = results.last
+            } else {
+                isPresented = false
+            }
         }
     }
 
     func revealResult() {
-        guard let result else { return }
-        NSWorkspace.shared.activateFileViewerSelecting([result.url])
+        guard !results.isEmpty else { return }
+        NSWorkspace.shared.activateFileViewerSelecting(results.map(\.url))
     }
 
-    private func begin(_ request: JPEGExportRequest) {
-        guard isPresented, !isExporting else { return }
+    private func begin(_ requests: [JPEGExportRequest]) {
+        guard isPresented, !isExporting, !requests.isEmpty else { return }
         let generation = operationID
         let export = exportOperation
         isExporting = true
         isCancelling = false
+        hasPausedBatch = false
         errorMessage = nil
+        currentFilename = requests[0].destinationURL.lastPathComponent
         exportTask = Task { [weak self] in
-            let directory = request.destinationURL.deletingLastPathComponent()
+            let directory = requests[0].destinationURL.deletingLastPathComponent()
             let access = directory.startAccessingSecurityScopedResource()
             defer { if access { directory.stopAccessingSecurityScopedResource() } }
-            let completion: Result<JPEGExportResult, Error>
-            do { completion = .success(try await export(request)) }
-            catch { completion = .failure(error) }
+            // Full-size decode/render remains sequential to bound memory; the
+            // exporter already serializes its reusable Core Image context.
+            for (index, request) in requests.enumerated() {
+                guard let self, self.operationID == generation else { return }
+                self.currentFilename = request.destinationURL.lastPathComponent
+                do {
+                    try Task.checkCancellation()
+                    let output = try await export(request)
+                    // An atomic publication may win a cancellation race. Record
+                    // the real file before stopping the remainder of the batch.
+                    self.results.append(output)
+                    if Task.isCancelled {
+                        self.finishCancellation()
+                        return
+                    }
+                } catch {
+                    self.exportTask = nil
+                    self.isExporting = false
+                    let cancellationRequested = self.isCancelling || Task.isCancelled
+                    self.isCancelling = false
+                    if error is CancellationError || cancellationRequested {
+                        self.finishCancellation()
+                    } else if let exportError = error as? JPEGExportError, exportError == .destinationExists {
+                        self.pendingOverwrite = request
+                        self.remainingRequests = Array(requests.dropFirst(index + 1))
+                        self.needsOverwriteConfirmation = true
+                    } else {
+                        self.errorMessage = error.localizedDescription
+                        if self.isBatch {
+                            self.remainingRequests = Array(requests.dropFirst(index))
+                            self.hasPausedBatch = true
+                        }
+                    }
+                    return
+                }
+            }
             guard let self, self.operationID == generation else { return }
             self.exportTask = nil
             self.isExporting = false
-            let cancellationRequested = self.isCancelling
             self.isCancelling = false
-            switch completion {
-            case let .success(result):
-                // A cancellation arriving after the atomic commit may be too
-                // late. Show the actual successful result rather than hide it.
-                self.result = result
-            case .failure(is CancellationError):
-                self.isPresented = false
-            case .failure(JPEGExportError.destinationExists):
-                if cancellationRequested { self.isPresented = false }
-                else {
-                    self.pendingOverwrite = request
-                    self.needsOverwriteConfirmation = true
-                }
-            case let .failure(error):
-                self.errorMessage = error.localizedDescription
-            }
+            self.result = self.results.last
         }
+    }
+
+    private func finishCancellation() {
+        exportTask = nil
+        isExporting = false
+        isCancelling = false
+        pendingOverwrite = nil
+        remainingRequests = []
+        hasPausedBatch = false
+        needsOverwriteConfirmation = false
+        wasCancelled = completedCount < sourceCount
+        if let last = results.last { result = last }
+        else { isPresented = false }
+    }
+
+    private static func exportBasename(for url: URL) -> String {
+        let forbidden = CharacterSet.controlCharacters.union(CharacterSet(charactersIn: "/\\:"))
+        let original = url.deletingPathExtension().lastPathComponent
+        let safe = original.components(separatedBy: forbidden).joined(separator: "-")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        // Reserve space beneath common 255-byte filename limits for the edit
+        // marker, JPEG extension and collision suffix; never split a character.
+        var shortened = ""
+        var byteCount = 0
+        for character in safe {
+            let bytes = String(character).utf8.count
+            guard byteCount + bytes <= 220 else { break }
+            shortened.append(character)
+            byteCount += bytes
+        }
+        shortened = shortened.trimmingCharacters(in: .whitespacesAndNewlines)
+        return (shortened.isEmpty ? "Bild" : shortened) + "-bearbeitet"
     }
 
     private func validatedFilename() throws -> String {

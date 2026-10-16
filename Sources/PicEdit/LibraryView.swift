@@ -75,8 +75,8 @@ struct LibraryView: View {
                     JPEGExportActions.present(using: exporter, library: model, editor: editor)
                 } label: { Label("Exportieren", systemImage: "square.and.arrow.up") }
                     .foregroundStyle(Theme.muted)
-                    .disabled(model.selectedAsset == nil || editor.isLoading || editor.isRestoring || editor.isClosing || exporter.isPresented)
-                    .help("Foto als JPEG exportieren · ⇧⌘E")
+                    .disabled(model.selectedIDs.isEmpty || model.isProjecting || editor.isLoading || editor.isRestoring || editor.isClosing || exporter.isPresented)
+                    .help("Ausgewählte Fotos als JPEG exportieren · ⇧⌘E")
                 Menu {
                     Button("Bearbeitungen sichern …") { EditingBackupActions.create(using: editor) }.disabled(!editor.canBackUp)
                     Button("Backup wiederherstellen …") { EditingBackupActions.chooseRestore(using: editor, directory: dataDirectory) }
@@ -239,6 +239,9 @@ struct LibraryView: View {
                 if model.notice != nil || editor.notice != nil { Button { model.notice = nil; editor.notice = nil } label: { Image(systemName: "xmark").font(.system(size: 8)) }.buttonStyle(.plain) }
             }
             Spacer()
+            if !model.selectedIDs.isEmpty {
+                Text("\(model.selectedIDs.count) ausgewählt")
+            }
             if editor.isReadOnly && editor.hasPendingChanges {
                 Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
                 Button("Ungespeicherte Änderungen · Erneut versuchen") { Task { _ = await editor.flush() } }
@@ -277,15 +280,24 @@ struct LibraryView: View {
     }
 
     private func handleKey(_ event: NSEvent) -> Bool {
-        guard model.selectedAsset != nil else { return false }
+        if event.modifierFlags.contains(.command) {
+            guard event.charactersIgnoringModifiers?.lowercased() == "a",
+                  event.modifierFlags.intersection([.control, .option, .shift]).isEmpty else { return false }
+            model.selectAll()
+            return true
+        }
+        let extending = event.modifierFlags.contains(.shift)
         switch event.keyCode {
-        case 123: model.navigate(-1)
-        case 124: model.navigate(1)
-        case 125: model.navigate(model.showsDetail ? 1 : model.gridColumnCount)
-        case 126: model.navigate(model.showsDetail ? -1 : -model.gridColumnCount)
+        case 123: model.navigate(-1, extending: extending)
+        case 124: model.navigate(1, extending: extending)
+        case 125: model.navigate(model.showsDetail ? 1 : model.gridColumnCount, extending: extending)
+        case 126: model.navigate(model.showsDetail ? -1 : -model.gridColumnCount, extending: extending)
         case 53: model.showsDetail = false
-        case 49: model.showsDetail.toggle()
+        case 49:
+            guard model.selectedAsset != nil else { return false }
+            model.showsDetail.toggle()
         default:
+            guard model.selectedAsset != nil else { return false }
             if let number = Int(event.charactersIgnoringModifiers ?? ""), (0...5).contains(number) { model.setRating(number) }
             else if event.charactersIgnoringModifiers?.lowercased() == "f" { model.toggleFavorite() }
             else { return false }
@@ -310,7 +322,7 @@ private struct KeyboardHandler: NSViewRepresentable {
                 guard let self, let window = self.view?.window, event.window === window,
                       window.attachedSheet == nil, NSApp.modalWindow == nil,
                       !(window.firstResponder is NSTextView), !(window.firstResponder is NSControl),
-                      event.modifierFlags.intersection([.command, .control, .option]).isEmpty else { return event }
+                      event.modifierFlags.intersection([.control, .option]).isEmpty else { return event }
                 return self.action(event) ? nil : event
             }
         }

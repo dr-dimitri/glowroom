@@ -10,7 +10,7 @@ struct PhotoGridView: View {
             ScrollView {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: model.gridSize), spacing: 15)], spacing: 17) {
                     ForEach(model.visibleAssets) { asset in
-                        PhotoCard(asset: asset, selected: model.selectedID == asset.id, model: model)
+                        PhotoCard(asset: asset, selected: model.selectedIDs.contains(asset.id), model: model)
                             .id(asset.id)
                     }
                 }.padding(23)
@@ -69,21 +69,50 @@ private struct PhotoCard: View {
         .clipShape(RoundedRectangle(cornerRadius: 7))
         .overlay { RoundedRectangle(cornerRadius: 7).strokeBorder(selected ? Theme.accent.opacity(0.8) : hovered ? Color.white.opacity(0.16) : Theme.line, lineWidth: selected ? 1.5 : 1) }
         .contentShape(Rectangle())
-        .onTapGesture(count: 2) { model.select(asset); model.showsDetail = true }
-        .onTapGesture { model.select(asset) }
+        .gesture(TapGesture(count: 2).onEnded { model.select(asset); model.showsDetail = true }
+            .exclusively(before: photoSelectionGesture(asset: asset, model: model)))
         .onHover { hovered = $0 }
-        .contextMenu {
-            Button("In Einzelbildansicht öffnen") { model.select(asset); model.showsDetail = true }
-            Button("Im Finder anzeigen") { model.reveal(asset) }
-            Divider()
-            Button(asset.isFavorite ? "Aus Favoriten entfernen" : "Als Favorit markieren") { model.toggleFavorite(asset.id) }.disabled(!model.canModify)
-            Menu("Bewertung") {
-                ForEach(0...5, id: \.self) { value in Button(value == 0 ? "Keine Bewertung" : "\(value) Sterne") { model.setRating(value, for: asset.id) } }
-            }.disabled(!model.canModify)
-        }
+        .contextMenu { PhotoContextMenu(asset: asset, model: model) }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("\(asset.fileName), \(asset.rating) Sterne\(selected ? ", ausgewählt" : "")")
         .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+}
+
+@MainActor
+private func photoSelectionGesture(asset: PhotoAsset, model: LibraryModel) -> some Gesture {
+    // Match the click event's modifiers. Reading NSEvent.modifierFlags in a
+    // delayed single-click callback loses keys released during double-click detection.
+    TapGesture().modifiers([.command, .shift])
+        .onEnded { model.select(asset, extending: true, toggling: true) }
+        .exclusively(before: TapGesture().modifiers(.shift)
+            .onEnded { model.select(asset, extending: true) })
+        .exclusively(before: TapGesture().modifiers(.command)
+            .onEnded { model.select(asset, toggling: true) })
+        .exclusively(before: TapGesture().onEnded { model.select(asset) })
+}
+
+private struct PhotoContextMenu: View {
+    let asset: PhotoAsset
+    @ObservedObject var model: LibraryModel
+    @EnvironmentObject private var editor: EditingModel
+    @EnvironmentObject private var exporter: JPEGExportModel
+
+    private var exportCount: Int { model.selectedIDs.contains(asset.id) ? model.selectedIDs.count : 1 }
+
+    var body: some View {
+        Button("In Einzelbildansicht öffnen") { model.select(asset); model.showsDetail = true }
+        Button(exportCount > 1 ? "\(exportCount) Fotos als JPEG exportieren …" : "Foto als JPEG exportieren …") {
+            JPEGExportActions.present(using: exporter, library: model, editor: editor, contextAsset: asset)
+        }.disabled(model.isProjecting || editor.isLoading || editor.isRestoring || editor.isClosing || exporter.isPresented)
+        Button("Im Finder anzeigen") { model.reveal(asset) }
+        Divider()
+        Button(asset.isFavorite ? "Aus Favoriten entfernen" : "Als Favorit markieren") { model.toggleFavorite(asset.id) }.disabled(!model.canModify)
+        Menu("Bewertung") {
+            ForEach(0...5, id: \.self) { value in
+                Button(value == 0 ? "Keine Bewertung" : "\(value) Sterne") { model.setRating(value, for: asset.id) }
+            }
+        }.disabled(!model.canModify)
     }
 }
 
@@ -114,7 +143,7 @@ struct DetailView: View {
                             .frame(width: geometry.size.width, height: geometry.size.height)
                             .onTapGesture(count: 2) { zoomed = true }
                     }
-                }
+                }.contextMenu { PhotoContextMenu(asset: asset, model: model) }
                 HStack(spacing: 18) {
                     IconButton(symbol: "chevron.left", help: "Vorheriges Foto · ←") { model.navigate(-1) }
                     RatingStars(rating: asset.rating, size: 13, onChange: { model.setRating($0) }).disabled(!model.canModify)
@@ -136,8 +165,10 @@ struct DetailView: View {
                             AssetThumbnail(url: asset.fileURL, modifiedAt: asset.modifiedAt, size: 110, fileSize: asset.fileSize, settings: editor.settings(for: asset.id))
                                 .padding(4).frame(width: 90, height: 68)
                                 .background(Theme.panel, in: RoundedRectangle(cornerRadius: 4))
-                                .overlay { RoundedRectangle(cornerRadius: 4).strokeBorder(model.selectedID == asset.id ? Theme.accent : Theme.line, lineWidth: 1) }
+                                .overlay { RoundedRectangle(cornerRadius: 4).strokeBorder(model.selectedIDs.contains(asset.id) ? Theme.accent : Theme.line, lineWidth: 1) }
                         }.buttonStyle(.plain).id(asset.id).help(asset.fileName)
+                            .highPriorityGesture(photoSelectionGesture(asset: asset, model: model))
+                            .contextMenu { PhotoContextMenu(asset: asset, model: model) }
                     }
                 }.padding(.horizontal, 20).padding(.vertical, 13)
             }.frame(height: 98).background(Theme.sidebar)

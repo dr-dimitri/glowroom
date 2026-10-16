@@ -39,11 +39,11 @@ struct PicEditApp: App {
                     .keyboardShortcut("o", modifiers: .command)
                     .disabled(!library.canModify || library.isImporting)
                 Divider()
-                Button("Foto als JPEG exportieren …") {
+                Button(library.selectedIDs.count > 1 ? "Ausgewählte Fotos als JPEG exportieren …" : "Foto als JPEG exportieren …") {
                     JPEGExportActions.present(using: exporter, library: library, editor: editor)
                 }
                 .keyboardShortcut("e", modifiers: [.command, .shift])
-                .disabled(library.selectedAsset == nil || editor.isLoading || editor.isRestoring || editor.isClosing || exporter.isPresented)
+                .disabled(library.selectedIDs.isEmpty || library.isProjecting || editor.isLoading || editor.isRestoring || editor.isClosing || exporter.isPresented)
             }
             CommandMenu("Bibliothek") {
                 Button("Ordner aktualisieren") { library.refreshCurrentFolder() }

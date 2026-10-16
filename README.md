@@ -39,7 +39,7 @@ Ein Lock unter `dist/.picedit-build.lock` verhindert konkurrierende Bundle-Build
 ## Bibliothek verwenden
 
 1. Mit **Ordner hinzufügen** oder **⌘O** einen Bilderordner auswählen.
-2. Bilder in der Rasteransicht sichten und die Einzelansicht öffnen.
+2. Bilder in der Rasteransicht sichten und die Einzelansicht öffnen. Mit **⌘-Klick** einzelne Bilder zur Auswahl hinzufügen oder abwählen, mit **⇧-Klick** einen Bereich auswählen und mit **⌘⇧-Klick** einen Bereich hinzufügen. **⌘A** wählt alle sichtbaren Bilder; **⇧ + Pfeiltasten** erweitert die Auswahl. Die Statusleiste zeigt die Anzahl ausgewählter Bilder.
 3. Bilder als Favoriten markieren oder mit einem bis fünf Sternen bewerten.
 
 Unter **Ordner** lassen sich die eingebundenen Ordner über den Pfeil aufklappen. Die Baumansicht zeigt auch verschachtelte und leere Unterordner. Ein Klick auf einen Ordner zeigt seine Bilder einschließlich der darunterliegenden Ordner; die Zahl rechts gibt diese Gesamtanzahl an. Neue oder entfernte Unterordner werden beim Aktualisieren berücksichtigt.
@@ -72,7 +72,9 @@ Das ausgewählte Bild erhält Vorrang vor wartenden Rasterbildern. Höchstens dr
 | --- | --- |
 | ⌘O | Ordner hinzufügen |
 | ⇧⌘R | Ordner aktualisieren |
-| ⇧⌘E | Ausgewähltes Foto als JPEG exportieren |
+| ⇧⌘E | Ausgewählte Fotos als JPEG exportieren |
+| ⌘A | Alle sichtbaren Fotos auswählen |
+| ⇧ + Pfeiltasten | Auswahlbereich erweitern |
 | Pfeiltasten | Bildauswahl bewegen |
 | Leertaste | Zwischen Raster und Einzelansicht wechseln |
 | 1–5 | Sterne vergeben |
@@ -149,16 +151,16 @@ Die Filter verwenden Core Image und eigene Tonwert-/Kontrastberechnungen. Ihre B
 
 ## JPEG-Export
 
-Wähle ein Foto und klicke oben auf **Exportieren**, nutze **Ablage → Foto als JPEG exportieren …** oder **⇧⌘E**. Der Dialog gliedert die Optionen wie in Lightroom in Speicherort, Dateieinstellungen und Bildgröße.
+Wähle ein oder mehrere Fotos und klicke oben auf **Exportieren**, nutze **Ablage → Foto als JPEG exportieren …** beziehungsweise **Ausgewählte Fotos als JPEG exportieren …** oder **⇧⌘E**. Der Export steht auch im Kontextmenü der Bilder im Raster, Filmstreifen und in der Einzelansicht. Gehört das angeklickte Bild zur Auswahl, werden alle ausgewählten Bilder exportiert; andernfalls wird dieses Bild ausgewählt und exportiert. Der Dialog gliedert die Optionen wie in Lightroom in Speicherort, Dateieinstellungen und Bildgröße.
 
-- **Speicherort:** Zielordner und Dateiname frei wählen. Vorgeschlagen wird `Originalname-bearbeitet.jpg`. Vorhandene Exportdateien werden nur nach Bestätigung ersetzt; importierte Originalbilder sind als Ziel gesperrt.
+- **Speicherort:** Zielordner frei wählen; beim Einzelexport auch den Dateinamen. Vorgeschlagen wird `Originalname-bearbeitet.jpg`. Bei mehreren Bildern wird dieser Name pro Original automatisch vergeben; gleiche Namen erhalten einen eindeutigen Zahlenzusatz. Vorhandene Exportdateien werden nur nach Bestätigung ersetzt; importierte Originalbilder sind als Ziel gesperrt.
 - **Dateieinstellungen:** JPEG mit **sRGB** oder **Display P3**. Die Pixel werden in den gewählten Farbraum umgerechnet; sRGB wird per EXIF gekennzeichnet, Display P3 mit einem eingebetteten ICC-Profil. **Qualität 0–100** steuert die Kompression: höhere Werte erhalten mehr Details und erzeugen meist größere Dateien.
 - **Bildgröße:** Originalgröße, maximale lange Kante oder Einpassen in Breite und Höhe, jeweils in Pixeln. Das Seitenverhältnis bleibt erhalten; es wird weder beschnitten noch verzerrt. Vergrößern ist standardmäßig ausgeschaltet und kann ausdrücklich erlaubt werden.
 - **Auflösung:** 1–1200 Pixel pro Zoll (ppi) als Druckauflösung. Dieser Wert ändert die Druckgrößenangabe, nicht die Pixelzahl.
 
 Exportiert wird der beim Öffnen des Dialogs erfasste Bearbeitungsstand, auch wenn gerade „Vorher anzeigen“ aktiv war. Der Export decodiert das Original und verwendet keine eingebettete RAW-Kameravorschau oder bereits verkleinerte Bildschirmvorschau. RAW-Unterstützung hängt weiterhin von ImageIO/macOS und dem Kameraformat ab. JPEG unterstützt keine Transparenz; transparente Bereiche werden weiß hinterlegt.
 
-Der Export läuft im Hintergrund und kann abgebrochen werden. Erst eine fertig geschriebene Datei wird atomar am Ziel veröffentlicht. Große Exporte sind auf einen Auftrag gleichzeitig begrenzt und unterliegen einer Speicherprüfung; bei zu großen Bildern erscheint ein Fehler statt einer stillen Auflösungsreduktion. Die App wartet beim Beenden auf den Abschluss oder Abbruch eines laufenden Exports. Einstellungen und zuletzt gewählter Ordner werden für den nächsten Export gemerkt. Nach Abschluss lässt sich die Datei im Finder anzeigen.
+Der Export läuft im Hintergrund und kann abgebrochen werden. Mehrere Bilder verwenden dieselben Optionen und werden in der sichtbaren Reihenfolge nacheinander verarbeitet; der Dialog zeigt den Fortschritt. Bereits erfolgreich exportierte Dateien bleiben bei einem Abbruch erhalten. Erst eine fertig geschriebene Datei wird atomar am Ziel veröffentlicht. Große Exporte sind auf einen Auftrag gleichzeitig begrenzt und unterliegen einer Speicherprüfung; bei zu großen Bildern erscheint ein Fehler statt einer stillen Auflösungsreduktion. Die App wartet beim Beenden auf den Abschluss oder Abbruch eines laufenden Exports. Einstellungen und zuletzt gewählter Ordner werden für den nächsten Export gemerkt. Nach Abschluss lassen sich die Dateien im Finder anzeigen.
 
 ## Datenbank und Backups
 

@@ -1,10 +1,12 @@
 # JPEG-Export
 
-Der Dialog orientiert sich an den Bereichen Speicherort, Dateieinstellungen und Bildgröße des [Lightroom-Exportdialogs](https://helpx.adobe.com/lightroom-classic/desktop/export-photos/export-files-disk-or-cd.html). Er exportiert jeweils das ausgewählte Foto mit einem beim Öffnen erfassten Bearbeitungsstand.
+Der Dialog orientiert sich an den Bereichen Speicherort, Dateieinstellungen und Bildgröße des [Lightroom-Exportdialogs](https://helpx.adobe.com/lightroom-classic/desktop/export-photos/export-files-disk-or-cd.html). Er exportiert die ausgewählten Fotos mit den beim Öffnen erfassten Bearbeitungsständen. Raster, Einzelansicht und Filmstreifen bieten den Export im Kontextmenü an. Ein Kontextklick auf ein ausgewähltes Bild verwendet die bestehende Auswahl; ein nicht ausgewähltes Bild wird einzeln ausgewählt und exportiert.
 
 ## Verarbeitung
 
 `JPEGExportModel` hält Eingaben, Status, Abbruch und Bestätigung für vorhandene Zieldateien auf dem MainActor. Ein unveränderlicher `JPEGExportRequest` enthält Original, Bearbeitungen, Ausgabemaße, Qualität, Farbraum und Ziel. Bei einer Überschreibbestätigung wird genau dieser Auftrag erneut verwendet.
+
+Mehrere Bilder erhalten gemeinsame Exportoptionen und automatisch eindeutige Dateinamen auf Basis von `Originalname-bearbeitet.jpg`. Namenskollisionen innerhalb der Auswahl werden unabhängig von Groß-/Kleinschreibung und Unicode-Normalisierung durch Zahlenzusätze aufgelöst. Die sichtbare Bildreihenfolge bestimmt die Reihenfolge der Aufträge. Bei Namenskonflikten mit vorhandenen Dateien wird jeder betroffene Auftrag ausdrücklich bestätigt; die übrige Warteschlange behält ihre angenommenen Ziele und Optionen. Ein Fehler pausiert den Stapel für einen erneuten Versuch. Ein Abbruch stoppt die verbleibenden Aufträge und zeigt bereits erfolgreich veröffentlichte Ergebnisse weiter an.
 
 `JPEGExporter` führt Decodierung, Rendering und Dateiarbeit auf einem eigenen Actor aus. Vollauflösende Exporte bleiben wegen ihres Speicherbedarfs seriell; die bestehende Vorschauverarbeitung, UI und Speicherung können parallel weiterlaufen. Der Exportkontext hat niedrige Priorität und keinen Zwischenbild-Cache.
 
@@ -28,11 +30,12 @@ Synchrones Systemrendering ist nicht jederzeit unterbrechbar. Der Dialog bleibt 
 
 Geprüft am 16. Oktober 2026 in einer normalen macOS-Sitzung mit Core Image:
 
-- Gesamtsuite: **153 Tests bestanden**, zwei optionale Tests übersprungen (Analyse-Benchmark und Kamera-RAW-Export ohne freigegebene Eingabedatei). Darunter sind 23 neue Exporttests für Optionen, Controller und Bild-/Dateiverarbeitung.
+- Gesamtsuite: **171 Tests bestanden**, zwei optionale Tests übersprungen (Analyse-Benchmark und Kamera-RAW-Export ohne freigegebene Eingabedatei). Die Mehrfachauswahl ergänzt zwölf Auswahltests und sechs Batch-Controller-Tests, unter anderem für eingefrorene Bearbeitungen/Optionen, Namenskollisionen und lange Unicode-Dateinamen, Überschreiben, Abbruch und Wiederholung nach Fehlern.
 - Bildtests: volle Auflösung oberhalb der Vorschaugrenze, EXIF-Orientierung, maßhaltiges Skalieren, echte sRGB-/Display-P3-Pixelkonvertierung, Farbraumkennzeichnung, Weiß für Transparenz, ppi-Metadaten, Filtergleichheit und Qualität/Dateigröße.
 - Zustands- und Dateitests: unveränderliche Bearbeitungsaufträge, Abbruch vor und nach Kodierung, Fehler nach Kodierung, bestätigtes Ersetzen, konkurrierende Zielerstellung, Schutz von Originalpfaden und Hardlinks, erneuerte Original-Inodes und Bereinigung temporärer Dateien.
 - Dialogtest mit isoliertem Katalog: Display-P3-JPEG mit 600 × 400 Pixeln, Qualität 82 und 240 ppi; Ausgabe mit ImageIO/Systemwerkzeugen geprüft. Ordnerwahl, ungültige Qualität, gespeicherte Optionen, Tastenkürzel und Ersetzen-Bestätigung erfolgreich durchgespielt.
-- Release-Bundle erfolgreich erstellt und Signatur geprüft. Es bleiben die bereits vorhandenen Core-Image-Kernel- und lokalen Toolchain-Warnungen.
+- Mehrfachauswahl im isolierten Testkatalog: kurze ⌘-/⇧-Klicks, ⌘A, Doppelklick und Abwahl des letzten Bildes im Filmstreifen geprüft. Drei Bilder über das Kontextmenü exportiert; Anzahl, Dateinamen und Originalabmessungen der JPEGs bestätigt. Modifikatoren werden am Klickereignis erfasst, damit ein Loslassen während der Doppelklickerkennung die Auswahl nicht verändert.
+- Debug-Bundle erfolgreich erstellt und Signatur geprüft. Es bleiben die bereits vorhandenen Core-Image-Kernel- und lokalen Toolchain-Warnungen.
 
 Ein zusätzlicher Versuch mit einer vorhandenen CR3-Datei (6000 × 4000 Pixel) im Cloud-Ordner scheiterte bereits beim Lesen an macOS-Zugriffsrechten (`EPERM`). Eine erfolgreiche Kamera-RAW-Exportprüfung wird daher nicht behauptet. Der optionale Test kann mit einer zugänglichen Kamera-RAW-Datei über `PICEDIT_RAW_EXPORT_TEST_FILE` ausgeführt werden; er prüft Originalauflösung, bearbeitete P3-Ausgabe und unveränderte Quelldaten.
 

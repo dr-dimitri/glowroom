@@ -89,7 +89,21 @@ final class LibraryModel: ObservableObject {
         didSet { catalogGeneration += 1; treeOverrides = [:]; scheduleProjection() }
     }
     @Published var selection: LibrarySelection = .all { didSet { scheduleProjection() } }
-    @Published var selectedID: String?
+    /// The active photo drives the inspector; the set also contains the other
+    /// selected photos. Keep direct assignments compatible with single selection.
+    @Published var selectedID: String? {
+        didSet {
+            guard !isApplyingSelection else { return }
+            selectedIDs = selectedID.map { [$0] } ?? []
+            selectionAnchorID = selectedID
+            emptySelectionKey = selectedID == nil ? projection?.key : nil
+            if selectedID == nil { showsDetail = false }
+        }
+    }
+    @Published private(set) var selectedIDs: Set<String> = []
+    private var selectionAnchorID: String?
+    private var isApplyingSelection = false
+    private var emptySelectionKey: LibraryProjectionKey?
     @Published var search = "" { didSet { scheduleProjection() } }
     @Published var sort: PhotoSort = .date { didSet { scheduleProjection() } }
     @Published var minimumRating = 0 { didSet { scheduleProjection() } }
@@ -142,6 +156,8 @@ final class LibraryModel: ObservableObject {
         // Only the brief catalog replacement window needs a single-ID lookup.
         return assets.first { $0.id == selectedID }
     }
+    /// Preserve display order when capturing a batch, independent of click order.
+    var selectedAssets: [PhotoAsset] { visibleAssets.filter { selectedIDs.contains($0.id) } }
     var canModify: Bool { !isLoading && !isReadOnly && !isClosing && !isUpdatingCatalog }
     var title: String {
         switch selection {
@@ -236,7 +252,7 @@ final class LibraryModel: ObservableObject {
             catalog = loaded.catalog
             updatedFolderStructure = loaded.updated
             await waitForProjection()
-            selectedID = visibleAssets.first?.id
+            reconcileSelection()
         } catch {
             isReadOnly = true
             errorMessage = "Der Katalog konnte nicht geöffnet werden. Die vorhandene Datei bleibt unverändert.\n\n\(error.localizedDescription)"
@@ -397,9 +413,45 @@ final class LibraryModel: ObservableObject {
         selection = relativePath.isEmpty ? .folder(folder.id) : .subfolder(folder.id, relativePath)
         reconcileSelection()
     }
-    func select(_ asset: PhotoAsset) {
+    func select(_ asset: PhotoAsset, extending: Bool = false, toggling: Bool = false) {
         NSApp?.keyWindow?.makeFirstResponder(nil)
-        selectedID = asset.id
+        let visible = visibleAssets
+        guard let target = visible.firstIndex(where: { $0.id == asset.id }) else { return }
+        if extending {
+            let anchor = selectionAnchorID ?? selectedID ?? asset.id
+            let start = visible.firstIndex { $0.id == anchor } ?? target
+            let range = Set(visible[min(start, target)...max(start, target)].map(\.id))
+            applySelection(toggling ? selectedIDs.union(range) : range, activeID: asset.id)
+            selectionAnchorID = visible[start].id
+        } else if toggling {
+            var ids = selectedIDs
+            if !ids.insert(asset.id).inserted { ids.remove(asset.id) }
+            let active = ids.contains(asset.id) ? asset.id :
+                (selectedID.flatMap { ids.contains($0) ? $0 : nil } ?? visible.first { ids.contains($0.id) }?.id)
+            applySelection(ids, activeID: active)
+            selectionAnchorID = asset.id
+        } else {
+            applySelection([asset.id], activeID: asset.id)
+            selectionAnchorID = asset.id
+        }
+    }
+    func selectAll() {
+        NSApp?.keyWindow?.makeFirstResponder(nil)
+        let visible = visibleAssets
+        let ids = Set(visible.map(\.id))
+        let active = selectedID.flatMap { ids.contains($0) ? $0 : nil } ?? visible.first?.id
+        applySelection(ids, activeID: active)
+        selectionAnchorID = active
+    }
+    private func applySelection(_ ids: Set<String>, activeID: String?) {
+        // Selection is short UI bookkeeping with shared focus/anchor state.
+        // Keep it ordered on MainActor instead of starting background workers.
+        isApplyingSelection = true
+        selectedIDs = ids
+        selectedID = activeID
+        isApplyingSelection = false
+        emptySelectionKey = ids.isEmpty ? projection?.key : nil
+        if activeID == nil { showsDetail = false }
     }
     func reconcileSelection() {
         guard !isProjecting else { return }
@@ -410,15 +462,26 @@ final class LibraryModel: ObservableObject {
         }
         guard !isProjecting else { return }
         let visible = visibleAssets
-        if !visible.contains(where: { $0.id == selectedID }) { selectedID = visible.first?.id }
-        if visible.isEmpty { showsDetail = false }
+        let visibleIDs = Set(visible.map(\.id))
+        var ids = selectedIDs.intersection(visibleIDs)
+        let deliberatelyEmpty = selectedIDs.isEmpty && emptySelectionKey == projection?.key
+        let clearedKey = emptySelectionKey
+        if ids.isEmpty, !deliberatelyEmpty, let first = visible.first { ids.insert(first.id) }
+        let active = selectedID.flatMap { ids.contains($0) ? $0 : nil } ?? visible.first { ids.contains($0.id) }?.id
+        applySelection(ids, activeID: active)
+        emptySelectionKey = deliberatelyEmpty ? clearedKey : nil
+        if selectionAnchorID.map({ !visibleIDs.contains($0) }) ?? true { selectionAnchorID = active }
+        if active == nil { showsDetail = false }
     }
-    func navigate(_ delta: Int) {
+    func navigate(_ delta: Int, extending: Bool = false) {
         NSApp?.keyWindow?.makeFirstResponder(nil)
         let visible = visibleAssets
         guard !visible.isEmpty else { return }
-        let index = visible.firstIndex { $0.id == selectedID } ?? 0
-        selectedID = visible[min(visible.count - 1, max(0, index + delta))].id
+        let target: Int
+        if let index = visible.firstIndex(where: { $0.id == selectedID }) {
+            target = min(visible.count - 1, max(0, index + delta))
+        } else { target = 0 }
+        select(visible[target], extending: extending)
     }
     func reveal(_ asset: PhotoAsset? = nil) {
         if let asset = asset ?? selectedAsset { NSWorkspace.shared.activateFileViewerSelecting([asset.fileURL]) }
