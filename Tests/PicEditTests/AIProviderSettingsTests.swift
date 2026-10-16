@@ -7,6 +7,54 @@ import Testing
 @Suite("Cloud consent presentation identity", .serialized, .timeLimit(.minutes(1)))
 @MainActor
 struct AIProviderSettingsTests {
+    @Test
+    func workspaceChangePersistsValidIDAndRequiresNewConsent() async throws {
+        let fixture = try CloudFixture()
+        let suite = "PicEdit-Workspace-\(UUID())"
+        let preferences = try #require(UserDefaults(suiteName: suite))
+        defer { preferences.removePersistentDomain(forName: suite) }
+        let local = CloudTestLocalProvider()
+        let assistant = AIAssistantModel(provider: local, coordinator: AIRequestCoordinator(provider: local),
+            snapshot: { fixture.request.snapshot }, accept: { _ in true }, sourceReadable: { _ in true })
+        let settings = AIProviderSettings(directory: fixture.directory, defaults: preferences,
+            keychain: fixture.keychain, local: local, transport: fixture.transport)
+        settings.attach(assistant); settings.setEnabled(true); settings.select(.anthropic)
+        try await waitCloud { assistant.availability == .available && !assistant.supportsLooks }
+        assistant.prompt = fixture.request.prompt; assistant.generate()
+        try await waitCloud { settings.pendingConsent != nil }
+        let oldConsent = try #require(settings.pendingConsent)
+        settings.workspaceInput = "  wrkspc_ValidWorkspace123  "
+        settings.saveWorkspace()
+        #expect(settings.pendingConsent == nil)
+        #expect(settings.workspaceID == "wrkspc_ValidWorkspace123")
+        #expect(preferences.string(forKey: "ai.cloud.workspaceID") == "wrkspc_ValidWorkspace123")
+        settings.respondToConsent(true, for: oldConsent.id)
+        #expect(fixture.transport.requests.isEmpty)
+        try await waitCloud { assistant.availability == .available }
+        assistant.generate()
+        try await waitCloud { settings.pendingConsent != nil }
+        let currentConsent = try #require(settings.pendingConsent)
+        #expect(currentConsent.workspaceID == "wrkspc_ValidWorkspace123")
+        settings.respondToConsent(true, for: currentConsent.id)
+        try await waitCloud { assistant.state == .previewing }
+        #expect(fixture.transport.requests.first?.value(forHTTPHeaderField: "anthropic-workspace-id") == "wrkspc_ValidWorkspace123")
+        settings.workspaceInput = "invalid\r\nheader"
+        settings.saveWorkspace()
+        #expect(settings.workspaceID == "wrkspc_ValidWorkspace123")
+        #expect(preferences.string(forKey: "ai.cloud.workspaceID") == "wrkspc_ValidWorkspace123")
+        #expect(settings.message == AICloudError.invalidWorkspace.localizedDescription)
+        settings.workspaceInput = ""
+        settings.saveWorkspace()
+        #expect(settings.workspaceID == nil)
+        #expect(preferences.object(forKey: "ai.cloud.workspaceID") == nil)
+        #expect(!assistant.canAccept)
+    }
+
+    @Test(arguments: ["wrkspc_", "wrkspc_invalid-value", "wrkspc_ä", "workspace_123", "wrkspc_a\tb", String(repeating: "a", count: 129)])
+    func workspaceRejectsInvalidOrHeaderUnsafeInput(_ input: String) {
+        #expect(throws: AICloudError.invalidWorkspace) { try AICloudWorkspaceID.normalized(input) }
+    }
+
     @Test(arguments: [false, true])
     func delayedAnswerFromPreviousSheetCannotAnswerNewConsent(_ oldAnswer: Bool) async throws {
         let fixture = try CloudFixture()

@@ -15,10 +15,13 @@ final class AIProviderSettings: ObservableObject {
     @Published private(set) var enabled: Bool
     @Published var requestLimit: Int
     @Published var budgetDollars: Int
+    @Published var workspaceInput: String
+    @Published private(set) var workspaceID: String?
     @Published var keyInput = ""
     @Published private(set) var keyBusy = false
     @Published private(set) var message: String?
     @Published private(set) var pendingConsent: AICloudConsent?
+    @Published private(set) var keyStorageDescription = "Der lokale macOS-Keychain wird beim ersten Schlüsselzugriff verwendet."
     @Published private(set) var usageText = "Noch keine Nutzungsabfrage."
     let keychain: any AICloudKeychain
     let cloud: CloudAIProvider?
@@ -38,6 +41,9 @@ final class AIProviderSettings: ObservableObject {
          local: any AIEditingProvider = LocalAIEditingProviderFactory.makeProvider(),
          transport: any CloudHTTPTransport = BoundedCloudHTTPTransport()) {
         self.defaults = defaults; self.keychain = keychain; self.local = local
+        let savedWorkspace = defaults.string(forKey: "ai.cloud.workspaceID") ?? ""
+        workspaceInput = savedWorkspace
+        workspaceID = savedWorkspace.isEmpty ? nil : savedWorkspace
         enabled = defaults.bool(forKey: "ai.cloud.enabled")
         selection = Selection(rawValue: defaults.string(forKey: "ai.provider.selection") ?? "") ?? .local
         requestLimit = defaults.object(forKey: "ai.cloud.requestLimit") == nil ? 50 : min(10_000, max(1, defaults.integer(forKey: "ai.cloud.requestLimit")))
@@ -60,6 +66,18 @@ final class AIProviderSettings: ObservableObject {
         defaults.set(enabled, forKey: "ai.cloud.enabled")
         apply()
     }
+    func saveWorkspace() {
+        do {
+            let value = try AICloudWorkspaceID.normalized(workspaceInput)
+            workspaceInput = value ?? ""
+            guard value != workspaceID else { return }
+            workspaceID = value
+            defaults.set(value, forKey: "ai.cloud.workspaceID")
+            apply()
+            message = value == nil ? "Workspace-ID entfernt. Verwende einen auf einen Workspace beschränkten Schlüssel." : "Workspace-ID gespeichert; bisherige Freigaben wurden verworfen."
+        } catch { message = AICloudError.invalidWorkspace.localizedDescription }
+    }
+
     func saveLimits() {
         requestLimit = min(10_000, max(1, requestLimit)); budgetDollars = min(1_000, max(1, budgetDollars))
         defaults.set(requestLimit, forKey: "ai.cloud.requestLimit")
@@ -76,12 +94,13 @@ final class AIProviderSettings: ObservableObject {
         invalidate()
         let expected = configurationID, revision = configurationRevision
         let enabled = enabled, limit = requestLimit, budget = Int64(budgetDollars) * 1_000_000_000
+        let workspaceID = workspaceID
         // Remove old capabilities and availability synchronously while the
         // actor changes configuration. No old proposal survives this boundary.
         assistant?.suspendProvider()
         Task { [weak self] in
             guard let self, self.configurationID == expected else { return }
-            await self.cloud?.updateConfiguration(enabled: enabled, requestLimit: limit, monthlyBudgetNanodollars: budget, revision: revision)
+            await self.cloud?.updateConfiguration(enabled: enabled, requestLimit: limit, monthlyBudgetNanodollars: budget, workspaceID: workspaceID, revision: revision)
             guard self.configurationID == expected else { return }
             self.bindSelectedProvider()
             await self.refreshUsage()
@@ -181,6 +200,7 @@ final class AIProviderSettings: ObservableObject {
         respondToConsent(false, for: consentID)
     }
     func refreshUsage() async {
+        keyStorageDescription = await keychain.storageDescription()
         guard let cloud else { return }
         do {
             let summary = try await cloud.usage.summary()

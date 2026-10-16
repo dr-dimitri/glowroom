@@ -16,6 +16,8 @@ Stand: 16. Oktober 2026. Originalbilder werden weiterhin ausschließlich gelesen
 
 Die Limits sind Arbeitsbudgets, keine harte Obergrenze für interne Threads von ImageIO/Core Image oder ihren Speicherbedarf. Eine laufende synchrone Betriebssystemoperation kann erst nach ihrer Rückkehr auf Abbruch reagieren.
 
+Beim ersten Öffnen wird die Katalog-Koordinationswurzel samt vollständig geschriebenem und synchronisiertem Owner privat vorbereitet und anschließend atomar veröffentlicht. Gleichzeitige Erstöffner verwenden dieselbe Identität. Bestehende unbekannte oder beschädigte Koordinationsverzeichnisse bleiben gesperrt und unverändert. Nach einem Prozessabbruch können private `.catalog-coordination-root-….stage`-Reste erhalten bleiben; sie werden weder als aktive Koordination übernommen noch automatisch gelöscht. Diese Stage-Familie gehört ebenfalls zu den gegen Export geschützten internen Katalogpfaden.
+
 ## KI-Lookvorschläge
 
 Die [drei lokalen Looks](AI-LOOKS.md) teilen einen gruppierten Modellaufruf und den bestehenden Inferenzplatz mit dem Einzelassistenten. Der Gruppenmodus ist Teil der Auftragsidentität. Unterschiedliche Looks lösen keine drei gleichzeitigen Modellsitzungen aus; ein laufender abgebrochener Aufruf behält seinen Platz bis zur echten Rückkehr. Abhängige Annahme und SQLite-Speicherung bleiben geordnet.

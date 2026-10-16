@@ -2,7 +2,9 @@ import SwiftUI
 import AppKit
 import PicEditCore
 
+#if !PICEDIT_DEVELOPER_HARNESS
 @main
+#endif
 struct PicEditApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     @StateObject private var library: LibraryModel

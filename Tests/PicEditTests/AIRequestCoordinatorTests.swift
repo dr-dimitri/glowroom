@@ -299,7 +299,7 @@ struct AIRequestCoordinatorTests {
         let noChange = Task { try await coordinator.proposal(for: noChangeRequest) }
         await provider.waitUntilStarted(noChangeRequest.id)
         await provider.complete(noChangeRequest.id, with: Data(#"{"schemaVersion":1,"changes":[]}"#.utf8))
-        #expect(try await noChange.value.validation == .noChange)
+        #expect(try await noChange.value.validation == .noChange())
         #expect(await provider.statistics().maximumActive == 1)
         await wait(budget) { $0.activeInferences == 0 }
     }

@@ -45,6 +45,7 @@ case "$tool" in
         esac
         ;;
     swift)
+        [[ -z "${PICEDIT_DEVELOPER_TOOL+x}" ]] || { echo "Developer harness leaked into app build" >&2; exit 1; }
         if [[ "${1:-}" == build ]]; then
             role=compile
             show_bin=0
@@ -141,6 +142,7 @@ new_case() {
 }
 run_build() {
     env PATH="$MOCK_TOOLS:$PATH" MOCK_ROOT="$CASE" MOCK_MODE="$1" \
+        PICEDIT_DEVELOPER_TOOL=editing \
         PICEDIT_BUILD_PATH="$CASE/cache" PICEDIT_BUILD_JOBS="$2" \
         /bin/bash "$CASE/scripts/build-app.sh" > "$CASE/output.log" 2>&1
 }

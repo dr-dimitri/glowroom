@@ -106,13 +106,13 @@ struct AIAssistantSection: View {
                 } else {
                     AIAdjustmentChanges(changes: model.changes)
                 }
-                if model.lookGroup == nil, let explanation = model.explanation, !explanation.isEmpty {
-                    Text("Begründung des Vorschlags: \(explanation)").font(.system(size: 10)).foregroundStyle(Theme.muted)
-                        .fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
-                }
                 Text("Der JPEG-Export verwendet bis zur Übernahme die gespeicherte Bearbeitung.")
                     .font(.system(size: 10)).foregroundStyle(Theme.muted)
                     .fixedSize(horizontal: false, vertical: true)
+            }
+            if model.lookGroup == nil, let explanation = model.explanation, !explanation.isEmpty {
+                Text(explanation).font(.system(size: 10)).foregroundStyle(Theme.muted)
+                    .fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
             }
             HStack {
                 Button("Übernehmen") { _ = model.acceptProposal(); promptFocused = true }

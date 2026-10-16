@@ -43,7 +43,8 @@ struct MetadataManagedFilesTests {
     @Test func jpegCannotPublishIntoCatalogStagingOrMetadataQuarantine() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("metadata-jpeg-" + UUID().uuidString, isDirectory: true)
         defer { try? FileManager.default.removeItem(at: root) }
-        for leaf in ["MetadataCatalogStaging", "photo-metadata-quarantine-" + UUID().uuidString] {
+        for leaf in ["MetadataCatalogStaging", "photo-metadata-quarantine-" + UUID().uuidString,
+                     ".catalog-coordination-root-" + UUID().uuidString.lowercased() + ".stage"] {
             let parent = root.appendingPathComponent(leaf, isDirectory: true)
             try FileManager.default.createDirectory(at: parent, withIntermediateDirectories: true)
             let target = parent.appendingPathComponent("protected.jpg"), bytes = Data("foreign-payload".utf8)

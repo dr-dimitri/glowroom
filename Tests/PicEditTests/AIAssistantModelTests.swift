@@ -188,10 +188,14 @@ final class AIAssistantModelTests {
         #expect(!assistant.canAccept)
         assistant.generate()
         try await wait { await provider.hasWaitingCall }
-        await provider.complete(data: Data("{\"schemaVersion\":1,\"changes\":[]}".utf8))
+        await provider.complete(data: Data("{\"schemaVersion\":1,\"changes\":[],\"explanation\":\"Weißabgleich ist nicht verfügbar.\"}".utf8))
         try await wait { assistant.state == .previewing }
         #expect(assistant.changes.isEmpty)
+        #expect(assistant.explanation == "Weißabgleich ist nicht verfügbar.")
         #expect(!assistant.canAccept)
+        #expect(!assistant.acceptProposal())
+        #expect(!editor.canUndo(assetID: try #require(library.selectedID)))
+        #expect(!editor.hasPendingChanges)
         assistant.discard()
         // A missing original is rejected by the worker before provider inference.
         try FileManager.default.removeItem(at: try #require(library.selectedAsset).fileURL)

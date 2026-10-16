@@ -1,6 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
+unset PICEDIT_DEVELOPER_TOOL
+
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 BUILD_PATH="${PICEDIT_TEST_BUILD_PATH:-"$ROOT/.build"}"
 if [[ "$BUILD_PATH" != /* ]]; then

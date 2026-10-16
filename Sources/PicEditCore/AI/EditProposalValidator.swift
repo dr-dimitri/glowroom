@@ -127,7 +127,7 @@ public struct EditProposalValidator: Sendable {
         for change in proposal.changes {
             target = try change.parameter.applying(change.value, to: target)
         }
-        return target == settings ? .noChange : .changes(proposal: proposal, settings: target)
+        return target == settings ? .noChange(explanation: proposal.explanation) : .changes(proposal: proposal, settings: target)
     }
 
     private func validateLimits() throws {

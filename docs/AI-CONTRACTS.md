@@ -9,7 +9,7 @@ Die Grundlage aus [Issue #2](https://github.com/dr-dimitri/picedit/issues/2) tre
 1. Die App erfasst das ausgewählte Foto, seinen Quellenfingerabdruck, die übernommenen Regler und getrennte Bearbeitungs-/Auswahlgenerationen als unveränderlichen Snapshot.
 2. Ein `AIEditingRequest` verbindet diesen Snapshot mit einer appseitigen Auftrags-ID und der Benutzeranweisung. Modelltexte erzeugen oder ersetzen diese Identität nicht.
 3. Der injizierte `AIEditingProvider` meldet Verfügbarkeit und ausdrücklich getrennte Fähigkeiten für Textbearbeitung, Bildverständnis und Bildgenerierung. Die Auftragssteuerung startet nur eine unterstützte und verfügbare Textbearbeitungsaufgabe.
-4. `EditProposalValidator` prüft die Antwort vollständig. Ein gültiger Patch ergibt einen vorläufigen Zielstand, ein leerer oder wirkungsloser Patch das Ergebnis `noChange`. Bis zu einer bewussten Übernahme ändern sich weder Regler, Undo noch Datenbank.
+4. `EditProposalValidator` prüft die Antwort vollständig. Ein gültiger Patch ergibt einen vorläufigen Zielstand, ein leerer oder wirkungsloser Patch das Ergebnis `noChange(explanation:)`. Dieses Ergebnis bewahrt die bereits validierte Erklärung, damit fehlende Fähigkeiten oder bereits passende Einstellungen verständlich bleiben; es enthält keinen übernehmbaren Zielstand. Bis zu einer bewussten Übernahme ändern sich weder Regler, Undo noch Datenbank.
 5. Vor der Vorschauveröffentlichung und unmittelbar vor der Übernahme wird der Snapshot erneut gegen die App geprüft. Eine erfolgreiche Übernahme verwendet den normalen Bearbeitungspfad genau einmal. Die bereits angenommene Speicherung gehört anschließend dem vorhandenen `EditingModel` und ist unabhängig von einem Abbruch der KI-Anfrage.
 
 ## Antwortschema 1

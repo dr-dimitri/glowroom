@@ -25,6 +25,7 @@ actor CloudAIProvider: AIRemoteEditingProvider {
     private var enabled = false
     private var requestLimit = 50
     private var monthlyBudgetNanodollars: Int64 = 5_000_000_000
+    private var workspaceID: String?
     private var generation = UUID()
     private var settingsRevision: UInt64 = 0
     private var prepared: Prepared?
@@ -36,10 +37,11 @@ actor CloudAIProvider: AIRemoteEditingProvider {
         self.keychain = keychain; self.usage = usage; self.transport = transport
     }
     func updateConfiguration(enabled: Bool, requestLimit: Int, monthlyBudgetNanodollars: Int64,
-                             revision: UInt64? = nil) {
+                             workspaceID: String? = nil, revision: UInt64? = nil) {
         guard acceptSettingsRevision(revision) else { return }
         invalidateGrants()
         self.enabled = enabled
+        self.workspaceID = workspaceID
         self.requestLimit = min(10_000, max(1, requestLimit))
         self.monthlyBudgetNanodollars = min(1_000_000_000_000, max(0, monthlyBudgetNanodollars))
     }
@@ -64,10 +66,11 @@ actor CloudAIProvider: AIRemoteEditingProvider {
         guard enabled else { throw AICloudError.disabled }
         guard !busy else { throw AICloudError.busy }
         guard request.mode == .single else { throw AIEditingError.unsupportedCapability }
+        let workspaceID = try AICloudWorkspaceID.normalized(workspaceID)
         let body = try Self.body(for: request)
         let consent = AICloudConsent(id: UUID(), requestID: request.id, model: Self.model,
                                      bodyByteCount: body.count, maximumOutputTokens: Self.maximumOutputTokens,
-                                     reservationNanodollars: CloudUsageStore.reservationNanodollars)
+                                     reservationNanodollars: CloudUsageStore.reservationNanodollars, workspaceID: workspaceID)
         prepared = Prepared(consent: consent, request: request, body: body, generation: generation, granted: false)
         return consent
     }
@@ -109,6 +112,9 @@ actor CloudAIProvider: AIRemoteEditingProvider {
             urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
             urlRequest.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
             urlRequest.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
+            if let workspaceID = item.consent.workspaceID {
+                urlRequest.setValue(workspaceID, forHTTPHeaderField: "anthropic-workspace-id")
+            }
             let currentOperation = try transport.operation(for: urlRequest)
             operation = currentOperation
             try await usage.markDispatched(id: reservation!.id)
@@ -151,6 +157,7 @@ actor CloudAIProvider: AIRemoteEditingProvider {
     }
     nonisolated static func error(for status: Int) -> AICloudError {
         switch status {
+        case 400: return .invalidConfiguration
         case 401: return .invalidKey
         case 402: return .paymentRequired
         case 403: return .forbidden

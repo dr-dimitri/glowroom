@@ -15,7 +15,7 @@ public enum CatalogManagedStoragePaths {
             .map { directory.appendingPathComponent($0, isDirectory: true) }
     }
     public static func families(in directory: URL) -> [MetadataProtectedDirectoryFamily] {
-        ["semantic-index-quarantine-", "photo-metadata-quarantine-"]
+        ["semantic-index-quarantine-", "photo-metadata-quarantine-", CatalogCoordinationFiles.rootStagePrefix]
             .map { .init(parent: directory, childNamePrefix: $0) }
     }
     static func protection(in directory: URL) -> MetadataFileProtectionSnapshot {

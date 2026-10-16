@@ -32,7 +32,7 @@ public struct EditProposal: Codable, Hashable, Sendable {
 /// the app-owned request/snapshot and consume the result exactly once.
 public enum EditProposalValidationResult: Hashable, Sendable {
     case changes(proposal: EditProposal, settings: EditSettings)
-    case noChange
+    case noChange(explanation: String? = nil)
 }
 
 /// Content-free categories are safe to count in diagnostics; responses are never retained.

@@ -56,6 +56,139 @@ struct PhotoMetadataModelTests {
         #expect(await f.store.confirms.isEmpty)
     }
 
+    @Test(arguments: [false, true])
+    func acceptedDraftTracksItsRevisionAcrossSameSourceCatalogChanges(proposal: Bool) async throws {
+        let f = fixture()
+        try await wait { f.model.canEditManual }
+        if proposal { try await prepareProposal(f) }
+        await f.store.setWritesBlocked(true)
+        let first = PhotoTextFields(title: "Angenommener Entwurf")
+        if proposal { f.model.editProposalFields(first) } else { f.model.editManualFields(first) }
+        try await wait { await f.store.hasBlockedWrite }
+        f.context.value = metadataContext("a", selection: 2, catalog: 2, canModify: false)
+        f.model.synchronizeContext()
+        await f.store.releaseWrite()
+        try await wait { !f.model.isSaving }
+        #expect(f.model.record?.version == (await f.store.records["a"]?.version))
+        #expect(await f.model.finishSaving())
+
+        f.context.value = metadataContext("a", selection: 3, catalog: 2)
+        f.model.synchronizeContext()
+        #expect(f.model.canManage)
+        let next = PhotoTextFields(title: "Nächster Entwurf")
+        if proposal { f.model.editProposalFields(next) } else { f.model.editManualFields(next) }
+        try await wait { !f.model.isSaving }
+        #expect(f.model.errorMessage == nil)
+        if proposal { f.model.acceptProposal() } else { f.model.acceptManualFields() }
+        try await wait { !f.model.isSaving }
+        #expect(f.model.record?.confirmed.title == next.title)
+        #expect(!f.model.hasPendingRetry)
+        #expect(await f.model.finishSaving())
+    }
+
+    @Test(arguments: [false, true])
+    func olderAcceptedDraftAdvancesRevisionWithoutReplacingNewerRawInput(proposal: Bool) async throws {
+        let f = fixture()
+        try await wait { f.model.canEditManual }
+        if proposal { try await prepareProposal(f) }
+        await f.store.setWritesBlocked(true)
+        let first = PhotoTextFields(title: "Erster Entwurf")
+        if proposal { f.model.editProposalFields(first) } else { f.model.editManualFields(first) }
+        try await wait { await f.store.hasBlockedWrite }
+        f.context.value = metadataContext("a", selection: 2, catalog: 2)
+        f.model.synchronizeContext()
+        let latest = PhotoTextFields(title: "Neuere Eingabe")
+        if proposal { f.model.editProposalFields(latest) } else { f.model.editManualFields(latest) }
+        await f.store.releaseWrite(keepingBlocked: true)
+        try await wait {
+            let stored = await f.store.records["a"]
+            return await f.store.hasBlockedWrite && (proposal ? stored?.draft?.fields : stored?.manualDraft?.fields) == first
+        }
+        #expect((proposal ? f.model.proposalFields : f.model.manualFields) == latest)
+        #expect(f.model.record?.version == (await f.store.records["a"]?.version))
+        await f.store.releaseWrite()
+        try await wait { !f.model.isSaving }
+        #expect((proposal ? f.model.record?.draft?.fields : f.model.record?.manualDraft?.fields) == latest)
+        #expect(f.model.errorMessage == nil)
+        #expect(await f.model.finishSaving())
+    }
+
+    @Test func sourceChangeStillRejectsTheOldAcceptedDraftDisplay() async throws {
+        let f = fixture()
+        try await wait { f.model.canEditManual }
+        await f.store.setWritesBlocked(true)
+        f.model.editManualFields(PhotoTextFields(title: "Alte Quelle"))
+        try await wait { await f.store.hasBlockedWrite }
+        await f.store.setReadsBlocked(true)
+        f.context.value = metadataContext("a", selection: 2, modified: 101)
+        f.model.synchronizeContext()
+        try await wait { await f.store.pendingLoadIDs.count == 1 }
+        await f.store.completeLoad(try #require(await f.store.pendingLoadIDs.first), value: metadataRecord("a", title: "Neue Quelle"))
+        try await wait { !f.model.isLoading }
+        await f.store.releaseWrite()
+        try await wait { !f.model.isSaving }
+        #expect(f.model.manualFields.title == "Neue Quelle")
+        // A source mismatch refreshes the record instead of publishing the old
+        // source's receipt into the new form, even when its revision is higher.
+        try await wait { await f.store.pendingLoadIDs.count == 1 }
+        await f.store.completeLoad(try #require(await f.store.pendingLoadIDs.first), value: metadataRecord("a", title: "Neue Quelle", revision: 2))
+        try await wait { !f.model.isLoading }
+        #expect(f.model.record?.confirmed.title == "Neue Quelle")
+    }
+
+    @Test func acceptedDraftAfterSelectionABAStillCannotReplaceANewerLoadedRevision() async throws {
+        let f = fixture()
+        try await wait { f.model.canEditManual }
+        await f.store.setWritesBlocked(true)
+        f.model.editManualFields(PhotoTextFields(title: "Früherer Auftrag für A"))
+        try await wait { await f.store.hasBlockedWrite }
+        f.context.value = metadataContext("b", selection: 2); f.model.synchronizeContext()
+        try await wait { !f.model.isLoading }
+        await f.store.setReadsBlocked(true)
+        f.context.value = metadataContext("a", selection: 3); f.model.synchronizeContext()
+        try await wait { await f.store.pendingLoadIDs.count == 1 }
+        await f.store.completeLoad(try #require(await f.store.pendingLoadIDs.first), value: metadataRecord("a", title: "Neuere Revision für A", revision: 9))
+        try await wait { !f.model.isLoading }
+        await f.store.releaseWrite()
+        try await wait { !f.model.isSaving }
+        #expect(f.model.record?.version.recordRevision == 9)
+        #expect(f.model.manualFields.title == "Neuere Revision für A")
+        #expect(await f.model.finishSaving())
+    }
+
+    @Test func realLibraryClosingContextDrainsPendingSQLiteDraftWithoutFalseSaveFailure() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("PicEdit-Metadata-Quit-\(UUID())", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let photos = directory.appendingPathComponent("Photos", isDirectory: true)
+        try FileManager.default.createDirectory(at: photos, withIntermediateDirectories: true)
+        let original = photos.appendingPathComponent("synthetic.png")
+        try Data("synthetic metadata source".utf8).write(to: original)
+        let folder = LibraryFolder(url: photos)
+        let asset = PhotoAsset(folderID: folder.id, fileURL: original)
+        let repository = CatalogRepository(directory: directory.appendingPathComponent("Catalog", isDirectory: true))
+        try repository.save(LibraryCatalog(folders: [folder], assets: [asset]))
+        let store = PhotoMetadataRepository(directory: repository.directory)
+        let library = LibraryModel(repository: repository, metadataStore: store)
+        try await wait { !library.isLoading && !library.isProjecting }
+        library.select(asset)
+        // Metadata editing is independent of editor storage availability.
+        let editor = EditingModel(loader: { throw PhotoMetadataError.storageFailure })
+        let model = PhotoMetadataModel(store: store, suggestor: MetadataUISuggestor(), library: library, editor: editor)
+        try await wait { model.canEditManual }
+        model.editManualFields(PhotoTextFields(title: "Vor dem Beenden angenommen"))
+        #expect(model.isSaving)
+        model.beginTermination(); library.beginTermination(); editor.beginTermination()
+        try await wait { model.context?.isClosing == true }
+        let saved = await AppDelegate.finishSaving(catalog: { await library.finishSaving() }, edits: { true },
+            metadata: { await model.drainAcceptedWrites() }, finalize: { await model.finishSaving() })
+        #expect(saved)
+        #expect(try await store.record(assetID: asset.id)?.manualDraft?.fields.title == "Vor dem Beenden angenommen")
+        #expect(model.errorMessage == nil)
+        library.cancelTermination(); editor.cancelTermination(); model.cancelTermination()
+        try await wait { model.canManage }
+        #expect(model.recovery == nil)
+    }
+
     @Test func canceledExitRestartsAnInterruptedDetailLoadAndRejectsItsOldReply() async throws {
         let store = MetadataUIStore()
         await store.setReadsBlocked(true)
@@ -380,6 +513,14 @@ struct PhotoMetadataModelTests {
         #expect(await f.store.records["a"]?.manualDraft?.fields == fields)
     }
 
+    private func prepareProposal(_ f: MetadataUIFixture) async throws {
+        await f.model.refreshAvailability()
+        f.model.suggest()
+        try await wait { await f.suggestor.requests.count == 1 }
+        await f.suggestor.complete(try #require(await f.suggestor.requests.first?.id))
+        try await wait { f.model.canEditProposal && !f.model.isSaving }
+    }
+
     private func fixture(store: MetadataUIStore = MetadataUIStore(), selected: Bool = true, lifecycle: CatalogLifecycleGate? = nil) -> MetadataUIFixture {
         let context = MetadataUIContext(value: selected ? metadataContext("a") : nil)
         let suggestor = MetadataUISuggestor()
@@ -406,11 +547,11 @@ private enum MetadataUITestError: Error { case timeout }
     var value: PhotoMetadataSelectionContext?
     init(value: PhotoMetadataSelectionContext?) { self.value = value }
 }
-private func metadataContext(_ id: String, selection: UInt64 = 1, modified: TimeInterval = 100, canModify: Bool = true) -> PhotoMetadataSelectionContext {
+private func metadataContext(_ id: String, selection: UInt64 = 1, modified: TimeInterval = 100, catalog: Int = 1, canModify: Bool = true) -> PhotoMetadataSelectionContext {
     PhotoMetadataSelectionContext(assetID: id,
         source: AIOriginalSourceFingerprint(fileURL: URL(fileURLWithPath: "/synthetic/\(id).png"), modifiedAt: Date(timeIntervalSince1970: modified), fileSize: 10),
         selectionSessionID: UUID(uuidString: "11111111-1111-1111-1111-111111111111")!, selectionGeneration: selection,
-        catalogSessionID: UUID(uuidString: "22222222-2222-2222-2222-222222222222")!, catalogGeneration: 1,
+        catalogSessionID: UUID(uuidString: "22222222-2222-2222-2222-222222222222")!, catalogGeneration: catalog,
         canModify: canModify, isClosing: false)
 }
 private func metadataRecord(_ id: String, title: String = "", revision: Int64 = 0) -> PhotoMetadataRecord {
@@ -460,7 +601,7 @@ private actor MetadataUIStore: PhotoMetadataStoring {
     func setWritesBlocked(_ value: Bool) { writesBlocked = value }
     func failNextConfirmation() { confirmationFails = true }
     func completeLoad(_ id: Int, value: PhotoMetadataRecord?) { loads.removeValue(forKey: id)?.resume(returning: value) }
-    func releaseWrite() { writesBlocked = false; blockedWrite?.resume(); blockedWrite = nil }
+    func releaseWrite(keepingBlocked: Bool = false) { writesBlocked = keepingBlocked; blockedWrite?.resume(); blockedWrite = nil }
     func markDraftOutdated(assetID: String) {
         guard let old = records[assetID], let draft = old.draft else { return }
         let v = old.version
@@ -504,8 +645,9 @@ private actor MetadataUIStore: PhotoMetadataStoring {
         return result(operation.header, PhotoMetadataRecord(assetID: old.assetID, version: version, confirmed: old.confirmed,
             confirmedProvenance: old.confirmedProvenance, draft: old.draft, manualDraft: draft, isOrphaned: false, sourceChanged: false))
     }
-    func saveAIDraft(_ operation: MetadataAIDraftOperation) throws -> MetadataCommitResult {
+    func saveAIDraft(_ operation: MetadataAIDraftOperation) async throws -> MetadataCommitResult {
         aiDrafts.append(operation)
+        if writesBlocked { await withCheckedContinuation { blockedWrite = $0 } }
         let old = try base(operation.header), v = old.version
         let version = MetadataRecordVersion(recordRevision: v.recordRevision + 1, confirmedRevision: v.confirmedRevision,
             aiDraftRevision: v.aiDraftRevision + 1, manualDraftRevision: v.manualDraftRevision)

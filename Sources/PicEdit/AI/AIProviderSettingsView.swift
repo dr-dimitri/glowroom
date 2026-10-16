@@ -17,7 +17,13 @@ struct AIProviderSettingsView: View {
                 Button("Schlüssel speichern / ersetzen") { settings.saveKey() }.disabled(settings.keyInput.isEmpty || settings.keyBusy)
                 Button("Schlüssel löschen") { settings.deleteKey() }.disabled(settings.keyBusy)
             }
-            Text("Nur im gerätegebundenen macOS-Keychain; kein Lesen beim Start. Das Eingabefeld wird nach dem Speichern geleert.")
+            TextField("Workspace-ID (optional, wrkspc_…)", text: $settings.workspaceInput)
+                .onSubmit { settings.saveWorkspace() }
+            Button("Workspace-ID speichern") { settings.saveWorkspace() }
+            Text("Für Schlüssel, die auf mehrere Workspaces zugreifen können, ist die Workspace-ID aus der Claude Console erforderlich. Bei einem auf einen Workspace beschränkten Schlüssel darf sie leer bleiben. Speichern verwirft bisherige Freigaben.")
+                .fixedSize(horizontal: false, vertical: true)
+            Text(settings.keyStorageDescription + " Das Eingabefeld wird nach dem Speichern geleert.")
+                .fixedSize(horizontal: false, vertical: true)
             Stepper("Auftragslimit: \(settings.requestLimit) pro UTC-Monat", value: $settings.requestLimit, in: 1...10_000)
             Stepper("Modellpreisbudget: \(settings.budgetDollars) USD pro UTC-Monat", value: $settings.budgetDollars, in: 1...1_000)
             Button("Limits speichern") { settings.saveLimits() }
@@ -48,6 +54,7 @@ struct AICloudConsentView: View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Diesen Textauftrag an Anthropic senden?").font(.headline)
             Text("Anbieter: Anthropic · Modell: \(consent.model)")
+            Text(consent.workspaceID.map { "Workspace: " + $0 } ?? "Workspace: durch den API-Schlüssel festgelegt")
             Text("Ein eingefrorener Textauftrag mit Regler-Ausgangswerten, \(consent.bodyByteCount) Requestbytes. Keine Bilder (Anzahl 0), keine Auflösung, keine Dateipfade oder Fotometadaten aus dem Katalog. Dein eingegebener Text wird übertragen.")
             Text("Outputlimit \(consent.maximumOutputTokens) Tokens. Konservative Vormerkung 0,60 USD; nach vollständiger gemeldeter Nutzung Abgleich zum geschätzten Modellpreis. Bei Abbruch oder unsicherer Antwort bleibt die Vormerkung bestehen. Kosten entstehen in deinem API-Konto.")
             Text("Verarbeitung kann weltweit stattfinden. Für Standard-API-Konten gelten in der Regel bis 30 Tage Aufbewahrung; Ausnahmen sind möglich. Keine EU-Residenz- oder Zero-Retention-Garantie.")

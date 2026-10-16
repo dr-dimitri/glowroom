@@ -18,7 +18,10 @@ struct CloudAIProviderTests {
         let f = try CloudFixture()
         await f.enable(); try await f.authorize()
         let data = try await f.provider.proposal(for: f.request)
-        #expect(try EditProposalValidator().validate(data, against: .neutral) != .noChange)
+        guard case .changes = try EditProposalValidator().validate(data, against: .neutral) else {
+            Issue.record("Expected an effective edit proposal, not a no-change explanation")
+            return
+        }
         let sent = try #require(f.transport.requests.first)
         #expect(sent.url?.absoluteString == "https://api.anthropic.com/v1/messages")
         #expect(sent.value(forHTTPHeaderField: "Authorization") == "Bearer synthetic-secret")
@@ -46,6 +49,37 @@ struct CloudAIProviderTests {
         let ledgerText = String(decoding: ledger, as: UTF8.self)
         #expect(!ledgerText.contains("synthetic-secret") && !ledgerText.contains("synthetic-asset-id") && !ledgerText.contains("Kontrast"))
     }
+    @Test(arguments: [nil, "wrkspc_01JwQvzr7rXLA5AGx3HKfFUJ"] as [String?])
+    func optionalWorkspaceIsFrozenIntoConsentAndRequest(_ workspace: String?) async throws {
+        let f = try CloudFixture()
+        await f.provider.updateConfiguration(enabled: true, requestLimit: 50, monthlyBudgetNanodollars: 5_000_000_000, workspaceID: workspace)
+        let consent = try await f.provider.prepareConsent(for: f.request)
+        #expect(consent.workspaceID == workspace)
+        try await f.provider.grant(consent)
+        _ = try await f.provider.proposal(for: f.request)
+        let sent = try #require(f.transport.requests.first)
+        #expect(sent.value(forHTTPHeaderField: "anthropic-workspace-id") == workspace)
+    }
+
+    @Test func changingWorkspaceRevokesFrozenConsentAndInvalidWorkspaceCannotUpload() async throws {
+        let f = try CloudFixture(); await f.enable()
+        let old = try await f.provider.prepareConsent(for: f.request)
+        await f.provider.updateConfiguration(enabled: true, requestLimit: 50, monthlyBudgetNanodollars: 5_000_000_000,
+            workspaceID: "wrkspc_NewWorkspace", revision: 2)
+        await expectCloud(.revoked) { try await f.provider.grant(old) }
+        // Delayed configuration cannot restore the old billing destination.
+        await f.provider.updateConfiguration(enabled: true, requestLimit: 50, monthlyBudgetNanodollars: 5_000_000_000,
+            workspaceID: "wrkspc_OldWorkspace", revision: 1)
+        #expect(try await f.provider.prepareConsent(for: f.request).workspaceID == "wrkspc_NewWorkspace")
+        await f.provider.updateConfiguration(enabled: true, requestLimit: 50, monthlyBudgetNanodollars: 5_000_000_000,
+            workspaceID: "wrkspc_valid\r\nInjected: value", revision: 3)
+        await expectCloud(.invalidWorkspace) { _ = try await f.provider.prepareConsent(for: f.request) }
+        #expect(f.transport.requests.isEmpty)
+        #expect(await f.keychain.readCount == 0)
+        #expect(try await f.usage.summary().requestCount == 0)
+        #expect(CloudAIProvider.error(for: 400) == .invalidConfiguration)
+    }
+
     @Test func exactFrozenRequestAndOneShotGrant() async throws {
         let f = try CloudFixture(); await f.enable(); try await f.authorize()
         let changed = AIEditingRequest(id: f.request.id, prompt: "Mehr Schatten", snapshot: f.request.snapshot)
@@ -117,7 +151,7 @@ struct CloudAIProviderTests {
         #expect(summary.chargedNanodollars == 600_000_000)
         #expect(f.transport.requests.count == 1)
     }
-    @Test(arguments: [401,402,403,404,413,429,500,529])
+    @Test(arguments: [400,401,402,403,404,413,429,500,529])
     func HTTPFailuresAreTypedAndNeverRetried(_ status: Int) async throws {
         let f = try CloudFixture(response: .init(statusCode: status, data: Data("private-server-error".utf8)))
         await f.enable(); try await f.authorize()

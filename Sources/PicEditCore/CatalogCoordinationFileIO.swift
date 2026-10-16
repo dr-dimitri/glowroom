@@ -6,6 +6,7 @@ import Foundation
 /// Native locks cover only synchronous file CAS; never participant actor awaits.
 internal final class CatalogCoordinationFiles: @unchecked Sendable {
     static let folderName = "CatalogCoordination"
+    static let rootStagePrefix = ".catalog-coordination-root-"
     private static let maximumOperations = 4_096
     let directory: URL
     init(directory: URL) { self.directory = directory }
@@ -363,20 +364,66 @@ internal final class CatalogCoordinationFiles: @unchecked Sendable {
         let catalogFD = open(directory.path, O_RDONLY | O_DIRECTORY | O_CLOEXEC)
         guard catalogFD >= 0 else { throw posix("Katalogverzeichnis öffnen") }
         let catalog = FD(catalogFD)
-        let created = mkdirat(catalogFD, Self.folderName, 0o700) == 0
-        if !created && errno != EEXIST { throw posix("Koordinationsverzeichnis anlegen") }
+        var existing = stat()
+        if fstatat(catalogFD, Self.folderName, &existing, AT_SYMLINK_NOFOLLOW) != 0 {
+            guard errno == ENOENT else { throw posix("Koordinationsverzeichnis prüfen") }
+            try publishNewRoot(in: catalogFD)
+        }
         let coordinationFD = openat(catalogFD, Self.folderName, O_RDONLY | O_DIRECTORY | O_CLOEXEC | O_NOFOLLOW)
         guard coordinationFD >= 0 else { throw CatalogCoordinationError.unknownJournal }
         let coordination = FD(coordinationFD)
-        if created {
-            let marker = RootMarker(schemaVersion: 1, rootOwnerID: UUID())
-            try writeNew(try EditingContractJSON.encoder().encode(marker), name: "owner.json", in: coordinationFD)
-            guard fsync(catalogFD) == 0 else { throw posix("Koordinationsverzeichnis sichern") }
-        }
         let markerFile = try readFile(coordinationFD, name: "owner.json", maximum: 1_024, capture: true)
         let marker: RootMarker = try canonicalDecode(markerFile.data!)
         guard marker.schemaVersion == 1 else { throw CatalogCoordinationError.unknownJournal }
         return Root(catalog: catalog, coordination: coordination, marker: marker)
+    }
+    private func publishNewRoot(in catalog: Int32) throws {
+        // Publish the owner and directory as one namespace operation. Independent
+        // processes may prepare concurrently; RENAME_EXCL chooses one complete
+        // root without ever adopting an existing unowned or damaged directory.
+        try Task.checkCancellation()
+        let stageName = Self.rootStagePrefix + UUID().uuidString.lowercased() + ".stage"
+        guard mkdirat(catalog, stageName, 0o700) == 0 else { throw posix("Koordinationswurzel vorbereiten") }
+        var created = stat()
+        guard fstatat(catalog, stageName, &created, AT_SYMLINK_NOFOLLOW) == 0,
+              created.st_mode & S_IFMT == S_IFDIR else { throw CatalogCoordinationError.invalidCapability }
+        let stageFD = openat(catalog, stageName, O_RDONLY | O_DIRECTORY | O_CLOEXEC | O_NOFOLLOW)
+        guard stageFD >= 0 else { throw posix("Koordinationsstage öffnen") }
+        let stage = FD(stageFD)
+        var opened = stat()
+        guard fstat(stage.value, &opened) == 0, created.st_dev == opened.st_dev, created.st_ino == opened.st_ino else {
+            throw CatalogCoordinationError.invalidCapability
+        }
+        var owner: FD?, published = false
+        defer {
+            // Cleanup has only creation-time authority over our own file and
+            // empty directory. Replacements/unknown entries are never removed.
+            if !published, (try? requireNamed(stage.value, parent: catalog, name: stageName, directory: true)) != nil {
+                if let owner, (try? requireNamed(owner.value, parent: stage.value, name: "owner.json")) != nil {
+                    _ = unlinkat(stage.value, "owner.json", 0)
+                }
+                _ = unlinkat(catalog, stageName, AT_REMOVEDIR)
+            }
+        }
+        try requireNamed(stage.value, parent: catalog, name: stageName, directory: true)
+        let reservation = try EditingDatabaseAccess.reserveNativeFile()
+        let ownerFD = openat(stage.value, "owner.json", O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC | O_NOFOLLOW, 0o600)
+        guard ownerFD >= 0 else { throw posix("Koordinationsowner anlegen") }
+        owner = FD(ownerFD, editingOwnership: reservation.own(ownerFD))
+        let marker = RootMarker(schemaVersion: 1, rootOwnerID: UUID())
+        try write(EditingContractJSON.encoder().encode(marker), to: ownerFD)
+        guard fsync(ownerFD) == 0, fsync(stage.value) == 0 else { throw posix("Koordinationsowner sichern") }
+        try requireNamed(stage.value, parent: catalog, name: stageName, directory: true)
+        try requireNamed(ownerFD, parent: stage.value, name: "owner.json")
+        try Task.checkCancellation()
+        if renameatx_np(catalog, stageName, catalog, Self.folderName, UInt32(RENAME_EXCL)) == 0 {
+            published = true
+            guard fsync(catalog) == 0 else { throw posix("Koordinationsverzeichnis sichern") }
+        } else if errno != EEXIST {
+            throw posix("Koordinationswurzel veröffentlichen")
+        }
+        // A concurrent winner is reopened and validated by openRoot. A crash
+        // before the rename leaves only an inert sibling stage, never a half root.
     }
     private func requireCurrentRoot(_ root: Root) throws {
         let current = open(directory.path, O_RDONLY | O_DIRECTORY | O_CLOEXEC)
