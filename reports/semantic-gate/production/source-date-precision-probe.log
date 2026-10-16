@@ -1,0 +1,5 @@
+synthetic-00014 Date equal false epoch equal true deltaRefNs -119.20928955078125
+synthetic-00044 Date equal true epoch equal true deltaRefNs 0.0
+synthetic-00074 Date equal false epoch equal true deltaRefNs 119.20928955078125
+synthetic-00104 Date equal false epoch equal true deltaRefNs 119.20928955078125
+synthetic-00134 Date equal true epoch equal true deltaRefNs 0.0

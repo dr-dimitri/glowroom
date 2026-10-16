@@ -180,6 +180,74 @@ final class SemanticLibraryTests {
         #expect(await model.finishSaving())
     }
 
+    @Test func canceledExitKeepsASettledLiteralProjectionImmediatelyAvailable() async throws {
+        let (model, service, _, _) = try await fixture(opensControls: false)
+        let visible = model.visibleAssets.map(\.id)
+        model.beginTermination()
+        model.beginTermination()
+        model.cancelTermination()
+        // Do not yield: synchronous AI snapshot admission must work immediately.
+        #expect(!model.isClosing && !model.isProjecting)
+        #expect(model.visibleAssets.map(\.id) == visible)
+        #expect(await service.calls.isEmpty)
+        #expect(await service.statusCount == 0)
+        #expect(await model.finishSaving())
+    }
+
+    @Test func canceledExitResumesAnInterruptedLiteralProjectionEvenAfterRepeatedClosing() async throws {
+        let (model, _, _, photos) = try await fixture(opensControls: false)
+        model.search = "Nikon"
+        #expect(model.isProjecting)
+        model.beginTermination()
+        model.beginTermination()
+        #expect(!model.isProjecting)
+        model.cancelTermination()
+        #expect(model.isProjecting)
+        await model.waitForProjection()
+        #expect(model.visibleAssets.map(\.id) == [photos[1].id])
+        #expect(await model.finishSaving())
+    }
+
+    @Test func canceledExitProjectsFilterChangesMadeWhileClosing() async throws {
+        let (model, _, _, photos) = try await fixture(opensControls: false)
+        model.beginTermination()
+        model.search = "Nikon"
+        model.beginTermination()
+        #expect(model.isClosing && !model.isProjecting)
+        model.cancelTermination()
+        #expect(model.isProjecting)
+        await model.waitForProjection()
+        #expect(model.visibleAssets.map(\.id) == [photos[1].id])
+        #expect(await model.finishSaving())
+    }
+
+    @Test func canceledExitResumesADeferredRecentExpiration() async throws {
+        let initial = Date(timeIntervalSince1970: 2_000_000_000)
+        var date = initial
+        let folder = LibraryFolder(url: directory.appendingPathComponent("DeferredRecent"),
+            addedAt: initial.addingTimeInterval(-7 * 86_400 + 10), subdirectoryPaths: ["Empty"])
+        let photo = PhotoAsset(folderID: folder.id, fileURL: folder.url.appendingPathComponent("recent.png"))
+        let repository = CatalogRepository(directory: directory.appendingPathComponent("DeferredCatalog"))
+        try repository.save(LibraryCatalog(folders: [folder], assets: [photo]))
+        let model = LibraryModel(repository: repository, now: { date })
+        try await wait { !model.isLoading && !model.isProjecting }
+        model.selection = .recent
+        await model.waitForProjection()
+        #expect(model.visibleAssets.map(\.id) == [photo.id])
+        date = initial.addingTimeInterval(11)
+        _ = model.visibleAssets // Schedules deferred work without starting it.
+        #expect(!model.isProjecting)
+        model.beginTermination()
+        model.beginTermination()
+        await Task.yield()
+        #expect(model.isClosing && !model.isProjecting)
+        model.cancelTermination()
+        #expect(model.isProjecting)
+        await model.waitForProjection()
+        #expect(model.visibleAssets.isEmpty)
+        #expect(await model.finishSaving())
+    }
+
     @Test func recentSemanticCandidatesExpireAndRecoverOnClockReversal() async throws {
         let initial = Date(timeIntervalSince1970: 2_000_000_000)
         var date = initial

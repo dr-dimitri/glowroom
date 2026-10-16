@@ -15,8 +15,17 @@ struct SemanticPackageManifest: Codable, Hashable, Sendable {
     let descriptor: SemanticModelDescriptor
     let files: [SemanticManifestFile]
 
-    static func approved() throws -> Self {
-        guard let url = Bundle.module.url(forResource: "SemanticApprovedPackage", withExtension: "json") else {
+    static func approved(mainBundle: Bundle = .main) throws -> Self {
+        let resources: Bundle
+        if mainBundle.bundleURL.pathExtension.lowercased() == "app" {
+            // Classic SwiftPM's generated accessor only checks the .app root
+            // and an absolute development path. Packaged apps must use their
+            // own signed Resources bundle, including after the build is removed.
+            guard let root = mainBundle.resourceURL?.appendingPathComponent("PicEdit_PicEdit.bundle"),
+                  let packaged = Bundle(url: root) else { throw SemanticEmbeddingError.invalidInstallation }
+            resources = packaged
+        } else { resources = .module }
+        guard let url = resources.url(forResource: "SemanticApprovedPackage", withExtension: "json") else {
             throw SemanticEmbeddingError.invalidInstallation
         }
         return try SemanticInstallationIO.decode(Self.self, at: url, limit: 128 * 1_024)
@@ -76,7 +85,7 @@ actor SemanticModelInstaller {
     }
 
     /// Dependency injection is internal and exists only for small synthetic
-    /// installation tests. The production initializer always uses Bundle.module.
+    /// installation tests. The production initializer always uses the app's pinned resource manifest.
     init(directory: URL, approved: SemanticPackageManifest,
          compiler: @escaping Compiler, capacity: @escaping Capacity) {
         self.directory = directory
@@ -373,11 +382,15 @@ enum SemanticInstallationIO {
               value.st_size >= 0, value.st_size <= limit else { throw SemanticEmbeddingError.invalidInstallation }
         var data = Data()
         while true {
-            try Task.checkCancellation()
-            let remaining = limit - data.count
-            guard let chunk = try handle.read(upToCount: min(1_048_576, remaining + 1)), !chunk.isEmpty else { break }
-            guard chunk.count <= remaining else { throw SemanticEmbeddingError.invalidInstallation }
-            data.append(chunk)
+            let consumed = try autoreleasepool { () throws -> Int in
+                try Task.checkCancellation()
+                let remaining = limit - data.count
+                guard let chunk = try handle.read(upToCount: min(1_048_576, remaining + 1)), !chunk.isEmpty else { return 0 }
+                guard chunk.count <= remaining else { throw SemanticEmbeddingError.invalidInstallation }
+                data.append(chunk)
+                return chunk.count
+            }
+            if consumed == 0 { break }
         }
         guard data.count == value.st_size else { throw SemanticEmbeddingError.installationChanged }
         return data
@@ -495,11 +508,19 @@ enum SemanticInstallationIO {
         }
         defer { try? output?.close() }
         var hasher = SHA256(); var count: Int64 = 0
-        while let data = try input.read(upToCount: 1_048_576), !data.isEmpty {
-            try Task.checkCancellation()
-            count += Int64(data.count)
-            guard count <= value.st_size else { throw SemanticEmbeddingError.invalidInstallation }
-            hasher.update(data: data); try output?.write(contentsOf: data)
+        while true {
+            // NSData/FileHandle bridging can defer temporary destruction until
+            // an autoreleasepool drains. Do not retain a model-sized sequence
+            // of one-MiB chunks while a full hash/copy is in progress.
+            let consumed = try autoreleasepool { () throws -> Int in
+                try Task.checkCancellation()
+                guard let data = try input.read(upToCount: 1_048_576), !data.isEmpty else { return 0 }
+                count += Int64(data.count)
+                guard count <= value.st_size else { throw SemanticEmbeddingError.invalidInstallation }
+                hasher.update(data: data); try output?.write(contentsOf: data)
+                return data.count
+            }
+            if consumed == 0 { break }
         }
         guard count == value.st_size, try stamp(source, allowsHardLinks: allowsHardLinks) == before else { throw SemanticEmbeddingError.installationChanged }
         return (count, hasher.finalize().map { String(format: "%02x", $0) }.joined())

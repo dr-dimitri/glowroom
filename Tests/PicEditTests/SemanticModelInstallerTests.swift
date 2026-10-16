@@ -9,6 +9,8 @@ private final class SemanticCompilerControl: @unchecked Sendable {
     private let lock = NSLock()
     private var blocks = false
     func blockNext() { lock.lock(); blocks = true; lock.unlock() }
+    // Deliberately block only the detached test worker, never an async caller.
+    func waitUntilEntered() -> DispatchTimeoutResult { entered.wait(timeout: .now() + 10) }
     func compile(_ url: URL) throws -> URL {
         lock.lock(); let shouldBlock = blocks; blocks = false; lock.unlock()
         if shouldBlock { entered.signal(); proceed.wait() }
@@ -155,7 +157,7 @@ struct SemanticModelInstallerTests {
         let first = try await installer.install(review)
         fixture.control.blockNext()
         let task = Task { try await installer.install(review) }
-        let entered = await Task.detached { fixture.control.entered.wait(timeout: .now() + 10) }.value
+        let entered = await Task.detached { fixture.control.waitUntilEntered() }.value
         #expect(entered == .success)
         task.cancel()
         fixture.control.proceed.signal()

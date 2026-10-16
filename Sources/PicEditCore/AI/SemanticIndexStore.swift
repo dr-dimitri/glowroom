@@ -52,7 +52,7 @@ public actor SemanticIndexStore {
     private static let schemas: [String: String] = [
         "semantic_generations": "CREATE TABLE semantic_generations(id TEXT PRIMARY KEY NOT NULL, descriptor BLOB NOT NULL, installation TEXT NOT NULL, state TEXT NOT NULL CHECK(state IN ('building','active','retired','superseded')), score_schema TEXT NOT NULL)",
         "semantic_state": "CREATE TABLE semantic_state(singleton INTEGER PRIMARY KEY CHECK(singleton=1), active_id TEXT REFERENCES semantic_generations(id))",
-        "semantic_entries": "CREATE TABLE semantic_entries(generation_id TEXT NOT NULL REFERENCES semantic_generations(id) ON DELETE CASCADE, asset_id TEXT NOT NULL, source_path TEXT NOT NULL, source_mtime REAL NOT NULL, source_size INTEGER NOT NULL, source_revision TEXT NOT NULL, raster_digest TEXT NOT NULL, vector BLOB NOT NULL, PRIMARY KEY(generation_id,asset_id))"
+        "semantic_entries": "CREATE TABLE semantic_entries(generation_id TEXT NOT NULL REFERENCES semantic_generations(id) ON DELETE CASCADE, asset_id TEXT NOT NULL, source_path TEXT NOT NULL, source_mtime_reference REAL NOT NULL, source_size INTEGER NOT NULL, source_revision TEXT NOT NULL, raster_digest TEXT NOT NULL, vector BLOB NOT NULL, PRIMARY KEY(generation_id,asset_id))"
     ]
     private static let scoreSchema = "l2-f32-cosine-v1"
     private let beforeCommit: @Sendable () throws -> Void
@@ -61,13 +61,13 @@ public actor SemanticIndexStore {
 
     /// No I/O here: initialization can safely be called from UI composition.
     public init(directory: URL) throws {
-        guard directory.isFileURL, !directory.path.contains("\0") else { throw SemanticEmbeddingError.invalidInput }
+        guard directory.isFileURL, !directory.path.utf8.contains(0) else { throw SemanticEmbeddingError.invalidInput }
         fileURL = directory.appendingPathComponent("semantic-index.sqlite")
         beforeCommit = {}
     }
     /// Isolated failure injection; never substitutes a production backend.
     init(directory: URL, beforeCommit: @escaping @Sendable () throws -> Void) throws {
-        guard directory.isFileURL, !directory.path.contains("\0") else { throw SemanticEmbeddingError.invalidInput }
+        guard directory.isFileURL, !directory.path.utf8.contains(0) else { throw SemanticEmbeddingError.invalidInput }
         fileURL = directory.appendingPathComponent("semantic-index.sqlite")
         self.beforeCommit = beforeCommit
     }
@@ -128,10 +128,10 @@ public actor SemanticIndexStore {
         try Self.validateVector(record.vector, dimension: generation.descriptor.dimension)
         try transaction { connection in
             try require(generation, writable: true, on: connection)
-            try Self.statement(connection, "INSERT INTO semantic_entries(generation_id,asset_id,source_path,source_mtime,source_size,source_revision,raster_digest,vector) VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(generation_id,asset_id) DO UPDATE SET source_path=excluded.source_path,source_mtime=excluded.source_mtime,source_size=excluded.source_size,source_revision=excluded.source_revision,raster_digest=excluded.raster_digest,vector=excluded.vector") { statement in
+            try Self.statement(connection, "INSERT INTO semantic_entries(generation_id,asset_id,source_path,source_mtime_reference,source_size,source_revision,raster_digest,vector) VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(generation_id,asset_id) DO UPDATE SET source_path=excluded.source_path,source_mtime_reference=excluded.source_mtime_reference,source_size=excluded.source_size,source_revision=excluded.source_revision,raster_digest=excluded.raster_digest,vector=excluded.vector") { statement in
                 try Self.bind(generation.id.uuidString, 1, statement); try Self.bind(record.assetID, 2, statement)
                 try Self.bind(record.source.standardizedPath, 3, statement)
-                guard sqlite3_bind_double(statement, 4, record.source.modifiedAt.timeIntervalSince1970) == SQLITE_OK,
+                guard sqlite3_bind_double(statement, 4, record.source.modifiedAt.timeIntervalSinceReferenceDate) == SQLITE_OK,
                       sqlite3_bind_int64(statement, 5, record.source.fileSize) == SQLITE_OK else { throw SemanticEmbeddingError.corruptIndex }
                 try Self.bind(record.sourceRevision, 6, statement); try Self.bind(record.inputRasterSHA256, 7, statement)
                 try Self.bind(Self.encodeVector(record.vector), 8, statement); try Self.done(statement)
@@ -160,7 +160,7 @@ public actor SemanticIndexStore {
         if assetIDs.isEmpty { return [] }
         let placeholders = Array(repeating: "?", count: assetIDs.count).joined(separator: ",")
         var result: [SemanticIndexMetadata] = []
-        try Self.statement(connection, "SELECT asset_id,source_path,source_mtime,source_size,source_revision,raster_digest FROM semantic_entries WHERE generation_id=? AND asset_id IN (\(placeholders)) ORDER BY asset_id COLLATE BINARY") { statement in
+        try Self.statement(connection, "SELECT asset_id,source_path,source_mtime_reference,source_size,source_revision,raster_digest FROM semantic_entries WHERE generation_id=? AND asset_id IN (\(placeholders)) ORDER BY asset_id COLLATE BINARY") { statement in
             try Self.bind(generation.id.uuidString, 1, statement)
             for (index, id) in assetIDs.enumerated() { try Self.bind(id, Int32(index + 2), statement) }
             try Self.consume(statement) { result.append(try Self.readMetadata($0)) }
@@ -173,7 +173,7 @@ public actor SemanticIndexStore {
         let connection = try open(); try require(generation, writable: false, on: connection)
         var result: [SemanticIndexRecord] = []
         let cursor = afterAssetID == nil ? "" : " AND asset_id>?"
-        try Self.statement(connection, "SELECT asset_id,source_path,source_mtime,source_size,source_revision,raster_digest,vector FROM semantic_entries WHERE generation_id=?\(cursor) ORDER BY asset_id COLLATE BINARY LIMIT \(limit)") { statement in
+        try Self.statement(connection, "SELECT asset_id,source_path,source_mtime_reference,source_size,source_revision,raster_digest,vector FROM semantic_entries WHERE generation_id=?\(cursor) ORDER BY asset_id COLLATE BINARY LIMIT \(limit)") { statement in
             try Self.bind(generation.id.uuidString, 1, statement)
             if let afterAssetID { try Self.bind(afterAssetID, 2, statement) }
             try Self.consume(statement) { row in
@@ -410,7 +410,7 @@ public actor SemanticIndexStore {
             if sqlite3_column_type(row, 1) != SQLITE_NULL { active = try text(row, 1, maximum: 36) }
         }
         guard states == 1, Set(generations.filter({ $0.value.1 == "active" }).keys) == Set(active.map { [$0] } ?? []) else { throw SemanticEmbeddingError.corruptIndex }
-        try rows(connection, "SELECT asset_id,source_path,source_mtime,source_size,source_revision,raster_digest,vector,generation_id FROM semantic_entries") { row in
+        try rows(connection, "SELECT asset_id,source_path,source_mtime_reference,source_size,source_revision,raster_digest,vector,generation_id FROM semantic_entries") { row in
             _ = try readMetadata(row)
             let id = try text(row, 7, maximum: 36)
             guard let generation = generations[id] else { throw SemanticEmbeddingError.corruptIndex }
@@ -429,9 +429,12 @@ public actor SemanticIndexStore {
     private static func readMetadata(_ row: OpaquePointer) throws -> SemanticIndexMetadata {
         let id = try text(row, 0, maximum: 16_384), path = try text(row, 1, maximum: 16_384)
         guard [SQLITE_FLOAT, SQLITE_INTEGER].contains(sqlite3_column_type(row, 2)), sqlite3_column_type(row, 3) == SQLITE_INTEGER else { throw SemanticEmbeddingError.corruptIndex }
+        // Persist Date's native reference interval without adding/subtracting
+        // the 1970 epoch offset: that round trip can lose a 119 ns Date ULP and
+        // falsely reject an otherwise identical catalog source fingerprint.
         let time = sqlite3_column_double(row, 2), size = sqlite3_column_int64(row, 3)
         let revision = try text(row, 4, maximum: 512), hash = try text(row, 5, maximum: 64)
-        let source = AIOriginalSourceFingerprint(fileURL: URL(fileURLWithPath: path), modifiedAt: Date(timeIntervalSince1970: time), fileSize: size)
+        let source = AIOriginalSourceFingerprint(fileURL: URL(fileURLWithPath: path, isDirectory: false), modifiedAt: Date(timeIntervalSinceReferenceDate: time), fileSize: size)
         do { try validateMetadata(assetID: id, source: source, sourceRevision: revision, digest: hash) }
         catch { throw SemanticEmbeddingError.corruptIndex }
         guard path == source.standardizedPath else { throw SemanticEmbeddingError.corruptIndex }
@@ -440,9 +443,9 @@ public actor SemanticIndexStore {
     private static func validateMetadata(assetID: String, source: AIOriginalSourceFingerprint, sourceRevision: String, digest hash: String) throws {
         guard identifier(assetID), source.isFileURL, source.standardizedPath.hasPrefix("/"), identifier(source.standardizedPath),
               source.modifiedAt.timeIntervalSince1970.isFinite, source.fileSize >= 0,
-              !sourceRevision.isEmpty, sourceRevision.utf8.count <= 512, !sourceRevision.contains("\0"), digest(hash) else { throw SemanticEmbeddingError.invalidInput }
+              !sourceRevision.isEmpty, sourceRevision.utf8.count <= 512, !sourceRevision.utf8.contains(0), digest(hash) else { throw SemanticEmbeddingError.invalidInput }
     }
-    private static func identifier(_ value: String) -> Bool { !value.isEmpty && value.utf8.count <= 16_384 && !value.contains("\0") }
+    private static func identifier(_ value: String) -> Bool { !value.isEmpty && value.utf8.count <= 16_384 && !value.utf8.contains(0) }
     private static func digest(_ value: String) -> Bool { value.utf8.count == 64 && value.utf8.allSatisfy { (48...57).contains($0) || (97...102).contains($0) } }
     private static func validateVector(_ vector: [Float], dimension: Int) throws {
         guard (1...4_096).contains(dimension), vector.count == dimension, vector.allSatisfy(\.isFinite) else { throw SemanticEmbeddingError.invalidVector }

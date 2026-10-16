@@ -14,9 +14,31 @@ struct SemanticImagePreprocessor: SemanticImagePreprocessing {
     }
 
     func sourceStamp(source: AIOriginalSourceFingerprint) async throws -> String {
+        try Self.stamp(source: source)
+    }
+
+    func sourceStamps(sources: [AIOriginalSourceFingerprint]) async throws -> [String?] {
+        guard sources.count <= SemanticSourceStampBatch.maximumCount else { throw SemanticEmbeddingError.invalidInput }
         try Task.checkCancellation()
-        guard source.isFileURL, source.standardizedPath.hasPrefix("/"), !source.standardizedPath.contains("\0") else { throw SemanticEmbeddingError.invalidInput }
-        let url = URL(fileURLWithPath: source.standardizedPath)
+        // In this Swift 6.1-compatible, nonisolated async contract, the existing
+        // TaskGroup stat workers use the generic executor, never MainActor.
+        // No awaits between files: one admission covers at most 64 opens/stats,
+        // with the original cancellation point and security scope per source.
+        let result = try sources.map { source -> String? in
+            do { return try Self.stamp(source: source) }
+            catch {
+                guard error as? SemanticEmbeddingError == .staleSource else { throw error }
+                return nil
+            }
+        }
+        try Task.checkCancellation()
+        return result
+    }
+
+    private static func stamp(source: AIOriginalSourceFingerprint) throws -> String {
+        try Task.checkCancellation()
+        guard source.isFileURL, source.standardizedPath.hasPrefix("/"), !source.standardizedPath.utf8.contains(0) else { throw SemanticEmbeddingError.invalidInput }
+        let url = URL(fileURLWithPath: source.standardizedPath, isDirectory: false)
         let access = url.startAccessingSecurityScopedResource()
         defer { if access { url.stopAccessingSecurityScopedResource() } }
         let descriptor = open(url.path, O_RDONLY | O_CLOEXEC | O_NONBLOCK)
@@ -32,7 +54,7 @@ struct SemanticImagePreprocessor: SemanticImagePreprocessing {
 
     func prepare(source: AIOriginalSourceFingerprint, priority: PreviewPriority = .thumbnail) async throws -> SemanticImageInput {
         let before = try await sourceStamp(source: source)
-        let request = PreviewRequest(url: URL(fileURLWithPath: source.standardizedPath), modifiedAt: source.modifiedAt,
+        let request = PreviewRequest(url: URL(fileURLWithPath: source.standardizedPath, isDirectory: false), modifiedAt: source.modifiedAt,
             pixelSize: 1_024, fileSize: source.fileSize, allowsEmbeddedPreview: false, sourceRevision: before)
         let original = try await imagePipeline.image(for: request, priority: priority)
         let bounded = try await renderPipeline.image(original, request: request, settings: .neutral,

@@ -183,6 +183,9 @@ final class LibraryModel: ObservableObject {
     private var projectionTask: Task<Void, Never>?
     private var projection: LibraryProjection?
     private var projectionRevision = 0
+    // A canceled exit only restarts work that closing actually interrupted or
+    // invalidated. A settled view remains immediately usable by AI snapshots.
+    private var projectionNeedsResumption = false
     private var catalogGeneration = 0
     private var treeOverrides: [UUID: LibraryFolder] = [:]
     var gridColumnCount = 3
@@ -256,6 +259,7 @@ final class LibraryModel: ObservableObject {
     // Getters can be read during SwiftUI body evaluation. Never publish from
     // that stack; defer only their invalidations until the next actor turn.
     private func deferProjection() {
+        guard !isClosing else { projectionNeedsResumption = true; return }
         guard deferredProjectionTask == nil else { return }
         deferredProjectionTask = Task { [weak self] in
             guard let self, !Task.isCancelled else { return }
@@ -277,7 +281,12 @@ final class LibraryModel: ObservableObject {
         projectionRevision += 1
         let number = projectionRevision
         projectionTask?.cancel()
-        guard !isClosing else { isProjecting = false; projectionTask = nil; return }
+        guard !isClosing else {
+            projectionNeedsResumption = true
+            isProjecting = false; projectionTask = nil
+            return
+        }
+        projectionNeedsResumption = false
         isProjecting = true
         projectionTask = Task { [weak self] in
             // Coalesce synchronous UI changes before copying the catalog snapshot.
@@ -313,7 +322,7 @@ final class LibraryModel: ObservableObject {
                 } else { result = current.base }
                 try Task.checkCancellation()
                 guard number == projectionRevision, generation == catalogGeneration else { return }
-                if selection == .recent, now() < result.evaluatedAt || result.expiresAt.map({ now() >= $0 }) == true {
+                if selection == .recent, now() < result.evaluatedAt || result.expiresAt.map({ self.now() >= $0 }) == true {
                     scheduleProjection(); return
                 }
                 projection = result
@@ -326,7 +335,7 @@ final class LibraryModel: ObservableObject {
                 guard !Task.isCancelled, !isClosing, number == projectionRevision else { return }
                 if key.usesSemanticRanking, let candidates {
                     let empty = await projectionWorker.empty(candidates)
-                    guard number == projectionRevision else { return }
+                    guard !Task.isCancelled, !isClosing, number == projectionRevision else { return }
                     projection = empty
                     semanticError = (error as? SemanticEmbeddingError)?.localizedDescription ?? SemanticEmbeddingError.providerFailure.localizedDescription
                 } else { errorMessage = error.localizedDescription }
@@ -748,12 +757,18 @@ final class LibraryModel: ObservableObject {
     }
 
     func beginTermination() {
+        projectionNeedsResumption = projectionNeedsResumption || projectionTask != nil || deferredProjectionTask != nil
         isClosing = true; importTask?.cancel(); queuedFolders = []
         projectionTask?.cancel(); projectionTask = nil; isProjecting = false
+        deferredProjectionTask?.cancel(); deferredProjectionTask = nil
         semanticStatusTask?.cancel(); semanticOperationTask?.cancel(); semanticImportReview = nil
         if let semanticSearch { semanticShutdownTask = Task { await semanticSearch.shutdown() } }
     }
-    func cancelTermination() { isClosing = false; scheduleProjection() }
+    func cancelTermination() {
+        isClosing = false
+        if projectionNeedsResumption { scheduleProjection() }
+        else { refreshSemanticStatus() }
+    }
 
     func finishSaving() async -> Bool {
         if let semanticShutdownTask { await semanticShutdownTask.value }

@@ -1,0 +1,31 @@
+{
+  "reason": "Default protobuf map wire order is process dependent; canonical deterministic wire encoding preserves every protobuf field/value. No graph, source, weight, fixture, quality or tolerance change.",
+  "graphs": [
+    {
+      "tower": "image",
+      "original_path": "/private/tmp/picedit-semantic-gate/image-fp32.mlpackage/Data/com.apple.CoreML/model.mlmodel",
+      "original_sha256": "131150818a0ab0d93787b5e72c75ebcb106d14a40f9a276442ea6de460d74a9c",
+      "original_bytes": 123281,
+      "canonical_sha256": "2e832f61dfb25bf234f4efffdfd6910cf620032ed7bea6365228547acee0c25d",
+      "canonical_bytes": 123281,
+      "protobuf_message_equal": true
+    },
+    {
+      "tower": "text",
+      "original_path": "/private/tmp/picedit-semantic-gate/text.mlpackage/Data/com.apple.CoreML/model.mlmodel",
+      "original_sha256": "8712ed5ada6dde3637ce7d8ea15adce7f08a73beab22ce387ab6679f72b5a58a",
+      "original_bytes": 127557,
+      "canonical_sha256": "ec95a2cdb969b0916e4c50128fa6612a4285359b95d08b3d13b0937232285ce5",
+      "canonical_bytes": 127557,
+      "protobuf_message_equal": true
+    }
+  ],
+  "versions": {
+    "torch": "2.5.0",
+    "transformers": "4.51.3",
+    "coremltools": "8.3.0",
+    "numpy": "1.26.4",
+    "protobuf": "7.36.2",
+    "packaging": "26.3"
+  }
+}

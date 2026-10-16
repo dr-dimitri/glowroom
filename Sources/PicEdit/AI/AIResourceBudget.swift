@@ -8,7 +8,8 @@ actor AIResourceBudget {
     static let shared = AIResourceBudget()
 
     struct Limits: Equatable, Sendable {
-        /// The initial text-only backend admits one local inference globally.
+        /// Text, image analysis, semantic inference and model compilation share
+        /// one admission slot; native work owns it until its actual return.
         let maximumConcurrentLocalInferences = 1
         let maximumPromptBytes: Int
         let maximumResponseBytes: Int

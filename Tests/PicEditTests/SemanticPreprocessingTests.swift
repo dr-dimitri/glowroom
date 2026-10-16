@@ -1,5 +1,6 @@
 import CoreGraphics
 import CryptoKit
+import Darwin
 import Foundation
 import Testing
 @testable import PicEdit
@@ -52,6 +53,65 @@ struct SemanticPreprocessingTests {
         #expect(a.sourceRevision != b.sourceRevision)
     }
 
+    @Test func nativeBatchPreservesOrderMissingEntriesAndExactStampBytes() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("semantic-batch-" + UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: false)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let firstURL = directory.appendingPathComponent("first.bin"), secondURL = directory.appendingPathComponent("second.bin")
+        try Data([1, 2, 3]).write(to: firstURL); try Data([4, 5]).write(to: secondURL)
+        let firstDate = try #require(FileManager.default.attributesOfItem(atPath: firstURL.path)[.modificationDate] as? Date)
+        let secondDate = try #require(FileManager.default.attributesOfItem(atPath: secondURL.path)[.modificationDate] as? Date)
+        let first = AIOriginalSourceFingerprint(fileURL: firstURL, modifiedAt: firstDate, fileSize: 3)
+        let second = AIOriginalSourceFingerprint(fileURL: secondURL, modifiedAt: secondDate, fileSize: 2)
+        let missing = AIOriginalSourceFingerprint(fileURL: directory.appendingPathComponent("missing.bin"), modifiedAt: firstDate, fileSize: 3)
+        let stale = AIOriginalSourceFingerprint(fileURL: firstURL, modifiedAt: firstDate, fileSize: 4)
+        let preparer: any SemanticImagePreprocessing = SemanticImagePreprocessor()
+        let descriptor = Darwin.open(firstURL.path, O_RDONLY | O_CLOEXEC | O_NONBLOCK)
+        #expect(descriptor >= 0)
+        defer { if descriptor >= 0 { Darwin.close(descriptor) } }
+        var native = stat(); #expect(Darwin.fstat(descriptor, &native) == 0)
+        let exact = "\(native.st_dev):\(native.st_ino):\(native.st_size):\(native.st_mtimespec.tv_sec):\(native.st_mtimespec.tv_nsec):\(native.st_ctimespec.tv_sec):\(native.st_ctimespec.tv_nsec)"
+        let values = try await preparer.sourceStamps(sources: [second, missing, first, stale])
+        #expect(values == [try await preparer.sourceStamp(source: second), nil, exact, nil])
+        #expect(try await preparer.sourceStamp(source: first) == exact)
+        #expect(try await preparer.sourceStamps(sources: []).isEmpty)
+        #expect(try await preparer.sourceStamps(sources: Array(repeating: first, count: 64)) == Array<String?>(repeating: exact, count: 64))
+        await #expect(throws: SemanticEmbeddingError.invalidInput) {
+            try await preparer.sourceStamps(sources: Array(repeating: first, count: 65))
+        }
+        let invalid = AIOriginalSourceFingerprint(fileURL: URL(string: "https://example.invalid/not-a-file")!, modifiedAt: firstDate, fileSize: 3)
+        await #expect(throws: SemanticEmbeddingError.invalidInput) {
+            try await preparer.sourceStamps(sources: [first, missing, invalid])
+        }
+    }
+
+    @Test func defaultBatchOnlySuppressesStaleAndChecksBoundsAndCancellation() async throws {
+        let fake = SemanticDefaultStampFake()
+        let preparer: any SemanticImagePreprocessing = fake
+        func source(_ name: String) -> AIOriginalSourceFingerprint {
+            AIOriginalSourceFingerprint(fileURL: URL(fileURLWithPath: "/synthetic/" + name), modifiedAt: Date(timeIntervalSince1970: 123), fileSize: 1)
+        }
+        #expect(try await preparer.sourceStamps(sources: [source("a"), source("missing"), source("b")]) == ["a", nil, "b"])
+        await #expect(throws: SemanticEmbeddingError.providerFailure) {
+            try await preparer.sourceStamps(sources: [source("a"), source("failure"), source("b")])
+        }
+        let before = await fake.calls
+        await #expect(throws: SemanticEmbeddingError.invalidInput) {
+            try await preparer.sourceStamps(sources: Array(repeating: source("a"), count: 65))
+        }
+        #expect(await fake.calls == before)
+        let cancelled = Task {
+            try await preparer.sourceStamps(sources: [source("cancel"), source("never")])
+        }
+        await #expect(throws: CancellationError.self) { _ = try await cancelled.value }
+        #expect(await fake.calls.last == "cancel")
+        let alreadyCancelled = Task {
+            withUnsafeCurrentTask { $0?.cancel() }
+            return try await SemanticImagePreprocessor().sourceStamps(sources: [source("never")])
+        }
+        await #expect(throws: CancellationError.self) { _ = try await alreadyCancelled.value }
+    }
+
     @Test func nativeSourceStampDetectsReplacementEvenWhenSizeAndMtimeStayEqual() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("semantic-source-" + UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: false)
@@ -87,5 +147,20 @@ struct SemanticTokenizerTests {
             for row in rows { #expect(try tokenizer.tokens(for: row.text) == row.input_ids); count += 1 }
         }
         #expect(count == 58)
+    }
+}
+
+private actor SemanticDefaultStampFake: SemanticImagePreprocessing {
+    private(set) var calls: [String] = []
+    func sourceStamp(source: AIOriginalSourceFingerprint) async throws -> String {
+        let name = URL(fileURLWithPath: source.standardizedPath).lastPathComponent
+        calls.append(name)
+        if name == "missing" { throw SemanticEmbeddingError.staleSource }
+        if name == "failure" { throw SemanticEmbeddingError.providerFailure }
+        if name == "cancel" { withUnsafeCurrentTask { $0?.cancel() } }
+        return name
+    }
+    func prepare(source: AIOriginalSourceFingerprint, priority: PreviewPriority) async throws -> SemanticImageInput {
+        throw SemanticEmbeddingError.providerFailure
     }
 }

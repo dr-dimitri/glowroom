@@ -1,7 +1,8 @@
 # Synthetic semantic model evidence
 
-The reports are historical observations from 16 October 2026, before production integration. They preserve failed precision/lifecycle variants as well as the selected CPU-only result. Fixed acceptance limits and ground truth were not changed after inference. See the current [product decision](../../docs/SEMANTIC-SEARCH.md) for supported behavior and limitations.
+The top-level selection reports are historical observations from 16 October 2026, before production integration. The separate production reproduction below records the final integrated implementation and its preserved failures. They preserve failed precision/lifecycle variants as well as the selected CPU-only result. Fixed acceptance limits and ground truth were not changed after inference. See the current [product decision](../../docs/SEMANTIC-SEARCH.md) for supported behavior and limitations.
 
+- [`production/PRODUCTION-REPRODUCTION.md`](production/PRODUCTION-REPRODUCTION.md) records fresh strict conversion/import, tokenizer and native parity, full-service 10,000-source coverage, RSS, profiling and final latency, with raw evidence and prior failures.
 - `isolated-fp32-gate-summary.json` contains every measured lifecycle and unchanged threshold.
 - `ISOLATED-FP32-GATE.md` records device, cache distinctions, all PASS/FAIL paths and the narrow `.all` memory reserve.
 - `PRECISION-DIAGNOSTICS.md` and its JSON record the rejected mixed-precision conversions and corrected Float32 image tower.

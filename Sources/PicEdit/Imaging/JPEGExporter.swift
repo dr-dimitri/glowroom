@@ -13,15 +13,18 @@ struct JPEGExportRequest: Sendable {
     let options: JPEGExportOptions
     let overwriteExisting: Bool
     let protectedSourceURLs: [URL]
+    let protectedDirectoryFamilies: [ManagedDirectoryFamily]
 
     init(sourceURL: URL, destinationURL: URL, settings: EditSettings, options: JPEGExportOptions,
-         overwriteExisting: Bool = false, protectedSourceURLs: [URL] = []) {
+         overwriteExisting: Bool = false, protectedSourceURLs: [URL] = [],
+         protectedDirectoryFamilies: [ManagedDirectoryFamily] = []) {
         self.sourceURL = sourceURL
         self.destinationURL = destinationURL
         self.settings = settings
         self.options = options
         self.overwriteExisting = overwriteExisting
         self.protectedSourceURLs = protectedSourceURLs
+        self.protectedDirectoryFamilies = protectedDirectoryFamilies
     }
 }
 
@@ -237,6 +240,10 @@ actor JPEGExporter {
     }
 
     private func originalIdentities(_ request: JPEGExportRequest, destination: URL) throws -> Set<FileIdentity> {
+        for family in request.protectedDirectoryFamilies {
+            try Task.checkCancellation()
+            if ManagedFileProtection.containsDestination(destination, in: family) { throw JPEGExportError.protectedOriginal }
+        }
         let canonicalDestination = destination.resolvingSymlinksInPath()
         var identities = Set<FileIdentity>()
         for (index, original) in ([request.sourceURL] + request.protectedSourceURLs).enumerated() {

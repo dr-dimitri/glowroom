@@ -7,12 +7,37 @@ struct SemanticImageInput: Sendable {
     let sourceRevision: String
 }
 
+enum SemanticSourceStampBatch {
+    static let maximumCount = 64
+}
+
 protocol SemanticImagePreprocessing: Sendable {
     func sourceStamp(source: AIOriginalSourceFingerprint) async throws -> String
+    /// Ordered one-for-one results; nil means only a missing or stale source.
+    /// Batches never exceed maximumCount and never decode image pixels.
+    func sourceStamps(sources: [AIOriginalSourceFingerprint]) async throws -> [String?]
     func prepare(source: AIOriginalSourceFingerprint, priority: PreviewPriority) async throws -> SemanticImageInput
 }
 
 extension SemanticImagePreprocessing {
+    /// Compatibility for fakes/other preparers. Production overrides this
+    /// requirement so an existential call performs one synchronous stat batch.
+    func sourceStamps(sources: [AIOriginalSourceFingerprint]) async throws -> [String?] {
+        guard sources.count <= SemanticSourceStampBatch.maximumCount else { throw SemanticEmbeddingError.invalidInput }
+        try Task.checkCancellation()
+        var result: [String?] = []; result.reserveCapacity(sources.count)
+        for source in sources {
+            try Task.checkCancellation()
+            do { result.append(try await sourceStamp(source: source)) }
+            catch {
+                try Task.checkCancellation()
+                guard error as? SemanticEmbeddingError == .staleSource else { throw error }
+                result.append(nil)
+            }
+        }
+        try Task.checkCancellation()
+        return result
+    }
     func prepare(source: AIOriginalSourceFingerprint) async throws -> SemanticImageInput {
         try await prepare(source: source, priority: .thumbnail)
     }

@@ -16,9 +16,9 @@
       "sha256": "648b81e6c6f9975c3b6cf6d630229b6c8d6f1ddaef55f5770f576adda19f3495"
     },
     {
-      "bytes": 359,
+      "bytes": 636,
       "path": "licenses/CONVERSION-NOTICE.txt",
-      "sha256": "83ebbadd2f800a5f90e4e44af958218227964b647a6bb4c6a91f579dd5ee0e97"
+      "sha256": "7ebf8aba1427f4b9d9a7893304bff0ea621a6515a16b8a3c77c0360eaafdcabc"
     },
     {
       "bytes": 3375,
@@ -28,7 +28,7 @@
     {
       "bytes": 123281,
       "path": "models/image.mlpackage/Data/com.apple.CoreML/model.mlmodel",
-      "sha256": "131150818a0ab0d93787b5e72c75ebcb106d14a40f9a276442ea6de460d74a9c"
+      "sha256": "2e832f61dfb25bf234f4efffdfd6910cf620032ed7bea6365228547acee0c25d"
     },
     {
       "bytes": 375860288,
@@ -43,7 +43,7 @@
     {
       "bytes": 127557,
       "path": "models/text.mlpackage/Data/com.apple.CoreML/model.mlmodel",
-      "sha256": "8712ed5ada6dde3637ce7d8ea15adce7f08a73beab22ce387ab6679f72b5a58a"
+      "sha256": "ec95a2cdb969b0916e4c50128fa6612a4285359b95d08b3d13b0937232285ce5"
     },
     {
       "bytes": 564620224,

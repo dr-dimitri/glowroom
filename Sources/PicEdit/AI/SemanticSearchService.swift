@@ -27,7 +27,10 @@ actor SemanticSearchService: SemanticSearchServing {
         var task: Task<Void, Never>?; var discarded = false
     }
     private struct Pending { let signature: Signature; var waiters: [UUID: Waiter] }
-    private struct IndexJob { let id: UUID; let task: Task<Void, Error> }
+    private struct IndexJob {
+        let id: UUID; let task: Task<Void, Error>
+        var installationFingerprint: String?
+    }
     private struct CacheKey: Hashable { let descriptor: SemanticModelDescriptor; let installation: String; let query: String }
     private struct Counts { var indexed = 0; var total = 0; var stale = 0; var missing = 0; var processed = 0 }
 
@@ -91,6 +94,7 @@ actor SemanticSearchService: SemanticSearchServing {
     }
 
     func search(query: String, candidates: [PhotoAsset], topK: Int = 100) async throws -> SemanticSearchResult {
+        if Task.isCancelled { throw SemanticEmbeddingError.cancelled }
         guard query.utf8.count <= 2_048, (1...500).contains(topK) else { throw SemanticEmbeddingError.invalidInput }
         let normalized = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         // LibraryModel handles empty semantic queries with the ordinary library
@@ -109,6 +113,7 @@ actor SemanticSearchService: SemanticSearchServing {
     }
 
     func status(scope: [PhotoAsset]) async throws -> SemanticSearchState {
+        if Task.isCancelled { throw SemanticEmbeddingError.cancelled }
         if maintaining { return state }
         let token = try validateScope(scope), request = UUID(); statusEpoch = request
         do {
@@ -121,9 +126,10 @@ actor SemanticSearchService: SemanticSearchServing {
                 guard statusEpoch == request else { throw SemanticEmbeddingError.superseded }
                 counts = measured; activeID = compatible?.id
             }
-            availability = await model.provider.availability()
+            let measuredAvailability = await model.provider.availability()
             try ensureCurrent(token)
             guard statusEpoch == request else { throw SemanticEmbeddingError.superseded }
+            availability = measuredAvailability
             publish(); return state
         } catch {
             let failure = Self.sanitized(error)
@@ -156,7 +162,7 @@ actor SemanticSearchService: SemanticSearchServing {
         counts = Counts(total: scope.count); notice = nil; preservedIndex = nil
         let task = Task { [weak self] in
             guard let self else { throw SemanticEmbeddingError.cancelled }
-            do { try await self.runIndex(scope: scope, token: token, epoch: epoch, rebuild: rebuild); await self.finishIndex(id: id, failure: nil) }
+            do { try await self.runIndex(id: id, scope: scope, token: token, epoch: epoch, rebuild: rebuild); await self.finishIndex(id: id, failure: nil) }
             catch { let error = Self.sanitized(error); await self.finishIndex(id: id, failure: error); throw error }
         }
         indexJob = IndexJob(id: id, task: task); publish()
@@ -358,9 +364,11 @@ actor SemanticSearchService: SemanticSearchServing {
         while cacheOrder.count > 64 { cache.removeValue(forKey: cacheOrder.removeFirst()) }
     }
 
-    private func runIndex(scope: [PhotoAsset], token: CatalogToken, epoch: UUID, rebuild: Bool) async throws {
+    private func runIndex(id: UUID, scope: [PhotoAsset], token: CatalogToken, epoch: UUID, rebuild: Bool) async throws {
         let model = try await currentModel()
         try ensureIndexCurrent(token, epoch: epoch)
+        guard indexJob?.id == id else { throw SemanticEmbeddingError.superseded }
+        indexJob?.installationFingerprint = model.installation.installationFingerprint
         var oldActive: SemanticIndexGeneration?
         let generation: SemanticIndexGeneration
         do {
@@ -430,9 +438,21 @@ actor SemanticSearchService: SemanticSearchServing {
         activeID = id; querySpace = UUID(); invalidateQueries(.superseded)
     }
     private func finishIndex(id: UUID, failure: SemanticEmbeddingError?) {
-        guard indexJob?.id == id else { return }
+        guard let job = indexJob, job.id == id else { return }
         indexJob = nil
-        if let failure { notice = failure.localizedDescription }
+        if let failure {
+            notice = failure.localizedDescription
+            // An image-encoder integrity failure is as authoritative as a text
+            // query failure. Cheap directory/receipt availability must not make
+            // these known-bad weights available again. Bind rejection to the
+            // actual job's installation, never to a newer installed model.
+            if failure == .invalidInstallation || failure == .installationChanged,
+               let fingerprint = job.installationFingerprint,
+               fingerprint == installation?.installationFingerprint {
+                invalidInstallationFingerprint = fingerprint
+                availability = .unavailable(.invalidInstallation)
+            }
+        }
         else if counts.missing > 0 { notice = "Suchindex vorbereitet: \(counts.indexed) gültig, \(counts.missing) nicht lesbar oder nicht verfügbar. Ähnlichkeitswerte sind keine Wahrscheinlichkeiten." }
         else { notice = "Suchindex vorbereitet. Ähnlichkeitswerte sind keine Wahrscheinlichkeiten." }
         if let preservedIndex { notice = (notice ?? "") + " Vorhandene Indexdateien wurden aufbewahrt: " + preservedIndex.path }
@@ -463,22 +483,27 @@ actor SemanticSearchService: SemanticSearchServing {
     }
     private func sourceRevisions(candidates: [SemanticIndexCandidate]) async throws -> [String: String] {
         let preparer = preparer
-        // Exactly two stat workers, never one task per catalog photo. No raster
-        // decoding is performed to answer status or score existing vectors.
+        // Exactly two chunk workers, never one task per photo or another pool.
+        // Every candidate still gets an open/fstat; a shared admission now spans
+        // at most 64 sources instead of paying an actor round trip per source.
+        let batchSize = SemanticSourceStampBatch.maximumCount
+        let workerCount = min(2, (candidates.count + batchSize - 1) / batchSize)
         return try await withThrowingTaskGroup(of: [String: String].self) { group in
-            for worker in 0..<min(2, candidates.count) {
+            for worker in 0..<workerCount {
                 group.addTask {
                     var result: [String: String] = [:]
-                    for index in stride(from: worker, to: candidates.count, by: 2) {
+                    for start in stride(from: worker * batchSize, to: candidates.count, by: 2 * batchSize) {
                         try Task.checkCancellation()
-                        let candidate = candidates[index]
-                        do { result[candidate.assetID] = try await preparer.sourceStamp(source: candidate.source) }
-                        catch {
-                            if Task.isCancelled { throw SemanticEmbeddingError.cancelled }
-                            if let failure = error as? SemanticEmbeddingError, failure != .staleSource { throw failure }
-                            // Unreadable/changed source remains stored but cannot
-                            // become a current hit without an equal fresh stamp.
+                        let chunk = candidates[start..<min(candidates.count, start + batchSize)]
+                        let values = try await preparer.sourceStamps(sources: chunk.map(\.source))
+                        try Task.checkCancellation()
+                        guard values.count == chunk.count else { throw SemanticEmbeddingError.providerFailure }
+                        for (candidate, stamp) in zip(chunk, values) {
+                            if let stamp { result[candidate.assetID] = stamp }
                         }
+                        // Preserve interactive/cancellation admission between
+                        // bounded synchronous batches, including final hit checks.
+                        await Task.yield()
                     }
                     return result
                 }
@@ -508,7 +533,16 @@ actor SemanticSearchService: SemanticSearchServing {
     private func validateScope(_ scope: [PhotoAsset]) throws -> CatalogToken {
         guard !maintaining else { throw SemanticEmbeddingError.unavailable(.busy) }
         guard let catalog, scope.count <= 1_000_000, Set(scope.map(\.id)).count == scope.count else { throw SemanticEmbeddingError.invalidInput }
-        for asset in scope { guard let current = assets[asset.id], Self.source(current) == Self.source(asset) else { throw SemanticEmbeddingError.superseded } }
+        for asset in scope {
+            guard let current = assets[asset.id] else { throw SemanticEmbeddingError.superseded }
+            // The library passes its immutable catalog values. Equal source
+            // fields already imply equal normalized fingerprints; avoid doing
+            // the same URL normalization twice per photo for every query.
+            if current.fileURL == asset.fileURL, current.modifiedAt == asset.modifiedAt,
+               current.fileSize == asset.fileSize { continue }
+            // Preserve acceptance of differently spelled equivalent file URLs.
+            guard Self.source(current) == Self.source(asset) else { throw SemanticEmbeddingError.superseded }
+        }
         return catalog
     }
     private func ensureCurrent(_ token: CatalogToken) throws {
@@ -544,7 +578,7 @@ actor SemanticSearchService: SemanticSearchServing {
 /// Two shared preparation admissions bound concurrent stat batches and the
 /// single index preparer together. This starts no decoder workers; raster work
 /// still goes exclusively through ImagePreviewPipeline/AdjustedPreviewPipeline.
-private actor SemanticPreparationAdmission: SemanticImagePreprocessing {
+actor SemanticPreparationAdmission: SemanticImagePreprocessing {
     private let base: any SemanticImagePreprocessing
     private struct Waiter { let id: UUID; let continuation: CheckedContinuation<Void, Error> }
     private var active = 0
@@ -555,11 +589,25 @@ private actor SemanticPreparationAdmission: SemanticImagePreprocessing {
         do { let value = try await base.sourceStamp(source: source); release(); return value }
         catch { release(); throw error }
     }
+    func sourceStamps(sources: [AIOriginalSourceFingerprint]) async throws -> [String?] {
+        guard sources.count <= SemanticSourceStampBatch.maximumCount else { throw SemanticEmbeddingError.invalidInput }
+        try Task.checkCancellation()
+        if sources.isEmpty { return [] }
+        try await acquire()
+        do {
+            let values = try await base.sourceStamps(sources: sources)
+            try Task.checkCancellation()
+            release(); return values
+        }
+        catch { release(); throw error }
+    }
     func prepare(source: AIOriginalSourceFingerprint, priority: PreviewPriority) async throws -> SemanticImageInput {
         try await acquire()
         do { let value = try await base.prepare(source: source, priority: priority); release(); return value }
         catch { release(); throw error }
     }
+    /// Counts only; tests can prove queued cancellation and actual-return slots.
+    func schedulingState() -> (active: Int, waiting: Int) { (active, waiting.count) }
     private func acquire() async throws {
         try Task.checkCancellation()
         let id = UUID()

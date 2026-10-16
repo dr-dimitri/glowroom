@@ -292,7 +292,7 @@ This product contains derivations of various scripts from Swift OpenAPI Generato
 ============================================================================
 swift-collections/LICENSE.txt
 https://github.com/apple/swift-collections.git
-Revision: 35a1edcb8ebd2bfe251d587f0b69e62af28f508c
+Revision: 8c0c0a8b49e080e54e5e328cc552821ff07cd341
 ============================================================================
                                  Apache License
                            Version 2.0, January 2004

@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Offline reproducible export of one approved tower. Developer-only, Python3.11.
+"""Offline reproducible export of one approved tower. Developer-only, Python 3.11.
 
 Install torch==2.5.0 transformers==4.51.3 coremltools==8.3 numpy==1.26.4
+protobuf==7.36.2 packaging==26.3
 in a separate development environment. Supply an already downloaded, pinned
 source directory; this script intentionally has no network/download operation.
 """
@@ -11,15 +12,18 @@ for key in ['OMP_NUM_THREADS', 'MKL_NUM_THREADS', 'OPENBLAS_NUM_THREADS', 'VECLI
 os.environ['HF_HUB_OFFLINE'] = '1'
 os.environ['TRANSFORMERS_OFFLINE'] = '1'
 os.environ['TOKENIZERS_PARALLELISM'] = 'false'
-import argparse, gc, hashlib, importlib.metadata, json, pathlib
+import argparse, gc, hashlib, importlib.metadata, json, pathlib, sys
+from packaging.version import Version
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--tower', choices=['image', 'text'], required=True)
 parser.add_argument('--source', type=pathlib.Path, required=True)
 parser.add_argument('--output', type=pathlib.Path, required=True)
 args = parser.parse_args()
-for package, version in [('torch', '2.5.0'), ('transformers', '4.51.3'), ('coremltools', '8.3'), ('numpy', '1.26.4')]:
-    if importlib.metadata.version(package) != version:
+if sys.version_info[:2] != (3, 11):
+    parser.error('Python 3.11 is required for the pinned export environment')
+for package, version in [('torch', '2.5.0'), ('transformers', '4.51.3'), ('coremltools', '8.3'), ('numpy', '1.26.4'), ('protobuf', '7.36.2'), ('packaging', '26.3')]:
+    if Version(importlib.metadata.version(package)) != Version(version):
         parser.error(f'{package} must be exactly {version}')
 if args.output.exists():
     parser.error('output exists; previous artifacts are never overwritten')
@@ -73,8 +77,15 @@ package.user_defined_metadata['source_revision'] = '94dffa8cb1179de3e03f091dbc39
 package.user_defined_metadata['conversion'] = ('torch2.5.0-transformers4.51.3-coremltools8.3-macOS14-fp32-v1' if is_image
     else 'torch2.5.0-transformers4.51.3-coremltools8.3-FP16-macOS14-v1')
 package.save(str(args.output))
-# Core ML package UUIDs are otherwise random. Canonicalize their manifest only,
-# then require the graph and every weight byte to equal the approved export.
+# Protobuf maps otherwise have process-dependent wire ordering. Preserve every
+# field/value and require the one approved deterministic graph representation.
+from coremltools.proto import Model_pb2
+model_path = args.output / 'Data/com.apple.CoreML/model.mlmodel'
+serialized = Model_pb2.Model()
+serialized.ParseFromString(model_path.read_bytes())
+model_path.write_bytes(serialized.SerializeToString(deterministic=True))
+# Core ML package UUIDs are otherwise random. Canonicalize that manifest too,
+# then require the canonical graph and every weight byte to equal approval.
 (args.output / 'Manifest.json').write_bytes((resources / ('SemanticImagePackageManifest.json' if is_image
     else 'SemanticTextPackageManifest.json')).read_bytes())
 prefix = f'models/{args.tower}.mlpackage/'

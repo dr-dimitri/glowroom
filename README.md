@@ -4,7 +4,7 @@ Eine native Fotobibliothek für macOS, entwickelt mit SwiftUI und AppKit. Die An
 
 ## Starten
 
-Voraussetzungen: **macOS 14 oder neuer** und Xcode oder die Apple Command Line Tools mit Swift 5.9 oder neuer. Falls die Entwicklungswerkzeuge fehlen, lassen sie sich mit `xcode-select --install` installieren. PicEdit benötigt keine zusätzlichen Pakete und keinen Online-Dienst.
+Voraussetzungen: **macOS 14 oder neuer** und Xcode oder die Apple Command Line Tools mit **Swift 6.1 oder neuer**. Falls die Entwicklungswerkzeuge fehlen, lassen sie sich mit `xcode-select --install` installieren. SwiftPM löst die in `Package.resolved` festgehaltenen Swift-Bibliotheken auf; dafür ist beim ersten Build Internetzugang oder ein bereits gefüllter lokaler Paketcache nötig. Die laufende App benötigt für Bibliothek und lokale Bearbeitung keinen Online-Dienst.
 
 ```sh
 swift run PicEdit
@@ -115,7 +115,7 @@ Nach jeder Umsetzungsanforderung sind die betroffene Dokumentation zu aktualisie
 
 Während der Umsetzung oder beim Review gefundene Bugs ohne Zusammenhang mit der aktuellen Umsetzung werden jeweils als eigenes Issue im Issue-Tracker des Repositorys erfasst und nicht im aktuellen Änderungsumfang behoben. Vorher nach bestehenden Issues suchen und bei einem bereits erfassten Bug das vorhandene Issue verlinken. Das Issue enthält Reproduktionsschritte, erwartetes und tatsächliches Verhalten sowie die betroffenen Stellen; im Abschlussbericht wird darauf verwiesen. Fehlt der Zugriff auf den Issue-Tracker, das Hindernis melden und den vollständigen Issue-Entwurf aufbewahren. Die verbindlichen Projektvorgaben stehen in [AGENTS.md](AGENTS.md).
 
-Die automatisierten Tests verwenden Swift Testing und benötigen **Swift 6 oder neuer**. Das Testskript setzt lokale Compiler-Caches und berücksichtigt die Plugin-Erkennung der Apple Command Line Tools:
+Die automatisierten Tests verwenden Swift Testing und benötigen **Swift 6.1 oder neuer**. Das Testskript setzt lokale Compiler-Caches und berücksichtigt die Plugin-Erkennung der Apple Command Line Tools:
 
 ```sh
 ./scripts/test.sh

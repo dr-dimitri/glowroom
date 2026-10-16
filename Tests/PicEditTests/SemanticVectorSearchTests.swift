@@ -19,7 +19,7 @@ struct SemanticVectorSearchTests {
             sourceRevisions: Dictionary(ids.map { ($0, "current") }, uniquingKeysWith: { _, new in new }), topK: topK)
     }
 
-    @Test func actualAccelerateProductsIncludeNegativeSimilarity() throws {
+    @Test func actualProductsIncludeNegativeSimilarity() throws {
         var search = try worker(["middle", "negative", "best"])
         try search.consume([record("middle", [0.6, 0.8]), record("negative", [-1, 0]), record("best", [1, 0])])
         #expect(search.hits.map(\.assetID) == ["best", "middle", "negative"])
@@ -36,6 +36,51 @@ struct SemanticVectorSearchTests {
             #expect(search.hits.count <= 100)
         }
         #expect(search.hits.map(\.assetID) == Array(ids.prefix(100)))
+    }
+
+    @Test func identicalFrozen768DVectorsHavePageIndependentScoresAndStableTopK() throws {
+        let fixtures = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().appendingPathComponent("Fixtures/Semantic")
+        func vector(_ name: String, ordinal: Int) throws -> [Float] {
+            let bytes = try Data(contentsOf: fixtures.appendingPathComponent(name))
+            return bytes.withUnsafeBytes { raw in
+                (0..<768).map { component in
+                    Float(bitPattern: UInt32(littleEndian: raw.loadUnaligned(fromByteOffset: (ordinal * 768 + component) * 4, as: UInt32.self)))
+                }
+            }
+        }
+        let query = try vector("reference-queries.f32", ordinal: 0)
+        let image = try vector("reference-images.f32", ordinal: 1)
+        let ids = (0..<600).map { String(format: "%04d", $0) }
+        let records = ids.map { record($0, image) }
+        var referenceScore: Float?
+        for pageSize in [1, 7, 128, 256, 512] {
+            for candidateIDs in [ids, Array(ids.reversed())] {
+                var search = try SemanticVectorSearch(query: query, dimension: 768,
+                    candidates: candidateIDs.map { SemanticIndexCandidate(assetID: $0, source: source($0)) },
+                    sourceRevisions: Dictionary(uniqueKeysWithValues: ids.map { ($0, "current") }), topK: 100)
+                for start in stride(from: 0, to: records.count, by: pageSize) {
+                    try search.consume(Array(records[start..<min(records.count, start + pageSize)]))
+                }
+                #expect(search.hits.map(\.assetID) == Array(candidateIDs.prefix(100)))
+                #expect(Set(search.hits.map(\.score)).count == 1)
+                let score = try #require(search.hits.first?.score)
+                if let referenceScore { #expect(score == referenceScore) } else { referenceScore = score }
+            }
+        }
+    }
+
+    @Test(arguments: [1, 3, 4, 5, 7, 4_095, 4_096])
+    func fixedSIMDReductionCoversAllTailLengthsAndDimensionBounds(_ dimension: Int) throws {
+        var positive = [Float](repeating: 0, count: dimension)
+        positive[dimension - 1] = 1
+        let negative = positive.map { -$0 }
+        var search = try SemanticVectorSearch(query: positive, dimension: dimension,
+            candidates: ["positive", "negative"].map { SemanticIndexCandidate(assetID: $0, source: source($0)) },
+            sourceRevisions: ["positive": "current", "negative": "current"], topK: 2)
+        try search.consume([record("negative", negative), record("positive", positive)])
+        #expect(search.hits.map(\.assetID) == ["positive", "negative"])
+        #expect(search.hits.map(\.score) == [1, -1])
     }
 
     @Test func removedAndChangedSourcesCannotBecomeHits() throws {

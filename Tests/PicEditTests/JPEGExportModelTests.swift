@@ -15,7 +15,8 @@ struct JPEGExportModelTests {
         var edits = EditSettings.neutral
         edits.exposure = 0.7
         edits.autoToneAmount = 65
-        model.present(asset: first, settings: edits, protectedSourceURLs: protected)
+        let families = [ManagedDirectoryFamily(parent: URL(fileURLWithPath: "/tmp/picedit-managed", isDirectory: true), childNamePrefix: "quarantine-")]
+        model.present(asset: first, settings: edits, protectedSourceURLs: protected, protectedDirectoryFamilies: families)
         edits.exposure = -2
         model.destinationDirectory = URL(fileURLWithPath: "/tmp/picedit-export-model-output", isDirectory: true)
         model.qualityText = "84"
@@ -38,6 +39,7 @@ struct JPEGExportModelTests {
         #expect(request.settings.exposure == 0.7)
         #expect(request.settings.autoToneAmount == 65)
         #expect(request.protectedSourceURLs == protected)
+        #expect(request.protectedDirectoryFamilies == families)
         #expect(!request.overwriteExisting)
         await probe.succeed(width: 1620, height: 1080)
         try await wait { !model.isExporting }
@@ -91,7 +93,8 @@ struct JPEGExportModelTests {
         let model = JPEGExportModel(preferences: nil, export: { try await probe.export($0) })
         var settings = EditSettings.neutral
         settings.shadows = 25
-        model.present(asset: asset("existing.jpg"), settings: settings)
+        let families = [ManagedDirectoryFamily(parent: URL(fileURLWithPath: "/tmp/picedit-managed", isDirectory: true), childNamePrefix: "quarantine-")]
+        model.present(asset: asset("existing.jpg"), settings: settings, protectedDirectoryFamilies: families)
         model.filename = "chosen.jpg"
         model.qualityText = "77"
         model.startExport()
@@ -114,6 +117,8 @@ struct JPEGExportModelTests {
         #expect(retry.sourceURL == initial.sourceURL)
         #expect(retry.options.quality == 77)
         #expect(retry.settings == initial.settings)
+        #expect(initial.protectedDirectoryFamilies == families)
+        #expect(retry.protectedDirectoryFamilies == families)
         await probe.succeed(width: 600, height: 400)
         try await wait { !model.isExporting }
         #expect(model.result?.url == initial.destinationURL)

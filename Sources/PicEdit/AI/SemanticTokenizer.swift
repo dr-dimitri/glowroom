@@ -26,7 +26,18 @@ struct SemanticTokenizer: Sendable {
     }
 
     private static func read(_ url: URL, maximumBytes: Int) throws -> Config {
-        let data = try SemanticInstallationIO.read(url, limit: maximumBytes)
-        return try JSONDecoder().decode(Config.self, from: data)
+        try autoreleasepool {
+            let data = try SemanticInstallationIO.read(url, limit: maximumBytes)
+            guard let dictionary = try JSONSerialization.jsonObject(with: data) as? [NSString: Any] else {
+                throw SemanticEmbeddingError.invalidInstallation
+            }
+            try Task.checkCancellation()
+            // The pinned Gemma vocabulary is an array of token/score pairs;
+            // object keys are configuration names and decimal added-token IDs.
+            // Use the public upstream Config initializer, without a Hub loader.
+            let config = Config(dictionary)
+            try Task.checkCancellation()
+            return config
+        }
     }
 }

@@ -1,0 +1,10 @@
+warning: 'picedit': dependency 'swift-collections' is not used by any target
+◇ Test run started.
+↳ Testing Library Version: 2084
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite "Opt-in integrated semantic 10,000-candidate benchmark" started.
+◇ Test productionEncoderSQLiteAndSourceStamps() started.
+Semantic integrated benchmark: /private/tmp/picedit-semantic-integration-benchmark/AC6D066F-8017-47D4-94C9-BE20F85C54BD/results.json
+✔ Test productionEncoderSQLiteAndSourceStamps() passed after 31.556 seconds.
+✔ Suite "Opt-in integrated semantic 10,000-candidate benchmark" passed after 31.557 seconds.
+✔ Test run with 1 test in 1 suite passed after 31.557 seconds.

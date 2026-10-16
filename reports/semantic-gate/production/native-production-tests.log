@@ -1,0 +1,30 @@
+warning: '--skip-update' option is deprecated and will be removed in a future release
+◇ Test run started.
+↳ Testing Library Version: 2084
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite "Opt-in native semantic pair" started.
+◇ Test approvedImportAndProductionProviderMatchFrozenTorchPair() started.
+Semantic production pair: 30 images/50 queries; maximum cosine distances 1.0091926894162384e-07/8.341099559705523e-05; DE/EN hits 20/20; installed 975212706 bytes
+✔ Test approvedImportAndProductionProviderMatchFrozenTorchPair() passed after 34.086 seconds.
+✔ Suite "Opt-in native semantic pair" passed after 34.086 seconds.
+✔ Test run with 1 test in 1 suite passed after 34.086 seconds.
+real 36.35
+user 34.66
+sys 2.88
+          3377577984  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              744657  page reclaims
+               63304  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   3  signals received
+                2020  voluntary context switches
+               22067  involuntary context switches
+            22722266  instructions retired
+            10175970  cycles elapsed
+             1655216  peak memory footprint

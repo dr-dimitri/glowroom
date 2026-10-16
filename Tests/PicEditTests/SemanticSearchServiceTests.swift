@@ -26,6 +26,61 @@ struct SemanticSearchServiceTests {
         #expect(await f.provider.imageCalls == 2)
     }
 
+    @Test func sourceStampChunksCoverEveryCandidateAndFreshFinalHit() async throws {
+        let f = try await SearchFixture.make(photoCount: 257)
+        await f.preparer.setMissing(f.photos[0].fileURL.path)
+        let status = try await f.service.status(scope: f.photos)
+        #expect(status.indexedCount == 256 && status.missingCount == 1)
+        let initial = await f.preparer.takeStampBatches()
+        #expect(initial.map(\.count).sorted() == [1, 64, 64, 64, 64])
+        #expect(initial.flatMap { $0 }.sorted() == f.photos.map { $0.fileURL.path }.sorted())
+        let result = try await f.service.search(query: "house", candidates: f.photos, topK: 100)
+        #expect(result.hits.count == 100 && !result.hits.contains { $0.assetID == f.photos[0].id })
+        let query = await f.preparer.takeStampBatches()
+        #expect(query.count == 7 && query.allSatisfy { (1...64).contains($0.count) })
+        #expect(query.flatMap { $0 }.count == 357) // 257 candidate and 100 final-hit checks.
+
+        let small = try await SearchFixture.make()
+        await small.preparer.changeAfterNextBatch(small.photos[0].fileURL.path)
+        let changed = try await small.service.search(query: "house", candidates: small.photos, topK: 1)
+        #expect(changed.hits.isEmpty)
+        #expect(await small.preparer.takeStampBatches().map(\.count) == [2, 1])
+    }
+
+    @Test func malformedBatchCountCannotBecomeSearchResults() async throws {
+        let f = try await SearchFixture.make()
+        await f.preparer.malformNextBatch()
+        await searchError(.providerFailure) { _ = try await f.service.search(query: "house", candidates: f.photos, topK: 1) }
+    }
+
+    @Test func batchesSinglesAndPreparationShareTwoSlotsUntilActualReturn() async throws {
+        let base = SearchPreparationAdmissionProbe(), admission = SemanticPreparationAdmission(base)
+        let source = AIOriginalSourceFingerprint(fileURL: URL(fileURLWithPath: "/synthetic/source"), modifiedAt: Date(timeIntervalSince1970: 123), fileSize: 1)
+        let batch = Task { try await admission.sourceStamps(sources: Array(repeating: source, count: 64)) }
+        let preparation = Task { try await admission.prepare(source: source, priority: .thumbnail) }
+        await searchEventually { await base.active == 2 }
+        let single = Task { try await admission.sourceStamp(source: source) }
+        await searchEventually { await admission.schedulingState().waiting == 1 }
+        let cancelledPending = Task { try await admission.sourceStamps(sources: [source]) }
+        await searchEventually { await admission.schedulingState().waiting == 2 }
+        cancelledPending.cancel()
+        await searchError(.cancelled) { _ = try await cancelledPending.value }
+        #expect(await admission.schedulingState().waiting == 1)
+        #expect(await base.started == 2)
+        batch.cancel()
+        #expect(await admission.schedulingState().active == 2)
+        #expect(await admission.schedulingState().waiting == 1)
+        #expect(await base.started == 2) // Cancellation cannot release a busy slot.
+        await base.releaseBatch()
+        await #expect(throws: CancellationError.self) { _ = try await batch.value }
+        await searchEventually { await base.started == 3 }
+        #expect(await base.maximumActive == 2)
+        await base.releaseRemaining()
+        _ = try await preparation.value; _ = try await single.value
+        #expect(await admission.schedulingState().active == 0)
+        #expect(await base.maximumActive == 2)
+    }
+
     @Test func normalizedTextCacheIsBoundedAndIndependentOfCandidateOrder() async throws {
         let f = try await SearchFixture.make()
         _ = try await f.service.search(query: " HOUSE ", candidates: f.photos, topK: 1)
@@ -74,6 +129,55 @@ struct SemanticSearchServiceTests {
         #expect(try await second.value.hits.map(\.assetID) == ["a"])
         #expect(await f.provider.maximumActive == 1)
         #expect(await searchBudgetState(f.budget).activeInferences == 0)
+    }
+
+    @Test func alreadyCancelledSearchCannotInvalidateActualQuery() async throws {
+        let f = try await SearchFixture.make(); await f.provider.block(text: true)
+        let current = Task { try await f.service.search(query: "current", candidates: f.photos, topK: 1) }
+        await searchEventually { await f.provider.texts.count == 1 }
+        let cancelled = Task {
+            withUnsafeCurrentTask { $0?.cancel() }
+            return try await f.service.search(query: "cancelled", candidates: f.photos, topK: 1)
+        }
+        await searchError(.cancelled) { _ = try await cancelled.value }
+        await f.provider.unblock()
+        #expect(try await current.value.hits.map(\.assetID) == ["a"])
+        #expect(await f.provider.texts == ["current"])
+    }
+
+    @Test func alreadyCancelledStatusCannotInvalidateLiveStatus() async throws {
+        let f = try await SearchFixture.make()
+        _ = try await f.service.status(scope: f.photos)
+        await f.provider.blockOneAvailability()
+        let current = Task { try await f.service.status(scope: f.photos) }
+        await searchEventually { await f.provider.pendingAvailability == 1 }
+        let cancelled = Task {
+            withUnsafeCurrentTask { $0?.cancel() }
+            return try await f.service.status(scope: [f.photos[1]])
+        }
+        await searchError(.cancelled) { _ = try await cancelled.value }
+        await f.provider.releaseAvailability()
+        #expect(try await current.value.indexedCount == 2)
+    }
+
+    @Test func staleAvailabilityCannotOverwriteNewInstallationState() async throws {
+        let f = try await SearchFixture.make()
+        _ = try await f.service.status(scope: f.photos)
+        await f.provider.blockOneAvailability(returning: .unavailable(.invalidInstallation))
+        let stale = Task { try await f.service.status(scope: f.photos) }
+        await searchEventually { await f.provider.pendingAvailability == 1 }
+        let review = try await f.service.inspectModel(source: URL(fileURLWithPath: "/synthetic/package"))
+        try await f.service.installModel(review)
+        await f.provider.releaseAvailability()
+        await searchError(.superseded) { _ = try await stale.value }
+        // Publishing a new catalog must retain the newer installation's
+        // availability without first refreshing it through another status call.
+        await f.service.updateCatalog(snapshotSessionID: f.session, generation: 2, assets: f.photos)
+        let stream = await f.service.updates(); var iterator = stream.makeAsyncIterator()
+        let current = try #require(await iterator.next())
+        #expect(current.availability == .available)
+        #expect(current.modelDescriptor == f.model.descriptor)
+        #expect(current.installedBytes == f.model.installedBytes)
     }
 
     @Test func twentyRapidQueriesRetainActualAndOnlyLatestPending() async throws {
@@ -135,6 +239,30 @@ struct SemanticSearchServiceTests {
         #expect(current.catalogGeneration == 2)
         #expect(current.candidateAssetIDs == ["b"])
         await searchError(.superseded) { _ = try await f.service.search(query: "next", candidates: f.photos, topK: 1) }
+    }
+
+    @Test func scopeValidationKeepsEquivalentURLsAndRejectsEachChangedSourceField() async throws {
+        let f = try await SearchFixture.make()
+        let original = f.photos[0]
+        func photo(url: URL, date: Date, size: Int64) -> PhotoAsset {
+            PhotoAsset(id: original.id, folderID: original.folderID, fileURL: url, fileSize: size, modifiedAt: date)
+        }
+        // Decoded/imported values may retain a noncanonical spelling; the
+        // regular PhotoAsset initializer itself already canonicalizes URLs.
+        var equivalent = original
+        equivalent.fileURL = URL(string: "file:///synthetic/unused/../opaque-a.png")!
+        #expect(equivalent.fileURL != original.fileURL)
+        #expect(try await f.service.search(query: "house", candidates: [equivalent], topK: 1).hits.map(\.assetID) == [original.id])
+        let changed = [
+            photo(url: original.fileURL, date: original.modifiedAt.addingTimeInterval(1), size: original.fileSize),
+            photo(url: original.fileURL, date: original.modifiedAt, size: original.fileSize + 1),
+            photo(url: URL(fileURLWithPath: "/synthetic/different.png", isDirectory: false), date: original.modifiedAt, size: original.fileSize)
+        ]
+        let calls = await f.provider.texts
+        for candidate in changed {
+            await searchError(.superseded) { _ = try await f.service.search(query: "changed", candidates: [candidate], topK: 1) }
+        }
+        #expect(await f.provider.texts == calls)
     }
 
     @Test func inputBoundsAndMissingIndexDoNotPerformInference() async throws {
@@ -212,6 +340,30 @@ struct SemanticSearchServiceTests {
         await f.installer.setInstalled(changed)
         await searchError(.installationChanged) { _ = try await f.service.search(query: "house", candidates: f.photos, topK: 1) }
         #expect(await f.provider.texts == ["house"])
+    }
+
+    @Test(arguments: [SemanticEmbeddingError.invalidInstallation, .installationChanged])
+    func imageEncoderIntegrityFailureRemainsUnavailableUntilReimport(_ failure: SemanticEmbeddingError) async throws {
+        let f = try await SearchFixture.make()
+        #expect(try await f.service.status(scope: f.photos).availability == .available)
+        await f.provider.failNextImageInstallation(failure)
+        await searchError(failure) { try await f.service.prepareIndex(scope: f.photos, rebuild: true) }
+        let stream = await f.service.updates(); var iterator = stream.makeAsyncIterator()
+        let failed = try #require(await iterator.next())
+        #expect(failed.availability == .unavailable(.invalidInstallation))
+        #expect(failed.modelDescriptor == nil && failed.installedBytes == nil)
+        let refreshed = try await f.service.status(scope: f.photos)
+        #expect(refreshed.availability == .unavailable(.invalidInstallation))
+        #expect(refreshed.modelDescriptor == nil && refreshed.installedBytes == nil)
+        #expect(try await f.store.activeGeneration() == f.generation)
+        #expect(await f.provider.imageCalls == 1)
+        await searchError(.invalidInstallation) { _ = try await f.service.search(query: "must not retry bad weights", candidates: f.photos, topK: 1) }
+        #expect(await f.provider.texts.isEmpty)
+        let review = try await f.service.inspectModel(source: URL(fileURLWithPath: "/synthetic/repaired-package"))
+        try await f.service.installModel(review)
+        let repaired = try await f.service.status(scope: f.photos)
+        #expect(repaired.availability == .available)
+        #expect(repaired.modelDescriptor == f.model.descriptor && repaired.installedBytes == f.model.installedBytes)
     }
 
     @Test func installationHoldsSharedLeaseUntilNoncooperativeCompilerReturns() async throws {
@@ -330,7 +482,7 @@ private struct SearchFixture: Sendable {
     let photos: [PhotoAsset]
     let generation: SemanticIndexGeneration?
     let model: SemanticInstalledModel
-    static func make(seed: Bool = true, beforeCommit: (@Sendable () throws -> Void)? = nil) async throws -> Self {
+    static func make(seed: Bool = true, photoCount: Int = 2, beforeCommit: (@Sendable () throws -> Void)? = nil) async throws -> Self {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("picedit-semantic-service-\(UUID())")
         let descriptor = SemanticModelDescriptor(modelID: "synthetic-paired", sourceRevision: "1", releaseID: "1", dimension: 3, maximumTextTokens: 64, tokenizerVersion: "1", preprocessingVersion: 1, normalizationVersion: 1)
         let model = SemanticInstalledModel(directory: root.appendingPathComponent("fake-model"), descriptor: descriptor, installationFingerprint: String(repeating: "a", count: 64), installedBytes: 42)
@@ -341,7 +493,8 @@ private struct SearchFixture: Sendable {
         let installer = SearchInstallerFake(model: model), preparer = SearchPreparerFake(), budget = AIResourceBudget()
         let service = SemanticSearchService(store: store, installer: installer, providerFactory: { _ in provider }, preparer: preparer, budget: budget)
         let session = UUID(), folder = UUID()
-        let photos = ["a", "b"].map { (id: String) in PhotoAsset(id: id, folderID: folder, fileURL: URL(fileURLWithPath: "/synthetic/opaque-\(id).png"), fileSize: 42, modifiedAt: Date(timeIntervalSince1970: 123)) }
+        let ids = photoCount == 2 ? ["a", "b"] : (0..<photoCount).map { String(format: "photo-%04d", $0) }
+        let photos = ids.map { (id: String) in PhotoAsset(id: id, folderID: folder, fileURL: URL(fileURLWithPath: "/synthetic/opaque-\(id).png"), fileSize: 42, modifiedAt: Date(timeIntervalSince1970: 123)) }
         var generation: SemanticIndexGeneration?
         if seed {
             let g = try await store.prepareGeneration(for: descriptor, installationFingerprint: model.installationFingerprint)
@@ -360,8 +513,24 @@ private actor SearchProviderFake: SemanticEmbeddingProviding {
     var texts: [String] = [], imageCalls = 0, maximumActive = 0, unloads = 0
     private var active = 0, blockText = false, blockImage = false, invalidNextVector = false, invalidNextInstallation = false
     private var waiting: [CheckedContinuation<Void, Never>] = []
+    private var nextImageInstallationFailure: SemanticEmbeddingError?
+    private var nextAvailability: SemanticAvailability?
+    private var availabilityWaiters: [CheckedContinuation<Void, Never>] = []
+    var pendingAvailability: Int { availabilityWaiters.count }
     init(descriptor: SemanticModelDescriptor) { self.descriptor = descriptor }
-    func availability() async -> SemanticAvailability { .available }
+    func availability() async -> SemanticAvailability {
+        let result = nextAvailability ?? .available
+        if nextAvailability != nil {
+            nextAvailability = nil
+            await withCheckedContinuation { availabilityWaiters.append($0) }
+        }
+        return result
+    }
+    func blockOneAvailability(returning result: SemanticAvailability = .available) { nextAvailability = result }
+    func releaseAvailability() {
+        let values = availabilityWaiters; availabilityWaiters.removeAll()
+        for value in values { value.resume() }
+    }
     func encodeText(_ text: String) async throws -> [Float] {
         texts.append(text); active += 1; maximumActive = max(maximumActive, active)
         if blockText { await withCheckedContinuation { waiting.append($0) } }
@@ -373,11 +542,14 @@ private actor SearchProviderFake: SemanticEmbeddingProviding {
     func encodeImage(_ input: SemanticImageInput) async throws -> [Float] {
         imageCalls += 1; active += 1; maximumActive = max(maximumActive, active)
         if blockImage { await withCheckedContinuation { waiting.append($0) } }
-        active -= 1; return input.values.first == 1 ? [0, 1, 0] : [1, 0, 0]
+        active -= 1
+        if let failure = nextImageInstallationFailure { nextImageInstallationFailure = nil; throw failure }
+        return input.values.first == 1 ? [0, 1, 0] : [1, 0, 0]
     }
     func unload() async { unloads += 1 }
     func failNextVector() { invalidNextVector = true }
     func failNextInstallation() { invalidNextInstallation = true }
+    func failNextImageInstallation(_ failure: SemanticEmbeddingError) { nextImageInstallationFailure = failure }
     func block(text: Bool = false, image: Bool = false) { blockText = text; blockImage = image }
     func unblock() { blockText = false; blockImage = false; let values = waiting; waiting.removeAll(); for value in values { value.resume() } }
 }
@@ -386,6 +558,28 @@ private actor SearchPreparerFake: SemanticImagePreprocessing {
     private var damaged: [String: PreviewFailure] = [:]
     private var statJobs = 0
     var maximumStatJobs = 0
+    private var stampBatches: [[String]] = []
+    private var changeAfterBatch: String?
+    private var malformedBatch = false
+    func sourceStamps(sources: [AIOriginalSourceFingerprint]) async throws -> [String?] {
+        guard sources.count <= SemanticSourceStampBatch.maximumCount else { throw SemanticEmbeddingError.invalidInput }
+        stampBatches.append(sources.map(\.standardizedPath))
+        var values: [String?] = []
+        for source in sources {
+            try Task.checkCancellation()
+            do { values.append(try await sourceStamp(source: source)) }
+            catch {
+                guard error as? SemanticEmbeddingError == .staleSource else { throw error }
+                values.append(nil)
+            }
+        }
+        if let path = changeAfterBatch { changed.insert(path); changeAfterBatch = nil }
+        if malformedBatch { malformedBatch = false; return [] }
+        return values
+    }
+    func takeStampBatches() -> [[String]] { let result = stampBatches; stampBatches.removeAll(); return result }
+    func changeAfterNextBatch(_ path: String) { changeAfterBatch = path }
+    func malformNextBatch() { malformedBatch = true }
     func sourceStamp(source: AIOriginalSourceFingerprint) async throws -> String {
         statJobs += 1; maximumStatJobs = max(maximumStatJobs, statJobs)
         await Task.yield(); statJobs -= 1
@@ -451,4 +645,31 @@ private final class SearchCommitCancellation: @unchecked Sendable {
         }
         if cancel { withUnsafeCurrentTask { $0?.cancel() } }
     }
+}
+
+/// Deliberately noncooperative fake: all three APIs retain their actual slot
+/// through cancellation until the test releases the underlying operation.
+private actor SearchPreparationAdmissionProbe: SemanticImagePreprocessing {
+    private(set) var active = 0, maximumActive = 0, started = 0
+    private var batch: CheckedContinuation<Void, Never>?
+    private var remaining: [CheckedContinuation<Void, Never>] = []
+    private func enter(batch isBatch: Bool) async {
+        active += 1; started += 1; maximumActive = max(maximumActive, active)
+        await withCheckedContinuation { continuation in
+            if isBatch { batch = continuation } else { remaining.append(continuation) }
+        }
+        active -= 1
+    }
+    func sourceStamps(sources: [AIOriginalSourceFingerprint]) async throws -> [String?] {
+        await enter(batch: true); return sources.map { _ in "stamp" }
+    }
+    func sourceStamp(source: AIOriginalSourceFingerprint) async throws -> String {
+        await enter(batch: false); return "stamp"
+    }
+    func prepare(source: AIOriginalSourceFingerprint, priority: PreviewPriority) async throws -> SemanticImageInput {
+        await enter(batch: false)
+        return SemanticImageInput(values: [], rasterSHA256: String(repeating: "c", count: 64), sourceRevision: "stamp")
+    }
+    func releaseBatch() { batch?.resume(); batch = nil }
+    func releaseRemaining() { let values = remaining; remaining.removeAll(); for value in values { value.resume() } }
 }

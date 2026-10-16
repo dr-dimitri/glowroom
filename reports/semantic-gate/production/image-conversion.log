@@ -1,0 +1,5 @@
+Converting PyTorch Frontend ==> MIL Ops:   0%|          | 0/570 [00:00<?, ? ops/s]Converting PyTorch Frontend ==> MIL Ops: 100%|█████████▉| 569/570 [00:00<00:00, 9044.96 ops/s]
+Running MIL frontend_pytorch pipeline:   0%|          | 0/5 [00:00<?, ? passes/s]Running MIL frontend_pytorch pipeline: 100%|██████████| 5/5 [00:00<00:00, 234.49 passes/s]
+Running MIL default pipeline:   0%|          | 0/87 [00:00<?, ? passes/s]Running MIL default pipeline:  28%|██▊       | 24/87 [00:00<00:00, 239.70 passes/s]Running MIL default pipeline:  55%|█████▌    | 48/87 [00:00<00:00, 206.76 passes/s]Running MIL default pipeline:  79%|███████▉  | 69/87 [00:00<00:00, 197.27 passes/s]Running MIL default pipeline: 100%|██████████| 87/87 [00:00<00:00, 196.61 passes/s]
+Running MIL backend_mlprogram pipeline:   0%|          | 0/12 [00:00<?, ? passes/s]Running MIL backend_mlprogram pipeline: 100%|██████████| 12/12 [00:00<00:00, 307.09 passes/s]
+Export differs from approved bytes; do not distribute: /private/tmp/picedit-semantic-product-reproduction/image.mlpackage/Data/com.apple.CoreML/model.mlmodel

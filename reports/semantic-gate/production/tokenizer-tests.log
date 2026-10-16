@@ -1,0 +1,9 @@
+warning: '--skip-update' option is deprecated and will be removed in a future release
+◇ Test run started.
+↳ Testing Library Version: 2084
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite "Semantic offline tokenizer parity" started.
+◇ Test officialConfigAPIHasAll58ExactFrozenTokens() started.
+✔ Test officialConfigAPIHasAll58ExactFrozenTokens() passed after 17.245 seconds.
+✔ Suite "Semantic offline tokenizer parity" passed after 17.245 seconds.
+✔ Test run with 1 test in 1 suite passed after 17.245 seconds.

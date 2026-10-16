@@ -21,6 +21,27 @@ struct SemanticIndexStoreTests {
         #expect(try await restarted.prepareGeneration(for: f.descriptor, installationFingerprint: f.installation) == generation)
     }
 
+    @Test func fractionalNativeDatesRoundtripWithoutFingerprintLoss() async throws {
+        let f = try IndexFixture(), generation = try await f.prepare()
+        let base = Date(timeIntervalSince1970: 1_792_158_000).timeIntervalSinceReferenceDate
+        var originals: [SemanticIndexRecord] = []
+        for (index, value) in [base.nextUp, base.nextDown].enumerated() {
+            let date = Date(timeIntervalSinceReferenceDate: value)
+            #expect(Date(timeIntervalSince1970: date.timeIntervalSince1970) != date)
+            let template = f.record("fractional-\(index)")
+            let source = AIOriginalSourceFingerprint(fileURL: URL(fileURLWithPath: template.source.standardizedPath),
+                modifiedAt: date, fileSize: template.source.fileSize)
+            let record = SemanticIndexRecord(assetID: template.assetID, source: source, sourceRevision: template.sourceRevision,
+                inputRasterSHA256: template.inputRasterSHA256, vector: template.vector)
+            originals.append(record); try await f.store.upsert(record, in: generation)
+        }
+        try await f.store.activate(generation)
+        let restarted = try SemanticIndexStore(directory: f.directory)
+        #expect(try await restarted.records(in: generation) == originals)
+        let metadata = try await restarted.metadata(in: generation, assetIDs: originals.map(\.assetID))
+        #expect(metadata.map(\.source) == originals.map(\.source))
+    }
+
     @Test func partialBuildResumesAndModelChangePreservesLastActive() async throws {
         let f = try IndexFixture(), old = try await f.prepare()
         try await f.store.upsert(f.record("old"), in: old); try await f.store.activate(old)
