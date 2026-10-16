@@ -52,6 +52,14 @@ Bibliotheksdaten, Bewertungen und Favoriten werden lokal unter `~/Library/Applic
 
 Die Bildvorschau verwendet Apples ImageIO. Gängige Formate wie JPEG, PNG, TIFF und HEIC werden unterstützt, sofern das System sie lesen kann. RAW-Unterstützung hängt von der macOS-Version und dem jeweiligen Kameraformat ab; ein vorhandenes RAW-Dateiformat garantiert daher noch keine darstellbare Vorschau.
 
+### Hintergrundarbeit und Parallelisierung
+
+Metadaten werden mit höchstens vier, an CPU und Speicher angepassten Lesern eingelesen. Filter, Sortierung, Ordnerbäume und Importabgleich laufen im Hintergrund. Schnelle Auswahl- und Suchänderungen verwerfen überholte Ergebnisse; Bewertungen und Favoriten bleiben auch bei gleichzeitigem Import erhalten.
+
+Decodierung, Cache-Zugriffe und Bearbeitungsrendering können sich überlappen. Ausgewählte Bilder werden bevorzugt; gleiche Anfragen teilen ihre Arbeit, größere laufende Decodierungen bedienen auch kleinere Vorschauen. Ein begrenzter Render-Worker hält die Planung während Core-Image-Aufrufen ansprechbar. Datenbanktransaktionen und Backups bleiben geordnet; beim Beenden werden Katalog und Bearbeitungsdatenbank gemeinsam abgewartet.
+
+[Zuständigkeiten, Grenzen, Testergebnisse und reproduzierbare Benchmarks](docs/PARALLELISM.md) dokumentieren die Umsetzung. Die gemessene Beschleunigung beim Metadatenimport gilt für synthetische JPEG-Testdaten; große Kamera-RAWs wurden nicht vermessen.
+
 ### RAW-Vorschauen und Performance
 
 Für RAW-Dateien verwendet PicEdit eine eingebettete Kameravorschau, wenn deren Auflösung ausreicht. Andernfalls erzeugt ImageIO die Vorschau aus dem Original. Die Einzelbildansicht lädt zuerst eine kleine Vorschau und verfeinert sie anschließend bis zur bisherigen Zielgröße von 2400 Pixeln. Kamera-Vorschauen können sich in Farbe und Tonwerten von einer späteren RAW-Entwicklung unterscheiden.

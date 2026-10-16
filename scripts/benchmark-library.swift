@@ -1,6 +1,7 @@
 import AppKit
 import Foundation
 import PicEditCore
+import Darwin
 
 @main
 struct ProjectionBenchmark {
@@ -44,13 +45,26 @@ struct ProjectionBenchmark {
         func elapsed(_ duration: Duration) -> Double {
             Double(duration.components.seconds) * 1_000 + Double(duration.components.attoseconds) / 1e15
         }
+        var heartbeatGaps: [Double] = []
+        let heartbeat = Task { @MainActor in
+            var previous = clock.now
+            while !Task.isCancelled {
+                do { try await Task.sleep(for: .milliseconds(1)) } catch { break }
+                let current = clock.now
+                heartbeatGaps.append(elapsed(previous.duration(to: current)))
+                previous = current
+            }
+        }
+        await Task.yield()
         var start = clock.now
+        await model.waitForProjection()
         checksum += model.visibleAssets.count
         print("first visible projection (10k assets): \(elapsed(start.duration(to: clock.now))) ms")
         start = clock.now
         for index in 0..<12 {
             model.selectedID = assets[index].id
             model.gridSize = Double(190 + index)
+            await model.waitForProjection()
             checksum += model.visibleAssets.count
             checksum += model.selectedAsset?.rating ?? 0
             checksum += model.favoriteCount
@@ -59,15 +73,23 @@ struct ProjectionBenchmark {
         print("12 selection/layout updates + visible/tree/count access: \(elapsed(start.duration(to: clock.now))) ms")
         model.selection = .subfolder(folder.id, "Trip")
         start = clock.now
+        await model.waitForProjection()
         checksum += model.visibleAssets.count
         print("first subfolder projection: \(elapsed(start.duration(to: clock.now))) ms")
         start = clock.now
         for index in 0..<12 {
             model.selectedID = assets[index].id
+            await model.waitForProjection()
             checksum += model.visibleAssets.count
             checksum += model.folderTree(for: folder).photoCount
         }
         print("12 repeated subfolder + tree access: \(elapsed(start.duration(to: clock.now))) ms")
+        try await Task.sleep(for: .milliseconds(2))
+        heartbeat.cancel()
+        await heartbeat.value
+        print("MainActor 1 ms heartbeat: max observed gap \(heartbeatGaps.max() ?? 0) ms, \(heartbeatGaps.count) samples")
+        var usage = rusage()
+        if getrusage(RUSAGE_SELF, &usage) == 0 { print("peak resident bytes: \(usage.ru_maxrss)") }
         print("checksum \(checksum)")
         guard checksum == 473_849 else {
             throw NSError(domain: "ProjectionBenchmark", code: 3, userInfo: [NSLocalizedDescriptionKey: "Unexpected projection result: \(checksum)."])

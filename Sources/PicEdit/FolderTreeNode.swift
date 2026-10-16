@@ -2,7 +2,7 @@ import Foundation
 import PicEditCore
 
 /// A catalog projection: subfolders are browseable without importing them a second time.
-struct FolderTreeNode: Identifiable {
+struct FolderTreeNode: Identifiable, Sendable {
     let relativePath: String
     let name: String
     let photoCount: Int
@@ -14,6 +14,15 @@ struct FolderTreeNode: Identifiable {
     }
 
     static func make(folder: LibraryFolder, assets: [PhotoAsset]) -> FolderTreeNode {
+        // The synchronous helper is retained for small standalone projections.
+        try! build(folder: folder, assets: assets, checkCancellation: {})
+    }
+
+    static func makeCancellable(folder: LibraryFolder, assets: [PhotoAsset]) throws -> FolderTreeNode {
+        try build(folder: folder, assets: assets, checkCancellation: { try Task.checkCancellation() })
+    }
+
+    private static func build(folder: LibraryFolder, assets: [PhotoAsset], checkCancellation: () throws -> Void) throws -> FolderTreeNode {
         final class Branch {
             var children: [String: Branch] = [:]
             var photoCount = 0
@@ -40,13 +49,16 @@ struct FolderTreeNode: Identifiable {
 
         let root = Branch()
         for path in folder.subdirectoryPaths {
+            try checkCancellation()
             let parts = path.split(separator: "/").map(String.init)
             guard !path.hasPrefix("/"), !parts.contains(".."), !parts.contains(".") else { continue }
             root.add(parts, countingPhoto: false)
         }
         let rootPath = folder.url.standardizedFileURL.path
         let prefix = rootPath.hasSuffix("/") ? rootPath : rootPath + "/"
-        for asset in assets where asset.fileURL.path.hasPrefix(prefix) {
+        for (index, asset) in assets.enumerated() {
+            if index % 256 == 0 { try checkCancellation() }
+            guard asset.fileURL.path.hasPrefix(prefix) else { continue }
             let relative = String(asset.fileURL.path.dropFirst(prefix.count))
             // Also reconstruct ancestors in catalogs written before folder trees were stored.
             root.add(relative.split(separator: "/").dropLast().map(String.init), countingPhoto: true)

@@ -154,6 +154,117 @@ final class PicEditCoreTests {
     }
 
     @Test
+    func testParallelScanMatchesSerialMetadataAndStableCorruptImageOrder() async throws {
+        for index in (1...18).reversed() {
+            try writeImage(to: temporaryDirectory.appendingPathComponent("photo\(index).jpeg"), metadata: [
+                kCGImagePropertyOrientation: index.isMultiple(of: 2) ? 6 : 1,
+                kCGImagePropertyTIFFDictionary: [kCGImagePropertyTIFFModel: "Camera \(index)"],
+                kCGImagePropertyExifDictionary: [kCGImagePropertyExifISOSpeedRatings: [100 * index]]
+            ])
+        }
+        for name in ["broken10.jpg", "broken2.jpg", "broken1.jpg"] {
+            try Data("invalid image".utf8).write(to: temporaryDirectory.appendingPathComponent(name))
+        }
+        let folder = LibraryFolder(url: temporaryDirectory)
+        async let serial = FolderScanner(maximumConcurrentMetadataReads: 1).scan(folder: folder)
+        async let parallel = FolderScanner(maximumConcurrentMetadataReads: 4).scan(folder: folder)
+        let (serialResult, parallelResult) = try await (serial, parallel)
+
+        #expect(parallelResult.assets == serialResult.assets)
+        #expect(parallelResult.assets.map(\.fileName) == (1...18).map { "photo\($0).jpeg" })
+        #expect(parallelResult.skippedURLs == serialResult.skippedURLs)
+        #expect(parallelResult.skippedURLs.map(\.lastPathComponent) == ["broken1.jpg", "broken2.jpg", "broken10.jpg"])
+        #expect(parallelResult.skippedFiles == 3)
+    }
+
+    @Test
+    func testMetadataReadersOverlapWithoutExceedingWorkerLimit() async throws {
+        for index in 0..<15 {
+            try Data().write(to: temporaryDirectory.appendingPathComponent("photo\(index).png"))
+        }
+        let probe = ScannerReadProbe()
+        let scanner = FolderScanner(maximumConcurrentMetadataReads: 3) { url, folderID in
+            await probe.started()
+            try await Task.sleep(for: .milliseconds(10))
+            await probe.finished(cancelled: false)
+            return PhotoAsset(folderID: folderID, fileURL: url)
+        }
+        let result = try await scanner.scan(folder: LibraryFolder(url: temporaryDirectory))
+        let state = await probe.state
+        #expect(result.assets.count == 15)
+        #expect(state.started == 15)
+        #expect(state.peak == 3, "Independent readers should overlap within the configured bound")
+        #expect(state.active == 0)
+    }
+
+    @Test
+    func testCancellationStopsQueuedReadsAndDrainsActiveReaders() async throws {
+        for index in 0..<20 {
+            try Data().write(to: temporaryDirectory.appendingPathComponent("photo\(index).png"))
+        }
+        let probe = ScannerReadProbe()
+        let scanner = FolderScanner(maximumConcurrentMetadataReads: 2) { url, folderID in
+            await probe.started()
+            do {
+                try await Task.sleep(for: .seconds(60))
+                await probe.finished(cancelled: false)
+                return PhotoAsset(folderID: folderID, fileURL: url)
+            } catch {
+                await probe.finished(cancelled: error is CancellationError)
+                throw error
+            }
+        }
+        let folder = LibraryFolder(url: temporaryDirectory)
+        let task = Task { try await scanner.scan(folder: folder) }
+        await probe.waitForStarts(2)
+        task.cancel()
+        do {
+            _ = try await task.value
+            Issue.record("A cancelled scan must not return a partial catalog")
+        } catch is CancellationError {
+            let state = await probe.state
+            #expect(state.started == 2, "Queued files must never begin decoding after cancellation")
+            #expect(state.cancelled == 2)
+            #expect(state.active == 0, "The scan must drain children before returning")
+        }
+    }
+
+    @Test
+    func testMetadataFailureCancelsSiblingAndNeverReturnsPartialScan() async throws {
+        let missing = temporaryDirectory.appendingPathComponent("photo0.png")
+        for index in 0..<2 {
+            try Data().write(to: temporaryDirectory.appendingPathComponent("photo\(index).png"))
+        }
+        let probe = ScannerReadProbe()
+        let scanner = FolderScanner(maximumConcurrentMetadataReads: 2) { url, folderID in
+            await probe.started()
+            await probe.waitForStarts(2)
+            if url == missing {
+                await probe.finished(cancelled: false)
+                throw FolderScanError.unavailableFolder(url)
+            }
+            do {
+                try await Task.sleep(for: .seconds(60))
+                await probe.finished(cancelled: false)
+                return PhotoAsset(folderID: folderID, fileURL: url)
+            } catch {
+                await probe.finished(cancelled: error is CancellationError)
+                throw error
+            }
+        }
+        do {
+            _ = try await scanner.scan(folder: LibraryFolder(url: temporaryDirectory))
+            Issue.record("A failed metadata read must not publish a partial catalog")
+        } catch FolderScanError.unavailableFolder(let url) {
+            #expect(url == missing)
+            let state = await probe.state
+            #expect(state.started == 2)
+            #expect(state.cancelled == 1)
+            #expect(state.active == 0)
+        }
+    }
+
+    @Test
     func testCatalogRoundTripPreservesMetadataAndUserEdits() throws {
         let repository = CatalogRepository(directory: temporaryDirectory.appendingPathComponent("Support/PicEdit"))
         #expect(try repository.load() == LibraryCatalog())
@@ -276,5 +387,36 @@ final class PicEditCoreTests {
         let destination = try #require(CGImageDestinationCreateWithURL(url as CFURL, type.identifier as CFString, 1, nil))
         CGImageDestinationAddImage(destination, image, metadata as CFDictionary)
         #expect(CGImageDestinationFinalize(destination))
+    }
+}
+
+private actor ScannerReadProbe {
+    struct State: Sendable {
+        var started = 0
+        var active = 0
+        var peak = 0
+        var cancelled = 0
+    }
+
+    private(set) var state = State()
+    private var waiters: [(Int, CheckedContinuation<Void, Never>)] = []
+
+    func started() {
+        state.started += 1
+        state.active += 1
+        state.peak = max(state.peak, state.active)
+        let ready = waiters.filter { state.started >= $0.0 }
+        waiters.removeAll { state.started >= $0.0 }
+        for (_, continuation) in ready { continuation.resume() }
+    }
+
+    func finished(cancelled: Bool) {
+        state.active -= 1
+        if cancelled { state.cancelled += 1 }
+    }
+
+    func waitForStarts(_ count: Int) async {
+        guard state.started < count else { return }
+        await withCheckedContinuation { waiters.append((count, $0)) }
     }
 }

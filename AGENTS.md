@@ -16,6 +16,12 @@ Abhängigkeiten und gemeinsam veränderlicher Zustand müssen geschützt bleiben
 - Führe unabhängige Builds und Tests parallel aus, sofern sie getrennte Build-Verzeichnisse, Testdaten und andere veränderliche Ressourcen verwenden. Abhängige Schritte und Änderungen an gemeinsamem Git-Zustand bleiben geordnet.
 - Prüfe parallele Teilergebnisse einzeln und anschließend ihre Integration. Parallelisierung ersetzt weder Review noch Verifikation.
 
+## Abschluss von Änderungen
+
+- Schließe beauftragte Programmänderungen nach erfolgreicher, geeigneter Prüfung mit einem aussagekräftigen Git-Commit ab und pushe diesen auf den zugehörigen Remote-Branch, sofern der Nutzer nichts anderes vorgibt.
+- Nimm nur die zur Aufgabe gehörenden Änderungen in den Commit auf. Überschreibe keine fremden Änderungen und verwende keinen Force-Push.
+- Prüfe vor dem Push den Diff und nach dem Push den Git-Status. Berichte Commit, Branch, Testergebnis und gegebenenfalls verbleibende Hindernisse.
+
 ## CPU, GPU und Ein-/Ausgabe
 
 - **CPU:** Nutze begrenzte Hintergrundparallelität für unabhängige Datei- und Metadatenverarbeitung, Katalogberechnungen, Analysen und andere geeignete Aufgaben. Bevorzuge strukturierte Swift-Concurrency mit `TaskGroup`, Actors oder passend begrenzten Queues.

@@ -253,6 +253,34 @@ final class EditingModelTests {
     }
 
     @Test
+    func backupExportRejectsActiveFilesAndSymlinksWithoutChangingThem() async throws {
+        let model = EditingModel(directory: directory)
+        try await waitLoaded(model)
+        model.setSettings(exposure(2), for: "A")
+        #expect(await model.flush())
+        let databaseURL = directory.appendingPathComponent("edits.sqlite")
+        let catalogURL = directory.appendingPathComponent("catalog.json")
+        let catalogBytes = Data("catalog must remain unchanged".utf8)
+        try catalogBytes.write(to: catalogURL)
+        let databaseBytes = try Data(contentsOf: databaseURL)
+        let databaseAlias = directory.appendingPathComponent("database-alias.sqlite")
+        let catalogAlias = directory.appendingPathComponent("catalog-alias.sqlite")
+        try FileManager.default.createSymbolicLink(at: databaseAlias, withDestinationURL: databaseURL)
+        try FileManager.default.createSymbolicLink(at: catalogAlias, withDestinationURL: catalogURL)
+
+        for target in [databaseURL, databaseAlias, catalogAlias] {
+            #expect(await model.createBackup(exportTo: target) == nil)
+            #expect(!model.isBackingUp)
+            #expect(model.canEdit)
+            #expect(model.errorMessage?.contains("aktive Datenbank") == true)
+            #expect(try Data(contentsOf: databaseURL) == databaseBytes)
+            #expect(try Data(contentsOf: catalogURL) == catalogBytes)
+        }
+        let reopened = try EditDatabase(directory: directory)
+        #expect(try await reopened.loadAll()["A"] == exposure(2))
+    }
+
+    @Test
     func failedExportPreservesLocalBackupAndExistingDestination() async throws {
         let catalogDirectory = directory.appendingPathComponent("catalog")
         let model = EditingModel(directory: catalogDirectory)

@@ -164,6 +164,19 @@ final class EditingModel: ObservableObject {
         guard canBackUp, let database else { return nil }
         isBackingUp = true
         defer { isBackingUp = false; finishMaintenance() }
+        if let target {
+            let directory = self.directory
+            // Path resolution may access a network volume. Hold the backup
+            // lifecycle open while validating on a worker, so termination also
+            // waits for this accepted operation.
+            let validTarget = await Task.detached(priority: .userInitiated) {
+                Self.isValidExportTarget(target, directory: directory)
+            }.value
+            guard validTarget else {
+                errorMessage = "Wähle eine separate Datei mit der Endung .sqlite als Backup-Ziel. Die aktive Datenbank darf nicht überschrieben werden."
+                return nil
+            }
+        }
         guard await flushPending() else { return nil }
         do {
             let url = try await database.createBackup(automatic: false)
@@ -287,6 +300,16 @@ final class EditingModel: ObservableObject {
             throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno), userInfo: [NSFilePathErrorKey: target.path])
         }
         return target
+    }
+
+    private nonisolated static func isValidExportTarget(_ target: URL, directory: URL?) -> Bool {
+        guard target.isFileURL, target.pathExtension.lowercased() == "sqlite" else { return false }
+        guard let directory else { return true }
+        // A handful of paths does not justify nested worker tasks. All
+        // filesystem lookups already run outside MainActor in the caller.
+        let protected = ["edits.sqlite", "edits.sqlite-wal", "edits.sqlite-shm", "edits.sqlite-journal", "catalog.json"]
+            .map { directory.appendingPathComponent($0).resolvingSymlinksInPath().standardizedFileURL }
+        return !protected.contains(target.resolvingSymlinksInPath().standardizedFileURL)
     }
 
     private func nextRevisionAvailable(for assetID: String) -> Bool {

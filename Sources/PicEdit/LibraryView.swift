@@ -68,7 +68,7 @@ struct LibraryView: View {
                     .foregroundStyle(model.isDeveloping ? Theme.accent : Theme.muted)
                     .disabled(model.selectedAsset == nil || editor.isLoading)
                 Menu {
-                    Button("Bearbeitungen sichern …") { EditingBackupActions.create(using: editor, directory: dataDirectory) }.disabled(!editor.canBackUp)
+                    Button("Bearbeitungen sichern …") { EditingBackupActions.create(using: editor) }.disabled(!editor.canBackUp)
                     Button("Backup wiederherstellen …") { EditingBackupActions.chooseRestore(using: editor, directory: dataDirectory) }
                         .disabled(editor.isLoading || editor.isRestoring || editor.isBackingUp || editor.isClosing)
                     Divider()
@@ -138,7 +138,11 @@ struct LibraryView: View {
                     SectionLabel(text: "Deine Bibliothek")
                     HStack(alignment: .firstTextBaseline, spacing: 10) {
                         Text(model.title).font(.system(size: 27, weight: .semibold)).tracking(-0.7).lineLimit(1)
-                        Text(model.visibleAssets.count.formatted()).font(.system(size: 12, design: .monospaced)).foregroundStyle(Theme.muted)
+                        if model.isProjecting || model.isUpdatingCatalog {
+                            ProgressView().controlSize(.small).help("Fotoauswahl wird aktualisiert …")
+                        } else {
+                            Text(model.visibleAssets.count.formatted()).font(.system(size: 12, design: .monospaced)).foregroundStyle(Theme.muted)
+                        }
                     }
                     Text(model.subtitle).font(.system(size: 11)).foregroundStyle(Theme.muted).lineLimit(1).truncationMode(.middle)
                 }
@@ -153,6 +157,8 @@ struct LibraryView: View {
             Rectangle().fill(Theme.line).frame(height: 1)
             if model.isLoading {
                 ProgressView("Bibliothek wird geöffnet …").frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if model.visibleAssets.isEmpty && model.isProjecting {
+                ProgressView("Fotoauswahl wird aktualisiert …").frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if model.visibleAssets.isEmpty {
                 emptyState.frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if model.showsDetail {

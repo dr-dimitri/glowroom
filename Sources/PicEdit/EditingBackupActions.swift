@@ -4,7 +4,7 @@ import UniformTypeIdentifiers
 
 @MainActor
 enum EditingBackupActions {
-    static func create(using editor: EditingModel, directory: URL) {
+    static func create(using editor: EditingModel) {
         NSApp.keyWindow?.makeFirstResponder(nil)
         let panel = NSSavePanel()
         panel.title = "Bearbeitungen sichern"
@@ -16,13 +16,6 @@ enum EditingBackupActions {
         panel.allowedContentTypes = [UTType(filenameExtension: "sqlite", conformingTo: .data) ?? .data]
         panel.allowsOtherFileTypes = false
         guard panel.runModal() == .OK, let target = panel.url else { return }
-        let protected = ["edits.sqlite", "edits.sqlite-wal", "edits.sqlite-shm", "edits.sqlite-journal", "catalog.json"]
-            .map { directory.appendingPathComponent($0).resolvingSymlinksInPath().standardizedFileURL }
-        guard target.pathExtension.lowercased() == "sqlite",
-              !protected.contains(target.resolvingSymlinksInPath().standardizedFileURL) else {
-            editor.errorMessage = "Wähle eine separate Datei mit der Endung .sqlite als Backup-Ziel. Die aktive Datenbank darf nicht überschrieben werden."
-            return
-        }
         let accessed = target.startAccessingSecurityScopedResource()
         Task {
             defer { if accessed { target.stopAccessingSecurityScopedResource() } }

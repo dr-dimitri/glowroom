@@ -78,6 +78,7 @@ actor ImagePreviewPipeline {
     private var accessCounter: UInt64 = 0
     private var jobs: [UUID: Job] = [:]
     private var currentJob: [PreviewRequest: UUID] = [:]
+    private var waiterJobs: [UUID: UUID] = [:]
     private var pending: [UUID] = []
     private var running = 0
     private var runningThumbnails = 0
@@ -108,7 +109,7 @@ actor ImagePreviewPipeline {
                 enqueue(request, priority: priority, waiterID: waiterID, continuation: continuation)
             }
         } onCancel: {
-            Task { await self.cancel(request, waiterID: waiterID) }
+            Task { await self.cancel(waiterID: waiterID) }
         }
     }
 
@@ -130,25 +131,33 @@ actor ImagePreviewPipeline {
         waiterID: UUID,
         continuation: CheckedContinuation<PreviewBitmap, Error>
     ) {
-        if let jobID = currentJob[request], var job = jobs[jobID] {
+        // A grid/filmstrip request can share an already pending or running
+        // larger decode, not just its eventual cache entry. Editing bases stay
+        // separate from embedded browsing previews through hasSameOriginal.
+        let reusableRequest = currentJob[request] != nil ? request : currentJob.keys.filter {
+            $0.hasSameOriginal(as: request) && $0.pixelSize >= request.pixelSize
+        }.min { $0.pixelSize < $1.pixelSize }
+        if let reusableRequest, let jobID = currentJob[reusableRequest], var job = jobs[jobID] {
             job.waiters[waiterID] = continuation
             if priority.rawValue > job.priority.rawValue { job.priority = priority }
             jobs[jobID] = job
+            waiterJobs[waiterID] = jobID
         } else {
             let jobID = UUID()
             jobs[jobID] = Job(request: request, priority: priority, waiters: [waiterID: continuation])
             currentJob[request] = jobID
+            waiterJobs[waiterID] = jobID
             pending.append(jobID)
         }
         startPendingJobs()
     }
 
-    private func cancel(_ request: PreviewRequest, waiterID: UUID) {
-        guard let jobID = currentJob[request], var job = jobs[jobID],
+    private func cancel(waiterID: UUID) {
+        guard let jobID = waiterJobs.removeValue(forKey: waiterID), var job = jobs[jobID],
               let continuation = job.waiters.removeValue(forKey: waiterID) else { return }
         continuation.resume(throwing: CancellationError())
         if job.waiters.isEmpty {
-            currentJob.removeValue(forKey: request)
+            currentJob.removeValue(forKey: job.request)
             if let task = job.task {
                 jobs[jobID] = job
                 task.cancel()
@@ -228,7 +237,10 @@ actor ImagePreviewPipeline {
         if currentJob[job.request] == jobID { currentJob.removeValue(forKey: job.request) }
         let wasNeeded = !job.waiters.isEmpty
         if case let .success(bitmap) = result, wasNeeded { insert(bitmap, for: cachedAs) }
-        for continuation in job.waiters.values { continuation.resume(with: result) }
+        for (waiterID, continuation) in job.waiters {
+            waiterJobs.removeValue(forKey: waiterID)
+            continuation.resume(with: result)
+        }
         job.waiters.removeAll()
         jobs[jobID] = job
         return wasNeeded

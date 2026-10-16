@@ -65,7 +65,7 @@ struct PicEditApp: App {
                 Divider()
                 Button("Änderungen erneut speichern") { Task { _ = await editor.flush() } }
                     .disabled(!editor.hasPendingChanges || editor.isSaving || editor.isLoading || editor.isRestoring)
-                Button("Bearbeitungen sichern …") { EditingBackupActions.create(using: editor, directory: dataDirectory) }.disabled(!editor.canBackUp)
+                Button("Bearbeitungen sichern …") { EditingBackupActions.create(using: editor) }.disabled(!editor.canBackUp)
                 Button("Backup wiederherstellen …") { EditingBackupActions.chooseRestore(using: editor, directory: dataDirectory) }
                     .disabled(editor.isLoading || editor.isRestoring || editor.isBackingUp || editor.isClosing)
             }
@@ -99,11 +99,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         library.beginTermination()
         editor?.beginTermination()
         Task {
-            let librarySaved = await library.finishSaving()
-            let editsSaved: Bool
-            if let editor, !(editor.isReadOnly && !editor.hasPendingChanges) { editsSaved = await editor.flush() }
-            else { editsSaved = true }
-            let success = librarySaved && editsSaved
+            let success = await Self.finishSaving(catalog: {
+                await library.finishSaving()
+            }, edits: { [editor] in
+                guard let editor, !(editor.isReadOnly && !editor.hasPendingChanges) else { return true }
+                return await editor.flush()
+            })
             if success { sender.reply(toApplicationShouldTerminate: true) }
             else {
                 let alert = NSAlert()
@@ -117,5 +118,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
         return .terminateLater
+    }
+
+    static func finishSaving(catalog: @escaping @MainActor @Sendable () async -> Bool,
+                             edits: @escaping @MainActor @Sendable () async -> Bool) async -> Bool {
+        // The catalog and edit database own different files and serialize their
+        // own mutations. Drain both concurrently, but always await both results
+        // before allowing termination, even when one store reports a failure.
+        async let catalogSaved = catalog()
+        async let editsSaved = edits()
+        let results = await (catalogSaved, editsSaved)
+        return results.0 && results.1
     }
 }

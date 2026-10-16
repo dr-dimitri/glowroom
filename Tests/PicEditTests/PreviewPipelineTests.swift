@@ -26,6 +26,27 @@ struct PreviewPipelineTests {
     }
 
     @Test
+    func runningLargerDecodeIsSharedAndOneCancelledWaiterDoesNotCancelOthers() async throws {
+        let probe = DecodeProbe()
+        defer { probe.releaseAll() }
+        let pipeline = ImagePreviewPipeline(concurrencyLimit: 3, decoder: { try probe.decode($0) })
+        let large = Task { try await pipeline.image(for: request("shared", size: 2_400)) }
+        try await wait { probe.started == ["shared"] }
+        let abandoned = Task { try await pipeline.image(for: request("shared", size: 1_024)) }
+        let small = Task { try await pipeline.image(for: request("shared", size: 512), priority: .selected) }
+        try await Task.sleep(for: .milliseconds(40))
+        abandoned.cancel()
+        do { _ = try await abandoned.value; Issue.record("Cancelled smaller caller received an image") }
+        catch is CancellationError {} catch { Issue.record("Unexpected cancellation error: \(error)") }
+        large.cancel()
+        do { _ = try await large.value; Issue.record("Cancelled caller received an image") }
+        catch is CancellationError {} catch { Issue.record("Unexpected cancellation error: \(error)") }
+        probe.releaseAll()
+        _ = try await small.value
+        #expect(probe.started == ["shared"])
+    }
+
+    @Test
     func persistedLargerPreviewServesBothProgressiveStagesWithoutDecodingOriginal() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("PicEdit pipeline \(UUID())")
         defer { try? FileManager.default.removeItem(at: directory) }

@@ -2,11 +2,11 @@ import AppKit
 import Combine
 import PicEditCore
 
-enum LibrarySelection: Hashable {
+enum LibrarySelection: Hashable, Sendable {
     case all, favorites, recent, folder(UUID), subfolder(UUID, String)
 }
 
-enum PhotoSort: String, CaseIterable, Identifiable {
+enum PhotoSort: String, CaseIterable, Identifiable, Sendable {
     case date = "Aufnahmedatum", name = "Dateiname", rating = "Bewertung"
     var id: String { rawValue }
 }
@@ -15,7 +15,67 @@ private actor CatalogWriter {
     let repository: CatalogRepository
     private var lastRevision = -1
     init(repository: CatalogRepository) { self.repository = repository }
-    func load() throws -> LibraryCatalog { try repository.load() }
+    struct LoadedCatalog: Sendable {
+        var catalog: LibraryCatalog
+        var scopes: [UUID: URL]
+        var updated: Bool
+    }
+
+    func load() async throws -> LoadedCatalog {
+        let stored = try repository.load()
+        // Bookmark resolution and directory-only backfills are independent. Two
+        // workers overlap disk waits without nesting the metadata scanner's pool.
+        let resolved = await withTaskGroup(of: (Int, LibraryFolder, URL?).self) { group in
+            var next = 0
+            var results: [(Int, LibraryFolder, URL?)] = []
+            func enqueue() {
+                guard next < stored.folders.count else { return }
+                let index = next, folder = stored.folders[index]
+                next += 1
+                group.addTask { await Self.resolve(folder, index: index) }
+            }
+            for _ in 0..<min(2, stored.folders.count) { enqueue() }
+            while let result = await group.next() { results.append(result); enqueue() }
+            return results.sorted { $0.0 < $1.0 }
+        }
+        var catalog = stored
+        var scopes: [UUID: URL] = [:]
+        var moved: [UUID: (String, URL)] = [:]
+        for (index, folder, scope) in resolved {
+            catalog.folders[index] = folder
+            if let scope { scopes[folder.id] = scope }
+            let old = stored.folders[index]
+            if folder.url != old.url { moved[folder.id] = (LibraryProjectionWorker.directoryPrefix(old.url), folder.url) }
+        }
+        for index in catalog.assets.indices {
+            let asset = catalog.assets[index]
+            if let (prefix, destination) = moved[asset.folderID], asset.fileURL.path.hasPrefix(prefix) {
+                let url = destination.appendingPathComponent(String(asset.fileURL.path.dropFirst(prefix.count)))
+                catalog.assets[index].fileURL = url
+                catalog.assets[index].id = url.resolvingSymlinksInPath().standardizedFileURL.path
+            }
+        }
+        return LoadedCatalog(catalog: catalog, scopes: scopes, updated: catalog != stored)
+    }
+
+    private nonisolated static func resolve(_ original: LibraryFolder, index: Int) async -> (Int, LibraryFolder, URL?) {
+        var folder = original
+        if let data = folder.bookmarkData {
+            var stale = false
+            if let url = try? URL(resolvingBookmarkData: data, options: [.withSecurityScope, .withoutUI], relativeTo: nil, bookmarkDataIsStale: &stale) {
+                folder.url = url
+                if stale {
+                    folder.bookmarkData = (try? url.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil)) ?? data
+                }
+            }
+        }
+        let scope = folder.url.startAccessingSecurityScopedResource() ? folder.url : nil
+        if folder.subdirectoryPaths.isEmpty,
+           let paths = try? await FolderScanner().scanSubdirectories(folder: folder), !paths.isEmpty {
+            folder.subdirectoryPaths = paths
+        }
+        return (index, folder, scope)
+    }
     func save(_ catalog: LibraryCatalog, revision: Int) throws {
         guard revision > lastRevision else { return }
         try repository.save(catalog)
@@ -26,13 +86,13 @@ private actor CatalogWriter {
 @MainActor
 final class LibraryModel: ObservableObject {
     @Published private(set) var catalog = LibraryCatalog() {
-        didSet { invalidateCatalogProjections() }
+        didSet { catalogGeneration += 1; treeOverrides = [:]; scheduleProjection() }
     }
-    @Published var selection: LibrarySelection = .all
+    @Published var selection: LibrarySelection = .all { didSet { scheduleProjection() } }
     @Published var selectedID: String?
-    @Published var search = ""
-    @Published var sort: PhotoSort = .date
-    @Published var minimumRating = 0
+    @Published var search = "" { didSet { scheduleProjection() } }
+    @Published var sort: PhotoSort = .date { didSet { scheduleProjection() } }
+    @Published var minimumRating = 0 { didSet { scheduleProjection() } }
     @Published var gridSize: Double = 210
     @Published var isDeveloping = false
     @Published var comparesOriginal = false
@@ -45,6 +105,9 @@ final class LibraryModel: ObservableObject {
     @Published var errorMessage: String?
     @Published private(set) var isReadOnly = false
     @Published private(set) var isClosing = false
+    private let catalogWorker = LibraryCatalogWorker()
+    private var mutationTask: Task<Void, Never>?
+    @Published private(set) var isUpdatingCatalog = false
     private let writer: CatalogWriter
     private var revision = 0
     private var importTask: Task<Void, Never>?
@@ -52,33 +115,14 @@ final class LibraryModel: ObservableObject {
     private var queuedFolders: [URL] = []
     private let now: () -> Date
 
-    private struct VisibleProjectionKey: Equatable {
-        let selection: LibrarySelection
-        let query: String
-        let sort: PhotoSort
-        let minimumRating: Int
-    }
-    private struct VisibleProjection {
-        let key: VisibleProjectionKey
-        let assets: [PhotoAsset]
-        let evaluatedAt: Date?
-        let expiresAt: Date?
-    }
-    private struct AssetSummary {
-        let indices: [String: Int]
-        let favoriteCount: Int
-    }
-    private struct TreeProjection {
-        let url: URL
-        let name: String
-        let paths: [String]
-        let node: FolderTreeNode
-    }
-    // These projections are shared by the grid, sidebar and inspector. Selection,
-    // thumbnail-size and panel changes do not change the underlying catalog.
-    private var visibleProjection: VisibleProjection?
-    private var assetSummary: AssetSummary?
-    private var treeProjections: [UUID: TreeProjection] = [:]
+    @Published private(set) var isProjecting = false
+    private let projectionWorker = LibraryProjectionWorker()
+    private var deferredProjectionTask: Task<Void, Never>?
+    private var projectionTask: Task<Void, Never>?
+    private var projection: LibraryProjection?
+    private var projectionRevision = 0
+    private var catalogGeneration = 0
+    private var treeOverrides: [UUID: LibraryFolder] = [:]
     var gridColumnCount = 3
 
     init(repository: CatalogRepository = CatalogRepository(), now: @escaping () -> Date = Date.init) {
@@ -89,12 +133,16 @@ final class LibraryModel: ObservableObject {
 
     var folders: [LibraryFolder] { catalog.folders }
     var assets: [PhotoAsset] { catalog.assets }
-    var favoriteCount: Int { catalogSummary().favoriteCount }
+    var favoriteCount: Int { projection?.favoriteCount ?? 0 }
     var selectedAsset: PhotoAsset? {
-        guard let selectedID, let index = catalogSummary().indices[selectedID] else { return nil }
-        return assets[index]
+        guard let selectedID else { return nil }
+        if let index = projection?.indices[selectedID], assets.indices.contains(index), assets[index].id == selectedID {
+            return assets[index]
+        }
+        // Only the brief catalog replacement window needs a single-ID lookup.
+        return assets.first { $0.id == selectedID }
     }
-    var canModify: Bool { !isLoading && !isReadOnly && !isClosing }
+    var canModify: Bool { !isLoading && !isReadOnly && !isClosing && !isUpdatingCatalog }
     var title: String {
         switch selection {
         case .all: "Alle Fotos"
@@ -114,127 +162,80 @@ final class LibraryModel: ObservableObject {
         }
     }
     var visibleAssets: [PhotoAsset] {
-        let query = search.trimmingCharacters(in: .whitespacesAndNewlines)
-        let key = VisibleProjectionKey(selection: selection, query: query, sort: sort, minimumRating: minimumRating)
-        let currentDate = selection == .recent ? now() : nil
-        if let cached = visibleProjection, cached.key == key {
-            if let currentDate, let evaluatedAt = cached.evaluatedAt {
-                // Rolling seven-day membership also changes without a catalog mutation.
-                if currentDate >= evaluatedAt && (cached.expiresAt.map { currentDate < $0 } ?? true) {
-                    return cached.assets
-                }
-            } else { return cached.assets }
-        }
+        refreshRecentProjectionIfNeeded()
+        return projection?.assets ?? []
+    }
 
-        var recentIDs: Set<UUID> = []
-        var expiresAt: Date?
-        if let currentDate {
-            for folder in folders {
-                let expiration = folder.addedAt.addingTimeInterval(7 * 86400)
-                if expiration > currentDate {
-                    recentIDs.insert(folder.id)
-                    expiresAt = min(expiresAt ?? expiration, expiration)
-                }
+    private func refreshRecentProjectionIfNeeded() {
+        guard selection == .recent, !isProjecting, let projection else { return }
+        let date = now()
+        if date < projection.evaluatedAt || projection.expiresAt.map({ date >= $0 }) == true {
+            deferProjection()
+        }
+    }
+
+    // Getters can be read during SwiftUI body evaluation. Never publish from
+    // that stack; defer only their invalidations until the next actor turn.
+    private func deferProjection() {
+        guard deferredProjectionTask == nil else { return }
+        deferredProjectionTask = Task { [weak self] in
+            guard let self, !Task.isCancelled else { return }
+            deferredProjectionTask = nil
+            scheduleProjection()
+        }
+    }
+
+    private func scheduleProjection() {
+        deferredProjectionTask?.cancel()
+        deferredProjectionTask = nil
+        projectionRevision += 1
+        let number = projectionRevision
+        projectionTask?.cancel()
+        isProjecting = true
+        projectionTask = Task { [weak self] in
+            // Coalesce synchronous UI changes before copying the catalog snapshot.
+            await Task.yield()
+            guard let self, !Task.isCancelled else { return }
+            let key = LibraryProjectionKey(selection: selection, query: search.trimmingCharacters(in: .whitespacesAndNewlines),
+                                           sort: sort, minimumRating: minimumRating)
+            do {
+                let result = try await projectionWorker.project(catalog, generation: catalogGeneration,
+                                                                key: key, date: now(), overrides: treeOverrides)
+                guard !Task.isCancelled, number == projectionRevision else { return }
+                projection = result
+                isProjecting = false
+                projectionTask = nil
+                reconcileSelection()
+            } catch is CancellationError { }
+            catch {
+                guard number == projectionRevision else { return }
+                isProjecting = false
+                projectionTask = nil
+                errorMessage = error.localizedDescription
             }
         }
-        // Resolve and standardize the selected folder once, not for every photo.
-        let selectedPrefix: String?
-        switch selection {
-        case .folder(let id):
-            selectedPrefix = folders.first(where: { $0.id == id }).map { directoryPrefix($0.url) }
-        case .subfolder(let id, let path):
-            selectedPrefix = folders.first(where: { $0.id == id }).map { directoryPrefix($0.url.appendingPathComponent(path)) }
-        default: selectedPrefix = nil
-        }
-        let result = assets.filter { asset in
-            let included: Bool
-            switch selection {
-            case .all: included = true
-            case .favorites: included = asset.isFavorite
-            case .recent: included = recentIDs.contains(asset.folderID)
-            case .folder, .subfolder: included = selectedPrefix.map { asset.fileURL.path.hasPrefix($0) } ?? false
-            }
-            return included && asset.rating >= minimumRating && (query.isEmpty ||
-                [asset.fileName, asset.cameraModel ?? "", asset.format].contains { $0.localizedStandardContains(query) })
-        }.sorted { lhs, rhs in
-            switch sort {
-            case .date:
-                let l = lhs.captureDate ?? lhs.createdAt, r = rhs.captureDate ?? rhs.createdAt
-                if l != r { return l > r }
-            case .rating:
-                if lhs.rating != rhs.rating { return lhs.rating > rhs.rating }
-            case .name: break
-            }
-            let comparison = lhs.fileName.localizedStandardCompare(rhs.fileName)
-            return comparison == .orderedSame ? lhs.id < rhs.id : comparison == .orderedAscending
-        }
-        visibleProjection = VisibleProjection(key: key, assets: result, evaluatedAt: currentDate, expiresAt: expiresAt)
-        return result
     }
 
-    private func invalidateCatalogProjections() {
-        visibleProjection = nil
-        assetSummary = nil
-        treeProjections.removeAll(keepingCapacity: true)
-    }
-
-    private func catalogSummary() -> AssetSummary {
-        if let assetSummary { return assetSummary }
-        var indices: [String: Int] = [:]
-        indices.reserveCapacity(assets.count)
-        var favorites = 0
-        for (index, asset) in assets.enumerated() {
-            if indices[asset.id] == nil { indices[asset.id] = index }
-            if asset.isFavorite { favorites += 1 }
+    /// Also used by imports and tests to wait for the latest, not an obsolete, request.
+    func waitForProjection() async {
+        if let mutationTask { await mutationTask.value }
+        refreshRecentProjectionIfNeeded()
+        while deferredProjectionTask != nil || projectionTask != nil {
+            if let task = deferredProjectionTask { await task.value }
+            if let task = projectionTask { await task.value }
         }
-        let summary = AssetSummary(indices: indices, favoriteCount: favorites)
-        assetSummary = summary
-        return summary
     }
 
-    private func directoryPrefix(_ url: URL) -> String {
-        let path = url.standardizedFileURL.path
-        return path.hasSuffix("/") ? path : path + "/"
-    }
+    private func directoryPrefix(_ url: URL) -> String { LibraryProjectionWorker.directoryPrefix(url) }
 
     private func load() async {
         var updatedFolderStructure = false
         do {
-            catalog = try await writer.load()
-            for index in catalog.folders.indices {
-                let folder = catalog.folders[index]
-                var resolved = folder.url
-                if let data = folder.bookmarkData {
-                    var stale = false
-                    if let url = try? URL(resolvingBookmarkData: data, options: [.withSecurityScope, .withoutUI], relativeTo: nil, bookmarkDataIsStale: &stale) {
-                        resolved = url
-                        if stale {
-                            catalog.folders[index].bookmarkData = (try? url.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil)) ?? data
-                        }
-                    }
-                }
-                if resolved.startAccessingSecurityScopedResource() { activeScopes[folder.id] = resolved }
-                if resolved.standardizedFileURL != folder.url.standardizedFileURL {
-                    let oldPrefix = folder.url.path.hasSuffix("/") ? folder.url.path : folder.url.path + "/"
-                    for i in catalog.assets.indices where catalog.assets[i].folderID == folder.id {
-                        let oldPath = catalog.assets[i].fileURL.path
-                        if oldPath.hasPrefix(oldPrefix) {
-                            let url = resolved.appendingPathComponent(String(oldPath.dropFirst(oldPrefix.count)))
-                            catalog.assets[i].fileURL = url
-                            catalog.assets[i].id = url.resolvingSymlinksInPath().standardizedFileURL.path
-                        }
-                    }
-                    catalog.folders[index].url = resolved
-                }
-                // Older catalogs only stored image paths. Discover empty folders too,
-                // without re-decoding images or changing the existing photo records.
-                if catalog.folders[index].subdirectoryPaths.isEmpty,
-                   let paths = try? await FolderScanner().scanSubdirectories(folder: catalog.folders[index]),
-                   !paths.isEmpty {
-                    catalog.folders[index].subdirectoryPaths = paths
-                    updatedFolderStructure = true
-                }
-            }
+            let loaded = try await writer.load()
+            activeScopes = loaded.scopes
+            catalog = loaded.catalog
+            updatedFolderStructure = loaded.updated
+            await waitForProjection()
             selectedID = visibleAssets.first?.id
         } catch {
             isReadOnly = true
@@ -274,36 +275,26 @@ final class LibraryModel: ObservableObject {
             }
             for (offset, originalURL) in urls.enumerated() {
                 if Task.isCancelled { break }
-                let url = originalURL.resolvingSymlinksInPath().standardizedFileURL
-                importStatus = "\(offset + 1)/\(urls.count) · \(url.lastPathComponent) wird eingelesen …"
-                let existing = catalog.folders.first { $0.url.resolvingSymlinksInPath().standardizedFileURL == url }
-                var folder = existing ?? LibraryFolder(url: url)
-                let started = originalURL.startAccessingSecurityScopedResource()
-                folder.bookmarkData = (try? originalURL.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil)) ?? folder.bookmarkData
+                importStatus = "\(offset + 1)/\(urls.count) · \(originalURL.lastPathComponent) wird eingelesen …"
+                let prepared = await catalogWorker.prepareImport(originalURL, folders: folders)
+                let folder = prepared.folder, started = prepared.startedScope, url = folder.url
                 do {
                     let result = try await FolderScanner().scan(folder: folder)
                     try Task.checkCancellation()
-                    let old = Dictionary(catalog.assets.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
-                    let imported = result.assets.map { asset in
-                        var asset = asset
-                        if let previous = old[asset.id] {
-                            asset.folderID = previous.folderID
-                            asset.rating = previous.rating
-                            asset.isFavorite = previous.isFavorite
-                        }
-                        return asset
+                    // Overlapping folders are committed in input order; their shared
+                    // asset ownership depends on the preceding result. Parallelism
+                    // lives in the scanner rather than a second nested worker pool.
+                    while true {
+                        let generation = catalogGeneration
+                        let merged = try await catalogWorker.merge(result, folder: folder, into: catalog)
+                        try Task.checkCancellation()
+                        // Ratings/favorites may change while the merge runs. Retry
+                        // against the latest snapshot so accepted edits survive.
+                        guard generation == catalogGeneration else { continue }
+                        catalog = merged.catalog
+                        total += merged.addedCount
+                        break
                     }
-                    // A temporarily undecodable original must not erase its catalog metadata.
-                    let skippedIDs = Set(result.skippedURLs.map { $0.path })
-                    let retained = catalog.assets.filter { contains($0, in: folder) && skippedIDs.contains($0.id) }
-                    folder.lastScannedAt = Date()
-                    folder.subdirectoryPaths = result.subdirectoryPaths
-                    // Reconcile the scanned path, including photos also shown by an overlapping folder.
-                    catalog.assets.removeAll { contains($0, in: folder) }
-                    catalog.assets.append(contentsOf: imported + retained)
-                    if let index = catalog.folders.firstIndex(where: { $0.id == folder.id }) { catalog.folders[index] = folder }
-                    else { catalog.folders.append(folder) }
-                    total += imported.filter { old[$0.id] == nil }.count
                     skipped += result.skippedFiles
                     if started {
                         if activeScopes[folder.id] == nil { activeScopes[folder.id] = originalURL }
@@ -314,8 +305,8 @@ final class LibraryModel: ObservableObject {
                         search = ""
                         minimumRating = 0
                     }
-                    reconcileSelection()
                     persist()
+                    await waitForProjection()
                 } catch is CancellationError {
                     if started { originalURL.stopAccessingSecurityScopedResource() }
                     break
@@ -351,37 +342,39 @@ final class LibraryModel: ObservableObject {
 
     func removeFolder(_ id: UUID) {
         guard canModify, !isImporting else { return }
-        catalog.folders.removeAll { $0.id == id }
-        catalog.assets = catalog.assets.compactMap { asset in
-            guard asset.folderID == id else { return asset }
-            guard let replacement = catalog.folders.filter({ contains(asset, in: $0) }).max(by: { $0.url.path.count < $1.url.path.count }) else { return nil }
-            var retained = asset
-            retained.folderID = replacement.id
-            return retained
+        isUpdatingCatalog = true
+        let snapshot = catalog
+        mutationTask = Task {
+            catalog = await catalogWorker.removing(id, from: snapshot)
+            activeScopes.removeValue(forKey: id)?.stopAccessingSecurityScopedResource()
+            switch selection {
+            case .folder(let selectedFolder), .subfolder(let selectedFolder, _):
+                if selectedFolder == id { selection = .all }
+            default: break
+            }
+            isUpdatingCatalog = false
+            mutationTask = nil
+            persist()
+            notice = "Ordner aus der Bibliothek entfernt. Originaldateien bleiben erhalten."
         }
-        activeScopes.removeValue(forKey: id)?.stopAccessingSecurityScopedResource()
-        switch selection {
-        case .folder(let selectedFolder), .subfolder(let selectedFolder, _):
-            if selectedFolder == id { selection = .all }
-        default: break
-        }
-        reconcileSelection()
-        persist()
-        notice = "Ordner aus der Bibliothek entfernt. Originaldateien bleiben erhalten."
+    }
+
+    private func assetIndex(for id: String?) -> Int? {
+        guard let id else { return nil }
+        if let index = projection?.indices[id], assets.indices.contains(index), assets[index].id == id { return index }
+        return assets.firstIndex { $0.id == id }
     }
 
     func setRating(_ rating: Int, for id: String? = nil) {
-        guard canModify, let index = catalog.assets.firstIndex(where: { $0.id == (id ?? selectedID) }) else { return }
+        guard canModify, let index = assetIndex(for: id ?? selectedID) else { return }
         catalog.assets[index].rating = min(5, max(0, rating))
         persist()
-        reconcileSelection()
     }
 
     func toggleFavorite(_ id: String? = nil) {
-        guard canModify, let index = catalog.assets.firstIndex(where: { $0.id == (id ?? selectedID) }) else { return }
+        guard canModify, let index = assetIndex(for: id ?? selectedID) else { return }
         catalog.assets[index].isFavorite.toggle()
         persist()
-        reconcileSelection()
     }
 
     func contains(_ asset: PhotoAsset, in folder: LibraryFolder) -> Bool {
@@ -392,16 +385,12 @@ final class LibraryModel: ObservableObject {
     }
     func count(in folder: LibraryFolder) -> Int { folderTree(for: folder).photoCount }
     func folderTree(for folder: LibraryFolder) -> FolderTreeNode {
-        if let cached = treeProjections[folder.id], cached.url == folder.url,
-           cached.name == folder.name, cached.paths == folder.subdirectoryPaths {
-            return cached.node
+        if projection?.treeFolders[folder.id] == folder, let node = projection?.trees[folder.id] { return node }
+        if folders.contains(where: { $0.id == folder.id }), treeOverrides[folder.id] != folder {
+            treeOverrides[folder.id] = folder
+            deferProjection()
         }
-        // The builder already filters by folder prefix, so a second full scan is unnecessary.
-        let node = FolderTreeNode.make(folder: folder, assets: assets)
-        if folders.contains(where: { $0.id == folder.id }) {
-            treeProjections[folder.id] = TreeProjection(url: folder.url, name: folder.name, paths: folder.subdirectoryPaths, node: node)
-        }
-        return node
+        return FolderTreeNode(relativePath: "", name: folder.name, photoCount: 0, children: [])
     }
     func selectFolder(_ folder: LibraryFolder, relativePath: String) {
         NSApp?.keyWindow?.makeFirstResponder(nil)
@@ -413,11 +402,13 @@ final class LibraryModel: ObservableObject {
         selectedID = asset.id
     }
     func reconcileSelection() {
+        guard !isProjecting else { return }
         if case .subfolder(let id, let path) = selection {
             if let folder = folders.first(where: { $0.id == id }) {
                 if !folderTree(for: folder).contains(relativePath: path) { selection = .folder(id) }
             } else { selection = .all }
         }
+        guard !isProjecting else { return }
         let visible = visibleAssets
         if !visible.contains(where: { $0.id == selectedID }) { selectedID = visible.first?.id }
         if visible.isEmpty { showsDetail = false }
@@ -448,6 +439,8 @@ final class LibraryModel: ObservableObject {
 
     func finishSaving() async -> Bool {
         importTask?.cancel()
+        if let importTask { await importTask.value }
+        if let mutationTask { await mutationTask.value }
         guard !isLoading && !isReadOnly else { return true }
         revision += 1
         do { try await writer.save(catalog, revision: revision); return true }

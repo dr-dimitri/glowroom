@@ -153,7 +153,8 @@ private struct AsyncPhotoView: View {
                 if !settings.isNeutral { try await Task.sleep(for: .milliseconds(45)) }
                 let bitmap: PreviewBitmap
                 if identity.settings.isNeutral { bitmap = sourceBitmap }
-                else { bitmap = try await AdjustedPreviewPipeline.shared.image(sourceBitmap, request: request, settings: identity.settings) }
+                else { bitmap = try await AdjustedPreviewPipeline.shared.image(sourceBitmap, request: request,
+                                                                               settings: identity.settings, priority: priority) }
                 try Task.checkCancellation()
                 guard renderIdentity == identity else { return }
                 displayed = Displayed(identity: identity, image: NSImage(cgImage: bitmap.image,

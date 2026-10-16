@@ -17,17 +17,42 @@ public enum FolderScanError: LocalizedError {
 }
 
 public struct FolderScanner: Sendable {
-    public init() {}
+    typealias AssetReader = @Sendable (URL, UUID) async throws -> PhotoAsset?
+
+    private let maximumConcurrentMetadataReads: Int
+    private let assetReader: AssetReader
+
+    public init(maximumConcurrentMetadataReads: Int = 4) {
+        // Validation can decode camera RAW data even for a small thumbnail. Keep the
+        // worker count modest, with at least 1 GiB of system memory per active reader.
+        let memoryLimit = max(1, Int(ProcessInfo.processInfo.physicalMemory / 1_073_741_824))
+        self.maximumConcurrentMetadataReads = max(1, min(
+            maximumConcurrentMetadataReads, 4, ProcessInfo.processInfo.activeProcessorCount, memoryLimit
+        ))
+        self.assetReader = { url, folderID in
+            try autoreleasepool { try Self.readAsset(at: url, folderID: folderID) }
+        }
+    }
+
+    init(maximumConcurrentMetadataReads: Int, assetReader: @escaping AssetReader) {
+        self.maximumConcurrentMetadataReads = max(1, maximumConcurrentMetadataReads)
+        self.assetReader = assetReader
+    }
 
     public func scan(folder: LibraryFolder) async throws -> ScanResult {
-        try scanSynchronously(folder: folder)
+        try await scan(folder: folder, includeImages: true)
     }
 
     public func scanSubdirectories(folder: LibraryFolder) async throws -> [String] {
-        try scanSynchronously(folder: folder, includeImages: false).subdirectoryPaths
+        try await scan(folder: folder, includeImages: false).subdirectoryPaths
     }
 
-    private func scanSynchronously(folder: LibraryFolder, includeImages: Bool = true) throws -> ScanResult {
+    private enum ReadResult: Sendable {
+        case asset(PhotoAsset)
+        case skipped(URL)
+    }
+
+    private func scan(folder: LibraryFolder, includeImages: Bool) async throws -> ScanResult {
         try Task.checkCancellation()
         let manager = FileManager.default
         let root = folder.url.standardizedFileURL.resolvingSymlinksInPath()
@@ -39,11 +64,8 @@ public struct FolderScanner: Sendable {
         guard isDirectory.boolValue else { throw FolderScanError.notDirectory(root) }
 
         let resourceKeys: Set<URLResourceKey> = [
-            .isDirectoryKey, .isRegularFileKey, .isSymbolicLinkKey, .isPackageKey,
-            .fileSizeKey, .creationDateKey, .contentModificationDateKey
+            .isDirectoryKey, .isRegularFileKey, .isSymbolicLinkKey, .isPackageKey
         ]
-        var skippedFiles = 0
-        var skippedURLs: [URL] = []
         var inaccessibleURL: URL?
         guard let enumerator = manager.enumerator(
             at: root,
@@ -56,72 +78,90 @@ public struct FolderScanner: Sendable {
         ) else { throw FolderScanError.unavailableFolder(root) }
 
         var assets: [PhotoAsset] = []
+        var skippedURLs: [URL] = []
         var seenPaths: Set<String> = []
         var subdirectoryPaths: Set<String> = []
         let rootPrefix = root.path.hasSuffix("/") ? root.path : root.path + "/"
         let supportedExtensions = includeImages ? Self.supportedExtensions : []
-        for case let url as URL in enumerator {
-            try Task.checkCancellation()
-            autoreleasepool {
-                guard let values = try? url.resourceValues(forKeys: resourceKeys) else {
-                    inaccessibleURL = url
-                    return
+        let assetReader = self.assetReader
+        try await withThrowingTaskGroup(of: ReadResult.self) { group in
+            var pendingReads = 0
+            func collect(_ result: ReadResult) {
+                switch result {
+                case .asset(let asset): assets.append(asset)
+                case .skipped(let url): skippedURLs.append(url)
                 }
-                // Following directory links may leave the chosen folder or create a cycle.
-                // File links are also excluded, so imports do not silently depend on external paths.
-                if values.isSymbolicLink == true {
-                    enumerator.skipDescendants()
-                    return
-                }
-                if values.isDirectory == true {
-                    if values.isPackage == true {
+            }
+            // The enumerator and its path sets have one owner. Independent metadata
+            // reads overlap enumeration, with backpressure instead of a task per photo.
+            while let url = enumerator.nextObject() as? URL {
+                try Task.checkCancellation()
+                let candidate: URL? = autoreleasepool {
+                    guard let values = try? url.resourceValues(forKeys: resourceKeys) else {
+                        inaccessibleURL = url
+                        return nil
+                    }
+                    // Following directory links may leave the chosen folder or create a cycle.
+                    // File links are also excluded, so imports do not depend on external paths.
+                    if values.isSymbolicLink == true {
                         enumerator.skipDescendants()
-                        return
+                        return nil
                     }
-                    let path = url.standardizedFileURL.path
-                    if path.hasPrefix(rootPrefix) {
-                        let relativePath = String(path.dropFirst(rootPrefix.count))
-                        if !relativePath.isEmpty { subdirectoryPaths.insert(relativePath) }
+                    if values.isDirectory == true {
+                        if values.isPackage == true {
+                            enumerator.skipDescendants()
+                            return nil
+                        }
+                        let path = url.standardizedFileURL.path
+                        if path.hasPrefix(rootPrefix) {
+                            let relativePath = String(path.dropFirst(rootPrefix.count))
+                            if !relativePath.isEmpty { subdirectoryPaths.insert(relativePath) }
+                        }
+                        return nil
                     }
-                    return
-                }
-                guard includeImages, values.isRegularFile == true else { return }
-                let ext = url.pathExtension.lowercased()
-                guard supportedExtensions.contains(ext) || UTType(filenameExtension: ext)?.conforms(to: .image) == true else {
-                    return
-                }
-                let canonicalURL = url.standardizedFileURL.resolvingSymlinksInPath()
-                guard !seenPaths.contains(canonicalURL.path) else { return }
-                guard manager.isReadableFile(atPath: canonicalURL.path) else {
-                    inaccessibleURL = canonicalURL
-                    return
-                }
-                guard let asset = Self.readAsset(at: canonicalURL, folderID: folder.id, values: values) else {
-                    if !manager.fileExists(atPath: canonicalURL.path) {
-                        inaccessibleURL = canonicalURL
-                        return
+                    guard includeImages, values.isRegularFile == true else { return nil }
+                    let ext = url.pathExtension.lowercased()
+                    guard supportedExtensions.contains(ext) || UTType(filenameExtension: ext)?.conforms(to: .image) == true else {
+                        return nil
                     }
-                    skippedFiles += 1
-                    skippedURLs.append(canonicalURL)
-                    return
+                    let canonicalURL = url.standardizedFileURL.resolvingSymlinksInPath()
+                    guard canonicalURL.path.hasPrefix(rootPrefix), seenPaths.insert(canonicalURL.path).inserted else {
+                        return nil
+                    }
+                    return canonicalURL
                 }
-                seenPaths.insert(asset.id)
-                assets.append(asset)
+                if let inaccessibleURL { throw FolderScanError.unavailableFolder(inaccessibleURL) }
+                guard let candidate else { continue }
+                group.addTask {
+                    try Task.checkCancellation()
+                    let asset = try await assetReader(candidate, folder.id)
+                    try Task.checkCancellation()
+                    return asset.map(ReadResult.asset) ?? .skipped(candidate)
+                }
+                pendingReads += 1
+                if pendingReads == maximumConcurrentMetadataReads, let result = try await group.next() {
+                    collect(result)
+                    pendingReads -= 1
+                }
             }
             if let inaccessibleURL { throw FolderScanError.unavailableFolder(inaccessibleURL) }
+            for try await result in group { collect(result) }
         }
         try Task.checkCancellation()
-        if let inaccessibleURL { throw FolderScanError.unavailableFolder(inaccessibleURL) }
         guard manager.isReadableFile(atPath: root.path) else { throw FolderScanError.unavailableFolder(root) }
-        assets.sort { $0.fileURL.path.localizedStandardCompare($1.fileURL.path) == .orderedAscending }
-        let sortedDirectories = subdirectoryPaths.sorted { lhs, rhs in
-            let comparison = lhs.localizedStandardCompare(rhs)
-            return comparison == .orderedSame ? lhs < rhs : comparison == .orderedAscending
-        }
-        return ScanResult(assets: assets, skippedFiles: skippedFiles, skippedURLs: skippedURLs, subdirectoryPaths: sortedDirectories)
+        // Completion order is deliberately ignored, including for corrupt-image reports.
+        assets.sort { Self.pathPrecedes($0.fileURL.path, $1.fileURL.path) }
+        skippedURLs.sort { Self.pathPrecedes($0.path, $1.path) }
+        let sortedDirectories = subdirectoryPaths.sorted(by: Self.pathPrecedes)
+        return ScanResult(assets: assets, skippedFiles: skippedURLs.count, skippedURLs: skippedURLs, subdirectoryPaths: sortedDirectories)
     }
 
-    private static var supportedExtensions: Set<String> {
+    private static func pathPrecedes(_ lhs: String, _ rhs: String) -> Bool {
+        let comparison = lhs.localizedStandardCompare(rhs)
+        return comparison == .orderedSame ? lhs < rhs : comparison == .orderedAscending
+    }
+
+    private static let supportedExtensions: Set<String> = {
         let identifiers = CGImageSourceCopyTypeIdentifiers() as? [String] ?? []
         let registeredExtensions = Set(identifiers.flatMap { identifier in
             UTType(identifier)?.tags[.filenameExtension] ?? []
@@ -139,9 +179,22 @@ public struct FolderScanner: Sendable {
             "rwz", "sr2", "srf", "srw", "x3f"
         ]
         return registeredExtensions.union(commonExtensions)
+    }()
+
+    private static func readAsset(at url: URL, folderID: UUID) throws -> PhotoAsset? {
+        let manager = FileManager.default
+        guard manager.isReadableFile(atPath: url.path),
+              let values = try? url.resourceValues(forKeys: [.fileSizeKey, .creationDateKey, .contentModificationDateKey]) else {
+            throw FolderScanError.unavailableFolder(url)
+        }
+        let asset = try readAsset(at: url, folderID: folderID, values: values)
+        if asset == nil, !manager.fileExists(atPath: url.path) {
+            throw FolderScanError.unavailableFolder(url)
+        }
+        return asset
     }
 
-    private static func readAsset(at url: URL, folderID: UUID, values: URLResourceValues) -> PhotoAsset? {
+    private static func readAsset(at url: URL, folderID: UUID, values: URLResourceValues) throws -> PhotoAsset? {
         let sourceOptions = [kCGImageSourceShouldCache: false] as CFDictionary
         guard let source = CGImageSourceCreateWithURL(url as CFURL, sourceOptions),
               CGImageSourceGetCount(source) > 0,
@@ -150,6 +203,7 @@ public struct FolderScanner: Sendable {
               let height = (properties[kCGImagePropertyPixelHeight as String] as? NSNumber)?.intValue,
               width > 0, height > 0 else { return nil }
 
+        try Task.checkCancellation()
         // A header can still be readable when pixel data is corrupt. A small decode validates it
         // without allocating the full resolution image (especially important for camera RAW).
         let thumbnailOptions: [CFString: Any] = [

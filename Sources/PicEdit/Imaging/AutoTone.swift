@@ -66,6 +66,8 @@ struct AutoToneCurve: Sendable {
         var histogram = [Double](repeating: 0, count: 256)
         var weight = 0.0, luminanceSum = 0.0
         var shadowEvidence = 0.0, highlightEvidence = 0.0
+        // At most 65,536 samples: a serial CPU reduction avoids another worker
+        // pool and GPU readback while decoding other photos proceeds in parallel.
         for row in 0..<height {
             if row % 32 == 0 { try Task.checkCancellation() }
             for column in 0..<width {

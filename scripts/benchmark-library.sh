@@ -29,6 +29,8 @@ xcrun swiftc \
     -I "$PROJECT_ROOT/Sources/CSQLite" \
     -I "$BENCHMARK_DIR" \
     "$PROJECT_ROOT/Sources/PicEdit/LibraryModel.swift" \
+    "$PROJECT_ROOT/Sources/PicEdit/LibraryProjection.swift" \
+    "$PROJECT_ROOT/Sources/PicEdit/LibraryCatalogWorker.swift" \
     "$PROJECT_ROOT/Sources/PicEdit/FolderTreeNode.swift" \
     "$PROJECT_ROOT/scripts/benchmark-library.swift" \
     "$BENCHMARK_DIR/PicEditCore.o" \
