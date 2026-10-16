@@ -31,7 +31,7 @@ Review der Implementierung für Bibliothek und Ordnerbaum, RAW-Vorschauen, Tonwe
 
 ## Bekannte Funktionsgrenzen
 
-Die Verarbeitung betrifft derzeit Vorschauen bis 2400 Pixel langer Kante. Die Filter bieten klassische Bildkorrekturen, keine identische Adobe-RAW-Engine und kein KI-Entrauschen. Ein Vollauflösungsexport ist noch nicht implementiert. Die Backups enthalten Bearbeitungswerte; Originalbilder und der bestehende Bibliothekskatalog `catalog.json` müssen separat gesichert werden. Undo-Verläufe gelten für die Sitzung, aktuelle Reglerwerte werden dauerhaft gespeichert. Bearbeitungen sind an die vorhandenen pfadbasierten Bildkennungen gebunden.
+Die interaktive Bearbeitungsansicht verwendet Vorschauen bis 2400 Pixel langer Kante. Der implementierte [JPEG-Export](JPEG-EXPORT.md) decodiert dagegen das Original in voller Auflösung und wendet die übernommenen Bearbeitungsfilter an; optionale Größenbegrenzung und RAW-Unterstützung sind dort beschrieben. Die Filter bieten klassische Bildkorrekturen, keine identische Adobe-RAW-Engine und kein KI-Entrauschen. Die Backups enthalten Bearbeitungswerte; Originalbilder und der bestehende Bibliothekskatalog `catalog.json` müssen separat gesichert werden. Undo-Verläufe gelten für die Sitzung, aktuelle Reglerwerte werden dauerhaft gespeichert. Bearbeitungen sind an die vorhandenen pfadbasierten Bildkennungen gebunden.
 
 ## Ergänzung: Tonwert-Automatik
 
