@@ -9,17 +9,23 @@ struct PreviewRequest: Hashable, Sendable {
     let pixelSize: Int
     let fileSize: Int64
     let allowsEmbeddedPreview: Bool
+    /// Stronger, optional file identity for consumers that require native
+    /// change-time/inode coherence even when catalog mtime/size were restored.
+    let sourceRevision: String?
 
-    init(url: URL, modifiedAt: Date, pixelSize: Int, fileSize: Int64 = 0, allowsEmbeddedPreview: Bool = true) {
+    init(url: URL, modifiedAt: Date, pixelSize: Int, fileSize: Int64 = 0, allowsEmbeddedPreview: Bool = true,
+         sourceRevision: String? = nil) {
         self.url = url.standardizedFileURL
         self.modifiedAt = modifiedAt
         self.pixelSize = min(max(pixelSize, 64), 4_096)
         self.fileSize = fileSize
         self.allowsEmbeddedPreview = allowsEmbeddedPreview
+        self.sourceRevision = sourceRevision
     }
 
     func hasSameOriginal(as other: PreviewRequest) -> Bool {
-        url == other.url && modifiedAt == other.modifiedAt && fileSize == other.fileSize && allowsEmbeddedPreview == other.allowsEmbeddedPreview
+        url == other.url && modifiedAt == other.modifiedAt && fileSize == other.fileSize
+            && allowsEmbeddedPreview == other.allowsEmbeddedPreview && sourceRevision == other.sourceRevision
     }
 }
 
@@ -199,7 +205,8 @@ actor ImagePreviewPipeline {
                         for size in sizes {
                             try Task.checkCancellation()
                             let candidate = PreviewRequest(url: request.url, modifiedAt: request.modifiedAt,
-                                                           pixelSize: size, fileSize: request.fileSize, allowsEmbeddedPreview: request.allowsEmbeddedPreview)
+                                                           pixelSize: size, fileSize: request.fileSize, allowsEmbeddedPreview: request.allowsEmbeddedPreview,
+                                                           sourceRevision: request.sourceRevision)
                             if let bitmap = await diskCache.image(for: candidate) {
                                 persisted = bitmap
                                 cachedAs = candidate

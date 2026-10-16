@@ -102,7 +102,7 @@ struct CloudSettingsIntegrationTests {
         assistant.prompt = f.request.prompt; assistant.generate()
         try await waitCloud { await MainActor.run { settings.pendingConsent != nil } }
         #expect(f.transport.requests.isEmpty && !assistant.canAccept)
-        settings.respondToConsent(false)
+        settings.respondToConsent(false, for: try #require(settings.pendingConsent).id)
         try await waitCloud { await MainActor.run { assistant.state != .generating } }
         #expect(f.transport.requests.isEmpty)
         assistant.generate()
@@ -113,7 +113,7 @@ struct CloudSettingsIntegrationTests {
         try await waitCloud { await MainActor.run { assistant.availability == .available } }
         assistant.generate()
         try await waitCloud { await MainActor.run { settings.pendingConsent != nil } }
-        settings.respondToConsent(true)
+        settings.respondToConsent(true, for: try #require(settings.pendingConsent).id)
         try await waitCloud { await MainActor.run { assistant.state == .previewing } }
         #expect(f.transport.requests.count == 1 && assistant.canAccept)
         settings.select(.local)

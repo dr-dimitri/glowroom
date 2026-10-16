@@ -25,7 +25,11 @@ final class AIProviderSettings: ObservableObject {
     private let local: any AIEditingProvider
     private let defaults: UserDefaults
     private weak var assistant: AIAssistantModel?
-    private var consentWaiter: CheckedContinuation<Bool, Never>?
+    private struct ConsentWaiter {
+        let consentID: UUID
+        let continuation: CheckedContinuation<Bool, Never>
+    }
+    private var consentWaiter: ConsentWaiter?
     private var configurationID = UUID()
     private var configurationRevision: UInt64 = 0
 
@@ -65,7 +69,7 @@ final class AIProviderSettings: ObservableObject {
     private func invalidate() {
         configurationID = UUID()
         configurationRevision += 1
-        respondToConsent(false)
+        cancelPendingConsent()
         assistant?.suspendProvider()
     }
     private func apply() {
@@ -144,11 +148,17 @@ final class AIProviderSettings: ObservableObject {
         let allowed = await withTaskCancellationHandler {
             await withCheckedContinuation { continuation in
                 if Task.isCancelled { continuation.resume(returning: false) }
-                else { consentWaiter = continuation; pendingConsent = consent }
+                else {
+                    // Cancellation delivery can lag behind a new request. Retire
+                    // the old observer before replacing the single waiter slot.
+                    cancelPendingConsent()
+                    consentWaiter = ConsentWaiter(consentID: consent.id, continuation: continuation)
+                    pendingConsent = consent
+                }
             }
         } onCancel: {
             Task { @MainActor [weak self] in
-                if self?.pendingConsent?.id == consent.id { self?.respondToConsent(false) }
+                self?.respondToConsent(false, for: consent.id)
             }
         }
         guard allowed, expected == configurationID, !Task.isCancelled else {
@@ -159,10 +169,16 @@ final class AIProviderSettings: ObservableObject {
         guard expected == configurationID, !Task.isCancelled else { await cloud.withdraw(consent); return false }
         return true
     }
-    func respondToConsent(_ allowed: Bool) {
-        let waiter = consentWaiter
+    func respondToConsent(_ allowed: Bool, for consentID: UUID) {
+        // A dismissed sheet can still deliver an action after a newer request
+        // became pending. Its immutable presentation ID must match the waiter.
+        guard let waiter = consentWaiter, waiter.consentID == consentID else { return }
         consentWaiter = nil; pendingConsent = nil
-        waiter?.resume(returning: allowed)
+        waiter.continuation.resume(returning: allowed)
+    }
+    private func cancelPendingConsent() {
+        guard let consentID = consentWaiter?.consentID else { return }
+        respondToConsent(false, for: consentID)
     }
     func refreshUsage() async {
         guard let cloud else { return }

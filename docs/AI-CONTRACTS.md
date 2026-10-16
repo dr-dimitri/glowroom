@@ -42,7 +42,7 @@ Standardgrenzen sind 16 KiB UTF-8 für die Benutzeranweisung, 64 KiB für die ro
 
 ## Gültigkeit und Quellenbezug
 
-Die Originalidentität besteht zunächst aus standardisiertem Dateipfad, Änderungszeit und Dateigröße aus dem bereits geladenen Katalog. Das ist eine Änderungskennung, kein kryptografischer Beweis identischer Pixel. Für die spätere Bildanalyse wird der Fingerabdruck um den tatsächlich analysierten Rasterinhalt erweitert; dieses Issue liest oder hasht keine Bilddateien zusätzlich auf dem MainActor. Geänderte Originale müssen wie bisher durch eine Bibliotheksaktualisierung bekannt werden.
+Die Originalidentität besteht aus standardisiertem Dateipfad, Änderungszeit und Dateigröße aus dem bereits geladenen Katalog. Das ist eine Änderungskennung, kein kryptografischer Beweis identischer Pixel. Die getrennte [Bildanalyse](AI-IMAGE-ANALYSIS.md) ergänzt eine native Quellenrevision und den SHA-256-Digest des tatsächlich übergebenen Rasters einschließlich Profil-/Layoutvertrag. Ihre Dateiprüfung, Rastervorbereitung und Hashberechnung laufen im Hintergrund. Der Textprovider liest weiterhin keine Bilddateien.
 
 Bearbeitungs- und Auswahlgenerationen sind unabhängig von persistierten SQLite-Revisionen. Eine manuelle Änderung mit anschließendem Undo, Reset, Restore oder ein Auswahlwechsel A→B→A macht eine alte Anfrage ungültig, auch wenn danach wieder dieselben Zahlen oder dieselbe Foto-ID sichtbar sind. Sitzungskennungen verhindern Kollisionen zwischen Modellinstanzen; beim Ausschöpfen eines Generationszählers wechselt die zugehörige Epoche. Gesperrte/geschlossene Bibliothek oder Bearbeitung erlaubt keine KI-Übernahme.
 
@@ -69,3 +69,5 @@ PICEDIT_TEST_BUILD_PATH=/tmp/picedit-ai-tests ./scripts/test.sh --jobs 4 --filte
 ```
 
 Der echte lokale Textprovider aus [Issue #3](https://github.com/dr-dimitri/picedit/issues/3) und die bewusste Vorschau-/Übernahmeoberfläche aus [Issue #4](https://github.com/dr-dimitri/picedit/issues/4) sind in der [Assistentendokumentation](LOCAL-AI-ASSISTANT.md) beschrieben. [Issue #5](https://github.com/dr-dimitri/picedit/issues/5) ergänzt [drei Lookvarianten](AI-LOOKS.md) als gemeinsamen Auftrag mit strikt validierter Gruppe. Diese Aufgaben verwenden denselben Speicherpfad und denselben begrenzten Coordinator; der Requestmodus unterscheidet die Antwortformen.
+
+Die Bildanalyse aus [Issue #6](https://github.com/dr-dimitri/picedit/issues/6) verwendet eigene typisierte Anfragen, Ergebnisse und eine unabhängige Verfügbarkeitsprüfung für `imageUnderstanding`. Ihr lokaler Dienst teilt das Inferenzbudget mit der Textassistenz. Die Antwort enthält ausschließlich begrenzte Beschreibung und visuelle Attribute; appseitiger Quellenbezug und Auftragsidentität kommen nicht aus dem Modell. Originalanalysen bleiben bei Regleränderungen gültig, bearbeitete Eingaben sind an den vollständigen Bearbeitungssnapshot gebunden. Alle Ergebnisse sind vorläufig und schreiben keine Metadaten.

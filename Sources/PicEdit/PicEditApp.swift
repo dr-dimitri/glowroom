@@ -9,6 +9,7 @@ struct PicEditApp: App {
     @StateObject private var editor: EditingModel
     @StateObject private var assistant: AIAssistantModel
     @StateObject private var aiSettings: AIProviderSettings
+    @StateObject private var imageAnalysis: ImageAnalysisModel
     @StateObject private var exporter = JPEGExportModel()
     private let dataDirectory: URL
 
@@ -33,6 +34,8 @@ struct PicEditApp: App {
         aiSettings.attach(assistant)
         _assistant = StateObject(wrappedValue: assistant)
         _aiSettings = StateObject(wrappedValue: aiSettings)
+        _imageAnalysis = StateObject(wrappedValue: ImageAnalysisModel(service: LocalImageAnalysisFactory.makeService(),
+                                                                    editor: editor, library: library))
     }
 
     var body: some Scene {
@@ -41,10 +44,14 @@ struct PicEditApp: App {
                 .environmentObject(editor)
                 .environmentObject(exporter)
                 .environmentObject(assistant)
+                .environmentObject(imageAnalysis)
                 .frame(minWidth: 1000, minHeight: 660)
                 .preferredColorScheme(.dark)
-                .sheet(item: Binding(get: { aiSettings.pendingConsent }, set: { if $0 == nil { aiSettings.respondToConsent(false) } })) { consent in
-                    AICloudConsentView(consent: consent, answer: aiSettings.respondToConsent)
+                .background {
+                    if let consent = aiSettings.pendingConsent {
+                        AICloudConsentPresenter(settings: aiSettings, consent: consent)
+                            .id(consent.id)
+                    }
                 }
                 .onAppear { delegate.library = library; delegate.editor = editor; delegate.exporter = exporter; delegate.aiSettings = aiSettings; NSApp.setActivationPolicy(.regular); NSApp.activate(ignoringOtherApps: true) }
         }
@@ -102,6 +109,39 @@ struct PicEditApp: App {
             }
         }
         Settings { AIProviderSettingsView(settings: aiSettings) }
+    }
+}
+
+/// Each sheet host has a stable identity and captures the consent it displays.
+/// In particular, a late nil setter never consults a newer pending consent ID.
+@MainActor
+struct AICloudConsentPresentation {
+    let settings: AIProviderSettings
+    let consent: AICloudConsent
+
+    var binding: Binding<AICloudConsent?> {
+        Binding(get: {
+            settings.pendingConsent?.id == consent.id ? consent : nil
+        }, set: { value in
+            if value == nil { settings.respondToConsent(false, for: consent.id) }
+        })
+    }
+
+    func answer(_ allowed: Bool) {
+        settings.respondToConsent(allowed, for: consent.id)
+    }
+}
+
+private struct AICloudConsentPresenter: View {
+    @ObservedObject var settings: AIProviderSettings
+    let consent: AICloudConsent
+
+    var body: some View {
+        let presentation = AICloudConsentPresentation(settings: settings, consent: consent)
+        Color.clear.frame(width: 0, height: 0)
+            .sheet(item: presentation.binding) { _ in
+                AICloudConsentView(consent: consent, answer: presentation.answer)
+            }
     }
 }
 

@@ -162,7 +162,10 @@ actor PreviewDiskCache {
         // Length-prefixed UTF-8 prevents ambiguous concatenations. Date's exact
         // floating-point bits avoid locale/precision changes in formatted dates.
         let path = request.url.standardizedFileURL.path
-        let input = "\(rendererVersion)\n\(path.utf8.count):\(path)\n\(request.modifiedAt.timeIntervalSince1970.bitPattern)\n\(request.fileSize)\n\(request.pixelSize)\n\(request.allowsEmbeddedPreview)"
+        var input = "\(rendererVersion)\n\(path.utf8.count):\(path)\n\(request.modifiedAt.timeIntervalSince1970.bitPattern)\n\(request.fileSize)\n\(request.pixelSize)\n\(request.allowsEmbeddedPreview)"
+        // Preserve every existing nil-revision disk key. Native revisions get
+        // a disjoint suffix and can never reuse an older catalog-only entry.
+        if let revision = request.sourceRevision { input += "\nrevision:\(revision.utf8.count):\(revision)" }
         return SHA256.hash(data: Data(input.utf8)).map { String(format: "%02x", $0) }.joined()
     }
 
