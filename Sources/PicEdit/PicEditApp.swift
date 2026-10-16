@@ -20,7 +20,8 @@ struct PicEditApp: App {
         } else { directory = nil }
         let repository = CatalogRepository(directory: directory)
         dataDirectory = repository.directory
-        let library = LibraryModel(repository: repository)
+        let semantic = try? SemanticSearchService(directory: repository.directory)
+        let library = LibraryModel(repository: repository, semanticSearch: semantic)
         let editor = EditingModel(directory: repository.directory)
         let provider = LocalAIEditingProviderFactory.makeProvider()
         let coordinator = AIRequestCoordinator(provider: provider)

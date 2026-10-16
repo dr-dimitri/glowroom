@@ -159,11 +159,21 @@ struct LibraryView: View {
                 Spacer(minLength: 0)
                 HStack(spacing: 8) {
                     Image(systemName: "magnifyingglass").foregroundStyle(Theme.muted)
-                    TextField("Fotos suchen …", text: $model.search).textFieldStyle(.plain).font(.system(size: 12))
-                    if !model.search.isEmpty { Button { model.search = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(Theme.muted) }.buttonStyle(.plain) }
-                }.padding(10).frame(width: 175).background(Theme.panel, in: RoundedRectangle(cornerRadius: 7))
+                    TextField(model.searchMode == .literal ? "Fotos wörtlich suchen …" : "Bildinhalt auf Deutsch/Englisch …", text: Binding(
+                        get: { model.searchMode == .literal ? model.search : model.semanticQuery },
+                        set: { if model.searchMode == .literal { model.search = $0 } else { model.semanticQuery = $0 } }))
+                        .textFieldStyle(.plain).font(.system(size: 12))
+                        .accessibilityLabel(model.searchMode == .literal ? "Wörtliche Fotosuche" : "Semantische Bildsuche")
+                    if !(model.searchMode == .literal ? model.search : model.semanticQuery).isEmpty {
+                        Button { if model.searchMode == .literal { model.search = "" } else { model.semanticQuery = "" } }
+                            label: { Image(systemName: "xmark.circle.fill").foregroundStyle(Theme.muted) }.buttonStyle(.plain)
+                    }
+                }.padding(10).frame(width: model.searchMode == .literal ? 175 : 240).background(Theme.panel, in: RoundedRectangle(cornerRadius: 7))
             }.padding(.horizontal, 26).padding(.top, 27).padding(.bottom, 23)
             controlBar
+            if model.searchMode == .semantic || model.semanticOperationLabel != nil || model.semanticState.isIndexing || model.semanticImportReview != nil {
+                SemanticSearchControlsView(model: model)
+            }
             Rectangle().fill(Theme.line).frame(height: 1)
             if model.isLoading {
                 ProgressView("Bibliothek wird geöffnet …").frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -193,6 +203,9 @@ struct LibraryView: View {
                 HStack(spacing: 6) { Image(systemName: "line.3.horizontal.decrease"); Text(model.minimumRating == 0 ? "Alle Bewertungen" : "\(model.minimumRating)+ Sterne") }
                     .font(.system(size: 10)).foregroundStyle(model.minimumRating == 0 ? Theme.muted : Theme.accent)
             }.menuStyle(.borderlessButton).fixedSize()
+            Picker("Suchmodus", selection: $model.searchMode) {
+                ForEach(LibrarySearchMode.allCases) { Text($0.label).tag($0) }
+            }.pickerStyle(.menu).font(.system(size: 10)).fixedSize()
             Spacer(minLength: 8)
             Menu {
                 Picker("Sortieren", selection: $model.sort) { ForEach(PhotoSort.allCases) { Text($0.rawValue).tag($0) } }
@@ -221,8 +234,10 @@ struct LibraryView: View {
                 HStack(spacing: 15) { ForEach(["JPEG", "HEIC", "PNG", "TIFF", "RAW*"], id: \.self) { Text($0).font(.system(size: 8, weight: .medium, design: .monospaced)).tracking(1) } }
                     .foregroundStyle(Theme.muted.opacity(0.65)).padding(.top, 35)
                 Text("* abhängig von der Kameraunterstützung in macOS").font(.system(size: 9)).foregroundStyle(Theme.muted.opacity(0.55)).padding(.top, 8)
-            } else if !model.search.isEmpty || model.minimumRating > 0 {
-                Button("Filter zurücksetzen") { model.search = ""; model.minimumRating = 0 }.buttonStyle(AccentButton()).padding(.top, 23)
+            } else if !model.search.isEmpty || !model.semanticQuery.isEmpty || !model.semanticLiteralFilter.isEmpty || model.minimumRating > 0 {
+                Button("Filter zurücksetzen") {
+                    model.search = ""; model.semanticQuery = ""; model.semanticLiteralFilter = ""; model.minimumRating = 0
+                }.buttonStyle(AccentButton()).padding(.top, 23)
             }
         }.padding(30)
     }

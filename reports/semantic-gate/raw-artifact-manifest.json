@@ -1,0 +1,32 @@
+[
+  {
+    "original": "native-fp32-isolated-tokenizer-first-all-results.json",
+    "original_sha256": "354e3e11eb4dd8d26d6ae81e54f38af4791d914d6963a9c0f7812ec40cbfcd8c",
+    "archive": "raw/native-fp32-isolated-tokenizer-first-all-results.json.gz",
+    "archive_sha256": "fd6984d11f8dea4c9c8fd38ec8cad1b2c079cb2a5fe97c783cc9624e8ba83018"
+  },
+  {
+    "original": "native-fp32-isolated-tokenizer-first-cpu-results.json",
+    "original_sha256": "cb14ac2678664028c5e4066d458bde764aaf4ae2397b92546dfd314c68a93f33",
+    "archive": "raw/native-fp32-isolated-tokenizer-first-cpu-results.json.gz",
+    "archive_sha256": "ce27e056938907ae503b8d9163c159df310b08d9e24e3186237323eec470854a"
+  },
+  {
+    "original": "native-fp32-isolated-models-first-pool-all-results.json",
+    "original_sha256": "22a3d3b9cd82e71071ddb2faff5435255efaa1abda00dde2b83f081987c9c6b9",
+    "archive": "raw/native-fp32-isolated-models-first-pool-all-results.json.gz",
+    "archive_sha256": "ab08f37b80c6a2b890a539c8103e85cb7bd920732d89de6736a22a66c6ad9a6f"
+  },
+  {
+    "original": "native-fp32-isolated-text-first-per-model-pool-all-results.json",
+    "original_sha256": "30893adb4595ef0cc1d0376da5753e4a699142468ac31143135a18cee54cb1de",
+    "archive": "raw/native-fp32-isolated-text-first-per-model-pool-all-results.json.gz",
+    "archive_sha256": "4bb67b201b60dd5992c50d577fbf5a24e0b6891ff80dfbd18a67fa2f9ede6e8f"
+  },
+  {
+    "original": "native-fp32-isolated-text-first-per-model-pool-cpu-results.json",
+    "original_sha256": "47212e6cd72879e2b814184add2e050b7a54780b370c8b1043c901235d86e1e5",
+    "archive": "raw/native-fp32-isolated-text-first-per-model-pool-cpu-results.json.gz",
+    "archive_sha256": "f9c3908e821948affde90e00ef952c1ee7551bb69ffb953ff2f6d6a68e0dbdf6"
+  }
+]

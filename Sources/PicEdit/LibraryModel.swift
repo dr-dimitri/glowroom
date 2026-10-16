@@ -114,6 +114,34 @@ final class LibraryModel: ObservableObject {
     private var isApplyingSelection = false
     private var emptySelectionKey: LibraryProjectionKey?
     @Published var search = "" { didSet { scheduleProjection() } }
+    @Published var searchMode: LibrarySearchMode = .literal { didSet { scheduleProjection() } }
+    @Published var semanticQuery = "" { didSet { scheduleProjection() } }
+    @Published var semanticLiteralFilter = "" { didSet { scheduleProjection() } }
+    @Published var semanticTopK = 100 { didSet { scheduleProjection() } }
+    enum SemanticScope: String, CaseIterable, Identifiable {
+        case filtered, all
+        var id: Self { self }
+        var label: String { self == .filtered ? "Aktuell gefilterte Ansicht" : "Gesamte Bibliothek" }
+    }
+    @Published var semanticScope: SemanticScope = .filtered { didSet { refreshSemanticStatus() } }
+    @Published var semanticControlsExpanded = false {
+        didSet { refreshSemanticStatus() }
+    }
+    @Published private(set) var semanticState = SemanticSearchState.notInstalled
+    @Published private(set) var semanticError: String?
+    @Published private(set) var semanticScopeCount = 0
+    @Published private(set) var semanticScopeIsReady = false
+    @Published private(set) var semanticOperationLabel: String?
+    @Published private(set) var semanticActiveScopeLabel: String?
+    @Published private(set) var semanticImportReview: SemanticModelImportReview?
+    private let semanticSearch: (any SemanticSearchServing)?
+    private let semanticCatalogSessionID = UUID()
+    private var semanticUpdatesTask: Task<Void, Never>?
+    private var semanticStatusTask: Task<Void, Never>?
+    private var semanticOperationTask: Task<Void, Never>?
+    private var semanticShutdownTask: Task<Void, Never>?
+    private var semanticStatusID = UUID()
+    private var semanticOperationID = UUID()
     @Published var sort: PhotoSort = .date { didSet { scheduleProjection() } }
     @Published var minimumRating = 0 { didSet { scheduleProjection() } }
     @Published var gridSize: Double = 210
@@ -159,10 +187,25 @@ final class LibraryModel: ObservableObject {
     private var treeOverrides: [UUID: LibraryFolder] = [:]
     var gridColumnCount = 3
 
-    init(repository: CatalogRepository = CatalogRepository(), now: @escaping () -> Date = Date.init) {
+    init(repository: CatalogRepository = CatalogRepository(), now: @escaping () -> Date = Date.init,
+         semanticSearch: (any SemanticSearchServing)? = nil) {
         writer = CatalogWriter(repository: repository)
         self.now = now
+        self.semanticSearch = semanticSearch
+        if let semanticSearch {
+            semanticUpdatesTask = Task { [weak self] in
+                for await state in await semanticSearch.updates() {
+                    guard !Task.isCancelled, let self else { return }
+                    self.applySemanticState(state)
+                }
+            }
+        }
         Task { await load() }
+    }
+
+    deinit {
+        semanticUpdatesTask?.cancel(); semanticStatusTask?.cancel(); semanticOperationTask?.cancel()
+        projectionTask?.cancel(); deferredProjectionTask?.cancel()
     }
 
     var folders: [LibraryFolder] { catalog.folders }
@@ -221,35 +264,212 @@ final class LibraryModel: ObservableObject {
         }
     }
 
+    private var projectionKey: LibraryProjectionKey {
+        LibraryProjectionKey(selection: selection,
+            query: (searchMode == .literal ? search : semanticLiteralFilter).trimmingCharacters(in: .whitespacesAndNewlines),
+            sort: sort, minimumRating: minimumRating, searchMode: searchMode,
+            semanticQuery: semanticQuery.trimmingCharacters(in: .whitespacesAndNewlines), topK: semanticTopK)
+    }
+
     private func scheduleProjection() {
         deferredProjectionTask?.cancel()
         deferredProjectionTask = nil
         projectionRevision += 1
         let number = projectionRevision
         projectionTask?.cancel()
+        guard !isClosing else { isProjecting = false; projectionTask = nil; return }
         isProjecting = true
         projectionTask = Task { [weak self] in
             // Coalesce synchronous UI changes before copying the catalog snapshot.
             await Task.yield()
             guard let self, !Task.isCancelled else { return }
-            let key = LibraryProjectionKey(selection: selection, query: search.trimmingCharacters(in: .whitespacesAndNewlines),
-                                           sort: sort, minimumRating: minimumRating)
+            let key = projectionKey, generation = catalogGeneration
+            var candidates: LibraryProjectionCandidates?
             do {
-                let result = try await projectionWorker.project(catalog, generation: catalogGeneration,
-                                                                key: key, date: now(), overrides: treeOverrides)
-                guard !Task.isCancelled, number == projectionRevision else { return }
+                let current = try await projectionWorker.candidates(catalog, snapshotSessionID: semanticCatalogSessionID,
+                    generation: generation, key: key, date: now(), overrides: treeOverrides)
+                candidates = current
+                try Task.checkCancellation()
+                guard number == projectionRevision else { return }
+                // Catalog invalidation is a lightweight actor snapshot update.
+                // Ordinary typing never opens or scans the semantic index.
+                if let semanticSearch {
+                    await semanticSearch.updateCatalog(snapshotSessionID: semanticCatalogSessionID,
+                        generation: generation, assets: catalog.assets)
+                    try Task.checkCancellation()
+                    guard number == projectionRevision else { return }
+                }
+                let result: LibraryProjection
+                if key.usesSemanticRanking {
+                    guard let semanticSearch else { throw SemanticEmbeddingError.unavailable(.modelNotInstalled) }
+                    let scores = try await semanticSearch.search(query: key.semanticQuery, candidates: current.assets, topK: key.topK)
+                    try Task.checkCancellation()
+                    guard number == projectionRevision,
+                          (semanticState.indexGenerationID == nil || semanticState.indexGenerationID == scores.indexGenerationID),
+                          (semanticState.modelDescriptor == nil || semanticState.modelDescriptor == scores.modelDescriptor) else {
+                        throw SemanticEmbeddingError.installationChanged
+                    }
+                    result = try await projectionWorker.rank(current, result: scores, topK: key.topK)
+                } else { result = current.base }
+                try Task.checkCancellation()
+                guard number == projectionRevision, generation == catalogGeneration else { return }
+                if selection == .recent, now() < result.evaluatedAt || result.expiresAt.map({ now() >= $0 }) == true {
+                    scheduleProjection(); return
+                }
                 projection = result
+                semanticError = nil
                 isProjecting = false
                 projectionTask = nil
                 reconcileSelection()
             } catch is CancellationError { }
             catch {
-                guard number == projectionRevision else { return }
+                guard !Task.isCancelled, !isClosing, number == projectionRevision else { return }
+                if key.usesSemanticRanking, let candidates {
+                    let empty = await projectionWorker.empty(candidates)
+                    guard number == projectionRevision else { return }
+                    projection = empty
+                    semanticError = (error as? SemanticEmbeddingError)?.localizedDescription ?? SemanticEmbeddingError.providerFailure.localizedDescription
+                } else { errorMessage = error.localizedDescription }
                 isProjecting = false
                 projectionTask = nil
-                errorMessage = error.localizedDescription
+                reconcileSelection()
             }
         }
+        refreshSemanticStatus()
+    }
+
+    var hasSemanticService: Bool { semanticSearch != nil }
+    var canManageSemanticSearch: Bool { canModify && !isImporting && semanticSearch != nil }
+
+    private func semanticScopeKey(_ scope: SemanticScope) -> LibraryProjectionKey {
+        if scope == .all { return LibraryProjectionKey(selection: .all, query: "", sort: sort, minimumRating: 0) }
+        let key = projectionKey
+        return LibraryProjectionKey(selection: key.selection, query: key.query, sort: key.sort, minimumRating: key.minimumRating)
+    }
+
+    private func applySemanticState(_ state: SemanticSearchState) {
+        guard state.version >= semanticState.version, !isClosing else { return }
+        let previous = semanticState
+        semanticState = state
+        if searchMode == .semantic, !semanticQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+           previous.indexGenerationID != state.indexGenerationID ||
+           (previous.availability != .available && state.availability == .available) ||
+           (previous.isIndexing && !state.isIndexing) {
+            scheduleProjection()
+        }
+    }
+
+    func refreshSemanticStatus() {
+        let id = UUID(); semanticStatusID = id
+        semanticStatusTask?.cancel()
+        guard let semanticSearch, !isClosing,
+              searchMode == .semantic || semanticControlsExpanded || semanticOperationLabel != nil || semanticState.isIndexing else { return }
+        semanticScopeIsReady = false
+        let key = semanticScopeKey(semanticScope), generation = catalogGeneration, snapshot = catalog
+        semanticStatusTask = Task { [weak self] in
+            guard let self else { return }
+            do {
+                let scope = try await projectionWorker.candidates(snapshot, snapshotSessionID: semanticCatalogSessionID,
+                    generation: generation, key: key, date: now(), overrides: treeOverrides)
+                try Task.checkCancellation()
+                guard semanticStatusID == id, catalogGeneration == generation else { return }
+                semanticScopeCount = scope.assets.count
+                semanticScopeIsReady = true
+                await semanticSearch.updateCatalog(snapshotSessionID: semanticCatalogSessionID, generation: generation, assets: snapshot.assets)
+                try Task.checkCancellation()
+                guard semanticStatusID == id else { return }
+                let state = try await semanticSearch.status(scope: scope.assets)
+                guard !Task.isCancelled, semanticStatusID == id, catalogGeneration == generation else { return }
+                applySemanticState(state)
+            } catch is CancellationError { }
+            catch {
+                guard !Task.isCancelled, !isClosing, semanticStatusID == id else { return }
+                semanticError = (error as? SemanticEmbeddingError)?.localizedDescription ?? SemanticEmbeddingError.indexUnavailable.localizedDescription
+            }
+        }
+    }
+
+    func prepareSemanticIndex(rebuild: Bool = false) {
+        runSemanticOperation(rebuild ? "Index wird neu aufgebaut" : "Index wird vorbereitet") { service, assets in
+            try await service.prepareIndex(scope: assets, rebuild: rebuild)
+        }
+    }
+
+    func deleteSemanticIndex() {
+        runSemanticOperation("Index wird gelöscht") { service, _ in try await service.deleteIndex() }
+    }
+
+    func removeSemanticModel() {
+        runSemanticOperation("Suchmodell wird entfernt") { service, _ in try await service.removeModel() }
+    }
+
+    func inspectSemanticModel(source: URL) {
+        guard canManageSemanticSearch, semanticOperationTask == nil, let semanticSearch else { return }
+        semanticImportReview = nil
+        let id = UUID(); semanticOperationID = id
+        semanticOperationLabel = "Modellpaket wird geprüft"
+        semanticOperationTask = Task { [weak self] in
+            do {
+                let review = try await semanticSearch.inspectModel(source: source)
+                try Task.checkCancellation()
+                guard let self, self.semanticOperationID == id else { return }
+                guard self.canManageSemanticSearch else { throw CancellationError() }
+                self.semanticImportReview = review
+                self.semanticOperationTask = nil; self.semanticOperationLabel = nil
+            } catch { self?.finishSemanticOperation(id: id, error: error) }
+        }
+    }
+
+    func dismissSemanticImport(id: UUID) {
+        if semanticImportReview?.id == id { semanticImportReview = nil }
+    }
+
+    func installSemanticModel(reviewID: UUID) {
+        guard let review = semanticImportReview, review.id == reviewID else { return }
+        semanticImportReview = nil
+        runSemanticOperation("Modell wird importiert") { service, _ in try await service.installModel(review) }
+    }
+
+    func cancelSemanticOperation() {
+        semanticOperationTask?.cancel()
+        semanticImportReview = nil
+        if let semanticSearch { Task { await semanticSearch.cancelIndexing() } }
+    }
+
+    private func runSemanticOperation(_ label: String,
+        operation: @escaping @Sendable (any SemanticSearchServing, [PhotoAsset]) async throws -> Void) {
+        guard canManageSemanticSearch, semanticOperationTask == nil, let semanticSearch else { return }
+        let id = UUID(); semanticOperationID = id
+        let key = semanticScopeKey(semanticScope), scopeLabel = semanticScope.label
+        let generation = catalogGeneration, snapshot = catalog
+        semanticError = nil; semanticOperationLabel = label
+        semanticOperationTask = Task { [weak self] in
+            guard let self else { return }
+            do {
+                let scope = try await projectionWorker.candidates(snapshot, snapshotSessionID: semanticCatalogSessionID,
+                    generation: generation, key: key, date: now(), overrides: treeOverrides)
+                try Task.checkCancellation()
+                guard semanticOperationID == id, generation == catalogGeneration,
+                      key == semanticScopeKey(semanticScope), canManageSemanticSearch else { throw CancellationError() }
+                semanticActiveScopeLabel = "\(scopeLabel) · \(scope.assets.count) Bilder"
+                await semanticSearch.updateCatalog(snapshotSessionID: semanticCatalogSessionID, generation: generation, assets: snapshot.assets)
+                try Task.checkCancellation()
+                guard semanticOperationID == id, generation == catalogGeneration, canManageSemanticSearch else { throw CancellationError() }
+                try await operation(semanticSearch, scope.assets)
+                finishSemanticOperation(id: id, error: nil)
+                scheduleProjection()
+            } catch { finishSemanticOperation(id: id, error: error) }
+        }
+    }
+
+    private func finishSemanticOperation(id: UUID, error: Error?) {
+        guard semanticOperationID == id else { return }
+        semanticOperationTask = nil; semanticOperationLabel = nil
+        if let error, !(error is CancellationError), (error as? SemanticEmbeddingError) != .cancelled,
+           (error as? SemanticEmbeddingError) != .superseded {
+            semanticError = (error as? SemanticEmbeddingError)?.localizedDescription ?? SemanticEmbeddingError.providerFailure.localizedDescription
+        }
+        refreshSemanticStatus()
     }
 
     /// Also used by imports and tests to wait for the latest, not an obsolete, request.
@@ -527,10 +747,16 @@ final class LibraryModel: ObservableObject {
         }
     }
 
-    func beginTermination() { isClosing = true; importTask?.cancel(); queuedFolders = [] }
-    func cancelTermination() { isClosing = false }
+    func beginTermination() {
+        isClosing = true; importTask?.cancel(); queuedFolders = []
+        projectionTask?.cancel(); projectionTask = nil; isProjecting = false
+        semanticStatusTask?.cancel(); semanticOperationTask?.cancel(); semanticImportReview = nil
+        if let semanticSearch { semanticShutdownTask = Task { await semanticSearch.shutdown() } }
+    }
+    func cancelTermination() { isClosing = false; scheduleProjection() }
 
     func finishSaving() async -> Bool {
+        if let semanticShutdownTask { await semanticShutdownTask.value }
         importTask?.cancel()
         if let importTask { await importTask.value }
         if let mutationTask { await mutationTask.value }

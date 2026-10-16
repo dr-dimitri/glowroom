@@ -1,0 +1,88 @@
+# Lokale semantische Suche
+
+Stand: 16. Oktober 2026. Auswahl und Produktentscheidung für [Issue 8](https://github.com/dr-dimitri/picedit/issues/8), dokumentiert vor Provider-, Installations- und Vorverarbeitungscode. Wörtliche Suche bleibt Standard; die Erweiterung berechnet Suchvektoren aus Bildpixeln und Text. Sie erzeugt keine neuen Bildinhalte.
+
+## Auswahl vor Produktintegration
+
+| Kandidat | Belegte Paarung und Lizenz | Entscheidung |
+|---|---|---|
+| Multilingualer Sentence-Transformers CLIP-ViT-B32-Textencoder mit originalem CLIP-B32-Bildencoder | Autoren dokumentieren gemeinsame 512 Dimensionen; Textgewichte Apache 2.0, Original-CLIP-Code MIT. Eine ausdrückliche Lizenzzuordnung der ursprünglichen CLIP-Gewichte blieb unbestätigt. | Nicht gewählt; Gewichtelizenz und native Konvertierung nicht vollständig nachgewiesen. |
+| Google SigLIP2 Base Patch32 256, beide Türme Revision `94dffa8cb1179de3e03f091dbc3917e5d5a9ae84` | Exakte Google-Modellkarte erklärt Apache 2.0 für das Modell. Beide Türme derselben gepinnten Revision, 768 Dimensionen, mehrsprachiger gemeinsamer Raum. | Gewählt: Bildturm Float32, Textturm Float16, Core ML mit CPUOnly als zunächst angebotener Ausführungspfad. |
+
+Primärquellen: [gepinntes SigLIP2-Modell](https://huggingface.co/google/siglip2-base-patch32-256/blob/94dffa8cb1179de3e03f091dbc3917e5d5a9ae84/README.md), [Autorenpaper](https://arxiv.org/abs/2502.14786), [multilinguale CLIP-Modellkarte](https://huggingface.co/sentence-transformers/clip-ViT-B-32-multilingual-v1/blob/58edf8cada9e398793dca955574a48cbb7f18be2/README.md), [Original-CLIP-Lizenz](https://github.com/openai/CLIP/blob/d05afc436d78f1c48dc0dbf8e5980a9d471f35f6/LICENSE).
+
+Der verworfene Kandidat ist konkret `sentence-transformers/clip-ViT-B-32-multilingual-v1`, Revision `58edf8cada9e398793dca955574a48cbb7f18be2`, zusammen mit dem originalen CLIP-ViT-B/32-Checkpoint `40d365715913c9da98579312b702a82c18be219cc2a73407c4526f58eba950af` und CLIP-Code `d05afc436d78f1c48dc0dbf8e5980a9d471f35f6`. Veröffentlichte LFS-/Git-Metadaten der minimalen Textdateien ergeben 541.523.327 Bytes; die originale CLIP-Datei wurde mit HTTP-HEAD als 353.976.522 Bytes ausgewiesen. Zusammen 895.499.849 Bytes, ohne Gewichtsdownload oder selbst nachgerechnete Gewichtedigests. Das ist eine Quellgrößenerhebung, keine gemessene Core-ML-Installationsgröße.
+
+Dessen Textseite wäre mehrsprachiger cased DistilBERT mit maskiertem Mean-Pooling und bereitgestellter 768→512-Projektion, maximal 128 Tokens einschließlich Spezialtokens; Deutsch und Englisch stehen in der Trainingsliste. Die 77-Token-Grenze des originalen englischen CLIP-Textencoders gilt nicht für diese Paarung. Das originale [Bildpreprocessing](https://github.com/openai/CLIP/blob/d05afc436d78f1c48dc0dbf8e5980a9d471f35f6/clip/clip.py#L79) verwendet bikubische Skalierung der kurzen Kante auf 224, mittigen 224×224-Crop, RGB/CHW, Mittelwerte `(0.48145466, 0.4578275, 0.40821073)` und Standardabweichungen `(0.26862954, 0.26130258, 0.27577711)`, dann 512-dimensionales L2-normalisiertes Embedding. Orientierte sRGB-Eingabe und eine versionierte Alphamatte wären zusätzlich als App-Vertrag zu prüfen. Vorgesehene native Route wäre Core ML ML Program ab macOS 14; tatsächlich wurden für diesen verworfenen Kandidaten weder Konvertierung, Tokenparität, Qualität, RSS, Latenz noch CPU-/GPU-Parität gemessen. Ein veröffentlichter Sprachumfang ist kein gemessener PicEdit-Recall. Der frühere vollständige Metadatenbericht bleibt unter `reports/semantic-gate/historical/model-selection-before-download.md` erhalten.
+
+SigLIP2 wurde laut [Autorenpaper](https://arxiv.org/html/2502.14786v1#S2.SS1) auf WebLI mit 109 Sprachen und einem Mix aus 90 % englischem und 10 % nichtenglischem Text vortrainiert. Der Suchraum stammt aus dieser Bild-Text-Paarung; es gibt weder einen separaten deutschen Fremdencoder noch eine Übersetzung. Mehrsprachigkeit beseitigt keine Trainingsverzerrungen, Motivgrenzen oder Fehler bei feinen räumlichen Beziehungen. Die unten genannten synthetischen Messungen sind keine Qualitätszusage für private Fotos, Personen, OCR oder große Kamera-RAWs. Die unveränderte Modellkarte und Apache-Lizenz werden mit dem Importpaket angezeigt und installiert; Konvertierungsattribution liegt daneben.
+
+## Gemessenes Gate und Grenzen
+
+Vor erster Inferenz wurden 30 selbst gezeichnete synthetische Bilder, 20 deutsche/englische Querypaare und 5 negative Querypaare eingefroren. Ground-Truth-SHA256: `c262bc1ecbd589f6c8a22e616e54d90bca13593bd1e1469b8f31266a08945025`. Keine privaten Fotos, Dateinamenhinweise oder nachträglichen Relevanzänderungen. Referenz: PyTorch 2.5.0 und Transformers 4.51.3; Konverter: coremltools 8.3; Swift-Tokenizer: `e37cacea74498bba66002bb83ecafee3e4ab8884`. Messgerät: M2 Pro mit 12 CPU-Kernen und 16 GiB, macOS 27.0.1, Swift 6.4.
+
+Der ursprüngliche vollständige Float16-Bildgraph verletzte CPU-Parität mit maximaler normalisierter Cosinusdistanz 0,101187 bei unveränderter Grenze 0,001. Float32 für LayerNorm, LayerNorm plus Softmax und alleinige Float32-Patch-Convolution genügten nicht. Ein vollständig in Float32 ausgeführter Bildturm behebt die Abweichung, ohne Modellpaar oder Referenzen zu ändern; Text bleibt Float16. Frühere Fehlversuche bleiben als Rohdaten und Bericht erhalten.
+
+Der vorab begründete Lebenszyklus lädt zuerst das größere Textmodell in einem autoreleasepool, leert diesen, lädt das Bildmodell in einem zweiten Pool, leert diesen und lädt erst dann den Tokenizer. Modelle bleiben anschließend erhalten. Separate neue Prozesse verwendeten eine neue absolute UUID-Runtimekopie mit bytegleich geprüftem Payload. OS- und Core-ML-Caches waren zuvor benutzt und wurden nicht geleert: keine Behauptung einer unbenutzten Erstinstallation oder kalten SSD.
+
+| Optimierter gemessener Pfad | CPUOnly | Core ML `.all`, Forschungsalternative |
+|---|---:|---:|
+| Maximale Cosinusdistanz Bild/Text | 0,000001252 / 0,000083745 | 0,000001371 / 0,000014663 |
+| Positive Queries mit Top-5-Treffer, DE/EN | 20/20 je Sprache | 20/20 je Sprache |
+| Zusätzlicher maximaler Prozess-RSS | 1.141.882.880 Bytes | 1.579.778.048 Bytes |
+| Warme Vollquery p50/p95, 10.000 Vektoren | 8,833 / 9,309 ms | 5,879 / 6,187 ms |
+| Bildtensor zu Embedding, 30 Bilder einschließlich erster Inferenz | 17,94 Bilder/s | 18,35 Bilder/s |
+
+Grenzen blieben unverändert: Dateien ≤ 1 GiB, zusätzlicher RSS ≤ 1,5 GiB, warme Vollquery-p95 ≤ 500 ms, Parität ≤ 0,001, Top-5 ≥ 80 % je Sprache und ≤ 10 Prozentpunkte Sprachunterschied. Acht zusätzliche Unicode-Tokenfälle und alle 50 Querytokenfolgen stimmen exakt mit der Referenz überein. Rohdaten enthalten auch negative Rankings; Scores sind keine Wahrscheinlichkeiten und liefern keine universelle Sicherheitsschwelle.
+
+Der naive Tokenizer-zuerst-`.all`-Ladevorgang scheiterte tatsächlich mit 2.070.593.536 zusätzlichen RSS-Bytes. Der optimierte `.all`-Lauf hatte nur 30.834.688 Bytes Reserve zur Grenze von 1,5 GiB. Deshalb ist CPUOnly die erste Produktentscheidung; `.all` wird aus diesem knappen Gate nicht allgemein freigeschaltet. Integrierter PicEdit-RSS, Intel, echte ältere macOS-Versionen, große RAWs und thermische Serien wurden in diesem Auswahlgate nicht gemessen. Tensor-Encoderraten enthalten keine Originaldecodierung oder Farbkonvertierung. Der gespeicherte-Query-Vergleich misst Vektorsuche mit bereits berechnetem Queryvektor, keinen damals vorhandenen Produkt-LRU.
+
+Vollständige Auswahlberichte, unveränderte Grenzwerte und Messzusammenfassung liegen unter [`reports/semantic-gate`](../reports/semantic-gate). Die eingefrorenen Bilder, Querylisten und Token-Goldens liegen unter [`Fixtures/Semantic`](../Fixtures/Semantic).
+
+## Bedienung und begrenzter Index
+
+Wörtliche Suche funktioniert ohne Modellinstallation. Der Suchmodus wird bewusst auf „Semantisch“ umgestellt; eine leere Query zeigt die normale Bibliothek und ruft keinen Textencoder auf. Ein eigenes optionales wörtliches Filterfeld begrenzt Dateiname, Kamera und Format. Ordner und Unterordner, Favoriten, zuletzt hinzugefügte Bilder und Mindestbewertung werden gemeinsam mit diesem Filter als AND auf die Kandidaten angewendet. Erst danach erfolgt semantische Relevanzsortierung. Gleichstände behalten die bisherige Sortierung und stabile Asset-ID. Standard sind die besten 100 Treffer, maximal 500; nicht indexierte Fotos werden nicht zu erfundenen Treffern.
+
+„Suchindex vorbereiten“ startet ausdrücklich den gewählten Bibliotheksumfang. Import allein startet keinen Bildscan. Abbruch wartet auf das tatsächliche Ende einer bereits laufenden SDK-Operation; vollständig geschriebene Einträge bleiben fortsetzbar. Neue oder geänderte Quellen werden erneut benötigt, entfernte IDs erscheinen nicht mehr. Modell-, Tokenizer-, Vorverarbeitungs- und Installationsidentität bilden gemeinsam eine neue Indexgeneration. Unbekannte oder beschädigte Indexdaten werden gemeldet und erst durch bewusstes Neuaufbauen ersetzt. Originale, Bearbeitungen und bestätigte Fototexte gehören nicht in den Suchindex und bleiben erhalten.
+
+Die erste Version begrenzt einen Katalogumfang auf eine Million Kandidaten. Der Store liest standardmäßig Seiten mit 256 Vektoren, hart höchstens 512. Dotprodukte laufen begrenzt im Hintergrund mit Accelerate; kein ANN-Dienst und keine GPU-Suchhierarchie. Der Service besitzt den aktiven Modelljob und die gemeinsame AI-Ressourcenlease bis zur tatsächlichen Rückkehr. Wartende Queryarbeit hat Vorrang vor weiterer Hintergrundindizierung. Eine neue Decoder- oder Inferenzpoolhierarchie wird nicht aufgebaut.
+
+## Laufzeit- und Dateivertrag
+
+Core-ML-Modelle haben feste I/O: Bild Float32 `1×3×256×256`, Text Int32 `1×64`, Ausgabe 768 Werte. Bildvorbereitung verwendet die bestehende orientierte Originalvorschau ohne Regleränderungen und begrenzt ihre tatsächliche Basis auf 1.024 Pixel lange Kante und 16 MiB Rasterbytes. Profilkonvertierung führt zu sRGB/RGB mit weißer Alphamatte. Ein explizit ungetaggtes Device-RGB-Raster wird als sRGB interpretiert. Danach folgt direkte bilineare Skalierung auf 256×256 mit Pillow-kompatibler Filterunterstützung, 22-Bit-Koeffizienten und 8-Bit-Zwischenschritt. Kanäle CHW, Werte `(byte/255 - 0.5)/0.5`. Ein SHA256 bindet die tatsächlich normalisierte Float32-Eingabe an den versionierten Vertrag. Native Dateistempel mit Gerät, Inode, Größe, mtime und ctime schützen zusätzlich die Wiederverwendung; Dateistempel allein sind kein Inhaltsbeweis.
+
+Text verwendet das gepinnte JSON-Gemma-Vokabular, Unicode-Lowercasing, maximal 63 Inhaltstokens plus EOS 1 und rechtes Padding mit 0 auf 64. Die native Implementierung verwendet ausschließlich die Offline-Konfigurations-API des gepinnten offiziellen Swift-Tokenizers: kein Hub-/Ordner-Loader, keine Chattemplate-Ausführung, keine automatische Übersetzung oder Netzwerkverbindung. Der öffentliche Service begrenzt Suchqueries auf 2.048 UTF-8-Bytes; Provider und Tokenizer prüfen zusätzlich eine interne Grenze von 4.096 Bytes. Vektoren werden auf endliche Werte, 768 Dimensionen und positive Norm geprüft und L2-normalisiert.
+
+Package-Metadaten bleiben Swift-tools 5.9 und macOS 14. Gebaut und gemessen wurde mit Swift 6.4; ein unveränderter tools-Eintrag ist kein ungetestetes Versprechen für alte Compiler. Die Abhängigkeit verwendet die exakt gepinnte offizielle Swift-Transformers-Revision; ihre Transitivversionen stehen in `Package.resolved`. Die vollständigen LICENSE-/NOTICE-Texte dieser gepinnten Swift-Pakete liegen als `THIRD-PARTY-NOTICES.txt` im App-Ressourcenbundle. Die App braucht weder Python noch einen Model Hub zur Laufzeit. Es gibt eine Aufnahmegrenze von mindestens 8 GiB physischem RAM; bisher gemessen wurde nur der Mac mit 16 GiB. `unload()` gibt App-Referenzen frei, trifft aber keine Zusage über private Core-ML-/OS-Caches.
+
+## Expliziter lokaler Modellimport
+
+Es gibt derzeit keinen eigenen verifizierten Downloadendpoint. Unterstützt wird zunächst ausschließlich ein ausdrücklich gewähltes lokales Modellpaket, das das Entwicklerwerkzeug aus der freigegebenen Quelle erzeugt. Dies ersetzt keinen vorhandenen Ein-Klick-Modelldownload. Gewichte werden weder ins Git noch ungeprüft ins App-Bundle kopiert.
+
+Vor Import zeigt die UI Quellpfad, genaue Quellgröße, Modellversion, Lizenztexte und zusätzlichen Staging-Platz. Das Paket wird gegen `SemanticApprovedPackage.json` aus der App geprüft. Ein beliebiges selbst erklärtes Nutzermanifest gilt nicht als Provenienz. Nur die freigegebenen Pfade, reguläre Dateien, exakten Größen und vollständigen SHA256 sind erlaubt; Links, Zusatzdateien und Checkpoints werden abgelehnt. Die App kopiert geprüfte Bytes begrenzt, kompiliert die beiden Packages und prüft die komplette aktive Generation gegen ein lokales Integritätsreceipt. Aktive Generation einschließlich Tokenizer, Lizenz und Receipt ist auf 1 GiB begrenzt. Core ML kann Gewichte seiner Compiler-Caches hart verlinken; solche ausschließlich vom Compiler erzeugten Ausgaben werden beim Import in unabhängige private Dateien kopiert. Quellpaket und aktive Runtime verlangen jeweils genau einen Hardlink je regulärer Datei. Portable Packages und kompilierte Modelle sind alternative Repräsentationen; nach Erfolg bleibt nur die kompilierte aktive Repräsentation.
+
+Import benötigt zusätzlich 3 GiB freien Platz auf Ziel- und Compiler-Temp-Volume. Diese konservative Reserve deckt Paketkopie, kompilierte Ausgabe und mögliche Kopie zwischen Volumes ab. Das alte aktive Modell belegt zu diesem Zeitpunkt weiterhin seinen bisherigen Platz; der Quellordner bleibt außerhalb des Installationsverzeichnisses bestehen. Die gemessene vollständige Forschungsruntime umfasste 983.299.012 Bytes in 33 Dateien einschließlich Messprogramm und Ressourcen. Dies ist keine Annahme über die Größe jedes zukünftigen App-Bundles.
+
+Eine feste `current.json`-Verzeichnisreferenz wird erst nach vollständigem Erfolg atomar mit `renameat` ausgetauscht; ein vorhandener Symbolic- oder Hardlink wird dabei selbst ersetzt, sein Ziel niemals beschrieben. Abbruch oder Fehler vor diesem Commit aktiviert keine neue Generation. Nach Commit darf eine bestmögliche Bereinigung keinen fälschlichen Gesamtfehlschlag melden. Ausschließlich die zuvor aktive, positiv anhand ihres Receipts geprüfte eigene Generation darf entfernt werden. Unbekannte UUID-Ordner oder zusätzliche fremde Inhalte werden niemals rekursiv gelöscht. Bei Bereinigungsfehlern kann eine alte eigene Generation zusätzlichen Platz belegen; nach harter Prozessbeendigung können nicht aktive Stagingreste erhalten bleiben. Solche Reste werden nie als Modell geladen. Expliziter verifizierter Neuimport kann beschädigte aktive Metadaten ersetzen und lässt unvalidierte alte Verzeichnisse erhalten.
+
+Wörtlicher Appstart liest nur kleine Installationsmetadaten, keine Gigabyte-Dateihashes. Vollständige Verifikation findet vor dem ersten expliziten Laden unter der Service-Ressourcenlease statt. Ein vollständiger vorab erfasster Dateistempelsatz wird nach allen Hashes und nach Modellladen erneut geprüft; auch ein früh geprüftes Gewicht darf sich während der restlichen Verifikation nicht ändern. Größenbegrenzt gelesene Metadaten und Tokenizerdaten haben Abbruchpunkte. Fehler sperren Inferenz und veröffentlichen keine unbestätigten Vektoren.
+
+## Reproduktion für Entwickler
+
+Die Entwickler-Konvertierung benötigt eine separat eingerichtete Python-3.11-Umgebung mit PyTorch 2.5.0, Transformers 4.51.3, coremltools 8.3 und NumPy 1.26.4 sowie den bereits lokal vorliegenden exakten Google-Checkpoint. Die Quelle wird offline anhand des Checkpoint-SHA256 und der gepinnten Konfiguration geprüft. Kein Entwicklerwerkzeug lädt automatisch Gewichte herunter.
+
+```bash
+python scripts/semantic/convert-model.py --tower image --source /path/to/pinned-source --output /tmp/image.mlpackage
+python scripts/semantic/convert-model.py --tower text --source /path/to/pinned-source --output /tmp/text.mlpackage
+python scripts/semantic/bundle-model.py --image /tmp/image.mlpackage --text /tmp/text.mlpackage --tokenizer /path/to/pinned-source --output /tmp/PicEdit-Semantic-Model
+```
+
+Die zufälligen Package-UUIDs werden anhand gepinnter Manifestvorlagen kanonisiert; anschließend müssen Graph und alle Gewichtbytes exakt dem freigegebenen App-Manifest entsprechen. Eine abweichende Ausgabe wird ausdrücklich abgelehnt. Vorhandene Artefakte werden nie überschrieben. Das Bündelwerkzeug kopiert nur die Whitelist mit höchstens zwei unabhängigen Dateitransfers; Originalcheckpoint, SentencePiece-Duplikat und Pythonruntime gehören nicht in die Installation.
+
+Standardtests verwenden kleine synthetische Pakete und Fakes. Der explizite Offline-Tokenizertest benötigt die bereits lokal vorhandenen freigegebenen JSON-Dateien:
+
+```bash
+PICEDIT_RUN_SEMANTIC_TOKENIZER_TESTS=1 PICEDIT_SEMANTIC_TOKENIZER_DIR=/path/to/pinned-source ./scripts/test.sh --filter SemanticTokenizerTests
+```
+
+Finale integrierte Tests und Build-Matrix werden erst nach ihrem tatsächlichen Ergebnis im Abschlussbericht ergänzt. Das Auswahlgate allein behauptet keine abgeschlossene Produktintegration.

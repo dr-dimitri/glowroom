@@ -91,6 +91,9 @@ case "$tool" in
         if [[ "$role" == compile ]]; then
             mkdir -p "$MOCK_ROOT/bin"
             printf '#!/bin/sh\nexit 0\n' > "$MOCK_ROOT/bin/PicEdit"
+            mkdir -p "$MOCK_ROOT/bin/PicEdit_PicEdit.bundle/nested" "$MOCK_ROOT/bin/Tokenizer Resources.bundle"
+            printf 'approved manifest fixture\n' > "$MOCK_ROOT/bin/PicEdit_PicEdit.bundle/nested/manifest.json"
+            printf 'dependency resource fixture\n' > "$MOCK_ROOT/bin/Tokenizer Resources.bundle/data.txt"
         else
             mkdir -p "${!#}"
         fi
@@ -154,6 +157,8 @@ assert_previous_app() {
 assert_success() {
     [[ -x "$CASE/dist/PicEdit.app/Contents/MacOS/PicEdit" ]] || fail "Missing executable"
     [[ -f "$CASE/dist/PicEdit.app/Contents/Resources/AppIcon.icns" ]] || fail "Missing icon"
+    cmp "$CASE/bin/PicEdit_PicEdit.bundle/nested/manifest.json" "$CASE/dist/PicEdit.app/Contents/Resources/PicEdit_PicEdit.bundle/nested/manifest.json" || fail "Application resources changed or missing"
+    cmp "$CASE/bin/Tokenizer Resources.bundle/data.txt" "$CASE/dist/PicEdit.app/Contents/Resources/Tokenizer Resources.bundle/data.txt" || fail "Dependency resources changed or missing"
     [[ ! -e "$CASE/dist/PicEdit.app/previous" ]] || fail "Previous app was not replaced"
     [[ -f "$CASE/codesign.finished" ]] || fail "Signing was skipped"
     assert_clean

@@ -1,0 +1,31 @@
+{
+  "pillow": "11.2.1",
+  "pattern": "(x*17+y*29+c*61)%256",
+  "cases": [
+    {
+      "width": 1,
+      "height": 1,
+      "resized_rgb_sha256": "30cbb5dbf7194cd21ac41bfe8eb4ccfc139a32fdf6405385ba1feb724ce48a6a"
+    },
+    {
+      "width": 3,
+      "height": 5,
+      "resized_rgb_sha256": "460f83bf4506bdee59ce3902468d8fe891c7ec661ab66b15253bea3baaebd59f"
+    },
+    {
+      "width": 257,
+      "height": 129,
+      "resized_rgb_sha256": "21cb6d6691886b0b4437b195509f989452656e54012213438a77652e6ad9bcc8"
+    },
+    {
+      "width": 513,
+      "height": 1,
+      "resized_rgb_sha256": "a4c5a3739a4d3b14e0e5226ecd4140ba28366f8704ce8539ef3fb8dbbad0407b"
+    },
+    {
+      "width": 1024,
+      "height": 773,
+      "resized_rgb_sha256": "e361433898411e6c964b825efb09ad6ff78af709a1bc20c7d142e8cd2c3b8198"
+    }
+  ]
+}

@@ -1,0 +1,228 @@
+{
+  "version": 1,
+  "ground_truth_sha256": "c262bc1ecbd589f6c8a22e616e54d90bca13593bd1e1469b8f31266a08945025",
+  "tolerance": 0.001,
+  "rows": [
+    {
+      "variant": "ln32",
+      "mode": "cpu",
+      "package_bytes": 188168798,
+      "maximum_image_cosine_distance": 0.10147485315215476,
+      "parity_passed": false,
+      "quality_top5_hits_each_of20": {
+        "de": 20,
+        "en": 20
+      },
+      "result_file": "native-ln32-cpu-image-parity.json"
+    },
+    {
+      "variant": "lnsm32",
+      "mode": "cpu",
+      "package_bytes": 188176289,
+      "maximum_image_cosine_distance": 0.10118035053237318,
+      "parity_passed": false,
+      "quality_top5_hits_each_of20": {
+        "de": 20,
+        "en": 20
+      },
+      "result_file": "native-lnsm32-cpu-image-parity.json"
+    },
+    {
+      "variant": "conv32",
+      "mode": "cpu",
+      "package_bytes": 192795306,
+      "maximum_image_cosine_distance": 0.02380217965496434,
+      "parity_passed": false,
+      "quality_top5_hits_each_of20": {
+        "de": 20,
+        "en": 20
+      },
+      "result_file": "native-conv32-cpu-image-parity.json"
+    },
+    {
+      "variant": "fp32",
+      "mode": "cpu",
+      "package_bytes": 375984186,
+      "maximum_image_cosine_distance": 4.620372016095331e-07,
+      "parity_passed": true,
+      "quality_top5_hits_each_of20": {
+        "de": 20,
+        "en": 20
+      },
+      "result_file": "native-fp32-cpu-image-parity.json"
+    },
+    {
+      "variant": "fp32",
+      "mode": "all",
+      "package_bytes": 375984186,
+      "maximum_image_cosine_distance": 4.084406184379219e-07,
+      "parity_passed": true,
+      "quality_top5_hits_each_of20": {
+        "de": 20,
+        "en": 20
+      },
+      "result_file": "native-fp32-all-image-parity.json"
+    }
+  ],
+  "runtime_package_candidate": {
+    "bytes": 975147490,
+    "files": [
+      {
+        "path": "image-fp32.mlpackage/Data/com.apple.CoreML/model.mlmodel",
+        "bytes": 123281,
+        "sha256": "131150818a0ab0d93787b5e72c75ebcb106d14a40f9a276442ea6de460d74a9c"
+      },
+      {
+        "path": "image-fp32.mlpackage/Data/com.apple.CoreML/weights/weight.bin",
+        "bytes": 375860288,
+        "sha256": "24d70143078c10a42f3e3067d918cd0b07838c18f9d76789a5ec43fbe9253000"
+      },
+      {
+        "path": "image-fp32.mlpackage/Manifest.json",
+        "bytes": 617,
+        "sha256": "cfa029d4e8ce39924a178dede58145e97aa16d6bed5ecb7b9a67ed3c6d7f6a0d"
+      },
+      {
+        "path": "text.mlpackage/Data/com.apple.CoreML/model.mlmodel",
+        "bytes": 127557,
+        "sha256": "8712ed5ada6dde3637ce7d8ea15adce7f08a73beab22ce387ab6679f72b5a58a"
+      },
+      {
+        "path": "text.mlpackage/Data/com.apple.CoreML/weights/weight.bin",
+        "bytes": 564620224,
+        "sha256": "02e7470e5a09c7dccc5d64a83c86b1667ba876965b40f3076272f40107261fc4"
+      },
+      {
+        "path": "text.mlpackage/Manifest.json",
+        "bytes": 617,
+        "sha256": "3718fe94471716c2e9dad16930e5e829bd8a18e53d34509b9f9175bc361e2568"
+      },
+      {
+        "path": "source/tokenizer.json",
+        "bytes": 34363039,
+        "sha256": "cb9140fae3ac5122c972d37adf83e1248471a38147ad76f8215c8872c6fd8322"
+      },
+      {
+        "path": "source/tokenizer_config.json",
+        "bytes": 47164,
+        "sha256": "14afe629fe4959b9e0d51e1852b8d9f7ad074f90a1a7125a4fcdd17f06e78fc8"
+      },
+      {
+        "path": "source/special_tokens_map.json",
+        "bytes": 636,
+        "sha256": "baec30ea10906f16adb8c18af7a34023002c1746542612b8b41c9f09e1351351"
+      },
+      {
+        "path": "source/config.json",
+        "bytes": 298,
+        "sha256": "52deee7a2d6fb2e73c45720d9c4056f0e4dc582ef84524aac229c6d5aa348dee"
+      },
+      {
+        "path": "source/preprocessor_config.json",
+        "bytes": 394,
+        "sha256": "d14ba2ee3fd816f3de8abaddc31953565128eaf37c73ad4bed32101a98465aff"
+      },
+      {
+        "path": "source/README.md",
+        "bytes": 3375,
+        "sha256": "6eed8501b5d87ea439336a98a9567bcd46b05a3562b36d1207c0f21c6da6b38b"
+      }
+    ]
+  },
+  "runtime_compiled_candidate": {
+    "bytes": 975198182,
+    "files": [
+      {
+        "path": "image-fp32.mlmodelc/analytics/coremldata.bin",
+        "bytes": 243,
+        "sha256": "d8179ccbeaae4ee19a3ff7c3521e0c5ff935dacb0c09c0376f64262c5be2db41"
+      },
+      {
+        "path": "image-fp32.mlmodelc/coremldata.bin",
+        "bytes": 657,
+        "sha256": "8cc52469b03d04055f424b9b49c0e559db4d9bf509dc2e0d1cbd0370d9ead6f9"
+      },
+      {
+        "path": "image-fp32.mlmodelc/model.mil",
+        "bytes": 149337,
+        "sha256": "87de81a5f6104a4d490b560e20923b695d06e3eab95c5fab38e379e9f62219c7"
+      },
+      {
+        "path": "image-fp32.mlmodelc/weights/weight.bin",
+        "bytes": 375860288,
+        "sha256": "24d70143078c10a42f3e3067d918cd0b07838c18f9d76789a5ec43fbe9253000"
+      },
+      {
+        "path": "text.mlmodelc/analytics/coremldata.bin",
+        "bytes": 243,
+        "sha256": "c035e37661e1bcafa0807c31b04305818dc572f085da592ff51182ef7dae6253"
+      },
+      {
+        "path": "text.mlmodelc/coremldata.bin",
+        "bytes": 657,
+        "sha256": "b5ef17b01c091facf1658f00000239f66f7562349ff3741e4e89a17bd23e98c0"
+      },
+      {
+        "path": "text.mlmodelc/model.mil",
+        "bytes": 151627,
+        "sha256": "1a576ace3c6a20372382eae5551bb85edbf0b1e38c7052480913f3670ac02728"
+      },
+      {
+        "path": "text.mlmodelc/weights/weight.bin",
+        "bytes": 564620224,
+        "sha256": "02e7470e5a09c7dccc5d64a83c86b1667ba876965b40f3076272f40107261fc4"
+      },
+      {
+        "path": "source/tokenizer.json",
+        "bytes": 34363039,
+        "sha256": "cb9140fae3ac5122c972d37adf83e1248471a38147ad76f8215c8872c6fd8322"
+      },
+      {
+        "path": "source/tokenizer_config.json",
+        "bytes": 47164,
+        "sha256": "14afe629fe4959b9e0d51e1852b8d9f7ad074f90a1a7125a4fcdd17f06e78fc8"
+      },
+      {
+        "path": "source/special_tokens_map.json",
+        "bytes": 636,
+        "sha256": "baec30ea10906f16adb8c18af7a34023002c1746542612b8b41c9f09e1351351"
+      },
+      {
+        "path": "source/config.json",
+        "bytes": 298,
+        "sha256": "52deee7a2d6fb2e73c45720d9c4056f0e4dc582ef84524aac229c6d5aa348dee"
+      },
+      {
+        "path": "source/preprocessor_config.json",
+        "bytes": 394,
+        "sha256": "d14ba2ee3fd816f3de8abaddc31953565128eaf37c73ad4bed32101a98465aff"
+      },
+      {
+        "path": "source/README.md",
+        "bytes": 3375,
+        "sha256": "6eed8501b5d87ea439336a98a9567bcd46b05a3562b36d1207c0f21c6da6b38b"
+      }
+    ]
+  },
+  "note": "Two alternative representations counted separately, never sum omitted duplicate deployed copies. Includes actual model/tokenizer/config/README files. Additional distribution license/NOTICE packaging not staged here. No performance/RSS gate inferred from these functional probes.",
+  "scripts": {
+    "bytes": 11588,
+    "files": [
+      {
+        "path": "convert-precision.py",
+        "bytes": 3494,
+        "sha256": "f897529461d88f18c2806a84dc199847fbcc70ef6a662d5b9706bbae4e63df44"
+      },
+      {
+        "path": "convert-precision-v2.py",
+        "bytes": 3552,
+        "sha256": "edc23016aefb81a309bc5406943d2c685af854a271ed0aa09885321cdf1c1471"
+      },
+      {
+        "path": "precision-probe.swift",
+        "bytes": 4542,
+        "sha256": "84c5095c865d46da272897b7b4d9edd124bf0a9b7c50ec3661d144fc14ca41b0"
+      }
+    ]
+  }
+}

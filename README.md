@@ -81,6 +81,14 @@ Das ausgewählte Bild erhält Vorrang vor wartenden Rasterbildern. Höchstens dr
 | 0 | Bewertung entfernen |
 | F | Favorit umschalten |
 
+### Lokale semantische Bildsuche
+
+**Wörtlich** bleibt der Suchstandard und benötigt kein Modell. **Semantisch** sucht nach deutschen oder englischen Bildbeschreibungen in echten lokalen Bild-/Text-Embeddings, etwa „rotes Haus“. Ordner, Favoriten, Zeitraum, Mindestbewertung und das getrennte optionale wörtliche Filterfeld gelten gemeinsam vor der Relevanzsuche. Eine leere Bildsuche zeigt die normale Bibliothek. Standard sind höchstens 100 Treffer, einstellbar bis 500; bei gleichen Scores gilt die gewählte Sortierung. Scores sind keine Wahrscheinlichkeiten.
+
+Unter **Lokales Suchmodell und Suchindex → Verwalten** ein geprüftes lokales Modellpaket auswählen und Quelle, Größe, Lizenz und temporären Platzbedarf vor dem Import prüfen. Es gibt keinen automatischen Download und keine eingebauten Modellgewichte. Das reproduzierbare Entwicklerwerkzeug und die festgelegte SigLIP2-Revision sind in [SEMANTIC-SEARCH.md](docs/SEMANTIC-SEARCH.md) beschrieben. Die App akzeptiert ausschließlich das dort gepinnte Paket und arbeitet danach ohne Netz. Aktiv installierte Modelldateien benötigen höchstens 1 GiB; Import und lokale Kompilierung benötigen zusätzlichen temporären Speicher. Die erste Produktversion nutzt den gemessenen CPU-Pfad.
+
+Danach den **Indexumfang** ausdrücklich wählen und **Suchindex vorbereiten** starten. Es gibt keinen vollständigen Bildscan beim Appstart. Fortschritt und gültige, fehlende beziehungsweise veraltete Einträge bleiben sichtbar. **Abbrechen** erhält abgeschlossene Einträge; **Index fortsetzen** arbeitet daran weiter. **Neu aufbauen** erhält die letzte gültige Modellgeneration bis zur erfolgreichen Aktivierung. Indexeinträge und Modell lassen sich getrennt entfernen. Unbekannte oder beschädigte Indexdateien werden vor einem bewussten Neuaufbau gemeldet und konservativ aufbewahrt. Originalbilder, bestätigte Bearbeitungen und die wörtliche Suche bleiben unabhängig nutzbar.
+
 ## Entwickeln und prüfen
 
 Die [KI-Verträge und sicheren Vorschläge](docs/AI-CONTRACTS.md) definieren providerunabhängige Antworten, strenge Reglerprüfung, versionsgebundene Vorschläge und begrenzte Hintergrundaufträge. Der optionale [lokale Entwicklungsassistent](docs/LOCAL-AI-ASSISTANT.md) übersetzt Text in vorhandene Reglerwerte. Er benötigt einen Build mit FoundationModels-Unterstützung sowie macOS 26 und ein bereitgestelltes Apple-Intelligence-Systemmodell. Die übrige App bleibt ab macOS 14 ohne Online-Dienst, Modellinstallation oder Zugangsdaten nutzbar.

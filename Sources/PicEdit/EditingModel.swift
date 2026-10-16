@@ -60,6 +60,13 @@ final class EditingModel: ObservableObject {
     private(set) var aiEditSessionID = UUID()
     private(set) var aiEditGeneration: UInt64 = 0
 
+    var semanticProtectedURLs: [URL] {
+        guard let directory else { return [] }
+        return ["semantic-index.sqlite", "semantic-index.sqlite-journal", "semantic-index.sqlite-wal", "semantic-index.sqlite-shm"]
+            .map { directory.appendingPathComponent($0) }
+            + [directory.appendingPathComponent("SemanticModels", isDirectory: true)]
+    }
+
     var canEdit: Bool { !isLoading && !isReadOnly && !isRestoring && !isBackingUp && !isClosing }
     var canBackUp: Bool { !isLoading && !isRestoring && !isBackingUp && !isClosing && database != nil }
     var canRestore: Bool { !isLoading && !isRestoring && !isBackingUp && !isClosing && (database != nil || directory != nil) }
@@ -324,8 +331,9 @@ final class EditingModel: ObservableObject {
         guard let directory else { return true }
         // A handful of paths does not justify nested worker tasks. All
         // filesystem lookups already run outside MainActor in the caller.
-        let protected = ["edits.sqlite", "edits.sqlite-wal", "edits.sqlite-shm", "edits.sqlite-journal", "catalog.json"]
+        let protected = ["edits.sqlite", "edits.sqlite-wal", "edits.sqlite-shm", "edits.sqlite-journal", "catalog.json", "semantic-index.sqlite", "semantic-index.sqlite-journal", "semantic-index.sqlite-wal", "semantic-index.sqlite-shm"]
             .map { directory.appendingPathComponent($0).resolvingSymlinksInPath().standardizedFileURL }
+        guard !ManagedFileProtection.containsDestination(target, in: directory.appendingPathComponent("SemanticModels", isDirectory: true)) else { return false }
         return !protected.contains(target.resolvingSymlinksInPath().standardizedFileURL)
     }
 
