@@ -9,7 +9,7 @@ let package = Package(
     targets: [
         .systemLibrary(name: "CSQLite"),
         .target(name: "PicEditCore", dependencies: ["CSQLite"]),
-        .executableTarget(name: "PicEdit", dependencies: ["PicEditCore", .product(name: "Tokenizers", package: "swift-transformers"), .product(name: "Hub", package: "swift-transformers")], resources: [.process("AI/Resources")]),
+        .executableTarget(name: "PicEdit", dependencies: ["PicEditCore", "CSQLite", .product(name: "Tokenizers", package: "swift-transformers"), .product(name: "Hub", package: "swift-transformers")], resources: [.process("AI/Resources")]),
         .testTarget(name: "PicEditCoreTests", dependencies: ["PicEditCore", "CSQLite"]),
         .testTarget(name: "PicEditTests", dependencies: ["PicEdit", "PicEditCore"])
     ]

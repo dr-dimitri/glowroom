@@ -8,6 +8,7 @@ struct PicEditApp: App {
     @StateObject private var library: LibraryModel
     @StateObject private var editor: EditingModel
     @StateObject private var assistant: AIAssistantModel
+    @StateObject private var aiSettings: AIProviderSettings
     @StateObject private var imageAnalysis: ImageAnalysisModel
     @StateObject private var exporter = JPEGExportModel()
     private let dataDirectory: URL
@@ -27,9 +28,13 @@ struct PicEditApp: App {
         let coordinator = AIRequestCoordinator(provider: provider)
         _library = StateObject(wrappedValue: library)
         _editor = StateObject(wrappedValue: editor)
-        _assistant = StateObject(wrappedValue: AIAssistantModel(provider: provider, coordinator: coordinator,
+        let assistant = AIAssistantModel(provider: provider, coordinator: coordinator,
                                                              editor: editor, library: library,
-                                                             maximumPromptBytes: LocalAIEditingPrompt.maximumUserTextBytes))
+                                                             maximumPromptBytes: LocalAIEditingPrompt.maximumUserTextBytes)
+        let aiSettings = AIProviderSettings(directory: repository.directory, local: provider)
+        aiSettings.attach(assistant)
+        _assistant = StateObject(wrappedValue: assistant)
+        _aiSettings = StateObject(wrappedValue: aiSettings)
         _imageAnalysis = StateObject(wrappedValue: ImageAnalysisModel(service: LocalImageAnalysisFactory.makeService(),
                                                                     editor: editor, library: library))
     }
@@ -43,7 +48,13 @@ struct PicEditApp: App {
                 .environmentObject(imageAnalysis)
                 .frame(minWidth: 1000, minHeight: 660)
                 .preferredColorScheme(.dark)
-                .onAppear { delegate.library = library; delegate.editor = editor; delegate.exporter = exporter; NSApp.setActivationPolicy(.regular); NSApp.activate(ignoringOtherApps: true) }
+                .background {
+                    if let consent = aiSettings.pendingConsent {
+                        AICloudConsentPresenter(settings: aiSettings, consent: consent)
+                            .id(consent.id)
+                    }
+                }
+                .onAppear { delegate.library = library; delegate.editor = editor; delegate.exporter = exporter; delegate.aiSettings = aiSettings; NSApp.setActivationPolicy(.regular); NSApp.activate(ignoringOtherApps: true) }
         }
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 1440, height: 900)
@@ -98,6 +109,40 @@ struct PicEditApp: App {
                     .keyboardShortcut("i", modifiers: .command)
             }
         }
+        Settings { AIProviderSettingsView(settings: aiSettings) }
+    }
+}
+
+/// Each sheet host has a stable identity and captures the consent it displays.
+/// In particular, a late nil setter never consults a newer pending consent ID.
+@MainActor
+struct AICloudConsentPresentation {
+    let settings: AIProviderSettings
+    let consent: AICloudConsent
+
+    var binding: Binding<AICloudConsent?> {
+        Binding(get: {
+            settings.pendingConsent?.id == consent.id ? consent : nil
+        }, set: { value in
+            if value == nil { settings.respondToConsent(false, for: consent.id) }
+        })
+    }
+
+    func answer(_ allowed: Bool) {
+        settings.respondToConsent(allowed, for: consent.id)
+    }
+}
+
+private struct AICloudConsentPresenter: View {
+    @ObservedObject var settings: AIProviderSettings
+    let consent: AICloudConsent
+
+    var body: some View {
+        let presentation = AICloudConsentPresentation(settings: settings, consent: consent)
+        Color.clear.frame(width: 0, height: 0)
+            .sheet(item: presentation.binding) { _ in
+                AICloudConsentView(consent: consent, answer: presentation.answer)
+            }
     }
 }
 
@@ -106,6 +151,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     weak var library: LibraryModel?
     weak var editor: EditingModel?
     weak var exporter: JPEGExportModel?
+    weak var aiSettings: AIProviderSettings?
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         guard let library else { return .terminateNow }
@@ -127,6 +173,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         // Commit an active numeric field while edits are still accepted.
         NSApp.keyWindow?.makeFirstResponder(nil)
+        aiSettings?.revoke()
         library.beginTermination()
         editor?.beginTermination()
         Task {

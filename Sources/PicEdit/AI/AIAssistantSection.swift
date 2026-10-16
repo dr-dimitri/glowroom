@@ -11,6 +11,11 @@ struct AIAssistantSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Label("KI-Assistent", systemImage: "sparkles").font(.system(size: 12, weight: .semibold))
+            HStack {
+                Text(model.providerLabel).font(.system(size: 10, weight: .medium))
+                Spacer()
+                SettingsLink { Text("KI-Einstellungen …").font(.system(size: 10)) }
+            }
             Text("Der Assistent übersetzt Text in Reglerwerte; er analysiert das Foto nicht.")
                 .font(.system(size: 10)).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
             Text("Bearbeitung oder optionaler Look-Zusatz").font(.system(size: 11, weight: .medium))
@@ -33,7 +38,7 @@ struct AIAssistantSection: View {
                 Button("Drei Looks erstellen") { model.generateLooks() }
                     .disabled(!model.canGenerateLooks)
                     .accessibilityHint("Erstellt drei unverbindliche Textrezepte aus demselben Ausgangsstand")
-                Text("Natürlich · Kontrastreich · Entsättigt. Stilistische Textrezepte, keine Bildanalyse.")
+                Text(model.supportsLooks ? "Natürlich · Kontrastreich · Entsättigt. Stilistische Textrezepte, keine Bildanalyse." : "Drei Looks sind bei diesem Cloud-Provider nicht verfügbar. Wähle dafür Lokal in den KI-Einstellungen.")
                     .font(.system(size: 10)).foregroundStyle(Theme.muted)
                     .fixedSize(horizontal: false, vertical: true)
             }
