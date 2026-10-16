@@ -44,6 +44,8 @@ Ein Lock unter `dist/.picedit-build.lock` verhindert konkurrierende Bundle-Build
 
 Unter **Ordner** lassen sich die eingebundenen Ordner über den Pfeil aufklappen. Die Baumansicht zeigt auch verschachtelte und leere Unterordner. Ein Klick auf einen Ordner zeigt seine Bilder einschließlich der darunterliegenden Ordner; die Zahl rechts gibt diese Gesamtanzahl an. Neue oder entfernte Unterordner werden beim Aktualisieren berücksichtigt.
 
+Ordnerzählung, Unterordnerfilter und Ordnerzuständigkeit vergleichen geladene Datei-URLs in derselben normalisierten Darstellung. Gleichwertige `/tmp`-/`/private/tmp`-Pfade bleiben damit auch nach einem Katalogneustart sichtbar. Auch fehlende Dateien und Unterordner sowie vorübergehend unlesbare Bilder behalten ihre Ordnerzuordnung; die Pfadauflösung läuft im Hintergrund. Gespeicherte Asset-IDs, Datei-URLs und Bearbeitungszuordnungen werden durch diesen Vergleich nicht umgeschrieben.
+
 Änderungen am Inhalt verknüpfter Ordner werden mit **Ordner aktualisieren** oder **⇧⌘R** erneut eingelesen. Neue Bilder erscheinen anschließend in der Bibliothek; Bewertungen und Favoriten vorhandener Bilder bleiben erhalten. Die erste Version überwacht Ordner nicht automatisch.
 
 Die Bibliothek **verknüpft** vorhandene Dateien. Sie kopiert die Originale nicht und verändert sie nicht. Auch das Entfernen eines Ordners aus der Bibliothek löscht keine Bilder auf dem Datenträger. Verschobene, gelöschte oder vorübergehend nicht verfügbare Dateien können erst wieder geöffnet werden, wenn sie am verknüpften Speicherort verfügbar sind.

@@ -25,6 +25,30 @@ struct MetadataCatalogIntegrationTests {
         #expect(loaded.metadata.reference == reloaded.metadata.reference)
     }
 
+    @Test func nativeRelocationAcceptsHistoricalRootAliasesWithoutRewritingIdentity() async throws {
+        let fixture = try Fixture(base: URL(fileURLWithPath: "/private/tmp", isDirectory: true))
+        defer { fixture.remove() }
+        let aliasBase = fixture.root.path.replacingOccurrences(of: "/private/tmp/", with: "/tmp/")
+        #expect(aliasBase != fixture.root.path)
+        var catalog = try fixture.repository.load()
+        catalog.folders[0].url = URL(fileURLWithPath: aliasBase + "/Old", isDirectory: true)
+        try fixture.repository.save(catalog)
+        let original = try await fixture.seedConfirmed()
+        _ = try fixture.moveFolder()
+        let destination = URL(fileURLWithPath: aliasBase + "/New", isDirectory: true)
+        let store = PhotoMetadataRepository(directory: fixture.repository.directory)
+        let loaded = try await fixture.movedWriter(store: store, destination: destination).load()
+        #expect(loaded.metadata.error == nil)
+        #expect(loaded.metadata.changes.isEmpty)
+        let new = try #require(loaded.catalog.assets.first)
+        #expect(new.id != original.id)
+        let record = try #require(try await store.record(assetID: new.id))
+        #expect(record.confirmed.title == "Bestätigter Berg")
+        #expect(FilePathComparison.canonicalPath(URL(fileURLWithPath: try #require(record.confirmedSource).original.standardizedPath)) ==
+            FilePathComparison.canonicalPath(original.fileURL))
+        #expect(try await store.record(assetID: original.id)?.isOrphaned == true)
+    }
+
     @Test func twoBookmarkRelocationsAfterRestartRetainOriginalProvenance() async throws {
         let fixture = try Fixture(); defer { fixture.remove() }
         let original = try await fixture.seedConfirmed()
@@ -218,8 +242,8 @@ struct MetadataCatalogIntegrationTests {
 private enum SimulatedCrash: Error { case stop }
 private struct Fixture {
     let root: URL, repository: CatalogRepository, folder: LibraryFolder, asset: PhotoAsset
-    init() throws {
-        root = FileManager.default.temporaryDirectory.appendingPathComponent("metadata-catalog-" + UUID().uuidString, isDirectory: true).resolvingSymlinksInPath()
+    init(base: URL = FileManager.default.temporaryDirectory) throws {
+        root = base.appendingPathComponent("metadata-catalog-" + UUID().uuidString, isDirectory: true).resolvingSymlinksInPath()
         repository = CatalogRepository(directory: root.appendingPathComponent("Data", isDirectory: true))
         folder = LibraryFolder(url: root.appendingPathComponent("Old", isDirectory: true), bookmarkData: Data("synthetic-bookmark".utf8), subdirectoryPaths: ["Empty"])
         try FileManager.default.createDirectory(at: folder.url, withIntermediateDirectories: true)

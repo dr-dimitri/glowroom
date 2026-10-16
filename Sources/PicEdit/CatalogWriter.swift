@@ -79,15 +79,18 @@ actor CatalogWriter {
             let old = stored.catalog.folders[index]
             catalog.folders[index] = folder
             if let scope { scopes[folder.id] = scope }
-            if folder.url != old.url { moved[folder.id] = (old, folder) }
+            if LibraryProjectionWorker.filePath(folder.url) != LibraryProjectionWorker.filePath(old.url) {
+                moved[folder.id] = (old, folder)
+            }
         }
         var movedAssets: [(PhotoAsset, PhotoAsset, LibraryFolder, LibraryFolder, String)] = []
         for index in catalog.assets.indices {
             let asset = catalog.assets[index]
             if let (old, destination) = moved[asset.folderID] {
                 let prefix = LibraryProjectionWorker.directoryPrefix(old.url)
-                guard asset.fileURL.path.hasPrefix(prefix) else { continue }
-                let relative = String(asset.fileURL.path.dropFirst(prefix.count))
+                let path = LibraryProjectionWorker.filePath(asset.fileURL)
+                guard path.hasPrefix(prefix) else { continue }
+                let relative = String(path.dropFirst(prefix.count))
                 let url = destination.url.appendingPathComponent(relative)
                 var changed = asset
                 changed.fileURL = url; changed.id = url.resolvingSymlinksInPath().standardizedFileURL.path

@@ -560,8 +560,6 @@ final class LibraryModel: ObservableObject {
         }
     }
 
-    private func directoryPrefix(_ url: URL) -> String { LibraryProjectionWorker.directoryPrefix(url) }
-
     private func load() async {
         var updatedFolderStructure = false
         do {
@@ -714,10 +712,13 @@ final class LibraryModel: ObservableObject {
     }
 
     func contains(_ asset: PhotoAsset, in folder: LibraryFolder) -> Bool {
-        contains(asset, below: folder.url)
-    }
-    private func contains(_ asset: PhotoAsset, below url: URL) -> Bool {
-        asset.fileURL.path.hasPrefix(directoryPrefix(url))
+        // Path I/O belongs to the sole projection worker. While loading, no
+        // membership is published until that catalog's comparison map is ready.
+        guard let projection, projection.treeFolders[folder.id] == folder,
+              let path = projection.comparisonPaths[asset.fileURL],
+              let folderPath = projection.comparisonPaths[folder.url] else { return false }
+        let prefix = folderPath.hasSuffix("/") ? folderPath : folderPath + "/"
+        return path.hasPrefix(prefix)
     }
     func count(in folder: LibraryFolder) -> Int { folderTree(for: folder).photoCount }
     func folderTree(for folder: LibraryFolder) -> FolderTreeNode {
