@@ -18,9 +18,12 @@ Abhängigkeiten und gemeinsam veränderlicher Zustand müssen geschützt bleiben
 
 ## Abschluss von Änderungen
 
-- Schließe beauftragte Programmänderungen nach erfolgreicher, geeigneter Prüfung mit einem aussagekräftigen Git-Commit ab und pushe diesen auf den zugehörigen Remote-Branch, sofern der Nutzer nichts anderes vorgibt.
+- Führe nach jeder Umsetzungsanforderung und vor deren Abschluss einen sauberen, vollständigen lokalen Build mit `./scripts/build-app.sh` aus. Das gilt auch für Änderungen an Dokumentation oder Projektvorgaben; ein inkrementeller Build allein genügt nicht.
+- Entferne vor diesem Build die alten generierten Build-Ergebnisse aus den verwendeten Build-Verzeichnissen (standardmäßig `.build/` und gegebenenfalls `.build-app/`) sowie das bisherige App-Bundle `dist/PicEdit.app`. Berücksichtige abweichende Pfade wie `PICEDIT_BUILD_PATH`. Stelle vor der Bereinigung sicher, dass kein laufender Build oder Test diese Pfade verwendet; entferne keine aktiven Build-Locks und keine Quelldateien oder Nutzerdaten. Bereinigung und anschließender Build bleiben wegen ihrer Abhängigkeit geordnet.
+- Aktualisiere bei jeder Umsetzungsanforderung die zugehörige Dokumentation, damit Verhalten, Bedienung und Entwicklungsabläufe dem umgesetzten Stand entsprechen.
+- Schließe beauftragte Änderungen nach erfolgreichem sauberem lokalen Build und geeigneter Prüfung mit einem aussagekräftigen Git-Commit ab und pushe diesen auf den zugehörigen Remote-Branch, sofern der Nutzer nichts anderes vorgibt.
 - Nimm nur die zur Aufgabe gehörenden Änderungen in den Commit auf. Überschreibe keine fremden Änderungen und verwende keinen Force-Push.
-- Prüfe vor dem Push den Diff und nach dem Push den Git-Status. Berichte Commit, Branch, Testergebnis und gegebenenfalls verbleibende Hindernisse.
+- Prüfe vor dem Push den Diff und nach dem Push den Git-Status. Berichte Commit, Branch, Ergebnis des sauberen lokalen Builds, Testergebnis und gegebenenfalls verbleibende Hindernisse. Melde fehlgeschlagene Builds ausdrücklich; eine Umsetzungsanforderung ist erst nach erfolgreichem sauberem lokalem Build abgeschlossen.
 
 ## CPU, GPU und Ein-/Ausgabe
 

@@ -83,6 +83,20 @@ Das ausgewählte Bild erhält Vorrang vor wartenden Rasterbildern. Höchstens dr
 
 ## Entwickeln und prüfen
 
+Nach jeder Umsetzungsanforderung sind die betroffene Dokumentation zu aktualisieren, geeignete Tests auszuführen und ein sauberer, vollständiger lokaler App-Build erfolgreich abzuschließen. Der Abschluss erfolgt in dieser Reihenfolge:
+
+1. Änderungen und Dokumentation fertigstellen und die passenden Tests ausführen.
+2. Vor dem Bereinigen sicherstellen, dass keine Builds oder Tests mehr auf die betroffenen Verzeichnisse zugreifen. Einen vorhandenen Build-Lock wie oben beschrieben prüfen; laufende Prozesse und deren Ergebnisse nicht löschen.
+3. Alte generierte Build-Ergebnisse entfernen und das vollständige App-Bundle neu bauen. Für die Standardverzeichnisse im Repository-Stamm:
+
+   ```sh
+   rm -rf -- .build .build-app dist/PicEdit.app
+   ./scripts/build-app.sh
+   ```
+
+   Das Build-Skript bereinigt vorherige Ergebnisse nicht automatisch. Bei `PICEDIT_BUILD_PATH`, `PICEDIT_TEST_BUILD_PATH` oder anderen benutzerdefinierten Build-Verzeichnissen die tatsächlich verwendeten Pfade vorab prüfen und deren alte generierte Ergebnisse ebenfalls gezielt entfernen. Relative `PICEDIT_BUILD_PATH`-Angaben beziehen sich auf den Repository-Stamm. Nur bestätigte Build-Artefakte löschen; Quelldateien und persönliche Daten bleiben erhalten. Bereinigung und anschließender Build laufen wegen ihrer Abhängigkeit nacheinander; das Build-Skript parallelisiert seine unabhängigen Arbeitsschritte selbst.
+4. Nach erfolgreicher Prüfung den Diff kontrollieren, ausschließlich die zur Aufgabe gehörenden Änderungen aussagekräftig committen und auf den zugehörigen Remote-Branch pushen, anschließend den Git-Status prüfen. Im Abschlussbericht Commit, Branch und Build-/Testergebnis nennen; verbleibende Hindernisse ausdrücklich dokumentieren.
+
 Die automatisierten Tests verwenden Swift Testing und benötigen **Swift 6 oder neuer**. Das Testskript setzt lokale Compiler-Caches und berücksichtigt die Plugin-Erkennung der Apple Command Line Tools:
 
 ```sh
