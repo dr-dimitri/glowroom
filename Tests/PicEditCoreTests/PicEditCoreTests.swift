@@ -303,7 +303,9 @@ final class PicEditCoreTests {
         changed.assets[0].isFavorite = false
         try repository.save(changed)
         #expect(try repository.load() == changed)
-        #expect(try FileManager.default.contentsOfDirectory(atPath: repository.directory.path) == ["catalog.json"])
+        #expect(try Set(FileManager.default.contentsOfDirectory(atPath: repository.directory.path)) ==
+            Set(["catalog.json", "catalog-write.lock", "MetadataCatalogStaging"]))
+        #expect(try FileManager.default.contentsOfDirectory(atPath: repository.directory.appendingPathComponent("MetadataCatalogStaging").path).isEmpty)
     }
 
     @Test

@@ -4,6 +4,7 @@ import PicEditCore
 struct InspectorView: View {
     @ObservedObject var model: LibraryModel
     @EnvironmentObject private var editor: EditingModel
+    @EnvironmentObject private var photoMetadata: PhotoMetadataModel
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
@@ -32,6 +33,8 @@ struct InspectorView: View {
                             Spacer()
                             Text(asset.rating == 0 ? "Unbewertet" : "\(asset.rating) von 5").font(.system(size: 9)).foregroundStyle(Theme.muted)
                         }.padding(.top, 17)
+                        separator
+                        PhotoMetadataSection(model: photoMetadata)
                         separator
                         SectionLabel(text: "Aufnahme").padding(.bottom, 17)
                         metadataRow("Kamera", asset.cameraModel ?? "—")

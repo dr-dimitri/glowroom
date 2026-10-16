@@ -3,6 +3,13 @@ import PicEditCore
 
 /// One current worker and one replaceable queued context. Cache entries contain
 /// bounded response data/provenance, never images or a growing conversation.
+struct ImageAnalysisPayload: Sendable {
+    let request: ImageAnalysisRequest
+    let data: Data
+    let provenance: ImageAnalysisProvenance
+    let sourceStamp: ImageAnalysisSourceStamp
+}
+
 actor ImageAnalysisService: ImageAnalysisServing {
     nonisolated let descriptor: ImageAnalysisProviderDescriptor
     struct State: Sendable, Equatable {
@@ -15,8 +22,12 @@ actor ImageAnalysisService: ImageAnalysisServing {
         let queuedRequestID: UUID?
     }
 
+    private enum Purpose: Hashable, Sendable { case analysis, metadata }
+
     private struct Key: Hashable, Sendable {
         let source: AISourceIdentity
+        let purpose: Purpose
+        let refreshID: UUID?
         let kind: ImageAnalysisInputKind
         let settings: EditSettings?
         let editToken: AIEditingToken?
@@ -27,7 +38,9 @@ actor ImageAnalysisService: ImageAnalysisServing {
         let taskVersion = ImageAnalysisRequest.taskVersion
         let schemaVersion = ImageAnalysisRequest.schemaVersion
 
-        init(_ request: ImageAnalysisRequest, descriptor: ImageAnalysisProviderDescriptor) {
+        init(_ request: ImageAnalysisRequest, descriptor: ImageAnalysisProviderDescriptor, purpose: Purpose) {
+            self.purpose = purpose
+            refreshID = request.cachePolicy == .refreshRaster ? request.id : nil
             source = request.snapshot.source; kind = request.inputKind; language = request.language
             self.descriptor = descriptor
             settings = kind == .editedPreview ? request.snapshot.settings : nil
@@ -37,7 +50,7 @@ actor ImageAnalysisService: ImageAnalysisServing {
     }
     private struct Waiter {
         let request: ImageAnalysisRequest
-        let continuation: CheckedContinuation<ImageAnalysisResult, Error>
+        let continuation: CheckedContinuation<ImageAnalysisPayload, Error>
     }
     private struct Job {
         let id: UUID
@@ -76,13 +89,24 @@ actor ImageAnalysisService: ImageAnalysisServing {
     func availability() async -> ImageAnalysisAvailability { await provider.availability() }
 
     func analyze(_ request: ImageAnalysisRequest) async throws -> ImageAnalysisResult {
+        let payload = try await perform(request, purpose: .analysis)
+        return ImageAnalysisResult(request: payload.request,
+            suggestions: try ImageAnalysisSuggestionValidator().validate(payload.data), provenance: payload.provenance)
+    }
+
+    func metadata(_ request: ImageAnalysisRequest) async throws -> ImageAnalysisPayload {
+        guard request.inputKind == .originalPreview else { throw ImageAnalysisError.invalidRequest }
+        return try await perform(request, purpose: .metadata)
+    }
+
+    private func perform(_ request: ImageAnalysisRequest, purpose: Purpose) async throws -> ImageAnalysisPayload {
         try Task.checkCancellation()
         try request.validate()
         let waiterID = UUID()
-        let result: ImageAnalysisResult = try await withTaskCancellationHandler {
+        let result: ImageAnalysisPayload = try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { continuation in
                 guard !Task.isCancelled else { continuation.resume(throwing: ImageAnalysisError.cancelled); return }
-                enqueue(request, waiterID: waiterID, continuation: continuation)
+                enqueue(request, purpose: purpose, waiterID: waiterID, continuation: continuation)
             }
         } onCancel: { Task { await self.cancel(waiterID) } }
         guard !Task.isCancelled else { throw ImageAnalysisError.cancelled }
@@ -116,9 +140,9 @@ actor ImageAnalysisService: ImageAnalysisServing {
     private func publish() { for observer in observers.values { observer.yield(state) } }
     private func removeObserver(_ id: UUID) { observers.removeValue(forKey: id) }
 
-    private func enqueue(_ request: ImageAnalysisRequest, waiterID: UUID,
-                         continuation: CheckedContinuation<ImageAnalysisResult, Error>) {
-        let key = Key(request, descriptor: descriptor)
+    private func enqueue(_ request: ImageAnalysisRequest, purpose: Purpose, waiterID: UUID,
+                         continuation: CheckedContinuation<ImageAnalysisPayload, Error>) {
+        let key = Key(request, descriptor: descriptor, purpose: purpose)
         let waiter = Waiter(request: request, continuation: continuation)
         if var job = running, job.key == key, !job.waiters.isEmpty {
             job.waiters[waiterID] = waiter; running = job
@@ -172,9 +196,16 @@ actor ImageAnalysisService: ImageAnalysisServing {
                     try Task.checkCancellation()
                     // Readiness is checked again after a potentially long budget wait.
                     if case .unavailable(let reason) = await provider.availability() { throw ImageAnalysisError.unavailable(reason) }
-                    let data = try await provider.analyze(input)
+                    let data: Data
+                    switch key.purpose {
+                    case .analysis: data = try await provider.analyze(input)
+                    case .metadata: data = try await provider.metadata(input)
+                    }
                     try Task.checkCancellation()
-                    _ = try ImageAnalysisSuggestionValidator().validate(data)
+                    switch key.purpose {
+                    case .analysis: _ = try ImageAnalysisSuggestionValidator().validate(data)
+                    case .metadata: _ = try PhotoMetadataModelResponseValidator.validate(data)
+                    }
                     guard try await preparer.sourceStamp(for: request) == stamp else { throw ImageAnalysisError.staleSource }
                     guard case .original(let source) = request.snapshot.source else { throw ImageAnalysisError.invalidRequest }
                     let provenance = ImageAnalysisProvenance(descriptor: descriptor, analyzedAt: Date(),
@@ -186,6 +217,7 @@ actor ImageAnalysisService: ImageAnalysisServing {
                 }
                 try Task.checkCancellation()
             } catch is CancellationError { result = .failure(ImageAnalysisError.cancelled) }
+            catch is PhotoMetadataError { result = .failure(ImageAnalysisError.invalidResponse) }
             catch let error as ImageAnalysisError { result = .failure(Task.isCancelled ? ImageAnalysisError.cancelled : error) }
             catch { result = .failure(Task.isCancelled ? ImageAnalysisError.cancelled : ImageAnalysisError.providerFailure) }
             if let lease { await budget.release(lease) }
@@ -213,8 +245,8 @@ actor ImageAnalysisService: ImageAnalysisServing {
         for waiter in job.waiters.values {
             do {
                 let entry = try result.get()
-                let suggestions = try ImageAnalysisSuggestionValidator().validate(entry.data)
-                waiter.continuation.resume(returning: ImageAnalysisResult(request: waiter.request, suggestions: suggestions, provenance: entry.provenance))
+                waiter.continuation.resume(returning: ImageAnalysisPayload(request: waiter.request, data: entry.data,
+                    provenance: entry.provenance, sourceStamp: entry.sourceStamp))
             } catch { waiter.continuation.resume(throwing: error) }
         }
         startNext(); publish()

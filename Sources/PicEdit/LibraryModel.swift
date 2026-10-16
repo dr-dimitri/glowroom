@@ -11,78 +11,6 @@ enum PhotoSort: String, CaseIterable, Identifiable, Sendable {
     var id: String { rawValue }
 }
 
-private actor CatalogWriter {
-    let repository: CatalogRepository
-    private var lastRevision = -1
-    init(repository: CatalogRepository) { self.repository = repository }
-    struct LoadedCatalog: Sendable {
-        var catalog: LibraryCatalog
-        var scopes: [UUID: URL]
-        var updated: Bool
-    }
-
-    func load() async throws -> LoadedCatalog {
-        let stored = try repository.load()
-        // Bookmark resolution and directory-only backfills are independent. Two
-        // workers overlap disk waits without nesting the metadata scanner's pool.
-        let resolved = await withTaskGroup(of: (Int, LibraryFolder, URL?).self) { group in
-            var next = 0
-            var results: [(Int, LibraryFolder, URL?)] = []
-            func enqueue() {
-                guard next < stored.folders.count else { return }
-                let index = next, folder = stored.folders[index]
-                next += 1
-                group.addTask { await Self.resolve(folder, index: index) }
-            }
-            for _ in 0..<min(2, stored.folders.count) { enqueue() }
-            while let result = await group.next() { results.append(result); enqueue() }
-            return results.sorted { $0.0 < $1.0 }
-        }
-        var catalog = stored
-        var scopes: [UUID: URL] = [:]
-        var moved: [UUID: (String, URL)] = [:]
-        for (index, folder, scope) in resolved {
-            catalog.folders[index] = folder
-            if let scope { scopes[folder.id] = scope }
-            let old = stored.folders[index]
-            if folder.url != old.url { moved[folder.id] = (LibraryProjectionWorker.directoryPrefix(old.url), folder.url) }
-        }
-        for index in catalog.assets.indices {
-            let asset = catalog.assets[index]
-            if let (prefix, destination) = moved[asset.folderID], asset.fileURL.path.hasPrefix(prefix) {
-                let url = destination.appendingPathComponent(String(asset.fileURL.path.dropFirst(prefix.count)))
-                catalog.assets[index].fileURL = url
-                catalog.assets[index].id = url.resolvingSymlinksInPath().standardizedFileURL.path
-            }
-        }
-        return LoadedCatalog(catalog: catalog, scopes: scopes, updated: catalog != stored)
-    }
-
-    private nonisolated static func resolve(_ original: LibraryFolder, index: Int) async -> (Int, LibraryFolder, URL?) {
-        var folder = original
-        if let data = folder.bookmarkData {
-            var stale = false
-            if let url = try? URL(resolvingBookmarkData: data, options: [.withSecurityScope, .withoutUI], relativeTo: nil, bookmarkDataIsStale: &stale) {
-                folder.url = url
-                if stale {
-                    folder.bookmarkData = (try? url.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil)) ?? data
-                }
-            }
-        }
-        let scope = folder.url.startAccessingSecurityScopedResource() ? folder.url : nil
-        if folder.subdirectoryPaths.isEmpty,
-           let paths = try? await FolderScanner().scanSubdirectories(folder: folder), !paths.isEmpty {
-            folder.subdirectoryPaths = paths
-        }
-        return (index, folder, scope)
-    }
-    func save(_ catalog: LibraryCatalog, revision: Int) throws {
-        guard revision > lastRevision else { return }
-        try repository.save(catalog)
-        lastRevision = revision
-    }
-}
-
 @MainActor
 final class LibraryModel: ObservableObject {
     @Published private(set) var catalog = LibraryCatalog() {
@@ -166,6 +94,23 @@ final class LibraryModel: ObservableObject {
         didSet { if oldValue != isUpdatingCatalog { advanceAISelectionGeneration() } }
     }
     private let writer: CatalogWriter
+    @Published private(set) var metadataSearchState: PhotoMetadataSearchState = .loading(version: .initial)
+    @Published private(set) var metadataGeneration: PhotoMetadataVersion = .initial
+    @Published private(set) var metadataCatalogReference: MetadataCatalogFileReference = .absent
+    @Published private(set) var metadataCatalogChanges: [MetadataCatalogChangeReceipt] = []
+    @Published private(set) var metadataError: PhotoMetadataError?
+    private let metadataStore: (any PhotoMetadataStoring)?
+    private let metadataDirectory: URL
+    private let metadataCatalogSessionID: UUID
+    private var metadataUpdatesTask: Task<Void, Never>?
+    private var metadataReceivedState: PhotoMetadataSearchState = .loading(version: .initial)
+    private var metadataRetiredSessions: Set<UUID> = []
+    private var metadataProjectionID = UUID()
+    private var metadataWriterSequence: UInt64 = 0
+    private var metadataCatalogError: PhotoMetadataError?
+    private var metadataBlockedAssetIDs: Set<String> = []
+    private var metadataProtectedSourceURLs: [URL] = []
+    private var catalogSaveTasks: [UUID: Task<Void, Never>] = [:]
     private var revision = 0
     private var importTask: Task<Void, Never>?
     private var activeScopes: [UUID: URL] = [:]
@@ -191,8 +136,12 @@ final class LibraryModel: ObservableObject {
     var gridColumnCount = 3
 
     init(repository: CatalogRepository = CatalogRepository(), now: @escaping () -> Date = Date.init,
-         semanticSearch: (any SemanticSearchServing)? = nil) {
-        writer = CatalogWriter(repository: repository)
+         semanticSearch: (any SemanticSearchServing)? = nil,
+         metadataStore: (any PhotoMetadataStoring)? = nil) {
+        let metadataSession = UUID()
+        metadataCatalogSessionID = metadataSession
+        self.metadataStore = metadataStore; metadataDirectory = repository.directory
+        writer = CatalogWriter(repository: repository, metadataStore: metadataStore, sessionID: metadataSession)
         self.now = now
         self.semanticSearch = semanticSearch
         if let semanticSearch {
@@ -203,11 +152,20 @@ final class LibraryModel: ObservableObject {
                 }
             }
         }
+        if let metadataStore {
+            metadataUpdatesTask = Task { [weak self] in
+                for await state in await metadataStore.updates() {
+                    guard !Task.isCancelled, let self else { return }
+                    self.applyPhotoMetadataSearchState(state)
+                }
+            }
+        }
         Task { await load() }
     }
 
     deinit {
         semanticUpdatesTask?.cancel(); semanticStatusTask?.cancel(); semanticOperationTask?.cancel()
+        metadataUpdatesTask?.cancel()
         projectionTask?.cancel(); deferredProjectionTask?.cancel()
     }
 
@@ -225,6 +183,114 @@ final class LibraryModel: ObservableObject {
     /// Preserve display order when capturing a batch, independent of click order.
     var selectedAssets: [PhotoAsset] { visibleAssets.filter { selectedIDs.contains($0.id) } }
     var canModify: Bool { !isLoading && !isReadOnly && !isClosing && !isUpdatingCatalog }
+    /// A pending relocation fences catalog writes, while unrelated editorial
+    /// records remain editable. Resolution itself must remain reachable.
+    var canModifyCatalog: Bool { canModify && !metadataCatalogChanges.contains { $0.state == .staged || $0.state == .conflicted } }
+    var canResolvePhotoMetadataCatalogChanges: Bool { canModify && !isImporting && metadataStore != nil }
+
+    func photoMetadataSelectionContext(for assetID: String? = nil) -> PhotoMetadataSelectionContext? {
+        let asset: PhotoAsset?
+        if let assetID { asset = assetIndex(for: assetID).map { assets[$0] } }
+        else { asset = selectedAsset }
+        guard let asset else { return nil }
+        return PhotoMetadataSelectionContext(assetID: asset.id,
+            source: AIOriginalSourceFingerprint(fileURL: asset.fileURL, modifiedAt: asset.modifiedAt, fileSize: asset.fileSize),
+            selectionSessionID: aiSelectionSessionID, selectionGeneration: aiSelectionGeneration,
+            catalogSessionID: metadataCatalogSessionID, catalogGeneration: catalogGeneration,
+            canModify: canModify && !metadataBlockedAssetIDs.contains(asset.id), isClosing: isClosing)
+    }
+
+    /// A synchronous value capture only. Native path/identity checks happen in
+    /// the final background publisher, never while SwiftUI reads this value.
+    func photoMetadataFileProtection() -> MetadataFileProtectionSnapshot {
+        MetadataFileProtectionSnapshot(originalURLs: assets.map(\.fileURL) + metadataProtectedSourceURLs,
+            managedFileURLs: ManagedFileProtection.managedFiles(in: metadataDirectory),
+            managedDirectoryURLs: ManagedFileProtection.managedDirectories(in: metadataDirectory),
+            managedDirectoryFamilies: ManagedFileProtection.managedFamilies(in: metadataDirectory).map {
+                MetadataProtectedDirectoryFamily(parent: $0.parent, childNamePrefix: $0.childNamePrefix)
+            })
+    }
+
+    func retryPhotoMetadataReconciliation() async throws {
+        guard canResolvePhotoMetadataCatalogChanges else { throw isClosing ? PhotoMetadataError.closing : .catalogReadOnly }
+        let accepted = Task { try await writer.retryMetadataReconciliation() }
+        let id = UUID()
+        catalogSaveTasks[id] = Task { _ = try? await accepted.value; catalogSaveTasks.removeValue(forKey: id) }
+        do { applyPhotoMetadataCatalogResult(try await accepted.value) }
+        catch { metadataError = (error as? PhotoMetadataError) ?? .storageFailure; throw error }
+    }
+
+    func resolvePhotoMetadataCatalogChange(_ operation: MetadataCatalogResolutionOperation) async throws -> MetadataReconciliationResult {
+        guard canResolvePhotoMetadataCatalogChanges else { throw isClosing ? PhotoMetadataError.closing : .catalogReadOnly }
+        let accepted = Task { try await writer.resolve(operation) }
+        let id = UUID()
+        catalogSaveTasks[id] = Task { _ = try? await accepted.value; catalogSaveTasks.removeValue(forKey: id) }
+        do {
+            let value = try await accepted.value
+            applyPhotoMetadataCatalogResult(value)
+            guard let reconciliation = value.reconciliation else { throw value.error ?? .storageFailure }
+            return reconciliation
+        } catch { metadataError = (error as? PhotoMetadataError) ?? .storageFailure; throw error }
+    }
+
+    private var usablePhotoMetadataSnapshot: PhotoMetadataSearchSnapshot? {
+        guard case .available(let snapshot) = metadataSearchState,
+              snapshot.catalogReference == metadataCatalogReference else { return nil }
+        return snapshot
+    }
+
+    private enum MetadataSearchIdentity: Equatable {
+        case loading(PhotoMetadataVersion)
+        case available(PhotoMetadataVersion, MetadataCatalogFileReference)
+        case unavailable(PhotoMetadataVersion, PhotoMetadataError)
+        init(_ state: PhotoMetadataSearchState) {
+            switch state {
+            case .loading(let version): self = .loading(version)
+            case .available(let snapshot): self = .available(snapshot.version, snapshot.catalogReference)
+            case .unavailable(let version, let reason): self = .unavailable(version, reason)
+            }
+        }
+    }
+
+    private func applyPhotoMetadataSearchState(_ state: PhotoMetadataSearchState) {
+        guard !isClosing else { return }
+        let previous = metadataReceivedState.version, next = state.version
+        if next.sessionID == previous.sessionID {
+            guard next.generation >= previous.generation else { return }
+        } else {
+            guard !metadataRetiredSessions.contains(next.sessionID) else { return }
+            metadataRetiredSessions.insert(previous.sessionID)
+        }
+        metadataReceivedState = state
+        refreshPhotoMetadataSearchState()
+    }
+
+    private func refreshPhotoMetadataSearchState() {
+        let effective: PhotoMetadataSearchState
+        if let error = metadataCatalogError {
+            effective = .unavailable(version: metadataReceivedState.version, reason: error)
+        } else if case .available(let snapshot) = metadataReceivedState, snapshot.catalogReference != metadataCatalogReference {
+            // A saved catalog awaiting reconciliation must not borrow a complete
+            // search claim from another catalog byte snapshot.
+            effective = .loading(version: snapshot.version)
+        } else { effective = metadataReceivedState }
+        let changed = MetadataSearchIdentity(metadataSearchState) != MetadataSearchIdentity(effective)
+        metadataSearchState = effective; metadataGeneration = effective.version
+        if case .unavailable(_, let reason) = effective { metadataError = reason }
+        else { metadataError = nil }
+        if changed { metadataProjectionID = UUID(); scheduleProjection() }
+    }
+
+    private func applyPhotoMetadataCatalogResult(_ value: CatalogWriteMetadata) {
+        guard value.sequence > metadataWriterSequence else { return }
+        metadataWriterSequence = value.sequence
+        metadataCatalogReference = value.reference; metadataCatalogChanges = value.changes
+        metadataBlockedAssetIDs = value.blockedAssetIDs; metadataProtectedSourceURLs = value.protectedSourceURLs
+        if value.reconciliation != nil || value.error != nil { metadataCatalogError = value.error }
+        if let state = value.reconciliation?.searchState { applyPhotoMetadataSearchState(state) }
+        refreshPhotoMetadataSearchState()
+    }
+
     var title: String {
         switch selection {
         case .all: "Alle Fotos"
@@ -293,10 +359,11 @@ final class LibraryModel: ObservableObject {
             await Task.yield()
             guard let self, !Task.isCancelled else { return }
             let key = projectionKey, generation = catalogGeneration
+            let metadataID = metadataProjectionID, metadata = usablePhotoMetadataSnapshot
             var candidates: LibraryProjectionCandidates?
             do {
                 let current = try await projectionWorker.candidates(catalog, snapshotSessionID: semanticCatalogSessionID,
-                    generation: generation, key: key, date: now(), overrides: treeOverrides)
+                    generation: generation, key: key, date: now(), overrides: treeOverrides, metadata: metadata)
                 candidates = current
                 try Task.checkCancellation()
                 guard number == projectionRevision else { return }
@@ -321,7 +388,7 @@ final class LibraryModel: ObservableObject {
                     result = try await projectionWorker.rank(current, result: scores, topK: key.topK)
                 } else { result = current.base }
                 try Task.checkCancellation()
-                guard number == projectionRevision, generation == catalogGeneration else { return }
+                guard number == projectionRevision, generation == catalogGeneration, metadataID == metadataProjectionID else { return }
                 if selection == .recent, now() < result.evaluatedAt || result.expiresAt.map({ self.now() >= $0 }) == true {
                     scheduleProjection(); return
                 }
@@ -375,20 +442,21 @@ final class LibraryModel: ObservableObject {
               searchMode == .semantic || semanticControlsExpanded || semanticOperationLabel != nil || semanticState.isIndexing else { return }
         semanticScopeIsReady = false
         let key = semanticScopeKey(semanticScope), generation = catalogGeneration, snapshot = catalog
+        let metadataID = metadataProjectionID, metadataSnapshot = usablePhotoMetadataSnapshot
         semanticStatusTask = Task { [weak self] in
             guard let self else { return }
             do {
                 let scope = try await projectionWorker.candidates(snapshot, snapshotSessionID: semanticCatalogSessionID,
-                    generation: generation, key: key, date: now(), overrides: treeOverrides)
+                    generation: generation, key: key, date: now(), overrides: treeOverrides, metadata: metadataSnapshot)
                 try Task.checkCancellation()
-                guard semanticStatusID == id, catalogGeneration == generation else { return }
+                guard semanticStatusID == id, catalogGeneration == generation, metadataID == metadataProjectionID else { return }
                 semanticScopeCount = scope.assets.count
                 semanticScopeIsReady = true
                 await semanticSearch.updateCatalog(snapshotSessionID: semanticCatalogSessionID, generation: generation, assets: snapshot.assets)
                 try Task.checkCancellation()
                 guard semanticStatusID == id else { return }
                 let state = try await semanticSearch.status(scope: scope.assets)
-                guard !Task.isCancelled, semanticStatusID == id, catalogGeneration == generation else { return }
+                guard !Task.isCancelled, semanticStatusID == id, catalogGeneration == generation, metadataID == metadataProjectionID else { return }
                 applySemanticState(state)
             } catch is CancellationError { }
             catch {
@@ -451,19 +519,20 @@ final class LibraryModel: ObservableObject {
         let id = UUID(); semanticOperationID = id
         let key = semanticScopeKey(semanticScope), scopeLabel = semanticScope.label
         let generation = catalogGeneration, snapshot = catalog
+        let metadataID = metadataProjectionID, metadataSnapshot = usablePhotoMetadataSnapshot
         semanticError = nil; semanticOperationLabel = label
         semanticOperationTask = Task { [weak self] in
             guard let self else { return }
             do {
                 let scope = try await projectionWorker.candidates(snapshot, snapshotSessionID: semanticCatalogSessionID,
-                    generation: generation, key: key, date: now(), overrides: treeOverrides)
+                    generation: generation, key: key, date: now(), overrides: treeOverrides, metadata: metadataSnapshot)
                 try Task.checkCancellation()
-                guard semanticOperationID == id, generation == catalogGeneration,
+                guard semanticOperationID == id, generation == catalogGeneration, metadataID == metadataProjectionID,
                       key == semanticScopeKey(semanticScope), canManageSemanticSearch else { throw CancellationError() }
                 semanticActiveScopeLabel = "\(scopeLabel) · \(scope.assets.count) Bilder"
                 await semanticSearch.updateCatalog(snapshotSessionID: semanticCatalogSessionID, generation: generation, assets: snapshot.assets)
                 try Task.checkCancellation()
-                guard semanticOperationID == id, generation == catalogGeneration, canManageSemanticSearch else { throw CancellationError() }
+                guard semanticOperationID == id, generation == catalogGeneration, metadataID == metadataProjectionID, canManageSemanticSearch else { throw CancellationError() }
                 try await operation(semanticSearch, scope.assets)
                 finishSemanticOperation(id: id, error: nil)
                 scheduleProjection()
@@ -499,6 +568,7 @@ final class LibraryModel: ObservableObject {
             let loaded = try await writer.load()
             activeScopes = loaded.scopes
             catalog = loaded.catalog
+            applyPhotoMetadataCatalogResult(loaded.metadata)
             updatedFolderStructure = loaded.updated
             await waitForProjection()
             reconcileSelection()
@@ -511,7 +581,7 @@ final class LibraryModel: ObservableObject {
     }
 
     func chooseFolders() {
-        guard canModify, !isImporting else { return }
+        guard canModifyCatalog, !isImporting else { return }
         let panel = NSOpenPanel()
         panel.title = "Ordner zur Bibliothek hinzufügen"
         panel.message = "Bilder und Unterordner werden eingelesen. Deine Originale bleiben an ihrem Speicherort."
@@ -523,7 +593,7 @@ final class LibraryModel: ObservableObject {
     }
 
     func importFolders(_ urls: [URL], preservingSelection previousSelection: LibrarySelection? = nil) {
-        guard canModify, !isImporting, !urls.isEmpty else { return }
+        guard canModifyCatalog, !isImporting, !urls.isEmpty else { return }
         advanceAISelectionGeneration()
         isImporting = true
         notice = nil
@@ -587,7 +657,7 @@ final class LibraryModel: ObservableObject {
     }
 
     func enqueueFolders(_ urls: [URL]) {
-        guard canModify else { return }
+        guard canModifyCatalog else { return }
         if isImporting {
             queuedFolders.append(contentsOf: urls.filter { !queuedFolders.contains($0) })
         } else { importFolders(urls) }
@@ -607,7 +677,7 @@ final class LibraryModel: ObservableObject {
     func cancelImport() { importTask?.cancel() }
 
     func removeFolder(_ id: UUID) {
-        guard canModify, !isImporting else { return }
+        guard canModifyCatalog, !isImporting else { return }
         isUpdatingCatalog = true
         let snapshot = catalog
         mutationTask = Task {
@@ -632,13 +702,13 @@ final class LibraryModel: ObservableObject {
     }
 
     func setRating(_ rating: Int, for id: String? = nil) {
-        guard canModify, let index = assetIndex(for: id ?? selectedID) else { return }
+        guard canModifyCatalog, let index = assetIndex(for: id ?? selectedID) else { return }
         catalog.assets[index].rating = min(5, max(0, rating))
         persist()
     }
 
     func toggleFavorite(_ id: String? = nil) {
-        guard canModify, let index = assetIndex(for: id ?? selectedID) else { return }
+        guard canModifyCatalog, let index = assetIndex(for: id ?? selectedID) else { return }
         catalog.assets[index].isFavorite.toggle()
         persist()
     }
@@ -738,11 +808,13 @@ final class LibraryModel: ObservableObject {
     }
 
     private func persist() {
-        guard canModify else { return }
+        guard canModifyCatalog else { return }
         revision += 1
         let snapshot = catalog, number = revision
-        Task {
-            do { try await writer.save(snapshot, revision: number) }
+        let id = UUID()
+        catalogSaveTasks[id] = Task {
+            defer { catalogSaveTasks.removeValue(forKey: id) }
+            do { applyPhotoMetadataCatalogResult(try await writer.save(snapshot, revision: number)) }
             catch { errorMessage = "Änderungen konnten nicht gespeichert werden.\n\n\(error.localizedDescription)" }
         }
     }
@@ -768,6 +840,7 @@ final class LibraryModel: ObservableObject {
         isClosing = false
         if projectionNeedsResumption { scheduleProjection() }
         else { refreshSemanticStatus() }
+        if let metadataStore { Task { applyPhotoMetadataSearchState(await metadataStore.searchState()) } }
     }
 
     func finishSaving() async -> Bool {
@@ -775,9 +848,13 @@ final class LibraryModel: ObservableObject {
         importTask?.cancel()
         if let importTask { await importTask.value }
         if let mutationTask { await mutationTask.value }
+        while !catalogSaveTasks.isEmpty {
+            let tasks = Array(catalogSaveTasks.values)
+            for task in tasks { await task.value }
+        }
         guard !isLoading && !isReadOnly else { return true }
         revision += 1
-        do { try await writer.save(catalog, revision: revision); return true }
+        do { applyPhotoMetadataCatalogResult(try await writer.save(catalog, revision: revision)); return true }
         catch { errorMessage = "Der Katalog konnte nicht gespeichert werden: \(error.localizedDescription)"; return false }
     }
 }

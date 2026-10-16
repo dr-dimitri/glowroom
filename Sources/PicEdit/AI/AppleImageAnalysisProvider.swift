@@ -76,6 +76,11 @@ struct AppleImageAnalysisProvider: ImageAnalysisProvider {
         catch { throw ImageAnalysisError.providerFailure }
     }
 
+    func metadata(_ input: PreparedImageAnalysisInput) async throws -> Data {
+        if case .unavailable(let reason) = await availability() { throw ImageAnalysisError.unavailable(reason) }
+        return try await ApplePhotoMetadataAdapter.respond(input, model: model)
+    }
+
     static let instructions = """
     The person's locale is de_DE.
     Du beschreibst sichtbare Bildpixel auf Deutsch. Ergebnisse sind vorsichtige Vorschläge, keine bestätigten Metadaten.

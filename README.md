@@ -56,7 +56,7 @@ Die Bildvorschau verwendet Apples ImageIO. Gängige Formate wie JPEG, PNG, TIFF 
 
 Metadaten werden mit höchstens vier, an CPU und Speicher angepassten Lesern eingelesen. Filter, Sortierung, Ordnerbäume und Importabgleich laufen im Hintergrund. Schnelle Auswahl- und Suchänderungen verwerfen überholte Ergebnisse; Bewertungen und Favoriten bleiben auch bei gleichzeitigem Import erhalten.
 
-Decodierung, Cache-Zugriffe und Bearbeitungsrendering können sich überlappen. Ausgewählte Bilder werden bevorzugt; gleiche Anfragen teilen ihre Arbeit, größere laufende Decodierungen bedienen auch kleinere Vorschauen. Auf Rechnern mit mindestens vier aktiven CPU-Kernen und 8 GiB RAM können eine ausgewählte Bearbeitung und eine Hintergrundvorschau gleichzeitig rendern; sonst bleibt es bei einem Worker. Separate Core-Image-Kontexte geben dem ausgewählten Bild Vorrang. Datenbanktransaktionen und Backups bleiben geordnet; beim Beenden werden Katalog und Bearbeitungsdatenbank gemeinsam abgewartet.
+Decodierung, Cache-Zugriffe und Bearbeitungsrendering können sich überlappen. Ausgewählte Bilder werden bevorzugt; gleiche Anfragen teilen ihre Arbeit, größere laufende Decodierungen bedienen auch kleinere Vorschauen. Auf Rechnern mit mindestens vier aktiven CPU-Kernen und 8 GiB RAM können eine ausgewählte Bearbeitung und eine Hintergrundvorschau gleichzeitig rendern; sonst bleibt es bei einem Worker. Separate Core-Image-Kontexte geben dem ausgewählten Bild Vorrang. Datenbanktransaktionen und Backups bleiben geordnet; beim Beenden werden Katalog, Bearbeitungsdatenbank und angenommene Bildinformationen-Speichervorgänge gemeinsam abgewartet.
 
 [Zuständigkeiten, Grenzen, Testergebnisse und reproduzierbare Benchmarks](docs/PARALLELISM.md) dokumentieren die Umsetzung. Details zur GPU-Nutzung, wiederverwendeten Filterstufen und Messungen der nicht destruktiven Bearbeitung stehen im [Bearbeitungs-Performancebericht](docs/EDITING-PERFORMANCE.md). Die gemessene Beschleunigung beim Metadatenimport gilt für synthetische JPEG-Testdaten; große Kamera-RAWs wurden nicht vermessen.
 
@@ -199,6 +199,14 @@ Standard ist die **Originalvorschau**, unabhängig von den Reglern. **Bearbeitet
 
 Beschreibung und Attribute bleiben als **noch nicht bestätigt** gekennzeichnet. Sie ändern keine Regler, Originale oder gespeicherten Metadaten. **Analysebezug** zeigt Anbieter, Modell, Eingabemaße und Rasterprüfsumme. Aussagen zu Identität, Gesundheit oder einem nicht belegten Aufnahmeort werden nicht bestätigt. SDK-Gates, lokale Ausführung, Datenbezug und Prüfgrenzen stehen in der [Bildanalyse-Dokumentation](docs/AI-IMAGE-ANALYSIS.md).
 
+### Bildinformationen: Titel, Beschreibung und Tags
+
+Der Bereich **Bildinformationen** hält redaktionelle Texte getrennt von Kameraangaben und Reglern. Titel, Beschreibung, Tags und Sprache lassen sich auch ohne KI manuell pflegen. **Vorschlagen** verwendet die lokale Bildfähigkeit und eine begrenzte Originalvorschau. Vorschläge bleiben ausdrücklich unbestätigt; erst **Übernehmen** speichert die gewählten Felder. Tags werden standardmäßig ergänzt, Ersetzen ist eine eigene bewusste Auswahl. **Neu erstellen** prüft erneut die tatsächlichen Eingabepixel. Keine Originaldatei oder EXIF-Daten werden verändert.
+
+Bestätigte Inhalte bleiben bei erneuter Analyse, Bildwechsel und Bibliotheksaktualisierung erhalten. Geänderte Quellen und Zuordnungskonflikte werden angezeigt. Unfertige manuelle Eingaben gehören zum jeweiligen Foto und werden als eigener Entwurf erhalten. Nur bestätigte Inhalte erweitern die wörtliche Suche und deren Filter vor der semantischen Trefferauswahl.
+
+Die dauerhaften Texte und Entwürfe liegen separat in **`photo-metadata.sqlite`** im Katalogverzeichnis, auch bei `--catalog-directory`. Vorhandene Bearbeitungsbackups enthalten sie nicht. **Bildinformationen exportieren/importieren** sichert bestätigte Inhalte als versioniertes JSON; Entwürfe, Fotos und der Katalog gehören nicht zu diesem Export. Import ergänzt standardmäßig fehlende Einträge; bestehende Inhalte werden nur nach Konfliktprüfung und ausdrücklicher Auswahl ersetzt. Grenzen, Datenbezug und Wiederanlauf stehen in [Bildinformationen und manuelle Sicherung](docs/PHOTO-METADATA.md).
+
 ## JPEG-Export
 
 Wähle ein oder mehrere Fotos und klicke oben auf **Exportieren**, nutze **Ablage → Foto als JPEG exportieren …** beziehungsweise **Ausgewählte Fotos als JPEG exportieren …** oder **⇧⌘E**. Der Export steht auch im Kontextmenü der Bilder im Raster, Filmstreifen und in der Einzelansicht. Gehört das angeklickte Bild zur Auswahl, werden alle ausgewählten Bilder exportiert; andernfalls wird dieses Bild ausgewählt und exportiert. Der Dialog gliedert die Optionen wie in Lightroom in Speicherort, Dateieinstellungen und Bildgröße.
@@ -216,14 +224,14 @@ Der Export läuft im Hintergrund und kann abgebrochen werden. Mehrere Bilder ver
 
 Die Reglerwerte stehen pro Foto in **`~/Library/Application Support/PicEdit/edits.sqlite`**. SQLite verwendet WAL, `synchronous=FULL`, Transaktionen und fortlaufende Versionen pro Bild. Mehrere schnelle Änderungen werden nach einer kurzen Eingabepause zusammengefasst. Beim Beenden wird auf ausstehende Speichervorgänge gewartet. Konflikte oder Schreibfehler werden angezeigt; ungespeicherte Werte bleiben im Speicher und können über **Entwickeln → Änderungen erneut speichern** erneut geschrieben werden.
 
-Der vorhandene Bibliothekskatalog mit Ordnern, Metadaten, Bewertungen und Favoriten bleibt in `catalog.json`. Beide Dateien liegen bei `--catalog-directory` im angegebenen Test-/Datenverzeichnis.
+Der vorhandene Bibliothekskatalog mit Ordnern, Metadaten, Bewertungen und Favoriten bleibt in `catalog.json`. Katalog, Bearbeitungen und die getrennten Bildinformationen liegen bei `--catalog-directory` im angegebenen Test-/Datenverzeichnis.
 
 - **Automatisch:** Nach dem ersten erfolgreichen Speichern an einem Tag entsteht ein geprüftes Backup unter `EditBackups` im Datenverzeichnis. Die letzten sieben automatischen Sicherungen bleiben erhalten.
 - **Manuell:** Über das Backup-Symbol oben rechts oder **Entwickeln → Bearbeitungen sichern …** einen Zielort auswählen, beispielsweise ein externes Laufwerk. Manuelle Sicherungen werden nicht automatisch gelöscht.
 - **Wiederherstellen:** **Backup wiederherstellen …** öffnet eine Sicherungsdatei. Vor der Übernahme werden Integrität, Schema und Werte geprüft und der bisherige Zustand separat gesichert. Ungültige Dateien verändern die vorhandenen Bearbeitungen nicht.
 - **Beschädigte Datenbank:** Ein gültiges Backup kann auch bei nicht mehr startfähiger Bearbeitungsdatenbank wiederhergestellt werden. Die beschädigte Datenbank und ihre Begleitdateien bleiben im Unterordner `Recovery` erhalten.
 
-**Diese Backups enthalten ausschließlich die Bearbeitungswerte. Originalbilder, `catalog.json` und der entbehrliche Vorschau-Cache sind nicht enthalten.** Fotoordner und Katalog separat sichern, etwa mit der vorhandenen Mac-Sicherung. Eine lokale Sicherung auf demselben Datenträger schützt nicht vor dessen Ausfall; hierfür die manuelle Sicherung auf ein anderes Laufwerk speichern.
+**Diese Backups enthalten ausschließlich die Bearbeitungswerte. Originalbilder, `catalog.json`, `photo-metadata.sqlite` mit redaktionellen Texten/Entwürfen und der entbehrliche Vorschau-Cache sind nicht enthalten.** Bestätigte Bildinformationen separat als JSON exportieren; dieser Export enthält keine Entwürfe. Fotoordner und Katalog separat sichern, etwa mit der vorhandenen Mac-Sicherung. Eine lokale Sicherung auf demselben Datenträger schützt nicht vor dessen Ausfall; hierfür die manuelle Sicherung auf ein anderes Laufwerk speichern.
 
 Die Sicherung verwendet die [SQLite Online Backup API](https://sqlite.org/backup.html), damit auch noch im WAL stehende Änderungen in einer eigenständig lesbaren Datei enthalten sind. Eine laufende Datenbank wird nicht einfach mit ihren WAL-Dateien kopiert.
 

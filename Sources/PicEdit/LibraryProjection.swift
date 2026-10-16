@@ -54,7 +54,7 @@ actor LibraryProjectionWorker {
     private var treeFolders: [UUID: LibraryFolder] = [:]
 
     func project(_ catalog: LibraryCatalog, generation: Int, key: LibraryProjectionKey,
-                 date: Date, overrides: [UUID: LibraryFolder]) throws -> LibraryProjection {
+                 date: Date, overrides: [UUID: LibraryFolder], metadata: PhotoMetadataSearchSnapshot? = nil) throws -> LibraryProjection {
         try Task.checkCancellation()
         if cachedGeneration != generation {
             var nextIndices: [String: Int] = [:]
@@ -107,10 +107,13 @@ actor LibraryProjectionWorker {
             case .recent: included = recentIDs.contains(asset.folderID)
             case .folder, .subfolder: included = prefix.map { asset.fileURL.path.hasPrefix($0) } ?? false
             }
-            if included && asset.rating >= key.minimumRating && (key.query.isEmpty ||
-                [asset.fileName, asset.cameraModel ?? "", asset.format].contains { $0.localizedStandardContains(key.query) }) {
-                visible.append(asset)
+            guard included, asset.rating >= key.minimumRating else { continue }
+            if key.query.isEmpty { visible.append(asset); continue }
+            var values = [asset.fileName, asset.cameraModel ?? "", asset.format]
+            if let fields = metadata?.confirmedByAssetID[asset.id] {
+                values += [fields.title, fields.description] + fields.tags
             }
+            if values.contains(where: { $0.localizedStandardContains(key.query) }) { visible.append(asset) }
         }
         // Swift's sort is not interruptible; only one sort can run on this actor.
         visible.sort { lhs, rhs in
@@ -131,10 +134,10 @@ actor LibraryProjectionWorker {
     }
 
     func candidates(_ catalog: LibraryCatalog, snapshotSessionID: UUID, generation: Int,
-                    key: LibraryProjectionKey, date: Date, overrides: [UUID: LibraryFolder]) throws -> LibraryProjectionCandidates {
+                    key: LibraryProjectionKey, date: Date, overrides: [UUID: LibraryFolder], metadata: PhotoMetadataSearchSnapshot? = nil) throws -> LibraryProjectionCandidates {
         // The existing sole worker applies every literal/navigation predicate
         // before scoring, and provides the stable fallback order at top-K ties.
-        let base = try project(catalog, generation: generation, key: key, date: date, overrides: overrides)
+        let base = try project(catalog, generation: generation, key: key, date: date, overrides: overrides, metadata: metadata)
         return LibraryProjectionCandidates(snapshotSessionID: snapshotSessionID, generation: generation, base: base)
     }
 
