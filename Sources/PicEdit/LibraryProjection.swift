@@ -1,4 +1,5 @@
 import Foundation
+import Darwin
 import PicEditCore
 
 enum LibrarySearchMode: String, CaseIterable, Identifiable, Sendable {
@@ -39,6 +40,7 @@ struct LibraryProjection: Sendable {
     let favoriteCount: Int
     let trees: [UUID: FolderTreeNode]
     let treeFolders: [UUID: LibraryFolder]
+    let comparisonPaths: [URL: String]
     let evaluatedAt: Date
     let expiresAt: Date?
 }
@@ -52,6 +54,7 @@ actor LibraryProjectionWorker {
     private var favoriteCount = 0
     private var trees: [UUID: FolderTreeNode] = [:]
     private var treeFolders: [UUID: LibraryFolder] = [:]
+    private var comparisonPaths: [URL: String] = [:]
 
     func project(_ catalog: LibraryCatalog, generation: Int, key: LibraryProjectionKey,
                  date: Date, overrides: [UUID: LibraryFolder]) throws -> LibraryProjection {
@@ -60,13 +63,17 @@ actor LibraryProjectionWorker {
             var nextIndices: [String: Int] = [:]
             nextIndices.reserveCapacity(catalog.assets.count)
             var favorites = 0
+            var nextPaths: [URL: String] = [:]
+            nextPaths.reserveCapacity(catalog.assets.count + catalog.folders.count)
             for (index, asset) in catalog.assets.enumerated() {
                 if index % 256 == 0 { try Task.checkCancellation() }
                 if nextIndices[asset.id] == nil { nextIndices[asset.id] = index }
                 if asset.isFavorite { favorites += 1 }
+                if nextPaths[asset.fileURL] == nil { nextPaths[asset.fileURL] = Self.filePath(asset.fileURL) }
             }
             indices = nextIndices
             favoriteCount = favorites
+            comparisonPaths = nextPaths
             trees = [:]
             treeFolders = [:]
             cachedGeneration = generation
@@ -74,8 +81,9 @@ actor LibraryProjectionWorker {
         for original in catalog.folders {
             try Task.checkCancellation()
             let folder = overrides[original.id] ?? original
+            if comparisonPaths[folder.url] == nil { comparisonPaths[folder.url] = Self.filePath(folder.url) }
             if treeFolders[folder.id] != folder {
-                trees[folder.id] = try FolderTreeNode.makeCancellable(folder: folder, assets: catalog.assets)
+                trees[folder.id] = try FolderTreeNode.makeCancellable(folder: folder, assets: catalog.assets, comparisonPaths: comparisonPaths)
                 treeFolders[folder.id] = folder
             }
         }
@@ -92,9 +100,9 @@ actor LibraryProjectionWorker {
         }
         let prefix: String?
         switch key.selection {
-        case .folder(let id): prefix = catalog.folders.first { $0.id == id }.map { Self.directoryPrefix($0.url) }
+        case .folder(let id): prefix = catalog.folders.first { $0.id == id }.flatMap { comparisonPaths[$0.url] }.map(Self.directoryPrefix)
         case .subfolder(let id, let path):
-            prefix = catalog.folders.first { $0.id == id }.map { Self.directoryPrefix($0.url.appendingPathComponent(path)) }
+            prefix = catalog.folders.first { $0.id == id }.flatMap { comparisonPaths[$0.url] }.map { Self.directoryPrefix(Self.directoryPrefix($0) + path) }
         default: prefix = nil
         }
         var visible: [PhotoAsset] = []
@@ -105,7 +113,7 @@ actor LibraryProjectionWorker {
             case .all: included = true
             case .favorites: included = asset.isFavorite
             case .recent: included = recentIDs.contains(asset.folderID)
-            case .folder, .subfolder: included = prefix.map { asset.fileURL.path.hasPrefix($0) } ?? false
+            case .folder, .subfolder: included = prefix.map { comparisonPaths[asset.fileURL]?.hasPrefix($0) ?? false } ?? false
             }
             if included && asset.rating >= key.minimumRating && (key.query.isEmpty ||
                 [asset.fileName, asset.cameraModel ?? "", asset.format].contains { $0.localizedStandardContains(key.query) }) {
@@ -127,7 +135,7 @@ actor LibraryProjectionWorker {
         }
         try Task.checkCancellation()
         return LibraryProjection(key: key, assets: visible, indices: indices, favoriteCount: favoriteCount,
-                                 trees: trees, treeFolders: treeFolders, evaluatedAt: date, expiresAt: expiresAt)
+                                 trees: trees, treeFolders: treeFolders, comparisonPaths: comparisonPaths, evaluatedAt: date, expiresAt: expiresAt)
     }
 
     func candidates(_ catalog: LibraryCatalog, snapshotSessionID: UUID, generation: Int,
@@ -170,11 +178,49 @@ actor LibraryProjectionWorker {
 
     private func replacingAssets(_ base: LibraryProjection, with assets: [PhotoAsset]) -> LibraryProjection {
         LibraryProjection(key: base.key, assets: assets, indices: base.indices, favoriteCount: base.favoriteCount,
-                          trees: base.trees, treeFolders: base.treeFolders, evaluatedAt: base.evaluatedAt, expiresAt: base.expiresAt)
+                          trees: base.trees, treeFolders: base.treeFolders, comparisonPaths: base.comparisonPaths, evaluatedAt: base.evaluatedAt, expiresAt: base.expiresAt)
     }
 
-    static func directoryPrefix(_ url: URL) -> String {
-        let path = url.standardizedFileURL.path
-        return path.hasSuffix("/") ? path : path + "/"
+    // Foundation's private-directory abbreviation depends on whether the whole
+    // path exists. Resolve the reachable prefix instead, then append the lexical
+    // remainder, so offline/missing originals retain exactly the same membership.
+    // Call only from the catalog/projection workers; UI reads the resulting map.
+    // Persisted asset IDs and source URLs are never changed by this comparison.
+    static func filePath(_ url: URL) -> String {
+        var prefix = url
+        var remainder: [String] = []
+        var followedLinks = 0
+        while true {
+            if let resolved = prefix.withUnsafeFileSystemRepresentation({ pointer -> String? in
+                guard let pointer, let actual = realpath(pointer, nil) else { return nil }
+                defer { free(actual) }
+                return String(cString: actual)
+            }) {
+                var components = resolved.split(separator: "/").map(String.init)
+                for component in remainder.reversed() {
+                    if component == ".." { if !components.isEmpty { components.removeLast() } }
+                    else if component != "." && !component.isEmpty { components.append(component) }
+                }
+                return "/" + components.joined(separator: "/")
+            }
+            // A dangling link still has a meaningful lexical destination. This
+            // also preserves aliases when their target folder is temporarily off line.
+            if let target = try? FileManager.default.destinationOfSymbolicLink(atPath: prefix.path) {
+                followedLinks += 1
+                guard followedLinks <= 40 else { return url.path }
+                prefix = target.hasPrefix("/") ? URL(fileURLWithPath: target) :
+                    URL(fileURLWithPath: target, relativeTo: prefix.deletingLastPathComponent()).absoluteURL
+                continue
+            }
+            let parent = prefix.deletingLastPathComponent()
+            guard parent.path != prefix.path else { return url.path }
+            remainder.append(prefix.lastPathComponent)
+            prefix = parent
+        }
+    }
+
+    static func directoryPrefix(_ url: URL) -> String { directoryPrefix(filePath(url)) }
+    private static func directoryPrefix(_ path: String) -> String {
+        path.hasSuffix("/") ? path : path + "/"
     }
 }

@@ -45,15 +45,18 @@ private actor CatalogWriter {
             catalog.folders[index] = folder
             if let scope { scopes[folder.id] = scope }
             let old = stored.folders[index]
-            if folder.url != old.url { moved[folder.id] = (LibraryProjectionWorker.directoryPrefix(old.url), folder.url) }
+            if LibraryProjectionWorker.filePath(folder.url) != LibraryProjectionWorker.filePath(old.url) {
+                moved[folder.id] = (LibraryProjectionWorker.directoryPrefix(old.url), folder.url)
+            }
         }
         for index in catalog.assets.indices {
             let asset = catalog.assets[index]
-            if let (prefix, destination) = moved[asset.folderID], asset.fileURL.path.hasPrefix(prefix) {
-                let url = destination.appendingPathComponent(String(asset.fileURL.path.dropFirst(prefix.count)))
-                catalog.assets[index].fileURL = url
-                catalog.assets[index].id = url.resolvingSymlinksInPath().standardizedFileURL.path
-            }
+            guard let (prefix, destination) = moved[asset.folderID] else { continue }
+            let path = LibraryProjectionWorker.filePath(asset.fileURL)
+            guard path.hasPrefix(prefix) else { continue }
+            let url = destination.appendingPathComponent(String(path.dropFirst(prefix.count)))
+            catalog.assets[index].fileURL = url
+            catalog.assets[index].id = url.resolvingSymlinksInPath().standardizedFileURL.path
         }
         return LoadedCatalog(catalog: catalog, scopes: scopes, updated: catalog != stored)
     }
@@ -491,8 +494,6 @@ final class LibraryModel: ObservableObject {
         }
     }
 
-    private func directoryPrefix(_ url: URL) -> String { LibraryProjectionWorker.directoryPrefix(url) }
-
     private func load() async {
         var updatedFolderStructure = false
         do {
@@ -644,10 +645,13 @@ final class LibraryModel: ObservableObject {
     }
 
     func contains(_ asset: PhotoAsset, in folder: LibraryFolder) -> Bool {
-        contains(asset, below: folder.url)
-    }
-    private func contains(_ asset: PhotoAsset, below url: URL) -> Bool {
-        asset.fileURL.path.hasPrefix(directoryPrefix(url))
+        // Path I/O belongs to the sole projection worker. While loading, no
+        // membership is published until that catalog's comparison map is ready.
+        guard let projection, projection.treeFolders[folder.id] == folder,
+              let path = projection.comparisonPaths[asset.fileURL],
+              let folderPath = projection.comparisonPaths[folder.url] else { return false }
+        let prefix = folderPath.hasSuffix("/") ? folderPath : folderPath + "/"
+        return path.hasPrefix(prefix)
     }
     func count(in folder: LibraryFolder) -> Int { folderTree(for: folder).photoCount }
     func folderTree(for folder: LibraryFolder) -> FolderTreeNode {

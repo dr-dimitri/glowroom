@@ -15,14 +15,14 @@ struct FolderTreeNode: Identifiable, Sendable {
 
     static func make(folder: LibraryFolder, assets: [PhotoAsset]) -> FolderTreeNode {
         // The synchronous helper is retained for small standalone projections.
-        try! build(folder: folder, assets: assets, checkCancellation: {})
+        try! build(folder: folder, assets: assets, comparisonPaths: nil, checkCancellation: {})
     }
 
-    static func makeCancellable(folder: LibraryFolder, assets: [PhotoAsset]) throws -> FolderTreeNode {
-        try build(folder: folder, assets: assets, checkCancellation: { try Task.checkCancellation() })
+    static func makeCancellable(folder: LibraryFolder, assets: [PhotoAsset], comparisonPaths: [URL: String]? = nil) throws -> FolderTreeNode {
+        try build(folder: folder, assets: assets, comparisonPaths: comparisonPaths, checkCancellation: { try Task.checkCancellation() })
     }
 
-    private static func build(folder: LibraryFolder, assets: [PhotoAsset], checkCancellation: () throws -> Void) throws -> FolderTreeNode {
+    private static func build(folder: LibraryFolder, assets: [PhotoAsset], comparisonPaths: [URL: String]?, checkCancellation: () throws -> Void) throws -> FolderTreeNode {
         final class Branch {
             var children: [String: Branch] = [:]
             var photoCount = 0
@@ -54,12 +54,13 @@ struct FolderTreeNode: Identifiable, Sendable {
             guard !path.hasPrefix("/"), !parts.contains(".."), !parts.contains(".") else { continue }
             root.add(parts, countingPhoto: false)
         }
-        let rootPath = folder.url.standardizedFileURL.path
-        let prefix = rootPath.hasSuffix("/") ? rootPath : rootPath + "/"
+        let folderPath = comparisonPaths?[folder.url] ?? LibraryProjectionWorker.filePath(folder.url)
+        let prefix = folderPath.hasSuffix("/") ? folderPath : folderPath + "/"
         for (index, asset) in assets.enumerated() {
             if index % 256 == 0 { try checkCancellation() }
-            guard asset.fileURL.path.hasPrefix(prefix) else { continue }
-            let relative = String(asset.fileURL.path.dropFirst(prefix.count))
+            let path = comparisonPaths?[asset.fileURL] ?? LibraryProjectionWorker.filePath(asset.fileURL)
+            guard path.hasPrefix(prefix) else { continue }
+            let relative = String(path.dropFirst(prefix.count))
             // Also reconstruct ancestors in catalogs written before folder trees were stored.
             root.add(relative.split(separator: "/").dropLast().map(String.init), countingPhoto: true)
         }
