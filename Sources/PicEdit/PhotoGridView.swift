@@ -41,7 +41,7 @@ private struct PhotoCard: View {
         VStack(alignment: .leading, spacing: 0) {
             ZStack(alignment: .topTrailing) {
                 Rectangle().fill(Color.black.opacity(0.2))
-                AssetThumbnail(url: asset.fileURL, modifiedAt: asset.modifiedAt, size: model.gridSize, fileSize: asset.fileSize, settings: editor.settings(for: asset.id))
+                EditingThumbnail(asset: asset, size: model.gridSize)
                     .padding(10)
                 if asset.isFavorite || hovered {
                     Button { model.toggleFavorite(asset.id) } label: {
@@ -55,13 +55,13 @@ private struct PhotoCard: View {
                 HStack(spacing: 6) {
                     Text(asset.fileName).font(.system(size: 11, weight: .medium)).foregroundStyle(selected ? Color.white : Color.white.opacity(0.8)).lineLimit(1).truncationMode(.middle)
                     Spacer(minLength: 0)
-                    Text(asset.format.uppercased()).font(.system(size: 7, weight: .semibold, design: .monospaced)).foregroundStyle(Theme.muted)
+                    Text(editor.sourceFormat(for: asset)).font(.system(size: 7, weight: .semibold, design: .monospaced)).foregroundStyle(Theme.muted)
                         .padding(.horizontal, 4).padding(.vertical, 3).background(Theme.background, in: RoundedRectangle(cornerRadius: 3))
                 }
                 HStack {
                     RatingStars(rating: asset.rating, onChange: { model.setRating($0, for: asset.id) }).disabled(!model.canModify)
                     Spacer()
-                    Text("\(asset.pixelWidth) × \(asset.pixelHeight)").font(.system(size: 8, design: .monospaced)).foregroundStyle(Theme.muted)
+                    Text(editor.sourceDimensions(for: asset)).font(.system(size: 8, design: .monospaced)).foregroundStyle(Theme.muted)
                 }
             }.padding(.horizontal, 11).padding(.vertical, 12)
         }
@@ -134,12 +134,12 @@ struct DetailView: View {
                 GeometryReader { geometry in
                     if zoomed {
                         ScrollView([.horizontal, .vertical]) {
-                            PhotoPreview(url: asset.fileURL, modifiedAt: asset.modifiedAt, fileSize: asset.fileSize, settings: previewSettings(for: asset.id), developing: model.isDeveloping)
+                            EditingPhotoPreview(asset: asset, intent: model.editingRenderIntent, settingsOverride: previewSettings(for: asset.id), developing: model.isDeveloping)
                                 .frame(width: max(1, geometry.size.width * 2), height: max(1, geometry.size.height * 2))
                                 .onTapGesture(count: 2) { zoomed = false }
                         }
                     } else {
-                        PhotoPreview(url: asset.fileURL, modifiedAt: asset.modifiedAt, fileSize: asset.fileSize, settings: previewSettings(for: asset.id), developing: model.isDeveloping)
+                        EditingPhotoPreview(asset: asset, intent: model.editingRenderIntent, settingsOverride: previewSettings(for: asset.id), developing: model.isDeveloping)
                             .padding(.horizontal, 25).padding(.vertical, 10)
                             .frame(width: geometry.size.width, height: geometry.size.height)
                             .onTapGesture(count: 2) { zoomed = true }
@@ -158,7 +158,8 @@ struct DetailView: View {
     }
 
     private var previewLabel: String {
-        if model.comparesOriginal { return " · Vorher" }
+        if model.comparesOriginal { return " · Importiertes Original" }
+        if model.comparesCurrentSourceWithoutSettings { return " · Aktuelle Quelle ohne Regler" }
         if model.isDeveloping, assistant.canAccept {
             return assistant.comparison == .proposal ? " · KI-Vorschau · noch nicht übernommen" : " · Aktuelle Bearbeitung"
         }
@@ -176,7 +177,7 @@ struct DetailView: View {
                 LazyHStack(spacing: 8) {
                     ForEach(model.visibleAssets) { asset in
                         Button { model.select(asset) } label: {
-                            AssetThumbnail(url: asset.fileURL, modifiedAt: asset.modifiedAt, size: 110, fileSize: asset.fileSize, settings: editor.settings(for: asset.id))
+                            EditingThumbnail(asset: asset, size: 110)
                                 .padding(4).frame(width: 90, height: 68)
                                 .background(Theme.panel, in: RoundedRectangle(cornerRadius: 4))
                                 .overlay { RoundedRectangle(cornerRadius: 4).strokeBorder(model.selectedIDs.contains(asset.id) ? Theme.accent : Theme.line, lineWidth: 1) }

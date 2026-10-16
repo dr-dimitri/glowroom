@@ -207,12 +207,12 @@ actor ImageAnalysisService: ImageAnalysisServing {
                     case .metadata: _ = try PhotoMetadataModelResponseValidator.validate(data)
                     }
                     guard try await preparer.sourceStamp(for: request) == stamp else { throw ImageAnalysisError.staleSource }
-                    guard case .original(let source) = request.snapshot.source else { throw ImageAnalysisError.invalidRequest }
+                    let source = request.snapshot.source
                     let provenance = ImageAnalysisProvenance(descriptor: descriptor, analyzedAt: Date(),
                         rasterSHA256: input.rasterSHA256, pixelWidth: input.bitmap.image.width, pixelHeight: input.bitmap.image.height,
                         byteCount: input.bitmap.byteCost, colorProfile: input.colorProfile, colorProfileSHA256: input.colorProfileSHA256,
                         source: source, inputKind: request.inputKind, editToken: request.inputKind == .editedPreview ? request.snapshot.token : nil)
-                    let cost = data.count + provenance.colorProfile.utf8.count + source.standardizedPath.utf8.count + 1_024
+                    let cost = data.count + provenance.colorProfile.utf8.count + source.originalPathCost + 1_024
                     result = .success(Cached(data: data, provenance: provenance, sourceStamp: stamp, cost: cost, access: 0))
                 }
                 try Task.checkCancellation()

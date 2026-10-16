@@ -1,5 +1,6 @@
 import Darwin
 import Foundation
+import PicEditCore
 
 /// Small synchronous path checks run only in the caller's background file job.
 /// Compare real directory identities so /var aliases and case spelling cannot
@@ -10,21 +11,12 @@ struct ManagedDirectoryFamily: Equatable, Sendable {
 }
 
 enum ManagedFileProtection {
-    static func managedFiles(in directory: URL) -> [URL] {
-        let databases = ["edits.sqlite", "photo-metadata.sqlite", "cloud-usage.sqlite", "semantic-index.sqlite"]
-        return databases.flatMap { base in [base, base + "-wal", base + "-shm", base + "-journal"] }
-            .map { directory.appendingPathComponent($0, isDirectory: false) }
-            + ["catalog.json", "catalog-write.lock"].map { directory.appendingPathComponent($0, isDirectory: false) }
-    }
+    static func managedFiles(in directory: URL) -> [URL] { CatalogManagedStoragePaths.files(in: directory) }
 
-    static func managedDirectories(in directory: URL) -> [URL] {
-        ["SemanticModels", "MetadataCatalogStaging", "GeneratedArtifacts", "EditingTransactions", "EditBackups"]
-            .map { directory.appendingPathComponent($0, isDirectory: true) }
-    }
+    static func managedDirectories(in directory: URL) -> [URL] { CatalogManagedStoragePaths.directories(in: directory) }
 
     static func managedFamilies(in directory: URL) -> [ManagedDirectoryFamily] {
-        ["semantic-index-quarantine-", "photo-metadata-quarantine-"]
-            .map { ManagedDirectoryFamily(parent: directory, childNamePrefix: $0) }
+        CatalogManagedStoragePaths.families(in: directory).map { ManagedDirectoryFamily(parent: $0.parent, childNamePrefix: $0.childNamePrefix) }
     }
 
     static func protects(_ target: URL, directory: URL) -> Bool {

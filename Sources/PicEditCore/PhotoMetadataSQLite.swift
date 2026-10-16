@@ -9,13 +9,17 @@ final class PhotoMetadataSQLite: @unchecked Sendable {
     private var db: OpaquePointer?
     private var fd: Int32 = -1
     static let applicationID: Int32 = 0x50494D44 // PIMD, distinct from edits/usage/index.
-    static let schemaVersion: Int32 = 1
-    static let schemas = [
+    static let schemaVersion: Int32 = 2
+    static let legacySchemas = [
         "metadata_state": "CREATE TABLE metadata_state(singleton INTEGER PRIMARY KEY CHECK(singleton=1), search_generation INTEGER NOT NULL CHECK(search_generation>=0), catalog_reference BLOB NOT NULL)",
         "metadata_records": "CREATE TABLE metadata_records(asset_id TEXT PRIMARY KEY NOT NULL, record BLOB NOT NULL)",
         "metadata_receipts": "CREATE TABLE metadata_receipts(id TEXT PRIMARY KEY NOT NULL, digest TEXT NOT NULL, receipt BLOB NOT NULL)",
         "metadata_catalog_changes": "CREATE TABLE metadata_catalog_changes(id TEXT PRIMARY KEY NOT NULL, state TEXT NOT NULL CHECK(state IN ('staged','conflicted','completed','abandoned')), journal BLOB NOT NULL)"
     ]
+    static let schemas = legacySchemas.merging([
+        "metadata_identity":"CREATE TABLE metadata_identity(singleton INTEGER PRIMARY KEY CHECK(singleton=1), store_id TEXT NOT NULL)",
+        "metadata_coordinations":"CREATE TABLE metadata_coordinations(id TEXT PRIMARY KEY NOT NULL, coordinator_sha TEXT NOT NULL)"
+    ]) { _,new in new }
     init(directory: URL) { fileURL = directory.appendingPathComponent("photo-metadata.sqlite") }
     deinit { sqlite3_close(db); if fd >= 0 { Darwin.close(fd) } }
 
@@ -69,7 +73,7 @@ final class PhotoMetadataSQLite: @unchecked Sendable {
             let ro = try Self.connection(url, flags: SQLITE_OPEN_READONLY)
             defer { sqlite3_close(ro) }
             try Self.checkFile(descriptor, url: url, connection: ro)
-            try Self.validateSchema(ro)
+            try Self.validateSchema(ro,allowLegacy:true)
             try Self.integrity(ro)
             try validateRows(ro)
         }
@@ -81,14 +85,20 @@ final class PhotoMetadataSQLite: @unchecked Sendable {
         defer { if !keepConnection { sqlite3_close(opened) } }
         try Self.checkFile(descriptor, url: url, connection: opened)
         guard sqlite3_db_readonly(opened,"main") == 0 else { throw PhotoMetadataError.readOnly }
-        if created {
+        let existingVersion = created ? Int32(2) : try Self.version(opened)
+        let migrating = !created && existingVersion == 1
+        if created || migrating {
             try Self.exec(opened, "PRAGMA synchronous=FULL;BEGIN IMMEDIATE")
             do {
-                for name in Self.schemas.keys.sorted() { try Self.exec(opened, Self.schemas[name]!) }
-                let initial = try PhotoMetadataInternalCodec.encode(MetadataCatalogFileReference.absent)
-                try Self.statement(opened, "INSERT INTO metadata_state(singleton,search_generation,catalog_reference) VALUES(1,0,?)") { s in
-                    try Self.bind(initial, 1, s); try Self.done(s)
+                if migrating {try Self.validateSchema(opened,allowLegacy:true);try validateRows(opened)}
+                for name in Self.schemas.keys.sorted() where created || Self.legacySchemas[name] == nil {try Self.exec(opened,Self.schemas[name]!)}
+                try Self.statement(opened,"INSERT INTO metadata_identity(singleton,store_id) VALUES(1,?)") {s in
+                    try Self.bind(UUID().uuidString.lowercased(),1,s);try Self.done(s)
                 }
+                let initial = try PhotoMetadataInternalCodec.encode(MetadataCatalogFileReference.absent)
+                if created { try Self.statement(opened, "INSERT INTO metadata_state(singleton,search_generation,catalog_reference) VALUES(1,0,?)") { s in
+                    try Self.bind(initial, 1, s); try Self.done(s)
+                } }
                 try Self.exec(opened, "PRAGMA application_id=\(Self.applicationID);PRAGMA user_version=\(Self.schemaVersion);COMMIT")
             } catch { try? Self.exec(opened, "ROLLBACK"); throw error }
         }
@@ -114,8 +124,11 @@ final class PhotoMetadataSQLite: @unchecked Sendable {
         } catch { try? Self.exec(connection, "ROLLBACK"); throw error }
     }
     private static func connection(_ url: URL, flags: Int32) throws -> OpaquePointer {
+        guard let parent = realpath(url.deletingLastPathComponent().path,nil) else {throw PhotoMetadataError.storageFailure}
+        defer{free(parent)}
+        let physicalPath = URL(fileURLWithPath:String(cString:parent),isDirectory:true).appendingPathComponent(url.lastPathComponent,isDirectory:false).path
         var value: OpaquePointer?
-        guard sqlite3_open_v2(url.path, &value, flags | SQLITE_OPEN_NOFOLLOW | SQLITE_OPEN_FULLMUTEX, nil) == SQLITE_OK,
+        guard sqlite3_open_v2(physicalPath, &value, flags | SQLITE_OPEN_NOFOLLOW | SQLITE_OPEN_FULLMUTEX, nil) == SQLITE_OK,
               let value else { sqlite3_close(value); throw PhotoMetadataError.storageFailure }
         sqlite3_busy_timeout(value, 2_000)
         sqlite3_limit(value, SQLITE_LIMIT_LENGTH, Int32(PhotoMetadataLimits.maximumJournalBytes + 1_024))
@@ -147,11 +160,18 @@ final class PhotoMetadataSQLite: @unchecked Sendable {
               Array(bytes.prefix(16)) == Array("SQLite format 3\0".utf8) else { throw PhotoMetadataError.corruptStore }
         func number(_ offset: Int) -> UInt32 { bytes[offset..<(offset+4)].reduce(0) { $0 << 8 | UInt32($1) } }
         guard number(68) == UInt32(applicationID) else { throw PhotoMetadataError.corruptStore }
-        guard number(60) == UInt32(schemaVersion) else { throw PhotoMetadataError.unsupportedVersion }
+        guard number(60) == 1 || number(60) == UInt32(schemaVersion) else { throw PhotoMetadataError.unsupportedVersion }
         guard bytes[18] == 1, bytes[19] == 1 else { throw PhotoMetadataError.recoveryRequired }
     }
-    static func validateSchema(_ db: OpaquePointer) throws {
-        for (sql, value) in [("PRAGMA application_id",applicationID),("PRAGMA user_version",schemaVersion)] {
+    static func version(_ db:OpaquePointer) throws -> Int32 {
+        var result:Int32 = -1
+        try rows(db,"PRAGMA user_version") {result = sqlite3_column_int($0,0)};return result
+    }
+    static func validateSchema(_ db: OpaquePointer,allowLegacy:Bool = false) throws {
+        let actual = try version(db)
+        guard actual == schemaVersion || allowLegacy && actual == 1 else {throw PhotoMetadataError.unsupportedVersion}
+        let expectedSchemas = actual == 1 ? legacySchemas : schemas
+        for (sql, value) in [("PRAGMA application_id",applicationID),("PRAGMA user_version",actual)] {
             var valid = false
             try rows(db, sql) { valid = sqlite3_column_type($0,0) == SQLITE_INTEGER && sqlite3_column_int64($0,0) == Int64(value) }
             guard valid else { throw sql.contains("user_version") ? PhotoMetadataError.unsupportedVersion : .corruptStore }
@@ -160,15 +180,25 @@ final class PhotoMetadataSQLite: @unchecked Sendable {
         func normalized(_ text: String) -> String { text.split(whereSeparator: \.isWhitespace).joined(separator: " ") }
         try rows(db, "SELECT type,name,tbl_name,sql FROM sqlite_schema") { s in
             let type = try text(s,0,maximum:32), name = try text(s,1,maximum:128), table = try text(s,2,maximum:128)
-            if let expected = schemas[name], type == "table", table == name {
+            if let expected = expectedSchemas[name], type == "table", table == name {
                 guard normalized(try text(s,3,maximum:4_096)) == normalized(expected), names.insert(name).inserted else { throw PhotoMetadataError.corruptStore }
             } else {
-                let expectedIndexes = ["metadata_records","metadata_receipts","metadata_catalog_changes"].map { "sqlite_autoindex_\($0)_1" }
+                let expectedIndexes = (actual == 1 ? ["metadata_records","metadata_receipts","metadata_catalog_changes"] : ["metadata_records","metadata_receipts","metadata_catalog_changes","metadata_coordinations"]).map { "sqlite_autoindex_\($0)_1" }
                 guard type == "index", expectedIndexes.contains(name), name == "sqlite_autoindex_\(table)_1",
                       sqlite3_column_type(s,3) == SQLITE_NULL, indexes.insert(name).inserted else { throw PhotoMetadataError.corruptStore }
             }
         }
-        guard names == Set(schemas.keys), indexes.count == 3 else { throw PhotoMetadataError.corruptStore }
+        guard names == Set(expectedSchemas.keys), indexes.count == (actual == 1 ? 3 : 4) else { throw PhotoMetadataError.corruptStore }
+    }
+    /// Pure participant lookup. No creation, migration or implicit recovery.
+    static func inspect<T>(at url:URL,_ body:(OpaquePointer,Int32)throws->T) throws -> T? {
+        let descriptor = Darwin.open(url.path,O_RDONLY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC)
+        guard descriptor >= 0 else {if errno == ENOENT {return nil};throw PhotoMetadataError.corruptStore}
+        defer{Darwin.close(descriptor)}
+        try sidecars(url);try checkFile(descriptor,url:url);try header(descriptor)
+        let db = try connection(url,flags:SQLITE_OPEN_READONLY);defer{sqlite3_close(db)}
+        try checkFile(descriptor,url:url,connection:db);try validateSchema(db,allowLegacy:true);try integrity(db)
+        let value = try body(db,version(db));try checkFile(descriptor,url:url,connection:db);return value
     }
     static func integrity(_ db: OpaquePointer) throws {
         var count = 0

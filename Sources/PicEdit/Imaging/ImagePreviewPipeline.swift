@@ -1,31 +1,38 @@
 import AppKit
 import Foundation
 import ImageIO
+import PicEditCore
 
 /// File identity and rendering size determine whether a preview can be reused.
 struct PreviewRequest: Hashable, Sendable {
-    let url: URL
-    let modifiedAt: Date
+    let source: AISourceIdentity
     let pixelSize: Int
-    let fileSize: Int64
     let allowsEmbeddedPreview: Bool
-    /// Stronger, optional file identity for consumers that require native
-    /// change-time/inode coherence even when catalog mtime/size were restored.
     let sourceRevision: String?
+    var url: URL? { if case .original(let value) = source { return URL(fileURLWithPath: value.standardizedPath) }; return nil }
+    var displayName: String { url?.lastPathComponent ?? "Generierte Variante" }
+    var modifiedAt: Date { if case .original(let value) = source { return value.modifiedAt }; return .distantPast }
+    var fileSize: Int64 { switch source { case .original(let value): return value.fileSize; case .artifact(let value): return value.raster.file.bytes } }
 
     init(url: URL, modifiedAt: Date, pixelSize: Int, fileSize: Int64 = 0, allowsEmbeddedPreview: Bool = true,
          sourceRevision: String? = nil) {
-        self.url = url.standardizedFileURL
-        self.modifiedAt = modifiedAt
-        self.pixelSize = min(max(pixelSize, 64), 4_096)
-        self.fileSize = fileSize
-        self.allowsEmbeddedPreview = allowsEmbeddedPreview
+        self.init(source: .original(.init(fileURL: url, modifiedAt: modifiedAt, fileSize: fileSize)),
+                  pixelSize: pixelSize, allowsEmbeddedPreview: allowsEmbeddedPreview, sourceRevision: sourceRevision)
+    }
+    init(source: AISourceIdentity, pixelSize: Int, allowsEmbeddedPreview: Bool = false, sourceRevision: String? = nil) {
+        self.source = source; self.pixelSize = min(max(pixelSize, 64), 4_096)
+        if case .original = source { self.allowsEmbeddedPreview = allowsEmbeddedPreview } else { self.allowsEmbeddedPreview = false }
         self.sourceRevision = sourceRevision
     }
-
+    func resized(to size: Int) -> Self {
+        Self(source: source, pixelSize: size, allowsEmbeddedPreview: allowsEmbeddedPreview, sourceRevision: sourceRevision)
+    }
+    func isAdequateArtifactCache(for required: PreviewRequest) -> Bool {
+        if case .artifact = source { return hasSameOriginal(as: required) && pixelSize >= required.pixelSize }
+        return false
+    }
     func hasSameOriginal(as other: PreviewRequest) -> Bool {
-        url == other.url && modifiedAt == other.modifiedAt && fileSize == other.fileSize
-            && allowsEmbeddedPreview == other.allowsEmbeddedPreview && sourceRevision == other.sourceRevision
+        source == other.source && allowsEmbeddedPreview == other.allowsEmbeddedPreview && sourceRevision == other.sourceRevision
     }
 }
 
@@ -37,6 +44,11 @@ enum PreviewPriority: Int, Sendable {
 /// CGImage is immutable. AppKit images are constructed on the main actor.
 struct PreviewBitmap: @unchecked Sendable {
     let image: CGImage
+    let memoryOwnership: ArtifactMemoryReservation?
+    let resourceOwner: (any ArtifactResourceAdmitting)?
+    init(image: CGImage, memoryOwnership: ArtifactMemoryReservation? = nil, resourceOwner: (any ArtifactResourceAdmitting)? = nil) {
+        self.image = image; self.memoryOwnership = memoryOwnership; self.resourceOwner = resourceOwner
+    }
     var byteCost: Int { image.bytesPerRow * image.height }
 }
 
@@ -103,7 +115,7 @@ actor ImagePreviewPipeline {
 
     func image(for request: PreviewRequest, priority: PreviewPriority = .thumbnail) async throws -> PreviewBitmap {
         try Task.checkCancellation()
-        if let bitmap = cachedImage(for: request) { return bitmap }
+        if case .original = request.source, let bitmap = cachedImage(for: request) { return bitmap }
 
         let waiterID = UUID()
         return try await withTaskCancellationHandler {
@@ -198,15 +210,13 @@ actor ImagePreviewPipeline {
                 do {
                     try Task.checkCancellation()
                     var persisted: PreviewBitmap?
-                    if let diskCache {
+                    if let diskCache, case .original = request.source {
                         // A previous session may have cached only a larger grid
                         // or loupe rendition. Reuse it before opening the RAW.
                         let sizes = [request.pixelSize] + [256, 512, 1_024, 1_536, 2_400, 4_096].filter { $0 > request.pixelSize }
                         for size in sizes {
                             try Task.checkCancellation()
-                            let candidate = PreviewRequest(url: request.url, modifiedAt: request.modifiedAt,
-                                                           pixelSize: size, fileSize: request.fileSize, allowsEmbeddedPreview: request.allowsEmbeddedPreview,
-                                                           sourceRevision: request.sourceRevision)
+                            let candidate = request.resized(to: size)
                             if let bitmap = await diskCache.image(for: candidate) {
                                 persisted = bitmap
                                 cachedAs = candidate
@@ -219,9 +229,32 @@ actor ImagePreviewPipeline {
                         result = .success(bitmap)
                     } else {
                         try Task.checkCancellation()
-                        let bitmap = try decoder(request)
+                        let bitmap: PreviewBitmap
+                        if case .artifact(let fingerprint) = request.source {
+                            let budget = try ArtifactPreviewBudget(format: fingerprint.raster.format, pixelSize: request.pixelSize)
+                            let retire: @Sendable () async -> Void = { [weak self] in
+                                await self?.retireArtifactCaches(for: request)
+                                await AdjustedPreviewPipeline.shared.retireArtifactCaches()
+                            }
+                            if budget.retiresOtherCaches { await retire() }
+                            let opened = try await ArtifactPreviewAdmission.perform(retireCaches: retire) {
+                                try await ArtifactPreviewAccess.shared.open(fingerprint)
+                            }
+                            if let cached = await self?.cachedImage(for: request) { bitmap = cached }
+                            else {
+                                let lease = try await ArtifactPreviewAdmission.perform(retireCaches: retire) {
+                                    try await opened.resources.acquire(kind: .codec, bytes: budget.peakBytes,
+                                        priority: .interactive, retaining: [])
+                                }
+                                let decoded = try PreviewDecoder.decodeArtifact(opened.handle, expected: fingerprint, pixelSize: request.pixelSize)
+                                try budget.validate(decoded)
+                                let ownership = try await opened.resources.retain(bytes: Int64(decoded.byteCost) * 2, from: lease)
+                                bitmap = try decoded.retainingArtifactMemory(ownership, owner: opened.resources)
+                                withExtendedLifetime(lease) {}
+                            }
+                        } else { bitmap = try decoder(request) }
                         try Task.checkCancellation()
-                        shouldStore = true
+                        if case .original = request.source { shouldStore = true }
                         result = .success(bitmap)
                     }
                 } catch {
@@ -260,6 +293,21 @@ actor ImagePreviewPipeline {
         // Keep the slot until persistence finishes, too: a slow disk must not
         // accumulate an unbounded queue of bitmaps waiting to be compressed.
         startPendingJobs()
+    }
+
+    func retireArtifactCaches(for required: PreviewRequest) {
+        // At most 256 entries; no reader/worker ownership is revoked here.
+        let obsolete = cache.keys.filter { key in
+            if case .artifact = key.source {
+                // A same-source 1536 bitmap is not a 2400 cache hit. Keeping
+                // every size would permanently strand large 16-bit upgrades.
+                return !key.isAdequateArtifactCache(for: required)
+            }
+            return false
+        }
+        for key in obsolete {
+            if let entry = cache.removeValue(forKey: key) { cacheBytes -= entry.bitmap.byteCost }
+        }
     }
 
     private func insert(_ bitmap: PreviewBitmap, for request: PreviewRequest) {

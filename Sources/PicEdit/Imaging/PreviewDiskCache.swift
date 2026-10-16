@@ -1,6 +1,7 @@
 import CoreGraphics
 import CryptoKit
 import Foundation
+import PicEditCore
 import ImageIO
 import UniformTypeIdentifiers
 
@@ -161,7 +162,16 @@ actor PreviewDiskCache {
     private nonisolated static func key(for request: PreviewRequest) -> String {
         // Length-prefixed UTF-8 prevents ambiguous concatenations. Date's exact
         // floating-point bits avoid locale/precision changes in formatted dates.
-        let path = request.url.standardizedFileURL.path
+        if case .artifact(let fingerprint) = request.source {
+            // Canonical identity includes store, manifest, payload and native format.
+            // A preview is disposable; its key can never identify an original file.
+            let encoded = (try? EditingContractJSON.encoder().encode(fingerprint)) ?? Data()
+            var data = Data("PicEdit-artifact-preview-v1|\(rendererVersion)|\(request.pixelSize)|".utf8)
+            data.append(encoded)
+            if let revision = request.sourceRevision { data.append(Data(revision.utf8)) }
+            return SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+        }
+        let path = request.url!.standardizedFileURL.path
         var input = "\(rendererVersion)\n\(path.utf8.count):\(path)\n\(request.modifiedAt.timeIntervalSince1970.bitPattern)\n\(request.fileSize)\n\(request.pixelSize)\n\(request.allowsEmbeddedPreview)"
         // Preserve every existing nil-revision disk key. Native revisions get
         // a disjoint suffix and can never reuse an older catalog-only entry.

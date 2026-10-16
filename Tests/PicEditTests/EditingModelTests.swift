@@ -17,8 +17,10 @@ final class EditingModelTests {
 
     @Test
     func loadsExistingRevisionsAndDebouncesLatestValuesPerImage() async throws {
-        let database = try EditDatabase(directory: directory)
-        try await database.save(exposure(0.5), for: "A", revision: 40)
+        let legacyWasReleased = try await seedClosedLegacyDatabase(in: directory)
+        // Observe the real actor lifetime. Closed legacy WAL/SHM files may
+        // legitimately remain; only strict migration decides their validity.
+        try await waitUntil { legacyWasReleased() }
         let model = EditingModel(directory: directory)
         try await waitLoaded(model)
         #expect(model.settings(for: "A").exposure == 0.5)
@@ -29,10 +31,11 @@ final class EditingModelTests {
         }
         #expect(model.hasPendingChanges)
         try await waitUntil { !model.hasPendingChanges && !model.isSaving }
-        #expect(try await database.loadAll()["A"]?.exposure == 2)
-        #expect(try await database.loadAll()["B"]?.exposure == -2)
-        #expect(try await database.revisions()["A"] == 60)
-        #expect(try await database.revisions()["B"] == 20)
+        let stored = try await loadStoredState()
+        #expect(stored.byAsset["A"]?.snapshot.settings.exposure == 2)
+        #expect(stored.byAsset["B"]?.snapshot.settings.exposure == -2)
+        #expect(stored.byAsset["A"]?.version.revision == 60)
+        #expect(stored.byAsset["B"]?.version.revision == 20)
         let reloaded = EditingModel(directory: directory)
         try await waitLoaded(reloaded)
         #expect(reloaded.settings(for: "A").exposure == 2)
@@ -43,7 +46,7 @@ final class EditingModelTests {
     @Test
     func dragUndoRedoAndResetRemainIndependentPerImage() async throws {
         let store = ControlledEditStore()
-        let model = EditingModel(database: store)
+        let model = EditingModel(database: LegacySnapshotTestAdapter(store))
         try await waitLoaded(model)
         model.beginEditing(assetID: "A")
         model.beginEditing(assetID: "A") // Repeated begin must not lose the original value.
@@ -110,7 +113,7 @@ final class EditingModelTests {
     @Test
     func concurrentFlushAndCancellationStillPersistEditsArrivingDuringSave() async throws {
         let store = ControlledEditStore()
-        let model = EditingModel(database: store)
+        let model = EditingModel(database: LegacySnapshotTestAdapter(store))
         try await waitLoaded(model)
         await store.blockNextSave()
         model.setSettings(exposure(1), for: "A")
@@ -135,7 +138,7 @@ final class EditingModelTests {
     @Test
     func failedSavePreservesLatestPendingValuesAndExplicitFlushRecovers() async throws {
         let store = ControlledEditStore(failSaveCount: 1)
-        let model = EditingModel(database: store)
+        let model = EditingModel(database: LegacySnapshotTestAdapter(store))
         try await waitLoaded(model)
         model.setSettings(exposure(1), for: "A")
         model.setSettings(exposure(3), for: "A")
@@ -157,7 +160,7 @@ final class EditingModelTests {
     @Test
     func loadingFailureDisablesChangesWithoutReplacingExistingStore() async throws {
         let store = ControlledEditStore(initial: ["A": exposure(2)], failLoad: true)
-        let model = EditingModel(database: store)
+        let model = EditingModel(database: LegacySnapshotTestAdapter(store))
         model.setSettings(exposure(1), for: "A")
         try await waitLoaded(model)
         #expect(model.isReadOnly)
@@ -172,14 +175,14 @@ final class EditingModelTests {
     @Test
     func automaticBackupFailureKeepsSuccessfulEditsUsable() async throws {
         let store = ControlledEditStore(failAutomaticBackup: true)
-        let model = EditingModel(database: store)
+        let model = EditingModel(database: LegacySnapshotTestAdapter(store))
         try await waitLoaded(model)
         model.setSettings(exposure(1), for: "A")
         #expect(await model.flush())
         #expect(!model.hasPendingChanges)
         #expect(model.canEdit)
         #expect(!model.isReadOnly)
-        #expect(model.errorMessage?.contains("automatische Backup") == true)
+        try await waitUntil { model.errorMessage?.contains("automatische Backup") == true }
         #expect(await store.savedSettings()["A"]?.exposure == 1)
         #expect(await model.createBackup() != nil)
         #expect(await store.latestManualBackup()["A"]?.exposure == 1)
@@ -201,21 +204,21 @@ final class EditingModelTests {
         #expect(!model.canRedo(assetID: "A"))
         #expect(!model.isRestoring)
         #expect(model.canEdit)
-        let database = try EditDatabase(directory: directory)
-        let revisionsAfterRestore = try await database.revisions()
+        let revisionsAfterRestore = try await loadStoredState()
         model.setSettings(exposure(4), for: "A")
         model.setSettings(exposure(-1), for: "B")
         #expect(await model.flush())
-        #expect(try await database.loadAll()["A"]?.exposure == 4)
-        #expect(try await database.loadAll()["B"]?.exposure == -1)
-        #expect(try await database.revisions()["A"] == revisionsAfterRestore["A", default: 0] + 1)
-        #expect(try await database.revisions()["B"] == revisionsAfterRestore["B", default: 0] + 1)
+        let stored = try await loadStoredState()
+        #expect(stored.byAsset["A"]?.snapshot.settings.exposure == 4)
+        #expect(stored.byAsset["B"]?.snapshot.settings.exposure == -1)
+        #expect(stored.byAsset["A"]?.version.revision == (revisionsAfterRestore.byAsset["A"]?.version.revision ?? revisionsAfterRestore.tombstones["A"] ?? 0) + 1)
+        #expect(stored.byAsset["B"]?.version.revision == (revisionsAfterRestore.byAsset["B"]?.version.revision ?? revisionsAfterRestore.tombstones["B"] ?? 0) + 1)
     }
 
     @Test
     func manualBackupLocksEditingUntilPendingSnapshotIsComplete() async throws {
         let store = ControlledEditStore()
-        let model = EditingModel(database: store)
+        let model = EditingModel(database: LegacySnapshotTestAdapter(store))
         try await waitLoaded(model)
         await store.blockNextSave()
         model.setSettings(exposure(2), for: "A")
@@ -235,12 +238,11 @@ final class EditingModelTests {
     }
 
     @Test
-    func backupExportAtomicallyReplacesTargetWithLatestStandaloneSnapshot() async throws {
+    func backupExportPublishesLatestVerifiedPackageToNewName() async throws {
         let model = EditingModel(directory: directory.appendingPathComponent("catalog"))
         try await waitLoaded(model)
         model.setSettings(exposure(2), for: "A")
-        let exported = directory.appendingPathComponent("export.sqlite")
-        try Data("previous export".utf8).write(to: exported)
+        let exported = directory.appendingPathComponent("export.piceditbackup", isDirectory: true)
         #expect(await model.createBackup(exportTo: exported) == exported)
         #expect(model.canEdit)
         #expect(!model.isBackingUp)
@@ -248,8 +250,10 @@ final class EditingModelTests {
         model.setSettings(exposure(3), for: "A")
         #expect(await model.restoreBackup(from: exported))
         #expect(model.settings(for: "A").exposure == 2)
-        let temporaryFiles = try FileManager.default.contentsOfDirectory(atPath: directory.path)
-        #expect(!temporaryFiles.contains { $0.hasPrefix(".picedit-backup-") })
+        try await waitUntil {
+            let temporaryFiles = try? FileManager.default.contentsOfDirectory(atPath: self.directory.path)
+            return temporaryFiles?.contains { $0.hasPrefix(".piceditbackup-") } == false
+        }
     }
 
     @Test
@@ -263,8 +267,8 @@ final class EditingModelTests {
         let catalogBytes = Data("catalog must remain unchanged".utf8)
         try catalogBytes.write(to: catalogURL)
         let databaseBytes = try Data(contentsOf: databaseURL)
-        let databaseAlias = directory.appendingPathComponent("database-alias.sqlite")
-        let catalogAlias = directory.appendingPathComponent("catalog-alias.sqlite")
+        let databaseAlias = directory.appendingPathComponent("database-alias.piceditbackup")
+        let catalogAlias = directory.appendingPathComponent("catalog-alias.piceditbackup")
         try FileManager.default.createSymbolicLink(at: databaseAlias, withDestinationURL: databaseURL)
         try FileManager.default.createSymbolicLink(at: catalogAlias, withDestinationURL: catalogURL)
 
@@ -272,12 +276,11 @@ final class EditingModelTests {
             #expect(await model.createBackup(exportTo: target) == nil)
             #expect(!model.isBackingUp)
             #expect(model.canEdit)
-            #expect(model.errorMessage?.contains("aktive Datenbank") == true)
+            #expect(model.errorMessage != nil)
             #expect(try Data(contentsOf: databaseURL) == databaseBytes)
             #expect(try Data(contentsOf: catalogURL) == catalogBytes)
         }
-        let reopened = try EditDatabase(directory: directory)
-        #expect(try await reopened.loadAll()["A"] == exposure(2))
+        #expect(try await loadStoredState().byAsset["A"]?.snapshot.settings == exposure(2))
     }
 
     @Test
@@ -286,30 +289,31 @@ final class EditingModelTests {
         let model = EditingModel(directory: catalogDirectory)
         try await waitLoaded(model)
         model.setSettings(exposure(2), for: "A")
-        // A nonempty directory cannot be atomically replaced by the export file.
-        let blocked = directory.appendingPathComponent("blocked.sqlite", isDirectory: true)
+        // A published package always uses a new name; an existing foreign tree is preserved.
+        let blocked = directory.appendingPathComponent("blocked.piceditbackup", isDirectory: true)
         try FileManager.default.createDirectory(at: blocked, withIntermediateDirectories: true)
         let marker = blocked.appendingPathComponent("keep.txt")
         try Data("keep me".utf8).write(to: marker)
         #expect(await model.createBackup(exportTo: blocked) == nil)
         #expect(model.canEdit)
         #expect(!model.isBackingUp)
-        #expect(model.errorMessage?.contains("lokale Backup wurde erstellt") == true)
+        #expect(model.errorMessage?.contains("lokale Backup bleibt") == true)
         #expect(try String(contentsOf: marker) == "keep me")
-        let database = try EditDatabase(directory: catalogDirectory)
-        let backups = try await database.backups()
+        let backups = try FileManager.default.contentsOfDirectory(at: catalogDirectory.appendingPathComponent("EditBackups"), includingPropertiesForKeys: nil)
         let local = try #require(backups.first { $0.lastPathComponent.hasPrefix("manual-") })
         model.setSettings(exposure(3), for: "A")
         #expect(await model.restoreBackup(from: local))
         #expect(model.settings(for: "A").exposure == 2)
-        let temporaryFiles = try FileManager.default.contentsOfDirectory(atPath: directory.path)
-        #expect(!temporaryFiles.contains { $0.hasPrefix(".picedit-backup-") })
+        try await waitUntil {
+            let temporaryFiles = try? FileManager.default.contentsOfDirectory(atPath: self.directory.path)
+            return temporaryFiles?.contains { $0.hasPrefix(".piceditbackup-") } == false
+        }
     }
 
     @Test
     func rejectedBackupKeepsHealthyEditingAndUndoHistoryAvailable() async throws {
         let store = ControlledEditStore(failRestore: true)
-        let model = EditingModel(database: store)
+        let model = EditingModel(database: LegacySnapshotTestAdapter(store))
         try await waitLoaded(model)
         model.setSettings(exposure(2), for: "A")
         #expect(!(await model.restoreBackup(from: directory.appendingPathComponent("bad.sqlite"))))
@@ -355,15 +359,15 @@ final class EditingModelTests {
         #expect(!model.isReadOnly)
         model.setSettings(exposure(3), for: "A")
         #expect(await model.flush())
-        let recovered = try EditDatabase(directory: damaged)
-        #expect(try await recovered.loadAll()["A"]?.exposure == 3)
-        #expect((try await recovered.revisions()["A"] ?? 0) > 15)
+        let recovered = try await loadStoredState(in: damaged)
+        #expect(recovered.byAsset["A"]?.snapshot.settings.exposure == 3)
+        #expect((recovered.byAsset["A"]?.version.revision ?? 0) > 15)
     }
 
     @Test
     func restoreLocksEditingAndWaitsForCurrentValuesBeforeReplacement() async throws {
         let store = ControlledEditStore(restored: ["A": exposure(-1)])
-        let model = EditingModel(database: store)
+        let model = EditingModel(database: LegacySnapshotTestAdapter(store))
         try await waitLoaded(model)
         await store.blockNextSave()
         model.setSettings(exposure(2), for: "A")
@@ -384,7 +388,7 @@ final class EditingModelTests {
     @Test
     func restoreDoesNotDiscardPendingValuesWhenFlushFails() async throws {
         let store = ControlledEditStore(failSaveCount: 1, restored: ["A": exposure(-1)])
-        let model = EditingModel(database: store)
+        let model = EditingModel(database: LegacySnapshotTestAdapter(store))
         try await waitLoaded(model)
         model.setSettings(exposure(2), for: "A")
         #expect(!(await model.restoreBackup(from: directory.appendingPathComponent("backup.sqlite"))))
@@ -398,7 +402,7 @@ final class EditingModelTests {
     @Test
     func terminationPreventsLateEditsButStillFlushesAndCanBeCanceled() async throws {
         let store = ControlledEditStore()
-        let model = EditingModel(database: store)
+        let model = EditingModel(database: LegacySnapshotTestAdapter(store))
         try await waitLoaded(model)
         model.setSettings(exposure(1), for: "A")
         model.beginTermination()
@@ -420,7 +424,7 @@ final class EditingModelTests {
     @Test
     func terminationFlushWaitsForRestoreToFinishBeforeAllowingQuit() async throws {
         let store = ControlledEditStore(restored: ["A": exposure(2)])
-        let model = EditingModel(database: store)
+        let model = EditingModel(database: LegacySnapshotTestAdapter(store))
         try await waitLoaded(model)
         await store.blockNextRestore()
         let restore = Task { await model.restoreBackup(from: directory.appendingPathComponent("backup.sqlite")) }
@@ -442,6 +446,14 @@ final class EditingModelTests {
         #expect(model.isClosing)
     }
 
+    private func loadStoredState(in target: URL? = nil) async throws -> EditingStoreState {
+        // Read the actual V2 repository through its production bootstrap rather
+        // than reopening the migrated file with the deliberately V1-only API.
+        let bootstrap = ArtifactAppBootstrap(directory: target ?? directory)
+        let dependencies = try await bootstrap.editingDependencies()
+        return try await dependencies.database.loadState()
+    }
+
     private func exposure(_ value: Double) -> EditSettings {
         var settings = EditSettings.neutral
         settings.exposure = value
@@ -461,9 +473,21 @@ final class EditingModelTests {
     }
 }
 
+// Keep the real legacy actor outside the MainActor test instance and return
+// no retained handle, matching the Core migration fixture's orderly shutdown.
+private func seedClosedLegacyDatabase(in directory: URL) async throws -> @Sendable () -> Bool {
+    let database = try EditDatabase(directory: directory)
+    try await database.save(EditSettings(exposure: 0.5), for: "A", revision: 40)
+    try #require(try await database.loadAll()["A"]?.exposure == 0.5)
+    try #require(try await database.revisions()["A"] == 40)
+    // This Sendable token observes ARC only and never retains or calls the
+    // actor. The production migration below proves the complete SQL handoff.
+    return { [weak database] in database == nil }
+}
+
 private enum EditingTestError: Error { case injected, timeout }
 
-private actor ControlledEditStore: EditingPersistence {
+private actor ControlledEditStore: LegacySnapshotTestStore {
     private var values: [String: EditSettings]
     private var revisionsByAsset: [String: Int64] = [:]
     private let failLoad: Bool

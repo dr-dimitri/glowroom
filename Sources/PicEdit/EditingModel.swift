@@ -3,447 +3,698 @@ import Darwin
 import Foundation
 import PicEditCore
 
-// The actor boundary also lets the controller's save ordering be exercised with
-// a deliberately slow store, without involving a real user's database.
-protocol EditingPersistence: Actor {
-    func loadAll() async throws -> [String: EditSettings]
-    func revisions() async throws -> [String: Int64]
-    func save(_ settings: EditSettings, for assetID: String, revision: Int64) async throws
-    func createBackup(automatic: Bool) async throws -> URL
-    func restoreBackup(from url: URL) async throws -> [String: EditSettings]
+struct EditingModelDependencies: Sendable {
+    let database: any EditingPersistence
+    let artifacts: (any GeneratedArtifactStoring)?
+    let gate: CatalogLifecycleGate?
+    let resources: (any ArtifactResourceAdmitting)?
+    let recoverDatabase: (@Sendable (URL) async throws -> EditingStoreState)?
+    let artifactStoreError: String?
+    init(database: any EditingPersistence, artifacts: (any GeneratedArtifactStoring)? = nil, gate: CatalogLifecycleGate? = nil, resources: (any ArtifactResourceAdmitting)? = nil, artifactStoreError: String? = nil, recoverDatabase: (@Sendable (URL) async throws -> EditingStoreState)? = nil) {
+        self.database = database; self.artifacts = artifacts; self.gate = gate; self.resources = resources
+        self.recoverDatabase = recoverDatabase; self.artifactStoreError = artifactStoreError
+    }
 }
 
-extension EditDatabase: EditingPersistence {}
+/// Immutable key for the one expanded variants view task. Selection epochs
+/// also distinguish A -> B -> A before an old SQL observer returns.
+struct ArtifactVariantsLoadIdentity: Hashable {
+    let assetID: String
+    let expanded: Bool
+    let generation: UUID
+    let storeEpoch: UUID?
+    let selectionSessionID: UUID?
+    let selectionGeneration: UInt64?
+    let isReady: Bool
+}
 
 @MainActor
-final class EditingModel: ObservableObject {
-    @Published private(set) var settingsByAsset: [String: EditSettings] = [:]
+final class EditingModel: ObservableObject, GeneratedArtifactAccepting {
+    @Published private(set) var snapshotsByAsset: [String: EditingSnapshot] = [:]
+    @Published private(set) var artifactFingerprints: [GeneratedArtifactID: ArtifactSourceFingerprint] = [:]
     @Published private(set) var isLoading = true
     @Published private(set) var isSaving = false
+    @Published private(set) var isCommitting = false { didSet { if oldValue != isCommitting { advanceAIEditGeneration() } } }
     @Published private(set) var isRestoring = false
-    @Published private(set) var isBackingUp = false {
-        didSet { if oldValue != isBackingUp { advanceAIEditGeneration() } }
-    }
-    @Published private(set) var isReadOnly = false {
-        didSet { if oldValue != isReadOnly { advanceAIEditGeneration() } }
-    }
-    @Published private(set) var isClosing = false {
-        didSet { if oldValue != isClosing { advanceAIEditGeneration() } }
-    }
+    @Published private(set) var isBackingUp = false { didSet { if oldValue != isBackingUp { advanceAIEditGeneration() } } }
+    @Published private(set) var isReadOnly = false { didSet { if oldValue != isReadOnly { advanceAIEditGeneration() } } }
+    @Published private(set) var isClosing = false { didSet { if oldValue != isClosing { advanceAIEditGeneration() } } }
     @Published private(set) var hasPendingChanges = false
+    @Published private(set) var variants: [EditingVariant] = []
+    @Published private(set) var isLoadingVariants = false
+    @Published private(set) var variantsReloadID = UUID()
+    private var variantsAssetID: String?
+    private var variantLoadID = UUID()
+    private var completedCommitIDs: [EditingCommitID] = []
     @Published var errorMessage: String?
     @Published var notice: String?
+    var settingsByAsset: [String: EditSettings] { snapshotsByAsset.mapValues(\.settings) }
 
     private struct PendingEdit {
-        let settings: EditSettings
+        let snapshot: EditingSnapshot
         let revision: Int64
+        let admission: CatalogAcceptedWriteAdmission?
     }
-    private struct History {
-        var undo: [EditSettings] = []
-        var redo: [EditSettings] = []
+    private struct History { var undo: [EditingSnapshot] = []; var redo: [EditingSnapshot] = [] }
+    private final class Commit {
+        let id: EditingCommitID
+        let draft: ArtifactDraft
+        let token: GenerationSnapshotToken
+        var request: GenerationCommitRequest?
+        var observer: AcceptedArtifactCommit?
+        var task: Task<ArtifactCommitReceipt, Error>?
+        var published = false
+        var failed = false
+        init(id: EditingCommitID, draft: ArtifactDraft, token: GenerationSnapshotToken) {
+            self.id = id; self.draft = draft; self.token = token
+        }
     }
-
     private var database: (any EditingPersistence)?
+    private var recoverDatabase: (@Sendable (URL) async throws -> EditingStoreState)?
+    private var artifactStoreWarning: String?
+    private var artifacts: (any GeneratedArtifactStoring)?
+    private var artifactStoreID: ArtifactStoreID?
+    private var gate: CatalogLifecycleGate?
+    private var startup: CatalogStartupAdmission?
     private let directory: URL?
+    private let repositoryLoader: @Sendable () async throws -> EditingModelDependencies
+    private var baselines: [String: EditingExpectedState] = [:]
+    private var storeEpoch: UUID?
+    private var sourceStateIsCoherent = true
     private var revisionsByAsset: [String: Int64] = [:]
     private var pending: [String: PendingEdit] = [:]
     private var histories: [String: History] = [:]
-    private var gestureStarts: [String: EditSettings] = [:]
+    private var gestureStarts: [String: EditingSnapshot] = [:]
+    private var leases: [GeneratedArtifactID: ArtifactLease] = [:]
+    private var commits: [EditingCommitID: Commit] = [:]
+    private var activeCommitID: EditingCommitID?
     private var loadingTask: Task<Void, Never>?
     private var debounceTask: Task<Void, Never>?
     private var saveTask: Task<Bool, Never>?
+    private var automaticBackupTask: Task<Void, Never>?
+    private var automaticBackupDay: Date?
+    private var automaticBackupWarning: String?
     private var maintenanceWaiters: [CheckedContinuation<Void, Never>] = []
     private let historyLimit = 100
-
-    // These are deliberately independent of SQLite revisions. Restore can
-    // replace revision values; changing a value back must never revive a reply.
+    weak var library: LibraryModel?
     private(set) var aiEditSessionID = UUID()
     private(set) var aiEditGeneration: UInt64 = 0
 
     var semanticProtectedURLs: [URL] {
         guard let directory else { return [] }
         return ["semantic-index.sqlite", "semantic-index.sqlite-journal", "semantic-index.sqlite-wal", "semantic-index.sqlite-shm"]
-            .map { directory.appendingPathComponent($0) }
-            + [directory.appendingPathComponent("SemanticModels", isDirectory: true)]
+            .map { directory.appendingPathComponent($0) } + [directory.appendingPathComponent("SemanticModels", isDirectory: true)]
     }
-
     var semanticProtectedDirectoryFamilies: [ManagedDirectoryFamily] {
         guard let directory else { return [] }
         return [ManagedDirectoryFamily(parent: directory, childNamePrefix: "semantic-index-quarantine-")]
     }
-
     var cloudProtectedURLs: [URL] {
         guard let directory else { return [] }
         return ["cloud-usage.sqlite", "cloud-usage.sqlite-journal", "cloud-usage.sqlite-wal", "cloud-usage.sqlite-shm"].map { directory.appendingPathComponent($0) }
     }
-
-    var canEdit: Bool { !isLoading && !isReadOnly && !isRestoring && !isBackingUp && !isClosing }
-    var canBackUp: Bool { !isLoading && !isRestoring && !isBackingUp && !isClosing && database != nil }
-    var canRestore: Bool { !isLoading && !isRestoring && !isBackingUp && !isClosing && (database != nil || directory != nil) }
-
+    var canEdit: Bool { !isLoading && !isReadOnly && !isRestoring && !isBackingUp && !isClosing && !isCommitting && !commits.values.contains(where: \.failed) }
+    var canBackUp: Bool { !isLoading && !isRestoring && !isBackingUp && !isClosing && !isCommitting && database != nil && storeEpoch != nil }
+    var canRestore: Bool { !isLoading && !isRestoring && !isBackingUp && !isClosing && !isCommitting && database != nil && (storeEpoch != nil || recoverDatabase != nil) }
     func beginTermination() { isClosing = true }
     func cancelTermination() { isClosing = false }
 
-    init(directory: URL) {
-        self.directory = directory
+    convenience init(directory: URL) {
+        let bootstrap = ArtifactAppBootstrap(directory: directory)
+        self.init(directory: directory, loader: { try await bootstrap.editingDependencies() })
+    }
+    init(directory: URL? = nil, loader: @escaping @Sendable () async throws -> EditingModelDependencies) {
+        self.directory = directory; self.repositoryLoader = loader
+        startLoading()
+    }
+    private func startLoading() {
+        let loader = repositoryLoader
         loadingTask = Task { [weak self] in
             guard let self else { return }
             do {
-                let database = try await Task.detached { try EditDatabase(directory: directory) }.value
-                await load(database)
-            } catch {
-                finishLoadingWithError(error)
-            }
+                let dependencies = try await loader()
+                database = dependencies.database; artifacts = dependencies.artifacts; gate = dependencies.gate
+                recoverDatabase = dependencies.recoverDatabase
+                artifactStoreWarning = dependencies.artifactStoreError.map { "Die Ablage generierter Bilder ist nicht verfügbar. Bearbeitungen importierter Originale bleiben möglich.\n\n" + $0 }
+                if let gate { startup = try await gate.waitForStartup() }
+                if let artifacts { artifactStoreID = await artifacts.storeID; if let resources = dependencies.resources { await ArtifactPreviewAccess.shared.register(artifacts, resources: resources) } }
+                let state = try await dependencies.database.loadState()
+                install(state)
+                sourceStateIsCoherent = true
+                try await loadArtifactMetadata(state)
+                isReadOnly = false; errorMessage = artifactStoreWarning
+                isLoading = false; loadingTask = nil
+            } catch { finishLoadingWithError(error) }
         }
     }
-
-    // Internal dependency injection keeps concurrency/failure tests deterministic.
-    init(database: any EditingPersistence) {
-        directory = nil
-        loadingTask = Task { [weak self] in await self?.load(database) }
+    convenience init(database: any EditingPersistence) { self.init(loader: { EditingModelDependencies(database: database) }) }
+    func invalidateSourcesForCoordination() {
+        sourceStateIsCoherent = false; isReadOnly = true
+        aiEditSessionID = UUID(); aiEditGeneration = 0
     }
-
+    func reloadAfterCatalogChange() async throws {
+        sourceStateIsCoherent = false
+        if let loadingTask { await loadingTask.value }
+        guard pending.isEmpty, !isCommitting, let database else {
+            isReadOnly = true
+            errorMessage = "Die Katalogzuordnung wurde geändert. Ungesicherte lokale Bearbeitungen bleiben erhalten; die Bildquelle kann noch nicht freigegeben werden."
+            throw ArtifactContractError.staleSnapshot
+        }
+        aiEditSessionID = UUID(); aiEditGeneration = 0; isLoading = true
+        defer { isLoading = false }
+        do {
+            let state = try await database.loadState()
+            install(state); try await loadArtifactMetadata(state)
+            histories.removeAll(); gestureStarts.removeAll(); sourceStateIsCoherent = true; isReadOnly = false
+        } catch { isReadOnly = true; errorMessage = error.localizedDescription; throw error }
+    }
+    func retryLoading() {
+        guard !isLoading, !isSaving, !isCommitting, pending.isEmpty else { return }
+        isLoading = true; startLoading()
+    }
     deinit { debounceTask?.cancel() }
 
-    func settings(for assetID: String) -> EditSettings {
-        settingsByAsset[assetID] ?? .neutral
+    func snapshot(for assetID: String) -> EditingSnapshot { snapshotsByAsset[assetID] ?? (try! EditingSnapshot()) }
+    func settings(for assetID: String) -> EditSettings { snapshot(for: assetID).settings }
+    func persistedState(for assetID: String) -> EditingExpectedState? {
+        if let value = baselines[assetID] { return value }
+        guard let storeEpoch else { return nil }
+        return try? EditingExpectedState(storeEpoch: storeEpoch, revision: nil, snapshot: nil)
     }
-
+    func localRevision(for assetID: String) -> Int64 { revisionsByAsset[assetID] ?? 0 }
+    func resolvedSource(for asset: PhotoAsset, intent: EditingRenderIntent = .currentEditing) throws -> ResolvedEditingSource {
+        if intent != .importedOriginal, storeEpoch == nil || !sourceStateIsCoherent { throw ArtifactContractError.invalidCapability }
+        return try EditingSourceResolver.resolve(asset: asset, snapshot: snapshot(for: asset.id), intent: intent, artifacts: artifactFingerprints)
+    }
+    func sourceDimensions(for asset: PhotoAsset) -> String {
+        if case .artifact(let id) = snapshot(for: asset.id).source, let value = artifactFingerprints[id] {
+            return "\(value.raster.format.size.width) × \(value.raster.format.size.height) · PNG"
+        }
+        return "\(asset.pixelWidth) × \(asset.pixelHeight)"
+    }
+    func sourceFormat(for asset: PhotoAsset) -> String { snapshot(for: asset.id).source == .original ? asset.format.uppercased() : "PNG" }
+    func variantsLoadIdentity(assetID: String, expanded: Bool) -> ArtifactVariantsLoadIdentity {
+        ArtifactVariantsLoadIdentity(assetID: assetID, expanded: expanded, generation: variantsReloadID,
+            storeEpoch: storeEpoch, selectionSessionID: library?.aiSelectionSessionID,
+            selectionGeneration: library?.aiSelectionGeneration,
+            isReady: database != nil && storeEpoch != nil && !isLoading && !isRestoring && !isClosing
+                && library?.selectedID == assetID)
+    }
+    func loadVariants(_ identity: ArtifactVariantsLoadIdentity) async {
+        guard identity.expanded, identity.isReady, !Task.isCancelled,
+              identity == variantsLoadIdentity(assetID: identity.assetID, expanded: true), let database else { return }
+        // A replaced/cancelled observer must not prevent the new asset/epoch
+        // from loading. The repository keeps actual SQL work bounded/ordered.
+        let id = UUID(); variantLoadID = id; variantsAssetID = identity.assetID; variants = []; isLoadingVariants = true
+        defer { if variantLoadID == id { isLoadingVariants = false } }
+        do {
+            let loaded = try await database.variants(for: identity.assetID)
+            guard !Task.isCancelled, variantLoadID == id,
+                  identity == variantsLoadIdentity(assetID: identity.assetID, expanded: true) else { return }
+            variants = loaded
+        } catch {
+            guard !Task.isCancelled, variantLoadID == id,
+                  identity == variantsLoadIdentity(assetID: identity.assetID, expanded: true) else { return }
+            errorMessage = error.localizedDescription
+        }
+    }
+    private func invalidateVariants() {
+        variantLoadID = UUID(); variantsReloadID = UUID()
+        variants = []; variantsAssetID = nil; isLoadingVariants = false
+    }
+    func selectVariant(_ variant: EditingVariant) async {
+        guard canEdit, variantsAssetID == variant.assetID, variants.contains(where: { $0.id == variant.id }),
+              let library, let expected = aiSnapshot(in: library), expected.assetID == variant.assetID else { return }
+        do {
+            if case .artifact(let id) = variant.snapshot.source {
+                guard let artifacts, let storeID = artifactStoreID else { throw ArtifactContractError.missingArtifact }
+                let descriptor = try await artifacts.descriptor(id)
+                let lease = try await artifacts.acquireLease(ids: [id], purpose: .activeEditing)
+                guard aiSnapshot(in: library) == expected else { return }
+                artifactFingerprints[id] = .init(storeID: storeID, artifactID: id, manifestSHA256: descriptor.manifestSHA256, raster: descriptor.raster)
+                leases[id] = lease
+            }
+            guard aiSnapshot(in: library) == expected else { return }
+            let revision = localRevision(for: variant.assetID)
+            endEditing(assetID: variant.assetID); setSnapshot(variant.snapshot, for: variant.assetID)
+            if localRevision(for: variant.assetID) != revision { library.comparesOriginal = false; library.comparesCurrentSourceWithoutSettings = false }
+        } catch { errorMessage = error.localizedDescription }
+    }
     func setSettings(_ settings: EditSettings, for assetID: String) {
-        guard canEdit, !assetID.isEmpty else { return }
-        let normalized = settings.normalized
-        let old = self.settings(for: assetID)
-        guard old != normalized, nextRevisionAvailable(for: assetID) else { return }
-        if gestureStarts[assetID] == nil { appendUndo(old, for: assetID) }
-        histories[assetID, default: History()].redo.removeAll()
-        apply(normalized, for: assetID)
+        guard let next = try? EditingSnapshot(source: snapshot(for: assetID).source, settings: settings.normalized) else { return }
+        setSnapshot(next, for: assetID)
     }
-
-    /// Call from Slider.onEditingChanged. A drag becomes one undo operation.
+    private func setSnapshot(_ value: EditingSnapshot, for assetID: String) {
+        guard canEdit, !assetID.isEmpty, value != snapshot(for: assetID), nextRevisionAvailable(for: assetID) else { return }
+        do {
+            let admission = try registerWrite()
+            if gestureStarts[assetID] == nil { appendUndo(snapshot(for: assetID), for: assetID) }
+            histories[assetID, default: History()].redo.removeAll()
+            apply(value, for: assetID, admission: admission)
+        } catch { errorMessage = "Die Bearbeitung ist während einer laufenden Speicheroperation gesperrt.\n\n" + error.localizedDescription }
+    }
     func beginEditing(assetID: String) {
         guard canEdit, !assetID.isEmpty, gestureStarts[assetID] == nil else { return }
-        advanceAIEditGeneration()
-        gestureStarts[assetID] = settings(for: assetID)
+        advanceAIEditGeneration(); gestureStarts[assetID] = snapshot(for: assetID)
     }
-
     func endEditing(assetID: String) {
-        guard let start = gestureStarts.removeValue(forKey: assetID), start != settings(for: assetID) else { return }
+        guard let start = gestureStarts.removeValue(forKey: assetID), start != snapshot(for: assetID) else { return }
         appendUndo(start, for: assetID)
     }
-
     func reset(assetID: String) {
         guard canEdit, !assetID.isEmpty else { return }
-        // Reset is an explicit editing intent, including on an already neutral
-        // image; a reply requested before it must stay obsolete.
-        advanceAIEditGeneration()
+        advanceAIEditGeneration(); endEditing(assetID: assetID); setSettings(.neutral, for: assetID)
+    }
+    func returnToOriginal(assetID: String) {
+        guard canEdit else { return }
         endEditing(assetID: assetID)
-        setSettings(.neutral, for: assetID)
+        if let value = try? EditingSnapshot(source: .original, settings: .neutral) { setSnapshot(value, for: assetID) }
     }
-
-    func canUndo(assetID: String) -> Bool {
-        guard canEdit else { return false }
-        return !(histories[assetID]?.undo.isEmpty ?? true) ||
-            gestureStarts[assetID].map { $0 != settings(for: assetID) } == true
-    }
-
-    func canRedo(assetID: String) -> Bool {
-        canEdit && !(histories[assetID]?.redo.isEmpty ?? true)
-    }
-
+    func canUndo(assetID: String) -> Bool { canEdit && (!(histories[assetID]?.undo.isEmpty ?? true) || gestureStarts[assetID].map { $0 != snapshot(for: assetID) } == true) }
+    func canRedo(assetID: String) -> Bool { canEdit && !(histories[assetID]?.redo.isEmpty ?? true) }
     func undo(assetID: String) {
         guard canUndo(assetID: assetID), nextRevisionAvailable(for: assetID) else { return }
-        endEditing(assetID: assetID)
-        guard let previous = histories[assetID]?.undo.popLast() else { return }
-        histories[assetID, default: History()].redo.append(settings(for: assetID))
-        apply(previous, for: assetID)
+        do {
+            let admission = try registerWrite(); endEditing(assetID: assetID)
+            guard let previous = histories[assetID]?.undo.popLast() else { return }
+            histories[assetID, default: History()].redo.append(snapshot(for: assetID)); apply(previous, for: assetID, admission: admission)
+        } catch { errorMessage = error.localizedDescription }
     }
-
     func redo(assetID: String) {
         guard canRedo(assetID: assetID), nextRevisionAvailable(for: assetID) else { return }
-        endEditing(assetID: assetID)
-        guard let next = histories[assetID]?.redo.popLast() else { return }
-        appendUndo(settings(for: assetID), for: assetID)
-        apply(next, for: assetID)
+        do {
+            let admission = try registerWrite()
+            guard let next = histories[assetID]?.redo.popLast() else { return }
+            appendUndo(snapshot(for: assetID), for: assetID); apply(next, for: assetID, admission: admission)
+        } catch { errorMessage = error.localizedDescription }
     }
-
-    /// Await this before quitting. A canceled caller cannot cancel the shared
-    /// save operation, and changes arriving during a save are drained as well.
     func flush() async -> Bool {
-        // In particular, quitting must not interrupt a recovery between moving
-        // the damaged files aside and installing the validated replacement.
-        while isRestoring || isBackingUp {
-            await withCheckedContinuation { maintenanceWaiters.append($0) }
-        }
+        while isRestoring || isBackingUp { await withCheckedContinuation { maintenanceWaiters.append($0) } }
+        guard await awaitAcceptedCommits() else { return false }
         return await flushPending()
     }
-
     private func flushPending() async -> Bool {
         if let loadingTask { await loadingTask.value }
-        debounceTask?.cancel()
-        debounceTask = nil
+        debounceTask?.cancel(); debounceTask = nil
         if let saveTask { return await saveTask.value }
         guard let database else { return false }
         guard !pending.isEmpty else { return !isReadOnly }
-        let task = Task { [weak self] in
-            guard let self else { return false }
-            return await self.savePending(using: database)
-        }
-        saveTask = task
+        do {
+            for (id, edit) in pending where edit.admission == nil {
+                pending[id] = PendingEdit(snapshot: edit.snapshot, revision: edit.revision, admission: try registerWrite())
+            }
+        } catch { errorMessage = error.localizedDescription; return false }
+        let task = Task { await self.savePending(using: database) }; saveTask = task
         return await task.value
+    }
+    private func registerWrite() throws -> CatalogAcceptedWriteAdmission? {
+        guard let gate else { return nil }
+        guard let startup else { throw ArtifactContractError.staleEpoch }
+        return try gate.registerAcceptedWrite(domain: .editing, session: startup)
+    }
+    private func apply(_ value: EditingSnapshot, for assetID: String, admission: CatalogAcceptedWriteAdmission?) {
+        advanceAIEditGeneration()
+        let revision = revisionsByAsset[assetID, default: 0] + 1
+        revisionsByAsset[assetID] = revision; snapshotsByAsset[assetID] = value
+        pending[assetID] = PendingEdit(snapshot: value, revision: revision, admission: admission)
+        hasPendingChanges = true; scheduleSave()
+    }
+    private func savePending(using database: any EditingPersistence) async -> Bool {
+        isSaving = true
+        var savedBatch = false
+        defer {
+            isSaving = false; saveTask = nil
+            // Maintenance must never wait on a later registered row that this
+            // same serial flush still owns. Release the flush slot FIRST.
+            if savedBatch && !isCommitting { scheduleAutomaticBackup() }
+        }
+        var backupWarning: String?
+        repeat {
+            let batch = pending
+            for assetID in batch.keys.sorted() {
+                guard let edit = batch[assetID], let expected = persistedState(for: assetID) else { return false }
+                do {
+                    let result: StoredEditingState
+                    if let gate, let admission = edit.admission {
+                        result = try await gate.withAcceptedWrite(admission) {
+                            try await database.saveSnapshot(edit.snapshot, for: assetID, expected: expected, revision: edit.revision)
+                        }
+                    } else { result = try await database.saveSnapshot(edit.snapshot, for: assetID, expected: expected, revision: edit.revision) }
+                    guard result.snapshot == edit.snapshot, result.version.revision == edit.revision,
+                          result.version.storeEpoch == expected.storeEpoch else { throw ArtifactContractError.staleSnapshot }
+                    // Advance the durable baseline even if a newer local value waits.
+                    baselines[assetID] = EditingExpectedState(result)
+                    if pending[assetID]?.revision == edit.revision { pending.removeValue(forKey: assetID) }
+                    hasPendingChanges = !pending.isEmpty
+                } catch {
+                    isReadOnly = true
+                    errorMessage = "Bearbeitungen konnten nicht gespeichert werden. Die letzten Werte bleiben für einen erneuten Speicherversuch im Speicher erhalten.\n\n" + error.localizedDescription
+                    // Failed execution admissions cannot run twice. Retry registers
+                    // a new lease while preserving exact snapshot/revision/CAS.
+                    for (id, value) in pending { pending[id] = PendingEdit(snapshot: value.snapshot, revision: value.revision, admission: nil) }
+                    return false
+                }
+            }
+            backupWarning = await database.backupWarning()
+        } while !pending.isEmpty
+        savedBatch = true
+        isReadOnly = false; errorMessage = backupWarning ?? automaticBackupWarning ?? artifactStoreWarning; return true
+    }
+    private func scheduleAutomaticBackup() {
+        guard automaticBackupTask == nil, let database, storeEpoch != nil else { return }
+        let day = Calendar.current.startOfDay(for: Date())
+        guard automaticBackupDay != day else { return }
+        do {
+            let admission: CatalogAcceptedWriteAdmission?
+            if let gate {
+                guard let startup else { throw CatalogLifecycleError.recoveryRequired }
+                admission = try gate.registerAcceptedWrite(domain: .backupRestore, session: startup)
+            } else { admission = nil }
+            // One strongly held owner covers snapshot, immutable copy and the
+            // later prune. Ordinary flushes never await it and remain runnable.
+            automaticBackupTask = Task {
+                defer { self.automaticBackupTask = nil }
+                do {
+                    if let gate = self.gate, let admission {
+                        _ = try await gate.withAcceptedWrite(admission) { try await database.createBackup(automatic: true) }
+                    } else { _ = try await database.createBackup(automatic: true) }
+                    self.automaticBackupDay = day
+                    self.automaticBackupWarning = await database.backupWarning()
+                    if !self.isReadOnly { self.errorMessage = self.automaticBackupWarning ?? self.artifactStoreWarning }
+                } catch {
+                    self.automaticBackupWarning = "Das automatische Backup konnte nicht erstellt werden. Gespeicherte Bearbeitungen bleiben erhalten.\n\n" + error.localizedDescription
+                    if !self.isReadOnly { self.errorMessage = self.automaticBackupWarning ?? self.artifactStoreWarning }
+                }
+            }
+        } catch {
+            automaticBackupWarning = "Das automatische Backup konnte noch nicht gestartet werden.\n\n" + error.localizedDescription
+            if !isReadOnly { errorMessage = automaticBackupWarning }
+        }
+    }
+
+    private func drainAutomaticBackup() async {
+        if let automaticBackupTask { await automaticBackupTask.value }
+    }
+
+    func finishSaving() async -> Bool {
+        // Explicit draining closes new UI acceptance before flushing. Waiting
+        // for the automatic task while a serial flush slot is held deadlocks
+        // when its prune is draining a newly accepted pending image.
+        let wasClosing = isClosing
+        isClosing = true
+        defer { if !wasClosing { isClosing = false } }
+        let commitsSaved = await awaitAcceptedCommits()
+        let saved = await flushPending()
+        await drainAutomaticBackup()
+        return commitsSaved && (saved || (isReadOnly && pending.isEmpty))
+    }
+
+    private func scheduleSave() {
+        debounceTask?.cancel()
+        debounceTask = Task { [weak self] in
+            do { try await Task.sleep(for: .milliseconds(300)) } catch { return }
+            guard let self, !Task.isCancelled else { return }; debounceTask = nil
+            _ = await flush()
+        }
+    }
+    private func nextRevisionAvailable(for assetID: String) -> Bool {
+        guard revisionsByAsset[assetID, default: 0] < Int64.max else {
+            isReadOnly = true; errorMessage = "Diese Bearbeitung kann nicht weiter gespeichert werden: Die maximale Versionsnummer wurde erreicht."; return false
+        }; return true
+    }
+    private func appendUndo(_ value: EditingSnapshot, for assetID: String) {
+        histories[assetID, default: History()].undo.append(value)
+        if histories[assetID, default: History()].undo.count > historyLimit { histories[assetID]?.undo.removeFirst() }
+    }
+    private func advanceAIEditGeneration() {
+        objectWillChange.send()
+        if aiEditGeneration == .max { aiEditSessionID = UUID(); aiEditGeneration = 0 } else { aiEditGeneration += 1 }
+    }
+    func acceptAIProposal(_ result: AIProposalResult, in library: LibraryModel) -> Bool {
+        do { try result.request.snapshot.validate() } catch { return false }
+        guard result.request.snapshot.persistedVersion != nil,
+              isCurrentAISnapshot(result.request.snapshot, in: library), case .changes(let proposal, let settings) = result.validation,
+              let checked = try? EditProposalValidator().validate(proposal, against: result.request.snapshot.settings),
+              case .changes(_, let validated) = checked, settings == validated,
+              settings != self.settings(for: result.request.snapshot.assetID), nextRevisionAvailable(for: result.request.snapshot.assetID) else { return false }
+        let assetID = result.request.snapshot.assetID
+        let previous = localRevision(for: assetID)
+        endEditing(assetID: assetID); setSettings(validated, for: assetID)
+        return localRevision(for: assetID) > previous
+    }
+    private func install(_ state: EditingStoreState) {
+        invalidateVariants()
+        storeEpoch = state.storeEpoch; baselines = state.byAsset.mapValues { EditingExpectedState($0) }
+        for (id, revision) in state.tombstones { baselines[id] = try? EditingExpectedState(storeEpoch: state.storeEpoch, revision: revision, snapshot: nil) }
+        snapshotsByAsset = state.byAsset.mapValues(\.snapshot)
+        revisionsByAsset = state.byAsset.mapValues { $0.version.revision }.merging(state.tombstones, uniquingKeysWith: max)
+    }
+    private func loadArtifactMetadata(_ state: EditingStoreState) async throws {
+        let ids = Set(state.byAsset.values.compactMap { value -> GeneratedArtifactID? in if case .artifact(let id) = value.snapshot.source { return id }; return nil })
+        guard !ids.isEmpty else { return }
+        guard let artifacts else { throw ArtifactContractError.missingArtifact }
+        let storeID = await artifacts.storeID
+        // One metadata-only manifest lookup at a time, never one raster/FD per grid cell.
+        for id in ids {
+            let value = try await artifacts.descriptor(id)
+            artifactFingerprints[id] = ArtifactSourceFingerprint(storeID: storeID, artifactID: id, manifestSHA256: value.manifestSHA256, raster: value.raster)
+        }
+        let lease = try await artifacts.acquireLease(ids: ids, purpose: .activeEditing)
+        for id in ids { leases[id] = lease }
+    }
+    private func finishLoadingWithError(_ error: Error) {
+        isLoading = false; loadingTask = nil; isReadOnly = true
+        errorMessage = "Die Bearbeitungsdatenbank konnte nicht geöffnet werden. Vorhandene Daten bleiben erhalten.\n\n" + error.localizedDescription
+    }
+    private func finishMaintenance() { let waiters = maintenanceWaiters; maintenanceWaiters.removeAll(); for waiter in waiters { waiter.resume() } }
+}
+
+extension EditingModel {
+    /// Capturing generation authority is an explicit background operation, never
+    /// a SwiftUI/grid getter. Recheck all UI epochs after the native observation.
+    func generationSnapshot(in library: LibraryModel) async throws -> GenerationSnapshotToken {
+        self.library = library
+        guard let initial = aiSnapshot(in: library), let baseline = initial.persistedVersion else { throw ArtifactContractError.staleSnapshot }
+        let full = snapshot(for: initial.assetID)
+        let revision = localRevision(for: initial.assetID)
+        let source: EditingSourceFingerprint
+        switch initial.source {
+        case .original(let value): source = .original(try await GenerationOriginalReader.shared.capture(value))
+        case .artifact(let value): source = .artifact(value)
+        }
+        guard aiSnapshot(in: library) == initial, localRevision(for: initial.assetID) == revision else { throw ArtifactContractError.staleSnapshot }
+        return GenerationSnapshotToken(assetID: initial.assetID, snapshot: full, source: source,
+            persistedAtCapture: baseline, localRevision: revision, uiToken: initial.token)
+    }
+
+    func applyGeneratedArtifact(_ draft: ArtifactDraft, expectedSnapshotToken token: GenerationSnapshotToken) -> ArtifactCommitAdmission {
+        guard canEdit, activeCommitID == nil, !commits.values.contains(where: \.failed),
+              artifactStoreID != nil, let library, let current = aiSnapshot(in: library), current.assetID == token.assetID,
+              current.token == token.uiToken, current.persistedVersion == token.persistedAtCapture,
+              snapshot(for: token.assetID) == token.snapshot, localRevision(for: token.assetID) == token.localRevision,
+              draft.artifact.provenance.parentSnapshot == token.snapshot,
+              draft.artifact.provenance.parentSource == token.source,
+              token.localRevision < Int64.max else { return .rejected(.staleSnapshot) }
+        switch (current.source, token.source) {
+        case (.original(let weak), .original(let strong)):
+            guard weak.standardizedPath == strong.standardizedPath, weak.fileSize == strong.fileSize,
+                  weak.modifiedAt == strong.modifiedAt else { return .rejected(.sourceChanged) }
+        case (.artifact(let current), .artifact(let expected)):
+            guard current == expected else { return .rejected(.sourceChanged) }
+        default: return .rejected(.sourceChanged)
+        }
+        do {
+            let admission = try registerWrite()
+            let commit = Commit(id: .init(), draft: draft, token: token)
+            commits[commit.id] = commit
+            return start(commit, admission: admission)
+        } catch { return .rejected(.staleEpoch) }
+    }
+    func retryAcceptedArtifactCommit(_ id: EditingCommitID) -> ArtifactCommitAdmission {
+        guard let commit = commits[id] else { return .rejected(.invalidCapability) }
+        if commit.published, let observer = commit.observer { return .accepted(observer) }
+        guard !isCommitting, !isRestoring, !isBackingUp, !isClosing else { return .rejected(.staleSnapshot) }
+        do { return start(commit, admission: try registerWrite()) } catch { return .rejected(.staleEpoch) }
+    }
+    var failedArtifactCommitID: EditingCommitID? { commits.values.first(where: \.failed)?.id }
+    func awaitAcceptedCommits() async -> Bool {
+        if let id = activeCommitID, let task = commits[id]?.task {
+            do { _ = try await task.value } catch { return false }
+        }
+        return !commits.values.contains(where: \.failed)
+    }
+    private func start(_ commit: Commit, admission: CatalogAcceptedWriteAdmission?) -> ArtifactCommitAdmission {
+        isCommitting = true; activeCommitID = commit.id; commit.failed = false
+        // This owner is created synchronously before returning acceptance. There
+        // is no observer cancellation path into its task/admission.
+        let task = Task<ArtifactCommitReceipt, Error> {
+            defer { self.isCommitting = false; self.activeCommitID = nil }
+            do {
+                let receipt: ArtifactCommitReceipt
+                if let gate = self.gate, let admission {
+                    receipt = try await gate.withAcceptedWrite(admission) { try await self.performCommit(commit) }
+                } else { receipt = try await self.performCommit(commit) }
+                self.publish(receipt, for: commit)
+                // The accepted generation capability has ended. Its inner
+                // pending-settings flush deliberately did not start a backup.
+                self.scheduleAutomaticBackup()
+                if let database = self.database { self.errorMessage = await database.backupWarning() ?? self.automaticBackupWarning ?? self.artifactStoreWarning }
+                else { self.errorMessage = nil }
+                return receipt
+            } catch {
+                commit.failed = true
+                self.errorMessage = "Der angenommene Bildstand konnte nicht vollständig gespeichert werden. Wiederholen verwendet denselben Auftrag.\n\n" + error.localizedDescription
+                throw error
+            }
+        }
+        commit.task = task
+        let observer = AcceptedArtifactCommit(id: commit.id, task: task); commit.observer = observer
+        return .accepted(observer)
+    }
+    private func performCommit(_ commit: Commit) async throws -> ArtifactCommitReceipt {
+        guard let database else { throw ArtifactContractError.invalidCapability }
+        if let previous = try await database.committed(commit.id) {
+            if let request = commit.request, previous.requestSHA256 != request.requestSHA256 { throw ArtifactContractError.conflictingCommit }
+            return try await retainCommitted(previous, commit: commit)
+        }
+        if commit.request == nil {
+            let token = commit.token
+            guard persistedState(for: token.assetID) == token.persistedAtCapture,
+                  snapshot(for: token.assetID) == token.snapshot,
+                  localRevision(for: token.assetID) == token.localRevision else { throw ArtifactContractError.staleSnapshot }
+            let hadPending = pending[token.assetID] != nil
+            guard await flushPending(), let baseline = persistedState(for: token.assetID) else { throw ArtifactContractError.staleSnapshot }
+            if hadPending {
+                guard baseline.storeEpoch == token.persistedAtCapture.storeEpoch,
+                      baseline.revision == token.localRevision, baseline.snapshot == token.snapshot else { throw ArtifactContractError.staleSnapshot }
+            } else { guard baseline == token.persistedAtCapture else { throw ArtifactContractError.staleSnapshot } }
+            commit.request = try GenerationCommitRequest(commitID: commit.id, assetID: token.assetID, draft: commit.draft,
+                expected: baseline, expectedParentSource: token.source, nextRevision: token.localRevision + 1)
+        }
+        guard let request = commit.request else { throw ArtifactContractError.invalidCapability }
+        let receipt = try await database.commitGenerated(request)
+        guard receipt.commitID == request.commitID, receipt.assetID == request.assetID,
+              receipt.requestSHA256 == request.requestSHA256,
+              receipt.stored.snapshot.source == .artifact(commit.draft.artifact.id),
+              receipt.stored.snapshot.settings.isNeutral else { throw ArtifactContractError.conflictingCommit }
+        return try await retainCommitted(receipt, commit: commit)
+    }
+    private func retainCommitted(_ receipt: ArtifactCommitReceipt, commit: Commit) async throws -> ArtifactCommitReceipt {
+        guard let artifacts else { throw ArtifactContractError.invalidCapability }
+        if leases[receipt.artifactID] == nil { leases[receipt.artifactID] = try await artifacts.acquireLease(ids: [receipt.artifactID], purpose: .activeEditing) }
+        return receipt
+    }
+    private func publish(_ receipt: ArtifactCommitReceipt, for commit: Commit) {
+        guard !commit.published else { return }
+        let assetID = receipt.assetID
+        // The retained draft owns a lease until this session/history retires.
+        // A receipt may finish after selection changed, but always belongs to A.
+        guard let storeID = artifactStoreID else { return }
+        let fingerprint = ArtifactSourceFingerprint(storeID: storeID, artifactID: receipt.artifactID,
+            manifestSHA256: commit.draft.artifact.manifestSHA256, raster: commit.draft.artifact.raster)
+        artifactFingerprints[receipt.artifactID] = fingerprint
+        endEditing(assetID: assetID)
+        appendUndo(commit.token.snapshot, for: assetID)
+        histories[assetID, default: History()].redo.removeAll()
+        snapshotsByAsset[assetID] = receipt.stored.snapshot
+        revisionsByAsset[assetID] = receipt.stored.version.revision
+        baselines[assetID] = EditingExpectedState(receipt.stored)
+        commit.published = true; commit.failed = false
+        completedCommitIDs.append(commit.id)
+        while completedCommitIDs.count > historyLimit {
+            let old = completedCommitIDs.removeFirst()
+            if old != commit.id, commits[old]?.published == true { commits.removeValue(forKey: old) }
+        }
+        invalidateVariants()
+        advanceAIEditGeneration(); notice = "Generierter Bildstand gespeichert."
     }
 
     func createBackup(exportTo target: URL? = nil) async -> URL? {
         guard canBackUp, let database else { return nil }
         isBackingUp = true
         defer { isBackingUp = false; finishMaintenance() }
-        if let target {
-            let directory = self.directory
-            // Path resolution may access a network volume. Hold the backup
-            // lifecycle open while validating on a worker, so termination also
-            // waits for this accepted operation.
-            let validTarget = await Task.detached(priority: .userInitiated) {
-                Self.isValidExportTarget(target, directory: directory)
-            }.value
-            guard validTarget else {
-                errorMessage = "Wähle eine separate Datei mit der Endung .sqlite als Backup-Ziel. Die aktive Datenbank darf nicht überschrieben werden."
-                return nil
-            }
-        }
-        guard await flushPending() else { return nil }
-        do {
-            let url = try await database.createBackup(automatic: false)
-            if let target {
-                do {
-                    let exported = try await Task.detached {
-                        try Self.exportBackup(url, to: target)
-                    }.value
-                    notice = "Backup exportiert: \(exported.lastPathComponent)"
-                    return exported
-                } catch {
-                    notice = "Lokales Backup erstellt: \(url.lastPathComponent)"
-                    errorMessage = "Das lokale Backup wurde erstellt, konnte aber nicht an den gewählten Speicherort exportiert werden. Es bleibt unter \(url.path) erhalten.\n\n\(error.localizedDescription)"
-                    return nil
-                }
-            }
-            notice = "Backup erstellt: \(url.lastPathComponent)"
-            return url
-        } catch {
-            errorMessage = "Das Backup konnte nicht erstellt werden.\n\n\(error.localizedDescription)"
-            return nil
-        }
-    }
-
-    func restoreBackup(from url: URL) async -> Bool {
-        guard canRestore else { return false }
-        aiEditSessionID = UUID()
-        aiEditGeneration = 0
-        isRestoring = true
-        defer { isRestoring = false; finishMaintenance() }
-        // Failed writes must not be discarded by a restore. A read-only store
-        // with no pending edits can still be recovered from a valid backup.
+        let commitsSaved = await awaitAcceptedCommits()
         let saved = await flushPending()
-        guard saved || pending.isEmpty else { return false }
-        let previouslyReadOnly = isReadOnly
-        let recoveringDamagedDatabase = database == nil
-        var restoredDatabase = false
+        await drainAutomaticBackup()
+        guard commitsSaved && saved else { return nil }
         do {
-            let restored: [String: EditSettings]
-            let store: any EditingPersistence
-            if let database {
-                store = database
-                restored = try await database.restoreBackup(from: url)
-            } else if let directory {
-                // A failed initial open has no live connection. The recovery
-                // API validates first and archives damaged files before replacement.
-                let recovered = try await Task.detached {
-                    try EditDatabase.recoverDatabase(in: directory, from: url)
-                }.value
-                database = recovered
-                store = recovered
-                restoredDatabase = true
-                restored = try await recovered.loadAll()
-            } else { return false }
-            restoredDatabase = true
-            let restoredRevisions = try await store.revisions()
-            settingsByAsset = restored
-            revisionsByAsset = restoredRevisions
-            pending.removeAll()
-            hasPendingChanges = false
-            histories.removeAll()
-            gestureStarts.removeAll()
-            isReadOnly = false
-            errorMessage = nil
-            notice = recoveringDamagedDatabase
-                ? "Backup wiederhergestellt. Die vorherigen Datenbankdateien wurden im Ordner „Recovery“ archiviert."
-                : "Backup wiederhergestellt. Der vorherige Stand wurde als Sicherheitsbackup gesichert."
+            if let target {
+                let directory = self.directory
+                let valid = await Task.detached { Self.isValidExportTarget(target, directory: directory) }.value
+                guard valid else { throw ArtifactContractError.invalidValue("backup destination") }
+            }
+            let local = try await database.createBackup(automatic: false)
+            guard let target else { notice = "Bearbeitungspaket erstellt: \(local.lastPathComponent)"; return local }
+            do {
+                let exported = try await database.exportBackup(from: local, toNew: target)
+                notice = "Bearbeitungspaket exportiert: \(exported.lastPathComponent)"; return exported
+            } catch {
+                notice = "Lokales Bearbeitungspaket erstellt: \(local.lastPathComponent)"
+                errorMessage = "Das lokale Backup bleibt unter \(local.path) erhalten.\n\n" + error.localizedDescription; return nil
+            }
+        } catch { errorMessage = "Das Backup konnte nicht erstellt werden.\n\n" + error.localizedDescription; return nil }
+    }
+    func restoreBackup(from url: URL) async -> Bool {
+        guard canRestore, let database else { return false }
+        aiEditSessionID = UUID(); aiEditGeneration = 0; isRestoring = true
+        defer { isRestoring = false; finishMaintenance() }
+        let commitsSaved = await awaitAcceptedCommits()
+        let saved = await flushPending()
+        await drainAutomaticBackup()
+        guard commitsSaved && (saved || pending.isEmpty) else { return false }
+        do {
+            let requiresRecovery = storeEpoch == nil
+            let restored: EditingStoreState
+            if requiresRecovery {
+                guard let recoverDatabase else { throw CatalogCoordinationError.recoveryRequired }
+                let committed = try await recoverDatabase(url)
+                // Reopen through the ordinary shared repository after the closed
+                // coordinator has completed its journal-free recovery boundary.
+                restored = try await database.loadState()
+                guard restored.storeEpoch == committed.storeEpoch, restored.byAsset == committed.byAsset,
+                      restored.tombstones == committed.tombstones else { throw ArtifactContractError.staleSnapshot }
+                if let gate { startup = try await gate.waitForStartup() }
+            } else { restored = try await database.restoreBackup(from: url) }
+            install(restored)
+            try await loadArtifactMetadata(restored)
+            pending.removeAll(); hasPendingChanges = false
+            histories.removeAll(); gestureStarts.removeAll(); commits.removeAll()
+            sourceStateIsCoherent = true; isReadOnly = false; errorMessage = artifactStoreWarning
+            notice = requiresRecovery
+                ? "Recovery abgeschlossen. Die beschädigte Datenbankfamilie und generierte Pixel wurden separat gesichert."
+                : "Bearbeitungspaket wiederhergestellt. Der vorherige Stand wurde separat gesichert."
+            if requiresRecovery { library?.retryCoordinatedRecovery() }
             return true
         } catch {
-            // Invalid candidates are rejected by the database before mutation.
-            // Verify the active store still matches our snapshot after other
-            // failures (for example I/O errors during a SQLite transaction).
-            var unchanged = false
-            if !restoredDatabase, let database,
-               let storedSettings = try? await database.loadAll(),
-               let storedRevisions = try? await database.revisions() {
-                unchanged = storedSettings == settingsByAsset && storedRevisions == revisionsByAsset
-            }
-            isReadOnly = previouslyReadOnly || restoredDatabase || !unchanged
-            errorMessage = "Das Backup konnte nicht wiederhergestellt werden.\n\n\(error.localizedDescription)"
+            errorMessage = "Das Backup konnte nicht wiederhergestellt werden.\n\n" + error.localizedDescription
+            // Never bless a changed baseline after an ambiguous restore error.
+            if let state = try? await database.loadState() {
+                let unchanged = state.storeEpoch == storeEpoch && state.byAsset.mapValues(\.snapshot) == snapshotsByAsset
+                isReadOnly = isReadOnly || !unchanged
+            } else { isReadOnly = true }
             return false
         }
     }
-
-    private func load(_ database: any EditingPersistence) async {
-        self.database = database
-        do {
-            let settings = try await database.loadAll()
-            let revisions = try await database.revisions()
-            settingsByAsset = settings
-            revisionsByAsset = revisions
-            isLoading = false
-            loadingTask = nil
-        } catch {
-            finishLoadingWithError(error)
-        }
-    }
-
-    private func finishLoadingWithError(_ error: Error) {
-        isLoading = false
-        loadingTask = nil
-        isReadOnly = true
-        errorMessage = "Die Bearbeitungsdatenbank konnte nicht geöffnet werden. Vorhandene Daten bleiben erhalten.\n\n\(error.localizedDescription)"
-    }
-
-    private func finishMaintenance() {
-        let waiters = maintenanceWaiters
-        maintenanceWaiters.removeAll()
-        for waiter in waiters { waiter.resume() }
-    }
-
-    private nonisolated static func exportBackup(_ source: URL, to target: URL) throws -> URL {
-        guard target.isFileURL else {
-            throw CocoaError(.fileWriteUnsupportedScheme)
-        }
-        // Copy only the completed standalone snapshot. Staging beside the
-        // destination makes the final rename atomic even across volumes.
-        let staging = target.deletingLastPathComponent()
-            .appendingPathComponent(".picedit-backup-\(UUID().uuidString).partial")
-        defer { try? FileManager.default.removeItem(at: staging) }
-        try FileManager.default.copyItem(at: source, to: staging)
-        guard Darwin.rename(staging.path, target.path) == 0 else {
-            throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno), userInfo: [NSFilePathErrorKey: target.path])
-        }
-        return target
-    }
-
     private nonisolated static func isValidExportTarget(_ target: URL, directory: URL?) -> Bool {
-        guard target.isFileURL, target.pathExtension.lowercased() == "sqlite" else { return false }
+        guard target.isFileURL, target.pathExtension.lowercased() == "piceditbackup" else { return false }
         guard let directory else { return true }
-        // A handful of paths does not justify nested worker tasks. All
-        // filesystem lookups already run outside MainActor in the caller.
         return !ManagedFileProtection.protects(target, directory: directory)
     }
 
-    private func nextRevisionAvailable(for assetID: String) -> Bool {
-        guard revisionsByAsset[assetID, default: 0] < Int64.max else {
-            isReadOnly = true
-            errorMessage = "Diese Bearbeitung kann nicht weiter gespeichert werden: Die maximale Versionsnummer wurde erreicht."
-            return false
-        }
-        return true
-    }
+}
 
-    private func apply(_ settings: EditSettings, for assetID: String) {
-        advanceAIEditGeneration()
-        let revision = revisionsByAsset[assetID, default: 0] + 1
-        revisionsByAsset[assetID] = revision
-        settingsByAsset[assetID] = settings
-        pending[assetID] = PendingEdit(settings: settings, revision: revision)
-        hasPendingChanges = true
-        scheduleSave()
-    }
-
-    private func advanceAIEditGeneration() {
-        // Resetting an already neutral edit and beginning a gesture still
-        // invalidate ephemeral AI results, even without a settings publication.
-        objectWillChange.send()
-        if aiEditGeneration == .max {
-            aiEditSessionID = UUID()
-            aiEditGeneration = 0
-        } else {
-            aiEditGeneration += 1
-        }
-    }
-
-    /// The final synchronous gate also preflights revision exhaustion, before
-    /// ending a gesture or touching undo. Accepted edits use the ordinary path.
-    func acceptAIProposal(_ result: AIProposalResult, in library: LibraryModel) -> Bool {
-        do { try result.request.snapshot.validate() }
-        catch { return false }
-        guard isCurrentAISnapshot(result.request.snapshot, in: library),
-              case .changes(let proposal, let settings) = result.validation,
-              let checked = try? EditProposalValidator().validate(proposal, against: result.request.snapshot.settings),
-              case .changes(_, let validatedSettings) = checked,
-              settings == validatedSettings,
-              settings != self.settings(for: result.request.snapshot.assetID),
-              nextRevisionAvailable(for: result.request.snapshot.assetID) else { return false }
-
-        // No suspension is permitted between the snapshot check and setSettings.
-        // MainActor keeps selection, histories and the pending save atomic here.
-        let assetID = result.request.snapshot.assetID
-        endEditing(assetID: assetID)
-        setSettings(validatedSettings, for: assetID)
-        return true
-    }
-
-    private func appendUndo(_ settings: EditSettings, for assetID: String) {
-        histories[assetID, default: History()].undo.append(settings)
-        if histories[assetID, default: History()].undo.count > historyLimit {
-            histories[assetID]?.undo.removeFirst()
-        }
-    }
-
-    private func scheduleSave() {
-        debounceTask?.cancel()
-        debounceTask = Task { [weak self] in
-            do { try await Task.sleep(for: .milliseconds(300)) }
-            catch { return }
-            guard let self, !Task.isCancelled else { return }
-            self.debounceTask = nil
-            _ = await self.flush()
-        }
-    }
-
-    private func savePending(using database: any EditingPersistence) async -> Bool {
-        isSaving = true
-        defer {
-            isSaving = false
-            saveTask = nil
-        }
-        repeat {
-            // Each batch is a snapshot. Remove a pending value only if it is
-            // still the exact revision that was successfully written.
-            let batch = pending
-            for assetID in batch.keys.sorted() {
-                guard let edit = batch[assetID] else { continue }
-                do {
-                    try await database.save(edit.settings, for: assetID, revision: edit.revision)
-                } catch {
-                    isReadOnly = true
-                    errorMessage = "Bearbeitungen konnten nicht gespeichert werden. Die letzten Werte bleiben für einen erneuten Speicherversuch im Speicher erhalten.\n\n\(error.localizedDescription)"
-                    return false
-                }
-                if pending[assetID]?.revision == edit.revision { pending.removeValue(forKey: assetID) }
-                hasPendingChanges = !pending.isEmpty
-            }
-            isReadOnly = false
-            errorMessage = nil
-            do {
-                _ = try await database.createBackup(automatic: true)
-            } catch {
-                errorMessage = "Die Bearbeitungen sind gespeichert, aber das automatische Backup konnte nicht erstellt werden.\n\n\(error.localizedDescription)"
-            }
-        } while !pending.isEmpty
-        return true
+/// A single metadata worker for explicit generation capture, without opening
+/// every grid source or adding another raster/decoder pool.
+private actor GenerationOriginalReader {
+    static let shared = GenerationOriginalReader()
+    func capture(_ source: AIOriginalSourceFingerprint) throws -> OriginalSourceFingerprint {
+        let url = URL(fileURLWithPath: source.standardizedPath)
+        let scope = url.startAccessingSecurityScopedResource(); defer { if scope { url.stopAccessingSecurityScopedResource() } }
+        let fingerprint = try AssetRemapVerifier.capture(url, referenceDate: source.modifiedAt)
+        let observed = Double(fingerprint.nativeRevision.modifiedSeconds) - Date.timeIntervalBetween1970AndReferenceDate
+            + Double(fingerprint.nativeRevision.modifiedNanoseconds) / 1_000_000_000
+        guard fingerprint.fileSize == source.fileSize,
+              abs(observed - source.modifiedAt.timeIntervalSinceReferenceDate) <= 0.000_005 else { throw ArtifactContractError.sourceChanged }
+        return fingerprint
     }
 }

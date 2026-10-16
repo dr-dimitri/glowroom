@@ -13,14 +13,14 @@ public struct StoredLibraryCatalog: Sendable {
 public final class PreparedLibraryCatalog: Sendable {
     public let catalog: LibraryCatalog
     public let reference: MetadataCatalogFileReference
-    fileprivate let bytes: Data
+    internal let bytes: Data
     internal init(catalog: LibraryCatalog, bytes: Data) {
         self.catalog = catalog; self.bytes = bytes
         reference = .present(sha256: CatalogFileIO.digest(bytes), byteCount: Int64(bytes.count))
     }
 }
 
-private final class CatalogDirectoryHandle: @unchecked Sendable {
+internal final class CatalogDirectoryHandle: @unchecked Sendable {
     let descriptor: Int32
     init(_ descriptor: Int32) { self.descriptor = descriptor }
     deinit { close(descriptor) }
@@ -31,13 +31,16 @@ private final class CatalogDirectoryHandle: @unchecked Sendable {
 public final class StagedLibraryCatalog: @unchecked Sendable {
     public let id: UUID
     public let prepared: PreparedLibraryCatalog
-    fileprivate let root: CatalogDirectoryHandle
-    fileprivate let stage: CatalogDirectoryHandle
-    fileprivate let name: String
-    fileprivate let payload: CatalogDirectoryHandle
-    fileprivate init(id: UUID, prepared: PreparedLibraryCatalog, root: CatalogDirectoryHandle,
-                     stage: CatalogDirectoryHandle, name: String, payload: CatalogDirectoryHandle) {
+    internal let root: CatalogDirectoryHandle
+    internal let stage: CatalogDirectoryHandle
+    internal let name: String
+    internal let payload: CatalogDirectoryHandle
+    internal let validateAdditionalBoundary: @Sendable () throws -> Void
+    internal init(id: UUID, prepared: PreparedLibraryCatalog, root: CatalogDirectoryHandle,
+                     stage: CatalogDirectoryHandle, name: String, payload: CatalogDirectoryHandle,
+                     validateAdditionalBoundary: @escaping @Sendable () throws -> Void = {}) {
         self.id = id; self.prepared = prepared; self.root = root; self.stage = stage; self.name = name; self.payload = payload
+        self.validateAdditionalBoundary = validateAdditionalBoundary
     }
 }
 
@@ -113,6 +116,7 @@ internal enum CatalogFileIO {
             guard source.reference == stage.prepared.reference,
                   ownsPayload(file: stage.payload.descriptor, root: stage.stage.descriptor, name: stage.name) else { throw CatalogRepositoryError.invalidStage }
             guard previous == expected else { throw CatalogRepositoryError.concurrentModification }
+            try stage.validateAdditionalBoundary()
             // The fixed leaf is replaced, never followed; cooperative publishers use
             // this same native lock. A missing catalog is distinct from empty bytes.
             guard renameat(stage.stage.descriptor, stage.name, root, "catalog.json") == 0 else { throw posix("Katalog veröffentlichen") }
@@ -130,6 +134,30 @@ internal enum CatalogFileIO {
         guard root >= 0 else { throw posix("Katalogverzeichnis öffnen") }
         defer { close(root) }
         return try locked(root: root, operation: operation)
+    }
+
+    /// Read through the locked native root. The boundary check is used after
+    /// source-path inspection and immediately before destructive maintenance.
+    static func withSnapshotLock<Result>(directory: URL,
+        operation: (Contents, () throws -> Void) throws -> Result) throws -> Result {
+        guard directory.isFileURL else { throw CatalogRepositoryError.invalidStage }
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let root = open(directory.path, O_RDONLY | O_DIRECTORY | O_CLOEXEC)
+        guard root >= 0 else { throw posix("Katalogverzeichnis öffnen") }
+        defer { close(root) }
+        return try locked(root: root) { expected in
+            let contents = try read(root: root, name: "catalog.json", missingAllowed: true)
+            guard contents.reference == expected else { throw CatalogRepositoryError.concurrentModification }
+            return try operation(contents) {
+                let named = open(directory.path, O_RDONLY | O_DIRECTORY | O_CLOEXEC)
+                guard named >= 0 else { throw CatalogRepositoryError.concurrentModification }
+                defer { close(named) }
+                guard sameDirectory(root, named),
+                      try read(root: root, name: "catalog.json", missingAllowed: true, captureBytes: false).reference == expected else {
+                    throw CatalogRepositoryError.concurrentModification
+                }
+            }
+        }
     }
 
     /// Shared by catalog publication and metadata JSON final publication. No

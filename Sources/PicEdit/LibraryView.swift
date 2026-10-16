@@ -24,6 +24,14 @@ struct LibraryView: View {
                     else { InspectorView(model: model).frame(width: 260) }
                 }
             }
+            if let error = model.coordinationError {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Speicherzuordnung muss geprüft werden").font(.callout)
+                    Text(error).font(.caption).textSelection(.enabled)
+                    Button("Speicherzuordnung erneut prüfen") { model.retryCoordinatedRecovery() }
+                        .disabled(model.isRetryingCoordination || model.isClosing)
+                }.padding().frame(maxWidth: .infinity, alignment: .leading)
+            }
             statusBar
         }
         .background(Theme.background)
@@ -31,10 +39,11 @@ struct LibraryView: View {
         .overlay { if dropTargeted { RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.accent, style: StrokeStyle(lineWidth: 3, dash: [8])).padding(6).allowsHitTesting(false) } }
         .onDrop(of: [.fileURL], isTargeted: $dropTargeted, perform: acceptDrop)
         .background(KeyboardHandler { event in handleKey(event) })
-        .onChange(of: model.showsDetail) { _, detail in if !detail { model.isDeveloping = false; model.comparesOriginal = false } }
+        .onChange(of: model.showsDetail) { _, detail in if !detail { model.isDeveloping = false; model.comparesOriginal = false; model.comparesCurrentSourceWithoutSettings = false } }
         .onChange(of: model.selectedID) { old, _ in
             if let old { editor.endEditing(assetID: old) }
             model.comparesOriginal = false
+            model.comparesCurrentSourceWithoutSettings = false
         }
         .onChange(of: model.selection) { _, _ in model.reconcileSelection() }
         .onChange(of: model.search) { _, _ in model.reconcileSelection() }
@@ -61,6 +70,7 @@ struct LibraryView: View {
                 Button {
                     model.isDeveloping = false
                     model.comparesOriginal = false
+            model.comparesCurrentSourceWithoutSettings = false
                     model.showsDetail = false
                 } label: { Label("Bibliothek", systemImage: "square.grid.2x2.fill") }
                     .foregroundStyle(!model.isDeveloping ? Theme.accent : Theme.muted)
@@ -83,7 +93,7 @@ struct LibraryView: View {
                         .disabled(editor.isLoading || editor.isRestoring || editor.isBackingUp || editor.isClosing)
                     Divider()
                     Text("Automatisch täglich · letzte 7 Sicherungen")
-                    Text("Backups enthalten die Bearbeitungswerte.")
+                    Text("Bearbeitungen und generierte Pixel · Originale separat sichern")
                 } label: { Image(systemName: "externaldrive.badge.timemachine") }
                     .menuStyle(.borderlessButton).fixedSize().help("Backups der Bearbeitungen")
                     .accessibilityLabel("Backups der Bearbeitungen")

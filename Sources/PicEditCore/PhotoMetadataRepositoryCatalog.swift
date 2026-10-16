@@ -88,7 +88,7 @@ extension PhotoMetadataRepository {
         if changed || catalogReference != snapshot.persistedReference { try bumpSearch(db) }
         try setCatalogReference(snapshot.persistedReference,on:db)
     }
-    public func reconcile(_ snapshot:MetadataCatalogSnapshot) throws -> MetadataReconciliationResult {
+    func _metadata_reconcile(_ snapshot:MetadataCatalogSnapshot) throws -> MetadataReconciliationResult {
         try validateCatalogToken(snapshot)
         let db = try connection()
         if snapshot == catalog { return .init(searchState:state,changes:try journals(on:db,pendingOnly:true).map(\.receipt)) }
@@ -98,13 +98,14 @@ extension PhotoMetadataRepository {
         bindCatalog(snapshot); refreshSearch(db)
         return .init(searchState:state,changes:[])
     }
-    public func stageCatalogChange(_ change:MetadataCatalogChange) throws -> MetadataCatalogChangeReceipt {
+    func _metadata_stageCatalogChange(_ change:MetadataCatalogChange,coordinatorSHA:String? = nil) throws -> MetadataCatalogChangeReceipt {
         try PhotoMetadataValidation.change(change)
         let digest = try PhotoMetadataInternalCodec.digest(kind:"catalogChange",payload:change), db = try connection()
         // Durable identity is checked before current-file preconditions: an
         // already completed request remains replayable after later catalog edits.
         if let existing = try journal(change.id,on:db) {
             guard existing.receipt.payloadSHA256 == digest else { throw PhotoMetadataError.operationIDCollision }
+            if let coordinatorSHA {guard try Self.coordinationLink(change.id,on:db) == coordinatorSHA else {throw PhotoMetadataError.recoveryRequired}}
             return existing.receipt
         }
         guard try PhotoMetadataFiles.reference(fileURL.deletingLastPathComponent().appendingPathComponent("catalog.json")) == change.before else { throw PhotoMetadataError.catalogConflict }
@@ -120,7 +121,13 @@ extension PhotoMetadataRepository {
             let ids = change.expectedRecords.map(\.assetID).sorted()
             let urls = change.relocations.flatMap { [URL(fileURLWithPath:$0.oldSource.original.standardizedPath,isDirectory:false),URL(fileURLWithPath:$0.newSource.original.standardizedPath,isDirectory:false)] }
             let receipt = MetadataCatalogChangeReceipt(changeID:change.id,payloadSHA256:digest,revision:1,state:.staged,blockedAssetIDs:ids,protectedSourceURLs:urls,conflicts:[])
-            try saveJournal(.init(change:change,receipt:receipt),on:db); return receipt
+            try saveJournal(.init(change:change,receipt:receipt),on:db)
+            if let coordinatorSHA {
+                try PhotoMetadataSQLite.statement(db,"INSERT INTO metadata_coordinations(id,coordinator_sha) VALUES(?,?)") {s in
+                    try PhotoMetadataSQLite.bind(change.id.uuidString.lowercased(),1,s);try PhotoMetadataSQLite.bind(coordinatorSHA,2,s);try PhotoMetadataSQLite.done(s)
+                }
+            }
+            return receipt
         }
     }
     func updatedReceipt(_ journal:PhotoMetadataJournal,state:MetadataCatalogChangeState,conflicts:[MetadataRelocationConflict]) throws -> MetadataCatalogChangeReceipt {
@@ -186,8 +193,8 @@ extension PhotoMetadataRepository {
         journal.receipt = .init(changeID:journal.receipt.changeID,payloadSHA256:journal.receipt.payloadSHA256,revision:journal.receipt.revision,state:.conflicted,blockedAssetIDs:journal.receipt.blockedAssetIDs,protectedSourceURLs:journal.receipt.protectedSourceURLs,conflicts:conflicts)
         try saveJournal(journal,on:db)
     }
-    public func completeCatalogChange(id:UUID,persistedCatalog snapshot:MetadataCatalogSnapshot) throws -> MetadataReconciliationResult {
-        try validateCatalogToken(snapshot); try verifyCatalogFile(snapshot)
+    func _metadata_completeCatalogChange(id:UUID,persistedCatalog snapshot:MetadataCatalogSnapshot,coordinated:Bool = false) throws -> MetadataReconciliationResult {
+        if !coordinated {try validateCatalogToken(snapshot)};try verifyCatalogFile(snapshot)
         let db = try connection()
         try sql.transaction(db,beforeCommit:hooks.beforeCommit) {
             guard var journal = try journal(id,on:db) else { throw PhotoMetadataError.catalogConflict }
@@ -198,7 +205,7 @@ extension PhotoMetadataRepository {
         bindCatalog(snapshot); refreshSearch(db)
         return .init(searchState:state,changes:try journals(on:db,pendingOnly:true).map(\.receipt))
     }
-    public func recoverCatalogChanges(persistedCatalog snapshot:MetadataCatalogSnapshot) throws -> MetadataReconciliationResult {
+    func _metadata_recoverCatalogChanges(persistedCatalog snapshot:MetadataCatalogSnapshot) throws -> MetadataReconciliationResult {
         try validateCatalogToken(snapshot); try verifyCatalogFile(snapshot)
         let db = try connection()
         try sql.transaction(db,beforeCommit:hooks.beforeCommit) {
@@ -224,7 +231,7 @@ extension PhotoMetadataRepository {
         bindCatalog(snapshot); refreshSearch(db)
         return .init(searchState:state,changes:try journals(on:db,pendingOnly:true).map(\.receipt))
     }
-    public func resolveCatalogChange(_ operation:MetadataCatalogResolutionOperation) throws -> MetadataReconciliationResult {
+    func _metadata_resolveCatalogChange(_ operation:MetadataCatalogResolutionOperation) throws -> MetadataReconciliationResult {
         try PhotoMetadataValidation.reference(operation.persistedReference)
         guard !operation.decisions.isEmpty, Set(operation.decisions.map(\.conflictID)).count == operation.decisions.count else { throw PhotoMetadataError.validation(.invalidDecision) }
         let hash = try PhotoMetadataInternalCodec.digest(kind:"catalogResolution",payload:operation), db = try connection()

@@ -26,12 +26,24 @@ struct DevelopInspector: View {
                                 Text(saveStatus).font(.system(size: 10)).foregroundStyle(Theme.muted)
                             }
                         }
-                        Toggle("Vorher anzeigen", isOn: $library.comparesOriginal)
+                        Toggle("Importiertes Original anzeigen", isOn: $library.comparesOriginal)
                             .toggleStyle(.switch).controlSize(.small).font(.system(size: 11))
-                            .help("Zeigt das Bild ohne deine Einstellungen. Die Bearbeitung bleibt gespeichert.")
-                        AIAssistantSection(model: assistant, comparesOriginal: library.comparesOriginal)
+                            .help("Zeigt ausschließlich das importierte Original ohne Regler. Der aktive Bildstand bleibt gespeichert.")
+                        Toggle("Aktuelle Quelle ohne Regler", isOn: $library.comparesCurrentSourceWithoutSettings)
+                            .toggleStyle(.switch).controlSize(.small).font(.system(size: 11))
+                        Button("Zum importierten Original zurückkehren") {
+                            editor.returnToOriginal(assetID: asset.id)
+                            library.comparesOriginal = false; library.comparesCurrentSourceWithoutSettings = false
+                        }
+                            .disabled(!editor.canEdit || editor.snapshot(for: asset.id).source == .original)
+                        if let id = editor.failedArtifactCommitID {
+                            Button("Angenommenen Bildstand erneut speichern") { _ = editor.retryAcceptedArtifactCommit(id) }
+                                .disabled(editor.isCommitting || editor.isRestoring || editor.isBackingUp)
+                        }
+                        AIAssistantSection(model: assistant, comparesOriginal: library.comparesOriginal || library.comparesCurrentSourceWithoutSettings)
                         ImageAnalysisSection(model: imageAnalysis)
                         PhotoMetadataSection(model: photoMetadata)
+                        ArtifactVariantsSection(assetID: asset.id)
                         autoToneSection(assetID: asset.id)
                         adjustmentSection("Tonwert", controls: Array(Adjustment.allCases.prefix(6)), assetID: asset.id)
                         adjustmentSection("Präsenz", controls: Array(Adjustment.allCases.dropFirst(6).prefix(5)), assetID: asset.id)
@@ -64,6 +76,7 @@ struct DevelopInspector: View {
         if editor.isLoading { return "Bearbeitungen werden geladen …" }
         if editor.isReadOnly { return "Speichern nicht verfügbar" }
         if editor.isRestoring { return "Sicherung wird wiederhergestellt …" }
+        if editor.isCommitting { return "Bildstand wird gespeichert …" }
         if editor.isSaving { return "Wird gespeichert …" }
         if editor.hasPendingChanges { return "Änderungen werden gesichert …" }
         return "Alle Änderungen gespeichert"
@@ -107,7 +120,7 @@ struct DevelopInspector: View {
             }
             Text("Helle Bereiche zügeln, Schatten öffnen. Schwarz, Weiß und Kontrast bleiben erhalten.")
                 .font(.system(size: 10)).foregroundStyle(Theme.muted).lineSpacing(3)
-        }.disabled(!editor.canEdit || !library.canModify || library.comparesOriginal)
+        }.disabled(!editor.canEdit || !library.canModify || library.comparesOriginal || library.comparesCurrentSourceWithoutSettings)
             .padding(12)
             .background(Theme.accent.opacity(0.06), in: RoundedRectangle(cornerRadius: 8))
     }
@@ -138,7 +151,7 @@ struct DevelopInspector: View {
                     else { editor.endEditing(assetID: assetID) }
                 })
             }
-        }.disabled(!editor.canEdit || !library.canModify || library.comparesOriginal)
+        }.disabled(!editor.canEdit || !library.canModify || library.comparesOriginal || library.comparesCurrentSourceWithoutSettings)
             .padding(.top, 14)
             .overlay(alignment: .top) { Rectangle().fill(Theme.line).frame(height: 1) }
     }

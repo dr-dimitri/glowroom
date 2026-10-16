@@ -1,26 +1,16 @@
 import PicEditCore
 
 extension EditingModel {
-    /// Copy existing catalog metadata only. Symlink resolution, stat, decoding
-    /// and model work must remain outside MainActor and outside this boundary.
-    func aiSnapshot(in library: LibraryModel) -> AIEditingSnapshot? {
+    func aiSnapshot(in library: LibraryModel, intent: EditingRenderIntent = .currentEditing) -> AIEditingSnapshot? {
+        self.library = library
         guard canEdit, library.canModify, !library.isImporting, !library.isProjecting,
-              let asset = library.selectedAsset, !asset.id.isEmpty else { return nil }
-        return AIEditingSnapshot(
-            assetID: asset.id,
-            source: .original(AIOriginalSourceFingerprint(fileURL: asset.fileURL,
-                                                       modifiedAt: asset.modifiedAt,
-                                                       fileSize: asset.fileSize)),
-            settings: settings(for: asset.id),
-            token: AIEditingToken(editSessionID: aiEditSessionID,
-                                  editGeneration: aiEditGeneration,
-                                  selectionSessionID: library.aiSelectionSessionID,
-                                  selectionGeneration: library.aiSelectionGeneration)
-        )
+              let asset = library.selectedAsset, !asset.id.isEmpty,
+              let resolved = try? resolvedSource(for: asset, intent: intent) else { return nil }
+        return AIEditingSnapshot(assetID: asset.id, source: resolved.identity, settings: resolved.settings,
+            token: AIEditingToken(editSessionID: aiEditSessionID, editGeneration: aiEditGeneration,
+                selectionSessionID: library.aiSelectionSessionID, selectionGeneration: library.aiSelectionGeneration),
+            persistedVersion: intent == .importedOriginal ? nil : persistedState(for: asset.id))
     }
-
-    /// Use at request start, before displaying a result, and immediately before
-    /// applying it. A model response is never a source of trusted context.
     func isCurrentAISnapshot(_ snapshot: AIEditingSnapshot, in library: LibraryModel) -> Bool {
         aiSnapshot(in: library) == snapshot
     }

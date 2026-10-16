@@ -29,11 +29,13 @@ public enum CatalogRepositoryError: LocalizedError {
 /// Callers serialize writes. Saving replaces only the catalog, never original images.
 public struct CatalogRepository: Sendable {
     public let directory: URL
+    internal let coordinationFiles: CatalogCoordinationFiles
     public var fileURL: URL { directory.appendingPathComponent("catalog.json", isDirectory: false) }
 
     public init(directory: URL? = nil) {
         self.directory = directory ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("PicEdit", isDirectory: true)
+        coordinationFiles = CatalogCoordinationFiles(directory: self.directory)
     }
 
     public func load() throws -> LibraryCatalog { try loadStored().catalog }
@@ -91,7 +93,7 @@ public struct CatalogRepository: Sendable {
         try publish(stage, expected: expected)
     }
 
-    private func validate(_ catalog: LibraryCatalog) throws {
+    internal func validate(_ catalog: LibraryCatalog) throws {
         guard catalog.version == LibraryCatalog.currentVersion else {
             throw CatalogRepositoryError.unsupportedVersion(catalog.version)
         }

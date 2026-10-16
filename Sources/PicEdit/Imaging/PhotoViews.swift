@@ -13,6 +13,7 @@ struct AssetThumbnail: View {
     var fileSize: Int64 = 0
     var priority: PreviewPriority = .thumbnail
     var settings: EditSettings = .neutral
+    var source: AISourceIdentity? = nil
     @Environment(\.displayScale) private var displayScale
 
     private var pixelSize: Int {
@@ -24,7 +25,7 @@ struct AssetThumbnail: View {
 
     var body: some View {
         AsyncPhotoView(
-            request: PreviewRequest(url: url, modifiedAt: modifiedAt, pixelSize: pixelSize, fileSize: fileSize,
+            request: PreviewRequest(source: source ?? .original(.init(fileURL: url, modifiedAt: modifiedAt, fileSize: fileSize)), pixelSize: pixelSize,
                                     allowsEmbeddedPreview: settings.isNeutral),
             priority: priority, settings: settings, showsFailureDescription: false
         )
@@ -37,11 +38,12 @@ struct PhotoPreview: View {
     let modifiedAt: Date
     var fileSize: Int64 = 0
     var settings: EditSettings = .neutral
+    var source: AISourceIdentity? = nil
     var developing = false
 
     var body: some View {
         AsyncPhotoView(
-            request: PreviewRequest(url: url, modifiedAt: modifiedAt, pixelSize: 2_400, fileSize: fileSize,
+            request: PreviewRequest(source: source ?? .original(.init(fileURL: url, modifiedAt: modifiedAt, fileSize: fileSize)), pixelSize: 2_400,
                                     allowsEmbeddedPreview: !developing && settings.isNeutral),
             priority: .selected, settings: settings, showsFailureDescription: true, progressive: true
         )
@@ -66,6 +68,8 @@ private struct AsyncPhotoView: View {
         let image: NSImage
     }
 
+    private struct SourceLoadIdentity: Hashable { let request: PreviewRequest; let retry: UUID }
+    @PhotoState private var retry = UUID()
     @PhotoState private var loadedRequest: PreviewRequest?
     @PhotoState private var sourceBitmap: PreviewBitmap?
     @PhotoState private var sourceToken: UUID?
@@ -80,7 +84,7 @@ private struct AsyncPhotoView: View {
     private var sameDisplayedPhoto: Bool {
         guard let displayed else { return false }
         let previous = displayed.identity.request
-        return previous.url == request.url && previous.modifiedAt == request.modifiedAt && previous.fileSize == request.fileSize
+        return previous.source == request.source && previous.sourceRevision == request.sourceRevision
     }
     private var busy: Bool {
         (loadingSource || displayed?.identity != renderIdentity) && sourceError == nil && renderError == nil
@@ -90,7 +94,7 @@ private struct AsyncPhotoView: View {
         ZStack {
             if sameDisplayedPhoto, let displayed {
                 Image(nsImage: displayed.image).resizable().interpolation(.high).aspectRatio(contentMode: .fit)
-                    .accessibilityLabel(request.url.lastPathComponent)
+                    .accessibilityLabel(request.displayName)
             } else if let error = sourceError ?? renderError {
                 failure(error)
             } else {
@@ -101,8 +105,10 @@ private struct AsyncPhotoView: View {
         .overlay(alignment: .bottomTrailing) {
             if sameDisplayedPhoto {
                 if let error = sourceError ?? renderError {
-                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
-                        .padding(10).help(error).accessibilityLabel("Vorschau konnte nicht aktualisiert werden: \(error)")
+                    Button { retry = UUID() } label: {
+                        Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange).padding(10)
+                    }.buttonStyle(.plain).help("Vorschau erneut laden: " + error)
+                        .accessibilityLabel("Vorschau erneut laden: " + error)
                 } else if busy {
                     loadingIndicator.padding(12).help("Vorschau wird aktualisiert")
                 }
@@ -110,7 +116,7 @@ private struct AsyncPhotoView: View {
         }
         // Decoding is keyed only by the original, independently of the slider
         // values. Moving a slider never repeatedly cancels a slow RAW decode.
-        .task(id: request, priority: priority == .selected ? .userInitiated : .utility) {
+        .task(id: SourceLoadIdentity(request: request, retry: retry), priority: priority == .selected ? .userInitiated : .utility) {
             guard !Task.isCancelled else { return }
             loadedRequest = request
             sourceBitmap = nil
@@ -120,8 +126,7 @@ private struct AsyncPhotoView: View {
             renderError = nil
             if !sameDisplayedPhoto { displayed = nil }
             if progressive {
-                let small = PreviewRequest(url: request.url, modifiedAt: request.modifiedAt, pixelSize: 512,
-                                           fileSize: request.fileSize, allowsEmbeddedPreview: request.allowsEmbeddedPreview)
+                let small = request.resized(to: 512)
                 if let first = try? await ImagePreviewPipeline.shared.image(for: small, priority: priority),
                    !Task.isCancelled, loadedRequest == request {
                     sourceBitmap = first
@@ -184,10 +189,11 @@ private struct AsyncPhotoView: View {
                 Text("Vorschau nicht verfügbar").font(.callout).foregroundStyle(.secondary)
                 Text(message).font(.caption).foregroundStyle(.tertiary)
                     .multilineTextAlignment(.center).frame(maxWidth: 320)
+                Button("Erneut versuchen") { retry = UUID() }.buttonStyle(.plain)
             }
         }.padding(showsFailureDescription ? 24 : 8).help(message)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Vorschau nicht verfügbar: \(request.url.lastPathComponent). \(message)")
+            .accessibilityLabel("Vorschau nicht verfügbar: \(request.displayName). \(message)")
     }
 
     private var loadingIndicator: some View {

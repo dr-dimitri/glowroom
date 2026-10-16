@@ -1,6 +1,7 @@
 import Foundation
 import ImageIO
 import UniformTypeIdentifiers
+import PicEditCore
 
 /// Decodes a library preview, not an editing rendition. Camera RAW files often
 /// contain an already-rendered JPEG preview: use it when it is large enough for
@@ -8,16 +9,17 @@ import UniformTypeIdentifiers
 enum PreviewDecoder {
     static func decode(_ request: PreviewRequest) throws -> PreviewBitmap {
         try Task.checkCancellation()
+        guard let url = request.url else { throw ArtifactContractError.invalidValue("original decoder source") }
         return try autoreleasepool {
-            let accessed = request.url.startAccessingSecurityScopedResource()
+            let accessed = url.startAccessingSecurityScopedResource()
             defer {
-                if accessed { request.url.stopAccessingSecurityScopedResource() }
+                if accessed { url.stopAccessingSecurityScopedResource() }
             }
-            guard FileManager.default.isReadableFile(atPath: request.url.path) else {
+            guard FileManager.default.isReadableFile(atPath: url.path) else {
                 throw PreviewFailure.unavailable
             }
             let sourceOptions = [kCGImageSourceShouldCache: false] as CFDictionary
-            guard let source = CGImageSourceCreateWithURL(request.url as CFURL, sourceOptions) else {
+            guard let source = CGImageSourceCreateWithURL(url as CFURL, sourceOptions) else {
                 throw PreviewFailure.unsupportedOrDamaged
             }
             try Task.checkCancellation()

@@ -46,7 +46,7 @@ Die Originalidentität besteht aus standardisiertem Dateipfad, Änderungszeit un
 
 Bearbeitungs- und Auswahlgenerationen sind unabhängig von persistierten SQLite-Revisionen. Eine manuelle Änderung mit anschließendem Undo, Reset, Restore oder ein Auswahlwechsel A→B→A macht eine alte Anfrage ungültig, auch wenn danach wieder dieselben Zahlen oder dieselbe Foto-ID sichtbar sind. Sitzungskennungen verhindern Kollisionen zwischen Modellinstanzen; beim Ausschöpfen eines Generationszählers wechselt die zugehörige Epoche. Gesperrte/geschlossene Bibliothek oder Bearbeitung erlaubt keine KI-Übernahme.
 
-Die Snapshotstruktur behandelt Quelle und Regler getrennt. Eine spätere generierte Artefaktquelle erfordert eine ausdrückliche Erweiterung dieses Vertrags; dieses Issue implementiert weder diese Quelle noch Pixelpersistenz oder ein neues Datenbankschema.
+Seit [Issue #10](ARTIFACT-STORAGE.md) umfasst die Quellenidentität Original oder Artefakt. Ein Artefaktfingerprint enthält Store-ID, Artefakt-ID, Manifest-/Rasterhash und Geometrie; der vollständige Bearbeitungssnapshot enthält Quelle und Regler gemeinsam. KI-Reglerübernahmen benötigen außerdem einen gültigen persistierten Ausgangsstand. Eine reine Originalanalyse kann ohne Editing-Ausgangsrevision funktionieren und erteilt dadurch keine Übernahmeberechtigung. Das Speichern generierter Pixel bleibt eine eigene typisierte Operation mit nativer Quellenprüfung und atomarem Snapshot-CAS.
 
 ## Ressourcen, Abbruch und Datenminimierung
 

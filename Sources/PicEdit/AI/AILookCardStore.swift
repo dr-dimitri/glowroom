@@ -61,14 +61,11 @@ final class AILookCardStore: ObservableObject {
 
     func begin(group: AILookGroupResult, selectedID: AILookID) {
         clear()
-        guard case .original(let original) = group.request.snapshot.source,
-              group.validation.variants.count == Self.maximumCardCount,
+        guard group.validation.variants.count == Self.maximumCardCount,
               Set(group.validation.variants.map { $0.proposal.id }) == Set(AILookID.allCases)
         else { return }
         groupID = group.request.id
-        request = PreviewRequest(url: URL(fileURLWithPath: original.standardizedPath),
-                                 modifiedAt: original.modifiedAt, pixelSize: 2_400,
-                                 fileSize: original.fileSize, allowsEmbeddedPreview: false)
+        request = PreviewRequest(source: group.request.snapshot.source, pixelSize: 2_400, allowsEmbeddedPreview: false)
         for variant in group.validation.variants { settings[variant.proposal.id] = variant.target }
         self.selectedID = selectedID
         startRendering(AILookID.allCases)

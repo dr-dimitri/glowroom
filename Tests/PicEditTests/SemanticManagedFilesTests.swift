@@ -21,6 +21,23 @@ struct SemanticManagedFilesTests {
         #expect(!ManagedFileProtection.containsDestination(outside.appendingPathComponent("a.jpg"), in: root))
     }
 
+    @Test func editingArchiveDirectoriesAndNativeAliasesAreProtected() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("editing-archive-paths-" + UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        for name in ["EditingSnapshots", "EditMigrationArchives", "EditingRecoveryArchives"] {
+            let root = directory.appendingPathComponent(name, isDirectory: true)
+            let nested = root.appendingPathComponent("generation", isDirectory: true)
+            try FileManager.default.createDirectory(at: nested, withIntermediateDirectories: true)
+            let alias = directory.appendingPathComponent(name + "-alias", isDirectory: true)
+            try FileManager.default.createSymbolicLink(at: alias, withDestinationURL: nested)
+            #expect(ManagedFileProtection.protects(nested.appendingPathComponent("backup.sqlite"), directory: directory))
+            #expect(ManagedFileProtection.protects(alias.appendingPathComponent("backup.sqlite"), directory: directory))
+            let outside = directory.appendingPathComponent(name + "-outside", isDirectory: true)
+            try FileManager.default.createDirectory(at: outside, withIntermediateDirectories: true)
+            #expect(!ManagedFileProtection.protects(outside.appendingPathComponent("backup.sqlite"), directory: directory))
+        }
+    }
+
     @Test func quarantineFamilyProtectsLateDirectoriesAndAliasesWithoutBlockingOtherParents() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("semantic-family-" + UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: directory) }

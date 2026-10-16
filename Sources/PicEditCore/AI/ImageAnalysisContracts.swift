@@ -155,13 +155,13 @@ public struct ImageAnalysisProvenance: Hashable, Sendable {
     public let preprocessingVersion: Int
     public let taskVersion: Int
     public let schemaVersion: Int
-    public let source: AIOriginalSourceFingerprint
+    public let source: AISourceIdentity
     public let inputKind: ImageAnalysisInputKind
     public let editToken: AIEditingToken?
 
     public init(descriptor: ImageAnalysisProviderDescriptor, analyzedAt: Date, rasterSHA256: String,
                 pixelWidth: Int, pixelHeight: Int, byteCount: Int, colorProfile: String, colorProfileSHA256: String?,
-                source: AIOriginalSourceFingerprint, inputKind: ImageAnalysisInputKind, editToken: AIEditingToken?) {
+                source: AISourceIdentity, inputKind: ImageAnalysisInputKind, editToken: AIEditingToken?) {
         providerID = descriptor.providerID; modelID = descriptor.modelID; modelVersion = descriptor.modelVersion
         self.analyzedAt = analyzedAt; self.rasterSHA256 = rasterSHA256
         self.pixelWidth = pixelWidth; self.pixelHeight = pixelHeight; self.byteCount = byteCount
@@ -171,6 +171,17 @@ public struct ImageAnalysisProvenance: Hashable, Sendable {
         taskVersion = ImageAnalysisRequest.taskVersion; schemaVersion = ImageAnalysisRequest.schemaVersion
         self.source = source; self.inputKind = inputKind; self.editToken = editToken
     }
+    /// Original-only compatibility for existing analysis clients. No edit-store
+    /// baseline is invented by this provenance convenience initializer.
+    public init(descriptor: ImageAnalysisProviderDescriptor, analyzedAt: Date, rasterSHA256: String,
+                pixelWidth: Int, pixelHeight: Int, byteCount: Int, colorProfile: String, colorProfileSHA256: String?,
+                source: AIOriginalSourceFingerprint, inputKind: ImageAnalysisInputKind, editToken: AIEditingToken?) {
+        self.init(descriptor: descriptor, analyzedAt: analyzedAt, rasterSHA256: rasterSHA256,
+            pixelWidth: pixelWidth, pixelHeight: pixelHeight, byteCount: byteCount,
+            colorProfile: colorProfile, colorProfileSHA256: colorProfileSHA256,
+            source: .original(source), inputKind: inputKind, editToken: editToken)
+    }
+
 }
 
 public struct ImageAnalysisResult: Hashable, Sendable {
