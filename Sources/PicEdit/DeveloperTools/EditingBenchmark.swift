@@ -1,3 +1,4 @@
+#if PICEDIT_EDITING_BENCHMARK
 import CoreGraphics
 import Darwin
 import Foundation
@@ -111,7 +112,7 @@ final class Counts: @unchecked Sendable {
 
     static func burst(bitmap: PreviewBitmap, sink: CGContext, render: @escaping Render) async throws {
         let counts = Counts()
-        let originals = ImagePreviewPipeline(decoder: { _ in counts.decoded(); return bitmap })
+        let originals = ImagePreviewPipeline(diskCache: nil, decoder: { _ in counts.decoded(); return bitmap })
         let edits = AdjustedPreviewPipeline(renderer: { source, settings in
             counts.rendered()
             return try render(source, settings)
@@ -259,3 +260,5 @@ final class Counts: @unchecked Sendable {
     }
     static func log(_ text: String) { FileHandle.standardOutput.write(Data((text + "\n").utf8)) }
 }
+
+#endif

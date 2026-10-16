@@ -74,12 +74,20 @@ struct AIContractsTests {
 
     @Test
     func emptyAndIneffectivePatchesHaveExplicitNoChangeResult() throws {
-        #expect(try validator.validate(Data(#"{"schemaVersion":1,"changes":[]}"#.utf8), against: baseline) == .noChange)
+        #expect(try validator.validate(Data(#"{"schemaVersion":1,"changes":[]}"#.utf8), against: baseline) == .noChange())
         #expect(try validator.validate(EditProposal(changes: [
             .init(parameter: .shadows, value: baseline.shadows),
             .init(parameter: .exposure, value: baseline.exposure)
-        ]), against: baseline) == .noChange)
-        #expect(try validator.validate(EditProposal(changes: [.init(parameter: .shadows, value: -0.0)]), against: .neutral) == .noChange)
+        ]), against: baseline) == .noChange())
+        #expect(try validator.validate(EditProposal(changes: [.init(parameter: .shadows, value: -0.0)]), against: .neutral) == .noChange())
+    }
+
+    @Test
+    func ineffectivePatchRetainsOnlyItsValidatedExplanation() throws {
+        let explanation = "Die Belichtung entspricht bereits dem gewünschten Wert."
+        #expect(try validator.validate(EditProposal(changes: [
+            .init(parameter: .exposure, value: baseline.exposure)
+        ], explanation: explanation), against: baseline) == .noChange(explanation: explanation))
     }
 
     @Test(arguments: invalidResponses)
@@ -120,7 +128,7 @@ struct AIContractsTests {
     @Test
     func byteDepthNodeAndTextLimitsAreEnforced() throws {
         let minimal = Data(#"{"schemaVersion":1,"changes":[]}"#.utf8)
-        #expect(try EditProposalValidator(maximumResponseBytes: minimal.count).validate(minimal, against: baseline) == .noChange)
+        #expect(try EditProposalValidator(maximumResponseBytes: minimal.count).validate(minimal, against: baseline) == .noChange())
         expectFailure(.responseTooLarge) {
             try EditProposalValidator(maximumResponseBytes: minimal.count - 1).validate(minimal, against: baseline)
         }
@@ -129,7 +137,7 @@ struct AIContractsTests {
                 EditProposal(changes: [], explanation: "😀"), against: baseline)
         }
         #expect(try EditProposalValidator(maximumExplanationBytes: 4).validate(
-            EditProposal(changes: [], explanation: "😀"), against: baseline) == .noChange)
+            EditProposal(changes: [], explanation: "😀"), against: baseline) == .noChange(explanation: "😀"))
         expectFailure(.nestingTooDeep) {
             try EditProposalValidator(maximumNestingDepth: 4).validate(
                 Data(#"{"schemaVersion":1,"changes":[{"parameter":"shadows","value":[0]}]}"#.utf8), against: baseline)
@@ -154,7 +162,7 @@ struct AIContractsTests {
         #expect(target.shadows == 30)
         #expect(proposal.explanation == "Grüße 😀")
         let whitespace = " \t\r\n" + #"{"schemaVersion":1,"changes":[]}"# + "\r\n\t "
-        #expect(try validator.validate(Data(whitespace.utf8), against: baseline) == .noChange)
+        #expect(try validator.validate(Data(whitespace.utf8), against: baseline) == .noChange())
     }
 
     @Test

@@ -165,8 +165,11 @@ final class AIAssistantModel: ObservableObject {
     }
 
     var explanation: String? {
-        guard let result = activeProposalResult, case .changes(let proposal, _) = result.validation else { return nil }
-        return proposal.explanation
+        guard let result = activeProposalResult else { return nil }
+        switch result.validation {
+        case .changes(let proposal, _): return proposal.explanation
+        case .noChange(let explanation): return explanation
+        }
     }
 
     /// Used exclusively by the selected Develop preview. Export, thumbnails and

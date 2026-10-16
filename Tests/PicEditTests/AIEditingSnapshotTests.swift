@@ -154,7 +154,7 @@ final class AIEditingSnapshotTests {
         let validPatch = EditProposal(changes: [.init(parameter: .exposure, value: 1)])
         let mismatched = AIProposalResult(request: request, validation: .changes(proposal: validPatch, settings: EditSettings(exposure: 2)))
         #expect(!editing.acceptAIProposal(mismatched, in: library))
-        #expect(!editing.acceptAIProposal(AIProposalResult(request: request, validation: .noChange), in: library))
+        #expect(!editing.acceptAIProposal(AIProposalResult(request: request, validation: .noChange()), in: library))
         #expect(editing.isCurrentAISnapshot(snapshot, in: library))
         #expect(editing.settings(for: snapshot.assetID).isNeutral)
         #expect(!editing.canUndo(assetID: snapshot.assetID))

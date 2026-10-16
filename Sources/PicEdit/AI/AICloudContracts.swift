@@ -1,10 +1,10 @@
 import Foundation
-import Security
 
 /// These errors intentionally contain no underlying provider message or payload.
 enum AICloudError: Error, Equatable, Sendable, LocalizedError {
     case disabled, consentRequired, revoked, missingKey, invalidKey, keychain
     case unsupportedModel, forbidden, paymentRequired, rateLimited, limitExceeded
+    case invalidWorkspace, invalidConfiguration
     case network, timeout, responseTooLarge, requestTooLarge, redirect, invalidResponse, refusal, persistence, busy
     var errorDescription: String? {
         switch self {
@@ -19,6 +19,8 @@ enum AICloudError: Error, Equatable, Sendable, LocalizedError {
         case .paymentRequired: return "Anthropic meldet ein Zahlungs- oder Guthabenproblem."
         case .rateLimited: return "Anthropic begrenzt die Anfragen. Es wird nicht automatisch wiederholt; mögliche Kosten bleiben vorgemerkt."
         case .limitExceeded: return "Das lokale Cloud-Mengen- oder Modellpreisbudget ist ausgeschöpft."
+        case .invalidWorkspace: return "Die Workspace-ID muss mit wrkspc_ beginnen und danach ausschließlich Buchstaben oder Ziffern enthalten (höchstens 128 Zeichen)."
+        case .invalidConfiguration: return "Anthropic hat die Anfragekonfiguration abgelehnt. Prüfe insbesondere die Workspace-ID: Schlüssel für mehrere Workspaces benötigen diese Angabe."
         case .network: return "Die Cloud-Anfrage ist fehlgeschlagen. Ab Versand bleiben mögliche Kosten vorgemerkt; keine automatische Wiederholung."
         case .timeout: return "Die Cloud-Anfrage hat das Zeitlimit erreicht. Mögliche Kosten bleiben vorgemerkt."
         case .responseTooLarge: return "Die Cloud-Antwort überschreitet das Empfangslimit. Mögliche Kosten bleiben vorgemerkt."
@@ -39,48 +41,29 @@ struct AICloudConsent: Identifiable, Equatable, Sendable {
     let bodyByteCount: Int
     let maximumOutputTokens: Int
     let reservationNanodollars: Int64
+    let workspaceID: String?
+}
+
+/// Workspace IDs enter an HTTP header, so only the documented ASCII identifier
+/// form is accepted. Whitespace around a pasted identifier is harmless.
+enum AICloudWorkspaceID {
+    static func normalized(_ input: String?) throws -> String? {
+        let value = (input ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        if value.isEmpty { return nil }
+        guard value.hasPrefix("wrkspc_"), value.utf8.count > 7, value.utf8.count <= 128,
+              value.dropFirst(7).utf8.allSatisfy({ (48...57).contains($0) || (65...90).contains($0) || (97...122).contains($0) })
+        else { throw AICloudError.invalidWorkspace }
+        return value
+    }
 }
 
 protocol AICloudKeychain: Sendable {
     func read() async throws -> String?
     func save(_ key: String) async throws
     func delete() async throws
+    func storageDescription() async -> String
 }
 
-/// No key is read at app startup. The sole fixed account is queried only by an
-/// explicitly authorized job. Data Protection makes accessibility apply on macOS.
-actor SystemAICloudKeychain: AICloudKeychain {
-    private var query: [String: Any] {
-        [kSecClass as String: kSecClassGenericPassword,
-         kSecAttrService as String: "de.wolfgangbauer.picedit.anthropic",
-         kSecAttrAccount as String: "user-api-key",
-         kSecUseDataProtectionKeychain as String: true,
-         kSecAttrSynchronizable as String: false]
-    }
-    func read() throws -> String? {
-        var q = query
-        q[kSecReturnData as String] = true
-        q[kSecMatchLimit as String] = kSecMatchLimitOne
-        var item: CFTypeRef?
-        let status = SecItemCopyMatching(q as CFDictionary, &item)
-        if status == errSecItemNotFound { return nil }
-        guard status == errSecSuccess, let data = item as? Data,
-              let value = String(data: data, encoding: .utf8) else { throw AICloudError.keychain }
-        return value
-    }
-    func save(_ key: String) throws {
-        guard !key.isEmpty, key.utf8.count <= 4_096,
-              key.unicodeScalars.allSatisfy({ $0.value > 32 && $0.value < 127 }) else { throw AICloudError.invalidKey }
-        let attributes: [String: Any] = [kSecValueData as String: Data(key.utf8),
-                                        kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly]
-        let status = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
-        if status == errSecItemNotFound {
-            let created = query.merging(attributes) { _, new in new }
-            guard SecItemAdd(created as CFDictionary, nil) == errSecSuccess else { throw AICloudError.keychain }
-        } else if status != errSecSuccess { throw AICloudError.keychain }
-    }
-    func delete() throws {
-        let status = SecItemDelete(query as CFDictionary)
-        guard status == errSecSuccess || status == errSecItemNotFound else { throw AICloudError.keychain }
-    }
+extension AICloudKeychain {
+    func storageDescription() async -> String { "Schlüssel werden im macOS-Keychain gespeichert; kein Lesen beim Appstart." }
 }

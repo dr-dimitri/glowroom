@@ -46,3 +46,28 @@ Die neue Einstellung wird nur bei fehlendem Feld als ausgeschaltet interpretiert
 Abschließende Prüfung: **102 Tests erfolgreich** (72 App-/Renderer-/Controller-Tests und 30 Core-/Datenbanktests), darunter 12 gezielte Tests der Automatik. Release-Build und Signaturprüfung erfolgreich. Im getrennten synthetischen UI-Katalog wurden Schalter, Stärke, Rückgängig, Bildwechsel und Vorher-Vergleich bedient; nach dem Neustart blieb die Stärke von 51 % erhalten und die korrigierte Vorschau wurde angezeigt.
 
 Vollständig ausgebrannte Lichter oder vollständig schwarze Bildbereiche enthalten keine rekonstruierbare Zeichnung. Die Automatik kann vorhandene Tonwerte ausgleichen; starke nachfolgende manuelle Reglerwerte können weiterhin über- oder unterbelichten.
+
+## Folgereview: Issues #32–#38
+
+Das Anwendungsreview vom 16.10.2026 erfasste sieben weitere Fehler. Die Korrekturen wurden in getrennten Bereichen parallel umgesetzt und anschließend unabhängig sowie an ihren gemeinsamen Schnittstellen geprüft:
+
+- [#32](https://github.com/dr-dimitri/picedit/issues/32): Bereits angenommene Metadaten-Writes aktualisieren ihre dauerhafte Revision auch nach Bewertung/Favoritenänderung oder beim Beenden. Quellenwechsel und neuere Formulare bleiben geschützt. Regressionen prüfen manuelle und KI-Entwürfe, Folgeänderungen, A→B→A, neuere Revisionen sowie den tatsächlichen LibraryModel-/SQLite-Quit-Pfad.
+- [#33](https://github.com/dr-dimitri/picedit/issues/33): Der Inspector verwendet dieselbe aufgelöste Original-/Artefaktquelle wie Raster und Hauptvorschau, mit Priorität für das ausgewählte Bild.
+- [#34](https://github.com/dr-dimitri/picedit/issues/34): Eine optionale validierte Anthropic-Workspace-ID wird in Einstellungen, Freigabe und HTTP-Header konsistent verwendet. Konfigurationsänderungen entwerten bestehende Freigaben; ungültige IDs starten keinen Upload.
+- [#35](https://github.com/dr-dimitri/picedit/issues/35): Gültige Antworten ohne Regleränderung behalten ihre geprüfte Erklärung. Sie bleiben ohne Übernahme-, Undo- und Speicherwirkung.
+- [#36](https://github.com/dr-dimitri/picedit/issues/36): Die Koordinationswurzel wird samt Owner atomar veröffentlicht. Tests prüfen jeweils 2 und 16 gleichzeitige Erstöffner über 16 frische Kataloge, beschädigte Owner, Neustart nach unterbrochener Vorbereitung, Abbruch und Schutz interner Stage-Dateien vor Export.
+- [#37](https://github.com/dr-dimitri/picedit/issues/37): Vorschau-Smoke und Editing-/Library-Benchmarks bauen den echten SwiftPM-Abhängigkeitsbaum. Veraltete Quell-Checkouts werden vor Ausführung abgewiesen; regulärer App-Build und Tests entfernen die interne Harness-Auswahl aus der Umgebung.
+- [#38](https://github.com/dr-dimitri/picedit/issues/38): Der lokale ad-hoc App-Build speichert Schlüssel im lokalen macOS-Keychain mit explizitem App-Zugriffsschutz. Berechtigte signierte Builds behalten Data Protection. Bei Zugriffsfehlern wird nicht zwischen Speichern gewechselt. Der native Smoke verwendet ausschließlich einen synthetischen Schlüssel in einem eigenen UUID-Namensraum.
+
+Das Gegenreview fand zwei zusätzliche Risiken im neuen Harness-Aufruf (historischer Checkout startet die normale App; geerbte Harness-Auswahl gelangt in den Bundle-Build); beide wurden vor Abschluss abgesichert und durch Shell-Prüfungen abgedeckt. Ein Initialisierungsfehler im neuen Einstellungsfeld wurde nach dem ersten Compilerlauf korrigiert. Bestehende unabhängige Issues [#27](https://github.com/dr-dimitri/picedit/issues/27) und [#30](https://github.com/dr-dimitri/picedit/issues/30) bleiben außerhalb dieses Änderungsumfangs.
+
+Verifiziert mit dem integrierten Stand auf dem vorhandenen Mac:
+
+- Vollständige Suite erfolgreich: 437 App-Tests in 58 Suites und 276 Core-Tests in 35 Suites. Elf Opt-in- beziehungsweise ausschließlich über einen Elternprozess verwendete Testeinstiegspunkte meldeten im Standardlauf „skipped“. Der Lauf startete absichtlich mit geerbter Harness-Auswahl; das Testskript verwendete korrekt die normale App-Konfiguration.
+- Vorschau-Smoke erfolgreich, einschließlich Orientierung, Cache, Zusammenfassung identischer Anfragen und 40 Abbrüchen.
+- Library-Benchmark erfolgreich: 10.000 synthetische Einträge, erwartete Prüfsumme 473849.
+- Editing-Benchmark mit Session-API erfolgreich: einfache und komplexe Bearbeitung in beiden Größen, wechselnde Quellen, schnelle Reglerfolgen und Rendering mit einem sowie zwei Arbeitern. Zusätzlich bestand der Standardaufruf ohne Session-Flag mit komplexer Bearbeitung bei 400 × 267 Pixeln. Kalte und warme Reglerfolgen benötigten keine erneute Decodierung; die Vergleichsmessungen früherer Abschnitte bleiben unverändert.
+- Echte ad-hoc signierte Keychain-Testapp erfolgreich: synthetischen UUID-Schlüssel gespeichert, gelesen, ersetzt und gelöscht. Kein produktiver Schlüssel wurde gelesen oder verändert.
+- Shell-Prüfungen für Build-Steuerung, Fehler-/Abbruchpfade, Harness-Umgebung und inkompatible Quell-Checkouts erfolgreich; Syntax- und Diffprüfung ohne Fehler.
+
+Grenzen dieser Prüfung: keine kostenpflichtigen Cloud-Livecalls, keine neu bereitgestellten Kamera-RAWs oder lokalen Modelle und kein provisionierter Data-Protection-Build. Die Benchmark-Läufe prüfen Funktion und reproduzierbare Ergebnisse; aus ihnen wird keine neue Beschleunigung abgeleitet.

@@ -1,3 +1,4 @@
+#if PICEDIT_IMAGE_PIPELINE_SMOKE
 import AppKit
 import Foundation
 import ImageIO
@@ -22,7 +23,7 @@ struct ImagingSmoke {
 
         let date = Date()
         let request = PreviewRequest(url: url, modifiedAt: date, pixelSize: 320)
-        let pipeline = ImagePreviewPipeline()
+        let pipeline = ImagePreviewPipeline(diskCache: nil)
         let bitmap = try await pipeline.image(for: request)
         require(bitmap.image.height == 320, "Longest dimension was not bounded")
         require((212...214).contains(bitmap.image.width), "EXIF orientation was not applied")
@@ -43,7 +44,7 @@ struct ImagingSmoke {
 
         let changed = try await pipeline.image(for: PreviewRequest(url: url, modifiedAt: date.addingTimeInterval(1), pixelSize: 320))
         require(changed.image !== bitmap.image, "A changed original reused a stale cache entry")
-        let uncachedPipeline = ImagePreviewPipeline(memoryLimit: 0)
+        let uncachedPipeline = ImagePreviewPipeline(memoryLimit: 0, diskCache: nil)
         let uncachedA = try await uncachedPipeline.image(for: request)
         let uncachedB = try await uncachedPipeline.image(for: request)
         require(uncachedA.image !== uncachedB.image, "Cache exceeded its configured memory limit")
@@ -74,3 +75,5 @@ struct ImagingSmoke {
         print("PASS: bounded dimensions, EXIF orientation, deduplication, cache identity/invalidation/budget, corrupt/missing inputs, 40 cancellations, recovery")
     }
 }
+
+#endif

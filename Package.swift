@@ -1,5 +1,25 @@
 // swift-tools-version: 5.9
 import PackageDescription
+import Foundation
+
+// PICEDIT_DEVELOPER_HARNESS_VERSION: 1
+// Developer harnesses compile inside the real app target, so their dependency
+// graph cannot drift from production. Only this target receives the flags.
+let developerTools = [
+    "image-pipeline": "PICEDIT_IMAGE_PIPELINE_SMOKE",
+    "editing": "PICEDIT_EDITING_BENCHMARK",
+    "library": "PICEDIT_LIBRARY_BENCHMARK",
+    "keychain": "PICEDIT_KEYCHAIN_SMOKE"
+]
+let requestedTool = ProcessInfo.processInfo.environment["PICEDIT_DEVELOPER_TOOL"]
+let toolFlag = requestedTool.flatMap { developerTools[$0] }
+if requestedTool != nil && toolFlag == nil {
+    fatalError("Unknown PICEDIT_DEVELOPER_TOOL; use image-pipeline, editing, library or keychain")
+}
+var appSettings: [SwiftSetting] = toolFlag.map { [.define("PICEDIT_DEVELOPER_HARNESS"), .define($0)] } ?? []
+if requestedTool == "editing", ProcessInfo.processInfo.environment["PICEDIT_BENCHMARK_SESSION_API"] == "1" {
+    appSettings.append(.define("EDIT_RENDER_SESSIONS"))
+}
 
 let package = Package(
     name: "PicEdit",
@@ -14,7 +34,7 @@ let package = Package(
     targets: [
         .systemLibrary(name: "CSQLite"),
         .target(name: "PicEditCore", dependencies: ["CSQLite"]),
-        .executableTarget(name: "PicEdit", dependencies: ["PicEditCore", "CSQLite", .product(name: "Tokenizers", package: "swift-transformers"), .product(name: "Hub", package: "swift-transformers")], resources: [.process("AI/Resources")]),
+        .executableTarget(name: "PicEdit", dependencies: ["PicEditCore", "CSQLite", .product(name: "Tokenizers", package: "swift-transformers"), .product(name: "Hub", package: "swift-transformers")], resources: [.process("AI/Resources")], swiftSettings: appSettings),
         .testTarget(name: "PicEditCoreTests", dependencies: ["PicEditCore", "CSQLite"]),
         .testTarget(name: "PicEditTests", dependencies: ["PicEdit", "PicEditCore"])
     ]

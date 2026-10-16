@@ -515,7 +515,11 @@ final class PhotoMetadataModel: ObservableObject {
         }
         guard let expected, let current = result.currentRecord, context?.assetID == expected.assetID,
               current.assetID == expected.assetID else { return }
-        guard self.context == expected, currentContext() == expected else {
+        // This result belongs to an already accepted write, not to a cancellable
+        // analysis. Rating/filter/closing epochs may change while the same
+        // source is displayed; they must not strand its durable revision or
+        // dirty form. Actual source/catalog changes still require a fresh load.
+        guard matchesRecordSource(context, expected), matchesRecordSource(currentContext(), expected) else {
             if !manualDirty && !proposalDirty { loadRecord() }
             return
         }
@@ -526,6 +530,12 @@ final class PhotoMetadataModel: ObservableObject {
         manualFields = current.manualDraft?.fields ?? current.confirmed
         proposalFields = current.draft?.fields ?? .empty
         manualDirty = false; proposalDirty = false; manualConflictReviewed = false; errorMessage = nil
+    }
+
+    private func matchesRecordSource(_ context: PhotoMetadataSelectionContext?, _ expected: PhotoMetadataSelectionContext) -> Bool {
+        guard let context else { return false }
+        return context.assetID == expected.assetID && context.source == expected.source &&
+            context.catalogSessionID == expected.catalogSessionID
     }
 
     private func currentMatchesContext() -> Bool {

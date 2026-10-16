@@ -6,11 +6,12 @@ import PicEditCore
 struct EditingThumbnail: View {
     let asset: PhotoAsset
     var size: CGFloat = 320
+    var priority: PreviewPriority = .thumbnail
     @EnvironmentObject private var editor: EditingModel
     var body: some View {
         if let source = try? editor.resolvedSource(for: asset) {
             AssetThumbnail(url: asset.fileURL, modifiedAt: asset.modifiedAt, size: size, fileSize: asset.fileSize,
-                settings: source.settings, source: source.identity)
+                priority: priority, settings: source.settings, source: source.identity)
         } else {
             Image(systemName: "exclamationmark.triangle").foregroundStyle(.orange)
                 .help("Die gespeicherte Bildquelle ist nicht verfügbar. Das Original wird nicht ersatzweise angezeigt.")

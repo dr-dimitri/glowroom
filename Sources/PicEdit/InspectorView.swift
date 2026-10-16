@@ -3,7 +3,6 @@ import PicEditCore
 
 struct InspectorView: View {
     @ObservedObject var model: LibraryModel
-    @EnvironmentObject private var editor: EditingModel
     @EnvironmentObject private var photoMetadata: PhotoMetadataModel
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -16,7 +15,7 @@ struct InspectorView: View {
             if let asset = model.selectedAsset {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
-                        AssetThumbnail(url: asset.fileURL, modifiedAt: asset.modifiedAt, size: 400, fileSize: asset.fileSize, priority: .selected, settings: editor.settings(for: asset.id))
+                        EditingThumbnail(asset: asset, size: 400, priority: .selected)
                             .frame(height: 155).padding(8).background(Color.black.opacity(0.16), in: RoundedRectangle(cornerRadius: 6))
                             .onTapGesture { model.showsDetail = true }.help("Einzelbildansicht öffnen")
                         HStack(alignment: .top, spacing: 8) {

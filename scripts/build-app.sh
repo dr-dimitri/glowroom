@@ -1,6 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 
+# A developer shell must never package a benchmark entry point as the app.
+unset PICEDIT_DEVELOPER_TOOL
+
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 CONFIGURATION=release
 

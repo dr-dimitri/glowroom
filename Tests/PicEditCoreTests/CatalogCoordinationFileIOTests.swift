@@ -5,6 +5,102 @@ import Testing
 
 @Suite("Durable catalog payloads")
 struct CatalogCoordinationFileIOTests {
+    @Test(arguments: [2, 16])
+    func parallelFirstOpenPublishesOneCompleteOwner(openers: Int) async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("PicEdit-Parallel-Coordination-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        // Independent roots exercise the initial publication repeatedly; each
+        // group uses independent repository owners against the same directory.
+        for run in 0..<16 {
+            let root = directory.appendingPathComponent("run-\(run)")
+            let identities = try await withThrowingTaskGroup(of: UUID.self, returning: Set<UUID>.self) { group in
+                for _ in 0..<openers {
+                    group.addTask { try CatalogRepository(directory: root).coordinationRootIdentity() }
+                }
+                var identities = Set<UUID>()
+                for try await identity in group { identities.insert(identity) }
+                return identities
+            }
+            #expect(identities.count == 1)
+            #expect(try identities.contains(CatalogRepository(directory: root).coordinationRootIdentity()))
+            #expect(try FileManager.default.contentsOfDirectory(atPath: root.path) == ["CatalogCoordination"])
+            #expect(try FileManager.default.contentsOfDirectory(atPath: root.appendingPathComponent("CatalogCoordination").path) == ["owner.json"])
+        }
+    }
+
+    @Test(arguments: [Data(), Data("incomplete owner".utf8)])
+    func existingCorruptOwnerRemainsUntouched(bytes: Data) throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("PicEdit-Corrupt-Coordination-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let directory = root.appendingPathComponent("CatalogCoordination")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let owner = directory.appendingPathComponent("owner.json")
+        try bytes.write(to: owner)
+        #expect(throws: (any Error).self) { try CatalogRepository(directory: root).coordinationRootIdentity() }
+        #expect(try Data(contentsOf: owner) == bytes)
+        #expect(try FileManager.default.contentsOfDirectory(atPath: root.path) == ["CatalogCoordination"])
+    }
+
+    @Test func interruptedPreparationIsInertAndPreservedOnRestart() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("PicEdit-Interrupted-Coordination-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+        // A process exit before publication can leave a partial sibling stage.
+        // It is never adopted or swept by the next first opener.
+        let stage = root.appendingPathComponent(".catalog-coordination-root-\(UUID().uuidString.lowercased()).stage")
+        try FileManager.default.createDirectory(at: stage, withIntermediateDirectories: true)
+        let partial = Data("{\"schemaVersion\":".utf8)
+        try partial.write(to: stage.appendingPathComponent("owner.json"))
+        let unknown = Data("unrecognized payload must survive".utf8)
+        try unknown.write(to: stage.appendingPathComponent("unknown.bin"))
+        let repository = CatalogRepository(directory: root)
+        let identity = try repository.coordinationRootIdentity()
+        #expect(try CatalogRepository(directory: root).coordinationRootIdentity() == identity)
+        #expect(try repository.coordinationFiles.pendingValues().isEmpty)
+        #expect(try Data(contentsOf: stage.appendingPathComponent("owner.json")) == partial)
+        #expect(try Data(contentsOf: stage.appendingPathComponent("unknown.bin")) == unknown)
+    }
+
+    @Test func cancelledFirstOpenLeavesNoPartialFinalRoot() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("PicEdit-Cancelled-Coordination-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let attempt = Task {
+            while !Task.isCancelled { await Task.yield() }
+            return try CatalogRepository(directory: root).coordinationRootIdentity()
+        }
+        attempt.cancel()
+        await #expect(throws: CancellationError.self) { try await attempt.value }
+        #expect(try FileManager.default.contentsOfDirectory(atPath: root.path).isEmpty)
+        let repository = CatalogRepository(directory: root)
+        let identity = try repository.coordinationRootIdentity()
+        #expect(try CatalogRepository(directory: root).coordinationRootIdentity() == identity)
+    }
+
+    @Test func lateRootPreparationIsProtectedFromMetadataAndBackupExports() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("PicEdit-Protected-Coordination-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+        // Dialog protection can be captured before a concurrent first opener
+        // creates its private stage. The family must protect these later paths.
+        let protection = CatalogManagedStoragePaths.protection(in: root)
+        let stage = root.appendingPathComponent(".catalog-coordination-root-\(UUID().uuidString.lowercased()).stage")
+        try FileManager.default.createDirectory(at: stage, withIntermediateDirectories: true)
+        let owner = stage.appendingPathComponent("owner.json"), bytes = Data("partial owner".utf8)
+        try bytes.write(to: owner)
+        let alias = root.appendingPathComponent("stage-alias")
+        try FileManager.default.createSymbolicLink(at: alias, withDestinationURL: stage)
+        for directory in [stage, alias] {
+            #expect(throws: PhotoMetadataError.protectedPath) {
+                try PhotoMetadataFiles.checkDestination(directory.appendingPathComponent("owner.json"), protection: protection, extra: [])
+            }
+            #expect(throws: PhotoMetadataError.protectedPath) {
+                try CatalogRepository(directory: root).withBackupExportProtection(destination: directory.appendingPathComponent("backup.piceditbackup")) {
+                    Issue.record("Backup publication entered a protected coordination stage")
+                }
+            }
+        }
+        #expect(try Data(contentsOf: owner) == bytes)
+        try PhotoMetadataFiles.checkDestination(root.appendingPathComponent("export.json"), protection: protection, extra: [])
+    }
+
     private struct Fixture {
         let directory: URL
         let repository: CatalogRepository

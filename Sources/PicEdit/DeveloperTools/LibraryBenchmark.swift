@@ -1,3 +1,4 @@
+#if PICEDIT_LIBRARY_BENCHMARK
 import AppKit
 import Foundation
 import PicEditCore
@@ -96,3 +97,5 @@ struct ProjectionBenchmark {
         }
     }
 }
+
+#endif
