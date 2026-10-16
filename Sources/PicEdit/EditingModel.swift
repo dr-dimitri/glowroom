@@ -349,6 +349,9 @@ final class EditingModel: ObservableObject {
     }
 
     private func advanceAIEditGeneration() {
+        // Resetting an already neutral edit and beginning a gesture still
+        // invalidate ephemeral AI results, even without a settings publication.
+        objectWillChange.send()
         if aiEditGeneration == .max {
             aiEditSessionID = UUID()
             aiEditGeneration = 0

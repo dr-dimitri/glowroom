@@ -83,7 +83,7 @@ Das ausgewählte Bild erhält Vorrang vor wartenden Rasterbildern. Höchstens dr
 
 ## Entwickeln und prüfen
 
-Die technische Grundlage für spätere KI-Bearbeitung ist in [KI-Verträge und sichere Vorschläge](docs/AI-CONTRACTS.md) beschrieben. Sie definiert providerunabhängige Antworten, strenge Reglerprüfung, versionsgebundene Vorschläge und begrenzte Hintergrundaufträge. Ein echter KI-Provider und eine sichtbare Assistentenfunktion sind in diesem Schritt noch nicht enthalten; PicEdit bleibt ohne Online-Dienst, Modellinstallation oder Zugangsdaten nutzbar.
+Die [KI-Verträge und sicheren Vorschläge](docs/AI-CONTRACTS.md) definieren providerunabhängige Antworten, strenge Reglerprüfung, versionsgebundene Vorschläge und begrenzte Hintergrundaufträge. Der optionale [lokale Entwicklungsassistent](docs/LOCAL-AI-ASSISTANT.md) übersetzt Text in vorhandene Reglerwerte. Er benötigt einen Build mit FoundationModels-Unterstützung sowie macOS 26 und ein bereitgestelltes Apple-Intelligence-Systemmodell. Die übrige App bleibt ab macOS 14 ohne Online-Dienst, Modellinstallation oder Zugangsdaten nutzbar.
 
 Vor jeder neuen beauftragten Änderung zuerst den Git-Status prüfen, den Remote-Stand abrufen und den lokalen `main` mit `git pull --ff-only` aktualisieren. Anschließend einen Aufgabenbranch von diesem Stand anlegen. Fremde oder noch benötigte Änderungen beim Branchwechsel erhalten; bei blockierter Aktualisierung keine Umsetzung auf veraltetem `main` beginnen und das Hindernis melden.
 
@@ -170,6 +170,14 @@ Die Werte lassen sich über Schieberegler oder Zahlenfelder ändern. **Vorher an
 Raster, Filmstreifen und Einzelansicht zeigen die gespeicherten Bearbeitungen. Die RAW-Basis im Entwickeln-Modul wird aus dem Original erzeugt, ohne eine eingebettete Kamera-Vorschau als Bearbeitungsbasis zu verwenden. Bearbeitungsbasen werden verlustfrei zwischengespeichert. Reglerbewegungen verwenden diese Basis erneut; veraltete Renderaufträge können neuere Ergebnisse nicht überschreiben. Core Image führt die Bildfilter auf seinem verfügbaren Backend aus (auf dem geprüften Apple-Silicon-Mac über Metal). Unveränderte Entrauschungs- und Auto-Tonwert-Stufen des ausgewählten Bildes sowie die kleine CPU-Tonwertanalyse werden wiederverwendet. Originaldateien und gespeicherte Bearbeitungsparameter bleiben davon unberührt.
 
 Die Filter verwenden Core Image und eigene Tonwert-/Kontrastberechnungen. Ihre Bedienung orientiert sich an Lightroom Classic, die Ergebnisse sind nicht identisch mit Adobes Entwicklungsengine. Entrauschen ist eine klassische, getrennte Luminanz-/Farbrauschminderung, keine KI-Funktion. Bearbeitet wird derzeit die Vorschau mit bis zu 2400 Pixeln langer Kante; vollständige RAW-Entwicklung mit Belichtungsreserve aus Sensordaten, Weißabgleich, Zuschnitt und Masken sind noch nicht enthalten. Der JPEG-Export verwendet dagegen das Original in voller Auflösung und wendet dieselben Bearbeitungsfilter an.
+
+### Lokaler Entwicklungsassistent
+
+Im Entwickeln-Inspector eine deutsche Anweisung wie „Helle die Schatten auf“ eingeben und **Vorschlag erstellen** wählen. Der Assistent übersetzt Text in Reglerwerte; er analysiert das Foto nicht. Weißabgleich, Motivbeschreibung, Retusche und neue Bildpixel gehören nicht zu seinen Fähigkeiten. Bei fehlender Unterstützung nennt die Oberfläche den Verfügbarkeitsgrund; die manuellen Regler bleiben nutzbar.
+
+Ein Vorschlag zeigt Ausgangs- und Zielwerte samt Delta sowie eine **KI-Vorschau · noch nicht übernommen**. Zwischen aktueller Bearbeitung und Vorschlag wechseln; **Vorher anzeigen** vergleicht weiterhin mit dem Original ohne Regler. **Verwerfen** oder **Abbrechen** ändern keine Bearbeitung. Erst **Übernehmen** setzt alle vorgeschlagenen Werte gemeinsam und erzeugt einen Rückgängig-Schritt. Bildwechsel, manuelle Änderungen, Undo/Redo, Zurücksetzen, Backup/Restore und Schließen entwerten wartende und angezeigte Vorschläge.
+
+Raster, Filmstreifen, Speicherstatus und JPEG-Export verwenden die übernommenen Werte. Ein Export während der KI-Vorschau enthält deshalb die aktuelle Bearbeitung vor dem Vorschlag. Der Provider erhält ausschließlich Anweisung und Reglerwerte, keine Bildpixel, Namen, Pfade oder EXIF-Daten. PicEdit startet keinen Modelldownload und verwendet keinen Cloudfallback. Prompts und Antworten werden nicht protokolliert oder dauerhaft gespeichert. Einrichtung, Buildmatrix und ausdrücklich aktivierbare Modelltests stehen in der [Assistentendokumentation](docs/LOCAL-AI-ASSISTANT.md).
 
 ## JPEG-Export
 

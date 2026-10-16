@@ -13,6 +13,36 @@ public struct AIProviderCapabilities: OptionSet, Hashable, Sendable {
 
 public enum AIUnavailableReason: String, Hashable, Sendable {
     case unsupportedSystem, unsupportedHardware, modelUnavailable, disabled
+    case sdkUnavailable, unsupportedLanguage, unknown
+}
+
+extension AIUnavailableReason: LocalizedError {
+    public var errorDescription: String? {
+        switch self {
+        case .unsupportedSystem: return "Die lokale KI benötigt macOS 26 oder neuer."
+        case .sdkUnavailable: return "Dieser PicEdit-Build enthält keine Unterstützung für das lokale Systemmodell."
+        case .unsupportedHardware: return "Dieser Mac unterstützt das lokale Apple-Intelligence-Modell nicht."
+        case .disabled: return "Apple Intelligence ist in den Systemeinstellungen deaktiviert."
+        case .modelUnavailable: return "Das lokale Systemmodell ist noch nicht bereit oder noch nicht vollständig geladen."
+        case .unsupportedLanguage: return "Das lokale Systemmodell unterstützt Deutsch auf diesem Mac derzeit nicht."
+        case .unknown: return "Das lokale Systemmodell ist aus einem unbekannten Grund nicht verfügbar."
+        }
+    }
+}
+
+public enum AIUnsupportedTaskReason: String, Hashable, Sendable {
+    case imageAnalysis, whiteBalance, unsupportedLanguage, other
+}
+
+extension AIUnsupportedTaskReason: LocalizedError {
+    public var errorDescription: String? {
+        switch self {
+        case .imageAnalysis: return "Bildanalyse wird von diesem Anbieter nicht unterstützt. Er erhält keine Bildpixel."
+        case .whiteBalance: return "Ein Weißabgleich für wärmere oder kühlere Farben ist in PicEdit noch nicht verfügbar."
+        case .unsupportedLanguage: return "Das lokale Systemmodell unterstützt die Sprache dieser Anfrage nicht."
+        case .other: return "Diese Aufgabe wird vom lokalen Bearbeitungsanbieter nicht unterstützt."
+        }
+    }
 }
 
 public enum AIAvailability: Hashable, Sendable {
@@ -26,6 +56,10 @@ public enum AIEditingError: Error, Hashable, Sendable {
     case superseded
     case unavailable(AIUnavailableReason)
     case unsupportedCapability
+    case unsupportedTask(AIUnsupportedTaskReason)
+    case safetyRefusal
+    case inputLimitExceeded
+    case temporaryModelFailure
     case invalidRequest
     case staleSnapshot
     case invalidResponse(AIProposalValidationError)
@@ -37,8 +71,12 @@ extension AIEditingError: LocalizedError {
         switch self {
         case .cancelled: return "Die KI-Anfrage wurde abgebrochen."
         case .superseded: return "Eine neuere KI-Anfrage hat diese Anfrage ersetzt."
-        case .unavailable: return "Der KI-Anbieter ist zurzeit nicht verfügbar."
+        case .unavailable(let reason): return reason.localizedDescription
         case .unsupportedCapability: return "Der KI-Anbieter unterstützt diese Bearbeitung nicht."
+        case .unsupportedTask(let reason): return reason.localizedDescription
+        case .safetyRefusal: return "Das lokale Systemmodell hat die Anfrage aus Sicherheitsgründen abgelehnt."
+        case .inputLimitExceeded: return "Die Anfrage überschreitet das Eingabe- oder Kontextlimit der lokalen KI. Bitte kürzen."
+        case .temporaryModelFailure: return "Das lokale Systemmodell ist vorübergehend beschäftigt. Bitte die Anfrage erneut starten."
         case .invalidRequest: return "Die KI-Anfrage ist ungültig."
         case .staleSnapshot: return "Der Bild- oder Bearbeitungsstand hat sich inzwischen geändert."
         case .invalidResponse: return "Der KI-Vorschlag enthält ungültige oder nicht unterstützte Daten."

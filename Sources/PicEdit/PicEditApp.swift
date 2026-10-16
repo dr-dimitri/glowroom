@@ -7,6 +7,7 @@ struct PicEditApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     @StateObject private var library: LibraryModel
     @StateObject private var editor: EditingModel
+    @StateObject private var assistant: AIAssistantModel
     @StateObject private var exporter = JPEGExportModel()
     private let dataDirectory: URL
 
@@ -18,8 +19,15 @@ struct PicEditApp: App {
         } else { directory = nil }
         let repository = CatalogRepository(directory: directory)
         dataDirectory = repository.directory
-        _library = StateObject(wrappedValue: LibraryModel(repository: repository))
-        _editor = StateObject(wrappedValue: EditingModel(directory: repository.directory))
+        let library = LibraryModel(repository: repository)
+        let editor = EditingModel(directory: repository.directory)
+        let provider = LocalAIEditingProviderFactory.makeProvider()
+        let coordinator = AIRequestCoordinator(provider: provider)
+        _library = StateObject(wrappedValue: library)
+        _editor = StateObject(wrappedValue: editor)
+        _assistant = StateObject(wrappedValue: AIAssistantModel(provider: provider, coordinator: coordinator,
+                                                             editor: editor, library: library,
+                                                             maximumPromptBytes: LocalAIEditingPrompt.maximumUserTextBytes))
     }
 
     var body: some Scene {
@@ -27,6 +35,7 @@ struct PicEditApp: App {
             LibraryView(model: library, dataDirectory: dataDirectory)
                 .environmentObject(editor)
                 .environmentObject(exporter)
+                .environmentObject(assistant)
                 .frame(minWidth: 1000, minHeight: 660)
                 .preferredColorScheme(.dark)
                 .onAppear { delegate.library = library; delegate.editor = editor; delegate.exporter = exporter; NSApp.setActivationPolicy(.regular); NSApp.activate(ignoringOtherApps: true) }
