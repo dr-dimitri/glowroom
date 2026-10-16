@@ -21,6 +21,21 @@ Für einen schnelleren Entwicklungsbuild kann `./scripts/build-app.sh --debug` v
 
 Optional setzt `PICEDIT_BUILD_PATH` ein separates Build-Verzeichnis. Mit neueren Swift-Versionen kann `PICEDIT_BUILD_SYSTEM=swiftbuild` explizit Apples Swift-Build-System auswählen; ohne diese Variable gilt der Standard der installierten Swift-Version.
 
+### Paralleler lokaler Build
+
+Das Build-Skript nutzt ein automatisches CPU-Jobbudget: höchstens die aktiven CPU-Kerne und vorsichtig ein Worker je 2 GiB Arbeitsspeicher, mindestens ein Worker. Bei mehr als einem Worker wird einer für die **parallel zur App-Kompilierung laufende Icon-Erzeugung** reserviert; die übrigen werden über `swift build --jobs` vergeben. Beide Schritte verwenden getrennte, wiederverwendbare Modul-Caches. Das Budget begrenzt die geplanten Jobs, nicht exakt alle internen Threads oder den tatsächlichen Speicherverbrauch der Werkzeuge. SwiftPM selbst kompiliert bereits standardmäßig parallel; das Skript koordiniert zusätzlich die unabhängigen Build-Schritte. Die Swift-Kompilierung läuft auf der CPU.
+
+Eine explizite Vorgabe überschreibt die automatische Begrenzung, beispielsweise:
+
+```sh
+PICEDIT_BUILD_JOBS=8 ./scripts/build-app.sh
+PICEDIT_BUILD_JOBS=1 ./scripts/build-app.sh --debug
+```
+
+`1` führt Kompilierung und Icon-Erzeugung nacheinander aus. Erlaubt sind ganze Zahlen von 1 bis 1024; bei nicht verfügbarer Hardware-Erkennung verwendet das Skript einen Worker. Validierung, Signierung und Veröffentlichung warten auf beide Schritte. Schlägt ein Schritt fehl, bleibt das vorhandene App-Bundle erhalten; bei Abbruch werden die Worker samt Kindprozessen beendet.
+
+Ein Lock unter `dist/.picedit-build.lock` verhindert konkurrierende Bundle-Builds im selben Checkout. Unabhängige Pakettests können mit einem getrennten Build-Verzeichnis gleichzeitig laufen. Nach einem nicht abfangbaren Prozessabbruch kann der Lock zurückbleiben: Die darin gespeicherte PID prüfen und den Lock erst entfernen, wenn der zugehörige Build nicht mehr läuft.
+
 ## Bibliothek verwenden
 
 1. Mit **Ordner hinzufügen** oder **⌘O** einen Bilderordner auswählen.
@@ -63,11 +78,14 @@ Die automatisierten Tests verwenden Swift Testing und benötigen **Swift 6 oder 
 ./scripts/test.sh
 swift build
 ./scripts/test-image-pipeline.sh
+./scripts/test-build-app.sh
 ```
 
 Mit einer vollständigen, normal eingerichteten Xcode-Installation ist alternativ `swift test` möglich. Optional setzt `PICEDIT_TEST_BUILD_PATH` ein separates Build-Verzeichnis für die Pakettests.
 
 Die Tests prüfen unter anderem Vorschau-Priorisierung und Abbruch, persistente Cache-Gültigkeit und Größenlimits, Transparenz und Farbprofile, Bibliotheks-Cache-Invalidierung sowie rekursiven Import, überlappende Ordner, Aktualisierung, Bewertungen, Favoriten, gespeicherte Kataloge und den Umgang mit beschädigten Dateien. Sie verwenden eigene temporäre Testordner und verändern weder persönliche Originalbilder noch den regulären PicEdit-Katalog. Der separate Vorschautest prüft EXIF-Orientierung, Größenbegrenzung, Cache-Verhalten, Abbruch sowie defekte und fehlende Dateien anhand synthetischer Testbilder.
+
+`test-build-app.sh` prüft mit isolierten Testwerkzeugen die parallele Build-Steuerung, Jobbudgets, getrennte Caches, Abbruch samt Kindprozessen, den Build-Lock und den Erhalt der bisherigen App bei Compiler-, Icon-, Signatur- und Veröffentlichungsfehlern. Dieser Shell-Test benötigt keine Swift-Kompilierung und verändert das echte App-Bundle nicht.
 
 Eine kleine, rein synthetische Beispielsammlung kann ohne zusätzliche Abhängigkeiten erzeugt werden. Das Zielverzeichnis muss ausdrücklich angegeben werden; bestehende Dateien werden nicht überschrieben:
 
