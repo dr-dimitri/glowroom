@@ -7,6 +7,7 @@ struct PicEditApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     @StateObject private var library: LibraryModel
     @StateObject private var editor: EditingModel
+    @StateObject private var exporter = JPEGExportModel()
     private let dataDirectory: URL
 
     init() {
@@ -25,9 +26,10 @@ struct PicEditApp: App {
         Window("PicEdit", id: "library") {
             LibraryView(model: library, dataDirectory: dataDirectory)
                 .environmentObject(editor)
+                .environmentObject(exporter)
                 .frame(minWidth: 1000, minHeight: 660)
                 .preferredColorScheme(.dark)
-                .onAppear { delegate.library = library; delegate.editor = editor; NSApp.setActivationPolicy(.regular); NSApp.activate(ignoringOtherApps: true) }
+                .onAppear { delegate.library = library; delegate.editor = editor; delegate.exporter = exporter; NSApp.setActivationPolicy(.regular); NSApp.activate(ignoringOtherApps: true) }
         }
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 1440, height: 900)
@@ -36,6 +38,12 @@ struct PicEditApp: App {
                 Button("Ordner hinzufügen …") { library.chooseFolders() }
                     .keyboardShortcut("o", modifiers: .command)
                     .disabled(!library.canModify || library.isImporting)
+                Divider()
+                Button("Foto als JPEG exportieren …") {
+                    JPEGExportActions.present(using: exporter, library: library, editor: editor)
+                }
+                .keyboardShortcut("e", modifiers: [.command, .shift])
+                .disabled(library.selectedAsset == nil || editor.isLoading || editor.isRestoring || editor.isClosing || exporter.isPresented)
             }
             CommandMenu("Bibliothek") {
                 Button("Ordner aktualisieren") { library.refreshCurrentFolder() }
@@ -83,9 +91,18 @@ struct PicEditApp: App {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     weak var library: LibraryModel?
     weak var editor: EditingModel?
+    weak var exporter: JPEGExportModel?
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         guard let library else { return .terminateNow }
+        if exporter?.isExporting == true {
+            let alert = NSAlert()
+            alert.messageText = "Der JPEG-Export läuft noch."
+            alert.informativeText = "Warte bis zum Abschluss oder brich den Export im Exportdialog ab, bevor du PicEdit beendest."
+            alert.addButton(withTitle: "Zurück zum Export")
+            alert.runModal()
+            return .terminateCancel
+        }
         if editor?.isRestoring == true || editor?.isBackingUp == true {
             let alert = NSAlert()
             alert.messageText = "Die Sicherung wird noch verarbeitet."

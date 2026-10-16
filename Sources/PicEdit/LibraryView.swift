@@ -5,6 +5,7 @@ import UniformTypeIdentifiers
 struct LibraryView: View {
     @ObservedObject var model: LibraryModel
     @EnvironmentObject private var editor: EditingModel
+    @EnvironmentObject private var exporter: JPEGExportModel
     let dataDirectory: URL
     @ViewState<LibraryFolder?> private var folderToRemove: LibraryFolder?
     @ViewState<Bool> private var dropTargeted = false
@@ -38,6 +39,9 @@ struct LibraryView: View {
         .onChange(of: model.selection) { _, _ in model.reconcileSelection() }
         .onChange(of: model.search) { _, _ in model.reconcileSelection() }
         .onChange(of: model.minimumRating) { _, _ in model.reconcileSelection() }
+        .sheet(isPresented: Binding(get: { exporter.isPresented }, set: { if !$0 { exporter.cancel() } })) {
+            JPEGExportView(model: exporter)
+        }
         .alert("PicEdit", isPresented: Binding(get: { model.errorMessage != nil || editor.errorMessage != nil }, set: { if !$0 { model.errorMessage = nil; editor.errorMessage = nil } })) {
             Button("OK") { model.errorMessage = nil; editor.errorMessage = nil }
         } message: { Text(model.errorMessage ?? editor.errorMessage ?? "") }
@@ -67,6 +71,12 @@ struct LibraryView: View {
                 } label: { Label("Entwickeln", systemImage: "slider.horizontal.3") }
                     .foregroundStyle(model.isDeveloping ? Theme.accent : Theme.muted)
                     .disabled(model.selectedAsset == nil || editor.isLoading)
+                Button {
+                    JPEGExportActions.present(using: exporter, library: model, editor: editor)
+                } label: { Label("Exportieren", systemImage: "square.and.arrow.up") }
+                    .foregroundStyle(Theme.muted)
+                    .disabled(model.selectedAsset == nil || editor.isLoading || editor.isRestoring || editor.isClosing || exporter.isPresented)
+                    .help("Foto als JPEG exportieren · ⇧⌘E")
                 Menu {
                     Button("Bearbeitungen sichern …") { EditingBackupActions.create(using: editor) }.disabled(!editor.canBackUp)
                     Button("Backup wiederherstellen …") { EditingBackupActions.chooseRestore(using: editor, directory: dataDirectory) }

@@ -72,6 +72,7 @@ Das ausgewählte Bild erhält Vorrang vor wartenden Rasterbildern. Höchstens dr
 | --- | --- |
 | ⌘O | Ordner hinzufügen |
 | ⇧⌘R | Ordner aktualisieren |
+| ⇧⌘E | Ausgewähltes Foto als JPEG exportieren |
 | Pfeiltasten | Bildauswahl bewegen |
 | Leertaste | Zwischen Raster und Einzelansicht wechseln |
 | 1–5 | Sterne vergeben |
@@ -144,7 +145,20 @@ Die Werte lassen sich über Schieberegler oder Zahlenfelder ändern. **Vorher an
 
 Raster, Filmstreifen und Einzelansicht zeigen die gespeicherten Bearbeitungen. Die RAW-Basis im Entwickeln-Modul wird aus dem Original erzeugt, ohne eine eingebettete Kamera-Vorschau als Bearbeitungsbasis zu verwenden. Bearbeitungsbasen werden verlustfrei zwischengespeichert. Reglerbewegungen verwenden diese Basis erneut; veraltete Renderaufträge können neuere Ergebnisse nicht überschreiben. Core Image führt die Bildfilter auf seinem verfügbaren Backend aus (auf dem geprüften Apple-Silicon-Mac über Metal). Unveränderte Entrauschungs- und Auto-Tonwert-Stufen des ausgewählten Bildes sowie die kleine CPU-Tonwertanalyse werden wiederverwendet. Originaldateien und gespeicherte Bearbeitungsparameter bleiben davon unberührt.
 
-Die Filter verwenden Core Image und eigene Tonwert-/Kontrastberechnungen. Ihre Bedienung orientiert sich an Lightroom Classic, die Ergebnisse sind nicht identisch mit Adobes Entwicklungsengine. Entrauschen ist eine klassische, getrennte Luminanz-/Farbrauschminderung, keine KI-Funktion. Bearbeitet wird derzeit die Vorschau mit bis zu 2400 Pixeln langer Kante; vollständige RAW-Entwicklung mit Belichtungsreserve aus Sensordaten, Vollauflösungsexport, Weißabgleich, Zuschnitt und Masken sind noch nicht enthalten.
+Die Filter verwenden Core Image und eigene Tonwert-/Kontrastberechnungen. Ihre Bedienung orientiert sich an Lightroom Classic, die Ergebnisse sind nicht identisch mit Adobes Entwicklungsengine. Entrauschen ist eine klassische, getrennte Luminanz-/Farbrauschminderung, keine KI-Funktion. Bearbeitet wird derzeit die Vorschau mit bis zu 2400 Pixeln langer Kante; vollständige RAW-Entwicklung mit Belichtungsreserve aus Sensordaten, Weißabgleich, Zuschnitt und Masken sind noch nicht enthalten. Der JPEG-Export verwendet dagegen das Original in voller Auflösung und wendet dieselben Bearbeitungsfilter an.
+
+## JPEG-Export
+
+Wähle ein Foto und klicke oben auf **Exportieren**, nutze **Ablage → Foto als JPEG exportieren …** oder **⇧⌘E**. Der Dialog gliedert die Optionen wie in Lightroom in Speicherort, Dateieinstellungen und Bildgröße.
+
+- **Speicherort:** Zielordner und Dateiname frei wählen. Vorgeschlagen wird `Originalname-bearbeitet.jpg`. Vorhandene Exportdateien werden nur nach Bestätigung ersetzt; importierte Originalbilder sind als Ziel gesperrt.
+- **Dateieinstellungen:** JPEG mit **sRGB** oder **Display P3**. Die Pixel werden in den gewählten Farbraum umgerechnet; sRGB wird per EXIF gekennzeichnet, Display P3 mit einem eingebetteten ICC-Profil. **Qualität 0–100** steuert die Kompression: höhere Werte erhalten mehr Details und erzeugen meist größere Dateien.
+- **Bildgröße:** Originalgröße, maximale lange Kante oder Einpassen in Breite und Höhe, jeweils in Pixeln. Das Seitenverhältnis bleibt erhalten; es wird weder beschnitten noch verzerrt. Vergrößern ist standardmäßig ausgeschaltet und kann ausdrücklich erlaubt werden.
+- **Auflösung:** 1–1200 Pixel pro Zoll (ppi) als Druckauflösung. Dieser Wert ändert die Druckgrößenangabe, nicht die Pixelzahl.
+
+Exportiert wird der beim Öffnen des Dialogs erfasste Bearbeitungsstand, auch wenn gerade „Vorher anzeigen“ aktiv war. Der Export decodiert das Original und verwendet keine eingebettete RAW-Kameravorschau oder bereits verkleinerte Bildschirmvorschau. RAW-Unterstützung hängt weiterhin von ImageIO/macOS und dem Kameraformat ab. JPEG unterstützt keine Transparenz; transparente Bereiche werden weiß hinterlegt.
+
+Der Export läuft im Hintergrund und kann abgebrochen werden. Erst eine fertig geschriebene Datei wird atomar am Ziel veröffentlicht. Große Exporte sind auf einen Auftrag gleichzeitig begrenzt und unterliegen einer Speicherprüfung; bei zu großen Bildern erscheint ein Fehler statt einer stillen Auflösungsreduktion. Die App wartet beim Beenden auf den Abschluss oder Abbruch eines laufenden Exports. Einstellungen und zuletzt gewählter Ordner werden für den nächsten Export gemerkt. Nach Abschluss lässt sich die Datei im Finder anzeigen.
 
 ## Datenbank und Backups
 

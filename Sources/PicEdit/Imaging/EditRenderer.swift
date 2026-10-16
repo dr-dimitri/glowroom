@@ -16,7 +16,8 @@ enum EditRenderError: LocalizedError {
 
 /// Synchronous, thread-safe rendering for a bounded background worker. CIContext
 /// and kernels are reusable; the mutable filter objects are local to each call.
-/// This is a preview renderer, not a full-resolution export or a RAW developer.
+/// The preview adapter is bounded to 4096 pixels. The same lazy filter graph is
+/// also used by the separately budgeted full-resolution JPEG exporter.
 enum EditRenderer {
     /// Reuse the selected photo's unchanged filter prefix across slider values.
     /// Core Image still chooses its available GPU/CPU implementation. A single
@@ -130,30 +131,8 @@ enum EditRenderer {
             let extent = CGRect(x: 0, y: 0, width: original.width, height: original.height)
             // Keep spatial effects comparable at progressive preview sizes.
             let scale = max(0.25, Double(max(original.width, original.height)) / 1_600)
-            var image = try session.prefix(bitmap, settings: settings, extent: extent, scale: scale)
-            try Task.checkCancellation()
-
-            if settings.exposure != 0 || settings.contrast != 0 || settings.highlights != 0 || settings.shadows != 0 ||
-                settings.whites != 0 || settings.blacks != 0 || settings.dehaze != 0 || settings.vibrance != 0 || settings.saturation != 0 {
-                guard let result = toneKernel?.apply(extent: extent, arguments: [
-                    image, settings.exposure, settings.contrast / 100,
-                    settings.highlights / 100, settings.shadows / 100,
-                    settings.whites / 100, settings.blacks / 100,
-                    settings.dehaze / 100, settings.vibrance / 100, settings.saturation / 100
-                ]) else { throw EditRenderError.unavailable }
-                image = result
-            }
-            try Task.checkCancellation()
-
-            if settings.texture != 0 || settings.clarity != 0 {
-                let fine = settings.texture != 0 ? blur(image, radius: 2.5 * scale, extent: extent) : image
-                let broad = settings.clarity != 0 ? blur(image, radius: 18 * scale, extent: extent) : image
-                guard let result = presenceKernel?.apply(extent: extent, arguments: [
-                    image, fine, broad, settings.texture / 100, settings.clarity / 100
-                ]) else { throw EditRenderError.unavailable }
-                image = result
-            }
-            try Task.checkCancellation()
+            let prefix = try session.prefix(bitmap, settings: settings, extent: extent, scale: scale)
+            let image = try manualAdjustments(prefix, settings: settings, extent: extent, scale: scale)
 
             let colorSpace = original.colorSpace ?? CGColorSpace(name: CGColorSpace.sRGB)!
             let highPrecision = original.bitsPerComponent > 8
@@ -169,6 +148,46 @@ enum EditRenderer {
             try Task.checkCancellation()
             return PreviewBitmap(image: rendered)
         }
+    }
+
+    /// Builds the full-size graph without converting to a preview or imposing
+    /// preview dimensions. The exporter validates its own memory/format limits.
+    static func filterGraph(_ original: CGImage, settings: EditSettings) throws -> CIImage {
+        try Task.checkCancellation()
+        let settings = settings.normalized
+        let image = CIImage(cgImage: original)
+        guard !settings.isNeutral else { return image }
+        let extent = image.extent
+        let scale = max(0.25, Double(max(original.width, original.height)) / 1_600)
+        let prefix = try prefix(image, original: original, settings: settings, extent: extent, scale: scale)
+        return try manualAdjustments(prefix, settings: settings, extent: extent, scale: scale)
+    }
+
+    private static func manualAdjustments(_ input: CIImage, settings: EditSettings,
+                                          extent: CGRect, scale: Double) throws -> CIImage {
+        try Task.checkCancellation()
+        var image = input
+        if settings.exposure != 0 || settings.contrast != 0 || settings.highlights != 0 || settings.shadows != 0 ||
+            settings.whites != 0 || settings.blacks != 0 || settings.dehaze != 0 || settings.vibrance != 0 || settings.saturation != 0 {
+            guard let result = toneKernel?.apply(extent: extent, arguments: [
+                image, settings.exposure, settings.contrast / 100,
+                settings.highlights / 100, settings.shadows / 100,
+                settings.whites / 100, settings.blacks / 100,
+                settings.dehaze / 100, settings.vibrance / 100, settings.saturation / 100
+            ]) else { throw EditRenderError.unavailable }
+            image = result
+        }
+        try Task.checkCancellation()
+        if settings.texture != 0 || settings.clarity != 0 {
+            let fine = settings.texture != 0 ? blur(image, radius: 2.5 * scale, extent: extent) : image
+            let broad = settings.clarity != 0 ? blur(image, radius: 18 * scale, extent: extent) : image
+            guard let result = presenceKernel?.apply(extent: extent, arguments: [
+                image, fine, broad, settings.texture / 100, settings.clarity / 100
+            ]) else { throw EditRenderError.unavailable }
+            image = result
+        }
+        try Task.checkCancellation()
+        return image
     }
 
     private static func prefix(_ image: CIImage, original: CGImage, settings: EditSettings,
