@@ -40,8 +40,12 @@ final class AIAssistantModel: ObservableObject {
 
     let maximumPromptBytes: Int
     let cards: AILookCardStore
-    private let provider: any AIEditingProvider
-    private let coordinator: AIRequestCoordinator
+    private var provider: any AIEditingProvider
+    private var coordinator: AIRequestCoordinator
+    private var providerSuspended = false
+    private var authorization: (@MainActor (AIEditingRequest) async throws -> Bool)?
+    @Published private(set) var providerLabel = "Lokal · Apple"
+    @Published private(set) var supportsLooks = true
     private let snapshot: @MainActor () -> AIEditingSnapshot?
     private let accept: @MainActor (AIProposalResult) -> Bool
     private let commitInput: @MainActor () -> Void
@@ -60,6 +64,8 @@ final class AIAssistantModel: ObservableObject {
          cards: AILookCardStore? = nil,
          sourceReadable: @escaping @Sendable (AIEditingSnapshot) async -> Bool = { await AIAssistantModel.checkSource($0) }) {
         self.provider = provider
+        self.providerLabel = provider is any AIRemoteEditingProvider ? "Cloud · Anthropic (nur Text)" : "Lokal · Apple"
+        self.supportsLooks = provider.capabilities.contains(.lookSuggestions)
         self.coordinator = coordinator
         self.maximumPromptBytes = max(1, maximumPromptBytes)
         self.snapshot = snapshot
@@ -120,7 +126,7 @@ final class AIAssistantModel: ObservableObject {
     }
 
     private var canStart: Bool {
-        state != .generating && availability == .available && snapshot() != nil
+        !providerSuspended && state != .generating && availability == .available && snapshot() != nil
     }
 
     var activeProposalResult: AIProposalResult? {
@@ -173,7 +179,29 @@ final class AIAssistantModel: ObservableObject {
         return target
     }
 
+    func suspendProvider() {
+        providerSuspended = true
+        discard()
+        availabilityCheckID = UUID()
+        availability = nil
+        let previous = coordinator
+        Task { await previous.cancelAll() }
+    }
+
+    func replaceProvider(_ provider: any AIEditingProvider,
+                         authorization: (@MainActor (AIEditingRequest) async throws -> Bool)? = nil) {
+        suspendProvider()
+        self.provider = provider
+        self.coordinator = AIRequestCoordinator(provider: provider)
+        self.authorization = authorization
+        providerSuspended = false
+        providerLabel = provider is any AIRemoteEditingProvider ? "Cloud · Anthropic (nur Text)" : "Lokal · Apple"
+        supportsLooks = provider.capabilities.contains(.lookSuggestions)
+        Task { [weak self] in await self?.refreshAvailability() }
+    }
+
     func refreshAvailability() async {
+        guard !providerSuspended else { return }
         let checkID = UUID()
         availabilityCheckID = checkID
         let value = await provider.availability()
@@ -220,12 +248,18 @@ final class AIAssistantModel: ObservableObject {
         state = .generating
         let sourceReadable = self.sourceReadable
         let coordinator = self.coordinator
+        let authorization = self.authorization
         requestTask = Task { [weak self] in
             do {
+                if let authorization {
+                    guard try await authorization(request) else { throw CancellationError() }
+                    try Task.checkCancellation()
+                }
                 guard await sourceReadable(baseline) else {
                     throw AssistantError.unreadableSource
                 }
                 try Task.checkCancellation()
+                guard let owner = self, owner.requestID == id, owner.snapshot() == baseline else { throw CancellationError() }
                 let response: Response
                 switch mode {
                 case .single: response = .single(try await coordinator.proposal(for: request))
@@ -260,7 +294,7 @@ final class AIAssistantModel: ObservableObject {
                 } else {
                     // Stable local categories only: no provider payload, prompt
                     // or path is exposed through arbitrary error descriptions.
-                    self.state = .failed((error as? AIEditingError)?.localizedDescription ?? AssistantError.unreadableSource.localizedDescription)
+                    self.state = .failed((error as? AICloudError)?.localizedDescription ?? (error as? AIEditingError)?.localizedDescription ?? AssistantError.unreadableSource.localizedDescription)
                 }
             }
         }
@@ -303,7 +337,9 @@ final class AIAssistantModel: ObservableObject {
     }
 
     private var restingState: State {
-        if case .unavailable(let reason) = availability { return .unavailable(reason) }
+        if case .unavailable(let reason) = availability {
+            return provider is any AIRemoteEditingProvider ? .failed(AICloudError.disabled.localizedDescription) : .unavailable(reason)
+        }
         return .idle
     }
 

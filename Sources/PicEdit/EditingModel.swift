@@ -60,6 +60,11 @@ final class EditingModel: ObservableObject {
     private(set) var aiEditSessionID = UUID()
     private(set) var aiEditGeneration: UInt64 = 0
 
+    var cloudProtectedURLs: [URL] {
+        guard let directory else { return [] }
+        return ["cloud-usage.sqlite", "cloud-usage.sqlite-journal", "cloud-usage.sqlite-wal", "cloud-usage.sqlite-shm"].map { directory.appendingPathComponent($0) }
+    }
+
     var canEdit: Bool { !isLoading && !isReadOnly && !isRestoring && !isBackingUp && !isClosing }
     var canBackUp: Bool { !isLoading && !isRestoring && !isBackingUp && !isClosing && database != nil }
     var canRestore: Bool { !isLoading && !isRestoring && !isBackingUp && !isClosing && (database != nil || directory != nil) }
@@ -324,7 +329,7 @@ final class EditingModel: ObservableObject {
         guard let directory else { return true }
         // A handful of paths does not justify nested worker tasks. All
         // filesystem lookups already run outside MainActor in the caller.
-        let protected = ["edits.sqlite", "edits.sqlite-wal", "edits.sqlite-shm", "edits.sqlite-journal", "catalog.json"]
+        let protected = ["edits.sqlite", "edits.sqlite-wal", "edits.sqlite-shm", "edits.sqlite-journal", "catalog.json", "cloud-usage.sqlite", "cloud-usage.sqlite-journal", "cloud-usage.sqlite-wal", "cloud-usage.sqlite-shm"]
             .map { directory.appendingPathComponent($0).resolvingSymlinksInPath().standardizedFileURL }
         return !protected.contains(target.resolvingSymlinksInPath().standardizedFileURL)
     }

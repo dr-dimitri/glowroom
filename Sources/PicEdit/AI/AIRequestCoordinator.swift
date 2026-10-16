@@ -179,7 +179,7 @@ actor AIRequestCoordinator {
                 let availability = await provider.availability()
                 try Task.checkCancellation()
                 if case let .unavailable(reason) = availability { throw AIEditingError.unavailable(reason) }
-                lease = try await budget.acquireLocalInference()
+                if !(provider is any AIRemoteEditingProvider) { lease = try await budget.acquireLocalInference() }
                 try Task.checkCancellation()
                 let data = try await provider.proposal(for: request)
                 try Task.checkCancellation()
@@ -194,6 +194,8 @@ actor AIRequestCoordinator {
                 }
             } catch is CancellationError {
                 result = .failure(CancellationError())
+            } catch let error as AICloudError {
+                result = .failure(error)
             } catch let error as AIEditingError {
                 result = .failure(error)
             } catch {

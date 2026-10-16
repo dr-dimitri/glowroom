@@ -8,6 +8,7 @@ struct PicEditApp: App {
     @StateObject private var library: LibraryModel
     @StateObject private var editor: EditingModel
     @StateObject private var assistant: AIAssistantModel
+    @StateObject private var aiSettings: AIProviderSettings
     @StateObject private var exporter = JPEGExportModel()
     private let dataDirectory: URL
 
@@ -25,9 +26,13 @@ struct PicEditApp: App {
         let coordinator = AIRequestCoordinator(provider: provider)
         _library = StateObject(wrappedValue: library)
         _editor = StateObject(wrappedValue: editor)
-        _assistant = StateObject(wrappedValue: AIAssistantModel(provider: provider, coordinator: coordinator,
+        let assistant = AIAssistantModel(provider: provider, coordinator: coordinator,
                                                              editor: editor, library: library,
-                                                             maximumPromptBytes: LocalAIEditingPrompt.maximumUserTextBytes))
+                                                             maximumPromptBytes: LocalAIEditingPrompt.maximumUserTextBytes)
+        let aiSettings = AIProviderSettings(directory: repository.directory, local: provider)
+        aiSettings.attach(assistant)
+        _assistant = StateObject(wrappedValue: assistant)
+        _aiSettings = StateObject(wrappedValue: aiSettings)
     }
 
     var body: some Scene {
@@ -38,7 +43,10 @@ struct PicEditApp: App {
                 .environmentObject(assistant)
                 .frame(minWidth: 1000, minHeight: 660)
                 .preferredColorScheme(.dark)
-                .onAppear { delegate.library = library; delegate.editor = editor; delegate.exporter = exporter; NSApp.setActivationPolicy(.regular); NSApp.activate(ignoringOtherApps: true) }
+                .sheet(item: Binding(get: { aiSettings.pendingConsent }, set: { if $0 == nil { aiSettings.respondToConsent(false) } })) { consent in
+                    AICloudConsentView(consent: consent, answer: aiSettings.respondToConsent)
+                }
+                .onAppear { delegate.library = library; delegate.editor = editor; delegate.exporter = exporter; delegate.aiSettings = aiSettings; NSApp.setActivationPolicy(.regular); NSApp.activate(ignoringOtherApps: true) }
         }
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 1440, height: 900)
@@ -93,6 +101,7 @@ struct PicEditApp: App {
                     .keyboardShortcut("i", modifiers: .command)
             }
         }
+        Settings { AIProviderSettingsView(settings: aiSettings) }
     }
 }
 
@@ -101,6 +110,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     weak var library: LibraryModel?
     weak var editor: EditingModel?
     weak var exporter: JPEGExportModel?
+    weak var aiSettings: AIProviderSettings?
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         guard let library else { return .terminateNow }
@@ -122,6 +132,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         // Commit an active numeric field while edits are still accepted.
         NSApp.keyWindow?.makeFirstResponder(nil)
+        aiSettings?.revoke()
         library.beginTermination()
         editor?.beginTermination()
         Task {
