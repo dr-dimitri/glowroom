@@ -16,7 +16,8 @@ actor LibraryCatalogWorker {
     func prepareImport(_ originalURL: URL, folders: [LibraryFolder]) -> PreparedImport {
         let started = originalURL.startAccessingSecurityScopedResource()
         let url = originalURL.resolvingSymlinksInPath().standardizedFileURL
-        let existing = folders.first { $0.url.resolvingSymlinksInPath().standardizedFileURL == url }
+        let path = LibraryProjectionWorker.filePath(originalURL)
+        let existing = folders.first { LibraryProjectionWorker.filePath($0.url) == path }
         var folder = existing ?? LibraryFolder(url: url)
         folder.bookmarkData = (try? originalURL.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil)) ?? folder.bookmarkData
         return PreparedImport(folder: folder, startedScope: started)
@@ -25,16 +26,27 @@ actor LibraryCatalogWorker {
     func merge(_ result: ScanResult, folder original: LibraryFolder, into catalog: LibraryCatalog) throws -> MergedImport {
         try Task.checkCancellation()
         var old: [String: PhotoAsset] = [:]
+        var oldByPath: [String: PhotoAsset] = [:]
+        var ambiguousPaths: Set<String> = []
         for (index, asset) in catalog.assets.enumerated() {
             if index % 256 == 0 { try Task.checkCancellation() }
             if old[asset.id] == nil { old[asset.id] = asset }
+            let path = LibraryProjectionWorker.filePath(asset.fileURL)
+            if let previous = oldByPath[path], previous.id != asset.id { ambiguousPaths.insert(path) }
+            else { oldByPath[path] = asset }
         }
         var imported: [PhotoAsset] = []
         var added = 0
         for (index, original) in result.assets.enumerated() {
             if index % 256 == 0 { try Task.checkCancellation() }
             var asset = original
-            if let previous = old[asset.id] {
+            let path = LibraryProjectionWorker.filePath(asset.fileURL)
+            if ambiguousPaths.contains(path) {
+                throw CatalogRepositoryError.invalidCatalog("Mehrere gespeicherte Bildkennungen verweisen auf dieselbe Datei. Die Bibliothek bleibt unverändert.")
+            }
+            if let previous = old[asset.id] ?? oldByPath[path] {
+                asset.id = previous.id
+                asset.fileURL = previous.fileURL
                 asset.folderID = previous.folderID
                 asset.rating = previous.rating
                 asset.isFavorite = previous.isFavorite
@@ -42,15 +54,15 @@ actor LibraryCatalogWorker {
             imported.append(asset)
         }
         let prefix = LibraryProjectionWorker.directoryPrefix(original.url)
-        let skippedIDs = Set(result.skippedURLs.map(\.path))
+        let skippedPaths = Set(result.skippedURLs.map { LibraryProjectionWorker.filePath($0) })
         var next = catalog
         next.assets = []
         var retained: [PhotoAsset] = []
         for (index, asset) in catalog.assets.enumerated() {
             if index % 256 == 0 { try Task.checkCancellation() }
-            if !asset.fileURL.path.hasPrefix(prefix) { next.assets.append(asset) }
+            if !LibraryProjectionWorker.filePath(asset.fileURL).hasPrefix(prefix) { next.assets.append(asset) }
             // Temporarily undecodable originals retain their saved metadata.
-            else if skippedIDs.contains(asset.id) { retained.append(asset) }
+            else if skippedPaths.contains(LibraryProjectionWorker.filePath(asset.fileURL)) { retained.append(asset) }
         }
         next.assets.append(contentsOf: imported)
         next.assets.append(contentsOf: retained)
@@ -66,11 +78,12 @@ actor LibraryCatalogWorker {
     func removing(_ id: UUID, from catalog: LibraryCatalog) -> LibraryCatalog {
         var next = catalog
         next.folders.removeAll { $0.id == id }
-        let replacements = next.folders.sorted { $0.url.path.count > $1.url.path.count }
-            .map { ($0.id, LibraryProjectionWorker.directoryPrefix($0.url)) }
+        let replacements = next.folders.map { ($0.id, LibraryProjectionWorker.directoryPrefix($0.url)) }
+            .sorted { $0.1.count > $1.1.count }
         next.assets = catalog.assets.compactMap { asset in
             guard asset.folderID == id else { return asset }
-            guard let replacement = replacements.first(where: { asset.fileURL.path.hasPrefix($0.1) }) else { return nil }
+            let path = LibraryProjectionWorker.filePath(asset.fileURL)
+            guard let replacement = replacements.first(where: { path.hasPrefix($0.1) }) else { return nil }
             var retained = asset
             retained.folderID = replacement.0
             return retained
