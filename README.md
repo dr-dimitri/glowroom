@@ -83,6 +83,8 @@ Das ausgewählte Bild erhält Vorrang vor wartenden Rasterbildern. Höchstens dr
 
 ## Entwickeln und prüfen
 
+Die technische Grundlage für spätere KI-Bearbeitung ist in [KI-Verträge und sichere Vorschläge](docs/AI-CONTRACTS.md) beschrieben. Sie definiert providerunabhängige Antworten, strenge Reglerprüfung, versionsgebundene Vorschläge und begrenzte Hintergrundaufträge. Ein echter KI-Provider und eine sichtbare Assistentenfunktion sind in diesem Schritt noch nicht enthalten; PicEdit bleibt ohne Online-Dienst, Modellinstallation oder Zugangsdaten nutzbar.
+
 Nach jeder Umsetzungsanforderung sind die betroffene Dokumentation zu aktualisieren, geeignete Tests auszuführen und ein sauberer, vollständiger lokaler App-Build erfolgreich abzuschließen. Nach jeder umgesetzten Änderung ist außerdem ein Review verpflichtend. Der Abschluss erfolgt in dieser Reihenfolge:
 
 1. Änderungen und Dokumentation fertigstellen. Den finalen Diff einschließlich betroffener Schnittstellen, Tests und Dokumentation reviewen, zur Umsetzung gehörende Befunde beheben und die Korrekturen erneut prüfen. Die passenden Tests ausführen.

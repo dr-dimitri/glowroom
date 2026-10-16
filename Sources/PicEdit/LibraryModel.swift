@@ -86,13 +86,22 @@ private actor CatalogWriter {
 @MainActor
 final class LibraryModel: ObservableObject {
     @Published private(set) var catalog = LibraryCatalog() {
-        didSet { catalogGeneration += 1; treeOverrides = [:]; scheduleProjection() }
+        didSet {
+            advanceAISelectionGeneration()
+            catalogGeneration += 1; treeOverrides = [:]; scheduleProjection()
+        }
     }
-    @Published var selection: LibrarySelection = .all { didSet { scheduleProjection() } }
+    @Published var selection: LibrarySelection = .all {
+        didSet {
+            if oldValue != selection { advanceAISelectionGeneration() }
+            scheduleProjection()
+        }
+    }
     /// The active photo drives the inspector; the set also contains the other
     /// selected photos. Keep direct assignments compatible with single selection.
     @Published var selectedID: String? {
         didSet {
+            if oldValue != selectedID { advanceAISelectionGeneration() }
             guard !isApplyingSelection else { return }
             selectedIDs = selectedID.map { [$0] } ?? []
             selectionAnchorID = selectedID
@@ -117,17 +126,28 @@ final class LibraryModel: ObservableObject {
     @Published private(set) var importStatus = ""
     @Published var notice: String?
     @Published var errorMessage: String?
-    @Published private(set) var isReadOnly = false
-    @Published private(set) var isClosing = false
+    @Published private(set) var isReadOnly = false {
+        didSet { if oldValue != isReadOnly { advanceAISelectionGeneration() } }
+    }
+    @Published private(set) var isClosing = false {
+        didSet { if oldValue != isClosing { advanceAISelectionGeneration() } }
+    }
     private let catalogWorker = LibraryCatalogWorker()
     private var mutationTask: Task<Void, Never>?
-    @Published private(set) var isUpdatingCatalog = false
+    @Published private(set) var isUpdatingCatalog = false {
+        didSet { if oldValue != isUpdatingCatalog { advanceAISelectionGeneration() } }
+    }
     private let writer: CatalogWriter
     private var revision = 0
     private var importTask: Task<Void, Never>?
     private var activeScopes: [UUID: URL] = [:]
     private var queuedFolders: [URL] = []
     private let now: () -> Date
+
+    // A separate selection generation rejects A → B → A even when both assets
+    // have identical settings. Catalog/refresh changes invalidate this too.
+    private(set) var aiSelectionSessionID = UUID()
+    private(set) var aiSelectionGeneration: UInt64 = 0
 
     @Published private(set) var isProjecting = false
     private let projectionWorker = LibraryProjectionWorker()
@@ -275,6 +295,7 @@ final class LibraryModel: ObservableObject {
 
     func importFolders(_ urls: [URL], preservingSelection previousSelection: LibrarySelection? = nil) {
         guard canModify, !isImporting, !urls.isEmpty else { return }
+        advanceAISelectionGeneration()
         isImporting = true
         notice = nil
         importTask = Task {
@@ -494,6 +515,15 @@ final class LibraryModel: ObservableObject {
         Task {
             do { try await writer.save(snapshot, revision: number) }
             catch { errorMessage = "Änderungen konnten nicht gespeichert werden.\n\n\(error.localizedDescription)" }
+        }
+    }
+
+    private func advanceAISelectionGeneration() {
+        if aiSelectionGeneration == .max {
+            aiSelectionSessionID = UUID()
+            aiSelectionGeneration = 0
+        } else {
+            aiSelectionGeneration += 1
         }
     }
 

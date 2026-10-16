@@ -21,9 +21,15 @@ final class EditingModel: ObservableObject {
     @Published private(set) var isLoading = true
     @Published private(set) var isSaving = false
     @Published private(set) var isRestoring = false
-    @Published private(set) var isBackingUp = false
-    @Published private(set) var isReadOnly = false
-    @Published private(set) var isClosing = false
+    @Published private(set) var isBackingUp = false {
+        didSet { if oldValue != isBackingUp { advanceAIEditGeneration() } }
+    }
+    @Published private(set) var isReadOnly = false {
+        didSet { if oldValue != isReadOnly { advanceAIEditGeneration() } }
+    }
+    @Published private(set) var isClosing = false {
+        didSet { if oldValue != isClosing { advanceAIEditGeneration() } }
+    }
     @Published private(set) var hasPendingChanges = false
     @Published var errorMessage: String?
     @Published var notice: String?
@@ -48,6 +54,11 @@ final class EditingModel: ObservableObject {
     private var saveTask: Task<Bool, Never>?
     private var maintenanceWaiters: [CheckedContinuation<Void, Never>] = []
     private let historyLimit = 100
+
+    // These are deliberately independent of SQLite revisions. Restore can
+    // replace revision values; changing a value back must never revive a reply.
+    private(set) var aiEditSessionID = UUID()
+    private(set) var aiEditGeneration: UInt64 = 0
 
     var canEdit: Bool { !isLoading && !isReadOnly && !isRestoring && !isBackingUp && !isClosing }
     var canBackUp: Bool { !isLoading && !isRestoring && !isBackingUp && !isClosing && database != nil }
@@ -94,6 +105,7 @@ final class EditingModel: ObservableObject {
     /// Call from Slider.onEditingChanged. A drag becomes one undo operation.
     func beginEditing(assetID: String) {
         guard canEdit, !assetID.isEmpty, gestureStarts[assetID] == nil else { return }
+        advanceAIEditGeneration()
         gestureStarts[assetID] = settings(for: assetID)
     }
 
@@ -103,7 +115,10 @@ final class EditingModel: ObservableObject {
     }
 
     func reset(assetID: String) {
-        guard canEdit else { return }
+        guard canEdit, !assetID.isEmpty else { return }
+        // Reset is an explicit editing intent, including on an already neutral
+        // image; a reply requested before it must stay obsolete.
+        advanceAIEditGeneration()
         endEditing(assetID: assetID)
         setSettings(.neutral, for: assetID)
     }
@@ -203,6 +218,8 @@ final class EditingModel: ObservableObject {
 
     func restoreBackup(from url: URL) async -> Bool {
         guard canRestore else { return false }
+        aiEditSessionID = UUID()
+        aiEditGeneration = 0
         isRestoring = true
         defer { isRestoring = false; finishMaintenance() }
         // Failed writes must not be discarded by a restore. A read-only store
@@ -322,12 +339,43 @@ final class EditingModel: ObservableObject {
     }
 
     private func apply(_ settings: EditSettings, for assetID: String) {
+        advanceAIEditGeneration()
         let revision = revisionsByAsset[assetID, default: 0] + 1
         revisionsByAsset[assetID] = revision
         settingsByAsset[assetID] = settings
         pending[assetID] = PendingEdit(settings: settings, revision: revision)
         hasPendingChanges = true
         scheduleSave()
+    }
+
+    private func advanceAIEditGeneration() {
+        if aiEditGeneration == .max {
+            aiEditSessionID = UUID()
+            aiEditGeneration = 0
+        } else {
+            aiEditGeneration += 1
+        }
+    }
+
+    /// The final synchronous gate also preflights revision exhaustion, before
+    /// ending a gesture or touching undo. Accepted edits use the ordinary path.
+    func acceptAIProposal(_ result: AIProposalResult, in library: LibraryModel) -> Bool {
+        do { try result.request.snapshot.validate() }
+        catch { return false }
+        guard isCurrentAISnapshot(result.request.snapshot, in: library),
+              case .changes(let proposal, let settings) = result.validation,
+              let checked = try? EditProposalValidator().validate(proposal, against: result.request.snapshot.settings),
+              case .changes(_, let validatedSettings) = checked,
+              settings == validatedSettings,
+              settings != self.settings(for: result.request.snapshot.assetID),
+              nextRevisionAvailable(for: result.request.snapshot.assetID) else { return false }
+
+        // No suspension is permitted between the snapshot check and setSettings.
+        // MainActor keeps selection, histories and the pending save atomic here.
+        let assetID = result.request.snapshot.assetID
+        endEditing(assetID: assetID)
+        setSettings(validatedSettings, for: assetID)
+        return true
     }
 
     private func appendUndo(_ settings: EditSettings, for assetID: String) {
