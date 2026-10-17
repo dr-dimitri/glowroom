@@ -344,6 +344,7 @@ struct AlgorithmEvaluationCandidateRegistry: Codable, Sendable {
         let primarySceneClass: String?
         let primaryMetric: String?
         let minimumRelativeImprovement: Double?
+        var comparisonManifest: String? = nil
         let missingEvidence: [String]
     }
     let schemaVersion: Int
@@ -356,7 +357,12 @@ struct AlgorithmEvaluationCandidateRegistry: Codable, Sendable {
               result.candidates.allSatisfy({ candidate in
                   guard !candidate.id.isEmpty, ["control", "reference"].contains(candidate.kind) else { return false }
                   if candidate.kind == "control" { return candidate.implemented }
-                  guard let primary = candidate.primaryMetric, AlgorithmEvaluationMetrics.metricNames.contains(primary),
+                  let specializedTone = candidate.id == "LC-03" && candidate.domain == "tone"
+                      && candidate.primarySceneClass == "fine-lines"
+                      && candidate.comparisonManifest == "lc03-manifest.json"
+                  guard let primary = candidate.primaryMetric,
+                        AlgorithmEvaluationMetrics.metricNames.contains(primary)
+                            || (specializedTone && primary == "log_line_contrast_error"),
                         let improvement = candidate.minimumRelativeImprovement,
                         improvement.isFinite, improvement > 0, improvement < 1,
                         let domain = candidate.domain, ["tone", "detail", "color", "denoise"].contains(domain),

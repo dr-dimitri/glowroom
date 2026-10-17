@@ -1,0 +1,38 @@
+{
+  "calibration_records": 72,
+  "calibration_records_identical": true,
+  "manifest_changes": {
+    "performanceSceneClass": {
+      "v1": null,
+      "v2": "fine-lines"
+    },
+    "protocolID": {
+      "v1": "LC03-tone-v1",
+      "v2": "LC03-tone-v2"
+    }
+  },
+  "note": "Only protocol ID and performance/scale scene differ. No quality tuning, threshold, metric or mapping change; the first matched clipping witness is identical.",
+  "quality_pngs": 552,
+  "quality_pngs_identical": true,
+  "quality_records": 72,
+  "quality_records_identical": true,
+  "schema_version": 1,
+  "source_report_sha256": {
+    "v1": {
+      "lc03-manifest.json": "19153efe6b749c6554390f0cfcb7025e8ed28e600358c87cf95290bcb142e371",
+      "quality/quality.json": "16488dff2892aaff484499de5c59c2fb3b37c9c46e4a6aed978f3d16ec4fc4d0",
+      "summary.json": "fdf6798fb7dffad1118fa4daee69d01e8c59f5bae13e64e3a92c2f62ee535f67",
+      "tuning/calibration.json": "605085088f39af09b08ecacc6fb13975b0882a63d1a7453d319616b9ed8b3bcd"
+    },
+    "v2": {
+      "lc03-manifest.json": "d1a77063c9e61b92f713f34ad59fd48e9052baeee89a8b4f86900b744845b272",
+      "quality/quality.json": "857520d84c808fd4fa23daace2bc3691a7df509ea2dc584e2f8cd4f40477e011",
+      "summary.json": "67ff2607b15d48b655eae396d3c91ba84773af4b66ec9225c90584cf1b2ac6cd",
+      "tuning/calibration.json": "a1a1f2d420411b60aa5818b97735e493e28eac05ca3963e2112c7708bb8bbae2"
+    }
+  },
+  "stage_records": 96,
+  "stage_records_identical": true,
+  "v1": "../lc03-2026-10-17",
+  "v2": "."
+}

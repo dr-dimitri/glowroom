@@ -1,0 +1,51 @@
+Lightcraft LC-03 evaluation reference
+===================================
+
+Upstream: https://github.com/dr-dimitri/lightcraft
+Pinned commit: f9b0c8c8a12c8fa17b7afb5baa00f9ee1bbd7b15
+Copyright (c) 2026 ArtCraft Team and the LightCraft contributors
+
+The LC-03 developer-only CPU reference adapts the following source algorithms
+from the pinned Lightcraft source. PicEdit selects the upstream MIT license
+option for these portions. The complete upstream MIT license and NOTICE are
+preserved verbatim in licenses/lightcraft/LICENSE-MIT and
+licenses/lightcraft/NOTICE. The upstream NOTICE describes the entire upstream
+product; the separate upstream materials it lists are not imported by this
+evaluation.
+
+crates/pipeline/src/local.rs:
+  log_lum; guided, guided_coeffs, guided_apply, guided_fast,
+  guided_fast_step; median_hv, median_row, transpose; base_detail_radius,
+  tone_base_detail, tone_base; BASE_DETAIL, BASE_DETAIL_MAX, BASE_EPS;
+  base sigma selection from plane_sigmas.
+crates/pipeline/src/finish.rs:
+  The local highlights/shadows weights and RGB exp2(delta) application in
+  finish_with. No complete finish pipeline or global ToneMap is imported.
+crates/raster/src/blur.rs:
+  box_radii, radii_for, box_row, box_v and gaussian (three-box approximation
+  with clamped edges).
+crates/raster/src/resample.rs:
+  weights, resize, Filter and Pixel behavior for Box downsampling and bilinear
+  coefficient upsampling used by guided_fast. The optional oracle extracts the
+  original module without tests (also compiling support/eval, madd, fit and half,
+  but calling only Box/Bilinear resize); the Swift adapter implements these two
+  filters.
+crates/pipeline/src/tests_tone.rs and tests_local.rs:
+  Median, fine-line, guided-filter, constant-field and edge fixture concepts.
+
+Modifications in PicEdit (2026): Swift/array adaptation; bounded execution and
+cancellation through the existing developer harness; explicit developed-pixel
+extended-linear-sRGB contract with an explicit RGB bridge into Rec.2020 before
+its original luminance weights are used; scalar gain applied to original sRGB
+(commuting with the linear bridge); explicit native/image-space scale;
+coverage-weighted median, means and resampling for independent alpha handling;
+and isolated tone-stage evaluation without Lightcraft's RAW development, global
+tone model, contrast/whites/blacks, color, sharpening or denoising pipeline.
+Details, numerical validation and limitations are documented in
+../../docs/LIGHTCRAFT-TONE-EVALUATION.md. Upstream extracted oracle functions
+remain temporary build inputs; their input-file hashes and frozen results are
+recorded beside the oracle.
+
+No upstream photographs, fonts, branding, camera matrices, neural model code,
+weights or other assets are transferred. No Rust dependency is added to the
+application or its normal build/test path.

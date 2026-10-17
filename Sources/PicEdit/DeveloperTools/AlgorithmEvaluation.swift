@@ -18,6 +18,10 @@ enum AlgorithmEvaluation {
     }
 
     static func run(_ options: Benchmark.Options) throws {
+        if options.evaluationMode.hasPrefix("tone-") {
+            try LightcraftToneEvaluation.run(options)
+            return
+        }
         guard !options.output.isEmpty, options.backend == "default", options.workers == 1,
               ["quality", "timing", "scale"].contains(options.evaluationMode),
               options.width * options.height <= 32_000_000 else {
@@ -61,7 +65,9 @@ enum AlgorithmEvaluation {
         let manifestURL = URL(fileURLWithPath: options.manifest)
         let manifest = try AlgorithmEvaluationManifest.load(from: manifestURL)
         let registry = try AlgorithmEvaluationCandidateRegistry.load(from: URL(fileURLWithPath: options.registry))
-        guard registry.candidates.filter({ $0.kind == "reference" }).allSatisfy({ !$0.implemented }),
+        guard registry.candidates.filter({ $0.kind == "reference" }).allSatisfy({
+                  !$0.implemented || ($0.id == "LC-03" && $0.comparisonManifest == "lc03-manifest.json")
+              }),
               Set(registry.candidates.filter({ $0.kind == "control" }).map(\.id)) == Set(["unchanged", "neutral-ci", "neutral-rec2020"]) else {
             throw Benchmark.failure("Register an executable comparison adapter before marking a reference implemented")
         }
@@ -137,14 +143,18 @@ enum AlgorithmEvaluation {
                 try png(result.previewImage(), output.appendingPathComponent("real-\(id).png"))
             }
         }
-        let decisions = registry.candidates.filter { $0.kind == "reference" }.map {
-            AlgorithmEvaluationGate.evaluate(candidate: $0, manifest: manifest, scenes: [])
+        let decisions = registry.candidates.filter { $0.kind == "reference" }.map { candidate in
+            if candidate.id == "LC-03", candidate.implemented {
+                return AlgorithmEvaluationGate.Decision(candidateID: candidate.id, status: "blocked",
+                    reasons: ["The LC-03 adapter is implemented; use --candidate LC-03 with lc03-manifest.json for its specialized matched-effect comparison"])
+            }
+            return AlgorithmEvaluationGate.evaluate(candidate: candidate, manifest: manifest, scenes: [])
         }
         guard sha(try Data(contentsOf: manifestURL)) == manifestSHA else { throw Benchmark.failure("Manifest changed during acceptance") }
         try writeJSON(["schema_version": 1, "manifest_sha256": manifestSHA, "records": records,
                        "candidates": try object(decisions),
                        "control_failures": failures, "candidate_decision": "blocked",
-                       "reason": "LC-03..06 reference adapters, matched-effect acceptance, visual review and real photographs are not yet available"],
+                       "reason": "LC-03 uses the specialized --candidate LC-03 comparison; LC-04..06 remain unimplemented. Generic controls do not establish algorithm acceptance."],
                       output.appendingPathComponent("quality.json"))
         guard failures.isEmpty else { throw Benchmark.failure("\(failures.count) control failures; see quality.json") }
     }

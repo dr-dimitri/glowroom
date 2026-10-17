@@ -1,0 +1,160 @@
+{
+  "schemaVersion": 1,
+  "protocolID": "LC03-tone-v1",
+  "sourceCommit": "f9b0c8c8a12c8fa17b7afb5baa00f9ee1bbd7b15",
+  "qualityWidth": 512,
+  "qualityHeight": 320,
+  "directions": [
+    {
+      "id": "shadows-positive-20",
+      "control": "shadows",
+      "value": 20,
+      "primary": true
+    },
+    {
+      "id": "shadows-negative-20",
+      "control": "shadows",
+      "value": -20,
+      "primary": true
+    },
+    {
+      "id": "highlights-positive-20",
+      "control": "highlights",
+      "value": 20,
+      "primary": true
+    },
+    {
+      "id": "highlights-negative-20",
+      "control": "highlights",
+      "value": -20,
+      "primary": true
+    },
+    {
+      "id": "shadows-positive-40",
+      "control": "shadows",
+      "value": 40,
+      "primary": false
+    },
+    {
+      "id": "shadows-negative-40",
+      "control": "shadows",
+      "value": -40,
+      "primary": false
+    },
+    {
+      "id": "highlights-positive-40",
+      "control": "highlights",
+      "value": 40,
+      "primary": false
+    },
+    {
+      "id": "highlights-negative-40",
+      "control": "highlights",
+      "value": -40,
+      "primary": false
+    }
+  ],
+  "matching": {
+    "sceneClasses": [
+      "ramp",
+      "constants",
+      "fine-lines",
+      "hard-edge",
+      "texture",
+      "colors",
+      "saturation",
+      "transparency",
+      "noise"
+    ],
+    "split": "tuning",
+    "shadowMaximumInputY": 0.25,
+    "highlightMinimumInputY": 0.5,
+    "minimumAbsoluteTarget": 0.002,
+    "maximumAbsoluteDeltaError": 0.003,
+    "maximumRelativeDeltaError": 0.05,
+    "coarseSteps": 33,
+    "refinementSteps": 33,
+    "candidateMinimum": -100,
+    "candidateMaximum": 100,
+    "toleranceRule": "target and measured must have the same nonzero sign; abs(target) >= minimumAbsoluteTarget; absolute error <= max(maximumAbsoluteDeltaError, maximumRelativeDeltaError * abs(target))",
+    "acceptanceRule": "Freeze one signed parameter per scene class and direction from that class's tuning variant; report achieved signed mean delta Y on its acceptance variant without refitting. This experimental effect normalization is not a universal slider mapping."
+  },
+  "primary": {
+    "sceneClass": "fine-lines",
+    "metric": "log_line_contrast_error",
+    "formula": "abs(outputContrastEV - inputContrastEV) / max(abs(inputContrastEV), minimumInputContrastEV)",
+    "contrastFormula": "For each known line pixel, log2(line Y / nearby same-half background Y), comparing the first background neighbor at offsets [-2,-1,1,2] in that order. Mean the relative error within each half; then equal-weight the two half means.",
+    "minimumInputContrastEV": 0.05,
+    "minimumRelativeImprovement": 0.1,
+    "maximumPerCaseRegression": 0.05,
+    "aggregation": "Equal-weight mean over bright-line/dark-background and dark-line/bright-background regions and the four matched moderate (+/-20) directions. Report each region/direction separately. +/-40 are stress diagnostics with a critical veto only when matched. No noise-energy or clipping credit.",
+    "roi": "Input-defined bright line Y>0.8 on dark background Y<0.1 in upper half; dark line Y<0.1 on bright background Y>0.8 in lower half. Exclude outer 2 pixels and rows within 2 pixels of the half boundary. Empty half is missing evidence."
+  },
+  "criticalLimits": {
+    "haloOvershoot": 0.02,
+    "haloUndershoot": 0.02,
+    "hueDeviationDegrees": 3.0,
+    "gamutFractionIncrease": 0.02,
+    "clippingFractionIncrease": 0.02,
+    "alphaError": 0.001
+  },
+  "halo": {
+    "sceneClass": "hard-edge",
+    "reference": "Same-side output plateau far from the edge, correcting any input-to-plateau residual; measure both positive and negative residual in fixed edge strips.",
+    "unit": "linear sRGB Y",
+    "limitRationale": "0.02 is the existing LC01 hard-edge critical limit, applied to tone-normalized edge residuals rather than intended global tone changes."
+  },
+  "criticalComparison": "Hue, gamut, clipping and alpha compare against the PicEdit result at the matched effect, with LC01 evidence/finite-value checks. Global LC01 RGB, gradient and local-envelope metrics remain diagnostics, not standalone tone-quality gates.",
+  "performanceBudgets": {
+    "maximumColdLatencyRatio": 1.25,
+    "maximumWarmLatencyRatio": 1.2,
+    "maximumPeakRSSRatio": 1.25,
+    "sizes": [
+      [
+        512,
+        320
+      ],
+      [
+        2400,
+        1600
+      ],
+      [
+        4096,
+        2731
+      ],
+      [
+        4608,
+        3072
+      ]
+    ],
+    "minimumColdProcesses": 5,
+    "minimumWarmSamplesPerProcess": 5
+  },
+  "stages": {
+    "primary": "Developed input -> existing Denoise -> existing AutoTone -> LC03 tone with Exposure exactly once -> existing remaining tone/color -> existing Presence",
+    "diagnosticAlternative": "LC03 before existing AutoTone; separate diagnostic only, never pooled into primary acceptance",
+    "exposureEV": [
+      -0.7,
+      0.0,
+      0.7
+    ],
+    "autoToneAmount": [
+      0,
+      100
+    ],
+    "luminanceNoiseReduction": 40,
+    "texture": 25,
+    "clarity": 15
+  },
+  "decisionOrder": [
+    "A verified critical regression, an attributable budget violation, or a completed matched comparison without the required primary gain is no-go for this candidate.",
+    "Otherwise absent matching, required scenes, visual approval, accelerated-path parity, performance or integration evidence is blocked, never go.",
+    "Go requires the primary gain, all critical cases, matching, complete required evidence and visual approval; production integration additionally requires LC02."
+  ],
+  "requiredMissingUntilMeasured": [
+    "Licensed real portraits, backlit natural edges, landscape texture and high-ISO photographs",
+    "Blinded visual approval",
+    "Production cache, rapid slider/image changes, cancellation and preview/export integration",
+    "Accelerated path parity if an accelerated path is proposed"
+  ]
+}

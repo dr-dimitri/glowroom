@@ -1,0 +1,653 @@
+{
+  "manifestSHA256" : "19153efe6b749c6554390f0cfcb7025e8ed28e600358c87cf95290bcb142e371",
+  "records" : [
+    {
+      "directionID" : "shadows-positive-20",
+      "inputSHA256" : "944f226bbe00c5b44165b9f0b91eece5626574b3d75914af2ada38212810743b",
+      "matched" : false,
+      "measured" : 0.006400220371415344,
+      "parameter" : 100,
+      "sceneClass" : "ramp",
+      "target" : 0.010980640239722561
+    },
+    {
+      "directionID" : "shadows-negative-20",
+      "inputSHA256" : "944f226bbe00c5b44165b9f0b91eece5626574b3d75914af2ada38212810743b",
+      "matched" : false,
+      "measured" : -0.004397727271407348,
+      "parameter" : -100,
+      "sceneClass" : "ramp",
+      "target" : -0.009932240827538408
+    },
+    {
+      "directionID" : "highlights-positive-20",
+      "inputSHA256" : "944f226bbe00c5b44165b9f0b91eece5626574b3d75914af2ada38212810743b",
+      "matched" : true,
+      "measured" : 0.069753176449739843,
+      "parameter" : 8.3984375,
+      "sceneClass" : "ramp",
+      "target" : 0.069143149070441723
+    },
+    {
+      "directionID" : "highlights-negative-20",
+      "inputSHA256" : "944f226bbe00c5b44165b9f0b91eece5626574b3d75914af2ada38212810743b",
+      "matched" : true,
+      "measured" : -0.075039896047019286,
+      "parameter" : -9.9609375,
+      "sceneClass" : "ramp",
+      "target" : -0.074424937018193305
+    },
+    {
+      "directionID" : "shadows-positive-40",
+      "inputSHA256" : "944f226bbe00c5b44165b9f0b91eece5626574b3d75914af2ada38212810743b",
+      "matched" : false,
+      "measured" : 0.006400220371415344,
+      "parameter" : 100,
+      "sceneClass" : "ramp",
+      "target" : 0.023054754605254857
+    },
+    {
+      "directionID" : "shadows-negative-40",
+      "inputSHA256" : "944f226bbe00c5b44165b9f0b91eece5626574b3d75914af2ada38212810743b",
+      "matched" : false,
+      "measured" : -0.004397727271407348,
+      "parameter" : -100,
+      "sceneClass" : "ramp",
+      "target" : -0.018869440560365547
+    },
+    {
+      "directionID" : "highlights-positive-40",
+      "inputSHA256" : "944f226bbe00c5b44165b9f0b91eece5626574b3d75914af2ada38212810743b",
+      "matched" : true,
+      "measured" : 0.12405419352871831,
+      "parameter" : 14.453125,
+      "sceneClass" : "ramp",
+      "target" : 0.12400626973249018
+    },
+    {
+      "directionID" : "highlights-negative-40",
+      "inputSHA256" : "944f226bbe00c5b44165b9f0b91eece5626574b3d75914af2ada38212810743b",
+      "matched" : true,
+      "measured" : -0.14503932906991396,
+      "parameter" : -20.3125,
+      "sceneClass" : "ramp",
+      "target" : -0.14462664839811623
+    },
+    {
+      "directionID" : "shadows-positive-20",
+      "inputSHA256" : "0496c8169027656551f7db7be19ffd48348d3c2fda8dfa2526f06019da3f4b45",
+      "matched" : true,
+      "measured" : 0.011617815707086265,
+      "parameter" : 96.2890625,
+      "sceneClass" : "constants",
+      "target" : 0.011623979698924813
+    },
+    {
+      "directionID" : "shadows-negative-20",
+      "inputSHA256" : "0496c8169027656551f7db7be19ffd48348d3c2fda8dfa2526f06019da3f4b45",
+      "matched" : false,
+      "measured" : -0.006790666338349638,
+      "parameter" : -100,
+      "sceneClass" : "constants",
+      "target" : -0.009931247379427077
+    },
+    {
+      "directionID" : "highlights-positive-20",
+      "inputSHA256" : "0496c8169027656551f7db7be19ffd48348d3c2fda8dfa2526f06019da3f4b45",
+      "matched" : true,
+      "measured" : 0.047592772696824638,
+      "parameter" : 4.296875,
+      "sceneClass" : "constants",
+      "target" : 0.046966254711151123
+    },
+    {
+      "directionID" : "highlights-negative-20",
+      "inputSHA256" : "0496c8169027656551f7db7be19ffd48348d3c2fda8dfa2526f06019da3f4b45",
+      "matched" : true,
+      "measured" : -0.092300168993499354,
+      "parameter" : -8.984375,
+      "sceneClass" : "constants",
+      "target" : -0.091561436653137207
+    },
+    {
+      "directionID" : "shadows-positive-40",
+      "inputSHA256" : "0496c8169027656551f7db7be19ffd48348d3c2fda8dfa2526f06019da3f4b45",
+      "matched" : false,
+      "measured" : 0.012232148676457655,
+      "parameter" : 100,
+      "sceneClass" : "constants",
+      "target" : 0.025004167146107648
+    },
+    {
+      "directionID" : "shadows-negative-40",
+      "inputSHA256" : "0496c8169027656551f7db7be19ffd48348d3c2fda8dfa2526f06019da3f4b45",
+      "matched" : false,
+      "measured" : -0.006790666338349638,
+      "parameter" : -100,
+      "sceneClass" : "constants",
+      "target" : -0.018247413749122643
+    },
+    {
+      "directionID" : "highlights-positive-40",
+      "inputSHA256" : "0496c8169027656551f7db7be19ffd48348d3c2fda8dfa2526f06019da3f4b45",
+      "matched" : true,
+      "measured" : 0.049811858746277936,
+      "parameter" : 4.4921875,
+      "sceneClass" : "constants",
+      "target" : 0.050000011920928955
+    },
+    {
+      "directionID" : "highlights-negative-40",
+      "inputSHA256" : "0496c8169027656551f7db7be19ffd48348d3c2fda8dfa2526f06019da3f4b45",
+      "matched" : true,
+      "measured" : -0.17734864246319321,
+      "parameter" : -18.1640625,
+      "sceneClass" : "constants",
+      "target" : -0.17808282375335693
+    },
+    {
+      "directionID" : "shadows-positive-20",
+      "inputSHA256" : "5aea417fa811306af1ab2352e4b3fa73a01be33ba92e6e08e89a5cf67a9aeaa6",
+      "matched" : true,
+      "measured" : 0.013835901141836115,
+      "parameter" : 84.5703125,
+      "sceneClass" : "fine-lines",
+      "target" : 0.013825211673974991
+    },
+    {
+      "directionID" : "shadows-negative-20",
+      "inputSHA256" : "5aea417fa811306af1ab2352e4b3fa73a01be33ba92e6e08e89a5cf67a9aeaa6",
+      "matched" : true,
+      "measured" : -0.010939793275951291,
+      "parameter" : -100,
+      "sceneClass" : "fine-lines",
+      "target" : -0.011360079050064087
+    },
+    {
+      "directionID" : "highlights-positive-20",
+      "inputSHA256" : "5aea417fa811306af1ab2352e4b3fa73a01be33ba92e6e08e89a5cf67a9aeaa6",
+      "matched" : true,
+      "measured" : 0.080209572098405763,
+      "parameter" : 8.3984375,
+      "sceneClass" : "fine-lines",
+      "target" : 0.079999983310699463
+    },
+    {
+      "directionID" : "highlights-negative-20",
+      "inputSHA256" : "5aea417fa811306af1ab2352e4b3fa73a01be33ba92e6e08e89a5cf67a9aeaa6",
+      "matched" : true,
+      "measured" : -0.090599798558869307,
+      "parameter" : -10.546875,
+      "sceneClass" : "fine-lines",
+      "target" : -0.089967787265777602
+    },
+    {
+      "directionID" : "shadows-positive-40",
+      "inputSHA256" : "5aea417fa811306af1ab2352e4b3fa73a01be33ba92e6e08e89a5cf67a9aeaa6",
+      "matched" : false,
+      "measured" : 0.016962040224416872,
+      "parameter" : 100,
+      "sceneClass" : "fine-lines",
+      "target" : 0.030191529542207718
+    },
+    {
+      "directionID" : "shadows-negative-40",
+      "inputSHA256" : "5aea417fa811306af1ab2352e4b3fa73a01be33ba92e6e08e89a5cf67a9aeaa6",
+      "matched" : false,
+      "measured" : -0.010939793275951291,
+      "parameter" : -100,
+      "sceneClass" : "fine-lines",
+      "target" : -0.020341778174042702
+    },
+    {
+      "directionID" : "highlights-positive-40",
+      "inputSHA256" : "5aea417fa811306af1ab2352e4b3fa73a01be33ba92e6e08e89a5cf67a9aeaa6",
+      "matched" : true,
+      "measured" : 0.080209572098405763,
+      "parameter" : 8.3984375,
+      "sceneClass" : "fine-lines",
+      "target" : 0.079999983310699463
+    },
+    {
+      "directionID" : "highlights-negative-40",
+      "inputSHA256" : "5aea417fa811306af1ab2352e4b3fa73a01be33ba92e6e08e89a5cf67a9aeaa6",
+      "matched" : true,
+      "measured" : -0.17529677989172215,
+      "parameter" : -21.6796875,
+      "sceneClass" : "fine-lines",
+      "target" : -0.17491048574447632
+    },
+    {
+      "directionID" : "shadows-positive-20",
+      "inputSHA256" : "31e3b5a0b13a3605fc54da384e266285495daf9f01b8b0a9a80490e23346dc0f",
+      "matched" : true,
+      "measured" : 0.01421951515035289,
+      "parameter" : 79.1015625,
+      "sceneClass" : "hard-edge",
+      "target" : 0.014233030378818512
+    },
+    {
+      "directionID" : "shadows-negative-20",
+      "inputSHA256" : "31e3b5a0b13a3605fc54da384e266285495daf9f01b8b0a9a80490e23346dc0f",
+      "matched" : true,
+      "measured" : -0.011914068690316526,
+      "parameter" : -91.9921875,
+      "sceneClass" : "hard-edge",
+      "target" : -0.011908171698451042
+    },
+    {
+      "directionID" : "highlights-positive-20",
+      "inputSHA256" : "31e3b5a0b13a3605fc54da384e266285495daf9f01b8b0a9a80490e23346dc0f",
+      "matched" : true,
+      "measured" : 0.092307780914416077,
+      "parameter" : 9.1796875,
+      "sceneClass" : "hard-edge",
+      "target" : 0.091480076313018813
+    },
+    {
+      "directionID" : "highlights-negative-20",
+      "inputSHA256" : "31e3b5a0b13a3605fc54da384e266285495daf9f01b8b0a9a80490e23346dc0f",
+      "matched" : true,
+      "measured" : -0.086721953516826031,
+      "parameter" : -9.5703125,
+      "sceneClass" : "hard-edge",
+      "target" : -0.086460709571838365
+    },
+    {
+      "directionID" : "shadows-positive-40",
+      "inputSHA256" : "31e3b5a0b13a3605fc54da384e266285495daf9f01b8b0a9a80490e23346dc0f",
+      "matched" : false,
+      "measured" : 0.018757259353697008,
+      "parameter" : 100,
+      "sceneClass" : "hard-edge",
+      "target" : 0.030856311321258538
+    },
+    {
+      "directionID" : "shadows-negative-40",
+      "inputSHA256" : "31e3b5a0b13a3605fc54da384e266285495daf9f01b8b0a9a80490e23346dc0f",
+      "matched" : false,
+      "measured" : -0.012765252450662956,
+      "parameter" : -100,
+      "sceneClass" : "hard-edge",
+      "target" : -0.021565251052379608
+    },
+    {
+      "directionID" : "highlights-positive-40",
+      "inputSHA256" : "31e3b5a0b13a3605fc54da384e266285495daf9f01b8b0a9a80490e23346dc0f",
+      "matched" : true,
+      "measured" : 0.14102716982160929,
+      "parameter" : 13.671875,
+      "sceneClass" : "hard-edge",
+      "target" : 0.13999998569488528
+    },
+    {
+      "directionID" : "highlights-negative-40",
+      "inputSHA256" : "31e3b5a0b13a3605fc54da384e266285495daf9f01b8b0a9a80490e23346dc0f",
+      "matched" : true,
+      "measured" : -0.16770833517875869,
+      "parameter" : -19.53125,
+      "sceneClass" : "hard-edge",
+      "target" : -0.16794985532760617
+    },
+    {
+      "directionID" : "shadows-positive-20",
+      "inputSHA256" : "96af65d2e0c39372139e1eee278d79c0f1bc41c5507d221ea10693b7402dad34",
+      "matched" : false,
+      "measured" : 0,
+      "parameter" : 0,
+      "sceneClass" : "texture",
+      "target" : 0.007281736403834759
+    },
+    {
+      "directionID" : "shadows-negative-20",
+      "inputSHA256" : "96af65d2e0c39372139e1eee278d79c0f1bc41c5507d221ea10693b7402dad34",
+      "matched" : false,
+      "measured" : 0,
+      "parameter" : 0,
+      "sceneClass" : "texture",
+      "target" : -0.0071237742430775835
+    },
+    {
+      "directionID" : "highlights-positive-20",
+      "inputSHA256" : "96af65d2e0c39372139e1eee278d79c0f1bc41c5507d221ea10693b7402dad34",
+      "matched" : false,
+      "measured" : 0,
+      "parameter" : 0,
+      "sceneClass" : "texture",
+      "target" : 0
+    },
+    {
+      "directionID" : "highlights-negative-20",
+      "inputSHA256" : "96af65d2e0c39372139e1eee278d79c0f1bc41c5507d221ea10693b7402dad34",
+      "matched" : false,
+      "measured" : 0,
+      "parameter" : 0,
+      "sceneClass" : "texture",
+      "target" : 0
+    },
+    {
+      "directionID" : "shadows-positive-40",
+      "inputSHA256" : "96af65d2e0c39372139e1eee278d79c0f1bc41c5507d221ea10693b7402dad34",
+      "matched" : false,
+      "measured" : 0,
+      "parameter" : 0,
+      "sceneClass" : "texture",
+      "target" : 0.014722292184421443
+    },
+    {
+      "directionID" : "shadows-negative-40",
+      "inputSHA256" : "96af65d2e0c39372139e1eee278d79c0f1bc41c5507d221ea10693b7402dad34",
+      "matched" : false,
+      "measured" : 0,
+      "parameter" : 0,
+      "sceneClass" : "texture",
+      "target" : -0.014090109734905836
+    },
+    {
+      "directionID" : "highlights-positive-40",
+      "inputSHA256" : "96af65d2e0c39372139e1eee278d79c0f1bc41c5507d221ea10693b7402dad34",
+      "matched" : false,
+      "measured" : 0,
+      "parameter" : 0,
+      "sceneClass" : "texture",
+      "target" : 0
+    },
+    {
+      "directionID" : "highlights-negative-40",
+      "inputSHA256" : "96af65d2e0c39372139e1eee278d79c0f1bc41c5507d221ea10693b7402dad34",
+      "matched" : false,
+      "measured" : 0,
+      "parameter" : 0,
+      "sceneClass" : "texture",
+      "target" : 0
+    },
+    {
+      "directionID" : "shadows-positive-20",
+      "inputSHA256" : "ba8ed231a2b2a6e452ec6bfb7c5a663611e1a1d15157b2e1bef51be38c5555b0",
+      "matched" : false,
+      "measured" : 0.0040895087709948204,
+      "parameter" : 100,
+      "sceneClass" : "colors",
+      "target" : 0.011162799485949847
+    },
+    {
+      "directionID" : "shadows-negative-20",
+      "inputSHA256" : "ba8ed231a2b2a6e452ec6bfb7c5a663611e1a1d15157b2e1bef51be38c5555b0",
+      "matched" : false,
+      "measured" : -0.0034451320468290242,
+      "parameter" : -100,
+      "sceneClass" : "colors",
+      "target" : -0.010845107823840032
+    },
+    {
+      "directionID" : "highlights-positive-20",
+      "inputSHA256" : "ba8ed231a2b2a6e452ec6bfb7c5a663611e1a1d15157b2e1bef51be38c5555b0",
+      "matched" : true,
+      "measured" : 0.042244876519760624,
+      "parameter" : 7.6171875,
+      "sceneClass" : "colors",
+      "target" : 0.042803656398054842
+    },
+    {
+      "directionID" : "highlights-negative-20",
+      "inputSHA256" : "ba8ed231a2b2a6e452ec6bfb7c5a663611e1a1d15157b2e1bef51be38c5555b0",
+      "matched" : true,
+      "measured" : -0.043293716320799445,
+      "parameter" : -8.3984375,
+      "sceneClass" : "colors",
+      "target" : -0.04310808718098446
+    },
+    {
+      "directionID" : "shadows-positive-40",
+      "inputSHA256" : "ba8ed231a2b2a6e452ec6bfb7c5a663611e1a1d15157b2e1bef51be38c5555b0",
+      "matched" : false,
+      "measured" : 0.0040895087709948204,
+      "parameter" : 100,
+      "sceneClass" : "colors",
+      "target" : 0.022607656648767363
+    },
+    {
+      "directionID" : "shadows-negative-40",
+      "inputSHA256" : "ba8ed231a2b2a6e452ec6bfb7c5a663611e1a1d15157b2e1bef51be38c5555b0",
+      "matched" : false,
+      "measured" : -0.0034451320468290242,
+      "parameter" : -100,
+      "sceneClass" : "colors",
+      "target" : -0.02111173161206837
+    },
+    {
+      "directionID" : "highlights-positive-40",
+      "inputSHA256" : "ba8ed231a2b2a6e452ec6bfb7c5a663611e1a1d15157b2e1bef51be38c5555b0",
+      "matched" : true,
+      "measured" : 0.082743801993650834,
+      "parameter" : 14.453125,
+      "sceneClass" : "colors",
+      "target" : 0.082941211562419612
+    },
+    {
+      "directionID" : "highlights-negative-40",
+      "inputSHA256" : "ba8ed231a2b2a6e452ec6bfb7c5a663611e1a1d15157b2e1bef51be38c5555b0",
+      "matched" : true,
+      "measured" : -0.084287575752027832,
+      "parameter" : -16.9921875,
+      "sceneClass" : "colors",
+      "target" : -0.0842713420778681
+    },
+    {
+      "directionID" : "shadows-positive-20",
+      "inputSHA256" : "b439a950639122d56676e0aff8d35d5110dcfc06a8b7ef12c3328e7f04438a5f",
+      "matched" : false,
+      "measured" : 0.00027313710126356883,
+      "parameter" : 100,
+      "sceneClass" : "saturation",
+      "target" : 0.010083535333274506
+    },
+    {
+      "directionID" : "shadows-negative-20",
+      "inputSHA256" : "b439a950639122d56676e0aff8d35d5110dcfc06a8b7ef12c3328e7f04438a5f",
+      "matched" : false,
+      "measured" : -0.0002690359923684012,
+      "parameter" : -100,
+      "sceneClass" : "saturation",
+      "target" : -0.0098301402811602698
+    },
+    {
+      "directionID" : "highlights-positive-20",
+      "inputSHA256" : "b439a950639122d56676e0aff8d35d5110dcfc06a8b7ef12c3328e7f04438a5f",
+      "matched" : true,
+      "measured" : 0.05233812218167011,
+      "parameter" : 8.0078125,
+      "sceneClass" : "saturation",
+      "target" : 0.052560162318881436
+    },
+    {
+      "directionID" : "highlights-negative-20",
+      "inputSHA256" : "b439a950639122d56676e0aff8d35d5110dcfc06a8b7ef12c3328e7f04438a5f",
+      "matched" : true,
+      "measured" : -0.055119684603589535,
+      "parameter" : -9.1796875,
+      "sceneClass" : "saturation",
+      "target" : -0.055188527668592398
+    },
+    {
+      "directionID" : "shadows-positive-40",
+      "inputSHA256" : "b439a950639122d56676e0aff8d35d5110dcfc06a8b7ef12c3328e7f04438a5f",
+      "matched" : false,
+      "measured" : 0.00027313710126356883,
+      "parameter" : 100,
+      "sceneClass" : "saturation",
+      "target" : 0.02035569141233512
+    },
+    {
+      "directionID" : "shadows-negative-40",
+      "inputSHA256" : "b439a950639122d56676e0aff8d35d5110dcfc06a8b7ef12c3328e7f04438a5f",
+      "matched" : false,
+      "measured" : -0.0002690359923684012,
+      "parameter" : -100,
+      "sceneClass" : "saturation",
+      "target" : -0.019255446818123783
+    },
+    {
+      "directionID" : "highlights-positive-40",
+      "inputSHA256" : "b439a950639122d56676e0aff8d35d5110dcfc06a8b7ef12c3328e7f04438a5f",
+      "matched" : true,
+      "measured" : 0.097577559612365375,
+      "parameter" : 14.453125,
+      "sceneClass" : "saturation",
+      "target" : 0.097207766287119982
+    },
+    {
+      "directionID" : "highlights-negative-40",
+      "inputSHA256" : "b439a950639122d56676e0aff8d35d5110dcfc06a8b7ef12c3328e7f04438a5f",
+      "matched" : true,
+      "measured" : -0.10750673388194028,
+      "parameter" : -18.75,
+      "sceneClass" : "saturation",
+      "target" : -0.10745959295970051
+    },
+    {
+      "directionID" : "shadows-positive-20",
+      "inputSHA256" : "8d9762b4ab96ff1c7d503cd6b65438ddc56f6fdf8c5135f0e24d93e8b8523579",
+      "matched" : false,
+      "measured" : 0,
+      "parameter" : 0,
+      "sceneClass" : "transparency",
+      "target" : 0
+    },
+    {
+      "directionID" : "shadows-negative-20",
+      "inputSHA256" : "8d9762b4ab96ff1c7d503cd6b65438ddc56f6fdf8c5135f0e24d93e8b8523579",
+      "matched" : false,
+      "measured" : 0,
+      "parameter" : 0,
+      "sceneClass" : "transparency",
+      "target" : 0
+    },
+    {
+      "directionID" : "highlights-positive-20",
+      "inputSHA256" : "8d9762b4ab96ff1c7d503cd6b65438ddc56f6fdf8c5135f0e24d93e8b8523579",
+      "matched" : false,
+      "measured" : 0,
+      "parameter" : 0,
+      "sceneClass" : "transparency",
+      "target" : 0
+    },
+    {
+      "directionID" : "highlights-negative-20",
+      "inputSHA256" : "8d9762b4ab96ff1c7d503cd6b65438ddc56f6fdf8c5135f0e24d93e8b8523579",
+      "matched" : false,
+      "measured" : 0,
+      "parameter" : 0,
+      "sceneClass" : "transparency",
+      "target" : 0
+    },
+    {
+      "directionID" : "shadows-positive-40",
+      "inputSHA256" : "8d9762b4ab96ff1c7d503cd6b65438ddc56f6fdf8c5135f0e24d93e8b8523579",
+      "matched" : false,
+      "measured" : 0,
+      "parameter" : 0,
+      "sceneClass" : "transparency",
+      "target" : 0
+    },
+    {
+      "directionID" : "shadows-negative-40",
+      "inputSHA256" : "8d9762b4ab96ff1c7d503cd6b65438ddc56f6fdf8c5135f0e24d93e8b8523579",
+      "matched" : false,
+      "measured" : 0,
+      "parameter" : 0,
+      "sceneClass" : "transparency",
+      "target" : 0
+    },
+    {
+      "directionID" : "highlights-positive-40",
+      "inputSHA256" : "8d9762b4ab96ff1c7d503cd6b65438ddc56f6fdf8c5135f0e24d93e8b8523579",
+      "matched" : false,
+      "measured" : 0,
+      "parameter" : 0,
+      "sceneClass" : "transparency",
+      "target" : 0
+    },
+    {
+      "directionID" : "highlights-negative-40",
+      "inputSHA256" : "8d9762b4ab96ff1c7d503cd6b65438ddc56f6fdf8c5135f0e24d93e8b8523579",
+      "matched" : false,
+      "measured" : 0,
+      "parameter" : 0,
+      "sceneClass" : "transparency",
+      "target" : 0
+    },
+    {
+      "directionID" : "shadows-positive-20",
+      "inputSHA256" : "4fa0d71da208964d8c602e1adbb073fc428673dd9ed5874ea060886097298905",
+      "matched" : false,
+      "measured" : 0.0049415206366497395,
+      "parameter" : 100,
+      "sceneClass" : "noise",
+      "target" : 0.013916088890280454
+    },
+    {
+      "directionID" : "shadows-negative-20",
+      "inputSHA256" : "4fa0d71da208964d8c602e1adbb073fc428673dd9ed5874ea060886097298905",
+      "matched" : false,
+      "measured" : -0.004719620162346406,
+      "parameter" : -100,
+      "sceneClass" : "noise",
+      "target" : -0.012964697989385082
+    },
+    {
+      "directionID" : "highlights-positive-20",
+      "inputSHA256" : "4fa0d71da208964d8c602e1adbb073fc428673dd9ed5874ea060886097298905",
+      "matched" : true,
+      "measured" : 0.048886509264646411,
+      "parameter" : 10.7421875,
+      "sceneClass" : "noise",
+      "target" : 0.04905123403276828
+    },
+    {
+      "directionID" : "highlights-negative-20",
+      "inputSHA256" : "4fa0d71da208964d8c602e1adbb073fc428673dd9ed5874ea060886097298905",
+      "matched" : true,
+      "measured" : -0.046949647328339325,
+      "parameter" : -11.328125,
+      "sceneClass" : "noise",
+      "target" : -0.046613218022877906
+    },
+    {
+      "directionID" : "shadows-positive-40",
+      "inputSHA256" : "4fa0d71da208964d8c602e1adbb073fc428673dd9ed5874ea060886097298905",
+      "matched" : false,
+      "measured" : 0.0049415206366497395,
+      "parameter" : 100,
+      "sceneClass" : "noise",
+      "target" : 0.028794841184842289
+    },
+    {
+      "directionID" : "shadows-negative-40",
+      "inputSHA256" : "4fa0d71da208964d8c602e1adbb073fc428673dd9ed5874ea060886097298905",
+      "matched" : false,
+      "measured" : -0.004719620162346406,
+      "parameter" : -100,
+      "sceneClass" : "noise",
+      "target" : -0.02498973267811315
+    },
+    {
+      "directionID" : "highlights-positive-40",
+      "inputSHA256" : "4fa0d71da208964d8c602e1adbb073fc428673dd9ed5874ea060886097298905",
+      "matched" : true,
+      "measured" : 0.10040155483881912,
+      "parameter" : 21.09375,
+      "sceneClass" : "noise",
+      "target" : 0.10056115171345981
+    },
+    {
+      "directionID" : "highlights-negative-40",
+      "inputSHA256" : "4fa0d71da208964d8c602e1adbb073fc428673dd9ed5874ea060886097298905",
+      "matched" : true,
+      "measured" : -0.090998281414192389,
+      "parameter" : -23.046875,
+      "sceneClass" : "noise",
+      "target" : -0.090809328217774488
+    }
+  ]
+}
