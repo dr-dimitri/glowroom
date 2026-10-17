@@ -1,5 +1,5 @@
-Lightcraft LC-03 evaluation reference
-===================================
+Lightcraft LC-03 / LC-04 evaluation references
+============================================
 
 Upstream: https://github.com/dr-dimitri/lightcraft
 Pinned commit: f9b0c8c8a12c8fa17b7afb5baa00f9ee1bbd7b15
@@ -49,3 +49,22 @@ recorded beside the oracle.
 No upstream photographs, fonts, branding, camera matrices, neural model code,
 weights or other assets are transferred. No Rust dependency is added to the
 application or its normal build/test path.
+
+LC-04 adds the following developer-only adaptations at the same pinned commit:
+crates/pipeline/src/local.rs:
+  CLARITY_EPS and the clarity/texture sigma selection from plane_sigmas;
+  log_lum, guided_fast and the shared Gaussian/resampling functions above.
+crates/pipeline/src/finish.rs:
+  The clarity detail clamp, midtone weight, texture detail clamp and tame weight,
+  smooth, and RGB exp2(delta) application. With only clarity active, the tone
+  base is log_l, matching local::prepare's fallback.
+crates/color/src/lib.rs and crates/pipeline/src/tone.rs:
+  LUMA_2020, luminance_2020 and GREY for the independent numeric oracle.
+
+LC-04 uses the common bounded Swift filters and adds coverage-normalized Gaussian
+convolution for alpha. Same-radius Gaussian clarity, unclamped log texture and
+the existing PicEdit gamma-domain texture formula are explicitly PicEdit
+ablations, not original Lightcraft algorithms. Strength is separate from
+immutable prepared planes. Upstream original bodies and unchanged finish
+statements are temporary oracle inputs only; hashes and results are preserved
+in lc04-reference-oracle. See ../../docs/LIGHTCRAFT-DETAIL-EVALUATION.md.

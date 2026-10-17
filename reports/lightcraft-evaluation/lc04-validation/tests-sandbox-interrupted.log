@@ -1,0 +1,208 @@
+warning: /Users/wolfgangbauer/Library/org.swift.swiftpm/configuration is not accessible or not writable, disabling user-level cache features.
+warning: /Users/wolfgangbauer/Library/org.swift.swiftpm/security is not accessible or not writable, disabling user-level cache features.
+warning: /Users/wolfgangbauer/Library/Caches/org.swift.swiftpm is not accessible or not writable, disabling user-level cache features.
+warning: 'picedit': failed storing manifest for 'picedit' in cache: attempt to write a readonly database
+warning: 'swift-transformers': failed storing manifest for 'swift-transformers' in cache: attempt to write a readonly database
+warning: 'swift-collections': failed storing manifest for 'swift-collections' in cache: attempt to write a readonly database
+warning: 'swift-huggingface': failed storing manifest for 'swift-huggingface' in cache: attempt to write a readonly database
+warning: 'yyjson': failed storing manifest for 'yyjson' in cache: attempt to write a readonly database
+warning: 'swift-jinja': failed storing manifest for 'swift-jinja' in cache: attempt to write a readonly database
+warning: 'swift-crypto': failed storing manifest for 'swift-crypto' in cache: attempt to write a readonly database
+warning: 'swift-asn1': failed storing manifest for 'swift-asn1' in cache: attempt to write a readonly database
+warning: 'eventsource': failed storing manifest for 'eventsource' in cache: attempt to write a readonly database
+warning: 'picedit': dependency 'swift-collections' is not used by any target
+warning: 'picedit': dependency 'swift-collections' is not used by any target
+Building for debugging...
+[Computing dependencies]
+[Using on-disk description]
+[3 / 27] PicEdit-product
+[7 / 37] PicEdit
+[8 / 37] PicEdit-product
+[9 / 37] PicEdit-product
+[10 / 37] PicEdit
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/AutoTone.swift:243:33: warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+241 |     }
+242 |
+243 |     private static let kernel = CIColorKernel(source: """
+    |                                 `- warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+244 |         kernel vec4 automaticTone(__sample original, vec4 c0, vec4 c1, vec4 c2, vec4 c3, vec4 c4, vec4 c5) {
+245 |             vec4 o = unpremultiply(original);
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/EditRenderer.swift:276:40: warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+274 |     // renderer, including older Intel Macs. No external Metal compiler, model,
+275 |     // network service, or GPU-generation-specific shader library is required.
+276 |     private static let denoiseKernel = CIColorKernel(source: """
+    |                                        `- warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+277 |         kernel vec4 separateNoise(__sample original, __sample lumaBlur, __sample chromaBlur, float lumaAmount, float chromaAmount) {
+278 |             vec4 o = unpremultiply(original);
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/EditRenderer.swift:294:37: warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+292 |         """)
+293 |
+294 |     private static let toneKernel = CIColorKernel(source: """
+    |                                     `- warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+295 |         kernel vec4 toneAndColor(__sample original, float exposure, float contrast, float highlights, float shadows, float whites, float blacks, float dehaze, float vibrance, float saturation) {
+296 |             vec4 o = unpremultiply(original);
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/EditRenderer.swift:321:41: warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+319 |         """)
+320 |
+321 |     private static let presenceKernel = CIColorKernel(source: """
+    |                                         `- warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+322 |         kernel vec4 localPresence(__sample original, __sample fineBlur, __sample broadBlur, float texture, float clarity) {
+323 |             vec4 o = unpremultiply(original);
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/MaskEditingModel.swift:116:51: warning: no 'async' operations occur within 'await' expression [#UnnecessaryEffectMarker]
+114 |     private var worker: Task<Void, Never>?
+115 |
+116 |     init(rasterizer: @escaping Rasterizer = { try await MaskOverlayWorker.shared.rasterize($0) }) {
+    |                                                   `- warning: no 'async' operations occur within 'await' expression [#UnnecessaryEffectMarker]
+117 |         self.rasterizer = rasterizer
+118 |     }
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/MaskCompositor.swift:166:38: warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+164 |     }
+165 |
+166 |     private static let blendKernel = CIColorKernel(source: """
+    |                                      `- warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+167 |         kernel vec4 piceditMaskBlend(__sample base, __sample candidate, __sample mask) {
+168 |             return mix(base, candidate, mask.r);
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
+[11 / 37] PicEdit
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/AutoTone.swift:243:33: warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+241 |     }
+242 |
+243 |     private static let kernel = CIColorKernel(source: """
+    |                                 `- warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+244 |         kernel vec4 automaticTone(__sample original, vec4 c0, vec4 c1, vec4 c2, vec4 c3, vec4 c4, vec4 c5) {
+245 |             vec4 o = unpremultiply(original);
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/EditRenderer.swift:276:40: warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+274 |     // renderer, including older Intel Macs. No external Metal compiler, model,
+275 |     // network service, or GPU-generation-specific shader library is required.
+276 |     private static let denoiseKernel = CIColorKernel(source: """
+    |                                        `- warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+277 |         kernel vec4 separateNoise(__sample original, __sample lumaBlur, __sample chromaBlur, float lumaAmount, float chromaAmount) {
+278 |             vec4 o = unpremultiply(original);
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/EditRenderer.swift:294:37: warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+292 |         """)
+293 |
+294 |     private static let toneKernel = CIColorKernel(source: """
+    |                                     `- warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+295 |         kernel vec4 toneAndColor(__sample original, float exposure, float contrast, float highlights, float shadows, float whites, float blacks, float dehaze, float vibrance, float saturation) {
+296 |             vec4 o = unpremultiply(original);
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/EditRenderer.swift:321:41: warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+319 |         """)
+320 |
+321 |     private static let presenceKernel = CIColorKernel(source: """
+    |                                         `- warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+322 |         kernel vec4 localPresence(__sample original, __sample fineBlur, __sample broadBlur, float texture, float clarity) {
+323 |             vec4 o = unpremultiply(original);
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/MaskEditingModel.swift:116:51: warning: no 'async' operations occur within 'await' expression [#UnnecessaryEffectMarker]
+114 |     private var worker: Task<Void, Never>?
+115 |
+116 |     init(rasterizer: @escaping Rasterizer = { try await MaskOverlayWorker.shared.rasterize($0) }) {
+    |                                                   `- warning: no 'async' operations occur within 'await' expression [#UnnecessaryEffectMarker]
+117 |         self.rasterizer = rasterizer
+118 |     }
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/MaskCompositor.swift:166:38: warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+164 |     }
+165 |
+166 |     private static let blendKernel = CIColorKernel(source: """
+    |                                      `- warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+167 |         kernel vec4 piceditMaskBlend(__sample base, __sample candidate, __sample mask) {
+168 |             return mix(base, candidate, mask.r);
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
+[16 / 39] PicEdit
+[21 / 40] PicEdit
+/Users/wolfgangbauer/dev/workspace/picedit/Package.swift: PicEdit: ld: warning: search path '/Library/Developer/CommandLineTools/Developer/Library/Frameworks' not found
+[23 / 40] PicEdit
+[23 / 40] PicEdit-product/Users/wolfgangbauer/dev/workspace/picedit/Package.swift: PicEdit-product: ld: warning: search path '/Library/Developer/CommandLineTools/Developer/usr/lib' not found
+/Users/wolfgangbauer/dev/workspace/picedit/Package.swift: PicEdit-product: ld: warning: search path '/Library/Developer/CommandLineTools/Developer/Library/Frameworks' not found
+
+[30 / 41] PicEditTests-product
+[34 / 54] PicEditTests-product
+[35 / 54] PicEditTests-product
+[36 / 54] PicEditTests-product
+[38 / 52] PicEditTests-product
+[42 / 52] PicEditTests-product
+[44 / 52] PicEditTests-product
+[45 / 52] PicEditTests-product
+[46 / 52] PicEditTests-product
+[46 / 52] AllIncludingTests
+[46 / 52] PicEditTests-product
+/Users/wolfgangbauer/dev/workspace/picedit/Package.swift: PicEditTests-product: ld: warning: search path '/Library/Developer/CommandLineTools/Developer/usr/lib' not found
+/Users/wolfgangbauer/dev/workspace/picedit/Package.swift: PicEditTests-product: ld: warning: search path '/Library/Developer/CommandLineTools/Developer/Library/Frameworks' not found
+[48 / 52] PicEditTests-product
+[50 / 52] PicEditTests-product
+Build complete! (42,77 Sek.)
+◇ Test run started.
+↳ Testing Library Version: 2084
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite "Lightcraft isolated tone reference" started.
+◇ Suite "Automatic tone balancing" started.
+◇ Suite "JPEG export" started.
+◇ Suite "Edit rendering" started.
+◇ Suite "Frozen algorithm evaluation metrics and decision gates" started.
+◇ Suite "LC-04 independent detail and artifact measurements" started.
+◇ Suite "Algorithm evaluation reference controls" started.
+◇ Suite "Lightcraft isolated detail reference" started.
+◇ Suite "LC-03 preregistered comparison controls" started.
+◇ Suite "Algorithm evaluation fixtures" started.
+◇ Test gradientsStayMonotoneAndDoNotAcquireNewClippedPixels() started.
+◇ Test colorHueAlphaDimensionsAndProfileSurvive() started.
+◇ Suite "Reusable edit rendering sessions" started.
+◇ Test intermediateStrengthIsConservativeAndManualExposureFollowsAuto() started.
+◇ Test canceledAnalysisStopsBeforeWorkingOnTheBitmap() started.
+◇ Test flatBlackWhiteAndAlmostFlatNoiseStayStable() started.
+◇ Test transparentMarginsDoNotBiasTheHistogram() started.
+◇ Test zeroAmountKeepsOriginalPixelsAndManualSettings() started.
+◇ Test boundedSamplingKeepsProgressivePreviewCurvesConsistent() started.
+◇ Test liftingSaturatedSubjectsDoesNotClipPreviouslyUnclippedChannels() started.
+◇ Test balancedGradientChangesSubtlyAndLowContrastSceneGainsSeparation() started.
+◇ Test registryBlocksEveryAbsentReferenceAndControlsCannotClaimGo() started.
+◇ Suite "Adjusted preview scheduling" started.
+◇ Test incompleteManifestAndMissingControlMetricAreRejected() started.
+◇ Test highDynamicRangeRevealsBothTailsWithoutFlatteningOrClipping() started.
+◇ Test testCombinedToneExtremesDoNotReverseGradientOrdering() started.
+◇ Test testExtremeSettingsAreClampedAndRenderingStaysBounded() started.
+◇ Test dominantDarkAndBrightScenesKeepTheOppositeTailSafe() started.
+◇ Test identityRetainsExactSharedInputIncludingAlphaAndExtendedRGB() started.
+◇ Test nonneutralProductionRenderPreservesSourceProfileDepthAndFrozenOrientation(bits:p3:) started.
+◇ Test groundTruthResidualNoiseUsesItsOwnEligibleCount() started.
+◇ Test rec2020BridgePreservesWhiteAndSignedExtendedPrimaries() started.
+◇ Test changedVariantGeometryAndInputCannotReuseAnUnrelatedPlane() started.
+◇ Test testExtentsProfileAndTransparentEdgesSurviveCombinedEdits() started.
+◇ Test tamedTextureLimitsHardEdgeGainSeparatelyFromGaussianDomain() started.
+◇ Test boundedMatchingDoesNotAssumeMonotonicResponse() started.
+◇ Test absentOrInvalidPixelsAreMissingEvidence() started.
+◇ Test unchangedFixturesAndNeutralHiddenRGBPassControl() started.
+◇ Test contrastRejectsGlobalShiftAndRetainsSignedGain() started.
+◇ Test haloUsesFarPlateauAndIndependentLowerRegion() started.
+◇ Test testAllPresenceAndColorSlidersChangePixelsIndependently() started.
+◇ Test testLuminanceNoiseReductionReducesLuminanceVariance() started.
+◇ Test neutralHueIsExcludedAndInvalidPixelsFailClosed() started.
+◇ Test gaussianAblationsUseExactlyTheSameRadiusAndLogBase() started.
+◇ Test neutralRGBReferenceMeetsCPUToleranceAndPreservesAlphaSeparately() started.
+◇ Test localHaloEnvelopeAndStructuralLossDetectDifferentRegressions() started.
+◇ Test noiseSubtractsRenderedCleanCounterpartAndIgnoresOffsets() started.
+◇ Test originalRustVectorsCheckGuidedClarityAndTamedTexture() started.
+◇ Test fixturesAreDeterministicAndSeparatedWithPrimarySupport() started.
+◇ Test bothSignsOfZeroAreExactForSignedExtendedRGBAndAlpha() started.
+◇ Test alphaAndLinearCompositesExposeVisibleFringes() started.
+◇ Test testColorNoiseReductionTargetsChromaSeparately() started.
+◇ Test testNeutralReturnsIdenticalBitmap() started.
+◇ Test testContrastChangesTonalSpreadInBothDirections() started.
+◇ Test absentOrNonfiniteStrengthIsMissingEvidence() started.
+◇ Test manifestAndSignedMatchingAreStrict() started.
+◇ Test cancelledPreparationApplicationAndNeutralRenderingPublishNoResult() started.
+◇ Test gateRequiresMatchedEffectSeparateAcceptanceHumanApprovalAndBudgets() started.
+◇./scripts/test.sh: line 26: 58671 Terminated: 15          xcrun swift test "${ARGS[@]}" "$@"

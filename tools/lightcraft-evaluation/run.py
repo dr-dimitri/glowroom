@@ -128,11 +128,14 @@ def main():
     parser.add_argument("output", type=Path)
     parser.add_argument("--binary", required=True, type=Path)
     parser.add_argument("--real-manifest", type=Path)
-    parser.add_argument("--candidate", choices=("LC-01", "LC-03"), default="LC-01")
+    parser.add_argument("--candidate", choices=("LC-01", "LC-03", "LC-04"), default="LC-01")
     args = parser.parse_args()
     if args.candidate == "LC-03":
         import lc03
         return lc03.execute(args)
+    if args.candidate == "LC-04":
+        import lc04
+        return lc04.execute(args)
     # Validate personal fixtures before any output or compute. No downloading,
     # publishing, scanning the user's library, or implicit license assumptions.
     real = real_inputs(args.real_manifest)
@@ -222,5 +225,5 @@ if __name__ == "__main__":
     try:
         main()
     except (ValueError, OSError, subprocess.CalledProcessError, KeyError) as error:
-        print(f"LC-01 failed: {error}", file=sys.stderr)
+        print(f"Lightcraft evaluation failed: {error}", file=sys.stderr)
         sys.exit(1)

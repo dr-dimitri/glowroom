@@ -12,10 +12,11 @@
       "missingEvidence": ["Use the specialized --candidate LC-03 comparison for frozen matching, acceptance and controlled timing evidence", "Licensed real-photo classes and blinded visual approval"]
     },
     {
-      "id": "LC-04", "kind": "reference", "implemented": false, "issue": 53,
+      "id": "LC-04", "kind": "reference", "implemented": true, "issue": 53,
       "sourceCommit": "f9b0c8c8a12c8fa17b7afb5baa00f9ee1bbd7b15", "domain": "detail",
-      "primarySceneClass": "fine-lines", "primaryMetric": "fine_line_loss", "minimumRelativeImprovement": 0.1,
-      "missingEvidence": ["Pinned isolated clarity adapter and symbol/license inventory", "Matched detail-contrast target and clean expected-look reference", "Separate acceptance measurements", "Licensed real-photo classes and blinded visual approval", "Controlled cold/warm latency and peak RSS including conversion/readback"]
+      "primarySceneClass": "hard-edge", "primaryMetric": "halo_area", "minimumRelativeImprovement": 0.1,
+      "comparisonManifest": "lc04-manifest.json", "decisions": ["clarity", "texture"],
+      "missingEvidence": ["Use the specialized --candidate LC-04 comparison for frozen matching, separate clarity/texture decisions, ablations and controlled timing evidence", "Licensed real-photo classes and blinded visual approval"]
     },
     {
       "id": "LC-05", "kind": "reference", "implemented": false, "issue": 54,
