@@ -2,6 +2,8 @@
 
 Eine native Fotobibliothek für macOS, entwickelt mit SwiftUI und AppKit. Die Anwendung unterstützt das Sichten, Organisieren und nicht destruktive Anpassen vorhandener Bilder: Ordner hinzufügen, Vorschauen durchsehen, einzelne Bilder groß anzeigen, Tonwerte und Präsenz anpassen, Rauschen mindern und Favoriten sowie Bewertungen verwalten. Die dunkle Oberfläche orientiert sich am Bibliotheksbereich professioneller Fotoanwendungen.
 
+Für die geplante Neuordnung der Oberfläche liegen [zwei Entwürfe zu Issue #45](docs/design/issue-45/README.md) vor: eine klassische Arbeitsansicht mit einklappbaren Gruppen und ein Bildfokus mit Werkzeugen nach Bedarf. Die Abbildungen und Bedienwege beschreiben den Planungsstand; die App verwendet weiterhin die bestehende Oberfläche.
+
 ## Starten
 
 Voraussetzungen: **macOS 14 oder neuer** und Xcode oder die Apple Command Line Tools mit **Swift 6.1 oder neuer**. Falls die Entwicklungswerkzeuge fehlen, lassen sie sich mit `xcode-select --install` installieren. SwiftPM löst die in `Package.resolved` festgehaltenen Swift-Bibliotheken auf; dafür ist beim ersten Build Internetzugang oder ein bereits gefüllter lokaler Paketcache nötig. Die laufende App benötigt für Bibliothek und lokale Bearbeitung keinen Online-Dienst.
