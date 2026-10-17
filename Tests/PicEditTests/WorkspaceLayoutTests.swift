@@ -1,0 +1,236 @@
+import Combine
+import Foundation
+import Testing
+@testable import PicEdit
+
+@Suite("Workspace layout preferences")
+@MainActor
+struct WorkspaceLayoutTests {
+    @Test
+    func preferenceUpdatePublishesTheNormalizedLayoutOnce() throws {
+        let fixture = try Preferences()
+        defer { fixture.remove() }
+        let layout = WorkspaceLayoutModel(defaults: fixture.defaults)
+        var emitted: [WorkspacePanels] = []
+        let subscription = layout.$develop.dropFirst().sink { emitted.append($0) }
+        defer { subscription.cancel() }
+        layout.update(developing: true) {
+            $0.toolsWidth = 430
+            $0.singleGroup = true
+            $0.openGroups = [.assistant, .analysis]
+        }
+        #expect(emitted.count == 1, "Normalization must not send a second unchanged @Published value")
+        #expect(emitted.first?.toolsWidth == 430)
+        #expect(emitted.first?.openGroups == [.assistant])
+        #expect(WorkspaceLayoutModel(defaults: fixture.defaults).develop == layout.develop)
+    }
+
+    @Test
+    func restartRestoresEachWorkspaceAndFocusReturnDestination() throws {
+        let fixture = try Preferences()
+        defer { fixture.remove() }
+        let layout = WorkspaceLayoutModel(defaults: fixture.defaults)
+        layout.update(developing: false) {
+            $0.showsLibrary = false
+            $0.libraryWidth = 260
+            $0.openGroups = [.metadata, .analysis]
+        }
+        layout.update(developing: true) {
+            $0.toolsWidth = 430
+            $0.filmstripHeight = 150
+            $0.openGroups = [.edit, .assistant]
+            $0.openAdjustmentGroups = ["tone", "presence"]
+        }
+        let library = layout.library, develop = layout.develop
+        layout.enterFocus(developing: false, showsDetail: false)
+        layout.reveal(.versions, developing: true)
+        layout.update(developing: true) { $0.showsFilmstrip = true; $0.toolsWidth = 380 }
+        let focus = layout.focus
+
+        let restored = WorkspaceLayoutModel(defaults: fixture.defaults)
+        #expect(restored.isFocused)
+        #expect(restored.panels(developing: false) == focus)
+        #expect(restored.panels(developing: true) == focus)
+        #expect(restored.leaveFocus() == WorkspaceFocusOrigin(developing: false, showsDetail: false))
+        #expect(restored.panels(developing: false) == library)
+        #expect(restored.panels(developing: true) == develop)
+        #expect(!WorkspaceLayoutModel(defaults: fixture.defaults).isFocused)
+    }
+
+    @Test
+    func repeatedFocusEntryDoesNotReplaceOriginOrNormalPanelPreferences() throws {
+        let fixture = try Preferences()
+        defer { fixture.remove() }
+        let layout = WorkspaceLayoutModel(defaults: fixture.defaults)
+        layout.update(developing: true) {
+            $0.showsTools = false
+            $0.libraryWidth = 310
+            $0.filmstripHeight = 190
+            $0.openGroups = [.analysis, .metadata]
+        }
+        let library = layout.library, develop = layout.develop
+        layout.enterFocus(developing: false, showsDetail: false)
+        #expect(!layout.focus.showsLibrary && !layout.focus.showsTools && !layout.focus.showsFilmstrip)
+        layout.enterFocus(developing: true, showsDetail: true)
+        layout.update(developing: true) {
+            $0.showsLibrary = true
+            $0.libraryWidth = 240
+            $0.openGroups = [.assistant]
+        }
+        #expect(layout.leaveFocus() == WorkspaceFocusOrigin(developing: false, showsDetail: false))
+        #expect(layout.library == library && layout.develop == develop)
+        layout.enterFocus()
+        #expect(layout.focus.showsLibrary && layout.focus.libraryWidth == 240)
+        #expect(layout.focus.openGroups == [.assistant])
+    }
+
+    @Test
+    func smallWindowReservesImageWidthAndLaterRestoresRequestedPanelWidths() throws {
+        let fixture = try Preferences()
+        defer { fixture.remove() }
+        let layout = WorkspaceLayoutModel(defaults: fixture.defaults)
+        layout.update(developing: true) { $0.libraryWidth = 360; $0.toolsWidth = 520 }
+        let narrow = layout.boundedWidths(availableWidth: 1_000, developing: true)
+        #expect(narrow.library >= 180 && narrow.tools >= 300)
+        #expect(abs(1_000 - narrow.library - narrow.tools - 2 - 320) < 0.000_001)
+        #expect(layout.develop.libraryWidth == 360 && layout.develop.toolsWidth == 520)
+
+        let wide = layout.boundedWidths(availableWidth: 1_440, developing: true)
+        #expect(wide.library == 360 && wide.tools == 520)
+        let restored = WorkspaceLayoutModel(defaults: fixture.defaults)
+        #expect(restored.develop.libraryWidth == 360 && restored.develop.toolsWidth == 520)
+        restored.update(developing: true) { $0.showsLibrary = false }
+        let onePanel = restored.boundedWidths(availableWidth: 1_000, developing: true)
+        #expect(onePanel.library == 0 && onePanel.tools == 520)
+        restored.update(developing: true) { $0.showsTools = false }
+        let noPanels = restored.boundedWidths(availableWidth: 1_000, developing: true)
+        #expect(noPanels.library == 0 && noPanels.tools == 0)
+    }
+
+    @Test(arguments: [Double.nan, Double.infinity, -20, 0, 240, 500])
+    func transientWindowGeometryProducesFiniteNonnegativeSizes(_ width: Double) throws {
+        let fixture = try Preferences()
+        defer { fixture.remove() }
+        let layout = WorkspaceLayoutModel(defaults: fixture.defaults)
+        let bounded = layout.boundedWidths(availableWidth: width, developing: true)
+        let filmstrip = layout.boundedFilmstripHeight(availableHeight: width, developing: true)
+        #expect(bounded.library.isFinite && bounded.tools.isFinite && filmstrip.isFinite)
+        #expect(bounded.library >= 0 && bounded.tools >= 0 && filmstrip >= 0)
+        if width.isFinite && width >= 322 {
+            #expect(width - bounded.library - bounded.tools - 2 >= 320 - 0.000_001)
+        }
+    }
+
+    @Test
+    func filmstripClampingDoesNotOverwritePreferredHeightOrHiddenState() throws {
+        let fixture = try Preferences()
+        defer { fixture.remove() }
+        let layout = WorkspaceLayoutModel(defaults: fixture.defaults)
+        layout.update(developing: true) { $0.filmstripHeight = 220 }
+        #expect(layout.boundedFilmstripHeight(availableHeight: 350, developing: true) == 109)
+        #expect(layout.boundedFilmstripHeight(availableHeight: 800, developing: true) == 220)
+        #expect(layout.develop.filmstripHeight == 220)
+        layout.update(developing: true) { $0.showsFilmstrip = false }
+        #expect(layout.boundedFilmstripHeight(availableHeight: 800, developing: true) == 0)
+        let restored = WorkspaceLayoutModel(defaults: fixture.defaults)
+        #expect(!restored.develop.showsFilmstrip && restored.develop.filmstripHeight == 220)
+    }
+
+    @Test
+    func accordionAndDirectRevealOperateWithinCurrentWorkspace() throws {
+        let fixture = try Preferences()
+        defer { fixture.remove() }
+        let layout = WorkspaceLayoutModel(defaults: fixture.defaults)
+        let library = layout.library
+        layout.toggleGroup(.assistant, developing: true)
+        #expect(layout.develop.openGroups == [.edit, .assistant])
+        layout.update(developing: true) { $0.singleGroup = true }
+        #expect(layout.develop.openGroups.count == 1)
+        layout.toggleGroup(.analysis, developing: true)
+        #expect(layout.develop.openGroups == [.analysis])
+        layout.toggleGroup(.analysis, developing: true)
+        #expect(layout.develop.openGroups.isEmpty)
+        layout.update(developing: true) { $0.showsTools = false }
+        let before = layout.revealRequest
+        layout.reveal(.metadata, developing: true)
+        #expect(layout.develop.showsTools && layout.develop.openGroups == [.metadata])
+        #expect(layout.revealedTool == .metadata && layout.revealRequest != before)
+        let firstReveal = layout.revealRequest
+        layout.reveal(.metadata, developing: true)
+        #expect(layout.revealRequest != firstReveal, "The same group can be scrolled into view repeatedly")
+        #expect(layout.library == library)
+    }
+
+    @Test
+    func partialOlderPreferencesKeepValidFieldsAndScopeDefaults() throws {
+        let fixture = try Preferences()
+        defer { fixture.remove() }
+        let json = """
+        {"library":"damaged", "develop":{"toolsWidth":450,"openGroups":["assistant","newerTool"],
+        "openAdjustmentGroups":["presence","unknown"]}, "focus":{"toolsWidth":"NaN"},"isFocused":true}
+        """
+        fixture.defaults.set(Data(json.utf8), forKey: WorkspaceLayoutModel.preferencesKey)
+        let layout = WorkspaceLayoutModel(defaults: fixture.defaults)
+        #expect(layout.library == .libraryDefault)
+        #expect(layout.develop.toolsWidth == 450 && layout.develop.openGroups == [.assistant])
+        #expect(layout.develop.openAdjustmentGroups == ["presence"])
+        #expect(layout.focus == .focusDefault)
+        #expect(layout.isFocused)
+    }
+
+    @Test(arguments: ["not-json", "{\"version\":999,\"isFocused\":true}", "null", "[]"])
+    func unusableOrFuturePreferencesFallBackToSafeDefaults(_ json: String) throws {
+        let fixture = try Preferences()
+        defer { fixture.remove() }
+        fixture.defaults.set(Data(json.utf8), forKey: WorkspaceLayoutModel.preferencesKey)
+        let layout = WorkspaceLayoutModel(defaults: fixture.defaults)
+        #expect(layout.library == .libraryDefault && layout.develop == .developDefault)
+        #expect(layout.focus == .focusDefault && !layout.isFocused)
+    }
+
+    @Test
+    func invalidDirectAssignmentsCannotPoisonGeometryOrSubsequentPersistence() throws {
+        let fixture = try Preferences()
+        defer { fixture.remove() }
+        let layout = WorkspaceLayoutModel(defaults: fixture.defaults)
+        layout.develop.libraryWidth = .nan
+        layout.develop.toolsWidth = .infinity
+        layout.develop.filmstripHeight = -1
+        layout.develop.singleGroup = true
+        layout.develop.openGroups = [.versions, .assistant]
+        #expect(layout.develop.libraryWidth == 218 && layout.develop.toolsWidth == 320)
+        #expect(layout.develop.filmstripHeight == 80)
+        #expect(layout.develop.openGroups == [.assistant])
+        #expect(WorkspaceLayoutModel(defaults: fixture.defaults).develop == layout.develop)
+    }
+
+    @Test
+    func resetOnlyChangesTheActiveLayoutAndPreservesFocusReturn() throws {
+        let fixture = try Preferences()
+        defer { fixture.remove() }
+        let layout = WorkspaceLayoutModel(defaults: fixture.defaults)
+        layout.update(developing: false) { $0.libraryWidth = 300 }
+        layout.update(developing: true) { $0.toolsWidth = 440 }
+        let library = layout.library, develop = layout.develop
+        layout.enterFocus(developing: false, showsDetail: true)
+        layout.reveal(.analysis, developing: true)
+        layout.reset(developing: true)
+        #expect(layout.focus == .focusDefault && layout.isFocused)
+        #expect(layout.library == library && layout.develop == develop)
+        #expect(layout.leaveFocus() == WorkspaceFocusOrigin(developing: false, showsDetail: true))
+        layout.reset(developing: true)
+        #expect(layout.develop == .developDefault && layout.library == library)
+    }
+
+    private struct Preferences {
+        let suite: String
+        let defaults: UserDefaults
+
+        init() throws {
+            suite = "PicEdit-WorkspaceLayout-\(UUID().uuidString)"
+            defaults = try #require(UserDefaults(suiteName: suite))
+        }
+
+        func remove() { defaults.removePersistentDomain(forName: suite) }
+    }
+}

@@ -35,8 +35,16 @@ final class PhotoMetadataModel: ObservableObject {
 
     @Published private(set) var context: PhotoMetadataSelectionContext?
     @Published private(set) var record: PhotoMetadataRecord?
-    @Published private(set) var manualFields = PhotoTextFields.empty
-    @Published private(set) var proposalFields = PhotoTextFields.empty
+    @Published private(set) var manualFields = PhotoTextFields.empty {
+        didSet { manualTagEditor.synchronize(manualFields.tags) }
+    }
+    @Published private(set) var proposalFields = PhotoTextFields.empty {
+        didSet { proposalTagEditor.synchronize(proposalFields.tags) }
+    }
+    // Raw text belongs to the current form, including a trailing empty tag
+    // line. Dock groups can unmount their editors without ending that form.
+    @Published private(set) var manualTagEditor = MetadataTagEditorState()
+    @Published private(set) var proposalTagEditor = MetadataTagEditorState()
     @Published private(set) var isLoading = false
     @Published private(set) var isSaving = false
     @Published private(set) var hasPendingRetry = false
@@ -78,6 +86,8 @@ final class PhotoMetadataModel: ObservableObject {
     private var suggestionID: UUID?
     private var lifecycleID = UUID()
     private var formGeneration: UInt64 = 0
+    private var manualTagDraftPresent = false
+    private var proposalTagDraftID: UUID?
     private var storeReady = false
     private var lastWriteFailed = false
     private var manualDirty = false
@@ -185,7 +195,11 @@ final class PhotoMetadataModel: ObservableObject {
                 message: errorMessage ?? "Die Entwurfskorrektur ist noch nicht gesichert.") }
         }
         context = next
-        if changedSource { loadRecord() }
+        if changedSource {
+            manualTagEditor = MetadataTagEditorState(); proposalTagEditor = MetadataTagEditorState()
+            manualTagDraftPresent = false; proposalTagDraftID = nil
+            loadRecord()
+        }
         else { objectWillChange.send() }
     }
 
@@ -231,6 +245,7 @@ final class PhotoMetadataModel: ObservableObject {
                 if !self.manualDirty && !self.proposalDirty && !self.hasPendingRetry && self.recovery == nil { self.lastWriteFailed = false }
                 self.manualFields = value?.manualDraft?.fields ?? value?.confirmed ?? .empty
                 self.proposalFields = value?.draft?.fields ?? .empty
+                self.synchronizeTagDrafts(value)
                 self.manualDirty = false; self.proposalDirty = false
                 self.errorMessage = nil
             } catch {
@@ -254,10 +269,39 @@ final class PhotoMetadataModel: ObservableObject {
         enqueueDraft(context: context, fields: value, proposalID: nil)
     }
 
+    func editManualTags(_ text: String) {
+        guard canEditManual else { return }
+        let tags = manualTagEditor.edit(text)
+        guard tags != manualFields.tags else { return }
+        var fields = manualFields; fields.tags = tags
+        editManualFields(fields)
+    }
+
     func editProposalFields(_ value: PhotoTextFields) {
         guard canEditProposal, let context, let draft = record?.draft else { return }
         proposalFields = value; proposalDirty = true; advanceForm(); invalidateAnalysis()
         enqueueDraft(context: context, fields: value, proposalID: draft.id)
+    }
+
+    func editProposalTags(_ text: String) {
+        guard canEditProposal else { return }
+        let tags = proposalTagEditor.edit(text)
+        guard tags != proposalFields.tags else { return }
+        var fields = proposalFields; fields.tags = tags
+        editProposalFields(fields)
+    }
+
+    private func synchronizeTagDrafts(_ value: PhotoMetadataRecord?) {
+        if manualTagDraftPresent, value?.manualDraft == nil {
+            manualTagEditor = MetadataTagEditorState()
+            manualTagEditor.synchronize(manualFields.tags)
+        }
+        if proposalTagDraftID != value?.draft?.id {
+            proposalTagEditor = MetadataTagEditorState()
+            proposalTagEditor.synchronize(proposalFields.tags)
+        }
+        manualTagDraftPresent = value?.manualDraft != nil
+        proposalTagDraftID = value?.draft?.id
     }
 
     private func enqueueDraft(context: PhotoMetadataSelectionContext, fields: PhotoTextFields, proposalID: UUID?) {
@@ -404,6 +448,7 @@ final class PhotoMetadataModel: ObservableObject {
             // The invalid/raw form was never stored. Its explicit discard needs
             // no database revision and must remain possible after validation failure.
             manualFields = record?.confirmed ?? .empty; manualDirty = false
+            manualTagEditor = MetadataTagEditorState(); manualTagEditor.synchronize(manualFields.tags)
             lastWriteFailed = false; errorMessage = nil; advanceForm(); invalidateAnalysis()
             return
         }
@@ -529,6 +574,7 @@ final class PhotoMetadataModel: ObservableObject {
         lastWriteFailed = false
         manualFields = current.manualDraft?.fields ?? current.confirmed
         proposalFields = current.draft?.fields ?? .empty
+        synchronizeTagDrafts(current)
         manualDirty = false; proposalDirty = false; manualConflictReviewed = false; errorMessage = nil
     }
 

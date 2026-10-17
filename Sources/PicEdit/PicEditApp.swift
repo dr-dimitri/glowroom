@@ -14,6 +14,7 @@ struct PicEditApp: App {
     @StateObject private var imageAnalysis: ImageAnalysisModel
     @StateObject private var photoMetadata: PhotoMetadataModel
     @StateObject private var exporter = JPEGExportModel()
+    @StateObject private var layout = WorkspaceLayoutModel()
     private let dataDirectory: URL
     private let artifactBootstrap: ArtifactAppBootstrap
 
@@ -58,6 +59,7 @@ struct PicEditApp: App {
             LibraryView(model: library, dataDirectory: dataDirectory)
                 .environmentObject(editor)
                 .environmentObject(exporter)
+                .environmentObject(layout)
                 .environmentObject(assistant)
                 .environmentObject(imageAnalysis)
                 .environmentObject(photoMetadata)
@@ -124,7 +126,7 @@ struct PicEditApp: App {
                 Button("Foto entwickeln") {
                     library.isDeveloping = true
                     library.showsDetail = true
-                    library.showsInspector = true
+                    layout.reveal(.edit, developing: true)
                 }.keyboardShortcut("d", modifiers: .command).disabled(library.selectedAsset == nil || editor.isLoading)
                 Button(library.comparesOriginal ? "Bearbeitung anzeigen" : "Importiertes Original anzeigen") { library.comparesOriginal.toggle() }
                     .disabled(!library.isDeveloping || library.selectedAsset == nil)
@@ -143,10 +145,14 @@ struct PicEditApp: App {
                     .disabled(editor.isLoading || editor.isRestoring || editor.isBackingUp || editor.isClosing)
             }
             CommandGroup(after: .toolbar) {
-                Button(library.showsDetail ? "Rasteransicht" : "Einzelbildansicht") { if library.selectedAsset != nil { library.showsDetail.toggle() } }
+                Button(library.showsDetail ? "Rasteransicht" : "Einzelbildansicht") {
+                    if library.selectedAsset != nil {
+                        if library.showsDetail { WorkspaceActions.showGrid(layout, library: library) }
+                        else { library.showsDetail = true }
+                    }
+                }
                     .disabled(library.selectedAsset == nil)
-                Button(library.showsInspector ? "Informationen ausblenden" : "Informationen einblenden") { library.showsInspector.toggle() }
-                    .keyboardShortcut("i", modifiers: .command)
+                WorkspaceViewCommands(layout: layout, library: library, shortcuts: true)
             }
         }
         Settings { AIProviderSettingsView(settings: aiSettings) }

@@ -2,7 +2,7 @@
 
 Eine native Fotobibliothek für macOS, entwickelt mit SwiftUI und AppKit. Die Anwendung unterstützt das Sichten, Organisieren und nicht destruktive Anpassen vorhandener Bilder: Ordner hinzufügen, Vorschauen durchsehen, einzelne Bilder groß anzeigen, Tonwerte und Präsenz anpassen, Rauschen mindern und Favoriten sowie Bewertungen verwalten. Die dunkle Oberfläche orientiert sich am Bibliotheksbereich professioneller Fotoanwendungen.
 
-Für die geplante Neuordnung der Oberfläche liegen [zwei Entwürfe zu Issue #45](docs/design/issue-45/README.md) vor: eine klassische Arbeitsansicht mit einklappbaren Gruppen und ein Bildfokus mit Werkzeugen nach Bedarf. Die Abbildungen und Bedienwege beschreiben den Planungsstand; die App verwendet weiterhin die bestehende Oberfläche.
+Der **Bildfokus aus Vorschlag B** der [Entwürfe zu Issue #45](docs/design/issue-45/README.md) bietet mehr Bildfläche und Werkzeuge nach Bedarf. Die historischen Mockups dokumentieren den Entwurf; die implementierten Bedienwege und Zustandsregeln stehen unter [Bildfokus und Arbeitsbereiche](docs/WORKSPACE-LAYOUT.md).
 
 ## Starten
 
@@ -39,6 +39,16 @@ PICEDIT_BUILD_JOBS=1 ./scripts/build-app.sh --debug
 Ein Lock unter `dist/.picedit-build.lock` verhindert konkurrierende Bundle-Builds im selben Checkout. Unabhängige Pakettests können mit einem getrennten Build-Verzeichnis gleichzeitig laufen. Nach einem nicht abfangbaren Prozessabbruch kann der Lock zurückbleiben: Die darin gespeicherte PID prüfen und den Lock erst entfernen, wenn der zugehörige Build nicht mehr läuft.
 
 ## Bibliothek verwenden
+
+### Bildfokus und Werkzeuge
+
+Wähle ein Foto und klicke oben auf **Bildfokus**, verwende **Darstellung → Bildfokus** oder **⇧⌘F**. Der Modus funktioniert im normalen Fenster und unabhängig vom macOS-Vollbild. Bibliothek, Filmstreifen und Werkzeugseite sind zunächst verborgen. Das beschriftete Dock öffnet **Bearbeiten**, **Assistent & Looks**, **Analyse**, **Informationen** und **Bildstände**. Die Werkzeuge stehen neben dem Bild. **Zur vorherigen Ansicht** bzw. erneut **⇧⌘F** stellt die bisherige Raster-/Einzelbildansicht und deren Panelzustand wieder her. **Esc** verlässt den Fokus; **Leertaste** bzw. **Rasteransicht** wechselt geordnet ins Raster.
+
+Über **Ansicht** im Fenster oder das Menü **Darstellung** lassen sich Bibliothek (**⌥⌘L**), Werkzeuge (**⌘I**) und Filmstreifen (**⌥⌘S**) unabhängig schalten. Zwischen Bibliothek und Bild bzw. Bild und Werkzeugen ziehen die Griffe die Breite auf; der Griff oberhalb des Filmstreifens verändert dessen Höhe. Die Darstellungspräferenzen werden automatisch gemerkt, getrennt für Bibliothek, Entwickeln und Bildfokus. Beim Verkleinern begrenzt die App die wirksamen Größen; die bevorzugten Größen bleiben für größere Fenster erhalten. **Standardansicht wiederherstellen** setzt die aktuelle Darstellung zurück.
+
+Im Entwickeln-Werkzeugbereich stehen Tonwerte zuerst. Die fünf Funktionsgruppen und die Regler-Untergruppen lassen sich einzeln einklappen. **Nur eine Gruppe geöffnet** vermeidet lange Scrollwege; das Werkzeug-**…**-Menü und das Fokusdock springen direkt zur gewünschten Gruppe. Einklappen und Fokuswechsel erhalten Anweisungen, Vorschläge, laufende Anfragen und Metadatenentwürfe. Sie übernehmen keine Werte und erzeugen keine Undo-Einträge. Ein echter Bild-/Quellenwechsel oder eine geänderte Bearbeitung kann Vorschläge weiterhin ungültig machen.
+
+Navigation, Sterne, Favorit, Zoom, **Vergleich** und **Maske** bleiben beim Bild erreichbar. **Vergleich** unterscheidet importiertes Original, aktuelle Quelle ohne Regler und aktuelle Bearbeitung. Die Hinweise in der Statusleiste öffnen auch bei verborgenen Werkzeugen laufende Aufgaben, unbestätigte Vorschläge und Fehler; Speicherfehler bieten einen Weg zur Prüfung bzw. Wiederholung. **Sicherungen** und **Exportieren** stehen weiterhin oben. Ein unbestätigter Look wird erst durch **Übernehmen** gespeichert und exportiert.
 
 1. Mit **Ordner hinzufügen** oder **⌘O** einen Bilderordner auswählen.
 2. Bilder in der Rasteransicht sichten und die Einzelansicht öffnen. Mit **⌘-Klick** einzelne Bilder zur Auswahl hinzufügen oder abwählen, mit **⇧-Klick** einen Bereich auswählen und mit **⌘⇧-Klick** einen Bereich hinzufügen. **⌘A** wählt alle sichtbaren Bilder; **⇧ + Pfeiltasten** erweitert die Auswahl. Die Statusleiste zeigt die Anzahl ausgewählter Bilder.

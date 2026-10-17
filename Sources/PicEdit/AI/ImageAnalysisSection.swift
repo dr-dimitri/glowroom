@@ -54,8 +54,11 @@ struct ImageAnalysisSection: View {
         }.padding(12)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Theme.accent.opacity(0.04), in: RoundedRectangle(cornerRadius: 8))
-            .task { await model.refreshAvailability() }
-            .onDisappear { model.discard() }
+            // Hiding a dock group is presentation only. The model keeps a
+            // pending analysis/result and invalidates it on source changes.
+            .task {
+                if model.availability == nil { await model.refreshAvailability() }
+            }
     }
 
     @ViewBuilder private var status: some View {

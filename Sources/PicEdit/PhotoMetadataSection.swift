@@ -39,7 +39,8 @@ struct PhotoMetadataSection: View {
             Divider()
             Text("Manuelle Angaben").fontWeight(.medium)
             MetadataTextFieldsEditor(fields: Binding(get: { model.manualFields }, set: { model.editManualFields($0) }),
-                selection: $model.manualSelection)
+                selection: $model.manualSelection,
+                tagText: Binding(get: { model.manualTagEditor.text }, set: { model.editManualTags($0) }))
                 .id(MetadataFieldsIdentity(assetID: model.context?.assetID, source: model.context?.source, draftID: nil))
                 .disabled(!model.canEditManual)
             tagPolicy($model.manualTagPolicy)
@@ -72,7 +73,8 @@ struct PhotoMetadataSection: View {
             if let draft = model.record?.draft {
                 Text(state(draft.state)).foregroundStyle(draft.state == .outdated ? .orange : Theme.muted)
                 MetadataTextFieldsEditor(fields: Binding(get: { model.proposalFields }, set: { model.editProposalFields($0) }),
-                    selection: $model.proposalSelection)
+                    selection: $model.proposalSelection,
+                    tagText: Binding(get: { model.proposalTagEditor.text }, set: { model.editProposalTags($0) }))
                     .id(MetadataFieldsIdentity(assetID: model.context?.assetID, source: model.context?.source, draftID: draft.id))
                     .disabled(!model.canEditProposal)
                 tagPolicy($model.proposalTagPolicy)
@@ -131,7 +133,7 @@ private struct MetadataFieldsIdentity: Hashable {
 private struct MetadataTextFieldsEditor: View {
     @Binding var fields: PhotoTextFields
     @Binding var selection: Set<PhotoMetadataField>
-    @ViewState<MetadataTagEditorState> private var tagEditor = MetadataTagEditorState()
+    @Binding var tagText: String
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
             selected(.title, label: "Titel · \(fields.title.count)/120")
@@ -141,17 +143,13 @@ private struct MetadataTextFieldsEditor: View {
                 .scrollContentBackground(.hidden).background(Theme.panel)
                 .accessibilityLabel("Beschreibung")
             selected(.tags, label: "Tags · \(fields.tags.count)/20 · ein Tag pro Zeile")
-            TextEditor(text: Binding(get: { tagEditor.text }, set: {
-                let parsed = tagEditor.edit($0)
-                if parsed != fields.tags { fields.tags = parsed }
-            })).font(.system(size: 10)).frame(height: 54).scrollContentBackground(.hidden)
+            TextEditor(text: $tagText).font(.system(size: 10)).frame(height: 54).scrollContentBackground(.hidden)
                 .background(Theme.panel).accessibilityLabel("Tags, ein Tag pro Zeile")
             Text("Je Tag höchstens 60 Zeichen. Leere Ersatzliste löscht Tags nur bei ausdrücklich gewähltem Ersetzen.")
                 .foregroundStyle(Theme.muted)
             selected(.language, label: "Sprache ausdrücklich übernehmen")
             TextField("Sprache, z. B. de_DE", text: field(\.language)).textFieldStyle(.roundedBorder)
-        }.onAppear { tagEditor.synchronize(fields.tags) }
-            .onChange(of: fields.tags) { _, tags in tagEditor.synchronize(tags) }
+        }
     }
     private func field(_ path: WritableKeyPath<PhotoTextFields, String>) -> Binding<String> {
         Binding(get: { fields[keyPath: path] }, set: { fields[keyPath: path] = $0 })

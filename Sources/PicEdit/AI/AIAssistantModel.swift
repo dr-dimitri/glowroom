@@ -95,12 +95,11 @@ final class AIAssistantModel: ObservableObject {
                   })
         // @Published emits before mutation. Defer the check one MainActor turn
         // so epochs and their complete catalog/settings snapshot are consistent.
-        editor.objectWillChange.merge(with: library.objectWillChange).sink { [weak self, weak library] in
-            Task { @MainActor [weak self, weak library] in
-                guard let self else { return }
-                if library?.isDeveloping != true { self.discard() }
-                else { self.contextDidChange() }
-            }
+        // Develop/library mode and dock visibility are presentation state.
+        // The snapshot still rejects real selection/source/edit changes while
+        // an untouched proposal survives navigation back to the same photo.
+        editor.objectWillChange.merge(with: library.objectWillChange).sink { [weak self] in
+            Task { @MainActor [weak self] in self?.contextDidChange() }
         }.store(in: &subscriptions)
     }
 
