@@ -108,6 +108,13 @@ enum EditRenderer {
 
     private static let interactive = Session(cacheIntermediates: true, lowPriority: false)
     private static let background = Session(cacheIntermediates: false, lowPriority: true)
+    private static let maskSoftware = Session(lowPriority: true, softwareRenderer: true)
+
+    /// Mask composition shares the renderer's linear working-space contract.
+    /// The caller holds the artifact owner's bounded native-work admission.
+    static func maskCompositingContext(softwareRenderer: Bool = false) -> CIContext {
+        softwareRenderer ? maskSoftware.context : background.context
+    }
 
     /// The preview decoder may return a larger cached base than requested.
     /// Callers requiring a hard output limit must use these actual raster sizes.

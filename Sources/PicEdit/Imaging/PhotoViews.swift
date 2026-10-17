@@ -40,11 +40,12 @@ struct PhotoPreview: View {
     var settings: EditSettings = .neutral
     var source: AISourceIdentity? = nil
     var developing = false
+    var sourceRevision: String? = nil
 
     var body: some View {
         AsyncPhotoView(
             request: PreviewRequest(source: source ?? .original(.init(fileURL: url, modifiedAt: modifiedAt, fileSize: fileSize)), pixelSize: 2_400,
-                                    allowsEmbeddedPreview: !developing && settings.isNeutral),
+                                    allowsEmbeddedPreview: !developing && settings.isNeutral, sourceRevision: sourceRevision),
             priority: .selected, settings: settings, showsFailureDescription: true, progressive: true
         )
     }

@@ -127,7 +127,7 @@ public struct EditingBackupPackageStore: EditingBackupPackageIO, Sendable {
             // Check the entire exact fixed-role tree before any later DB restore.
             for artifact in manifest.artifacts {
                 let directory = try ArtifactFileIO.child(externalArtifacts, artifact.id.canonicalString)
-                try checkNames(directory, expected: Set(["artifact.json", "raster.png"] + artifact.resources.map { GeneratedArtifactStore.maskName($0.id) }))
+                try checkNames(directory, expected: Set(GeneratedArtifactStore.payloadNames(artifact)))
             }
             try checkActualTotals(external, limits: limits)
             let destination = try newDirectory(stage, "artifacts", ownership: stageOwnership)
@@ -167,7 +167,7 @@ public struct EditingBackupPackageStore: EditingBackupPackageIO, Sendable {
         try checkNames(root, expected: Set(manifest.artifacts.map { $0.id.canonicalString }))
         for artifact in manifest.artifacts {
             let directory = try ArtifactFileIO.child(root, artifact.id.canonicalString)
-            try checkNames(directory, expected: Set(["artifact.json", "raster.png"] + artifact.resources.map { GeneratedArtifactStore.maskName($0.id) }))
+            try checkNames(directory, expected: Set(GeneratedArtifactStore.payloadNames(artifact)))
             guard try GeneratedArtifactStore.readArtifact(directory) == artifact else { throw ArtifactContractError.corruptArtifact }
             let raster = try ArtifactFileIO.openFile(directory, "raster.png")
             _ = try await withTransfer { try raster.handle(ownership: nil, expected: artifact.raster.file) }
@@ -175,7 +175,13 @@ public struct EditingBackupPackageStore: EditingBackupPackageIO, Sendable {
             for mask in artifact.resources {
                 let file = try ArtifactFileIO.openFile(directory, GeneratedArtifactStore.maskName(mask.id))
                 _ = try await withTransfer { try file.handle(ownership: nil, expected: mask.file) }
-                try await ArtifactPNGCodec.validateMask(file, descriptor: mask, resources: resources)
+                try await ArtifactPNGCodec.validateMask(file, descriptor: mask, resources: resources,
+                    binding: artifact.provenance.maskBindings?.first(where: { $0.resourceID == mask.id }))
+            }
+            for binding in artifact.provenance.maskBindings ?? [] {
+                let file = try ArtifactFileIO.openFile(directory, GeneratedArtifactStore.maskDocumentName(binding.resourceID), limit: binding.documentFile.bytes)
+                _ = try await withTransfer { try file.handle(ownership: nil, expected: binding.documentFile) }
+                try await MaskPayloadValidation.validateDocument(file, binding: binding, resources: resources)
             }
         }
         try checkActualTotals(stage, limits: limits)
@@ -203,7 +209,7 @@ public struct EditingBackupPackageStore: EditingBackupPackageIO, Sendable {
                 group.addTask {
                     for index in stride(from: worker, to: artifacts.count, by: 2) {
                         let artifact = artifacts[index]; let directory = try newDirectory(root, artifact.id.canonicalString, ownership: ownership)
-                        let roles: [ArtifactPayloadRole] = [.manifest, .raster] + artifact.resources.map { .mask($0.id) }
+                        let roles = GeneratedArtifactStore.payloadRoles(artifact)
                         for role in roles {
                             let (name, expected) = try GeneratedArtifactStore.file(role, artifact: artifact)
                             // Acquire the source handle BEFORE our copy slot:
@@ -257,6 +263,7 @@ public struct EditingBackupPackageStore: EditingBackupPackageIO, Sendable {
             guard reconstructed == artifact else { throw ArtifactContractError.corruptArtifact }
             try add(Int64(body.count)); try add(artifact.raster.file.bytes); files += 2
             for resource in artifact.resources { try add(resource.file.bytes); files += 1 }
+            for binding in artifact.provenance.maskBindings ?? [] { try add(binding.documentFile.bytes); files += 1 }
             guard files <= limits.maximumFiles else { throw ArtifactContractError.limitExceeded }
         }
         guard total <= limits.maximumTotalBytes, files <= limits.maximumFiles else { throw ArtifactContractError.limitExceeded }
@@ -375,8 +382,7 @@ private extension EditingBackupPackageStore {
         var directories: Set<[String]> = [[], ["artifacts"]]
         for artifact in manifest.artifacts {
             let path = ["artifacts", artifact.id.canonicalString]; directories.insert(path)
-            files.insert(path + ["artifact.json"]); files.insert(path + ["raster.png"])
-            for mask in artifact.resources { files.insert(path + [GeneratedArtifactStore.maskName(mask.id)]) }
+            for name in GeneratedArtifactStore.payloadNames(artifact) { files.insert(path + [name]) }
         }
         guard Set(receipt.inventory.files.map(\.path)) == files,
               Set(receipt.inventory.directories.map(\.path)) == directories else { throw ArtifactContractError.invalidCapability }
