@@ -25,6 +25,11 @@ final class Counts: @unchecked Sendable {
         var width = 2_400
         var height = 1_600
         var iterations = 8
+        var evaluationMode = "quality"
+        var output = ""
+        var manifest = ""
+        var registry = ""
+        var input = ""
 
         init() throws {
             let args = Array(CommandLine.arguments.dropFirst())
@@ -38,13 +43,19 @@ final class Counts: @unchecked Sendable {
                 case "--width": width = Int(value) ?? 0
                 case "--height": height = Int(value) ?? 0
                 case "--iterations": iterations = Int(value) ?? 0
+                case "--evaluation-mode": evaluationMode = value
+                case "--output": output = value
+                case "--manifest": manifest = value
+                case "--registry": registry = value
+                case "--input": input = value
                 default: throw failure("Unknown option: \(args[index])")
                 }
             }
-            guard ["simple", "complex", "alternating", "burst", "contention"].contains(scenario),
+            guard ["simple", "complex", "alternating", "burst", "contention", "evaluation"].contains(scenario),
                   ["default", "cached", "uncached", "software-request"].contains(backend),
                   (1...2).contains(workers),
-                  (1...4_096).contains(width), (1...4_096).contains(height),
+                  (1...(scenario == "evaluation" ? 8_192 : 4_096)).contains(width),
+                  (1...(scenario == "evaluation" ? 8_192 : 4_096)).contains(height),
                   (1...100).contains(iterations) else {
                 throw failure("Use --scenario simple|complex|alternating|burst|contention --backend default|cached|uncached|software-request --workers 1|2 --width 1...4096 --height 1...4096 --iterations 1...100")
             }
@@ -53,6 +64,10 @@ final class Counts: @unchecked Sendable {
 
     static func main() async throws {
         let options = try Options()
+        if options.scenario == "evaluation" {
+            try AlgorithmEvaluation.run(options)
+            return
+        }
         log("Synthetic \(options.scenario) editing benchmark: \(options.width)x\(options.height), backend=\(options.backend), optimized binary, generated sRGB input; no RAW/ImageIO or disk I/O.")
         log("First call includes renderer initialization; warm calls use the same source with unique edits, not cached edited output. OS/GPU caches are not cleared.")
         log("End-to-end timings include a synchronous full-size CGContext draw, forcing pixel materialization. Peak RSS covers the entire process.")

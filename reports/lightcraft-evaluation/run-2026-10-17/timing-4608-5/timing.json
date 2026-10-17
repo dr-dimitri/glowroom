@@ -1,0 +1,151 @@
+{
+  "backend" : "Core Image automatic; hardware not forced or inferred",
+  "excluded" : [
+    "fixture generation",
+    "fixture\/output hashing",
+    "PNG I\/O",
+    "RAW\/ImageIO decode",
+    "UI presentation"
+  ],
+  "height" : 3072,
+  "input_format" : "straight Float32 extended-linear-sRGB; alpha retained",
+  "input_sha256" : "a738aa3f2e5d379a52bb2427bb4c61eab91ff17b3e6265d6f283ac38455b5564",
+  "path" : "shared production filterGraph; RGBAh working; Float32 materialized readback",
+  "peak_rss_bytes" : 2055749632,
+  "samples" : [
+    {
+      "output_sha256" : "b14db39e5e8a6bcbcbf50d92adbb697ae3148c5acc710039365a0fe41a64ed39",
+      "peak_rss_bytes" : 2052915200,
+      "phase" : "process-cold",
+      "sample" : -1,
+      "total_ms" : 518.48541699999998
+    },
+    {
+      "output_sha256" : "b14db39e5e8a6bcbcbf50d92adbb697ae3148c5acc710039365a0fe41a64ed39",
+      "peak_rss_bytes" : 2053799936,
+      "phase" : "warmup",
+      "sample" : 0,
+      "total_ms" : 401.23216600000001
+    },
+    {
+      "output_sha256" : "9b75fbde27647068000007c7fd83ccfe324a4b963cc727468de3da4ab5e851d9",
+      "peak_rss_bytes" : 2054094848,
+      "phase" : "warm",
+      "sample" : 1,
+      "total_ms" : 394.14487500000001
+    },
+    {
+      "output_sha256" : "38fb7e55c4046d4812e0ac2a66dabea4558bde35e51757f1febd93988fa84674",
+      "peak_rss_bytes" : 2054356992,
+      "phase" : "warm",
+      "sample" : 2,
+      "total_ms" : 392.24408299999999
+    },
+    {
+      "output_sha256" : "41c67a2d1103de124602f1499403392d11c398c1fe915e817e26a4e379665646",
+      "peak_rss_bytes" : 2054946816,
+      "phase" : "warm",
+      "sample" : 3,
+      "total_ms" : 392.94912499999998
+    },
+    {
+      "output_sha256" : "cc3dabce3186ed636147a48944d1e38f44f26e750c4c0eb27997c80222838aed",
+      "peak_rss_bytes" : 2055454720,
+      "phase" : "warm",
+      "sample" : 4,
+      "total_ms" : 392.34649999999999
+    },
+    {
+      "output_sha256" : "f393d453b83c6f2b5ca2187977c4a7646ce0dbbc5540c22624df095e5e4895bb",
+      "peak_rss_bytes" : 2055749632,
+      "phase" : "warm",
+      "sample" : 5,
+      "total_ms" : 391.53016700000001
+    }
+  ],
+  "schema_version" : 1,
+  "seed" : "6581536614730116921",
+  "settings_per_warm_sample" : [
+    {
+      "autoToneAmount" : 20,
+      "blacks" : 0,
+      "clarity" : 15,
+      "colorNoiseReduction" : 20,
+      "contrast" : 0,
+      "dehaze" : 0,
+      "exposure" : 0.28500000000000003,
+      "highlights" : 0,
+      "luminanceNoiseReduction" : 0,
+      "saturation" : 0,
+      "shadows" : 0,
+      "texture" : 25,
+      "vibrance" : 0,
+      "whites" : 0
+    },
+    {
+      "autoToneAmount" : 20,
+      "blacks" : 0,
+      "clarity" : 15,
+      "colorNoiseReduction" : 20,
+      "contrast" : 0,
+      "dehaze" : 0,
+      "exposure" : 0.32000000000000001,
+      "highlights" : 0,
+      "luminanceNoiseReduction" : 0,
+      "saturation" : 0,
+      "shadows" : 0,
+      "texture" : 25,
+      "vibrance" : 0,
+      "whites" : 0
+    },
+    {
+      "autoToneAmount" : 20,
+      "blacks" : 0,
+      "clarity" : 15,
+      "colorNoiseReduction" : 20,
+      "contrast" : 0,
+      "dehaze" : 0,
+      "exposure" : 0.35499999999999998,
+      "highlights" : 0,
+      "luminanceNoiseReduction" : 0,
+      "saturation" : 0,
+      "shadows" : 0,
+      "texture" : 25,
+      "vibrance" : 0,
+      "whites" : 0
+    },
+    {
+      "autoToneAmount" : 20,
+      "blacks" : 0,
+      "clarity" : 15,
+      "colorNoiseReduction" : 20,
+      "contrast" : 0,
+      "dehaze" : 0,
+      "exposure" : 0.39000000000000001,
+      "highlights" : 0,
+      "luminanceNoiseReduction" : 0,
+      "saturation" : 0,
+      "shadows" : 0,
+      "texture" : 25,
+      "vibrance" : 0,
+      "whites" : 0
+    },
+    {
+      "autoToneAmount" : 20,
+      "blacks" : 0,
+      "clarity" : 15,
+      "colorNoiseReduction" : 20,
+      "contrast" : 0,
+      "dehaze" : 0,
+      "exposure" : 0.42500000000000004,
+      "highlights" : 0,
+      "luminanceNoiseReduction" : 0,
+      "saturation" : 0,
+      "shadows" : 0,
+      "texture" : 25,
+      "vibrance" : 0,
+      "whites" : 0
+    }
+  ],
+  "width" : 4608
+}

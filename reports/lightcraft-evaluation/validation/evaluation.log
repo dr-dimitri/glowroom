@@ -1,0 +1,29 @@
+warning: 'picedit': dependency 'swift-collections' is not used by any target
+warning: 'picedit': dependency 'swift-collections' is not used by any target
+Building for production...
+[Computing dependencies]
+[Using on-disk description]
+Build complete! (0,52 Sek.)
+LC-01: quality
+LC-01: timing-400-1
+LC-01: timing-400-2
+LC-01: timing-400-3
+LC-01: timing-400-4
+LC-01: timing-400-5
+LC-01: timing-2400-1
+LC-01: timing-2400-2
+LC-01: timing-2400-3
+LC-01: timing-2400-4
+LC-01: timing-2400-5
+LC-01: timing-4096-1
+LC-01: timing-4096-2
+LC-01: timing-4096-3
+LC-01: timing-4096-4
+LC-01: timing-4096-5
+LC-01: timing-4608-1
+LC-01: timing-4608-2
+LC-01: timing-4608-3
+LC-01: timing-4608-4
+LC-01: timing-4608-5
+LC-01: scale
+LC-01 complete: /Users/wolfgangbauer/dev/workspace/picedit/reports/lightcraft-evaluation/run-2026-10-17/summary.json

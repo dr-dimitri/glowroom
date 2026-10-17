@@ -1,0 +1,23 @@
+Hardware:
+
+    Hardware Overview:
+
+      Model Name: MacBook Pro
+      Model Identifier: Mac14,10
+      Model Number: MNWD3D/A
+      Chip: Apple M2 Pro
+      Total Number of Cores: 12 (8 Performance and 4 Efficiency)
+      Memory: 16 GB
+      System Firmware Version: 20457.1.29
+      OS Loader Version: 20457.1.29
+
+Graphics/Displays:
+
+    Apple M2 Pro:
+
+      Chipset Model: Apple M2 Pro
+      Type: GPU
+      Bus: Built-In
+      Total Number of Cores: 19
+      Vendor: Apple (0x106b)
+      Metal: Supported
