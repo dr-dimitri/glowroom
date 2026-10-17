@@ -5,7 +5,7 @@ import CoreGraphics
 import CryptoKit
 
 public enum ArtifactPayloadRole: Hashable, Sendable {
-    case manifest, raster, mask(ArtifactResourceID)
+    case manifest, raster, mask(ArtifactResourceID), maskDocument(ArtifactResourceID)
 }
 
 public enum ArtifactLeasePurpose: String, Sendable {
@@ -98,10 +98,12 @@ public struct ArtifactMaskInput: @unchecked Sendable {
     public let coordinateSpace: ArtifactCoordinateSpace
     public let image: CGImage
     public let memoryOwnership: ArtifactMemoryReservation?
+    public let document: MaskDocument?
     public init(id: ArtifactResourceID = .init(), coordinateSpace: ArtifactCoordinateSpace, immutableImage: CGImage,
-                memoryOwnership: ArtifactMemoryReservation? = nil) {
+                memoryOwnership: ArtifactMemoryReservation? = nil, document: MaskDocument? = nil) {
         self.id = id; self.coordinateSpace = coordinateSpace; image = immutableImage
         self.memoryOwnership = memoryOwnership
+        self.document = document
     }
 }
 public struct ArtifactRecoveryReport: Sendable {

@@ -117,6 +117,10 @@ public actor GeneratedArtifactStore: GeneratedArtifactStoring {
             let expected = mask.coordinateSpace == .inputCanvas ? provenance.placement.inputSize : provenance.placement.outputSize
             let shape = try ArtifactPNGCodec.shape(mask.image, gray: true)
             guard shape.size == expected else { throw ArtifactContractError.invalidValue("Maskencanvas") }
+            if let binding = provenance.maskBindings?.first(where: { $0.resourceID == mask.id }) {
+                guard mask.coordinateSpace == .inputCanvas, mask.document != nil else { throw ArtifactContractError.invalidValue("Maskendokument") }
+                inputBytes += binding.documentFile.bytes
+            } else if mask.document != nil { throw ArtifactContractError.invalidValue("Maskendokumentreferenz") }
             if let memory = mask.memoryOwnership { bind(mask.image, memory, shape.nativeBytes) }
             else { guard shape.nativeBytes <= 536_870_912 - inputBytes else { throw ArtifactContractError.limitExceeded }; inputBytes += shape.nativeBytes }
         }
@@ -137,6 +141,17 @@ public actor GeneratedArtifactStore: GeneratedArtifactStoring {
             retained.append(try await resources.retain(bytes: inputBytes, from: allocation)); inputs = allocation
         }
         defer { withExtendedLifetime((inputs, retained, input, masks)) {} }
+        for mask in masks {
+            if let binding = provenance.maskBindings?.first(where: { $0.resourceID == mask.id }) {
+                let check = try await resources.acquire(kind: .retainedMemory,
+                    bytes: Int64(mask.image.bytesPerRow * mask.image.height) + Int64(mask.image.width * mask.image.height)
+                        + binding.documentFile.bytes * 16 + 1_048_576,
+                    priority: .interactive, retaining: retained)
+                try MaskPayloadValidation.document(mask.document!.canonicalData(), binding: binding)
+                try MaskPayloadValidation.raster(mask.image, binding: binding)
+                withExtendedLifetime(check) {}
+            }
+        }
         return try await stageReserved(input, provenance: provenance, masks: masks, retained: retained)
     }
     private func stageReserved(_ input: ArtifactRasterInput, provenance: GenerationProvenance,
@@ -154,6 +169,9 @@ public actor GeneratedArtifactStore: GeneratedArtifactStoring {
             let (_, file) = try await ArtifactPNGCodec.encode(mask.image, gray: true, directory: directory,
                 name: Self.maskName(mask.id), resources: resources, retaining: retained)
             descriptors.append(.init(id: mask.id, size: try ArtifactPixelSize(width: mask.image.width, height: mask.image.height), coordinateSpace: mask.coordinateSpace, file: file))
+            if let document = mask.document {
+                try ArtifactFileIO.writeSmall(directory, Self.maskDocumentName(mask.id), bytes: document.canonicalData(), limit: 1_048_576)
+            }
         }
         descriptors.sort { $0.id.canonicalString < $1.id.canonicalString }
         let manifest = GeneratedArtifactManifest(id: id, raster: .init(format: format, file: payload), provenance: provenance, resources: descriptors)
@@ -263,7 +281,11 @@ public actor GeneratedArtifactStore: GeneratedArtifactStoring {
         case .raster: try await ArtifactPNGCodec.validate(file, raster: artifact.raster, resources: resources)
         case .mask(let id):
             guard let mask = artifact.resources.first(where: { $0.id == id }) else { throw ArtifactContractError.corruptArtifact }
-            try await ArtifactPNGCodec.validateMask(file, descriptor: mask, resources: resources)
+            try await ArtifactPNGCodec.validateMask(file, descriptor: mask, resources: resources,
+                binding: artifact.provenance.maskBindings?.first(where: { $0.resourceID == id }))
+        case .maskDocument(let id):
+            guard let binding = artifact.provenance.maskBindings?.first(where: { $0.resourceID == id }) else { throw ArtifactContractError.corruptArtifact }
+            try await MaskPayloadValidation.validateDocument(file, binding: binding, resources: resources)
         case .manifest: break
         }
         // Hash/codec admission contains awaits. Rebind the ORIGINAL stamp after
@@ -278,14 +300,21 @@ public actor GeneratedArtifactStore: GeneratedArtifactStoring {
         validationOrder.removeAll { $0 == key }; validationOrder.append(key)
     }
     internal func validatePayloads(_ artifact: GeneratedArtifact, directory: ArtifactDirectory) async throws {
-        let expected = Set(["artifact.json", "raster.png", ".stage.json", ".publication.json"] + artifact.resources.map { Self.maskName($0.id) })
+        let expected = Set([".stage.json", ".publication.json"] + Self.payloadNames(artifact))
         guard Set(try ArtifactFileIO.names(directory)).isSubset(of: expected) else { throw ArtifactContractError.corruptArtifact }
         let raster = try ArtifactFileIO.openFile(directory, "raster.png")
         _ = try await verifiedHandle(raster, ownership: nil, expected: artifact.raster.file)
         try await ArtifactPNGCodec.validate(raster, raster: artifact.raster, resources: resources)
         for mask in artifact.resources {
             let file = try ArtifactFileIO.openFile(directory, Self.maskName(mask.id)); _ = try await verifiedHandle(file, ownership: nil, expected: mask.file)
-            try await ArtifactPNGCodec.validateMask(file, descriptor: mask, resources: resources)
+            try await ArtifactPNGCodec.validateMask(file, descriptor: mask, resources: resources,
+                binding: artifact.provenance.maskBindings?.first(where: { $0.resourceID == mask.id }))
+        }
+        for binding in artifact.provenance.maskBindings ?? [] {
+            let name = Self.maskDocumentName(binding.resourceID)
+            let file = try ArtifactFileIO.openFile(directory, name, limit: binding.documentFile.bytes)
+            _ = try await verifiedHandle(file, ownership: nil, expected: binding.documentFile)
+            try await MaskPayloadValidation.validateDocument(file, binding: binding, resources: resources)
         }
     }
     public func materialize(_ backup: ValidatedEditingBackup) async throws -> PublishedArtifactSet {
@@ -308,7 +337,7 @@ public actor GeneratedArtifactStore: GeneratedArtifactStoring {
         }
         for artifact in missing {
             let temporary = try newDirectory(staging, UUID().uuidString.lowercased())
-            let roles: [ArtifactPayloadRole] = [.manifest, .raster] + artifact.resources.map { .mask($0.id) }
+            let roles = Self.payloadRoles(artifact)
             try await withThrowingTaskGroup(of: Void.self) { group in
                 for worker in 0..<min(2, roles.count) {
                     group.addTask { [resources] in
@@ -345,6 +374,13 @@ public actor GeneratedArtifactStore: GeneratedArtifactStoring {
         return .init(retainedOrphans: orphans, removedOwnedStagingCount: 0, unrecognizedEntries: unknown.sorted())
     }
     internal static func maskName(_ id: ArtifactResourceID) -> String { "mask-" + id.canonicalString + ".png" }
+    internal static func maskDocumentName(_ id: ArtifactResourceID) -> String { "mask-" + id.canonicalString + ".json" }
+    internal static func payloadRoles(_ artifact: GeneratedArtifact) -> [ArtifactPayloadRole] {
+        [.manifest, .raster] + artifact.resources.map { .mask($0.id) } + (artifact.provenance.maskBindings ?? []).map { .maskDocument($0.resourceID) }
+    }
+    internal static func payloadNames(_ artifact: GeneratedArtifact) -> [String] {
+        ["artifact.json", "raster.png"] + artifact.resources.map { maskName($0.id) } + (artifact.provenance.maskBindings ?? []).map { maskDocumentName($0.resourceID) }
+    }
     internal static func file(_ role: ArtifactPayloadRole, artifact: GeneratedArtifact) throws -> (String, ArtifactFileDescriptor) {
         switch role {
         case .raster: return ("raster.png", artifact.raster.file)
@@ -353,6 +389,9 @@ public actor GeneratedArtifactStore: GeneratedArtifactStoring {
             guard try ArtifactFileIO.digest(bytes) == artifact.manifestSHA256 else { throw ArtifactContractError.corruptArtifact }
             return ("artifact.json", try .init(sha256: artifact.manifestSHA256, bytes: Int64(bytes.count)))
         case .mask(let id): guard let mask = artifact.resources.first(where: { $0.id == id }) else { throw ArtifactContractError.corruptArtifact }; return (maskName(id), mask.file)
+        case .maskDocument(let id):
+            guard let binding = artifact.provenance.maskBindings?.first(where: { $0.resourceID == id }) else { throw ArtifactContractError.corruptArtifact }
+            return (maskDocumentName(id), binding.documentFile)
         }
     }
     internal func readArtifact(_ directory: ArtifactDirectory) throws -> GeneratedArtifact { try Self.readArtifact(directory) }

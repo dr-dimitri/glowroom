@@ -121,6 +121,7 @@ struct DetailView: View {
     @EnvironmentObject private var editor: EditingModel
     @EnvironmentObject private var assistant: AIAssistantModel
     @ViewState<Bool> private var zoomed = false
+    @ViewState<Bool> private var showsMaskEditor = false
     var body: some View {
         VStack(spacing: 0) {
             if let asset = model.selectedAsset {
@@ -129,6 +130,10 @@ struct DetailView: View {
                     Spacer()
                     Text(asset.fileName + previewLabel).font(.system(size: 11)).foregroundStyle(Theme.muted).lineLimit(1)
                     Spacer()
+                    Button { showsMaskEditor = true } label: {
+                        Label("Maske", systemImage: "paintbrush.pointed").font(.system(size: 10))
+                    }.buttonStyle(.plain).help("Maskenentwurf auf der aktuellen Bildquelle bearbeiten")
+                        .disabled(!model.canModify || model.editingRenderIntent != .currentEditing || editor.isLoading || editor.isRestoring || editor.isClosing)
                     Button { zoomed.toggle() } label: { Label(zoomed ? "Einpassen" : "Vergrößern", systemImage: zoomed ? "minus.magnifyingglass" : "plus.magnifyingglass").font(.system(size: 10)) }.buttonStyle(.plain).foregroundStyle(Theme.muted)
                 }.padding(.horizontal, 23).frame(height: 46)
                 GeometryReader { geometry in
@@ -154,7 +159,18 @@ struct DetailView: View {
                 filmstrip
             }
         }.frame(maxWidth: .infinity, maxHeight: .infinity).background(Color.black.opacity(0.14))
-            .onChange(of: model.selectedID) { _, _ in zoomed = false }
+            .onChange(of: model.selectedID) { _, _ in zoomed = false; showsMaskEditor = false }
+            .sheet(isPresented: $showsMaskEditor) {
+                if let asset = model.selectedAsset, let source = try? editor.resolvedSource(for: asset) {
+                    MaskCanvasView(asset: asset, source: source.identity, settings: source.settings)
+                        .id(source.identity)
+                } else {
+                    VStack(spacing: 14) {
+                        Text("Die aktuelle Bildquelle ist für den Maskeneditor nicht verfügbar.")
+                        Button("Schließen") { showsMaskEditor = false }.keyboardShortcut(.cancelAction)
+                    }.padding(24)
+                }
+            }
     }
 
     private var previewLabel: String {

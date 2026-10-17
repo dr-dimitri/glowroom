@@ -395,11 +395,13 @@ public struct GenerationProvenance: Codable, Hashable, Sendable {
     public let createdAt: Date
     public let execution: GenerationExecution
     public let maskResourceIDs: [ArtifactResourceID]
+    public let maskBindings: [GenerationMaskBinding]?
     public init(parentSource: EditingSourceFingerprint, parentSnapshot: EditingSnapshot,
                 renderedInput: RenderedInputFingerprint, placement: ArtifactCanvasPlacement,
                 pipelineVersion: Int, parameterVersion: Int, parameters: GenerationParameters,
                 provider: GenerationProviderIdentity, seed: UInt64? = nil, prompt: String? = nil,
-                createdAt: Date, execution: GenerationExecution, maskResourceIDs: [ArtifactResourceID] = []) throws {
+                createdAt: Date, execution: GenerationExecution, maskResourceIDs: [ArtifactResourceID] = [],
+                maskBindings: [GenerationMaskBinding]? = nil) throws {
         guard pipelineVersion > 0, parameterVersion > 0, (prompt?.utf8.count ?? 0) <= 16_384,
               createdAt.timeIntervalSinceReferenceDate.isFinite, maskResourceIDs.count <= 16,
               Set(maskResourceIDs).count == maskResourceIDs.count, renderedInput.format.size == placement.inputSize else {
@@ -409,6 +411,16 @@ public struct GenerationProvenance: Codable, Hashable, Sendable {
         self.renderedInput = renderedInput; self.placement = placement; self.pipelineVersion = pipelineVersion
         self.parameterVersion = parameterVersion; self.parameters = parameters; self.provider = provider
         self.seed = seed; self.prompt = prompt; self.createdAt = createdAt; self.execution = execution; self.maskResourceIDs = maskResourceIDs
+        guard (maskBindings?.count ?? 0) <= 16,
+              Set((maskBindings ?? []).map(\.resourceID)).count == (maskBindings?.count ?? 0),
+              Set((maskBindings ?? []).map(\.resourceID)).isSubset(of: Set(maskResourceIDs)) else {
+            throw ArtifactContractError.invalidValue("Maskendokumentreferenzen")
+        }
+        for binding in maskBindings ?? [] {
+            try binding.validate()
+            guard binding.transform.canvasSize == placement.inputSize else { throw ArtifactContractError.invalidValue("Maskencanvas") }
+        }
+        self.maskBindings = maskBindings
     }
     // Persistence validator repeats all bounds/version/relationship checks after decoding.
     // The app validates parentSource matches parentSnapshot.source and mask sizes

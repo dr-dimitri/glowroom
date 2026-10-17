@@ -18,7 +18,7 @@ Ein begrenzter Speicher mit 128 erfolgreichen Payloadprüfungen hält ausschlie�
 
 ## Format und Ressourcen
 
-`GeneratedArtifacts/<UUID>/` enthält `artifact.json`, `raster.png` und gegebenenfalls typisierte Masken-PNGs. Die positive Store-Identität steht in `.owner.json`. Rollen ergeben ausschließlich feste relative Dateinamen; JSON autorisiert keine freien Pfade.
+`GeneratedArtifacts/<UUID>/` enthält `artifact.json`, `raster.png` und gegebenenfalls typisierte Masken-PNGs. Seit Issue 11 können zugehörige versionierte Strichdokumente als `mask-<UUID>.json` hinzukommen. Die optionale Provenienzbindung enthält Dokumenthash/Bytezahl, kanonischen Maskenhash und native-/Modelltransformation. Beide Payloads werden veröffentlicht, geprüft, gesichert und wiederhergestellt; beim Lesen findet keine Neuberechnung aus Strichen statt. Artefakte ohne Dokumentbindung bleiben lesbar. Details stehen unter [Masken](MASK-EDITING.md). Die positive Store-Identität steht in `.owner.json`. Rollen ergeben ausschließlich feste relative Dateinamen; JSON autorisiert keine freien Pfade.
 
 Raster sind orientierte SDR-PNGs mit ganzzahligen RGB- oder geraden RGBA-Komponenten, jeweils 8 oder 16 Bit, und exakten eingebetteten sRGB- oder Display-P3-ICC-Bytes. Ein `iCCP`-Chunk enthält das Profil; konkurrierende Farbraum-Chunks werden entfernt. Der Samplehash berücksichtigt RGB auch bei vollständig transparenten Pixeln. HDR/Gleitkomma, CMYK, indizierte Farben, fremde Profile und vormultiplizierte Eingabepuffer werden abgewiesen. Es findet keine versteckte Konvertierung statt. Masken verwenden normales Gray8-PNG ohne Farbprofil und keine invertierte Quartz-Bildmaske.
 

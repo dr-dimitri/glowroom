@@ -45,7 +45,7 @@ public enum ArtifactValueValidation {
         _ = try GenerationProviderIdentity(providerID:v.provider.providerID,modelID:v.provider.modelID,modelRevision:v.provider.modelRevision)
         _ = try GenerationProvenance(parentSource:v.parentSource,parentSnapshot:v.parentSnapshot,renderedInput:v.renderedInput,placement:v.placement,
             pipelineVersion:v.pipelineVersion,parameterVersion:v.parameterVersion,parameters:v.parameters,provider:v.provider,seed:v.seed,
-            prompt:v.prompt,createdAt:v.createdAt,execution:v.execution,maskResourceIDs:v.maskResourceIDs)
+            prompt:v.prompt,createdAt:v.createdAt,execution:v.execution,maskResourceIDs:v.maskResourceIDs,maskBindings:v.maskBindings)
         switch (v.parentSnapshot.source,v.parentSource) {
         case (.original,.original): break
         case (.artifact(let id),.artifact(let a)) where id == a.artifactID: break
@@ -59,6 +59,9 @@ public enum ArtifactValueValidation {
             try version(m.schemaVersion); try file(m.file)
             let expected = m.coordinateSpace == .inputCanvas ? v.provenance.placement.inputSize : v.provenance.placement.outputSize
             guard m.size == expected else { throw ArtifactContractError.invalidValue("mask geometry") }
+            if (v.provenance.maskBindings ?? []).contains(where: { $0.resourceID == m.id }) {
+                guard m.coordinateSpace == .inputCanvas else { throw ArtifactContractError.invalidValue("mask document space") }
+            }
         }
         let body = GeneratedArtifactManifest(id:v.id,raster:v.raster,provenance:v.provenance,resources:v.resources)
         guard try ArtifactJSONCodec.digest(body) == v.manifestSHA256 else { throw ArtifactContractError.corruptArtifact }
@@ -116,6 +119,9 @@ public enum ArtifactJSONCodec {
         case let v as EditingSourceFingerprint: try ArtifactValueValidation.source(v)
         case let v as ArtifactSourceFingerprint: try ArtifactValueValidation.source(.artifact(v))
         case let v as GenerationProvenance: try ArtifactValueValidation.provenance(v)
+        case let v as MaskDocument: try v.validate()
+        case let v as GenerationMaskBinding: try v.validate()
+        case let v as MaskRasterTransform: try v.validate()
         case let v as OriginalSourceRevision:
             _ = try OriginalSourceRevision(device:v.device,inode:v.inode,fileSize:v.fileSize,modifiedSeconds:v.modifiedSeconds,modifiedNanoseconds:v.modifiedNanoseconds,changedSeconds:v.changedSeconds,changedNanoseconds:v.changedNanoseconds)
         case let v as GenerationParameters: try ArtifactValueValidation.version(v.schemaVersion);_ = try GenerationParameters(values:v.values)

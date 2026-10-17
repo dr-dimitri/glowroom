@@ -143,10 +143,12 @@ internal enum ArtifactPNGCodec {
             _ = try pixelHash(image, shape: info) // Force full native decode while the slot/bytes are held.
         }
     }
-    static func validateMask(_ file: ArtifactPinnedFile, descriptor: ArtifactMaskDescriptor, resources: any ArtifactResourceAdmitting) async throws {
+    static func validateMask(_ file: ArtifactPinnedFile, descriptor: ArtifactMaskDescriptor, resources: any ArtifactResourceAdmitting,
+                             binding: GenerationMaskBinding? = nil) async throws {
         let raw = decodedByteLimit(size: descriptor.size, bits: 8, gray: true)
-        let allocation = try await resources.acquire(kind: .retainedMemory, bytes: raw * 2 + 4_259_840, priority: .background, retaining: [])
-        let memory = try await resources.retain(bytes: raw * 2 + 4_259_840, from: allocation)
+        let peak = raw * (binding == nil ? 2 : 3) + 4_259_840
+        let allocation = try await resources.acquire(kind: .retainedMemory, bytes: peak, priority: .background, retaining: [])
+        let memory = try await resources.retain(bytes: peak, from: allocation)
         let lease = try await resources.acquire(kind: .codec, bytes: 0, priority: .background, retaining: [memory])
         let transfer = try await resources.acquire(kind: .transfer, bytes: 0, priority: .background, retaining: [memory])
         defer { withExtendedLifetime((allocation, memory, lease, transfer)) {} }
@@ -158,6 +160,7 @@ internal enum ArtifactPNGCodec {
             guard info.nativeBytes <= raw else { throw ArtifactContractError.limitExceeded }
             guard info.size == descriptor.size else { throw ArtifactContractError.corruptArtifact }
             _ = try pixelHash(image, shape: info)
+            if let binding { try MaskPayloadValidation.raster(image, binding: binding) }
         }
     }
     static func validateFormat(_ f: ArtifactRasterFormat) throws {
