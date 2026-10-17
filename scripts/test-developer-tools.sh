@@ -31,3 +31,13 @@ printf '// PICEDIT_DEVELOPER_HARNESS_VERSION: 1\n' > "$STAGING/checkout/Package.
 rm "$STAGING/checkout/Sources/PicEdit/DeveloperTools/EditingBenchmark.swift"
 assert_rejected
 echo 'PASS: incompatible manifest and missing harness rejected before build or execution'
+
+# Image inference must opt in before even compiling its developer harness.
+env PATH="$STAGING/tools:$PATH" PICEDIT_HARNESS_COMPILE_MARKER="$STAGING/compiled" \
+    "$ROOT/scripts/evaluate-image-generation.sh" > "$STAGING/plan"
+[[ ! -e "$STAGING/compiled" ]] || { echo 'Default plan compiled a model harness' >&2; exit 1; }
+status=0
+env PATH="$STAGING/tools:$PATH" PICEDIT_HARNESS_COMPILE_MARKER="$STAGING/compiled" \
+    "$ROOT/scripts/evaluate-image-generation.sh" benchmark > "$STAGING/output" 2>&1 || status=$?
+[[ "$status" == 2 && ! -e "$STAGING/compiled" ]] || { echo 'Inference without --run reached compiler' >&2; exit 1; }
+echo 'PASS: image evaluation defaults to a plan and rejects missing inference opt-in'

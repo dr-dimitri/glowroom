@@ -1,0 +1,7 @@
+{
+  "status": "compiled-no-inference",
+  "baselineArchiveSHA256": "9fb2ef6224aacdc34c48a1423d1839e1bd7d9fed1bc0c1a5192e2b2a6be41d9c",
+  "instrumentedArchiveSHA256": "540388406c37dd78a6190f2760a73a75fd922a7adfd4e256d213a7e362c0e14b",
+  "helperSHA256": "e85c762c68aea5b10cd1ff2e7b5d56802c4875dcc9b844f2b6ab798d3fd1980d",
+  "maximumCompileJobs": 2
+}

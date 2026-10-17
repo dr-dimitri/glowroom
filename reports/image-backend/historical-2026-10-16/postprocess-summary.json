@@ -1,0 +1,1047 @@
+{
+  "status": "archived-real-outputs-awaiting-manual-visual-review",
+  "nativeOperationFailures": [],
+  "successfulCases": [
+    {
+      "caseID": "01-structured-removal-hard",
+      "fixtureID": "01-structured-removal",
+      "maskKind": "hard",
+      "role": "cold-context-first-generation",
+      "rawSHA256": "14389520c151a5f723cebb1ac4f9ea04a56dfc65429f3a752f06e7222bf3f1fc",
+      "v1": {
+        "rawOutput": "reports/20261016-134606-c1b93865-native-series-full/artifacts/01-structured-removal-hard/raw.png",
+        "rawSHA256": "14389520c151a5f723cebb1ac4f9ea04a56dfc65429f3a752f06e7222bf3f1fc",
+        "finalOutput": "reports/20261016-134606-c1b93865-native-series-full/artifacts/01-structured-removal-hard/v1-final.png",
+        "finalSHA256": "6245d18d0e62a7531aef3aad93c5361ee501ddb4dcf4f362633689ec7b86496b",
+        "comparison": "reports/20261016-134606-c1b93865-native-series-full/artifacts/01-structured-removal-hard/v1-comparison.png",
+        "outsideMaskPixelsPreserved": true,
+        "sourceAlphaBytesPreserved": true,
+        "quality": "awaiting-explicit-visual-review"
+      },
+      "v2": {
+        "status": "context-criteria-passed-visual-unverified",
+        "rejectCode": null,
+        "diagnostics": {
+          "usableContextPixels": 20944,
+          "fitPixels": 10456,
+          "validationPixels": 10488,
+          "unclampedEstimatedGainRGB": [
+            0.8106853141923573,
+            0.8105713954026066,
+            0.848494683796407
+          ],
+          "appliedGainRGB": [
+            0.8106853141923573,
+            0.8105713954026066,
+            0.848494683796407
+          ],
+          "gainClamped": false,
+          "gainChannelRatio": 1.046785870570925,
+          "fit": {
+            "pixelCount": 10456,
+            "meanAbsoluteLinearRGBErrorBefore": 0.07686170530413768,
+            "meanAbsoluteLinearRGBErrorAfter": 0.035680195983952674,
+            "errorReductionFraction": 0.5357870887359572,
+            "medianLinearRGBResidualAfter": [
+              5.551115123125783e-17,
+              0.0,
+              0.0
+            ]
+          },
+          "validation": {
+            "pixelCount": 10488,
+            "meanAbsoluteLinearRGBErrorBefore": 0.07734704998359537,
+            "meanAbsoluteLinearRGBErrorAfter": 0.0361082823361092,
+            "errorReductionFraction": 0.5331653586818443,
+            "medianLinearRGBResidualAfter": [
+              0.0013081612082641025,
+              2.2053524264376012e-05,
+              0.0
+            ]
+          },
+          "replacementClippingPixelCount": 0,
+          "replacementClippingFraction": 0.0
+        },
+        "proposalCanonicalSHA256": "fb746b30f85d6794255327e938228ff08f8b396972e4343538999b408bed9620",
+        "backendGo": false,
+        "thresholdsOrMaskChanged": false,
+        "finalSHA256": "a0685896164bf49bdb1345f298b77b8c63cc3abc5a83c4577ba15067443c12e7"
+      },
+      "nativeFloatCheck": {
+        "eventCount": 460,
+        "stageCounts": {
+          "vae-encode-raw-before-posterior": 2,
+          "vae-encode-moments": 2,
+          "vae-encode-sampled-latent": 2,
+          "positive-text-conditioning": 1,
+          "negative-text-conditioning": 1,
+          "diffusion-state": 25,
+          "diffusion-sigma": 25,
+          "diffusion-scaled-input": 25,
+          "diffusion-c-in": 25,
+          "diffusion-c-skip": 25,
+          "diffusion-c-out": 25,
+          "unet-actual-x": 50,
+          "unet-actual-timesteps": 50,
+          "unet-actual-text-context": 50,
+          "unet-actual-mask-and-source-latent": 50,
+          "unet-positive-raw-output-before-guidance": 25,
+          "unet-negative-raw-output-before-guidance": 25,
+          "actual-cfg-guided-output": 25,
+          "actual-cfg-reference-check": 25,
+          "diffusion-final-latent": 1,
+          "vae-decode-raw-before-clamp": 1
+        },
+        "allRecordedStagesFinite": true,
+        "positiveRawOutputCount": 25,
+        "negativeRawOutputCount": 25,
+        "guidanceChecks": 25,
+        "guidanceViolations": 0,
+        "guidanceStorageAliases": 0,
+        "expected25StepBranchesVerified": true
+      },
+      "directory": "/private/tmp/picedit-inpainting-gate/reports/20261016-134606-c1b93865-native-series-full/artifacts/01-structured-removal-hard",
+      "outsideV1RGBAExactlySource": true,
+      "allV1AlphaExactlySource": true
+    },
+    {
+      "caseID": "warm-repeat-1",
+      "fixtureID": "01-structured-removal",
+      "maskKind": "hard",
+      "role": "identical-fixture-warm-repeat",
+      "rawSHA256": "14389520c151a5f723cebb1ac4f9ea04a56dfc65429f3a752f06e7222bf3f1fc",
+      "v1": {
+        "rawOutput": "reports/20261016-134606-c1b93865-native-series-full/artifacts/warm-repeat-1/raw.png",
+        "rawSHA256": "14389520c151a5f723cebb1ac4f9ea04a56dfc65429f3a752f06e7222bf3f1fc",
+        "finalOutput": "reports/20261016-134606-c1b93865-native-series-full/artifacts/warm-repeat-1/v1-final.png",
+        "finalSHA256": "6245d18d0e62a7531aef3aad93c5361ee501ddb4dcf4f362633689ec7b86496b",
+        "comparison": "reports/20261016-134606-c1b93865-native-series-full/artifacts/warm-repeat-1/v1-comparison.png",
+        "outsideMaskPixelsPreserved": true,
+        "sourceAlphaBytesPreserved": true,
+        "quality": "awaiting-explicit-visual-review"
+      },
+      "v2": {
+        "status": "context-criteria-passed-visual-unverified",
+        "rejectCode": null,
+        "diagnostics": {
+          "usableContextPixels": 20944,
+          "fitPixels": 10456,
+          "validationPixels": 10488,
+          "unclampedEstimatedGainRGB": [
+            0.8106853141923573,
+            0.8105713954026066,
+            0.848494683796407
+          ],
+          "appliedGainRGB": [
+            0.8106853141923573,
+            0.8105713954026066,
+            0.848494683796407
+          ],
+          "gainClamped": false,
+          "gainChannelRatio": 1.046785870570925,
+          "fit": {
+            "pixelCount": 10456,
+            "meanAbsoluteLinearRGBErrorBefore": 0.07686170530413768,
+            "meanAbsoluteLinearRGBErrorAfter": 0.035680195983952674,
+            "errorReductionFraction": 0.5357870887359572,
+            "medianLinearRGBResidualAfter": [
+              5.551115123125783e-17,
+              0.0,
+              0.0
+            ]
+          },
+          "validation": {
+            "pixelCount": 10488,
+            "meanAbsoluteLinearRGBErrorBefore": 0.07734704998359537,
+            "meanAbsoluteLinearRGBErrorAfter": 0.0361082823361092,
+            "errorReductionFraction": 0.5331653586818443,
+            "medianLinearRGBResidualAfter": [
+              0.0013081612082641025,
+              2.2053524264376012e-05,
+              0.0
+            ]
+          },
+          "replacementClippingPixelCount": 0,
+          "replacementClippingFraction": 0.0
+        },
+        "proposalCanonicalSHA256": "fb746b30f85d6794255327e938228ff08f8b396972e4343538999b408bed9620",
+        "backendGo": false,
+        "thresholdsOrMaskChanged": false,
+        "finalSHA256": "a0685896164bf49bdb1345f298b77b8c63cc3abc5a83c4577ba15067443c12e7"
+      },
+      "nativeFloatCheck": {
+        "eventCount": 460,
+        "stageCounts": {
+          "vae-encode-raw-before-posterior": 2,
+          "vae-encode-moments": 2,
+          "vae-encode-sampled-latent": 2,
+          "positive-text-conditioning": 1,
+          "negative-text-conditioning": 1,
+          "diffusion-state": 25,
+          "diffusion-sigma": 25,
+          "diffusion-scaled-input": 25,
+          "diffusion-c-in": 25,
+          "diffusion-c-skip": 25,
+          "diffusion-c-out": 25,
+          "unet-actual-x": 50,
+          "unet-actual-timesteps": 50,
+          "unet-actual-text-context": 50,
+          "unet-actual-mask-and-source-latent": 50,
+          "unet-positive-raw-output-before-guidance": 25,
+          "unet-negative-raw-output-before-guidance": 25,
+          "actual-cfg-guided-output": 25,
+          "actual-cfg-reference-check": 25,
+          "diffusion-final-latent": 1,
+          "vae-decode-raw-before-clamp": 1
+        },
+        "allRecordedStagesFinite": true,
+        "positiveRawOutputCount": 25,
+        "negativeRawOutputCount": 25,
+        "guidanceChecks": 25,
+        "guidanceViolations": 0,
+        "guidanceStorageAliases": 0,
+        "expected25StepBranchesVerified": true
+      },
+      "directory": "/private/tmp/picedit-inpainting-gate/reports/20261016-134606-c1b93865-native-series-full/artifacts/warm-repeat-1",
+      "outsideV1RGBAExactlySource": true,
+      "allV1AlphaExactlySource": true
+    },
+    {
+      "caseID": "warm-repeat-2",
+      "fixtureID": "01-structured-removal",
+      "maskKind": "hard",
+      "role": "identical-fixture-warm-repeat",
+      "rawSHA256": "14389520c151a5f723cebb1ac4f9ea04a56dfc65429f3a752f06e7222bf3f1fc",
+      "v1": {
+        "rawOutput": "reports/20261016-134606-c1b93865-native-series-full/artifacts/warm-repeat-2/raw.png",
+        "rawSHA256": "14389520c151a5f723cebb1ac4f9ea04a56dfc65429f3a752f06e7222bf3f1fc",
+        "finalOutput": "reports/20261016-134606-c1b93865-native-series-full/artifacts/warm-repeat-2/v1-final.png",
+        "finalSHA256": "6245d18d0e62a7531aef3aad93c5361ee501ddb4dcf4f362633689ec7b86496b",
+        "comparison": "reports/20261016-134606-c1b93865-native-series-full/artifacts/warm-repeat-2/v1-comparison.png",
+        "outsideMaskPixelsPreserved": true,
+        "sourceAlphaBytesPreserved": true,
+        "quality": "awaiting-explicit-visual-review"
+      },
+      "v2": {
+        "status": "context-criteria-passed-visual-unverified",
+        "rejectCode": null,
+        "diagnostics": {
+          "usableContextPixels": 20944,
+          "fitPixels": 10456,
+          "validationPixels": 10488,
+          "unclampedEstimatedGainRGB": [
+            0.8106853141923573,
+            0.8105713954026066,
+            0.848494683796407
+          ],
+          "appliedGainRGB": [
+            0.8106853141923573,
+            0.8105713954026066,
+            0.848494683796407
+          ],
+          "gainClamped": false,
+          "gainChannelRatio": 1.046785870570925,
+          "fit": {
+            "pixelCount": 10456,
+            "meanAbsoluteLinearRGBErrorBefore": 0.07686170530413768,
+            "meanAbsoluteLinearRGBErrorAfter": 0.035680195983952674,
+            "errorReductionFraction": 0.5357870887359572,
+            "medianLinearRGBResidualAfter": [
+              5.551115123125783e-17,
+              0.0,
+              0.0
+            ]
+          },
+          "validation": {
+            "pixelCount": 10488,
+            "meanAbsoluteLinearRGBErrorBefore": 0.07734704998359537,
+            "meanAbsoluteLinearRGBErrorAfter": 0.0361082823361092,
+            "errorReductionFraction": 0.5331653586818443,
+            "medianLinearRGBResidualAfter": [
+              0.0013081612082641025,
+              2.2053524264376012e-05,
+              0.0
+            ]
+          },
+          "replacementClippingPixelCount": 0,
+          "replacementClippingFraction": 0.0
+        },
+        "proposalCanonicalSHA256": "fb746b30f85d6794255327e938228ff08f8b396972e4343538999b408bed9620",
+        "backendGo": false,
+        "thresholdsOrMaskChanged": false,
+        "finalSHA256": "a0685896164bf49bdb1345f298b77b8c63cc3abc5a83c4577ba15067443c12e7"
+      },
+      "nativeFloatCheck": {
+        "eventCount": 460,
+        "stageCounts": {
+          "vae-encode-raw-before-posterior": 2,
+          "vae-encode-moments": 2,
+          "vae-encode-sampled-latent": 2,
+          "positive-text-conditioning": 1,
+          "negative-text-conditioning": 1,
+          "diffusion-state": 25,
+          "diffusion-sigma": 25,
+          "diffusion-scaled-input": 25,
+          "diffusion-c-in": 25,
+          "diffusion-c-skip": 25,
+          "diffusion-c-out": 25,
+          "unet-actual-x": 50,
+          "unet-actual-timesteps": 50,
+          "unet-actual-text-context": 50,
+          "unet-actual-mask-and-source-latent": 50,
+          "unet-positive-raw-output-before-guidance": 25,
+          "unet-negative-raw-output-before-guidance": 25,
+          "actual-cfg-guided-output": 25,
+          "actual-cfg-reference-check": 25,
+          "diffusion-final-latent": 1,
+          "vae-decode-raw-before-clamp": 1
+        },
+        "allRecordedStagesFinite": true,
+        "positiveRawOutputCount": 25,
+        "negativeRawOutputCount": 25,
+        "guidanceChecks": 25,
+        "guidanceViolations": 0,
+        "guidanceStorageAliases": 0,
+        "expected25StepBranchesVerified": true
+      },
+      "directory": "/private/tmp/picedit-inpainting-gate/reports/20261016-134606-c1b93865-native-series-full/artifacts/warm-repeat-2",
+      "outsideV1RGBAExactlySource": true,
+      "allV1AlphaExactlySource": true
+    },
+    {
+      "caseID": "warm-repeat-3",
+      "fixtureID": "01-structured-removal",
+      "maskKind": "hard",
+      "role": "identical-fixture-warm-repeat",
+      "rawSHA256": "14389520c151a5f723cebb1ac4f9ea04a56dfc65429f3a752f06e7222bf3f1fc",
+      "v1": {
+        "rawOutput": "reports/20261016-134606-c1b93865-native-series-full/artifacts/warm-repeat-3/raw.png",
+        "rawSHA256": "14389520c151a5f723cebb1ac4f9ea04a56dfc65429f3a752f06e7222bf3f1fc",
+        "finalOutput": "reports/20261016-134606-c1b93865-native-series-full/artifacts/warm-repeat-3/v1-final.png",
+        "finalSHA256": "6245d18d0e62a7531aef3aad93c5361ee501ddb4dcf4f362633689ec7b86496b",
+        "comparison": "reports/20261016-134606-c1b93865-native-series-full/artifacts/warm-repeat-3/v1-comparison.png",
+        "outsideMaskPixelsPreserved": true,
+        "sourceAlphaBytesPreserved": true,
+        "quality": "awaiting-explicit-visual-review"
+      },
+      "v2": {
+        "status": "context-criteria-passed-visual-unverified",
+        "rejectCode": null,
+        "diagnostics": {
+          "usableContextPixels": 20944,
+          "fitPixels": 10456,
+          "validationPixels": 10488,
+          "unclampedEstimatedGainRGB": [
+            0.8106853141923573,
+            0.8105713954026066,
+            0.848494683796407
+          ],
+          "appliedGainRGB": [
+            0.8106853141923573,
+            0.8105713954026066,
+            0.848494683796407
+          ],
+          "gainClamped": false,
+          "gainChannelRatio": 1.046785870570925,
+          "fit": {
+            "pixelCount": 10456,
+            "meanAbsoluteLinearRGBErrorBefore": 0.07686170530413768,
+            "meanAbsoluteLinearRGBErrorAfter": 0.035680195983952674,
+            "errorReductionFraction": 0.5357870887359572,
+            "medianLinearRGBResidualAfter": [
+              5.551115123125783e-17,
+              0.0,
+              0.0
+            ]
+          },
+          "validation": {
+            "pixelCount": 10488,
+            "meanAbsoluteLinearRGBErrorBefore": 0.07734704998359537,
+            "meanAbsoluteLinearRGBErrorAfter": 0.0361082823361092,
+            "errorReductionFraction": 0.5331653586818443,
+            "medianLinearRGBResidualAfter": [
+              0.0013081612082641025,
+              2.2053524264376012e-05,
+              0.0
+            ]
+          },
+          "replacementClippingPixelCount": 0,
+          "replacementClippingFraction": 0.0
+        },
+        "proposalCanonicalSHA256": "fb746b30f85d6794255327e938228ff08f8b396972e4343538999b408bed9620",
+        "backendGo": false,
+        "thresholdsOrMaskChanged": false,
+        "finalSHA256": "a0685896164bf49bdb1345f298b77b8c63cc3abc5a83c4577ba15067443c12e7"
+      },
+      "nativeFloatCheck": {
+        "eventCount": 460,
+        "stageCounts": {
+          "vae-encode-raw-before-posterior": 2,
+          "vae-encode-moments": 2,
+          "vae-encode-sampled-latent": 2,
+          "positive-text-conditioning": 1,
+          "negative-text-conditioning": 1,
+          "diffusion-state": 25,
+          "diffusion-sigma": 25,
+          "diffusion-scaled-input": 25,
+          "diffusion-c-in": 25,
+          "diffusion-c-skip": 25,
+          "diffusion-c-out": 25,
+          "unet-actual-x": 50,
+          "unet-actual-timesteps": 50,
+          "unet-actual-text-context": 50,
+          "unet-actual-mask-and-source-latent": 50,
+          "unet-positive-raw-output-before-guidance": 25,
+          "unet-negative-raw-output-before-guidance": 25,
+          "actual-cfg-guided-output": 25,
+          "actual-cfg-reference-check": 25,
+          "diffusion-final-latent": 1,
+          "vae-decode-raw-before-clamp": 1
+        },
+        "allRecordedStagesFinite": true,
+        "positiveRawOutputCount": 25,
+        "negativeRawOutputCount": 25,
+        "guidanceChecks": 25,
+        "guidanceViolations": 0,
+        "guidanceStorageAliases": 0,
+        "expected25StepBranchesVerified": true
+      },
+      "directory": "/private/tmp/picedit-inpainting-gate/reports/20261016-134606-c1b93865-native-series-full/artifacts/warm-repeat-3",
+      "outsideV1RGBAExactlySource": true,
+      "allV1AlphaExactlySource": true
+    },
+    {
+      "caseID": "02-edge-object-hard",
+      "fixtureID": "02-edge-object",
+      "maskKind": "hard",
+      "role": "warm-context-fixture",
+      "rawSHA256": "92e9a1dec57fb60ec8a6654168cb88d3ba00b5736d09417713e22f292b0107e7",
+      "v1": {
+        "rawOutput": "reports/20261016-134606-c1b93865-native-series-full/artifacts/02-edge-object-hard/raw.png",
+        "rawSHA256": "92e9a1dec57fb60ec8a6654168cb88d3ba00b5736d09417713e22f292b0107e7",
+        "finalOutput": "reports/20261016-134606-c1b93865-native-series-full/artifacts/02-edge-object-hard/v1-final.png",
+        "finalSHA256": "8c58fc99476a62e4c40a1be003a2971767af8c31317053f2809606101ccdce7f",
+        "comparison": "reports/20261016-134606-c1b93865-native-series-full/artifacts/02-edge-object-hard/v1-comparison.png",
+        "outsideMaskPixelsPreserved": true,
+        "sourceAlphaBytesPreserved": true,
+        "quality": "awaiting-explicit-visual-review"
+      },
+      "v2": {
+        "status": "context-criteria-passed-visual-unverified",
+        "rejectCode": null,
+        "diagnostics": {
+          "usableContextPixels": 13776,
+          "fitPixels": 6855,
+          "validationPixels": 6921,
+          "unclampedEstimatedGainRGB": [
+            0.796463936499618,
+            0.827177818213963,
+            0.8756279726764763
+          ],
+          "appliedGainRGB": [
+            0.796463936499618,
+            0.827177818213963,
+            0.8756279726764763
+          ],
+          "gainClamped": false,
+          "gainChannelRatio": 1.0993943762535898,
+          "fit": {
+            "pixelCount": 6855,
+            "meanAbsoluteLinearRGBErrorBefore": 0.07381392805204198,
+            "meanAbsoluteLinearRGBErrorAfter": 0.03432243924574242,
+            "errorReductionFraction": 0.5350140528824908,
+            "medianLinearRGBResidualAfter": [
+              0.0,
+              0.0,
+              -2.7755575615628914e-17
+            ]
+          },
+          "validation": {
+            "pixelCount": 6921,
+            "meanAbsoluteLinearRGBErrorBefore": 0.07528359008801566,
+            "meanAbsoluteLinearRGBErrorAfter": 0.03493892047725537,
+            "errorReductionFraction": 0.5359025727066479,
+            "medianLinearRGBResidualAfter": [
+              0.0004962165722836032,
+              0.0003192244363279806,
+              0.0007589387068666076
+            ]
+          },
+          "replacementClippingPixelCount": 0,
+          "replacementClippingFraction": 0.0
+        },
+        "proposalCanonicalSHA256": "fb746b30f85d6794255327e938228ff08f8b396972e4343538999b408bed9620",
+        "backendGo": false,
+        "thresholdsOrMaskChanged": false,
+        "finalSHA256": "32b3af28ec3b0a6eb89ab59b27ee2177be0ed80445fde1fd6345c50606378716"
+      },
+      "nativeFloatCheck": {
+        "eventCount": 460,
+        "stageCounts": {
+          "vae-encode-raw-before-posterior": 2,
+          "vae-encode-moments": 2,
+          "vae-encode-sampled-latent": 2,
+          "positive-text-conditioning": 1,
+          "negative-text-conditioning": 1,
+          "diffusion-state": 25,
+          "diffusion-sigma": 25,
+          "diffusion-scaled-input": 25,
+          "diffusion-c-in": 25,
+          "diffusion-c-skip": 25,
+          "diffusion-c-out": 25,
+          "unet-actual-x": 50,
+          "unet-actual-timesteps": 50,
+          "unet-actual-text-context": 50,
+          "unet-actual-mask-and-source-latent": 50,
+          "unet-positive-raw-output-before-guidance": 25,
+          "unet-negative-raw-output-before-guidance": 25,
+          "actual-cfg-guided-output": 25,
+          "actual-cfg-reference-check": 25,
+          "diffusion-final-latent": 1,
+          "vae-decode-raw-before-clamp": 1
+        },
+        "allRecordedStagesFinite": true,
+        "positiveRawOutputCount": 25,
+        "negativeRawOutputCount": 25,
+        "guidanceChecks": 25,
+        "guidanceViolations": 0,
+        "guidanceStorageAliases": 0,
+        "expected25StepBranchesVerified": true
+      },
+      "directory": "/private/tmp/picedit-inpainting-gate/reports/20261016-134606-c1b93865-native-series-full/artifacts/02-edge-object-hard",
+      "outsideV1RGBAExactlySource": true,
+      "allV1AlphaExactlySource": true
+    },
+    {
+      "caseID": "03-mask-edge-hard",
+      "fixtureID": "03-mask-edge",
+      "maskKind": "hard",
+      "role": "warm-context-fixture",
+      "rawSHA256": "3cd340160103bd1d1fd4358745b012a800adf81d69651efdc26b6210851ed3f5",
+      "v1": {
+        "rawOutput": "reports/20261016-134606-c1b93865-native-series-full/artifacts/03-mask-edge-hard/raw.png",
+        "rawSHA256": "3cd340160103bd1d1fd4358745b012a800adf81d69651efdc26b6210851ed3f5",
+        "finalOutput": "reports/20261016-134606-c1b93865-native-series-full/artifacts/03-mask-edge-hard/v1-final.png",
+        "finalSHA256": "9953904044c6edd3aadd0b8443dcc20f764eb0dd006826753e45a540cea1c608",
+        "comparison": "reports/20261016-134606-c1b93865-native-series-full/artifacts/03-mask-edge-hard/v1-comparison.png",
+        "outsideMaskPixelsPreserved": true,
+        "sourceAlphaBytesPreserved": true,
+        "quality": "awaiting-explicit-visual-review"
+      },
+      "v2": {
+        "status": "context-criteria-passed-visual-unverified",
+        "rejectCode": null,
+        "diagnostics": {
+          "usableContextPixels": 21840,
+          "fitPixels": 10922,
+          "validationPixels": 10918,
+          "unclampedEstimatedGainRGB": [
+            0.8020894847108941,
+            0.829995995342023,
+            0.8406879694657969
+          ],
+          "appliedGainRGB": [
+            0.8020894847108941,
+            0.829995995342023,
+            0.8406879694657969
+          ],
+          "gainClamped": false,
+          "gainChannelRatio": 1.0481224171250858,
+          "fit": {
+            "pixelCount": 10922,
+            "meanAbsoluteLinearRGBErrorBefore": 0.0753626915089301,
+            "meanAbsoluteLinearRGBErrorAfter": 0.03413622626648264,
+            "errorReductionFraction": 0.5470407759728477,
+            "medianLinearRGBResidualAfter": [
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "validation": {
+            "pixelCount": 10918,
+            "meanAbsoluteLinearRGBErrorBefore": 0.07630274964625824,
+            "meanAbsoluteLinearRGBErrorAfter": 0.03416312485620262,
+            "errorReductionFraction": 0.5522687581432668,
+            "medianLinearRGBResidualAfter": [
+              0.0018294992185879932,
+              0.000322140616592137,
+              0.00019876922842707034
+            ]
+          },
+          "replacementClippingPixelCount": 0,
+          "replacementClippingFraction": 0.0
+        },
+        "proposalCanonicalSHA256": "fb746b30f85d6794255327e938228ff08f8b396972e4343538999b408bed9620",
+        "backendGo": false,
+        "thresholdsOrMaskChanged": false,
+        "finalSHA256": "4dc687f53810fe4691e6219a1cc43568f0ccb98c0f5804c4e20ea249c3ab617b"
+      },
+      "nativeFloatCheck": {
+        "eventCount": 460,
+        "stageCounts": {
+          "vae-encode-raw-before-posterior": 2,
+          "vae-encode-moments": 2,
+          "vae-encode-sampled-latent": 2,
+          "positive-text-conditioning": 1,
+          "negative-text-conditioning": 1,
+          "diffusion-state": 25,
+          "diffusion-sigma": 25,
+          "diffusion-scaled-input": 25,
+          "diffusion-c-in": 25,
+          "diffusion-c-skip": 25,
+          "diffusion-c-out": 25,
+          "unet-actual-x": 50,
+          "unet-actual-timesteps": 50,
+          "unet-actual-text-context": 50,
+          "unet-actual-mask-and-source-latent": 50,
+          "unet-positive-raw-output-before-guidance": 25,
+          "unet-negative-raw-output-before-guidance": 25,
+          "actual-cfg-guided-output": 25,
+          "actual-cfg-reference-check": 25,
+          "diffusion-final-latent": 1,
+          "vae-decode-raw-before-clamp": 1
+        },
+        "allRecordedStagesFinite": true,
+        "positiveRawOutputCount": 25,
+        "negativeRawOutputCount": 25,
+        "guidanceChecks": 25,
+        "guidanceViolations": 0,
+        "guidanceStorageAliases": 0,
+        "expected25StepBranchesVerified": true
+      },
+      "directory": "/private/tmp/picedit-inpainting-gate/reports/20261016-134606-c1b93865-native-series-full/artifacts/03-mask-edge-hard",
+      "outsideV1RGBAExactlySource": true,
+      "allV1AlphaExactlySource": true
+    },
+    {
+      "caseID": "03-mask-edge-soft",
+      "fixtureID": "03-mask-edge",
+      "maskKind": "soft",
+      "role": "warm-context-fixture",
+      "rawSHA256": "d07ad83f15977a1185202fbc47c0a2ad69cd6e67b18484479287d54a3154b307",
+      "v1": {
+        "rawOutput": "reports/20261016-134606-c1b93865-native-series-full/artifacts/03-mask-edge-soft/raw.png",
+        "rawSHA256": "d07ad83f15977a1185202fbc47c0a2ad69cd6e67b18484479287d54a3154b307",
+        "finalOutput": "reports/20261016-134606-c1b93865-native-series-full/artifacts/03-mask-edge-soft/v1-final.png",
+        "finalSHA256": "635664ba6bf2e74b465467d48a673efecce7d966b1eb287a191df8873dd9e6c5",
+        "comparison": "reports/20261016-134606-c1b93865-native-series-full/artifacts/03-mask-edge-soft/v1-comparison.png",
+        "outsideMaskPixelsPreserved": true,
+        "sourceAlphaBytesPreserved": true,
+        "quality": "awaiting-explicit-visual-review"
+      },
+      "v2": {
+        "status": "context-criteria-passed-visual-unverified",
+        "rejectCode": null,
+        "diagnostics": {
+          "usableContextPixels": 24752,
+          "fitPixels": 12390,
+          "validationPixels": 12362,
+          "unclampedEstimatedGainRGB": [
+            0.8082198052803385,
+            0.829995995342023,
+            0.821362121811056
+          ],
+          "appliedGainRGB": [
+            0.8082198052803385,
+            0.829995995342023,
+            0.821362121811056
+          ],
+          "gainClamped": false,
+          "gainChannelRatio": 1.0269434006929974,
+          "fit": {
+            "pixelCount": 12390,
+            "meanAbsoluteLinearRGBErrorBefore": 0.07591103905883234,
+            "meanAbsoluteLinearRGBErrorAfter": 0.03485290476573341,
+            "errorReductionFraction": 0.5408717203999563,
+            "medianLinearRGBResidualAfter": [
+              0.0,
+              0.0,
+              2.7755575615628914e-17
+            ]
+          },
+          "validation": {
+            "pixelCount": 12362,
+            "meanAbsoluteLinearRGBErrorBefore": 0.07712080849496523,
+            "meanAbsoluteLinearRGBErrorAfter": 0.035405120240501756,
+            "errorReductionFraction": 0.5409135234518042,
+            "medianLinearRGBResidualAfter": [
+              0.0013915221783215026,
+              0.000322140616592137,
+              0.000657260940320703
+            ]
+          },
+          "replacementClippingPixelCount": 0,
+          "replacementClippingFraction": 0.0
+        },
+        "proposalCanonicalSHA256": "fb746b30f85d6794255327e938228ff08f8b396972e4343538999b408bed9620",
+        "backendGo": false,
+        "thresholdsOrMaskChanged": false,
+        "finalSHA256": "62143d57525e7f5d2066cbd159aeb44a8daa347f8f47238f51c5175e5a140976"
+      },
+      "nativeFloatCheck": {
+        "eventCount": 460,
+        "stageCounts": {
+          "vae-encode-raw-before-posterior": 2,
+          "vae-encode-moments": 2,
+          "vae-encode-sampled-latent": 2,
+          "positive-text-conditioning": 1,
+          "negative-text-conditioning": 1,
+          "diffusion-state": 25,
+          "diffusion-sigma": 25,
+          "diffusion-scaled-input": 25,
+          "diffusion-c-in": 25,
+          "diffusion-c-skip": 25,
+          "diffusion-c-out": 25,
+          "unet-actual-x": 50,
+          "unet-actual-timesteps": 50,
+          "unet-actual-text-context": 50,
+          "unet-actual-mask-and-source-latent": 50,
+          "unet-positive-raw-output-before-guidance": 25,
+          "unet-negative-raw-output-before-guidance": 25,
+          "actual-cfg-guided-output": 25,
+          "actual-cfg-reference-check": 25,
+          "diffusion-final-latent": 1,
+          "vae-decode-raw-before-clamp": 1
+        },
+        "allRecordedStagesFinite": true,
+        "positiveRawOutputCount": 25,
+        "negativeRawOutputCount": 25,
+        "guidanceChecks": 25,
+        "guidanceViolations": 0,
+        "guidanceStorageAliases": 0,
+        "expected25StepBranchesVerified": true
+      },
+      "directory": "/private/tmp/picedit-inpainting-gate/reports/20261016-134606-c1b93865-native-series-full/artifacts/03-mask-edge-soft",
+      "outsideV1RGBAExactlySource": true,
+      "allV1AlphaExactlySource": true
+    },
+    {
+      "caseID": "04-partial-alpha-hard",
+      "fixtureID": "04-partial-alpha",
+      "maskKind": "hard",
+      "role": "warm-context-fixture",
+      "rawSHA256": "95bfb35e1354dacd6a13e7459cb1ab57c024ed8ab32b728791950277fc473c12",
+      "v1": {
+        "rawOutput": "reports/20261016-134606-c1b93865-native-series-full/artifacts/04-partial-alpha-hard/raw.png",
+        "rawSHA256": "95bfb35e1354dacd6a13e7459cb1ab57c024ed8ab32b728791950277fc473c12",
+        "finalOutput": "reports/20261016-134606-c1b93865-native-series-full/artifacts/04-partial-alpha-hard/v1-final.png",
+        "finalSHA256": "7adbd6723551afecb875d86da05e43d0ae88ea2977466dfe526c13c17105c1dc",
+        "comparison": "reports/20261016-134606-c1b93865-native-series-full/artifacts/04-partial-alpha-hard/v1-comparison.png",
+        "outsideMaskPixelsPreserved": true,
+        "sourceAlphaBytesPreserved": true,
+        "quality": "awaiting-explicit-visual-review"
+      },
+      "v2": {
+        "status": "REJECTED",
+        "rejectCode": "context",
+        "diagnostics": {
+          "usableContextPixels": 0,
+          "fitPixels": 0,
+          "validationPixels": 0
+        },
+        "proposalCanonicalSHA256": "fb746b30f85d6794255327e938228ff08f8b396972e4343538999b408bed9620",
+        "backendGo": false,
+        "thresholdsOrMaskChanged": false
+      },
+      "nativeFloatCheck": {
+        "eventCount": 460,
+        "stageCounts": {
+          "vae-encode-raw-before-posterior": 2,
+          "vae-encode-moments": 2,
+          "vae-encode-sampled-latent": 2,
+          "positive-text-conditioning": 1,
+          "negative-text-conditioning": 1,
+          "diffusion-state": 25,
+          "diffusion-sigma": 25,
+          "diffusion-scaled-input": 25,
+          "diffusion-c-in": 25,
+          "diffusion-c-skip": 25,
+          "diffusion-c-out": 25,
+          "unet-actual-x": 50,
+          "unet-actual-timesteps": 50,
+          "unet-actual-text-context": 50,
+          "unet-actual-mask-and-source-latent": 50,
+          "unet-positive-raw-output-before-guidance": 25,
+          "unet-negative-raw-output-before-guidance": 25,
+          "actual-cfg-guided-output": 25,
+          "actual-cfg-reference-check": 25,
+          "diffusion-final-latent": 1,
+          "vae-decode-raw-before-clamp": 1
+        },
+        "allRecordedStagesFinite": true,
+        "positiveRawOutputCount": 25,
+        "negativeRawOutputCount": 25,
+        "guidanceChecks": 25,
+        "guidanceViolations": 0,
+        "guidanceStorageAliases": 0,
+        "expected25StepBranchesVerified": true
+      },
+      "directory": "/private/tmp/picedit-inpainting-gate/reports/20261016-134606-c1b93865-native-series-full/artifacts/04-partial-alpha-hard",
+      "outsideV1RGBAExactlySource": true,
+      "allV1AlphaExactlySource": true
+    },
+    {
+      "caseID": "05-fine-motif-edges-hard",
+      "fixtureID": "05-fine-motif-edges",
+      "maskKind": "hard",
+      "role": "warm-context-fixture",
+      "rawSHA256": "678054d30c3bff3e1057041d8638377b3bfff25707e757a437290be298e788d7",
+      "v1": {
+        "rawOutput": "reports/20261016-134606-c1b93865-native-series-full/artifacts/05-fine-motif-edges-hard/raw.png",
+        "rawSHA256": "678054d30c3bff3e1057041d8638377b3bfff25707e757a437290be298e788d7",
+        "finalOutput": "reports/20261016-134606-c1b93865-native-series-full/artifacts/05-fine-motif-edges-hard/v1-final.png",
+        "finalSHA256": "0b8cb9677db139be1d070851d72b8a8f469ad075700635de404e043b6ac03f9a",
+        "comparison": "reports/20261016-134606-c1b93865-native-series-full/artifacts/05-fine-motif-edges-hard/v1-comparison.png",
+        "outsideMaskPixelsPreserved": true,
+        "sourceAlphaBytesPreserved": true,
+        "quality": "awaiting-explicit-visual-review"
+      },
+      "v2": {
+        "status": "REJECTED",
+        "rejectCode": "context",
+        "diagnostics": {
+          "usableContextPixels": 0,
+          "fitPixels": 0,
+          "validationPixels": 0
+        },
+        "proposalCanonicalSHA256": "fb746b30f85d6794255327e938228ff08f8b396972e4343538999b408bed9620",
+        "backendGo": false,
+        "thresholdsOrMaskChanged": false
+      },
+      "nativeFloatCheck": {
+        "eventCount": 460,
+        "stageCounts": {
+          "vae-encode-raw-before-posterior": 2,
+          "vae-encode-moments": 2,
+          "vae-encode-sampled-latent": 2,
+          "positive-text-conditioning": 1,
+          "negative-text-conditioning": 1,
+          "diffusion-state": 25,
+          "diffusion-sigma": 25,
+          "diffusion-scaled-input": 25,
+          "diffusion-c-in": 25,
+          "diffusion-c-skip": 25,
+          "diffusion-c-out": 25,
+          "unet-actual-x": 50,
+          "unet-actual-timesteps": 50,
+          "unet-actual-text-context": 50,
+          "unet-actual-mask-and-source-latent": 50,
+          "unet-positive-raw-output-before-guidance": 25,
+          "unet-negative-raw-output-before-guidance": 25,
+          "actual-cfg-guided-output": 25,
+          "actual-cfg-reference-check": 25,
+          "diffusion-final-latent": 1,
+          "vae-decode-raw-before-clamp": 1
+        },
+        "allRecordedStagesFinite": true,
+        "positiveRawOutputCount": 25,
+        "negativeRawOutputCount": 25,
+        "guidanceChecks": 25,
+        "guidanceViolations": 0,
+        "guidanceStorageAliases": 0,
+        "expected25StepBranchesVerified": true
+      },
+      "directory": "/private/tmp/picedit-inpainting-gate/reports/20261016-134606-c1b93865-native-series-full/artifacts/05-fine-motif-edges-hard",
+      "outsideV1RGBAExactlySource": true,
+      "allV1AlphaExactlySource": true
+    },
+    {
+      "caseID": "06-nonsquare-canvas-hard",
+      "fixtureID": "06-nonsquare-canvas",
+      "maskKind": "hard",
+      "role": "warm-context-fixture",
+      "rawSHA256": "753edde0dcca12261118bec3e9b29bfd1c0f75edd9b55a0784ae456871144a0b",
+      "v1": {
+        "rawOutput": "reports/20261016-134606-c1b93865-native-series-full/artifacts/06-nonsquare-canvas-hard/raw.png",
+        "rawSHA256": "753edde0dcca12261118bec3e9b29bfd1c0f75edd9b55a0784ae456871144a0b",
+        "finalOutput": "reports/20261016-134606-c1b93865-native-series-full/artifacts/06-nonsquare-canvas-hard/v1-final.png",
+        "finalSHA256": "9b8ac1e943d7a20a564ee399e8d5358ed9aa0b17a82f72d60518fe5fa6a9ac05",
+        "comparison": "reports/20261016-134606-c1b93865-native-series-full/artifacts/06-nonsquare-canvas-hard/v1-comparison.png",
+        "outsideMaskPixelsPreserved": true,
+        "sourceAlphaBytesPreserved": true,
+        "quality": "awaiting-explicit-visual-review"
+      },
+      "v2": {
+        "status": "REJECTED",
+        "rejectCode": "validation-reduction",
+        "diagnostics": {
+          "usableContextPixels": 31808,
+          "fitPixels": 15904,
+          "validationPixels": 15904,
+          "unclampedEstimatedGainRGB": [
+            1.0,
+            1.031447522614641,
+            1.0590389249838292
+          ]
+        },
+        "proposalCanonicalSHA256": "fb746b30f85d6794255327e938228ff08f8b396972e4343538999b408bed9620",
+        "backendGo": false,
+        "thresholdsOrMaskChanged": false
+      },
+      "nativeFloatCheck": {
+        "eventCount": 460,
+        "stageCounts": {
+          "vae-encode-raw-before-posterior": 2,
+          "vae-encode-moments": 2,
+          "vae-encode-sampled-latent": 2,
+          "positive-text-conditioning": 1,
+          "negative-text-conditioning": 1,
+          "diffusion-state": 25,
+          "diffusion-sigma": 25,
+          "diffusion-scaled-input": 25,
+          "diffusion-c-in": 25,
+          "diffusion-c-skip": 25,
+          "diffusion-c-out": 25,
+          "unet-actual-x": 50,
+          "unet-actual-timesteps": 50,
+          "unet-actual-text-context": 50,
+          "unet-actual-mask-and-source-latent": 50,
+          "unet-positive-raw-output-before-guidance": 25,
+          "unet-negative-raw-output-before-guidance": 25,
+          "actual-cfg-guided-output": 25,
+          "actual-cfg-reference-check": 25,
+          "diffusion-final-latent": 1,
+          "vae-decode-raw-before-clamp": 1
+        },
+        "allRecordedStagesFinite": true,
+        "positiveRawOutputCount": 25,
+        "negativeRawOutputCount": 25,
+        "guidanceChecks": 25,
+        "guidanceViolations": 0,
+        "guidanceStorageAliases": 0,
+        "expected25StepBranchesVerified": true
+      },
+      "directory": "/private/tmp/picedit-inpainting-gate/reports/20261016-134606-c1b93865-native-series-full/artifacts/06-nonsquare-canvas-hard",
+      "outsideV1RGBAExactlySource": true,
+      "allV1AlphaExactlySource": true
+    }
+  ],
+  "distinctFixtureIDsWithOutputs": [
+    "01-structured-removal",
+    "02-edge-object",
+    "03-mask-edge",
+    "04-partial-alpha",
+    "05-fine-motif-edges",
+    "06-nonsquare-canvas"
+  ],
+  "allSixFixturesHaveRealOutputs": true,
+  "allSuccessfulOutputNativeFloatChecksPassed": true,
+  "originalDataPreserved": true,
+  "oldV1AndOfflineV2FailsUnchanged": true,
+  "backendGo": false,
+  "visualQualityStatus": "UNVERIFIED-except-explicit-rejects-or-degenerate-failures",
+  "artifactSHA256": {
+    "artifacts/01-structured-removal-hard/comparison-v1-v2.png": "1caf2189ad5f0c5b9b108a2b73ae00e56a4bf6ce037323a627a0c3dae7d956bf",
+    "artifacts/01-structured-removal-hard/native-float-check.json": "9047ee8e2150a9cf37878ce16f5010409ec0fe5ec6ea0344e9d69bca6ed496ae",
+    "artifacts/01-structured-removal-hard/raw.png": "14389520c151a5f723cebb1ac4f9ea04a56dfc65429f3a752f06e7222bf3f1fc",
+    "artifacts/01-structured-removal-hard/replace-mask.png": "c2b097b055be230c26a6f40376d910f3c108034b7bfe5e26f5882a7fb5666333",
+    "artifacts/01-structured-removal-hard/source.png": "5f804c3c53ff13da19ff661a843595c43eaf782a35c538d7dfa984450255784e",
+    "artifacts/01-structured-removal-hard/v1-comparison.png": "17a6e9b7614d7f8c17ad365087054164e3628168059d4f02cc6ff6685c1c4902",
+    "artifacts/01-structured-removal-hard/v1-final.png": "6245d18d0e62a7531aef3aad93c5361ee501ddb4dcf4f362633689ec7b86496b",
+    "artifacts/01-structured-removal-hard/v2-diagnostics.json": "4c2b4dab4abc1798888e7766a95d71b2102103970aec229abf6febeee0a49d69",
+    "artifacts/01-structured-removal-hard/v2-final.png": "a0685896164bf49bdb1345f298b77b8c63cc3abc5a83c4577ba15067443c12e7",
+    "artifacts/01-structured-removal-hard/visual-review-template.json": "2f0d51496efe39292a70c13a01d89c9cd1628aee519e39391886fa9efc982b3f",
+    "artifacts/02-edge-object-hard/comparison-v1-v2.png": "e9abc61db4a7cf41a9fe044250118a232a61001d95a505cf57c5185f0a86c8b0",
+    "artifacts/02-edge-object-hard/native-float-check.json": "9047ee8e2150a9cf37878ce16f5010409ec0fe5ec6ea0344e9d69bca6ed496ae",
+    "artifacts/02-edge-object-hard/raw.png": "92e9a1dec57fb60ec8a6654168cb88d3ba00b5736d09417713e22f292b0107e7",
+    "artifacts/02-edge-object-hard/replace-mask.png": "e08e5ebc9cb7d48066aeb6a5e18bc6d1e194f970ebf0c9bbdb731ce40c1cdec9",
+    "artifacts/02-edge-object-hard/source.png": "29aa816e1d98889ababc4408e89a2e061ae3bce92f2ab7d3d22142b84b05da71",
+    "artifacts/02-edge-object-hard/v1-comparison.png": "2fb1cd23a85da841c30865c10b3b505d2413fb7287b31f1b5875c77724b78c6c",
+    "artifacts/02-edge-object-hard/v1-final.png": "8c58fc99476a62e4c40a1be003a2971767af8c31317053f2809606101ccdce7f",
+    "artifacts/02-edge-object-hard/v2-diagnostics.json": "d63fb48a4825440e9ace13263ad9eff64c1040b57e0105ec0f6c8db0d190954a",
+    "artifacts/02-edge-object-hard/v2-final.png": "32b3af28ec3b0a6eb89ab59b27ee2177be0ed80445fde1fd6345c50606378716",
+    "artifacts/02-edge-object-hard/visual-review-template.json": "93fc9db978ff3161b6da01a1ab84ecf878226f230af13befe26bdebe37a27fa2",
+    "artifacts/03-mask-edge-hard/comparison-v1-v2.png": "ee701c2e8b9eaae3969ea4516f35bcbd94d1db5208fe3b53a8e1a1c3ae0e4d17",
+    "artifacts/03-mask-edge-hard/native-float-check.json": "9047ee8e2150a9cf37878ce16f5010409ec0fe5ec6ea0344e9d69bca6ed496ae",
+    "artifacts/03-mask-edge-hard/raw.png": "3cd340160103bd1d1fd4358745b012a800adf81d69651efdc26b6210851ed3f5",
+    "artifacts/03-mask-edge-hard/replace-mask.png": "f7c4e1ffd54a26a0e09fd2fec8f4f82d8414203575ab483f98f5288300f2f948",
+    "artifacts/03-mask-edge-hard/source.png": "df10cc0e47deaec2825b98d8f44dc315861ffa4122be8b75db97cd217d63bea1",
+    "artifacts/03-mask-edge-hard/v1-comparison.png": "8dae7eef250ef83dcd94a266b0e26b3e3594de9bf1b185cd60fb8c86cd437eba",
+    "artifacts/03-mask-edge-hard/v1-final.png": "9953904044c6edd3aadd0b8443dcc20f764eb0dd006826753e45a540cea1c608",
+    "artifacts/03-mask-edge-hard/v2-diagnostics.json": "9a5cc377c36e2b031188bbcf4f6ca699e47d6d992c7fa4d9ff433e5c3acd1fac",
+    "artifacts/03-mask-edge-hard/v2-final.png": "4dc687f53810fe4691e6219a1cc43568f0ccb98c0f5804c4e20ea249c3ab617b",
+    "artifacts/03-mask-edge-hard/visual-review-template.json": "e083587d60f83d141b39aea745555b322f2afe233cf7889e93d168809b7a4ce6",
+    "artifacts/03-mask-edge-soft/comparison-v1-v2.png": "50a81eaa866179824f1b829c6612f913da29615fe3dc54a3518d7c6d0e983135",
+    "artifacts/03-mask-edge-soft/native-float-check.json": "9047ee8e2150a9cf37878ce16f5010409ec0fe5ec6ea0344e9d69bca6ed496ae",
+    "artifacts/03-mask-edge-soft/raw.png": "d07ad83f15977a1185202fbc47c0a2ad69cd6e67b18484479287d54a3154b307",
+    "artifacts/03-mask-edge-soft/replace-mask.png": "4f7c053bd07c752260fa3455596673f9f330f0d0ce6050649fa0f365902c0e4a",
+    "artifacts/03-mask-edge-soft/source.png": "df10cc0e47deaec2825b98d8f44dc315861ffa4122be8b75db97cd217d63bea1",
+    "artifacts/03-mask-edge-soft/v1-comparison.png": "e249dfcb567ca6e66228c05a161cf901c84cf2f2c904b7383dd7e7d3e18d3d0f",
+    "artifacts/03-mask-edge-soft/v1-final.png": "635664ba6bf2e74b465467d48a673efecce7d966b1eb287a191df8873dd9e6c5",
+    "artifacts/03-mask-edge-soft/v2-diagnostics.json": "3b4e120c045da6f3dcc70b62f6069425a37c2b161dfc3508a2a047d52add3cbd",
+    "artifacts/03-mask-edge-soft/v2-final.png": "62143d57525e7f5d2066cbd159aeb44a8daa347f8f47238f51c5175e5a140976",
+    "artifacts/03-mask-edge-soft/visual-review-template.json": "e083587d60f83d141b39aea745555b322f2afe233cf7889e93d168809b7a4ce6",
+    "artifacts/04-partial-alpha-hard/comparison-v1-v2.png": "93bf4de61af0108aa1d9ec1309fa626a0545c0377a95e9b6cd5d748eee66b984",
+    "artifacts/04-partial-alpha-hard/native-float-check.json": "9047ee8e2150a9cf37878ce16f5010409ec0fe5ec6ea0344e9d69bca6ed496ae",
+    "artifacts/04-partial-alpha-hard/raw.png": "95bfb35e1354dacd6a13e7459cb1ab57c024ed8ab32b728791950277fc473c12",
+    "artifacts/04-partial-alpha-hard/replace-mask.png": "46320b33d9cb4a1ca658c38b4e2e12b0f67e95bf6ae566b0f0be3bfe4e66af91",
+    "artifacts/04-partial-alpha-hard/source.png": "4374827bd919689152b8eb8d4c6a30b801b3293476fcdf76dc15f238941f7c8b",
+    "artifacts/04-partial-alpha-hard/v1-comparison.png": "1aa4eaf4092ce36e1999b065c325a23b74ecdad1f4ccc4d855fecedc3eb60521",
+    "artifacts/04-partial-alpha-hard/v1-final.png": "7adbd6723551afecb875d86da05e43d0ae88ea2977466dfe526c13c17105c1dc",
+    "artifacts/04-partial-alpha-hard/v2-diagnostics.json": "7ff3b997059b257330c520d8418763a31c29215661f0ec7c753c7f6c4f9034a4",
+    "artifacts/04-partial-alpha-hard/visual-review-template.json": "0a1d08ec3ef6bd861667ec85264e6484bf06894c7810b079c8e20d59ed26deb4",
+    "artifacts/05-fine-motif-edges-hard/comparison-v1-v2.png": "51987bf8951c1412dd1eae56c8ae1bc5108e0bea4b3bb1f2c8cb709d6cec82d6",
+    "artifacts/05-fine-motif-edges-hard/native-float-check.json": "9047ee8e2150a9cf37878ce16f5010409ec0fe5ec6ea0344e9d69bca6ed496ae",
+    "artifacts/05-fine-motif-edges-hard/raw.png": "678054d30c3bff3e1057041d8638377b3bfff25707e757a437290be298e788d7",
+    "artifacts/05-fine-motif-edges-hard/replace-mask.png": "26a0c86703ceff7901679361426ac3620c1d0eee2bc43037b783c0ef17eb4d2c",
+    "artifacts/05-fine-motif-edges-hard/source.png": "dbe6a67f1fb95efad1be090cea085d9f9ca8f2afb47f5c6473671694d91208a7",
+    "artifacts/05-fine-motif-edges-hard/v1-comparison.png": "59daf0eecaf10a66d871835ea3c3c3c4bacc9c8349f7605bdecf0b0516e22e1b",
+    "artifacts/05-fine-motif-edges-hard/v1-final.png": "0b8cb9677db139be1d070851d72b8a8f469ad075700635de404e043b6ac03f9a",
+    "artifacts/05-fine-motif-edges-hard/v2-diagnostics.json": "7ff3b997059b257330c520d8418763a31c29215661f0ec7c753c7f6c4f9034a4",
+    "artifacts/05-fine-motif-edges-hard/visual-review-template.json": "fd6caccef9e756718d771fcd85e0c9353fe11250c88fdf3aeb3aad38f629f0c6",
+    "artifacts/06-nonsquare-canvas-hard/comparison-v1-v2.png": "73f3e1a474eacb6a53d190226336eb82b316dcb033e4f7b43976fd0bff406494",
+    "artifacts/06-nonsquare-canvas-hard/native-float-check.json": "9047ee8e2150a9cf37878ce16f5010409ec0fe5ec6ea0344e9d69bca6ed496ae",
+    "artifacts/06-nonsquare-canvas-hard/raw.png": "753edde0dcca12261118bec3e9b29bfd1c0f75edd9b55a0784ae456871144a0b",
+    "artifacts/06-nonsquare-canvas-hard/replace-mask.png": "07ed18a4e61f849e8f5456c58d53ae4c21d0786990e7becc141932bb06cef93c",
+    "artifacts/06-nonsquare-canvas-hard/source.png": "5fcc0c9d83c8ceb83837365712579a953f792646a954af91f4c1dc3251aec351",
+    "artifacts/06-nonsquare-canvas-hard/v1-comparison.png": "91779d69e59952d6162ef3c525cb1350a0a824502134d13f9d3d8421a9e8ee6b",
+    "artifacts/06-nonsquare-canvas-hard/v1-final.png": "9b8ac1e943d7a20a564ee399e8d5358ed9aa0b17a82f72d60518fe5fa6a9ac05",
+    "artifacts/06-nonsquare-canvas-hard/v2-diagnostics.json": "e00ee306d9e9d48aff6b39eb6aa24213ffebb416784acf264eb0105f5c1da724",
+    "artifacts/06-nonsquare-canvas-hard/visual-review-template.json": "9aae1ed8cf394ff2decbbc24973c763469002ac6829f9b355ae55992a5e7edb5",
+    "artifacts/warm-repeat-1/comparison-v1-v2.png": "1caf2189ad5f0c5b9b108a2b73ae00e56a4bf6ce037323a627a0c3dae7d956bf",
+    "artifacts/warm-repeat-1/native-float-check.json": "9047ee8e2150a9cf37878ce16f5010409ec0fe5ec6ea0344e9d69bca6ed496ae",
+    "artifacts/warm-repeat-1/raw.png": "14389520c151a5f723cebb1ac4f9ea04a56dfc65429f3a752f06e7222bf3f1fc",
+    "artifacts/warm-repeat-1/replace-mask.png": "c2b097b055be230c26a6f40376d910f3c108034b7bfe5e26f5882a7fb5666333",
+    "artifacts/warm-repeat-1/source.png": "5f804c3c53ff13da19ff661a843595c43eaf782a35c538d7dfa984450255784e",
+    "artifacts/warm-repeat-1/v1-comparison.png": "17a6e9b7614d7f8c17ad365087054164e3628168059d4f02cc6ff6685c1c4902",
+    "artifacts/warm-repeat-1/v1-final.png": "6245d18d0e62a7531aef3aad93c5361ee501ddb4dcf4f362633689ec7b86496b",
+    "artifacts/warm-repeat-1/v2-diagnostics.json": "4c2b4dab4abc1798888e7766a95d71b2102103970aec229abf6febeee0a49d69",
+    "artifacts/warm-repeat-1/v2-final.png": "a0685896164bf49bdb1345f298b77b8c63cc3abc5a83c4577ba15067443c12e7",
+    "artifacts/warm-repeat-1/visual-review-template.json": "2f0d51496efe39292a70c13a01d89c9cd1628aee519e39391886fa9efc982b3f",
+    "artifacts/warm-repeat-2/comparison-v1-v2.png": "1caf2189ad5f0c5b9b108a2b73ae00e56a4bf6ce037323a627a0c3dae7d956bf",
+    "artifacts/warm-repeat-2/native-float-check.json": "9047ee8e2150a9cf37878ce16f5010409ec0fe5ec6ea0344e9d69bca6ed496ae",
+    "artifacts/warm-repeat-2/raw.png": "14389520c151a5f723cebb1ac4f9ea04a56dfc65429f3a752f06e7222bf3f1fc",
+    "artifacts/warm-repeat-2/replace-mask.png": "c2b097b055be230c26a6f40376d910f3c108034b7bfe5e26f5882a7fb5666333",
+    "artifacts/warm-repeat-2/source.png": "5f804c3c53ff13da19ff661a843595c43eaf782a35c538d7dfa984450255784e",
+    "artifacts/warm-repeat-2/v1-comparison.png": "17a6e9b7614d7f8c17ad365087054164e3628168059d4f02cc6ff6685c1c4902",
+    "artifacts/warm-repeat-2/v1-final.png": "6245d18d0e62a7531aef3aad93c5361ee501ddb4dcf4f362633689ec7b86496b",
+    "artifacts/warm-repeat-2/v2-diagnostics.json": "4c2b4dab4abc1798888e7766a95d71b2102103970aec229abf6febeee0a49d69",
+    "artifacts/warm-repeat-2/v2-final.png": "a0685896164bf49bdb1345f298b77b8c63cc3abc5a83c4577ba15067443c12e7",
+    "artifacts/warm-repeat-2/visual-review-template.json": "2f0d51496efe39292a70c13a01d89c9cd1628aee519e39391886fa9efc982b3f",
+    "artifacts/warm-repeat-3/comparison-v1-v2.png": "1caf2189ad5f0c5b9b108a2b73ae00e56a4bf6ce037323a627a0c3dae7d956bf",
+    "artifacts/warm-repeat-3/native-float-check.json": "9047ee8e2150a9cf37878ce16f5010409ec0fe5ec6ea0344e9d69bca6ed496ae",
+    "artifacts/warm-repeat-3/raw.png": "14389520c151a5f723cebb1ac4f9ea04a56dfc65429f3a752f06e7222bf3f1fc",
+    "artifacts/warm-repeat-3/replace-mask.png": "c2b097b055be230c26a6f40376d910f3c108034b7bfe5e26f5882a7fb5666333",
+    "artifacts/warm-repeat-3/source.png": "5f804c3c53ff13da19ff661a843595c43eaf782a35c538d7dfa984450255784e",
+    "artifacts/warm-repeat-3/v1-comparison.png": "17a6e9b7614d7f8c17ad365087054164e3628168059d4f02cc6ff6685c1c4902",
+    "artifacts/warm-repeat-3/v1-final.png": "6245d18d0e62a7531aef3aad93c5361ee501ddb4dcf4f362633689ec7b86496b",
+    "artifacts/warm-repeat-3/v2-diagnostics.json": "4c2b4dab4abc1798888e7766a95d71b2102103970aec229abf6febeee0a49d69",
+    "artifacts/warm-repeat-3/v2-final.png": "a0685896164bf49bdb1345f298b77b8c63cc3abc5a83c4577ba15067443c12e7",
+    "artifacts/warm-repeat-3/visual-review-template.json": "2f0d51496efe39292a70c13a01d89c9cd1628aee519e39391886fa9efc982b3f"
+  },
+  "newPostprocessVersion": "series-archive-v1-frozen-compositors",
+  "provenanceSHA256": {
+    "provenance/THIRD-PARTY-NOTICES-EVALUATION.txt": "9b4d619536271b601989dfc665614b189f7a8c87a2bbd7d0c83bed0aa1579716",
+    "provenance/context-color-v2-proposal.json": "6363b33e560fe57232ac53568a71988cc85b704bfca4a8d3c057e3af112bc9b8",
+    "provenance/evaluate-inpainting-series.swift": "6ceaa3160d5abc8c750d4710d8f221c634f5fd69f5da54452408d411bb5b4ba6",
+    "provenance/evaluation-helper-float-diagnostic-unbatched.cpp": "64ec0665e376d00b60a6a903babf62b9f078e65429f7e189a345d5ca5bc8dde0",
+    "provenance/fixtures-manifest.json": "799d51e22631500e9caa2fbdd2c09403788d55d4248ddeacc9cc0db0c4a7a2d5",
+    "provenance/float-diagnostic-unbatched-sdk.patch": "e7aed7286e508f87b8c566afd1dd257b10dfb5f81a7f0081b2fc22ffe3dac7f0",
+    "provenance/model-manifest.json": "666bdfbe19edd25cdf677b28d53055a19ce0983a0dde0223f35ec3091fc5ae79",
+    "provenance/picedit_float_diagnostic-unbatched.h": "13825c9a3d2edcb85848746fe19b5240fa21d420b88c1727398af77ea52af9a5",
+    "provenance/series-postprocess.py": "ffa80bb7c11388194e511e6ac745b0ad6baf99e909e5f67707d2894389b1278f",
+    "provenance/unbatched-configuration.json": "bfcd90c91223a8076644420943cd9638bca717d81909b99ef39866714ba7514f"
+  },
+  "postprocessFileSHA256": "ffa80bb7c11388194e511e6ac745b0ad6baf99e909e5f67707d2894389b1278f"
+}

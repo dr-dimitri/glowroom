@@ -1,0 +1,33 @@
+{
+  "eventCount": 460,
+  "stageCounts": {
+    "vae-encode-raw-before-posterior": 2,
+    "vae-encode-moments": 2,
+    "vae-encode-sampled-latent": 2,
+    "positive-text-conditioning": 1,
+    "negative-text-conditioning": 1,
+    "diffusion-state": 25,
+    "diffusion-sigma": 25,
+    "diffusion-scaled-input": 25,
+    "diffusion-c-in": 25,
+    "diffusion-c-skip": 25,
+    "diffusion-c-out": 25,
+    "unet-actual-x": 50,
+    "unet-actual-timesteps": 50,
+    "unet-actual-text-context": 50,
+    "unet-actual-mask-and-source-latent": 50,
+    "unet-positive-raw-output-before-guidance": 25,
+    "unet-negative-raw-output-before-guidance": 25,
+    "actual-cfg-guided-output": 25,
+    "actual-cfg-reference-check": 25,
+    "diffusion-final-latent": 1,
+    "vae-decode-raw-before-clamp": 1
+  },
+  "allRecordedStagesFinite": true,
+  "positiveRawOutputCount": 25,
+  "negativeRawOutputCount": 25,
+  "guidanceChecks": 25,
+  "guidanceViolations": 0,
+  "guidanceStorageAliases": 0,
+  "expected25StepBranchesVerified": true
+}

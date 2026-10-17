@@ -1,0 +1,467 @@
+{
+  "allInputAndWeightHashesVerifiedBeforeLoad" : true,
+  "allNativeProcessesConfirmedEnded" : true,
+  "cancelGatePassed" : true,
+  "cancellation" : {
+    "cancelLatencyUntilNativeReturnSeconds" : 4.1650130832567811,
+    "code" : "cancelled",
+    "driverElapsedSeconds" : 30.054522458231077,
+    "event" : "completed",
+    "id" : "cancel",
+    "libraryLogCount" : 267,
+    "memory" : {
+      "footprintBytes" : 2381040208,
+      "peakFootprintBytes" : 3426520448,
+      "peakRSSBytes" : 3059269632,
+      "residentBytes" : 2196946944
+    },
+    "nativeConfiguration" : {
+      "actualBatchedCFG" : false,
+      "diagnosticScope" : "pinned-sdk-runner-metadata-only",
+      "diffusionParamsBackend" : "MTL0",
+      "diffusionRuntimeBackend" : "MTL0",
+      "status" : "actual-runner-inspected",
+      "vaeHostBufferTensorCount" : 248,
+      "vaeMissingBufferTensorCount" : 0,
+      "vaeParameterTensorCount" : 248,
+      "vaeParameterTensorTypes" : {
+        "f16" : 64,
+        "f32" : 184
+      },
+      "vaeParamsBackend" : "CPU",
+      "vaeRuntimeBackend" : "CPU"
+    },
+    "nativePID" : 11242,
+    "operation" : "generate",
+    "protocol" : 1,
+    "sameProcessContextLeaseHeldUntilThisNativeReturn" : true,
+    "seconds" : 30.054159875,
+    "status" : "error"
+  },
+  "cancelLoad" : {
+    "attentionScale" : 0.0078125,
+    "backend" : "metal",
+    "configuration" : "metal-diffusion-cpu-vae-partial-f32-flash-auto-scale-1over128-float-diagnostic-unbatched",
+    "configurationSHA256" : "a356133c9769b71a55fff3a43b706942df1c477cf757075055549a394a1c2450",
+    "driverElapsedSeconds" : 4.1894052501302212,
+    "event" : "completed",
+    "flashAttentionMode" : "auto",
+    "id" : "load",
+    "libraryLogCount" : 93,
+    "linearScale" : 0.0078125,
+    "memory" : {
+      "footprintBytes" : 2678082344,
+      "peakFootprintBytes" : 2678115112,
+      "peakRSSBytes" : 2233679872,
+      "residentBytes" : 2232549376
+    },
+    "modelKind" : "SD 1.x Inpaint",
+    "nativeConfiguration" : {
+      "actualBatchedCFG" : false,
+      "diagnosticScope" : "pinned-sdk-runner-metadata-only",
+      "diffusionParamsBackend" : "MTL0",
+      "diffusionRuntimeBackend" : "MTL0",
+      "status" : "actual-runner-inspected",
+      "vaeHostBufferTensorCount" : 248,
+      "vaeMissingBufferTensorCount" : 0,
+      "vaeParameterTensorCount" : 248,
+      "vaeParameterTensorTypes" : {
+        "f16" : 64,
+        "f32" : 184
+      },
+      "vaeParamsBackend" : "CPU",
+      "vaeRuntimeBackend" : "CPU"
+    },
+    "nativePID" : 11242,
+    "operation" : "load",
+    "protocol" : 1,
+    "sameProcessContextLeaseHeldUntilThisNativeReturn" : true,
+    "seconds" : 4.1892415410000003,
+    "status" : "success"
+  },
+  "cancelNoOutputPublished" : true,
+  "cancelStop" : {
+    "confirmedProcessEnded" : true,
+    "eventBytes" : 30809,
+    "eventCount" : 95,
+    "leaseReleasedOnlyAfterProcessExit" : true,
+    "nativeExitStatus" : 0,
+    "nativePID" : 11242,
+    "stderrBytes" : 2
+  },
+  "clock" : "mach_continuous_time-includes-system-sleep",
+  "coldEndToEndSeconds" : 170.85146675002761,
+  "contextColdDefinition" : "new helper\/model context; operating-system file and shader caches not purged",
+  "currentCompositorDirectory" : "picedit-issue12-benchmark-20261017-compositor",
+  "currentCompositorReportSHA256" : "a676d4c6ec791bcf112b7196521a168c67cb6102aaf4102005b571e2545104e5",
+  "date" : "2026-10-17T12:52:01Z",
+  "decision" : "fullNoGo",
+  "gates" : {
+    "cancelSeconds" : 5,
+    "coldTotalSeconds" : 240,
+    "generationSeconds" : 180,
+    "loadSeconds" : 45,
+    "previewBaselineMultiplier" : 2,
+    "previewP95Seconds" : 0.25,
+    "residentAndWorkingBytes" : 6442450944
+  },
+  "harnessExecutableSHA256" : "20922793e19cb71109f43f5a9c1611921e256819ba53934d0cca14de6fa5ed4d",
+  "inferenceLeaseHeldThroughActualNativeExit" : true,
+  "installation" : {
+    "configurationSHA256" : "a356133c9769b71a55fff3a43b706942df1c477cf757075055549a394a1c2450",
+    "fixtureManifestSHA256" : "799d51e22631500e9caa2fbdd2c09403788d55d4248ddeacc9cc0db0c4a7a2d5",
+    "ggmlRevision" : "d25b121ce1d6ae0c7e62ad080460d9fc1e46dd93",
+    "helperSHA256" : "c56afd5a283f7933d0bcfd8bdc28085bad6a6cd1db39c5d70ac03c78d367bdc7",
+    "helperSourceSHA256" : "9146c2e86f94b2040e11fc11229680f5709282e5af498330b6fa3e02b4d46400",
+    "inferenceExecuted" : false,
+    "modelFilesInstalled" : false,
+    "modelManifestSHA256" : "666bdfbe19edd25cdf677b28d53055a19ce0983a0dde0223f35ec3091fc5ae79",
+    "modelRevision" : "8a4288a76071f7280aedbdb3253bdb9e9d5d84bb",
+    "preflight" : {
+      "architecture" : "arm64",
+      "freeDiskBytes" : 591828271104,
+      "macOS" : "27.0.1",
+      "physicalMemoryBytes" : 17179869184
+    },
+    "productCapability" : "unavailable",
+    "schemaVersion" : 1,
+    "sdkRevision" : "8cd731e7b4667eb8f40a153315b9a7125d09a58d"
+  },
+  "load" : {
+    "attentionScale" : 0.0078125,
+    "backend" : "metal",
+    "configuration" : "metal-diffusion-cpu-vae-partial-f32-flash-auto-scale-1over128-float-diagnostic-unbatched",
+    "configurationSHA256" : "a356133c9769b71a55fff3a43b706942df1c477cf757075055549a394a1c2450",
+    "driverElapsedSeconds" : 28.410322166513652,
+    "event" : "completed",
+    "flashAttentionMode" : "auto",
+    "id" : "load",
+    "libraryLogCount" : 93,
+    "linearScale" : 0.0078125,
+    "memory" : {
+      "footprintBytes" : 2716421048,
+      "peakFootprintBytes" : 2716502968,
+      "peakRSSBytes" : 2508668928,
+      "residentBytes" : 2508668928
+    },
+    "modelKind" : "SD 1.x Inpaint",
+    "nativeConfiguration" : {
+      "actualBatchedCFG" : false,
+      "diagnosticScope" : "pinned-sdk-runner-metadata-only",
+      "diffusionParamsBackend" : "MTL0",
+      "diffusionRuntimeBackend" : "MTL0",
+      "status" : "actual-runner-inspected",
+      "vaeHostBufferTensorCount" : 248,
+      "vaeMissingBufferTensorCount" : 0,
+      "vaeParameterTensorCount" : 248,
+      "vaeParameterTensorTypes" : {
+        "f16" : 64,
+        "f32" : 184
+      },
+      "vaeParamsBackend" : "CPU",
+      "vaeRuntimeBackend" : "CPU"
+    },
+    "nativePID" : 10602,
+    "operation" : "load",
+    "protocol" : 1,
+    "sameProcessContextLeaseHeldUntilThisNativeReturn" : true,
+    "seconds" : 28.409988792,
+    "status" : "success"
+  },
+  "noNetworkOrDownload" : true,
+  "operatingSystem" : "Version 27.0.1 (Build 26A434)",
+  "operations" : [
+    {
+      "channels" : 3,
+      "driverElapsedSeconds" : 141.82973195845261,
+      "event" : "completed",
+      "fixtureID" : "01-structured-removal",
+      "floatDiagnostics" : "not-exposed-by-public-uint8-c-api",
+      "height" : 512,
+      "id" : "cold",
+      "libraryLogCount" : 714,
+      "maskKind" : "hard",
+      "memory" : {
+        "footprintBytes" : 2230716936,
+        "peakFootprintBytes" : 3972878056,
+        "peakRSSBytes" : 3771711488,
+        "residentBytes" : 2033172480
+      },
+      "nativeConfiguration" : {
+        "actualBatchedCFG" : false,
+        "diagnosticScope" : "pinned-sdk-runner-metadata-only",
+        "diffusionParamsBackend" : "MTL0",
+        "diffusionRuntimeBackend" : "MTL0",
+        "status" : "actual-runner-inspected",
+        "vaeHostBufferTensorCount" : 248,
+        "vaeMissingBufferTensorCount" : 0,
+        "vaeParameterTensorCount" : 248,
+        "vaeParameterTensorTypes" : {
+          "f16" : 64,
+          "f32" : 184
+        },
+        "vaeParamsBackend" : "CPU",
+        "vaeRuntimeBackend" : "CPU"
+      },
+      "nativeDistinctRGBColors" : 36162,
+      "nativePID" : 10602,
+      "nativeRGBMaximum" : [
+        255,
+        250,
+        226
+      ],
+      "nativeRGBMinimum" : [
+        37,
+        12,
+        0
+      ],
+      "operation" : "generate",
+      "protocol" : 1,
+      "request" : {
+        "id" : "cold",
+        "mask" : "fixtures\/01-structured-removal-mask-hard.png",
+        "negativePrompt" : "blurry, distorted, new objects, text, watermark",
+        "operation" : "generate",
+        "output" : "outputs\/1cb9da28-c6a9-45cb-89ee-2ce6148389a6-cold.png",
+        "prompt" : "an empty wooden panel, continuous horizontal wood boards, natural wood texture",
+        "seed" : 4281,
+        "source" : "fixtures\/01-structured-removal-source.png"
+      },
+      "sameProcessContextLeaseHeldUntilThisNativeReturn" : true,
+      "seconds" : 141.829346042,
+      "status" : "success",
+      "width" : 512
+    },
+    {
+      "channels" : 3,
+      "driverElapsedSeconds" : 141.66144029167481,
+      "event" : "completed",
+      "fixtureID" : "01-structured-removal",
+      "floatDiagnostics" : "not-exposed-by-public-uint8-c-api",
+      "height" : 512,
+      "id" : "warm-1",
+      "libraryLogCount" : 1252,
+      "maskKind" : "hard",
+      "memory" : {
+        "footprintBytes" : 2241202696,
+        "peakFootprintBytes" : 3984281344,
+        "peakRSSBytes" : 3771711488,
+        "residentBytes" : 1999814656
+      },
+      "nativeConfiguration" : {
+        "actualBatchedCFG" : false,
+        "diagnosticScope" : "pinned-sdk-runner-metadata-only",
+        "diffusionParamsBackend" : "MTL0",
+        "diffusionRuntimeBackend" : "MTL0",
+        "status" : "actual-runner-inspected",
+        "vaeHostBufferTensorCount" : 248,
+        "vaeMissingBufferTensorCount" : 0,
+        "vaeParameterTensorCount" : 248,
+        "vaeParameterTensorTypes" : {
+          "f16" : 64,
+          "f32" : 184
+        },
+        "vaeParamsBackend" : "CPU",
+        "vaeRuntimeBackend" : "CPU"
+      },
+      "nativeDistinctRGBColors" : 36162,
+      "nativePID" : 10602,
+      "nativeRGBMaximum" : [
+        255,
+        250,
+        226
+      ],
+      "nativeRGBMinimum" : [
+        37,
+        12,
+        0
+      ],
+      "operation" : "generate",
+      "protocol" : 1,
+      "request" : {
+        "id" : "warm-1",
+        "mask" : "fixtures\/01-structured-removal-mask-hard.png",
+        "negativePrompt" : "blurry, distorted, new objects, text, watermark",
+        "operation" : "generate",
+        "output" : "outputs\/1cb9da28-c6a9-45cb-89ee-2ce6148389a6-warm-1.png",
+        "prompt" : "an empty wooden panel, continuous horizontal wood boards, natural wood texture",
+        "seed" : 4281,
+        "source" : "fixtures\/01-structured-removal-source.png"
+      },
+      "sameProcessContextLeaseHeldUntilThisNativeReturn" : true,
+      "seconds" : 141.66094475,
+      "status" : "success",
+      "width" : 512
+    },
+    {
+      "channels" : 3,
+      "driverElapsedSeconds" : 139.66044054157101,
+      "event" : "completed",
+      "fixtureID" : "01-structured-removal",
+      "floatDiagnostics" : "not-exposed-by-public-uint8-c-api",
+      "height" : 512,
+      "id" : "warm-2",
+      "libraryLogCount" : 1790,
+      "maskKind" : "hard",
+      "memory" : {
+        "footprintBytes" : 2241251848,
+        "peakFootprintBytes" : 3987508992,
+        "peakRSSBytes" : 3771711488,
+        "residentBytes" : 2002468864
+      },
+      "nativeConfiguration" : {
+        "actualBatchedCFG" : false,
+        "diagnosticScope" : "pinned-sdk-runner-metadata-only",
+        "diffusionParamsBackend" : "MTL0",
+        "diffusionRuntimeBackend" : "MTL0",
+        "status" : "actual-runner-inspected",
+        "vaeHostBufferTensorCount" : 248,
+        "vaeMissingBufferTensorCount" : 0,
+        "vaeParameterTensorCount" : 248,
+        "vaeParameterTensorTypes" : {
+          "f16" : 64,
+          "f32" : 184
+        },
+        "vaeParamsBackend" : "CPU",
+        "vaeRuntimeBackend" : "CPU"
+      },
+      "nativeDistinctRGBColors" : 36162,
+      "nativePID" : 10602,
+      "nativeRGBMaximum" : [
+        255,
+        250,
+        226
+      ],
+      "nativeRGBMinimum" : [
+        37,
+        12,
+        0
+      ],
+      "operation" : "generate",
+      "protocol" : 1,
+      "request" : {
+        "id" : "warm-2",
+        "mask" : "fixtures\/01-structured-removal-mask-hard.png",
+        "negativePrompt" : "blurry, distorted, new objects, text, watermark",
+        "operation" : "generate",
+        "output" : "outputs\/1cb9da28-c6a9-45cb-89ee-2ce6148389a6-warm-2.png",
+        "prompt" : "an empty wooden panel, continuous horizontal wood boards, natural wood texture",
+        "seed" : 4281,
+        "source" : "fixtures\/01-structured-removal-source.png"
+      },
+      "sameProcessContextLeaseHeldUntilThisNativeReturn" : true,
+      "seconds" : 139.66002279200001,
+      "status" : "success",
+      "width" : 512
+    },
+    {
+      "channels" : 3,
+      "driverElapsedSeconds" : 140.77440933324397,
+      "event" : "completed",
+      "fixtureID" : "01-structured-removal",
+      "floatDiagnostics" : "not-exposed-by-public-uint8-c-api",
+      "height" : 512,
+      "id" : "warm-3",
+      "libraryLogCount" : 2328,
+      "maskKind" : "hard",
+      "memory" : {
+        "footprintBytes" : 2242333192,
+        "peakFootprintBytes" : 3988590336,
+        "peakRSSBytes" : 3838787584,
+        "residentBytes" : 2024079360
+      },
+      "nativeConfiguration" : {
+        "actualBatchedCFG" : false,
+        "diagnosticScope" : "pinned-sdk-runner-metadata-only",
+        "diffusionParamsBackend" : "MTL0",
+        "diffusionRuntimeBackend" : "MTL0",
+        "status" : "actual-runner-inspected",
+        "vaeHostBufferTensorCount" : 248,
+        "vaeMissingBufferTensorCount" : 0,
+        "vaeParameterTensorCount" : 248,
+        "vaeParameterTensorTypes" : {
+          "f16" : 64,
+          "f32" : 184
+        },
+        "vaeParamsBackend" : "CPU",
+        "vaeRuntimeBackend" : "CPU"
+      },
+      "nativeDistinctRGBColors" : 36162,
+      "nativePID" : 10602,
+      "nativeRGBMaximum" : [
+        255,
+        250,
+        226
+      ],
+      "nativeRGBMinimum" : [
+        37,
+        12,
+        0
+      ],
+      "operation" : "generate",
+      "protocol" : 1,
+      "request" : {
+        "id" : "warm-3",
+        "mask" : "fixtures\/01-structured-removal-mask-hard.png",
+        "negativePrompt" : "blurry, distorted, new objects, text, watermark",
+        "operation" : "generate",
+        "output" : "outputs\/1cb9da28-c6a9-45cb-89ee-2ce6148389a6-warm-3.png",
+        "prompt" : "an empty wooden panel, continuous horizontal wood boards, natural wood texture",
+        "seed" : 4281,
+        "source" : "fixtures\/01-structured-removal-source.png"
+      },
+      "sameProcessContextLeaseHeldUntilThisNativeReturn" : true,
+      "seconds" : 140.77407033399999,
+      "status" : "success",
+      "width" : 512
+    }
+  ],
+  "ownPeakRSSBytes" : 30801920,
+  "physicalMemoryBytes" : 17179869184,
+  "previewBaseline" : {
+    "actualPicEditUIOrRAWTest" : false,
+    "checksum" : "11415198723587076147",
+    "coalescedFrameCount" : 0,
+    "discardedWarmupRenders" : 5,
+    "execution" : "CIContext-auto-single-background-renderer",
+    "latencyDefinition" : "scheduled-coalesced-request-to-render-return; includes scheduling and GPU wait",
+    "maximumRenderOnlySeconds" : 0.0028366667684167624,
+    "maximumSeconds" : 0.012782041681930423,
+    "modelContextResidentButNoModelCompute" : true,
+    "p50Seconds" : 0.0091927917674183846,
+    "p95Seconds" : 0.012733666691929102,
+    "p99Seconds" : 0.012782041681930423,
+    "sampleCount" : 30,
+    "source" : "procedural256x256-checkerboard",
+    "targetIntervalSeconds" : 0.10000000000000001
+  },
+  "previewConcurrent" : {
+    "actualPicEditUIOrRAWTest" : false,
+    "checksum" : "11891459044895176495",
+    "coalescedFrameCount" : 0,
+    "execution" : "CIContext-auto-single-background-renderer",
+    "latencyDefinition" : "scheduled-coalesced-request-to-render-return; includes scheduling and GPU wait",
+    "maximumRenderOnlySeconds" : 0.0087627917528152466,
+    "maximumSeconds" : 0.0174794583581388,
+    "p50Seconds" : 0.0077135832980275154,
+    "p95Seconds" : 0.011420708149671555,
+    "p99Seconds" : 0.012149583315476775,
+    "sampleCount" : 1417,
+    "source" : "procedural256x256-checkerboard",
+    "targetIntervalSeconds" : 0.10000000000000001
+  },
+  "previewGatePassed" : true,
+  "productCapability" : "unavailable",
+  "qualityStatus" : "unverified-manual-review-required",
+  "schemaVersion" : 1,
+  "seriesStop" : {
+    "confirmedProcessEnded" : true,
+    "eventBytes" : 682193,
+    "eventCount" : 1973,
+    "leaseReleasedOnlyAfterProcessExit" : true,
+    "nativeExitStatus" : 0,
+    "nativePID" : 10602,
+    "stderrBytes" : 2
+  },
+  "status" : "native-measurements-complete-awaiting-current-compositor-and-visual-review"
+}

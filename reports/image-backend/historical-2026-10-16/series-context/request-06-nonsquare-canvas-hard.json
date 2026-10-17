@@ -1,0 +1,10 @@
+{
+  "id" : "06-nonsquare-canvas-hard",
+  "mask" : "fixtures\/06-nonsquare-canvas-mask-hard.png",
+  "negativePrompt" : "blurry, distorted, new objects, text, watermark",
+  "operation" : "generate",
+  "output" : "outputs\/20261016-134606-c1b93865-06-nonsquare-canvas-hard.png",
+  "prompt" : "continuous horizontal wood panel boards extending naturally, natural wood texture",
+  "seed" : 4281,
+  "source" : "fixtures\/06-nonsquare-canvas-source.png"
+}
