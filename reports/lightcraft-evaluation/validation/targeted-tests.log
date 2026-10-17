@@ -1,0 +1,152 @@
+warning: 'picedit': dependency 'swift-collections' is not used by any target
+◇ Test run started.
+↳ Testing Library Version: 2084
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite "Automatic tone balancing" started.
+◇ Suite "Image generation fail-closed and native resource lifecycle" started.
+◇ Suite "Algorithm evaluation fixtures" started.
+◇ Suite "Frozen algorithm evaluation metrics and decision gates" started.
+◇ Suite "JPEG export" started.
+◇ Suite "Edit rendering" started.
+◇ Test cancelledFixtureGenerationCannotProduceAResult() started.
+◇ Test deterministicScenesHaveSeparateTuningAndAcceptanceSeeds() started.
+◇ Test expirationDuringFinalCurrentTokenLookupCannotPublishAfterTimerWasCancelled() started.
+◇ Test floatRoundTripExplicitlyPreservesStraightAlphaAndExtendedGamut() started.
+◇ Test alphaZeroIsCanonicalAndDimensionsBelongToTheHash() started.
+◇ Test diagnosticCompositesUseLinearLightAndRetainNoHiddenRGB() started.
+◇ Suite "Algorithm evaluation reference controls" started.
+◇ Test intermediateStrengthIsConservativeAndManualExposureFollowsAuto() started.
+◇ Test imageIOProfilesBitDepthsAndAllEXIFOrientations(bits:p3:) started.
+◇ Test transparentMarginsDoNotBiasTheHistogram() started.
+◇ Test gradientsStayMonotoneAndDoNotAcquireNewClippedPixels() started.
+◇ Test zeroAmountKeepsOriginalPixelsAndManualSettings() started.
+◇ Test balancedGradientChangesSubtlyAndLowContrastSceneGainsSeparation() started.
+◇ Test dominantDarkAndBrightScenesKeepTheOppositeTailSafe() started.
+◇ Test highDynamicRangeRevealsBothTailsWithoutFlatteningOrClipping() started.
+◇ Test boundedSamplingKeepsProgressivePreviewCurvesConsistent() started.
+◇ Test flatBlackWhiteAndAlmostFlatNoiseStayStable() started.
+◇ Test canceledAnalysisStopsBeforeWorkingOnTheBitmap() started.
+◇ Test liftingSaturatedSubjectsDoesNotClipPreviouslyUnclippedChannels() started.
+◇ Test colorHueAlphaDimensionsAndProfileSurvive() started.
+◇ Test neutralHueIsExcludedAndInvalidPixelsFailClosed() started.
+◇ Test alphaAndLinearCompositesExposeVisibleFringes() started.
+◇ Test case passing 2 arguments bits → 8, p3 → false to imageIOProfilesBitDepthsAndAllEXIFOrientations(bits:p3:) started.
+◇ Test registryBlocksEveryAbsentReferenceAndControlsCannotClaimGo() started.
+◇ Test unchangedFixturesAndNeutralHiddenRGBPassControl() started.
+◇ Test localHaloEnvelopeAndStructuralLossDetectDifferentRegressions() started.
+◇ Test incompleteManifestAndMissingControlMetricAreRejected() started.
+◇ Test groundTruthResidualNoiseUsesItsOwnEligibleCount() started.
+◇ Test boundedMatchingDoesNotAssumeMonotonicResponse() started.
+◇ Test gateRequiresMatchedEffectSeparateAcceptanceHumanApprovalAndBudgets() started.
+◇ Test fullResolutionBeyondPreviewLimitDeclaresSRGBAndDPI() started.
+◇ Test case passing 2 arguments bits → 8, p3 → true to imageIOProfilesBitDepthsAndAllEXIFOrientations(bits:p3:) started.
+◇ Test testExtremeSettingsAreClampedAndRenderingStaysBounded() started.
+◇ Test testExtentsProfileAndTransparentEdgesSurviveCombinedEdits() started.
+◇ Test testContrastChangesTonalSpreadInBothDirections() started.
+◇ Test testNeutralReturnsIdenticalBitmap() started.
+◇ Test testExposureAndTonalControlsHaveCorrectDirections() started.
+◇ Test testColorNoiseReductionTargetsChromaSeparately() started.
+◇ Test testLuminanceNoiseReductionReducesLuminanceVariance() started.
+◇ Test testCombinedToneExtremesDoNotReverseGradientOrdering() started.
+◇ Test testAllPresenceAndColorSlidersChangePixelsIndependently() started.
+◇ Test case passing 2 arguments bits → 16, p3 → false to imageIOProfilesBitDepthsAndAllEXIFOrientations(bits:p3:) started.
+◇ Test case passing 2 arguments bits → 16, p3 → true to imageIOProfilesBitDepthsAndAllEXIFOrientations(bits:p3:) started.
+◇ Test identityRetainsExactSharedInputIncludingAlphaAndExtendedRGB() started.
+◇ Test rec2020BridgePreservesWhiteAndSignedExtendedPrimaries() started.
+◇ Test neutralRGBReferenceMeetsCPUToleranceAndPreservesAlphaSeparately() started.
+◇ Test nonneutralProductionRenderPreservesSourceProfileDepthAndFrozenOrientation(bits:p3:) started.
+✔ Test alphaZeroIsCanonicalAndDimensionsBelongToTheHash() passed after 0.070 seconds.
+✔ Test diagnosticCompositesUseLinearLightAndRetainNoHiddenRGB() passed after 0.120 seconds.
+✔ Test floatRoundTripExplicitlyPreservesStraightAlphaAndExtendedGamut() passed after 0.120 seconds.
+✔ Test imageIOProfilesBitDepthsAndAllEXIFOrientations(bits:p3:) with 4 test cases passed after 0.120 seconds.
+◇ Test case passing 2 arguments bits → 8, p3 → false to nonneutralProductionRenderPreservesSourceProfileDepthAndFrozenOrientation(bits:p3:) started.
+◇ Test case passing 2 arguments bits → 8, p3 → true to nonneutralProductionRenderPreservesSourceProfileDepthAndFrozenOrientation(bits:p3:) started.
+◇ Test case passing 2 arguments bits → 16, p3 → false to nonneutralProductionRenderPreservesSourceProfileDepthAndFrozenOrientation(bits:p3:) started.
+◇ Test case passing 2 arguments bits → 16, p3 → true to nonneutralProductionRenderPreservesSourceProfileDepthAndFrozenOrientation(bits:p3:) started.
+✔ Test transparentMarginsDoNotBiasTheHistogram() passed after 0.135 seconds.
+✔ Test neutralHueIsExcludedAndInvalidPixelsFailClosed() passed after 0.135 seconds.
+✔ Test alphaAndLinearCompositesExposeVisibleFringes() passed after 0.135 seconds.
+✔ Test deterministicScenesHaveSeparateTuningAndAcceptanceSeeds() passed after 0.135 seconds.
+✔ Test localHaloEnvelopeAndStructuralLossDetectDifferentRegressions() passed after 0.135 seconds.
+✔ Test incompleteManifestAndMissingControlMetricAreRejected() passed after 0.135 seconds.
+✔ Test highDynamicRangeRevealsBothTailsWithoutFlatteningOrClipping() passed after 0.135 seconds.
+✔ Test groundTruthResidualNoiseUsesItsOwnEligibleCount() passed after 0.135 seconds.
+✔ Test boundedMatchingDoesNotAssumeMonotonicResponse() passed after 0.135 seconds.
+✔ Test zeroAmountKeepsOriginalPixelsAndManualSettings() passed after 0.135 seconds.
+✔ Test balancedGradientChangesSubtlyAndLowContrastSceneGainsSeparation() passed after 0.135 seconds.
+✔ Test liftingSaturatedSubjectsDoesNotClipPreviouslyUnclippedChannels() passed after 0.135 seconds.
+✔ Test intermediateStrengthIsConservativeAndManualExposureFollowsAuto() passed after 0.135 seconds.
+✔ Test testExtremeSettingsAreClampedAndRenderingStaysBounded() passed after 0.134 seconds.
+✔ Test testNeutralReturnsIdenticalBitmap() passed after 0.134 seconds.
+✔ Test colorHueAlphaDimensionsAndProfileSurvive() passed after 0.135 seconds.
+✔ Test dominantDarkAndBrightScenesKeepTheOppositeTailSafe() passed after 0.135 seconds.
+✔ Test testExtentsProfileAndTransparentEdgesSurviveCombinedEdits() passed after 0.134 seconds.
+✔ Test flatBlackWhiteAndAlmostFlatNoiseStayStable() passed after 0.135 seconds.
+✔ Test testCombinedToneExtremesDoNotReverseGradientOrdering() passed after 0.134 seconds.
+✔ Test identityRetainsExactSharedInputIncludingAlphaAndExtendedRGB() passed after 0.127 seconds.
+✔ Test rec2020BridgePreservesWhiteAndSignedExtendedPrimaries() passed after 0.127 seconds.
+✔ Test neutralRGBReferenceMeetsCPUToleranceAndPreservesAlphaSeparately() passed after 0.127 seconds.
+✔ Test testContrastChangesTonalSpreadInBothDirections() passed after 0.134 seconds.
+✔ Test testLuminanceNoiseReductionReducesLuminanceVariance() passed after 0.134 seconds.
+✔ Test testColorNoiseReductionTargetsChromaSeparately() passed after 0.134 seconds.
+✔ Test cancelledFixtureGenerationCannotProduceAResult() passed after 0.135 seconds.
+✔ Test canceledAnalysisStopsBeforeWorkingOnTheBitmap() passed after 0.136 seconds.
+✔ Suite "Algorithm evaluation fixtures" passed after 0.136 seconds.
+✔ Test nonneutralProductionRenderPreservesSourceProfileDepthAndFrozenOrientation(bits:p3:) with 4 test cases passed after 0.130 seconds.
+✔ Suite "Algorithm evaluation reference controls" passed after 0.139 seconds.
+✔ Test gradientsStayMonotoneAndDoNotAcquireNewClippedPixels() passed after 0.160 seconds.
+✔ Test registryBlocksEveryAbsentReferenceAndControlsCannotClaimGo() passed after 0.170 seconds.
+✔ Test fullResolutionBeyondPreviewLimitDeclaresSRGBAndDPI() passed after 0.187 seconds.
+◇ Test orientationIsAppliedOnceAndSizingUsesOrientedDimensions() started.
+✔ Test testExposureAndTonalControlsHaveCorrectDirections() passed after 0.189 seconds.
+✔ Test unchangedFixturesAndNeutralHiddenRGBPassControl() passed after 0.192 seconds.
+✔ Test gateRequiresMatchedEffectSeparateAcceptanceHumanApprovalAndBudgets() passed after 0.199 seconds.
+✔ Suite "Frozen algorithm evaluation metrics and decision gates" passed after 0.199 seconds.
+✔ Test orientationIsAppliedOnceAndSizingUsesOrientedDimensions() passed after 0.018 seconds.
+◇ Test profilesConvertActualPixelsAndTransparencyBecomesWhite() started.
+✔ Test testAllPresenceAndColorSlidersChangePixelsIndependently() passed after 0.223 seconds.
+✔ Suite "Edit rendering" passed after 0.224 seconds.
+✔ Test profilesConvertActualPixelsAndTransparencyBecomesWhite() passed after 0.018 seconds.
+◇ Test savedEditsUseTheSameGraphAsThePreview() started.
+✔ Test savedEditsUseTheSameGraphAsThePreview() passed after 0.048 seconds.
+◇ Test qualityAffectsCompressionAndPixelError() started.
+✔ Test boundedSamplingKeepsProgressivePreviewCurvesConsistent() passed after 0.343 seconds.
+✔ Suite "Automatic tone balancing" passed after 0.343 seconds.
+✔ Test qualityAffectsCompressionAndPixelError() passed after 0.141 seconds.
+◇ Test overwriteRequiresApprovalAndNeverChangesTheOriginal() started.
+✔ Test overwriteRequiresApprovalAndNeverChangesTheOriginal() passed after 0.013 seconds.
+◇ Test protectedOriginalsRejectHardlinksSymlinksAndDirectoryAliases() started.
+✔ Test protectedOriginalsRejectHardlinksSymlinksAndDirectoryAliases() passed after 0.003 seconds.
+◇ Test invalidSourceMemoryLimitsAndCancellationLeaveDestinationIntact() started.
+✔ Test invalidSourceMemoryLimitsAndCancellationLeaveDestinationIntact() passed after 0.001 seconds.
+◇ Test concurrentIndependentExportersCannotClobberAnUnapprovedDestination() started.
+✔ Test concurrentIndependentExportersCannotClobberAnUnapprovedDestination() passed after 0.177 seconds.
+◇ Test cancellationAndFailureAfterEncodingPreserveDestinationAndRemoveTemporaryOutput() started.
+✔ Test cancellationAndFailureAfterEncodingPreserveDestinationAndRemoveTemporaryOutput() passed after 0.017 seconds.
+◇ Test refreshedOriginalIdentityRejectsAnAliasCreatedDuringRendering() started.
+✔ Test refreshedOriginalIdentityRejectsAnAliasCreatedDuringRendering() passed after 0.010 seconds.
+➜ Test explicitlySuppliedCameraRAWExportsAtFullSizeAndAsEditedP3() skipped.
+◇ Test delayedAcceptedImportProtectsAnOpenDialogAndOverwriteRetry(overwritePrompt:) started.
+◇ Test case passing 1 argument overwritePrompt → false to delayedAcceptedImportProtectsAnOpenDialogAndOverwriteRetry(overwritePrompt:) started.
+◇ Test case passing 1 argument overwritePrompt → true to delayedAcceptedImportProtectsAnOpenDialogAndOverwriteRetry(overwritePrompt:) started.
+✔ Test delayedAcceptedImportProtectsAnOpenDialogAndOverwriteRetry(overwritePrompt:) with 2 test cases passed after 0.072 seconds.
+◇ Test importAcceptedAfterEncodingPreventsFinalRenameWhileScanIsPending() started.
+✔ Test importAcceptedAfterEncodingPreventsFinalRenameWhileScanIsPending() passed after 0.033 seconds.
+◇ Test currentCatalogProtectsLateOriginalsAndHardlinks(phase:hardlink:) started.
+◇ Test case passing 2 arguments phase → "before-start", hardlink → false to currentCatalogProtectsLateOriginalsAndHardlinks(phase:hardlink:) started.
+◇ Test case passing 2 arguments phase → "before-start", hardlink → true to currentCatalogProtectsLateOriginalsAndHardlinks(phase:hardlink:) started.
+◇ Test case passing 2 arguments phase → "after-render", hardlink → false to currentCatalogProtectsLateOriginalsAndHardlinks(phase:hardlink:) started.
+◇ Test case passing 2 arguments phase → "after-render", hardlink → true to currentCatalogProtectsLateOriginalsAndHardlinks(phase:hardlink:) started.
+◇ Test case passing 2 arguments phase → "after-snapshot", hardlink → false to currentCatalogProtectsLateOriginalsAndHardlinks(phase:hardlink:) started.
+◇ Test case passing 2 arguments phase → "after-snapshot", hardlink → true to currentCatalogProtectsLateOriginalsAndHardlinks(phase:hardlink:) started.
+✔ Test currentCatalogProtectsLateOriginalsAndHardlinks(phase:hardlink:) with 6 test cases passed after 0.067 seconds.
+◇ Test acceptedChangeEpochRejectsFinalPublicationEvenAfterItFinishes() started.
+✔ Test acceptedChangeEpochRejectsFinalPublicationEvenAfterItFinishes() passed after 0.018 seconds.
+◇ Test freshRecoveryProtectionAndUnavailableStateStopAnAlreadyRenderingExport(unavailable:) started.
+◇ Test case passing 1 argument unavailable → false to freshRecoveryProtectionAndUnavailableStateStopAnAlreadyRenderingExport(unavailable:) started.
+◇ Test case passing 1 argument unavailable → true to freshRecoveryProtectionAndUnavailableStateStopAnAlreadyRenderingExport(unavailable:) started.
+✔ Test freshRecoveryProtectionAndUnavailableStateStopAnAlreadyRenderingExport(unavailable:) with 2 test cases passed after 0.019 seconds.
+✔ Suite "JPEG export" passed after 0.851 seconds.
+✔ Test expirationDuringFinalCurrentTokenLookupCannotPublishAfterTimerWasCancelled() passed after 1.179 seconds.
+✔ Suite "Image generation fail-closed and native resource lifecycle" passed after 1.179 seconds.
+✔ Test run with 58 tests in 7 suites passed after 1.179 seconds.

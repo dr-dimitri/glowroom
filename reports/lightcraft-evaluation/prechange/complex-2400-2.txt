@@ -1,0 +1,10 @@
+Synthetic complex editing benchmark: 2400x1600, backend=default, optimized binary, generated sRGB input; no RAW/ImageIO or disk I/O.
+First call includes renderer initialization; warm calls use the same source with unique edits, not cached edited output. OS/GPU caches are not cleared.
+End-to-end timings include a synchronous full-size CGContext draw, forcing pixel materialization. Peak RSS covers the entire process.
+sample=0, exposure=0.25, render_ms=1711.959, materialize_ms=1.323, total_ms=1713.283, checksum=12686863347738941208
+sample=1, exposure=0.28500000000000003, render_ms=10.770, materialize_ms=0.431, total_ms=11.201, checksum=3589496049369834412
+sample=2, exposure=0.32, render_ms=8.396, materialize_ms=0.421, total_ms=8.817, checksum=2701676077945315784
+sample=3, exposure=0.355, render_ms=8.376, materialize_ms=0.563, total_ms=8.939, checksum=14051318243765782567
+sample=4, exposure=0.39, render_ms=8.310, materialize_ms=0.426, total_ms=8.736, checksum=10829413244130527568
+sample=5, exposure=0.42500000000000004, render_ms=7.612, materialize_ms=0.412, total_ms=8.024, checksum=13073347878201578152
+RESULT scenario=complex, size=2400x1600, warm_samples=5, warm_median_ms=8.817, warm_render_median_ms=8.376, warm_materialize_median_ms=0.426, warm_min_ms=8.024, warm_max_ms=11.201, warm_fps=109.366, peak_rss_bytes=110297088, checksum=13769072571854421563

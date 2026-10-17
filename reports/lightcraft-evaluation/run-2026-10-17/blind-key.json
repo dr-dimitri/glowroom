@@ -1,0 +1,884 @@
+[
+  {
+    "A": "output",
+    "B": "input",
+    "adapter": "unchanged",
+    "fixture": "tuning-ramp",
+    "pair": 1
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "neutral-ci",
+    "fixture": "tuning-ramp",
+    "pair": 2
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "neutral-rec2020",
+    "fixture": "tuning-ramp",
+    "pair": 3
+  },
+  {
+    "A": "output",
+    "B": "input",
+    "adapter": "LC-03",
+    "fixture": "tuning-ramp",
+    "pair": 4
+  },
+  {
+    "A": "output",
+    "B": "input",
+    "adapter": "LC-04",
+    "fixture": "tuning-ramp",
+    "pair": 5
+  },
+  {
+    "A": "output",
+    "B": "input",
+    "adapter": "LC-05",
+    "fixture": "tuning-ramp",
+    "pair": 6
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "LC-06",
+    "fixture": "tuning-ramp",
+    "pair": 7
+  },
+  {
+    "A": "output",
+    "B": "input",
+    "adapter": "unchanged",
+    "fixture": "tuning-constants",
+    "pair": 8
+  },
+  {
+    "A": "output",
+    "B": "input",
+    "adapter": "neutral-ci",
+    "fixture": "tuning-constants",
+    "pair": 9
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "neutral-rec2020",
+    "fixture": "tuning-constants",
+    "pair": 10
+  },
+  {
+    "A": "output",
+    "B": "input",
+    "adapter": "LC-03",
+    "fixture": "tuning-constants",
+    "pair": 11
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "LC-04",
+    "fixture": "tuning-constants",
+    "pair": 12
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "LC-05",
+    "fixture": "tuning-constants",
+    "pair": 13
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "LC-06",
+    "fixture": "tuning-constants",
+    "pair": 14
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "unchanged",
+    "fixture": "tuning-fine-lines",
+    "pair": 15
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "neutral-ci",
+    "fixture": "tuning-fine-lines",
+    "pair": 16
+  },
+  {
+    "A": "output",
+    "B": "input",
+    "adapter": "neutral-rec2020",
+    "fixture": "tuning-fine-lines",
+    "pair": 17
+  },
+  {
+    "A": "output",
+    "B": "input",
+    "adapter": "LC-03",
+    "fixture": "tuning-fine-lines",
+    "pair": 18
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "LC-04",
+    "fixture": "tuning-fine-lines",
+    "pair": 19
+  },
+  {
+    "A": "output",
+    "B": "input",
+    "adapter": "LC-05",
+    "fixture": "tuning-fine-lines",
+    "pair": 20
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "LC-06",
+    "fixture": "tuning-fine-lines",
+    "pair": 21
+  },
+  {
+    "A": "output",
+    "B": "input",
+    "adapter": "unchanged",
+    "fixture": "tuning-hard-edge",
+    "pair": 22
+  },
+  {
+    "A": "output",
+    "B": "input",
+    "adapter": "neutral-ci",
+    "fixture": "tuning-hard-edge",
+    "pair": 23
+  },
+  {
+    "A": "output",
+    "B": "input",
+    "adapter": "neutral-rec2020",
+    "fixture": "tuning-hard-edge",
+    "pair": 24
+  },
+  {
+    "A": "output",
+    "B": "input",
+    "adapter": "LC-03",
+    "fixture": "tuning-hard-edge",
+    "pair": 25
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "LC-04",
+    "fixture": "tuning-hard-edge",
+    "pair": 26
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "LC-05",
+    "fixture": "tuning-hard-edge",
+    "pair": 27
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "LC-06",
+    "fixture": "tuning-hard-edge",
+    "pair": 28
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "unchanged",
+    "fixture": "tuning-texture",
+    "pair": 29
+  },
+  {
+    "A": "output",
+    "B": "input",
+    "adapter": "neutral-ci",
+    "fixture": "tuning-texture",
+    "pair": 30
+  },
+  {
+    "A": "output",
+    "B": "input",
+    "adapter": "neutral-rec2020",
+    "fixture": "tuning-texture",
+    "pair": 31
+  },
+  {
+    "A": "output",
+    "B": "input",
+    "adapter": "LC-03",
+    "fixture": "tuning-texture",
+    "pair": 32
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "LC-04",
+    "fixture": "tuning-texture",
+    "pair": 33
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "LC-05",
+    "fixture": "tuning-texture",
+    "pair": 34
+  },
+  {
+    "A": "output",
+    "B": "input",
+    "adapter": "LC-06",
+    "fixture": "tuning-texture",
+    "pair": 35
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "unchanged",
+    "fixture": "tuning-colors",
+    "pair": 36
+  },
+  {
+    "A": "output",
+    "B": "input",
+    "adapter": "neutral-ci",
+    "fixture": "tuning-colors",
+    "pair": 37
+  },
+  {
+    "A": "output",
+    "B": "input",
+    "adapter": "neutral-rec2020",
+    "fixture": "tuning-colors",
+    "pair": 38
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "LC-03",
+    "fixture": "tuning-colors",
+    "pair": 39
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "LC-04",
+    "fixture": "tuning-colors",
+    "pair": 40
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "LC-05",
+    "fixture": "tuning-colors",
+    "pair": 41
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "LC-06",
+    "fixture": "tuning-colors",
+    "pair": 42
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "unchanged",
+    "fixture": "tuning-saturation",
+    "pair": 43
+  },
+  {
+    "A": "output",
+    "B": "input",
+    "adapter": "neutral-ci",
+    "fixture": "tuning-saturation",
+    "pair": 44
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "neutral-rec2020",
+    "fixture": "tuning-saturation",
+    "pair": 45
+  },
+  {
+    "A": "output",
+    "B": "input",
+    "adapter": "LC-03",
+    "fixture": "tuning-saturation",
+    "pair": 46
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "LC-04",
+    "fixture": "tuning-saturation",
+    "pair": 47
+  },
+  {
+    "A": "output",
+    "B": "input",
+    "adapter": "LC-05",
+    "fixture": "tuning-saturation",
+    "pair": 48
+  },
+  {
+    "A": "output",
+    "B": "input",
+    "adapter": "LC-06",
+    "fixture": "tuning-saturation",
+    "pair": 49
+  },
+  {
+    "A": "output",
+    "B": "input",
+    "adapter": "unchanged",
+    "fixture": "tuning-transparency",
+    "pair": 50
+  },
+  {
+    "A": "output",
+    "B": "input",
+    "adapter": "neutral-ci",
+    "fixture": "tuning-transparency",
+    "pair": 51
+  },
+  {
+    "A": "output",
+    "B": "input",
+    "adapter": "neutral-rec2020",
+    "fixture": "tuning-transparency",
+    "pair": 52
+  },
+  {
+    "A": "output",
+    "B": "input",
+    "adapter": "LC-03",
+    "fixture": "tuning-transparency",
+    "pair": 53
+  },
+  {
+    "A": "output",
+    "B": "input",
+    "adapter": "LC-04",
+    "fixture": "tuning-transparency",
+    "pair": 54
+  },
+  {
+    "A": "output",
+    "B": "input",
+    "adapter": "LC-05",
+    "fixture": "tuning-transparency",
+    "pair": 55
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "LC-06",
+    "fixture": "tuning-transparency",
+    "pair": 56
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "unchanged",
+    "fixture": "tuning-noise",
+    "pair": 57
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "neutral-ci",
+    "fixture": "tuning-noise",
+    "pair": 58
+  },
+  {
+    "A": "output",
+    "B": "input",
+    "adapter": "neutral-rec2020",
+    "fixture": "tuning-noise",
+    "pair": 59
+  },
+  {
+    "A": "output",
+    "B": "input",
+    "adapter": "LC-03",
+    "fixture": "tuning-noise",
+    "pair": 60
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "LC-04",
+    "fixture": "tuning-noise",
+    "pair": 61
+  },
+  {
+    "A": "output",
+    "B": "input",
+    "adapter": "LC-05",
+    "fixture": "tuning-noise",
+    "pair": 62
+  },
+  {
+    "A": "output",
+    "B": "input",
+    "adapter": "LC-06",
+    "fixture": "tuning-noise",
+    "pair": 63
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "unchanged",
+    "fixture": "acceptance-ramp",
+    "pair": 64
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "neutral-ci",
+    "fixture": "acceptance-ramp",
+    "pair": 65
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "neutral-rec2020",
+    "fixture": "acceptance-ramp",
+    "pair": 66
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "LC-03",
+    "fixture": "acceptance-ramp",
+    "pair": 67
+  },
+  {
+    "A": "output",
+    "B": "input",
+    "adapter": "LC-04",
+    "fixture": "acceptance-ramp",
+    "pair": 68
+  },
+  {
+    "A": "output",
+    "B": "input",
+    "adapter": "LC-05",
+    "fixture": "acceptance-ramp",
+    "pair": 69
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "LC-06",
+    "fixture": "acceptance-ramp",
+    "pair": 70
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "unchanged",
+    "fixture": "acceptance-constants",
+    "pair": 71
+  },
+  {
+    "A": "output",
+    "B": "input",
+    "adapter": "neutral-ci",
+    "fixture": "acceptance-constants",
+    "pair": 72
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "neutral-rec2020",
+    "fixture": "acceptance-constants",
+    "pair": 73
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "LC-03",
+    "fixture": "acceptance-constants",
+    "pair": 74
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "LC-04",
+    "fixture": "acceptance-constants",
+    "pair": 75
+  },
+  {
+    "A": "output",
+    "B": "input",
+    "adapter": "LC-05",
+    "fixture": "acceptance-constants",
+    "pair": 76
+  },
+  {
+    "A": "output",
+    "B": "input",
+    "adapter": "LC-06",
+    "fixture": "acceptance-constants",
+    "pair": 77
+  },
+  {
+    "A": "output",
+    "B": "input",
+    "adapter": "unchanged",
+    "fixture": "acceptance-fine-lines",
+    "pair": 78
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "neutral-ci",
+    "fixture": "acceptance-fine-lines",
+    "pair": 79
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "neutral-rec2020",
+    "fixture": "acceptance-fine-lines",
+    "pair": 80
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "LC-03",
+    "fixture": "acceptance-fine-lines",
+    "pair": 81
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "LC-04",
+    "fixture": "acceptance-fine-lines",
+    "pair": 82
+  },
+  {
+    "A": "output",
+    "B": "input",
+    "adapter": "LC-05",
+    "fixture": "acceptance-fine-lines",
+    "pair": 83
+  },
+  {
+    "A": "output",
+    "B": "input",
+    "adapter": "LC-06",
+    "fixture": "acceptance-fine-lines",
+    "pair": 84
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "unchanged",
+    "fixture": "acceptance-hard-edge",
+    "pair": 85
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "neutral-ci",
+    "fixture": "acceptance-hard-edge",
+    "pair": 86
+  },
+  {
+    "A": "output",
+    "B": "input",
+    "adapter": "neutral-rec2020",
+    "fixture": "acceptance-hard-edge",
+    "pair": 87
+  },
+  {
+    "A": "output",
+    "B": "input",
+    "adapter": "LC-03",
+    "fixture": "acceptance-hard-edge",
+    "pair": 88
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "LC-04",
+    "fixture": "acceptance-hard-edge",
+    "pair": 89
+  },
+  {
+    "A": "output",
+    "B": "input",
+    "adapter": "LC-05",
+    "fixture": "acceptance-hard-edge",
+    "pair": 90
+  },
+  {
+    "A": "output",
+    "B": "input",
+    "adapter": "LC-06",
+    "fixture": "acceptance-hard-edge",
+    "pair": 91
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "unchanged",
+    "fixture": "acceptance-texture",
+    "pair": 92
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "neutral-ci",
+    "fixture": "acceptance-texture",
+    "pair": 93
+  },
+  {
+    "A": "output",
+    "B": "input",
+    "adapter": "neutral-rec2020",
+    "fixture": "acceptance-texture",
+    "pair": 94
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "LC-03",
+    "fixture": "acceptance-texture",
+    "pair": 95
+  },
+  {
+    "A": "output",
+    "B": "input",
+    "adapter": "LC-04",
+    "fixture": "acceptance-texture",
+    "pair": 96
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "LC-05",
+    "fixture": "acceptance-texture",
+    "pair": 97
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "LC-06",
+    "fixture": "acceptance-texture",
+    "pair": 98
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "unchanged",
+    "fixture": "acceptance-colors",
+    "pair": 99
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "neutral-ci",
+    "fixture": "acceptance-colors",
+    "pair": 100
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "neutral-rec2020",
+    "fixture": "acceptance-colors",
+    "pair": 101
+  },
+  {
+    "A": "output",
+    "B": "input",
+    "adapter": "LC-03",
+    "fixture": "acceptance-colors",
+    "pair": 102
+  },
+  {
+    "A": "output",
+    "B": "input",
+    "adapter": "LC-04",
+    "fixture": "acceptance-colors",
+    "pair": 103
+  },
+  {
+    "A": "output",
+    "B": "input",
+    "adapter": "LC-05",
+    "fixture": "acceptance-colors",
+    "pair": 104
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "LC-06",
+    "fixture": "acceptance-colors",
+    "pair": 105
+  },
+  {
+    "A": "output",
+    "B": "input",
+    "adapter": "unchanged",
+    "fixture": "acceptance-saturation",
+    "pair": 106
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "neutral-ci",
+    "fixture": "acceptance-saturation",
+    "pair": 107
+  },
+  {
+    "A": "output",
+    "B": "input",
+    "adapter": "neutral-rec2020",
+    "fixture": "acceptance-saturation",
+    "pair": 108
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "LC-03",
+    "fixture": "acceptance-saturation",
+    "pair": 109
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "LC-04",
+    "fixture": "acceptance-saturation",
+    "pair": 110
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "LC-05",
+    "fixture": "acceptance-saturation",
+    "pair": 111
+  },
+  {
+    "A": "output",
+    "B": "input",
+    "adapter": "LC-06",
+    "fixture": "acceptance-saturation",
+    "pair": 112
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "unchanged",
+    "fixture": "acceptance-transparency",
+    "pair": 113
+  },
+  {
+    "A": "output",
+    "B": "input",
+    "adapter": "neutral-ci",
+    "fixture": "acceptance-transparency",
+    "pair": 114
+  },
+  {
+    "A": "output",
+    "B": "input",
+    "adapter": "neutral-rec2020",
+    "fixture": "acceptance-transparency",
+    "pair": 115
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "LC-03",
+    "fixture": "acceptance-transparency",
+    "pair": 116
+  },
+  {
+    "A": "output",
+    "B": "input",
+    "adapter": "LC-04",
+    "fixture": "acceptance-transparency",
+    "pair": 117
+  },
+  {
+    "A": "output",
+    "B": "input",
+    "adapter": "LC-05",
+    "fixture": "acceptance-transparency",
+    "pair": 118
+  },
+  {
+    "A": "output",
+    "B": "input",
+    "adapter": "LC-06",
+    "fixture": "acceptance-transparency",
+    "pair": 119
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "unchanged",
+    "fixture": "acceptance-noise",
+    "pair": 120
+  },
+  {
+    "A": "output",
+    "B": "input",
+    "adapter": "neutral-ci",
+    "fixture": "acceptance-noise",
+    "pair": 121
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "neutral-rec2020",
+    "fixture": "acceptance-noise",
+    "pair": 122
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "LC-03",
+    "fixture": "acceptance-noise",
+    "pair": 123
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "LC-04",
+    "fixture": "acceptance-noise",
+    "pair": 124
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "LC-05",
+    "fixture": "acceptance-noise",
+    "pair": 125
+  },
+  {
+    "A": "input",
+    "B": "output",
+    "adapter": "LC-06",
+    "fixture": "acceptance-noise",
+    "pair": 126
+  }
+]

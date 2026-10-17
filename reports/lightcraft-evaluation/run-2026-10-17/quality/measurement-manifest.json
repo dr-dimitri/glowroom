@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "frozenBeforeAcceptance": true,
+  "measurementSpace": "extended-linear-sRGB-straight-RGBA",
+  "minimumRepetitions": 5,
+  "minimumP95Samples": 30,
+  "effectAbsoluteTolerance": 0.002,
+  "effectRelativeTolerance": 0.05,
+  "numericalTolerance": {
+    "cpu_max_absolute_rgb": 0.000005,
+    "ci_half_float_max_absolute_rgb": 0.003,
+    "ci_half_float_max_absolute_alpha": 0.001
+  },
+  "controlLimits": {
+    "max_rgb_error": 0.003,
+    "mean_rgb_error": 0.001,
+    "halo_overshoot": 0.003,
+    "halo_undershoot": 0.003,
+    "fine_line_loss": 0.01,
+    "texture_loss": 0.01,
+    "mean_luminance_drift": 0.001,
+    "hue_deviation_degrees": 0.5,
+    "chroma_deviation": 0.001,
+    "gamut_fraction_increase": 0.005,
+    "clipping_fraction_increase": 0.005,
+    "edge_loss": 0.01,
+    "alpha_error": 0.001,
+    "transparent_edge_light_error": 0.003,
+    "transparent_edge_dark_error": 0.003
+  },
+  "performanceBudgets": {
+    "maximumColdLatencyRatio": 1.25,
+    "maximumWarmLatencyRatio": 1.2,
+    "maximumPeakRSSRatio": 1.25
+  },
+  "scenes": [
+    {
+      "id": "ramp",
+      "requiredEvidenceMetric": "visible_weight",
+      "criticalLimits": { "halo_overshoot": 0.03, "halo_undershoot": 0.03, "gamut_fraction_increase": 0.01, "clipping_fraction_increase": 0.01, "alpha_error": 0.001 }
+    },
+    {
+      "id": "constants",
+      "requiredEvidenceMetric": "visible_weight",
+      "criticalLimits": { "mean_luminance_drift": 0.005, "chroma_deviation": 0.005, "alpha_error": 0.001 }
+    },
+    {
+      "id": "fine-lines",
+      "requiredEvidenceMetric": "reference_gradient_energy",
+      "criticalLimits": { "fine_line_loss": 0.08, "halo_overshoot": 0.03, "halo_undershoot": 0.03, "alpha_error": 0.001 }
+    },
+    {
+      "id": "hard-edge",
+      "requiredEvidenceMetric": "edge_pairs",
+      "criticalLimits": { "halo_overshoot": 0.02, "halo_undershoot": 0.02, "edge_loss": 0.08, "alpha_error": 0.001 }
+    },
+    {
+      "id": "texture",
+      "requiredEvidenceMetric": "reference_texture_energy",
+      "criticalLimits": { "texture_loss": 0.08, "mean_luminance_drift": 0.01, "alpha_error": 0.001 }
+    },
+    {
+      "id": "colors",
+      "requiredEvidenceMetric": "hue_evaluated_pixels",
+      "criticalLimits": { "hue_deviation_degrees": 3.0, "chroma_deviation": 0.03, "mean_luminance_drift": 0.01, "alpha_error": 0.001 }
+    },
+    {
+      "id": "saturation",
+      "requiredEvidenceMetric": "hue_evaluated_pixels",
+      "criticalLimits": { "hue_deviation_degrees": 3.0, "gamut_fraction_increase": 0.02, "clipping_fraction_increase": 0.02, "alpha_error": 0.001 }
+    },
+    {
+      "id": "transparency",
+      "requiredEvidenceMetric": "alpha_boundary_pixels",
+      "criticalLimits": { "alpha_error": 0.001, "transparent_edge_light_error": 0.01, "transparent_edge_dark_error": 0.01 }
+    },
+    {
+      "id": "noise",
+      "requiredEvidenceMetric": "noise_roi_pixels",
+      "criticalLimits": { "luma_noise_rmse": 0.05, "chroma_noise_rmse": 0.04, "edge_loss": 0.08, "fine_line_loss": 0.08, "mean_luminance_drift": 0.005, "alpha_error": 0.001 }
+    }
+  ]
+}
