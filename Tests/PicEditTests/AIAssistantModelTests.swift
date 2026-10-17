@@ -115,7 +115,7 @@ final class AIAssistantModelTests {
     }
 
     @Test
-    func locksAndLeavingDevelopInvalidatePreviewAndBlockAcceptance() async throws {
+    func locksInvalidatePreviewWhileModeChangesPreserveCurrentProposal() async throws {
         let (library, editor, _, provider, assistant) = try await fixture()
         await completeProposal(assistant, provider)
         try await wait { assistant.state == .previewing }
@@ -132,8 +132,14 @@ final class AIAssistantModelTests {
         library.cancelTermination()
         await completeProposal(assistant, provider)
         try await wait { assistant.state == .previewing }
+        let current = try #require(assistant.result)
         library.isDeveloping = false
-        try await wait { assistant.result == nil }
+        try await Task.sleep(for: .milliseconds(10))
+        #expect(assistant.result == current)
+        #expect(assistant.canAccept)
+        library.isDeveloping = true
+        #expect(assistant.result == current)
+        assistant.discard()
         #expect(!editor.hasPendingChanges)
         #expect(await editor.flush())
         #expect(await library.finishSaving())

@@ -6,24 +6,43 @@ struct LibraryView: View {
     @ObservedObject var model: LibraryModel
     @EnvironmentObject private var editor: EditingModel
     @EnvironmentObject private var exporter: JPEGExportModel
+    @EnvironmentObject private var layout: WorkspaceLayoutModel
+    @EnvironmentObject private var assistant: AIAssistantModel
+    @EnvironmentObject private var imageAnalysis: ImageAnalysisModel
+    @EnvironmentObject private var photoMetadata: PhotoMetadataModel
+    @FocusState private var focusReturnButton: Bool
     let dataDirectory: URL
     @ViewState<LibraryFolder?> private var folderToRemove: LibraryFolder?
     @ViewState<Bool> private var dropTargeted = false
+    @ViewState<Bool> private var showsWorkspaceErrors = false
 
     var body: some View {
         VStack(spacing: 0) {
             appHeader
             Rectangle().fill(Theme.line).frame(height: 1)
-            HStack(spacing: 0) {
-                sidebar.frame(width: 218)
-                Rectangle().fill(Theme.line).frame(width: 1)
-                workspace.frame(maxWidth: .infinity, maxHeight: .infinity)
-                if model.showsInspector || model.isDeveloping {
-                    Rectangle().fill(Theme.line).frame(width: 1)
-                    if model.isDeveloping { DevelopInspector(library: model).frame(width: 300) }
-                    else { InspectorView(model: model).frame(width: 260) }
+            GeometryReader { geometry in
+                let handleSpace = (panels.showsLibrary ? 6.0 : 0) + (panels.showsTools ? 6.0 : 0)
+                let widths = layout.boundedWidths(availableWidth: geometry.size.width - handleSpace, developing: model.isDeveloping)
+                HStack(spacing: 0) {
+                    if panels.showsLibrary {
+                        sidebar.frame(width: widths.library)
+                        WorkspaceResizeHandle(horizontal: true, label: "Breite der Bibliothek", value: panels.libraryWidth, step: 1) { width in
+                            layout.update(developing: model.isDeveloping) { $0.libraryWidth = width }
+                        }
+                    }
+                    workspace.frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity)
+                    if panels.showsTools {
+                        WorkspaceResizeHandle(horizontal: true, label: "Breite der Werkzeuge", value: panels.toolsWidth, step: -1) { width in
+                            layout.update(developing: model.isDeveloping) { $0.toolsWidth = width }
+                        }
+                        Group {
+                            if model.isDeveloping { DevelopInspector(library: model) }
+                            else { InspectorView(model: model) }
+                        }.frame(width: widths.tools)
+                    }
                 }
             }
+            if layout.isFocused { WorkspaceDock(layout: layout, library: model) }
             if let error = model.coordinationError {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Speicherzuordnung muss geprüft werden").font(.callout)
@@ -39,11 +58,23 @@ struct LibraryView: View {
         .overlay { if dropTargeted { RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.accent, style: StrokeStyle(lineWidth: 3, dash: [8])).padding(6).allowsHitTesting(false) } }
         .onDrop(of: [.fileURL], isTargeted: $dropTargeted, perform: acceptDrop)
         .background(KeyboardHandler { event in handleKey(event) })
-        .onChange(of: model.showsDetail) { _, detail in if !detail { model.isDeveloping = false; model.comparesOriginal = false; model.comparesCurrentSourceWithoutSettings = false } }
+        .onAppear {
+            if layout.isFocused, model.selectedAsset != nil { model.showsDetail = true; model.isDeveloping = true }
+        }
+        .onChange(of: panels.showsTools) { old, visible in
+            if old && !visible { focusReturnButton = true }
+        }
+        .onChange(of: model.showsDetail) { _, detail in if !detail {
+            // Empty search results are a selection change, not a request to leave focus.
+            // Explicit grid commands use WorkspaceActions.showGrid instead.
+            if !layout.isFocused { model.isDeveloping = false }
+            model.comparesOriginal = false; model.comparesCurrentSourceWithoutSettings = false
+        } }
         .onChange(of: model.selectedID) { old, _ in
             if let old { editor.endEditing(assetID: old) }
             model.comparesOriginal = false
             model.comparesCurrentSourceWithoutSettings = false
+            if layout.isFocused, model.selectedAsset != nil { model.showsDetail = true; model.isDeveloping = true }
         }
         .onChange(of: model.selection) { _, _ in model.reconcileSelection() }
         .onChange(of: model.search) { _, _ in model.reconcileSelection() }
@@ -60,50 +91,66 @@ struct LibraryView: View {
         } message: { Text("Die Originalbilder bleiben auf deinem Mac. Bilder, die auch in einem anderen eingebundenen Ordner liegen, behalten ihre Bewertungen. Die übrigen Einträge werden aus dem Katalog entfernt.") }
     }
 
+    private var panels: WorkspacePanels { layout.panels(developing: model.isDeveloping) }
+
     private var appHeader: some View {
         HStack(spacing: 12) {
-            Image(systemName: "camera.aperture").font(.system(size: 23, weight: .light)).foregroundStyle(Theme.accent)
+            Image(systemName: "camera.aperture").font(.system(size: 22, weight: .light)).foregroundStyle(Theme.accent)
             Text("picedit").font(.system(size: 19, weight: .semibold, design: .rounded)).tracking(-0.5)
-            Text("/  Dein Blick. Deine Bibliothek.").font(.system(size: 11)).foregroundStyle(Theme.muted).padding(.leading, 13)
-            Spacer()
-            HStack(spacing: 20) {
+            if layout.isFocused {
+                Text("Bildfokus").font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.accent)
+            } else {
                 Button {
+                    WorkspaceActions.finishField()
                     model.isDeveloping = false
                     model.comparesOriginal = false
-            model.comparesCurrentSourceWithoutSettings = false
+                    model.comparesCurrentSourceWithoutSettings = false
                     model.showsDetail = false
                 } label: { Label("Bibliothek", systemImage: "square.grid.2x2.fill") }
                     .foregroundStyle(!model.isDeveloping ? Theme.accent : Theme.muted)
                 Button {
-                    model.isDeveloping = true
-                    model.showsDetail = true
-                    model.showsInspector = true
+                    WorkspaceActions.reveal(.edit, layout: layout, library: model)
                 } label: { Label("Entwickeln", systemImage: "slider.horizontal.3") }
                     .foregroundStyle(model.isDeveloping ? Theme.accent : Theme.muted)
                     .disabled(model.selectedAsset == nil || editor.isLoading)
-                Button {
-                    JPEGExportActions.present(using: exporter, library: model, editor: editor)
-                } label: { Label("Exportieren", systemImage: "square.and.arrow.up") }
-                    .foregroundStyle(Theme.muted)
-                    .disabled(model.selectedIDs.isEmpty || !model.canExportJPEG || model.isProjecting || editor.isLoading || editor.isRestoring || editor.isClosing || exporter.isPresented)
-                    .help("Ausgewählte Fotos als JPEG exportieren · ⇧⌘E")
-                Menu {
-                    Button("Bearbeitungen sichern …") { EditingBackupActions.create(using: editor) }.disabled(!editor.canBackUp)
-                    Button("Backup wiederherstellen …") { EditingBackupActions.chooseRestore(using: editor, directory: dataDirectory) }
-                        .disabled(editor.isLoading || editor.isRestoring || editor.isBackingUp || editor.isClosing)
-                    Divider()
-                    Text("Automatisch täglich · letzte 7 Sicherungen")
-                    Text("Bearbeitungen und generierte Pixel · Originale separat sichern")
-                } label: { Image(systemName: "externaldrive.badge.timemachine") }
-                    .menuStyle(.borderlessButton).fixedSize().help("Backups der Bearbeitungen")
-                    .accessibilityLabel("Backups der Bearbeitungen")
-            }.buttonStyle(.plain).font(.system(size: 12, weight: .medium))
-        }.padding(.leading, 82).padding(.trailing, 25).frame(height: 66).background(Theme.sidebar)
+            }
+            Spacer(minLength: 6)
+            Button { WorkspaceActions.toggleFocus(layout, library: model) } label: {
+                Label(layout.isFocused ? "Zur vorherigen Ansicht" : "Bildfokus", systemImage: "viewfinder")
+                    .padding(.horizontal, 9).frame(height: 30)
+                    .background(Theme.accent.opacity(0.09), in: RoundedRectangle(cornerRadius: 6))
+            }.foregroundStyle(Theme.accent).focused($focusReturnButton)
+                .disabled(!layout.isFocused && model.selectedAsset == nil)
+                .help("Bildfokus umschalten · ⇧⌘F")
+                .accessibilityIdentifier("workspace.focus")
+            Menu("Ansicht") { WorkspaceViewCommands(layout: layout, library: model) }
+                .menuStyle(.borderlessButton).fixedSize()
+            Menu {
+                Button("Bearbeitungen sichern …") { EditingBackupActions.create(using: editor) }.disabled(!editor.canBackUp)
+                Button("Backup wiederherstellen …") { EditingBackupActions.chooseRestore(using: editor, directory: dataDirectory) }
+                    .disabled(editor.isLoading || editor.isRestoring || editor.isBackingUp || editor.isClosing)
+                Divider()
+                Text("Automatisch täglich · letzte 7 Sicherungen")
+                Text("Bearbeitungen und generierte Pixel · Originale separat sichern")
+            } label: { Label("Sicherungen", systemImage: "externaldrive.badge.timemachine") }
+                .menuStyle(.borderlessButton).fixedSize().help("Backups der Bearbeitungen")
+            Button {
+                JPEGExportActions.present(using: exporter, library: model, editor: editor)
+            } label: { Label("Exportieren", systemImage: "square.and.arrow.up") }
+                .foregroundStyle(Theme.accent)
+                .disabled(model.selectedIDs.isEmpty || !model.canExportJPEG || model.isProjecting || editor.isLoading || editor.isRestoring || editor.isClosing || exporter.isPresented)
+                .help("Ausgewählte Fotos als JPEG exportieren · ⇧⌘E")
+        }.buttonStyle(.plain).font(.system(size: 12, weight: .medium))
+            .padding(.leading, 82).padding(.trailing, 20).frame(height: 54).background(Theme.sidebar)
     }
 
     private var sidebar: some View {
         VStack(alignment: .leading, spacing: 0) {
-            SectionLabel(text: "Bibliothek").padding(.horizontal, 22).padding(.top, 28).padding(.bottom, 13)
+            HStack {
+                SectionLabel(text: "Bibliothek")
+                Spacer()
+                IconButton(symbol: "xmark", help: "Bibliothek schließen") { WorkspaceActions.toggleLibrary(layout, library: model) }
+            }.padding(.horizontal, 15).frame(height: 48)
             navRow("Alle Fotos", symbol: "square.stack.3d.up", count: model.assets.count, selection: .all)
             navRow("Favoriten", symbol: "heart", count: model.favoriteCount, selection: .favorites)
             navRow("Zuletzt hinzugefügt", symbol: "clock", count: nil, selection: .recent)
@@ -153,38 +200,23 @@ struct LibraryView: View {
 
     private var workspace: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .center, spacing: 20) {
-                VStack(alignment: .leading, spacing: 7) {
-                    SectionLabel(text: "Deine Bibliothek")
-                    HStack(alignment: .firstTextBaseline, spacing: 10) {
-                        Text(model.title).font(.system(size: 27, weight: .semibold)).tracking(-0.7).lineLimit(1)
-                        if model.isProjecting || model.isUpdatingCatalog {
-                            ProgressView().controlSize(.small).help("Fotoauswahl wird aktualisiert …")
-                        } else {
-                            Text(model.visibleAssets.count.formatted()).font(.system(size: 12, design: .monospaced)).foregroundStyle(Theme.muted)
-                        }
+            if !layout.isFocused || panels.showsLibrary {
+                if layout.isFocused {
+                    compactLibraryBar
+                } else {
+                    libraryHeading
+                    ViewThatFits(in: .horizontal) {
+                        controlBar
+                        compactControlBar
                     }
-                    Text(model.subtitle).font(.system(size: 11)).foregroundStyle(Theme.muted).lineLimit(1).truncationMode(.middle)
                 }
-                Spacer(minLength: 0)
-                HStack(spacing: 8) {
-                    Image(systemName: "magnifyingglass").foregroundStyle(Theme.muted)
-                    TextField(model.searchMode == .literal ? "Fotos wörtlich suchen …" : "Bildinhalt auf Deutsch/Englisch …", text: Binding(
-                        get: { model.searchMode == .literal ? model.search : model.semanticQuery },
-                        set: { if model.searchMode == .literal { model.search = $0 } else { model.semanticQuery = $0 } }))
-                        .textFieldStyle(.plain).font(.system(size: 12))
-                        .accessibilityLabel(model.searchMode == .literal ? "Wörtliche Fotosuche" : "Semantische Bildsuche")
-                    if !(model.searchMode == .literal ? model.search : model.semanticQuery).isEmpty {
-                        Button { if model.searchMode == .literal { model.search = "" } else { model.semanticQuery = "" } }
-                            label: { Image(systemName: "xmark.circle.fill").foregroundStyle(Theme.muted) }.buttonStyle(.plain)
-                    }
-                }.padding(10).frame(width: model.searchMode == .literal ? 175 : 240).background(Theme.panel, in: RoundedRectangle(cornerRadius: 7))
-            }.padding(.horizontal, 26).padding(.top, 27).padding(.bottom, 23)
-            controlBar
             if model.searchMode == .semantic || model.semanticOperationLabel != nil || model.semanticState.isIndexing || model.semanticImportReview != nil {
-                SemanticSearchControlsView(model: model)
+                ScrollView([.horizontal, .vertical]) {
+                    SemanticSearchControlsView(model: model).frame(minWidth: 420)
+                }.frame(height: 150)
             }
             Rectangle().fill(Theme.line).frame(height: 1)
+            }
             if model.isLoading {
                 ProgressView("Bibliothek wird geöffnet …").frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if model.visibleAssets.isEmpty && model.isProjecting {
@@ -199,10 +231,87 @@ struct LibraryView: View {
         }
     }
 
+    private var libraryHeading: some View {
+        HStack(alignment: .center, spacing: 20) {
+            VStack(alignment: .leading, spacing: 7) {
+                SectionLabel(text: "Deine Bibliothek")
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    Text(model.title).font(.system(size: 27, weight: .semibold)).tracking(-0.7).lineLimit(1)
+                    if model.isProjecting || model.isUpdatingCatalog {
+                        ProgressView().controlSize(.small).help("Fotoauswahl wird aktualisiert …")
+                    } else {
+                        Text(model.visibleAssets.count.formatted()).font(.system(size: 12, design: .monospaced)).foregroundStyle(Theme.muted)
+                    }
+                }
+                Text(model.subtitle).font(.system(size: 11)).foregroundStyle(Theme.muted).lineLimit(1).truncationMode(.middle)
+            }
+            Spacer(minLength: 0)
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass").foregroundStyle(Theme.muted)
+                TextField(model.searchMode == .literal ? "Fotos wörtlich suchen …" : "Bildinhalt auf Deutsch/Englisch …", text: Binding(
+                    get: { model.searchMode == .literal ? model.search : model.semanticQuery },
+                    set: { if model.searchMode == .literal { model.search = $0 } else { model.semanticQuery = $0 } }))
+                    .textFieldStyle(.plain).font(.system(size: 12))
+                    .accessibilityLabel(model.searchMode == .literal ? "Wörtliche Fotosuche" : "Semantische Bildsuche")
+                if !(model.searchMode == .literal ? model.search : model.semanticQuery).isEmpty {
+                    Button { if model.searchMode == .literal { model.search = "" } else { model.semanticQuery = "" } }
+                        label: { Image(systemName: "xmark.circle.fill").foregroundStyle(Theme.muted) }.buttonStyle(.plain)
+                }
+            }.padding(10).frame(width: model.searchMode == .literal ? 175 : 240).background(Theme.panel, in: RoundedRectangle(cornerRadius: 7))
+        }.padding(.horizontal, 26).padding(.top, 27).padding(.bottom, 23)
+    }
+
+
+    private var compactLibraryBar: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "magnifyingglass").foregroundStyle(Theme.muted)
+            TextField(model.searchMode == .literal ? "Fotos suchen …" : "Bildinhalt suchen …", text: Binding(
+                get: { model.searchMode == .literal ? model.search : model.semanticQuery },
+                set: { if model.searchMode == .literal { model.search = $0 } else { model.semanticQuery = $0 } }))
+                .textFieldStyle(.plain).frame(minWidth: 60)
+                .accessibilityLabel(model.searchMode == .literal ? "Wörtliche Fotosuche" : "Semantische Bildsuche")
+            libraryOptionsMenu
+        }.font(.system(size: 11)).padding(.horizontal, 14).frame(height: 48)
+    }
+
+    private var compactControlBar: some View {
+        HStack(spacing: 8) {
+            libraryOptionsMenu
+            Spacer(minLength: 0)
+            IconButton(symbol: "arrow.clockwise", help: "Ordner aktualisieren") { model.refreshCurrentFolder() }
+                .disabled(model.isImporting || model.folders.isEmpty || !model.canModify)
+            IconButton(symbol: "sidebar.left", help: "Bibliothek · ⌥⌘L", active: panels.showsLibrary) { WorkspaceActions.toggleLibrary(layout, library: model) }
+            IconButton(symbol: "sidebar.right", help: "Werkzeuge · ⌘I", active: panels.showsTools) { WorkspaceActions.toggleTools(layout, library: model) }
+        }.padding(.horizontal, 14).frame(height: 48)
+    }
+
+    private var libraryOptionsMenu: some View {
+        Menu {
+            Picker("Bewertung", selection: $model.minimumRating) {
+                Text("Alle Bewertungen").tag(0)
+                ForEach(1...5, id: \.self) { Text("Mindestens \($0) Sterne").tag($0) }
+            }
+            Picker("Suchmodus", selection: $model.searchMode) {
+                ForEach(LibrarySearchMode.allCases) { Text($0.label).tag($0) }
+            }
+            Picker("Sortieren", selection: $model.sort) {
+                ForEach(PhotoSort.allCases) { Text($0.rawValue).tag($0) }
+            }
+            Divider()
+            Button("Rasteransicht") { WorkspaceActions.showGrid(layout, library: model) }
+            Button("Einzelbildansicht") { if model.selectedAsset != nil { model.showsDetail = true } }
+                .disabled(model.selectedAsset == nil)
+            Button("Ordner aktualisieren") { model.refreshCurrentFolder() }
+                .disabled(model.isImporting || model.folders.isEmpty || !model.canModify)
+        } label: { Label("Filter & Sortierung", systemImage: "line.3.horizontal.decrease") }
+            .menuStyle(.borderlessButton).fixedSize().font(.system(size: 11))
+            .foregroundStyle(model.minimumRating > 0 || model.searchMode == .semantic ? Theme.accent : Theme.muted)
+    }
+
     private var controlBar: some View {
         HStack(spacing: 8) {
             HStack(spacing: 1) {
-                IconButton(symbol: "square.grid.2x2", help: "Rasteransicht", active: !model.showsDetail) { model.showsDetail = false }
+                IconButton(symbol: "square.grid.2x2", help: "Rasteransicht", active: !model.showsDetail) { WorkspaceActions.showGrid(layout, library: model) }
                 IconButton(symbol: "rectangle", help: "Einzelbildansicht · Leertaste", active: model.showsDetail) { if model.selectedAsset != nil { model.showsDetail = true } }
             }
             Rectangle().fill(Theme.line).frame(width: 1, height: 18).padding(.horizontal, 7)
@@ -222,7 +331,8 @@ struct LibraryView: View {
             } label: { Label(model.sort.rawValue, systemImage: "arrow.down").font(.system(size: 10)).foregroundStyle(Theme.muted) }
                 .menuStyle(.borderlessButton).fixedSize()
             IconButton(symbol: "arrow.clockwise", help: "Ordner aktualisieren") { model.refreshCurrentFolder() }.disabled(model.isImporting || model.folders.isEmpty || !model.canModify)
-            IconButton(symbol: "sidebar.right", help: "Bildinformationen · ⌘I", active: model.showsInspector) { model.showsInspector.toggle() }
+            IconButton(symbol: "sidebar.left", help: "Bibliothek · ⌥⌘L", active: panels.showsLibrary) { WorkspaceActions.toggleLibrary(layout, library: model) }
+            IconButton(symbol: "sidebar.right", help: "Werkzeuge · ⌘I", active: panels.showsTools) { WorkspaceActions.toggleTools(layout, library: model) }
         }.padding(.horizontal, 22).frame(height: 48)
     }
 
@@ -280,9 +390,125 @@ struct LibraryView: View {
                 Slider(value: $model.gridSize, in: 150...320).controlSize(.mini).frame(width: 90).help("Vorschaugröße")
                 Image(systemName: "square.grid.2x2").font(.system(size: 11))
             }
-            Text("LOKAL AUF DEINEM MAC").font(.system(size: 8, weight: .medium)).tracking(1).padding(.leading, 18)
+            workspaceNotices
+            if !editor.isSaving && !editor.hasPendingChanges {
+                Text(editor.isReadOnly ? "Speichern nicht verfügbar" : "Bearbeitung gespeichert")
+                    .foregroundStyle(editor.isReadOnly ? .orange : Theme.accent)
+            }
         }.font(.system(size: 10)).foregroundStyle(Theme.muted).padding(.horizontal, 20).frame(height: 35)
             .background(Theme.sidebar).overlay(alignment: .top) { Rectangle().fill(Theme.line).frame(height: 1) }
+    }
+
+    @ViewBuilder private var workspaceNotices: some View {
+        if hasWorkspaceError {
+            Button { showsWorkspaceErrors = true } label: {
+                Label("Fehler prüfen", systemImage: "exclamationmark.triangle")
+            }.buttonStyle(.plain).foregroundStyle(.orange)
+                .popover(isPresented: $showsWorkspaceErrors) { workspaceErrors }
+        } else {
+            Menu {
+                workspaceNoticeLinks
+            } label: {
+                Label(noticeLabel, systemImage: "info.circle")
+            }.menuStyle(.borderlessButton).fixedSize().foregroundStyle(Theme.accent)
+                .accessibilityLabel("Hinweise: \(noticeLabel)")
+        }
+    }
+
+    private var workspaceNoticeLinks: some View {
+        Group {
+            switch assistant.state {
+            case .generating: Button("Assistent läuft") { revealNoticeTool(.assistant) }
+            case .previewing: Button("Assistent: Vorschlag prüfen") { revealNoticeTool(.assistant) }
+            case .failed: Button("Assistent: Fehler prüfen") { revealNoticeTool(.assistant) }
+            default: EmptyView()
+            }
+            switch imageAnalysis.state {
+            case .analyzing: Button("Bildanalyse läuft") { revealNoticeTool(.analysis) }
+            case .ready: Button("Bildanalyse: Ergebnis anzeigen") { revealNoticeTool(.analysis) }
+            case .failed: Button("Bildanalyse: Fehler prüfen") { revealNoticeTool(.analysis) }
+            default: EmptyView()
+            }
+            if photoMetadata.hasManualDraft || photoMetadata.record?.draft != nil {
+                Button("Bildinformationen: Entwurf prüfen") { revealNoticeTool(.metadata) }
+            }
+            if photoMetadata.isAnalyzing || photoMetadata.isSaving {
+                Button("Bildinformationen: Auftrag läuft") { revealNoticeTool(.metadata) }
+            }
+            if photoMetadata.errorMessage != nil || photoMetadata.hasPendingRetry || photoMetadata.recovery != nil {
+                Button("Bildinformationen: Fehler prüfen") { revealNoticeTool(.metadata) }
+            }
+            if editor.failedArtifactCommitID != nil || editor.isReadOnly || editor.errorMessage != nil {
+                Button("Bearbeitung: Speicherfehler prüfen") { revealNoticeTool(.versions) }
+            }
+            Divider()
+            Button("Bearbeiten öffnen") { revealNoticeTool(.edit) }
+        }.disabled(model.selectedAsset == nil)
+    }
+
+    private var hasWorkspaceError: Bool {
+        if editor.isReadOnly || editor.errorMessage != nil || editor.failedArtifactCommitID != nil || photoMetadata.errorMessage != nil || photoMetadata.hasPendingRetry || photoMetadata.recovery != nil { return true }
+        if case .failed = assistant.state { return true }
+        if case .failed = imageAnalysis.state { return true }
+        return false
+    }
+
+    private var workspaceErrors: some View {
+        ScrollView {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Hinweise prüfen").font(.headline)
+            if editor.isReadOnly || editor.errorMessage != nil || editor.failedArtifactCommitID != nil {
+                Text(editor.errorMessage ?? "Bearbeitungen können derzeit nicht gespeichert werden.")
+                if let id = editor.failedArtifactCommitID {
+                    Button("Angenommenen Bildstand erneut speichern") { _ = editor.retryAcceptedArtifactCommit(id) }
+                        .disabled(editor.isCommitting || editor.isRestoring || editor.isBackingUp)
+                } else if editor.hasPendingChanges {
+                    Button("Änderungen erneut speichern") { Task { _ = await editor.flush() } }
+                        .disabled(editor.isSaving || editor.isRestoring || editor.isBackingUp || editor.isCommitting || editor.isClosing)
+                } else {
+                    Button("Bearbeitungen erneut laden") { editor.retryLoading() }
+                        .disabled(editor.isLoading || editor.isSaving || editor.isRestoring || editor.isBackingUp || editor.isCommitting || editor.isClosing)
+                }
+            }
+            if let error = photoMetadata.errorMessage { Text(error) }
+            if let recovery = photoMetadata.recovery {
+                Text(recovery.message)
+                Button("Metadatenentwurf bearbeiten") { photoMetadata.recoverUnsavedDraft() }
+            }
+            if photoMetadata.hasPendingRetry {
+                Button("Angenommenen Metadatenauftrag erneut speichern") { photoMetadata.retryAcceptedWrite() }
+                    .disabled(!photoMetadata.canRetryAcceptedWrite)
+            }
+            if photoMetadata.errorMessage != nil {
+                Button("Bildinformationen erneut laden") { photoMetadata.retryLoading() }
+                    .disabled(photoMetadata.isSaving || photoMetadata.isClosing)
+            }
+            if case .failed(let message) = assistant.state { Text("Assistent: \(message)") }
+            if case .failed(let message) = imageAnalysis.state { Text("Bildanalyse: \(message)") }
+            Divider()
+            workspaceNoticeLinks
+            Button("Schließen") { showsWorkspaceErrors = false }
+        }.font(.system(size: 12)).textSelection(.enabled).padding(18)
+        }.frame(width: 370, height: 320)
+    }
+
+    private var noticeLabel: String {
+        if photoMetadata.errorMessage != nil || photoMetadata.hasPendingRetry || photoMetadata.recovery != nil || editor.failedArtifactCommitID != nil || editor.isReadOnly || editor.errorMessage != nil { return "Fehler prüfen" }
+        if case .failed = assistant.state { return "Assistent: Fehler" }
+        if case .failed = imageAnalysis.state { return "Analyse: Fehler" }
+        if case .generating = assistant.state { return "Assistent läuft" }
+        if imageAnalysis.state == .analyzing || photoMetadata.isAnalyzing { return "Analyse läuft" }
+        if assistant.state == .previewing { return "Vorschlag unbestätigt" }
+        if photoMetadata.hasManualDraft || photoMetadata.record?.draft != nil { return "Entwurf vorhanden" }
+        if imageAnalysis.result != nil { return "Analyseergebnis" }
+        return "Hinweise"
+    }
+
+    private func reveal(_ tool: WorkspaceTool) { WorkspaceActions.reveal(tool, layout: layout, library: model) }
+
+    private func revealNoticeTool(_ tool: WorkspaceTool) {
+        showsWorkspaceErrors = false
+        reveal(tool)
     }
 
     private func acceptDrop(_ providers: [NSItemProvider]) -> Bool {
@@ -317,10 +543,13 @@ struct LibraryView: View {
         case 124: model.navigate(1, extending: extending)
         case 125: model.navigate(model.showsDetail ? 1 : model.gridColumnCount, extending: extending)
         case 126: model.navigate(model.showsDetail ? -1 : -model.gridColumnCount, extending: extending)
-        case 53: model.showsDetail = false
+        case 53:
+            if layout.isFocused { WorkspaceActions.toggleFocus(layout, library: model) }
+            else { model.showsDetail = false }
         case 49:
             guard model.selectedAsset != nil else { return false }
-            model.showsDetail.toggle()
+            if layout.isFocused { WorkspaceActions.showGrid(layout, library: model) }
+            else { model.showsDetail.toggle() }
         default:
             guard model.selectedAsset != nil else { return false }
             if let number = Int(event.charactersIgnoringModifiers ?? ""), (0...5).contains(number) { model.setRating(number) }

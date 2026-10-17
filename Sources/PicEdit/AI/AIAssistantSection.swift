@@ -48,8 +48,12 @@ struct AIAssistantSection: View {
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Theme.accent.opacity(0.06), in: RoundedRectangle(cornerRadius: 8))
-        .task { await model.refreshAvailability() }
-        .onDisappear { model.discard() }
+        // The workspace may unmount this section when its dock group changes.
+        // Proposal/request ownership stays with the model; only an explicit
+        // retry rechecks a provider whose availability is already known.
+        .task {
+            if model.availability == nil { await model.refreshAvailability() }
+        }
     }
 
     @ViewBuilder private var status: some View {

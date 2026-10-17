@@ -2,7 +2,9 @@
 
 17. Oktober 2026 · [Issue #45](https://github.com/dr-dimitri/picedit/issues/45) · analysierter App-Stand `fba0c9b`.
 
-Dies sind **statische Entwürfe zur Entscheidung über das Layout**. Die Anwendung wurde damit noch nicht umgebaut. Beide Ansichten gehören zu einem Bedienkonzept und verwenden dieselben Bearbeitungszustände. Das synthetische Alpensee-Motiv, Dateinamen, Zahlen, Looktitel und Vorschlagswerte sind Beispieldaten. Die Illustration ist kein Foto und kein Ergebnis der Bildverarbeitung. Der ausgeschriebene Looktitel steht exemplarisch für einen erzeugten Vorschlag, nicht für ein neues festes Preset.
+Umsetzungsstand: Der Bildfokus aus Vorschlag B ist in der Anwendung umgesetzt. Die aktuellen Bedienwege und Zustandsregeln stehen unter [Bildfokus und Arbeitsbereiche](../../WORKSPACE-LAYOUT.md). Die folgenden Bilder bleiben die ursprünglichen statischen Entwürfe.
+
+Dies sind **statische Entwürfe zur Entscheidung über das Layout**. Zum Zeitpunkt dieser Entwürfe war die Anwendung noch nicht umgebaut. Beide Ansichten gehören zu einem Bedienkonzept und verwenden dieselben Bearbeitungszustände. Das synthetische Alpensee-Motiv, Dateinamen, Zahlen, Looktitel und Vorschlagswerte sind Beispieldaten. Die Illustration ist kein Foto und kein Ergebnis der Bildverarbeitung. Der ausgeschriebene Looktitel steht exemplarisch für einen erzeugten Vorschlag, nicht für ein neues festes Preset.
 
 ## A · Klassische Arbeitsansicht
 

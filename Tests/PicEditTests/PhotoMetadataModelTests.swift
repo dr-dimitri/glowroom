@@ -6,6 +6,74 @@ import Testing
 @Suite("Photo metadata forms, explicit confirmation and lifecycle", .serialized, .timeLimit(.minutes(2)))
 @MainActor
 struct PhotoMetadataModelTests {
+    @Test func rawTagLinesSurviveSectionRemountWithoutAnotherWriteOrInference() async throws {
+        let f = fixture()
+        let host = WorkspaceSectionTestHost()
+        defer { host.close() }
+        try await wait { f.model.canEditManual }
+        f.model.editManualFields(PhotoTextFields(tags: ["Licht"]))
+        try await wait { !f.model.isSaving }
+        f.model.manualSelection = [.tags]
+        f.model.manualTagPolicy = .replace
+        f.model.acceptManualFields()
+        try await wait { !f.model.isSaving && f.model.record?.confirmed.tags == ["Licht"] }
+        let confirmedVersion = try #require(f.model.record?.version)
+        let draftWrites = await f.store.manualDrafts.count
+        f.model.editManualTags("Licht\n\n")
+        #expect(f.model.manualFields.tags == ["Licht"])
+        #expect(!f.model.isSaving)
+        try await host.mount(PhotoMetadataSection(model: f.model))
+        try await host.unmount()
+        try await host.mount(PhotoMetadataSection(model: f.model))
+        #expect(f.model.manualTagEditor.text == "Licht\n\n")
+        #expect(f.model.record?.version == confirmedVersion)
+        #expect(await f.store.manualDrafts.count == draftWrites)
+        #expect(await f.suggestor.requests.isEmpty)
+
+        try await prepareProposal(f)
+        f.model.editProposalTags("Synthetisch\n\n")
+        let draftID = try #require(f.model.record?.draft?.id)
+        let aiWrites = await f.store.aiDrafts.count
+        try await host.unmount()
+        try await host.mount(PhotoMetadataSection(model: f.model))
+        #expect(f.model.manualTagEditor.text == "Licht\n\n")
+        #expect(f.model.proposalTagEditor.text == "Synthetisch\n\n")
+        #expect(f.model.record?.draft?.id == draftID)
+        #expect(await f.store.aiDrafts.count == aiWrites)
+        #expect(await f.suggestor.requests.count == 1)
+        #expect(f.model.record?.confirmed.tags == ["Licht"])
+        #expect(await f.model.finishSaving())
+    }
+
+    @Test func rawTagTextResetsForNewProposalAssetAndSourceEvenWithIdenticalTags() async throws {
+        let f = fixture()
+        try await wait { f.model.canEditManual }
+        try await prepareProposal(f)
+        f.model.editProposalTags("Synthetisch\n\n")
+        let firstDraft = try #require(f.model.record?.draft?.id)
+        f.model.suggest(refresh: true)
+        try await wait { await f.suggestor.requests.count == 2 }
+        await f.suggestor.complete(try #require(await f.suggestor.requests.last?.id))
+        try await wait { !f.model.isSaving && f.model.record?.draft?.id != firstDraft }
+        #expect(f.model.proposalFields.tags == ["Synthetisch"])
+        #expect(f.model.proposalTagEditor.text == "Synthetisch")
+        f.model.editProposalTags("Synthetisch\n")
+        f.context.value = metadataContext("a", selection: 2, modified: 101)
+        f.model.synchronizeContext()
+        try await wait { !f.model.isLoading }
+        #expect(f.model.proposalTagEditor.text == "Synthetisch")
+        f.model.editManualTags("Manuell\n")
+        try await wait { !f.model.isSaving }
+        #expect(f.model.manualTagEditor.text == "Manuell\n")
+        f.context.value = metadataContext("b", selection: 3)
+        f.model.synchronizeContext()
+        try await wait { !f.model.isLoading }
+        #expect(f.model.manualTagEditor.text.isEmpty)
+        #expect(f.model.proposalTagEditor.text.isEmpty)
+        #expect(await f.suggestor.requests.count == 2)
+        #expect(await f.model.finishSaving())
+    }
+
     @Test func nilSelectionStillLoadsStoreForExplicitImportExport() async throws {
         let f = fixture(selected: false)
         try await wait { f.model.canManage }
