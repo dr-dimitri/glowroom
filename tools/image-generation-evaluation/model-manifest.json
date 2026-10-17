@@ -1,0 +1,115 @@
+{
+  "schemaVersion": 1,
+  "status": "public metadata verified; weights not downloaded or evaluated",
+  "model": "stable-diffusion-v1-5/stable-diffusion-inpainting",
+  "revision": "8a4288a76071f7280aedbdb3253bdb9e9d5d84bb",
+  "license": "CreativeML OpenRAIL-M",
+  "runtime": "stable-diffusion.cpp",
+  "runtimeRevision": "8cd731e7b4667eb8f40a153315b9a7125d09a58d",
+  "ggmlRevision": "d25b121ce1d6ae0c7e62ad080460d9fc1e46dd93",
+  "files": [
+    {
+      "source": "https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-inpainting/resolve/8a4288a76071f7280aedbdb3253bdb9e9d5d84bb/unet/diffusion_pytorch_model.fp16.safetensors",
+      "path": "unet/diffusion_pytorch_model.fp16.safetensors",
+      "bytes": 1719154104,
+      "gitBlobSHA1": "2049bec0e66d389318e2d419997b394fe6a20e5c",
+      "sha256": "24b788b4a777748377cc20364eea4ae113c8c42f4468c16bc8c02fdae5492af9",
+      "installedPath": "unet/diffusion_pytorch_model.safetensors"
+    },
+    {
+      "source": "https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-inpainting/resolve/8a4288a76071f7280aedbdb3253bdb9e9d5d84bb/vae/diffusion_pytorch_model.fp16.safetensors",
+      "path": "vae/diffusion_pytorch_model.fp16.safetensors",
+      "bytes": 167335342,
+      "gitBlobSHA1": "6dc048fdbcb71764cbd7af4ec6eb2a0e8a7bfbb2",
+      "sha256": "4fbcf0ebe55a0984f5a5e00d8c4521d52359af7229bb4d81890039d2aa16dd7c",
+      "installedPath": "vae/diffusion_pytorch_model.safetensors"
+    },
+    {
+      "source": "https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-inpainting/resolve/8a4288a76071f7280aedbdb3253bdb9e9d5d84bb/text_encoder/model.fp16.safetensors",
+      "path": "text_encoder/model.fp16.safetensors",
+      "bytes": 246144864,
+      "gitBlobSHA1": "1ee9520565624366f70ff4ff21b8e79cc70cfb22",
+      "sha256": "77795e2023adcf39bc29a884661950380bd093cf0750a966d473d1718dc9ef4e",
+      "installedPath": "text_encoder/model.safetensors"
+    },
+    {
+      "source": "https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-inpainting/resolve/8a4288a76071f7280aedbdb3253bdb9e9d5d84bb/README.md",
+      "path": "README.md",
+      "bytes": 15107,
+      "gitBlobSHA1": "65e886af144b9d8bb5bbb4ca040d2b013fd45f12",
+      "installedPath": "README.md"
+    },
+    {
+      "source": "https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-inpainting/resolve/8a4288a76071f7280aedbdb3253bdb9e9d5d84bb/model_index.json",
+      "path": "model_index.json",
+      "bytes": 548,
+      "gitBlobSHA1": "1dda6689b6bed16a8b69f3df22fdc06983de68da",
+      "installedPath": "model_index.json"
+    },
+    {
+      "source": "https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-inpainting/resolve/8a4288a76071f7280aedbdb3253bdb9e9d5d84bb/unet/config.json",
+      "path": "unet/config.json",
+      "bytes": 748,
+      "gitBlobSHA1": "432f2ef043de459ffb66e7e49d22131fc596a5d5",
+      "installedPath": "unet/config.json"
+    },
+    {
+      "source": "https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-inpainting/resolve/8a4288a76071f7280aedbdb3253bdb9e9d5d84bb/vae/config.json",
+      "path": "vae/config.json",
+      "bytes": 552,
+      "gitBlobSHA1": "25c63fb3a9303446a3c9bae3a90afc818641984f",
+      "installedPath": "vae/config.json"
+    },
+    {
+      "source": "https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-inpainting/resolve/8a4288a76071f7280aedbdb3253bdb9e9d5d84bb/text_encoder/config.json",
+      "path": "text_encoder/config.json",
+      "bytes": 617,
+      "gitBlobSHA1": "4d3e873ab5086ad989f407abd50fdce66db8d657",
+      "installedPath": "text_encoder/config.json"
+    },
+    {
+      "source": "https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-inpainting/resolve/8a4288a76071f7280aedbdb3253bdb9e9d5d84bb/scheduler/scheduler_config.json",
+      "path": "scheduler/scheduler_config.json",
+      "bytes": 313,
+      "gitBlobSHA1": "3a6a9a51b8ea8eb2b0c55e2811e608f2eca3ffd2",
+      "installedPath": "scheduler/scheduler_config.json"
+    },
+    {
+      "source": "https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-inpainting/resolve/8a4288a76071f7280aedbdb3253bdb9e9d5d84bb/tokenizer/merges.txt",
+      "path": "tokenizer/merges.txt",
+      "bytes": 524619,
+      "gitBlobSHA1": "76e821f1b6f0a9709293c3b6b51ed90980b3166b",
+      "installedPath": "tokenizer/merges.txt"
+    },
+    {
+      "source": "https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-inpainting/resolve/8a4288a76071f7280aedbdb3253bdb9e9d5d84bb/tokenizer/vocab.json",
+      "path": "tokenizer/vocab.json",
+      "bytes": 1059962,
+      "gitBlobSHA1": "469be27c5c010538f845f518c4f5e8574c78f7c8",
+      "installedPath": "tokenizer/vocab.json"
+    },
+    {
+      "source": "https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-inpainting/resolve/8a4288a76071f7280aedbdb3253bdb9e9d5d84bb/tokenizer/tokenizer_config.json",
+      "path": "tokenizer/tokenizer_config.json",
+      "bytes": 806,
+      "gitBlobSHA1": "5ba7bf706515bc60487ad0e1816b4929b82542d6",
+      "installedPath": "tokenizer/tokenizer_config.json"
+    },
+    {
+      "source": "https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-inpainting/resolve/8a4288a76071f7280aedbdb3253bdb9e9d5d84bb/tokenizer/special_tokens_map.json",
+      "path": "tokenizer/special_tokens_map.json",
+      "bytes": 472,
+      "gitBlobSHA1": "2c2130b544c0c5a72d5d00da071ba130a9800fb2",
+      "installedPath": "tokenizer/special_tokens_map.json"
+    },
+    {
+      "path": "LICENSE-weights.txt",
+      "installedPath": "LICENSE-weights.txt",
+      "source": "https://huggingface.co/spaces/CompVis/stable-diffusion-license/resolve/14d42d09bffd871b1666a084fc954a50cff72ac0/license.txt",
+      "bytes": 14385,
+      "sha256": "be351ebe7ac01bcdbb018639aadcfd38f136b7dc3f2a3d4d3a24db51d1b210ef",
+      "gitBlobSHA1": "0e609df0d8cd3b5d11a1ea962a56b604b70846a5"
+    }
+  ],
+  "downloadBytes": 2134252439
+}

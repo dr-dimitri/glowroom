@@ -1,0 +1,10 @@
+{
+  "id" : "04-partial-alpha-hard",
+  "mask" : "fixtures\/04-partial-alpha-mask-hard.png",
+  "negativePrompt" : "blurry, distorted, new objects, text, watermark",
+  "operation" : "generate",
+  "output" : "outputs\/20261016-134606-c1b93865-04-partial-alpha-hard.png",
+  "prompt" : "an empty wooden panel, continuous horizontal wood boards, natural wood texture",
+  "seed" : 4281,
+  "source" : "fixtures\/04-partial-alpha-source.png"
+}

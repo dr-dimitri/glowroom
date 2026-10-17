@@ -1,0 +1,36 @@
+{
+  "status": "full-series-completed-quality-no-go",
+  "compiled": true,
+  "compileLog": "/private/tmp/picedit-inpainting-series-compile-v2.log",
+  "protocolSmoke": "reports/20261016-134501-6b05e9c1-native-series-full/series-report.json",
+  "firstRunFailure": "reports/20261016-134349-edd860bf-native-series-full/series-report.json",
+  "firstFailureCause": "Foundation FileHandle.read(upToCount:) waited for more pipe bytes, readiness timeout before any model load. Replaced by bounded 8192-byte POSIX read with EINTR retry. Native helper unchanged.",
+  "hashMemoryFix": "Each 1MiB streamed file-hash block has a local autoreleasepool; no retained full model Data.",
+  "currentRun": "reports/20261016-134606-c1b93865-native-series-full/series-report.json",
+  "nativeHelperUnchangedSHA256": "e85c762c68aea5b10cd1ff2e7b5d56802c4875dcc9b844f2b6ab798d3fd1980d",
+  "files": [
+    {
+      "path": "evaluate-inpainting-series.swift",
+      "sha256": "6ceaa3160d5abc8c750d4710d8f221c634f5fd69f5da54452408d411bb5b4ba6"
+    },
+    {
+      "path": "evaluate-inpainting-series-verified",
+      "sha256": "5766f20292f86f376c72bc2e8f057a8cb429a872644daccc0713a68615a13ca6"
+    },
+    {
+      "path": "series-postprocess.py",
+      "sha256": "ffa80bb7c11388194e511e6ac745b0ad6baf99e909e5f67707d2894389b1278f"
+    }
+  ],
+  "modelQualityThresholdsChanged": false,
+  "backendGo": false,
+  "completedRun": "reports/20261016-134606-c1b93865-native-series-full/series-report.json",
+  "independentReview": "reports/20261016-134606-c1b93865-native-series-full/root-visual-review.json",
+  "sleepOutlier": {
+    "cause": "System sleep explicitly confirmed by the user",
+    "rawNativeSeconds": 1870.959922167,
+    "latencyGate": "NOT-EVALUABLE-SYSTEM-SLEEP",
+    "treatment": "Retain raw report unchanged; exclude interrupted case from model latency inference. No subtraction or performance attribution."
+  },
+  "timingLimitation": "Historical Swift harness uses systemUptime and excludes sleep; the future portable gate must use continuous deadlines and independently compare native elapsed values. The quality No-Go remains supported independently."
+}

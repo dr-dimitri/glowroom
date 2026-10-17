@@ -4,6 +4,8 @@ Issue [#11](https://github.com/dr-dimitri/picedit/issues/11) stellt einen lokale
 
 ## Werkzeuge und Geometrie
 
+Das [Bildbackend-Gate aus Issue #12](AI-IMAGE-BACKEND-DECISION.md) ist wegen sichtbarer Qualitätsmängel als `fullNoGo` entschieden. Maskeninpainting, generative Hintergrundbearbeitung und Outpainting erhalten dadurch keine Produktfreigabe. Der Maskeneditor bleibt als lokale Grundlage verfügbar; er startet keinen Modellaufruf.
+
 Pinsel erhöht, Radierer verringert die kanonischen Gewichte: 0 erhält die eingefrorene Basis, 1 erlaubt Ersetzung. Weiche Kanten verwenden deterministische Zwischengewichte, gespeichert als Gray8 (0…255). Radius und Härte bestimmen die Strichgeometrie. Deckkraft bestimmt nur das rote Overlay. Löschen und Invertieren sowie lokales Rückgängig/Wiederholen verändern ausschließlich den Entwurf; ein abgeschlossener Strich ergibt einen Undo-Schritt. Die lokale Historie hält höchstens 64 Schritte.
 
 Der Bildraum ist das nach EXIF orientierte native Raster: Ursprung oben links, x nach rechts, y nach unten, Pixelzentren bei (x + 0,5; y + 0,5). Alle acht EXIF-Orientierungen sind explizit beschrieben. `CanvasGeometry` verwendet View-Punkte, Fit-Letterboxing, Zoom und Pan. Retina ändert die Bildposition nicht. **100 %** bedeutet ein Bildpixel pro physischem Bildschirm-Pixel. Außerhalb des Bildrechtecks entsteht kein Strich; nach einem Ausflug ins Letterboxing beginnt ein neues Segment desselben Undo-Schritts. Fenstergrößen- und Zoomänderungen beenden den laufenden Strichentwurf.

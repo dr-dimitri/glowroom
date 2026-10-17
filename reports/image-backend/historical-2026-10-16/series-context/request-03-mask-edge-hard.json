@@ -1,0 +1,10 @@
+{
+  "id" : "03-mask-edge-hard",
+  "mask" : "fixtures\/03-mask-edge-mask-hard.png",
+  "negativePrompt" : "blurry, distorted, new objects, text, watermark",
+  "operation" : "generate",
+  "output" : "outputs\/20261016-134606-c1b93865-03-mask-edge-hard.png",
+  "prompt" : "an empty wooden panel, continuous horizontal wood boards, natural wood texture",
+  "seed" : 4281,
+  "source" : "fixtures\/03-mask-edge-source.png"
+}

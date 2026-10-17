@@ -1,0 +1,243 @@
+{
+  "schemaVersion": 1,
+  "sdkRevision": "8cd731e7b4667eb8f40a153315b9a7125d09a58d",
+  "ggmlRevision": "d25b121ce1d6ae0c7e62ad080460d9fc1e46dd93",
+  "modelRevision": "8a4288a76071f7280aedbdb3253bdb9e9d5d84bb",
+  "configurationSHA256": "a356133c9769b71a55fff3a43b706942df1c477cf757075055549a394a1c2450",
+  "modelManifestSHA256": "666bdfbe19edd25cdf677b28d53055a19ce0983a0dde0223f35ec3091fc5ae79",
+  "fixtureManifestSHA256": "799d51e22631500e9caa2fbdd2c09403788d55d4248ddeacc9cc0db0c4a7a2d5",
+  "modelFiles": [
+    {
+      "source": "https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-inpainting/resolve/8a4288a76071f7280aedbdb3253bdb9e9d5d84bb/unet/diffusion_pytorch_model.fp16.safetensors",
+      "path": "unet/diffusion_pytorch_model.fp16.safetensors",
+      "bytes": 1719154104,
+      "gitBlobSHA1": "2049bec0e66d389318e2d419997b394fe6a20e5c",
+      "sha256": "24b788b4a777748377cc20364eea4ae113c8c42f4468c16bc8c02fdae5492af9",
+      "installedPath": "unet/diffusion_pytorch_model.safetensors"
+    },
+    {
+      "source": "https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-inpainting/resolve/8a4288a76071f7280aedbdb3253bdb9e9d5d84bb/vae/diffusion_pytorch_model.fp16.safetensors",
+      "path": "vae/diffusion_pytorch_model.fp16.safetensors",
+      "bytes": 167335342,
+      "gitBlobSHA1": "6dc048fdbcb71764cbd7af4ec6eb2a0e8a7bfbb2",
+      "sha256": "4fbcf0ebe55a0984f5a5e00d8c4521d52359af7229bb4d81890039d2aa16dd7c",
+      "installedPath": "vae/diffusion_pytorch_model.safetensors"
+    },
+    {
+      "source": "https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-inpainting/resolve/8a4288a76071f7280aedbdb3253bdb9e9d5d84bb/text_encoder/model.fp16.safetensors",
+      "path": "text_encoder/model.fp16.safetensors",
+      "bytes": 246144864,
+      "gitBlobSHA1": "1ee9520565624366f70ff4ff21b8e79cc70cfb22",
+      "sha256": "77795e2023adcf39bc29a884661950380bd093cf0750a966d473d1718dc9ef4e",
+      "installedPath": "text_encoder/model.safetensors"
+    },
+    {
+      "source": "https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-inpainting/resolve/8a4288a76071f7280aedbdb3253bdb9e9d5d84bb/README.md",
+      "path": "README.md",
+      "bytes": 15107,
+      "gitBlobSHA1": "65e886af144b9d8bb5bbb4ca040d2b013fd45f12",
+      "installedPath": "README.md",
+      "sha256": "6f5758cfeabddb509b09399d6f0879056c5fd0002d7d9849bc183a6de9a98ab0"
+    },
+    {
+      "source": "https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-inpainting/resolve/8a4288a76071f7280aedbdb3253bdb9e9d5d84bb/model_index.json",
+      "path": "model_index.json",
+      "bytes": 548,
+      "gitBlobSHA1": "1dda6689b6bed16a8b69f3df22fdc06983de68da",
+      "installedPath": "model_index.json",
+      "sha256": "636d700de8970a70f02b91d433ad949dc2ceb750f39ba0cf2cf39ef0b0b9d1e4"
+    },
+    {
+      "source": "https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-inpainting/resolve/8a4288a76071f7280aedbdb3253bdb9e9d5d84bb/unet/config.json",
+      "path": "unet/config.json",
+      "bytes": 748,
+      "gitBlobSHA1": "432f2ef043de459ffb66e7e49d22131fc596a5d5",
+      "installedPath": "unet/config.json",
+      "sha256": "669f6581087fac5b16c44e42c58b359a35eadf2af5691d7945480bd7ceac8e6d"
+    },
+    {
+      "source": "https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-inpainting/resolve/8a4288a76071f7280aedbdb3253bdb9e9d5d84bb/vae/config.json",
+      "path": "vae/config.json",
+      "bytes": 552,
+      "gitBlobSHA1": "25c63fb3a9303446a3c9bae3a90afc818641984f",
+      "installedPath": "vae/config.json",
+      "sha256": "4cd0ce4803567837175fbb8412689fe77d069c1ef8171beb83979db309a8bad5"
+    },
+    {
+      "source": "https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-inpainting/resolve/8a4288a76071f7280aedbdb3253bdb9e9d5d84bb/text_encoder/config.json",
+      "path": "text_encoder/config.json",
+      "bytes": 617,
+      "gitBlobSHA1": "4d3e873ab5086ad989f407abd50fdce66db8d657",
+      "installedPath": "text_encoder/config.json",
+      "sha256": "845df614cb9327ae7bbea027316246fae917827407da6df13572e41b5f93b4cc"
+    },
+    {
+      "source": "https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-inpainting/resolve/8a4288a76071f7280aedbdb3253bdb9e9d5d84bb/scheduler/scheduler_config.json",
+      "path": "scheduler/scheduler_config.json",
+      "bytes": 313,
+      "gitBlobSHA1": "3a6a9a51b8ea8eb2b0c55e2811e608f2eca3ffd2",
+      "installedPath": "scheduler/scheduler_config.json",
+      "sha256": "8b457848b74deeeab2a967b75048dd2cb6f393cfc17751eca1b5ec655cff0183"
+    },
+    {
+      "source": "https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-inpainting/resolve/8a4288a76071f7280aedbdb3253bdb9e9d5d84bb/tokenizer/merges.txt",
+      "path": "tokenizer/merges.txt",
+      "bytes": 524619,
+      "gitBlobSHA1": "76e821f1b6f0a9709293c3b6b51ed90980b3166b",
+      "installedPath": "tokenizer/merges.txt",
+      "sha256": "9fd691f7c8039210e0fced15865466c65820d09b63988b0174bfe25de299051a"
+    },
+    {
+      "source": "https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-inpainting/resolve/8a4288a76071f7280aedbdb3253bdb9e9d5d84bb/tokenizer/vocab.json",
+      "path": "tokenizer/vocab.json",
+      "bytes": 1059962,
+      "gitBlobSHA1": "469be27c5c010538f845f518c4f5e8574c78f7c8",
+      "installedPath": "tokenizer/vocab.json",
+      "sha256": "e089ad92ba36837a0d31433e555c8f45fe601ab5c221d4f607ded32d9f7a4349"
+    },
+    {
+      "source": "https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-inpainting/resolve/8a4288a76071f7280aedbdb3253bdb9e9d5d84bb/tokenizer/tokenizer_config.json",
+      "path": "tokenizer/tokenizer_config.json",
+      "bytes": 806,
+      "gitBlobSHA1": "5ba7bf706515bc60487ad0e1816b4929b82542d6",
+      "installedPath": "tokenizer/tokenizer_config.json",
+      "sha256": "00439066fcba73de57644cf41e4e3b9f2dbb09d7f3fc2005898ba52399045882"
+    },
+    {
+      "source": "https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-inpainting/resolve/8a4288a76071f7280aedbdb3253bdb9e9d5d84bb/tokenizer/special_tokens_map.json",
+      "path": "tokenizer/special_tokens_map.json",
+      "bytes": 472,
+      "gitBlobSHA1": "2c2130b544c0c5a72d5d00da071ba130a9800fb2",
+      "installedPath": "tokenizer/special_tokens_map.json",
+      "sha256": "c4864a9376a8401918425bed71fc14fc0e81f9b59ec45c1cf96cccb2df508eac"
+    },
+    {
+      "path": "LICENSE-weights.txt",
+      "installedPath": "LICENSE-weights.txt",
+      "source": "https://huggingface.co/spaces/CompVis/stable-diffusion-license/resolve/14d42d09bffd871b1666a084fc954a50cff72ac0/license.txt",
+      "bytes": 14385,
+      "sha256": "be351ebe7ac01bcdbb018639aadcfd38f136b7dc3f2a3d4d3a24db51d1b210ef",
+      "gitBlobSHA1": "0e609df0d8cd3b5d11a1ea962a56b604b70846a5"
+    }
+  ],
+  "sources": [
+    {
+      "name": "stable-diffusion.cpp.tar.gz",
+      "source": "https://codeload.github.com/leejet/stable-diffusion.cpp/tar.gz/8cd731e7b4667eb8f40a153315b9a7125d09a58d",
+      "bytes": 125758115,
+      "sha256": "871c4f03286360bf10b9850ce4c57912311d0d91b117d4e4be19d989a417f08b",
+      "revision": "8cd731e7b4667eb8f40a153315b9a7125d09a58d",
+      "destination": "source"
+    },
+    {
+      "name": "ggml.tar.gz",
+      "source": "https://codeload.github.com/leejet/ggml/tar.gz/d25b121ce1d6ae0c7e62ad080460d9fc1e46dd93",
+      "bytes": 4158450,
+      "sha256": "bbfaebbfe2564a796f1a9309ff87cd6c6a5acdfffe7b779f96b847f57945403b",
+      "revision": "d25b121ce1d6ae0c7e62ad080460d9fc1e46dd93",
+      "destination": "source/ggml"
+    }
+  ],
+  "buildInputs": {
+    "native-diagnostics.patch": {
+      "bytes": 11312,
+      "sha256": "e7aed7286e508f87b8c566afd1dd257b10dfb5f81a7f0081b2fc22ffe3dac7f0"
+    },
+    "picedit_float_diagnostic-unbatched.h": {
+      "bytes": 4955,
+      "sha256": "13825c9a3d2edcb85848746fe19b5240fa21d420b88c1727398af77ea52af9a5"
+    },
+    "LICENSE-weights.txt": {
+      "bytes": 14385,
+      "sha256": "be351ebe7ac01bcdbb018639aadcfd38f136b7dc3f2a3d4d3a24db51d1b210ef"
+    },
+    "THIRD-PARTY-NOTICES.txt": {
+      "bytes": 22247,
+      "sha256": "9b4d619536271b601989dfc665614b189f7a8c87a2bbd7d0c83bed0aa1579716"
+    },
+    "model-manifest.json": {
+      "bytes": 5856,
+      "sha256": "666bdfbe19edd25cdf677b28d53055a19ce0983a0dde0223f35ec3091fc5ae79"
+    },
+    "evaluation-helper-current.cpp": {
+      "bytes": 18050,
+      "sha256": "9146c2e86f94b2040e11fc11229680f5709282e5af498330b6fa3e02b4d46400"
+    },
+    "unbatched-configuration.json": {
+      "bytes": 1378,
+      "sha256": "bfcd90c91223a8076644420943cd9638bca717d81909b99ef39866714ba7514f"
+    }
+  },
+  "fixtureFiles": [
+    {
+      "path": "fixtures/01-structured-removal-mask-hard.png",
+      "bytes": 853,
+      "sha256": "c2b097b055be230c26a6f40376d910f3c108034b7bfe5e26f5882a7fb5666333"
+    },
+    {
+      "path": "fixtures/01-structured-removal-source.png",
+      "bytes": 5315,
+      "sha256": "5f804c3c53ff13da19ff661a843595c43eaf782a35c538d7dfa984450255784e"
+    },
+    {
+      "path": "fixtures/02-edge-object-mask-hard.png",
+      "bytes": 548,
+      "sha256": "e08e5ebc9cb7d48066aeb6a5e18bc6d1e194f970ebf0c9bbdb731ce40c1cdec9"
+    },
+    {
+      "path": "fixtures/02-edge-object-source.png",
+      "bytes": 5083,
+      "sha256": "29aa816e1d98889ababc4408e89a2e061ae3bce92f2ab7d3d22142b84b05da71"
+    },
+    {
+      "path": "fixtures/03-mask-edge-mask-hard.png",
+      "bytes": 517,
+      "sha256": "f7c4e1ffd54a26a0e09fd2fec8f4f82d8414203575ab483f98f5288300f2f948"
+    },
+    {
+      "path": "fixtures/03-mask-edge-mask-soft.png",
+      "bytes": 1784,
+      "sha256": "4f7c053bd07c752260fa3455596673f9f330f0d0ce6050649fa0f365902c0e4a"
+    },
+    {
+      "path": "fixtures/03-mask-edge-source.png",
+      "bytes": 4398,
+      "sha256": "df10cc0e47deaec2825b98d8f44dc315861ffa4122be8b75db97cd217d63bea1"
+    },
+    {
+      "path": "fixtures/04-partial-alpha-mask-hard.png",
+      "bytes": 770,
+      "sha256": "46320b33d9cb4a1ca658c38b4e2e12b0f67e95bf6ae566b0f0be3bfe4e66af91"
+    },
+    {
+      "path": "fixtures/04-partial-alpha-source.png",
+      "bytes": 11098,
+      "sha256": "4374827bd919689152b8eb8d4c6a30b801b3293476fcdf76dc15f238941f7c8b"
+    },
+    {
+      "path": "fixtures/05-fine-motif-edges-mask-hard.png",
+      "bytes": 2959,
+      "sha256": "26a0c86703ceff7901679361426ac3620c1d0eee2bc43037b783c0ef17eb4d2c"
+    },
+    {
+      "path": "fixtures/05-fine-motif-edges-source.png",
+      "bytes": 10886,
+      "sha256": "dbe6a67f1fb95efad1be090cea085d9f9ca8f2afb47f5c6473671694d91208a7"
+    },
+    {
+      "path": "fixtures/06-canvas-original.png",
+      "bytes": 2104,
+      "sha256": "1ad2c9e1bfc37f7dfa83cd66a975eb8fb347d4933ea78e2f8d4f1e6c3170dc08"
+    },
+    {
+      "path": "fixtures/06-nonsquare-canvas-mask-hard.png",
+      "bytes": 769,
+      "sha256": "07ed18a4e61f849e8f5456c58d53ae4c21d0786990e7becc141932bb06cef93c"
+    },
+    {
+      "path": "fixtures/06-nonsquare-canvas-source.png",
+      "bytes": 4989,
+      "sha256": "5fcc0c9d83c8ceb83837365712579a953f792646a954af91f4c1dc3251aec351"
+    }
+  ]
+}

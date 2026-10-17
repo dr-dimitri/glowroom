@@ -9,12 +9,13 @@ let developerTools = [
     "image-pipeline": "PICEDIT_IMAGE_PIPELINE_SMOKE",
     "editing": "PICEDIT_EDITING_BENCHMARK",
     "library": "PICEDIT_LIBRARY_BENCHMARK",
-    "keychain": "PICEDIT_KEYCHAIN_SMOKE"
+    "keychain": "PICEDIT_KEYCHAIN_SMOKE",
+    "image-generation": "PICEDIT_IMAGE_GENERATION_EVALUATION"
 ]
 let requestedTool = ProcessInfo.processInfo.environment["PICEDIT_DEVELOPER_TOOL"]
 let toolFlag = requestedTool.flatMap { developerTools[$0] }
 if requestedTool != nil && toolFlag == nil {
-    fatalError("Unknown PICEDIT_DEVELOPER_TOOL; use image-pipeline, editing, library or keychain")
+    fatalError("Unknown PICEDIT_DEVELOPER_TOOL; use image-pipeline, editing, library, keychain or image-generation")
 }
 var appSettings: [SwiftSetting] = toolFlag.map { [.define("PICEDIT_DEVELOPER_HARNESS"), .define($0)] } ?? []
 if requestedTool == "editing", ProcessInfo.processInfo.environment["PICEDIT_BENCHMARK_SESSION_API"] == "1" {

@@ -1,0 +1,49 @@
+{
+  "status": "context-criteria-passed-visual-unverified",
+  "rejectCode": null,
+  "diagnostics": {
+    "usableContextPixels": 13776,
+    "fitPixels": 6855,
+    "validationPixels": 6921,
+    "unclampedEstimatedGainRGB": [
+      0.796463936499618,
+      0.827177818213963,
+      0.8756279726764763
+    ],
+    "appliedGainRGB": [
+      0.796463936499618,
+      0.827177818213963,
+      0.8756279726764763
+    ],
+    "gainClamped": false,
+    "gainChannelRatio": 1.0993943762535898,
+    "fit": {
+      "pixelCount": 6855,
+      "meanAbsoluteLinearRGBErrorBefore": 0.07381392805204198,
+      "meanAbsoluteLinearRGBErrorAfter": 0.03432243924574242,
+      "errorReductionFraction": 0.5350140528824908,
+      "medianLinearRGBResidualAfter": [
+        0.0,
+        0.0,
+        -2.7755575615628914e-17
+      ]
+    },
+    "validation": {
+      "pixelCount": 6921,
+      "meanAbsoluteLinearRGBErrorBefore": 0.07528359008801566,
+      "meanAbsoluteLinearRGBErrorAfter": 0.03493892047725537,
+      "errorReductionFraction": 0.5359025727066479,
+      "medianLinearRGBResidualAfter": [
+        0.0004962165722836032,
+        0.0003192244363279806,
+        0.0007589387068666076
+      ]
+    },
+    "replacementClippingPixelCount": 0,
+    "replacementClippingFraction": 0.0
+  },
+  "proposalCanonicalSHA256": "fb746b30f85d6794255327e938228ff08f8b396972e4343538999b408bed9620",
+  "backendGo": false,
+  "thresholdsOrMaskChanged": false,
+  "finalSHA256": "32b3af28ec3b0a6eb89ab59b27ee2177be0ed80445fde1fd6345c50606378716"
+}

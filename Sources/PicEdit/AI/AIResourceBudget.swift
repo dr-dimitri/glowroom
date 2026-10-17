@@ -13,11 +13,21 @@ actor AIResourceBudget {
         let maximumConcurrentLocalInferences = 1
         let maximumPromptBytes: Int
         let maximumResponseBytes: Int
+        /// Admission for declared resident weights plus native working buffers.
+        /// The evaluation helper separately measures actual RSS/footprint; this
+        /// estimate is not a hard limit on framework or system GPU allocations.
+        let maximumResidentModelBytes: Int64
 
-        init(maximumPromptBytes: Int = 16_384, maximumResponseBytes: Int = 65_536) {
+        init(maximumPromptBytes: Int = 16_384, maximumResponseBytes: Int = 65_536,
+             maximumResidentModelBytes: Int64 = 6 * 1_024 * 1_024 * 1_024) {
             self.maximumPromptBytes = max(1, maximumPromptBytes)
             self.maximumResponseBytes = max(1, maximumResponseBytes)
+            self.maximumResidentModelBytes = max(0, maximumResidentModelBytes)
         }
+    }
+
+    enum AdmissionError: Error, Equatable, Sendable {
+        case invalidMemoryRequest, exceedsResidentMemoryLimit
     }
 
     enum Priority: Int, Sendable {
@@ -31,16 +41,18 @@ actor AIResourceBudget {
     struct State: Equatable, Sendable {
         let activeInferences: Int
         let waitingInferences: Int
+        let residentModelBytes: Int64
     }
 
     private struct Waiter {
         let id: UUID
         let priority: Priority
+        let residentBytes: Int64
         let continuation: CheckedContinuation<Lease, Error>
     }
 
     nonisolated let limits: Limits
-    private var leases: Set<UUID> = []
+    private var leases: [UUID: Int64] = [:]
     private var waiting: [Waiter] = []
     private var observers: [UUID: AsyncStream<State>.Continuation] = [:]
 
@@ -48,8 +60,10 @@ actor AIResourceBudget {
         self.limits = limits
     }
 
-    func acquireLocalInference(priority: Priority = .interactive) async throws -> Lease {
+    func acquireLocalInference(priority: Priority = .interactive, residentBytes: Int64 = 0) async throws -> Lease {
         try Task.checkCancellation()
+        guard residentBytes >= 0 else { throw AdmissionError.invalidMemoryRequest }
+        guard residentBytes <= limits.maximumResidentModelBytes else { throw AdmissionError.exceedsResidentMemoryLimit }
         let id = UUID()
         let lease: Lease = try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Lease, Error>) in
@@ -58,10 +72,10 @@ actor AIResourceBudget {
                     return
                 }
                 if leases.count < limits.maximumConcurrentLocalInferences {
-                    leases.insert(id)
+                    leases[id] = residentBytes
                     continuation.resume(returning: Lease(id: id))
                 } else {
-                    waiting.append(Waiter(id: id, priority: priority, continuation: continuation))
+                    waiting.append(Waiter(id: id, priority: priority, residentBytes: residentBytes, continuation: continuation))
                 }
                 publishState()
             }
@@ -78,14 +92,14 @@ actor AIResourceBudget {
     }
 
     func release(_ lease: Lease) {
-        guard leases.remove(lease.id) != nil else { return }
+        guard leases.removeValue(forKey: lease.id) != nil else { return }
         if !waiting.isEmpty {
             // A running native inference cannot be preempted safely. At its
             // actual return, selected/query work precedes queued index work;
             // preserve FIFO within either class rather than starting more pools.
             let index = waiting.firstIndex { $0.priority == .interactive } ?? 0
             let next = waiting.remove(at: index)
-            leases.insert(next.id)
+            leases[next.id] = next.residentBytes
             next.continuation.resume(returning: Lease(id: next.id))
         }
         publishState()
@@ -104,7 +118,8 @@ actor AIResourceBudget {
     }
 
     private var state: State {
-        State(activeInferences: leases.count, waitingInferences: waiting.count)
+        State(activeInferences: leases.count, waitingInferences: waiting.count,
+              residentModelBytes: leases.values.reduce(0, +))
     }
 
     private func cancelWaiter(_ id: UUID) {

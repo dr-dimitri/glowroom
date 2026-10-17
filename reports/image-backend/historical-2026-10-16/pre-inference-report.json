@@ -1,0 +1,27 @@
+{
+  "cliSHA256": "6a55da381c237b9fe8aeff37a7fd968c391a18cf733b4cec9de0ac26d761841e",
+  "helperSHA256": "a9141ae9565637401381cd0e4f2541b7c05c74944909d406af60be485141885c",
+  "noticesSHA256": "9b4d619536271b601989dfc665614b189f7a8c87a2bbd7d0c83bed0aa1579716",
+  "noticesBytes": 22247,
+  "modelLoaded": false,
+  "inferenceRun": false,
+  "minOS": "14.0",
+  "sdk": "27.0",
+  "architecture": "arm64",
+  "modelManifestSHA256": "666bdfbe19edd25cdf677b28d53055a19ce0983a0dde0223f35ec3091fc5ae79",
+  "fixtureManifestSHA256": "799d51e22631500e9caa2fbdd2c09403788d55d4248ddeacc9cc0db0c4a7a2d5",
+  "helperSourceSHA256": "1d04c25043078b2c46907192e3c25cae0ccf2f0f9e4c89f4092f1ef2bfbedf9b",
+  "evaluationDriverSHA256": "b88cf98a047dfd4bd710dbff7a3342d1a9f2d0c844bfb051fe906c512fb5a4a0",
+  "fixtureGeneratorSHA256": "ed985ecdccacd40fd0d0ab0ddc267a7cf66bff78843f3003fc027aaf06f222d9",
+  "modelFreeGeometry": "pass",
+  "modelFreeHelperHandshake": "pass",
+  "weightHeader": {
+    "dtype": "F16",
+    "shape": [
+      320,
+      9,
+      3,
+      3
+    ]
+  }
+}

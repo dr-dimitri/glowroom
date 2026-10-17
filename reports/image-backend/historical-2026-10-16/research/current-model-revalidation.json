@@ -1,0 +1,106 @@
+{
+  "date": "2026-10-17",
+  "purpose": "Independent current local evidence revalidation; no inference repeated",
+  "model": "stable-diffusion-v1-5/stable-diffusion-inpainting",
+  "revision": "8a4288a76071f7280aedbdb3253bdb9e9d5d84bb",
+  "files": [
+    {
+      "path": "unet/diffusion_pytorch_model.safetensors",
+      "bytes": 1719154104,
+      "expectedBytes": 1719154104,
+      "sha256": "24b788b4a777748377cc20364eea4ae113c8c42f4468c16bc8c02fdae5492af9",
+      "matchesExpectedSHA256": true
+    },
+    {
+      "path": "vae/diffusion_pytorch_model.safetensors",
+      "bytes": 167335342,
+      "expectedBytes": 167335342,
+      "sha256": "4fbcf0ebe55a0984f5a5e00d8c4521d52359af7229bb4d81890039d2aa16dd7c",
+      "matchesExpectedSHA256": true
+    },
+    {
+      "path": "text_encoder/model.safetensors",
+      "bytes": 246144864,
+      "expectedBytes": 246144864,
+      "sha256": "77795e2023adcf39bc29a884661950380bd093cf0750a966d473d1718dc9ef4e",
+      "matchesExpectedSHA256": true
+    },
+    {
+      "path": "README.md",
+      "bytes": 15107,
+      "expectedBytes": 15107,
+      "sha256": "6f5758cfeabddb509b09399d6f0879056c5fd0002d7d9849bc183a6de9a98ab0",
+      "matchesExpectedSHA256": null
+    },
+    {
+      "path": "model_index.json",
+      "bytes": 548,
+      "expectedBytes": 548,
+      "sha256": "636d700de8970a70f02b91d433ad949dc2ceb750f39ba0cf2cf39ef0b0b9d1e4",
+      "matchesExpectedSHA256": null
+    },
+    {
+      "path": "unet/config.json",
+      "bytes": 748,
+      "expectedBytes": 748,
+      "sha256": "669f6581087fac5b16c44e42c58b359a35eadf2af5691d7945480bd7ceac8e6d",
+      "matchesExpectedSHA256": null
+    },
+    {
+      "path": "vae/config.json",
+      "bytes": 552,
+      "expectedBytes": 552,
+      "sha256": "4cd0ce4803567837175fbb8412689fe77d069c1ef8171beb83979db309a8bad5",
+      "matchesExpectedSHA256": null
+    },
+    {
+      "path": "text_encoder/config.json",
+      "bytes": 617,
+      "expectedBytes": 617,
+      "sha256": "845df614cb9327ae7bbea027316246fae917827407da6df13572e41b5f93b4cc",
+      "matchesExpectedSHA256": null
+    },
+    {
+      "path": "scheduler/scheduler_config.json",
+      "bytes": 313,
+      "expectedBytes": 313,
+      "sha256": "8b457848b74deeeab2a967b75048dd2cb6f393cfc17751eca1b5ec655cff0183",
+      "matchesExpectedSHA256": null
+    },
+    {
+      "path": "tokenizer/merges.txt",
+      "bytes": 524619,
+      "expectedBytes": 524619,
+      "sha256": "9fd691f7c8039210e0fced15865466c65820d09b63988b0174bfe25de299051a",
+      "matchesExpectedSHA256": null
+    },
+    {
+      "path": "tokenizer/vocab.json",
+      "bytes": 1059962,
+      "expectedBytes": 1059962,
+      "sha256": "e089ad92ba36837a0d31433e555c8f45fe601ab5c221d4f607ded32d9f7a4349",
+      "matchesExpectedSHA256": null
+    },
+    {
+      "path": "tokenizer/tokenizer_config.json",
+      "bytes": 806,
+      "expectedBytes": 806,
+      "sha256": "00439066fcba73de57644cf41e4e3b9f2dbb09d7f3fc2005898ba52399045882",
+      "matchesExpectedSHA256": null
+    },
+    {
+      "path": "tokenizer/special_tokens_map.json",
+      "bytes": 472,
+      "expectedBytes": 472,
+      "sha256": "c4864a9376a8401918425bed71fc14fc0e81f9b59ec45c1cf96cccb2df508eac",
+      "matchesExpectedSHA256": null
+    },
+    {
+      "path": "LICENSE-weights.txt",
+      "bytes": 14385,
+      "expectedBytes": 14385,
+      "sha256": "be351ebe7ac01bcdbb018639aadcfd38f136b7dc3f2a3d4d3a24db51d1b210ef",
+      "matchesExpectedSHA256": true
+    }
+  ]
+}

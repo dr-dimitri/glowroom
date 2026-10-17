@@ -1,0 +1,9 @@
+{
+  "v1": "UNREVIEWED",
+  "v2": "REJECTED",
+  "frozenExpectation": "The protected thin green stem and every leaf line remain exact. Background becomes a beige wall with no new outline, halo, or border at fine edges.",
+  "qualityGatesChanged": false,
+  "nativeGenerationIsReal": true,
+  "backendGo": false,
+  "reviewInstruction": "Inspect full-size v1/v2 images, not only thumbnails. Record each frozen quality gate honestly; a context-color pass is not a visual pass."
+}

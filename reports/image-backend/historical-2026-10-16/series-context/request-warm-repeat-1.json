@@ -1,0 +1,10 @@
+{
+  "id" : "warm-repeat-1",
+  "mask" : "fixtures\/01-structured-removal-mask-hard.png",
+  "negativePrompt" : "blurry, distorted, new objects, text, watermark",
+  "operation" : "generate",
+  "output" : "outputs\/20261016-134606-c1b93865-warm-repeat-1.png",
+  "prompt" : "an empty wooden panel, continuous horizontal wood boards, natural wood texture",
+  "seed" : 4281,
+  "source" : "fixtures\/01-structured-removal-source.png"
+}

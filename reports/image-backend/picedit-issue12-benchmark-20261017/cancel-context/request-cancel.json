@@ -1,0 +1,10 @@
+{
+  "id" : "cancel",
+  "mask" : "fixtures\/01-structured-removal-mask-hard.png",
+  "negativePrompt" : "blurry, distorted, new objects, text, watermark",
+  "operation" : "generate",
+  "output" : "outputs\/1cb9da28-c6a9-45cb-89ee-2ce6148389a6-cancel-must-not-publish.png",
+  "prompt" : "an empty wooden panel, continuous horizontal wood boards, natural wood texture",
+  "seed" : 4281,
+  "source" : "fixtures\/01-structured-removal-source.png"
+}

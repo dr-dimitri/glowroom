@@ -1,0 +1,20 @@
+{
+  "status": "native-series-finished-user-confirmed-system-sleep",
+  "findings": [
+    {
+      "caseID": "warm-repeat-2",
+      "nativeElapsedSeconds": 1870.959922167,
+      "swiftSystemUptimeElapsedSeconds": 151.13038300001062,
+      "differenceSeconds": 1719.8295391669894,
+      "nativeGenerationLimitSeconds": 180,
+      "nativeGenerationGate": "NOT-EVALUABLE-SYSTEM-SLEEP",
+      "cause": "The user explicitly confirmed system sleep during this run.",
+      "latencyEligibility": "interrupted-by-confirmed-system-sleep; retain raw elapsed time, exclude from model-latency inference"
+    }
+  ],
+  "fullPerformanceAcceptance": false,
+  "backendGo": false,
+  "originalReportsUnchanged": true,
+  "followup": "Before shipping the opt-in harness use a continuous clock for its deadlines and validate every native reported duration independently. Preserve this original run and all failures.",
+  "qualityDecisionUnaffected": true
+}

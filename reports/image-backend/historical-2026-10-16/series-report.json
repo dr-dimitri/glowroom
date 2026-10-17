@@ -1,0 +1,884 @@
+{
+  "allOwnNativeProcessesEnded" : true,
+  "backendGo" : false,
+  "baseNativeConfigurationSHA256" : "a356133c9769b71a55fff3a43b706942df1c477cf757075055549a394a1c2450",
+  "cancelContextStop" : {
+    "confirmedProcessEnded" : true,
+    "eventBytes" : 30989,
+    "eventCount" : 94,
+    "leaseReleasedOnlyAfterProcessExit" : true,
+    "nativeExitStatus" : 0,
+    "nativePID" : 18781,
+    "stderrBytes" : 2
+  },
+  "cancelGatePassed" : true,
+  "cancellation" : {
+    "cancelLatencyUntilNativeReturnSeconds" : 4.1048082083580084,
+    "code" : "cancelled",
+    "driverElapsedSeconds" : 26.579570333356969,
+    "event" : "completed",
+    "id" : "cancel-probe",
+    "libraryLogCount" : 267,
+    "memory" : {
+      "footprintBytes" : 2293729752,
+      "peakFootprintBytes" : 3593358792,
+      "peakRSSBytes" : 3004547072,
+      "residentBytes" : 2142388224
+    },
+    "nativeConfiguration" : {
+      "actualBatchedCFG" : false,
+      "diagnosticScope" : "pinned-sdk-runner-metadata-only",
+      "diffusionParamsBackend" : "MTL0",
+      "diffusionRuntimeBackend" : "MTL0",
+      "status" : "actual-runner-inspected",
+      "vaeHostBufferTensorCount" : 248,
+      "vaeMissingBufferTensorCount" : 0,
+      "vaeParameterTensorCount" : 248,
+      "vaeParameterTensorTypes" : {
+        "f16" : 64,
+        "f32" : 184
+      },
+      "vaeParamsBackend" : "CPU",
+      "vaeRuntimeBackend" : "CPU"
+    },
+    "nativePID" : 18781,
+    "operation" : "generate",
+    "protocol" : 1,
+    "sameProcessContextLeaseHeldUntilThisNativeReturn" : true,
+    "seconds" : 26.579387167,
+    "status" : "error"
+  },
+  "cancelLoad" : {
+    "attentionScale" : 0.0078125,
+    "backend" : "metal",
+    "configuration" : "metal-diffusion-cpu-vae-partial-f32-flash-auto-scale-1over128-float-diagnostic-unbatched",
+    "configurationSHA256" : "a356133c9769b71a55fff3a43b706942df1c477cf757075055549a394a1c2450",
+    "driverElapsedSeconds" : 3.9126095416140743,
+    "event" : "completed",
+    "flashAttentionMode" : "auto",
+    "id" : "load",
+    "libraryLogCount" : 93,
+    "linearScale" : 0.0078125,
+    "memory" : {
+      "footprintBytes" : 2691713808,
+      "peakFootprintBytes" : 2691812136,
+      "peakRSSBytes" : 2170290176,
+      "residentBytes" : 2136801280
+    },
+    "modelKind" : "SD 1.x Inpaint",
+    "nativeConfiguration" : {
+      "actualBatchedCFG" : false,
+      "diagnosticScope" : "pinned-sdk-runner-metadata-only",
+      "diffusionParamsBackend" : "MTL0",
+      "diffusionRuntimeBackend" : "MTL0",
+      "status" : "actual-runner-inspected",
+      "vaeHostBufferTensorCount" : 248,
+      "vaeMissingBufferTensorCount" : 0,
+      "vaeParameterTensorCount" : 248,
+      "vaeParameterTensorTypes" : {
+        "f16" : 64,
+        "f32" : 184
+      },
+      "vaeParamsBackend" : "CPU",
+      "vaeRuntimeBackend" : "CPU"
+    },
+    "nativePID" : 18781,
+    "operation" : "load",
+    "protocol" : 1,
+    "sameProcessContextLeaseHeldUntilThisNativeReturn" : true,
+    "seconds" : 3.9123627499999998,
+    "status" : "success"
+  },
+  "cancelNoOutputPublished" : true,
+  "coldEndToEndSeconds" : 159.65935949998675,
+  "contextColdDefinition" : "new helper process\/model context; OS\/file\/Metal caches not purged",
+  "contextWarmGenerationCount" : 9,
+  "fixtureManifestSHA256" : "799d51e22631500e9caa2fbdd2c09403788d55d4248ddeacc9cc0db0c4a7a2d5",
+  "gates" : {
+    "cancelSeconds" : 5,
+    "coldTotalSeconds" : 240,
+    "generationSeconds" : 180,
+    "loadSeconds" : 45,
+    "memoryBytes" : 6442450944,
+    "previewP95BaselineMultiplier" : 2,
+    "previewP95Seconds" : 0.25
+  },
+  "harnessExecutableSHA256" : "5766f20292f86f376c72bc2e8f057a8cb429a872644daccc0713a68615a13ca6",
+  "harnessSourceSHA256" : "6ceaa3160d5abc8c750d4710d8f221c634f5fd69f5da54452408d411bb5b4ba6",
+  "helperSHA256" : "e85c762c68aea5b10cd1ff2e7b5d56802c4875dcc9b844f2b6ab798d3fd1980d",
+  "identicalFixtureWarmRepeatCount" : 3,
+  "identicalFixtureWarmSeconds" : [
+    136.41037383299999,
+    1870.9599221670001,
+    133.14450308299999
+  ],
+  "load" : {
+    "attentionScale" : 0.0078125,
+    "backend" : "metal",
+    "configuration" : "metal-diffusion-cpu-vae-partial-f32-flash-auto-scale-1over128-float-diagnostic-unbatched",
+    "configurationSHA256" : "a356133c9769b71a55fff3a43b706942df1c477cf757075055549a394a1c2450",
+    "driverElapsedSeconds" : 23.200662541668862,
+    "event" : "completed",
+    "flashAttentionMode" : "auto",
+    "id" : "load",
+    "libraryLogCount" : 93,
+    "linearScale" : 0.0078125,
+    "memory" : {
+      "footprintBytes" : 2700479344,
+      "peakFootprintBytes" : 2700528496,
+      "peakRSSBytes" : 2513403904,
+      "residentBytes" : 2513403904
+    },
+    "modelKind" : "SD 1.x Inpaint",
+    "nativeConfiguration" : {
+      "actualBatchedCFG" : false,
+      "diagnosticScope" : "pinned-sdk-runner-metadata-only",
+      "diffusionParamsBackend" : "MTL0",
+      "diffusionRuntimeBackend" : "MTL0",
+      "status" : "actual-runner-inspected",
+      "vaeHostBufferTensorCount" : 248,
+      "vaeMissingBufferTensorCount" : 0,
+      "vaeParameterTensorCount" : 248,
+      "vaeParameterTensorTypes" : {
+        "f16" : 64,
+        "f32" : 184
+      },
+      "vaeParamsBackend" : "CPU",
+      "vaeRuntimeBackend" : "CPU"
+    },
+    "nativePID" : 16414,
+    "operation" : "load",
+    "protocol" : 1,
+    "sameProcessContextLeaseHeldUntilThisNativeReturn" : true,
+    "seconds" : 23.200415499999998,
+    "status" : "success"
+  },
+  "maximumTotalSeconds" : 2400,
+  "mode" : "full",
+  "noNetworkOrDownload" : true,
+  "operations" : [
+    {
+      "caseID" : "01-structured-removal-hard",
+      "channels" : 3,
+      "driverElapsedSeconds" : 136.44645450002281,
+      "event" : "completed",
+      "fixtureID" : "01-structured-removal",
+      "floatDiagnostics" : "not-exposed-by-public-uint8-c-api",
+      "height" : 512,
+      "id" : "01-structured-removal-hard",
+      "libraryLogCount" : 714,
+      "maskKind" : "hard",
+      "memory" : {
+        "footprintBytes" : 2232551944,
+        "peakFootprintBytes" : 3973500672,
+        "peakRSSBytes" : 3769040896,
+        "residentBytes" : 2034024448
+      },
+      "nativeConfiguration" : {
+        "actualBatchedCFG" : false,
+        "diagnosticScope" : "pinned-sdk-runner-metadata-only",
+        "diffusionParamsBackend" : "MTL0",
+        "diffusionRuntimeBackend" : "MTL0",
+        "status" : "actual-runner-inspected",
+        "vaeHostBufferTensorCount" : 248,
+        "vaeMissingBufferTensorCount" : 0,
+        "vaeParameterTensorCount" : 248,
+        "vaeParameterTensorTypes" : {
+          "f16" : 64,
+          "f32" : 184
+        },
+        "vaeParamsBackend" : "CPU",
+        "vaeRuntimeBackend" : "CPU"
+      },
+      "nativeDistinctRGBColors" : 36162,
+      "nativeGeometry" : [
+        512,
+        512
+      ],
+      "nativePID" : 16414,
+      "nativeRGBMaximum" : [
+        255,
+        250,
+        226
+      ],
+      "nativeRGBMinimum" : [
+        37,
+        12,
+        0
+      ],
+      "operation" : "generate",
+      "protocol" : 1,
+      "request" : {
+        "id" : "01-structured-removal-hard",
+        "mask" : "fixtures\/01-structured-removal-mask-hard.png",
+        "negativePrompt" : "blurry, distorted, new objects, text, watermark",
+        "operation" : "generate",
+        "output" : "outputs\/20261016-134606-c1b93865-01-structured-removal-hard.png",
+        "prompt" : "an empty wooden panel, continuous horizontal wood boards, natural wood texture",
+        "seed" : 4281,
+        "source" : "fixtures\/01-structured-removal-source.png"
+      },
+      "role" : "cold-context-first-generation",
+      "sameProcessContextLeaseHeldUntilThisNativeReturn" : true,
+      "seconds" : 136.44620599999999,
+      "status" : "success",
+      "width" : 512
+    },
+    {
+      "caseID" : "warm-repeat-1",
+      "channels" : 3,
+      "driverElapsedSeconds" : 136.41114929167088,
+      "event" : "completed",
+      "fixtureID" : "01-structured-removal",
+      "floatDiagnostics" : "not-exposed-by-public-uint8-c-api",
+      "height" : 512,
+      "id" : "warm-repeat-1",
+      "libraryLogCount" : 1252,
+      "maskKind" : "hard",
+      "memory" : {
+        "footprintBytes" : 2241038856,
+        "peakFootprintBytes" : 3987296000,
+        "peakRSSBytes" : 3769040896,
+        "residentBytes" : 1990770688
+      },
+      "nativeConfiguration" : {
+        "actualBatchedCFG" : false,
+        "diagnosticScope" : "pinned-sdk-runner-metadata-only",
+        "diffusionParamsBackend" : "MTL0",
+        "diffusionRuntimeBackend" : "MTL0",
+        "status" : "actual-runner-inspected",
+        "vaeHostBufferTensorCount" : 248,
+        "vaeMissingBufferTensorCount" : 0,
+        "vaeParameterTensorCount" : 248,
+        "vaeParameterTensorTypes" : {
+          "f16" : 64,
+          "f32" : 184
+        },
+        "vaeParamsBackend" : "CPU",
+        "vaeRuntimeBackend" : "CPU"
+      },
+      "nativeDistinctRGBColors" : 36162,
+      "nativeGeometry" : [
+        512,
+        512
+      ],
+      "nativePID" : 16414,
+      "nativeRGBMaximum" : [
+        255,
+        250,
+        226
+      ],
+      "nativeRGBMinimum" : [
+        37,
+        12,
+        0
+      ],
+      "operation" : "generate",
+      "protocol" : 1,
+      "request" : {
+        "id" : "warm-repeat-1",
+        "mask" : "fixtures\/01-structured-removal-mask-hard.png",
+        "negativePrompt" : "blurry, distorted, new objects, text, watermark",
+        "operation" : "generate",
+        "output" : "outputs\/20261016-134606-c1b93865-warm-repeat-1.png",
+        "prompt" : "an empty wooden panel, continuous horizontal wood boards, natural wood texture",
+        "seed" : 4281,
+        "source" : "fixtures\/01-structured-removal-source.png"
+      },
+      "role" : "identical-fixture-warm-repeat",
+      "sameProcessContextLeaseHeldUntilThisNativeReturn" : true,
+      "seconds" : 136.41037383299999,
+      "status" : "success",
+      "width" : 512
+    },
+    {
+      "caseID" : "warm-repeat-2",
+      "channels" : 3,
+      "driverElapsedSeconds" : 151.13038300001062,
+      "event" : "completed",
+      "fixtureID" : "01-structured-removal",
+      "floatDiagnostics" : "not-exposed-by-public-uint8-c-api",
+      "height" : 512,
+      "id" : "warm-repeat-2",
+      "libraryLogCount" : 1790,
+      "maskKind" : "hard",
+      "memory" : {
+        "footprintBytes" : 2242267656,
+        "peakFootprintBytes" : 3988524800,
+        "peakRSSBytes" : 3769040896,
+        "residentBytes" : 1996832768
+      },
+      "nativeConfiguration" : {
+        "actualBatchedCFG" : false,
+        "diagnosticScope" : "pinned-sdk-runner-metadata-only",
+        "diffusionParamsBackend" : "MTL0",
+        "diffusionRuntimeBackend" : "MTL0",
+        "status" : "actual-runner-inspected",
+        "vaeHostBufferTensorCount" : 248,
+        "vaeMissingBufferTensorCount" : 0,
+        "vaeParameterTensorCount" : 248,
+        "vaeParameterTensorTypes" : {
+          "f16" : 64,
+          "f32" : 184
+        },
+        "vaeParamsBackend" : "CPU",
+        "vaeRuntimeBackend" : "CPU"
+      },
+      "nativeDistinctRGBColors" : 36162,
+      "nativeGeometry" : [
+        512,
+        512
+      ],
+      "nativePID" : 16414,
+      "nativeRGBMaximum" : [
+        255,
+        250,
+        226
+      ],
+      "nativeRGBMinimum" : [
+        37,
+        12,
+        0
+      ],
+      "operation" : "generate",
+      "protocol" : 1,
+      "request" : {
+        "id" : "warm-repeat-2",
+        "mask" : "fixtures\/01-structured-removal-mask-hard.png",
+        "negativePrompt" : "blurry, distorted, new objects, text, watermark",
+        "operation" : "generate",
+        "output" : "outputs\/20261016-134606-c1b93865-warm-repeat-2.png",
+        "prompt" : "an empty wooden panel, continuous horizontal wood boards, natural wood texture",
+        "seed" : 4281,
+        "source" : "fixtures\/01-structured-removal-source.png"
+      },
+      "role" : "identical-fixture-warm-repeat",
+      "sameProcessContextLeaseHeldUntilThisNativeReturn" : true,
+      "seconds" : 1870.9599221670001,
+      "status" : "success",
+      "width" : 512
+    },
+    {
+      "caseID" : "warm-repeat-3",
+      "channels" : 3,
+      "driverElapsedSeconds" : 133.1447659166879,
+      "event" : "completed",
+      "fixtureID" : "01-structured-removal",
+      "floatDiagnostics" : "not-exposed-by-public-uint8-c-api",
+      "height" : 512,
+      "id" : "warm-repeat-3",
+      "libraryLogCount" : 2328,
+      "maskKind" : "hard",
+      "memory" : {
+        "footprintBytes" : 2243906056,
+        "peakFootprintBytes" : 3989376768,
+        "peakRSSBytes" : 3769040896,
+        "residentBytes" : 2007171072
+      },
+      "nativeConfiguration" : {
+        "actualBatchedCFG" : false,
+        "diagnosticScope" : "pinned-sdk-runner-metadata-only",
+        "diffusionParamsBackend" : "MTL0",
+        "diffusionRuntimeBackend" : "MTL0",
+        "status" : "actual-runner-inspected",
+        "vaeHostBufferTensorCount" : 248,
+        "vaeMissingBufferTensorCount" : 0,
+        "vaeParameterTensorCount" : 248,
+        "vaeParameterTensorTypes" : {
+          "f16" : 64,
+          "f32" : 184
+        },
+        "vaeParamsBackend" : "CPU",
+        "vaeRuntimeBackend" : "CPU"
+      },
+      "nativeDistinctRGBColors" : 36162,
+      "nativeGeometry" : [
+        512,
+        512
+      ],
+      "nativePID" : 16414,
+      "nativeRGBMaximum" : [
+        255,
+        250,
+        226
+      ],
+      "nativeRGBMinimum" : [
+        37,
+        12,
+        0
+      ],
+      "operation" : "generate",
+      "protocol" : 1,
+      "request" : {
+        "id" : "warm-repeat-3",
+        "mask" : "fixtures\/01-structured-removal-mask-hard.png",
+        "negativePrompt" : "blurry, distorted, new objects, text, watermark",
+        "operation" : "generate",
+        "output" : "outputs\/20261016-134606-c1b93865-warm-repeat-3.png",
+        "prompt" : "an empty wooden panel, continuous horizontal wood boards, natural wood texture",
+        "seed" : 4281,
+        "source" : "fixtures\/01-structured-removal-source.png"
+      },
+      "role" : "identical-fixture-warm-repeat",
+      "sameProcessContextLeaseHeldUntilThisNativeReturn" : true,
+      "seconds" : 133.14450308299999,
+      "status" : "success",
+      "width" : 512
+    },
+    {
+      "caseID" : "02-edge-object-hard",
+      "channels" : 3,
+      "driverElapsedSeconds" : 133.54919974994846,
+      "event" : "completed",
+      "fixtureID" : "02-edge-object",
+      "floatDiagnostics" : "not-exposed-by-public-uint8-c-api",
+      "height" : 512,
+      "id" : "02-edge-object-hard",
+      "libraryLogCount" : 2866,
+      "maskKind" : "hard",
+      "memory" : {
+        "footprintBytes" : 2245265928,
+        "peakFootprintBytes" : 3991506688,
+        "peakRSSBytes" : 3780132864,
+        "residentBytes" : 2045100032
+      },
+      "nativeConfiguration" : {
+        "actualBatchedCFG" : false,
+        "diagnosticScope" : "pinned-sdk-runner-metadata-only",
+        "diffusionParamsBackend" : "MTL0",
+        "diffusionRuntimeBackend" : "MTL0",
+        "status" : "actual-runner-inspected",
+        "vaeHostBufferTensorCount" : 248,
+        "vaeMissingBufferTensorCount" : 0,
+        "vaeParameterTensorCount" : 248,
+        "vaeParameterTensorTypes" : {
+          "f16" : 64,
+          "f32" : 184
+        },
+        "vaeParamsBackend" : "CPU",
+        "vaeRuntimeBackend" : "CPU"
+      },
+      "nativeDistinctRGBColors" : 32408,
+      "nativeGeometry" : [
+        512,
+        512
+      ],
+      "nativePID" : 16414,
+      "nativeRGBMaximum" : [
+        255,
+        243,
+        230
+      ],
+      "nativeRGBMinimum" : [
+        40,
+        10,
+        0
+      ],
+      "operation" : "generate",
+      "protocol" : 1,
+      "request" : {
+        "id" : "02-edge-object-hard",
+        "mask" : "fixtures\/02-edge-object-mask-hard.png",
+        "negativePrompt" : "blurry, distorted, new objects, text, watermark",
+        "operation" : "generate",
+        "output" : "outputs\/20261016-134606-c1b93865-02-edge-object-hard.png",
+        "prompt" : "an empty wooden panel, continuous horizontal wood boards, natural wood texture",
+        "seed" : 4281,
+        "source" : "fixtures\/02-edge-object-source.png"
+      },
+      "role" : "warm-context-fixture",
+      "sameProcessContextLeaseHeldUntilThisNativeReturn" : true,
+      "seconds" : 133.54888170800001,
+      "status" : "success",
+      "width" : 512
+    },
+    {
+      "caseID" : "03-mask-edge-hard",
+      "channels" : 3,
+      "driverElapsedSeconds" : 134.0848058333504,
+      "event" : "completed",
+      "fixtureID" : "03-mask-edge",
+      "floatDiagnostics" : "not-exposed-by-public-uint8-c-api",
+      "height" : 512,
+      "id" : "03-mask-edge-hard",
+      "libraryLogCount" : 3404,
+      "maskKind" : "hard",
+      "memory" : {
+        "footprintBytes" : 2245822984,
+        "peakFootprintBytes" : 3992080128,
+        "peakRSSBytes" : 3780132864,
+        "residentBytes" : 1997897728
+      },
+      "nativeConfiguration" : {
+        "actualBatchedCFG" : false,
+        "diagnosticScope" : "pinned-sdk-runner-metadata-only",
+        "diffusionParamsBackend" : "MTL0",
+        "diffusionRuntimeBackend" : "MTL0",
+        "status" : "actual-runner-inspected",
+        "vaeHostBufferTensorCount" : 248,
+        "vaeMissingBufferTensorCount" : 0,
+        "vaeParameterTensorCount" : 248,
+        "vaeParameterTensorTypes" : {
+          "f16" : 64,
+          "f32" : 184
+        },
+        "vaeParamsBackend" : "CPU",
+        "vaeRuntimeBackend" : "CPU"
+      },
+      "nativeDistinctRGBColors" : 37042,
+      "nativeGeometry" : [
+        512,
+        512
+      ],
+      "nativePID" : 16414,
+      "nativeRGBMaximum" : [
+        255,
+        243,
+        231
+      ],
+      "nativeRGBMinimum" : [
+        45,
+        16,
+        0
+      ],
+      "operation" : "generate",
+      "protocol" : 1,
+      "request" : {
+        "id" : "03-mask-edge-hard",
+        "mask" : "fixtures\/03-mask-edge-mask-hard.png",
+        "negativePrompt" : "blurry, distorted, new objects, text, watermark",
+        "operation" : "generate",
+        "output" : "outputs\/20261016-134606-c1b93865-03-mask-edge-hard.png",
+        "prompt" : "an empty wooden panel, continuous horizontal wood boards, natural wood texture",
+        "seed" : 4281,
+        "source" : "fixtures\/03-mask-edge-source.png"
+      },
+      "role" : "warm-context-fixture",
+      "sameProcessContextLeaseHeldUntilThisNativeReturn" : true,
+      "seconds" : 134.08450675,
+      "status" : "success",
+      "width" : 512
+    },
+    {
+      "caseID" : "03-mask-edge-soft",
+      "channels" : 3,
+      "driverElapsedSeconds" : 133.44701145833824,
+      "event" : "completed",
+      "fixtureID" : "03-mask-edge",
+      "floatDiagnostics" : "not-exposed-by-public-uint8-c-api",
+      "height" : 512,
+      "id" : "03-mask-edge-soft",
+      "libraryLogCount" : 3942,
+      "maskKind" : "soft",
+      "memory" : {
+        "footprintBytes" : 2245839368,
+        "peakFootprintBytes" : 3992080128,
+        "peakRSSBytes" : 3780132864,
+        "residentBytes" : 2036547584
+      },
+      "nativeConfiguration" : {
+        "actualBatchedCFG" : false,
+        "diagnosticScope" : "pinned-sdk-runner-metadata-only",
+        "diffusionParamsBackend" : "MTL0",
+        "diffusionRuntimeBackend" : "MTL0",
+        "status" : "actual-runner-inspected",
+        "vaeHostBufferTensorCount" : 248,
+        "vaeMissingBufferTensorCount" : 0,
+        "vaeParameterTensorCount" : 248,
+        "vaeParameterTensorTypes" : {
+          "f16" : 64,
+          "f32" : 184
+        },
+        "vaeParamsBackend" : "CPU",
+        "vaeRuntimeBackend" : "CPU"
+      },
+      "nativeDistinctRGBColors" : 37088,
+      "nativeGeometry" : [
+        512,
+        512
+      ],
+      "nativePID" : 16414,
+      "nativeRGBMaximum" : [
+        255,
+        244,
+        231
+      ],
+      "nativeRGBMinimum" : [
+        45,
+        16,
+        0
+      ],
+      "operation" : "generate",
+      "protocol" : 1,
+      "request" : {
+        "id" : "03-mask-edge-soft",
+        "mask" : "fixtures\/03-mask-edge-mask-soft.png",
+        "negativePrompt" : "blurry, distorted, new objects, text, watermark",
+        "operation" : "generate",
+        "output" : "outputs\/20261016-134606-c1b93865-03-mask-edge-soft.png",
+        "prompt" : "an empty wooden panel, continuous horizontal wood boards, natural wood texture",
+        "seed" : 4281,
+        "source" : "fixtures\/03-mask-edge-source.png"
+      },
+      "role" : "warm-context-fixture",
+      "sameProcessContextLeaseHeldUntilThisNativeReturn" : true,
+      "seconds" : 133.44674850000001,
+      "status" : "success",
+      "width" : 512
+    },
+    {
+      "caseID" : "04-partial-alpha-hard",
+      "channels" : 3,
+      "driverElapsedSeconds" : 133.43420066667022,
+      "event" : "completed",
+      "fixtureID" : "04-partial-alpha",
+      "floatDiagnostics" : "not-exposed-by-public-uint8-c-api",
+      "height" : 512,
+      "id" : "04-partial-alpha-hard",
+      "libraryLogCount" : 4480,
+      "maskKind" : "hard",
+      "memory" : {
+        "footprintBytes" : 2245839368,
+        "peakFootprintBytes" : 3992096512,
+        "peakRSSBytes" : 3780132864,
+        "residentBytes" : 2039201792
+      },
+      "nativeConfiguration" : {
+        "actualBatchedCFG" : false,
+        "diagnosticScope" : "pinned-sdk-runner-metadata-only",
+        "diffusionParamsBackend" : "MTL0",
+        "diffusionRuntimeBackend" : "MTL0",
+        "status" : "actual-runner-inspected",
+        "vaeHostBufferTensorCount" : 248,
+        "vaeMissingBufferTensorCount" : 0,
+        "vaeParameterTensorCount" : 248,
+        "vaeParameterTensorTypes" : {
+          "f16" : 64,
+          "f32" : 184
+        },
+        "vaeParamsBackend" : "CPU",
+        "vaeRuntimeBackend" : "CPU"
+      },
+      "nativeDistinctRGBColors" : 12769,
+      "nativeGeometry" : [
+        512,
+        512
+      ],
+      "nativePID" : 16414,
+      "nativeRGBMaximum" : [
+        230,
+        226,
+        220
+      ],
+      "nativeRGBMinimum" : [
+        122,
+        105,
+        86
+      ],
+      "operation" : "generate",
+      "protocol" : 1,
+      "request" : {
+        "id" : "04-partial-alpha-hard",
+        "mask" : "fixtures\/04-partial-alpha-mask-hard.png",
+        "negativePrompt" : "blurry, distorted, new objects, text, watermark",
+        "operation" : "generate",
+        "output" : "outputs\/20261016-134606-c1b93865-04-partial-alpha-hard.png",
+        "prompt" : "an empty wooden panel, continuous horizontal wood boards, natural wood texture",
+        "seed" : 4281,
+        "source" : "fixtures\/04-partial-alpha-source.png"
+      },
+      "role" : "warm-context-fixture",
+      "sameProcessContextLeaseHeldUntilThisNativeReturn" : true,
+      "seconds" : 133.433889292,
+      "status" : "success",
+      "width" : 512
+    },
+    {
+      "caseID" : "05-fine-motif-edges-hard",
+      "channels" : 3,
+      "driverElapsedSeconds" : 132.64132895832881,
+      "event" : "completed",
+      "fixtureID" : "05-fine-motif-edges",
+      "floatDiagnostics" : "not-exposed-by-public-uint8-c-api",
+      "height" : 512,
+      "id" : "05-fine-motif-edges-hard",
+      "libraryLogCount" : 5023,
+      "maskKind" : "hard",
+      "memory" : {
+        "footprintBytes" : 2246838792,
+        "peakFootprintBytes" : 3993046784,
+        "peakRSSBytes" : 3780132864,
+        "residentBytes" : 2022834176
+      },
+      "nativeConfiguration" : {
+        "actualBatchedCFG" : false,
+        "diagnosticScope" : "pinned-sdk-runner-metadata-only",
+        "diffusionParamsBackend" : "MTL0",
+        "diffusionRuntimeBackend" : "MTL0",
+        "status" : "actual-runner-inspected",
+        "vaeHostBufferTensorCount" : 248,
+        "vaeMissingBufferTensorCount" : 0,
+        "vaeParameterTensorCount" : 248,
+        "vaeParameterTensorTypes" : {
+          "f16" : 64,
+          "f32" : 184
+        },
+        "vaeParamsBackend" : "CPU",
+        "vaeRuntimeBackend" : "CPU"
+      },
+      "nativeDistinctRGBColors" : 55565,
+      "nativeGeometry" : [
+        512,
+        512
+      ],
+      "nativePID" : 16414,
+      "nativeRGBMaximum" : [
+        255,
+        241,
+        244
+      ],
+      "nativeRGBMinimum" : [
+        0,
+        0,
+        0
+      ],
+      "operation" : "generate",
+      "protocol" : 1,
+      "request" : {
+        "id" : "05-fine-motif-edges-hard",
+        "mask" : "fixtures\/05-fine-motif-edges-mask-hard.png",
+        "negativePrompt" : "blurry, distorted, new objects, text, watermark",
+        "operation" : "generate",
+        "output" : "outputs\/20261016-134606-c1b93865-05-fine-motif-edges-hard.png",
+        "prompt" : "a plain warm beige wall, smooth plaster texture, empty background",
+        "seed" : 4281,
+        "source" : "fixtures\/05-fine-motif-edges-source.png"
+      },
+      "role" : "warm-context-fixture",
+      "sameProcessContextLeaseHeldUntilThisNativeReturn" : true,
+      "seconds" : 132.64102062500001,
+      "status" : "success",
+      "width" : 512
+    },
+    {
+      "caseID" : "06-nonsquare-canvas-hard",
+      "channels" : 3,
+      "driverElapsedSeconds" : 119.57605345832417,
+      "event" : "completed",
+      "fixtureID" : "06-nonsquare-canvas",
+      "floatDiagnostics" : "not-exposed-by-public-uint8-c-api",
+      "height" : 384,
+      "id" : "06-nonsquare-canvas-hard",
+      "libraryLogCount" : 5577,
+      "maskKind" : "hard",
+      "memory" : {
+        "footprintBytes" : 2248706592,
+        "peakFootprintBytes" : 3993046784,
+        "peakRSSBytes" : 3780132864,
+        "residentBytes" : 2014003200
+      },
+      "nativeConfiguration" : {
+        "actualBatchedCFG" : false,
+        "diagnosticScope" : "pinned-sdk-runner-metadata-only",
+        "diffusionParamsBackend" : "MTL0",
+        "diffusionRuntimeBackend" : "MTL0",
+        "status" : "actual-runner-inspected",
+        "vaeHostBufferTensorCount" : 248,
+        "vaeMissingBufferTensorCount" : 0,
+        "vaeParameterTensorCount" : 248,
+        "vaeParameterTensorTypes" : {
+          "f16" : 64,
+          "f32" : 184
+        },
+        "vaeParamsBackend" : "CPU",
+        "vaeRuntimeBackend" : "CPU"
+      },
+      "nativeDistinctRGBColors" : 24406,
+      "nativeGeometry" : [
+        640,
+        384
+      ],
+      "nativePID" : 16414,
+      "nativeRGBMaximum" : [
+        202,
+        174,
+        222
+      ],
+      "nativeRGBMinimum" : [
+        0,
+        1,
+        1
+      ],
+      "operation" : "generate",
+      "protocol" : 1,
+      "request" : {
+        "id" : "06-nonsquare-canvas-hard",
+        "mask" : "fixtures\/06-nonsquare-canvas-mask-hard.png",
+        "negativePrompt" : "blurry, distorted, new objects, text, watermark",
+        "operation" : "generate",
+        "output" : "outputs\/20261016-134606-c1b93865-06-nonsquare-canvas-hard.png",
+        "prompt" : "continuous horizontal wood panel boards extending naturally, natural wood texture",
+        "seed" : 4281,
+        "source" : "fixtures\/06-nonsquare-canvas-source.png"
+      },
+      "role" : "warm-context-fixture",
+      "sameProcessContextLeaseHeldUntilThisNativeReturn" : true,
+      "seconds" : 119.575754667,
+      "status" : "success",
+      "width" : 640
+    }
+  ],
+  "ownPeakRSSBytes" : 24903680,
+  "phase" : "all",
+  "plannedGenerations" : 10,
+  "postprocessExitStatus" : 0,
+  "postprocessSourceSHA256" : "ffa80bb7c11388194e511e6ac745b0ad6baf99e909e5f67707d2894389b1278f",
+  "preflight" : "all-files-verified-before-model-load",
+  "previewAndCancelMetricGatesPassed" : true,
+  "previewBaseline" : {
+    "actualPicEditUIOrRAWTest" : false,
+    "checksum" : "11415198723587076147",
+    "coalescedFrameCount" : 0,
+    "discardedWarmupRenders" : 5,
+    "execution" : "CIContext-auto-single-background-renderer",
+    "latencyDefinition" : "scheduled-coalesced-request-to-render-return; includes scheduling and GPU wait",
+    "maximumRenderOnlySeconds" : 0.0028092500288039446,
+    "maximumSeconds" : 0.0078579583205282688,
+    "modelContextResidentButNoModelCompute" : true,
+    "p50Seconds" : 0.0061122083570808172,
+    "p95Seconds" : 0.0077604166581295431,
+    "p99Seconds" : 0.0078579583205282688,
+    "sampleCount" : 30,
+    "source" : "procedural256x256-checkerboard",
+    "targetIntervalSeconds" : 0.10000000000000001
+  },
+  "previewConcurrent" : {
+    "actualPicEditUIOrRAWTest" : false,
+    "checksum" : "458837605214432551",
+    "coalescedFrameCount" : 0,
+    "execution" : "CIContext-auto-single-background-renderer",
+    "latencyDefinition" : "scheduled-coalesced-request-to-render-return; includes scheduling and GPU wait",
+    "maximumRenderOnlySeconds" : 0.015220958332065493,
+    "maximumSeconds" : 0.016297583293635398,
+    "p50Seconds" : 0.0055137500166893005,
+    "p95Seconds" : 0.0061931666568852961,
+    "p99Seconds" : 0.0069325832882896066,
+    "sampleCount" : 1365,
+    "source" : "procedural256x256-checkerboard",
+    "targetIntervalSeconds" : 0.10000000000000001
+  },
+  "previewGatePassed" : true,
+  "qualityStatus" : "unverified-manual-review-required",
+  "seriesContextStop" : {
+    "confirmedProcessEnded" : true,
+    "eventBytes" : 1759730,
+    "eventCount" : 4895,
+    "leaseReleasedOnlyAfterProcessExit" : true,
+    "nativeExitStatus" : 0,
+    "nativePID" : 16414,
+    "stderrBytes" : 2
+  },
+  "seriesNativePIDCount" : 1,
+  "status" : "native-series-ended-awaiting-postprocessing-and-visual-review",
+  "windowID" : "ROOT-AI11-SERIES-LEASE-V2"
+}

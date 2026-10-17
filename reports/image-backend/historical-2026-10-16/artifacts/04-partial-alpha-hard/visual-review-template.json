@@ -1,0 +1,9 @@
+{
+  "v1": "UNREVIEWED",
+  "v2": "REJECTED",
+  "frozenExpectation": "Purple disk disappears in RGB. Source alpha is preserved by the declared source-alpha policy, including every alpha byte outside the composite mask.",
+  "qualityGatesChanged": false,
+  "nativeGenerationIsReal": true,
+  "backendGo": false,
+  "reviewInstruction": "Inspect full-size v1/v2 images, not only thumbnails. Record each frozen quality gate honestly; a context-color pass is not a visual pass."
+}

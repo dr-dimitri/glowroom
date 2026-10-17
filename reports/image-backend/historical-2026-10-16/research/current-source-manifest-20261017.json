@@ -1,0 +1,32 @@
+[
+  {
+    "file": "apple-pipeline.swift",
+    "source": "https://raw.githubusercontent.com/apple-aiml-research/ml-stable-diffusion/ea2805dc1945be20561c77e5f6d1d9a5a637cda2/swift/StableDiffusion/pipeline/StableDiffusionPipeline.swift",
+    "bytes": 18645,
+    "sha256": "f38c25ad98ef5a4abf2a2628202419c793731522a924fbd9dd13a1872985dee3"
+  },
+  {
+    "file": "apple-config.swift",
+    "source": "https://raw.githubusercontent.com/apple-aiml-research/ml-stable-diffusion/ea2805dc1945be20561c77e5f6d1d9a5a637cda2/swift/StableDiffusion/pipeline/StableDiffusionPipeline.Configuration.swift",
+    "bytes": 4403,
+    "sha256": "d0ef6e241b54fa9d69bca7cbfd24931b1f0abe5161b4d0d9416fca1c657372b5"
+  },
+  {
+    "file": "apple-package.swift",
+    "source": "https://raw.githubusercontent.com/apple-aiml-research/ml-stable-diffusion/ea2805dc1945be20561c77e5f6d1d9a5a637cda2/Package.swift",
+    "bytes": 1515,
+    "sha256": "a634984683f770b9dd192bba3fcfe7c0a768d0e24bdf8400624bcc1b5b9f9b8f"
+  },
+  {
+    "file": "apple-license.txt",
+    "source": "https://raw.githubusercontent.com/apple-aiml-research/ml-stable-diffusion/ea2805dc1945be20561c77e5f6d1d9a5a637cda2/LICENSE.md",
+    "bytes": 1067,
+    "sha256": "4f7eae00de7a3b4ea1d6b3d26f64c113b999dda4e7d3269f3278caac66575fc3"
+  },
+  {
+    "file": "model-api.json",
+    "source": "https://huggingface.co/api/models/stable-diffusion-v1-5/stable-diffusion-inpainting/revision/8a4288a76071f7280aedbdb3253bdb9e9d5d84bb?blobs=true",
+    "bytes": 6852,
+    "sha256": "568c9dea6281b45b5436ef82b70cd084d52953ed0d196d79903514d19390103d"
+  }
+]

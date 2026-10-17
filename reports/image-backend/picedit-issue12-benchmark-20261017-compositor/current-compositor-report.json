@@ -1,0 +1,114 @@
+{
+  "cases" : [
+    {
+      "alphaPolicy" : "Model candidate alpha (opaque RGB input/output)",
+      "caseID" : "cold",
+      "comparisonFile" : "cold/current-comparison.png",
+      "finalPNGFileSHA256" : "f5409523e18a033ac3889902b2eb7563a141d0841283390c604e11ab014d9466",
+      "finalRGBA8SHA256" : "a17d54bcb0f60abf127f8c4a2731fd41cd68b5fb77a8e19a352795711124b96f",
+      "height" : 512,
+      "inputFileSHA256" : {
+        "raw.png" : "14389520c151a5f723cebb1ac4f9ea04a56dfc65429f3a752f06e7222bf3f1fc",
+        "replace-mask.png" : "c2b097b055be230c26a6f40376d910f3c108034b7bfe5e26f5882a7fb5666333",
+        "source.png" : "5f804c3c53ff13da19ff661a843595c43eaf782a35c538d7dfa984450255784e"
+      },
+      "maskCanonicalSHA256" : "834c5cb47ffb9a4ab11741c910f52cbe999e589ea7aa31e07d6d8fbb18b3fdcf",
+      "normalizedCandidateRGBA8SHA256" : "effd1cd9397d5f38f4726f58e4d94c1e525922d9ac457c7e4ee8e943c2b28abd",
+      "normalizedSourceRGBA8SHA256" : "a38ecf803863e2aed510b8e666000b61cd7fe52c28cbe88507ca350a26e3c166",
+      "outputAlpha" : "straight RGBA8",
+      "outputProfile" : "sRGB",
+      "outsidePixelsChecked" : 244263,
+      "outsideRGBABytesChanged" : 0,
+      "pngRoundTripIdentical" : true,
+      "qualitativeReview" : "pending-manual-review-current-compositor",
+      "sourceAlphaBytesChanged" : 0,
+      "width" : 512
+    },
+    {
+      "alphaPolicy" : "Model candidate alpha (opaque RGB input/output)",
+      "caseID" : "warm-1",
+      "comparisonFile" : "warm-1/current-comparison.png",
+      "finalPNGFileSHA256" : "f5409523e18a033ac3889902b2eb7563a141d0841283390c604e11ab014d9466",
+      "finalRGBA8SHA256" : "a17d54bcb0f60abf127f8c4a2731fd41cd68b5fb77a8e19a352795711124b96f",
+      "height" : 512,
+      "inputFileSHA256" : {
+        "raw.png" : "14389520c151a5f723cebb1ac4f9ea04a56dfc65429f3a752f06e7222bf3f1fc",
+        "replace-mask.png" : "c2b097b055be230c26a6f40376d910f3c108034b7bfe5e26f5882a7fb5666333",
+        "source.png" : "5f804c3c53ff13da19ff661a843595c43eaf782a35c538d7dfa984450255784e"
+      },
+      "maskCanonicalSHA256" : "834c5cb47ffb9a4ab11741c910f52cbe999e589ea7aa31e07d6d8fbb18b3fdcf",
+      "normalizedCandidateRGBA8SHA256" : "effd1cd9397d5f38f4726f58e4d94c1e525922d9ac457c7e4ee8e943c2b28abd",
+      "normalizedSourceRGBA8SHA256" : "a38ecf803863e2aed510b8e666000b61cd7fe52c28cbe88507ca350a26e3c166",
+      "outputAlpha" : "straight RGBA8",
+      "outputProfile" : "sRGB",
+      "outsidePixelsChecked" : 244263,
+      "outsideRGBABytesChanged" : 0,
+      "pngRoundTripIdentical" : true,
+      "qualitativeReview" : "pending-manual-review-current-compositor",
+      "sourceAlphaBytesChanged" : 0,
+      "width" : 512
+    },
+    {
+      "alphaPolicy" : "Model candidate alpha (opaque RGB input/output)",
+      "caseID" : "warm-2",
+      "comparisonFile" : "warm-2/current-comparison.png",
+      "finalPNGFileSHA256" : "f5409523e18a033ac3889902b2eb7563a141d0841283390c604e11ab014d9466",
+      "finalRGBA8SHA256" : "a17d54bcb0f60abf127f8c4a2731fd41cd68b5fb77a8e19a352795711124b96f",
+      "height" : 512,
+      "inputFileSHA256" : {
+        "raw.png" : "14389520c151a5f723cebb1ac4f9ea04a56dfc65429f3a752f06e7222bf3f1fc",
+        "replace-mask.png" : "c2b097b055be230c26a6f40376d910f3c108034b7bfe5e26f5882a7fb5666333",
+        "source.png" : "5f804c3c53ff13da19ff661a843595c43eaf782a35c538d7dfa984450255784e"
+      },
+      "maskCanonicalSHA256" : "834c5cb47ffb9a4ab11741c910f52cbe999e589ea7aa31e07d6d8fbb18b3fdcf",
+      "normalizedCandidateRGBA8SHA256" : "effd1cd9397d5f38f4726f58e4d94c1e525922d9ac457c7e4ee8e943c2b28abd",
+      "normalizedSourceRGBA8SHA256" : "a38ecf803863e2aed510b8e666000b61cd7fe52c28cbe88507ca350a26e3c166",
+      "outputAlpha" : "straight RGBA8",
+      "outputProfile" : "sRGB",
+      "outsidePixelsChecked" : 244263,
+      "outsideRGBABytesChanged" : 0,
+      "pngRoundTripIdentical" : true,
+      "qualitativeReview" : "pending-manual-review-current-compositor",
+      "sourceAlphaBytesChanged" : 0,
+      "width" : 512
+    },
+    {
+      "alphaPolicy" : "Model candidate alpha (opaque RGB input/output)",
+      "caseID" : "warm-3",
+      "comparisonFile" : "warm-3/current-comparison.png",
+      "finalPNGFileSHA256" : "f5409523e18a033ac3889902b2eb7563a141d0841283390c604e11ab014d9466",
+      "finalRGBA8SHA256" : "a17d54bcb0f60abf127f8c4a2731fd41cd68b5fb77a8e19a352795711124b96f",
+      "height" : 512,
+      "inputFileSHA256" : {
+        "raw.png" : "14389520c151a5f723cebb1ac4f9ea04a56dfc65429f3a752f06e7222bf3f1fc",
+        "replace-mask.png" : "c2b097b055be230c26a6f40376d910f3c108034b7bfe5e26f5882a7fb5666333",
+        "source.png" : "5f804c3c53ff13da19ff661a843595c43eaf782a35c538d7dfa984450255784e"
+      },
+      "maskCanonicalSHA256" : "834c5cb47ffb9a4ab11741c910f52cbe999e589ea7aa31e07d6d8fbb18b3fdcf",
+      "normalizedCandidateRGBA8SHA256" : "effd1cd9397d5f38f4726f58e4d94c1e525922d9ac457c7e4ee8e943c2b28abd",
+      "normalizedSourceRGBA8SHA256" : "a38ecf803863e2aed510b8e666000b61cd7fe52c28cbe88507ca350a26e3c166",
+      "outputAlpha" : "straight RGBA8",
+      "outputProfile" : "sRGB",
+      "outsidePixelsChecked" : 244263,
+      "outsideRGBABytesChanged" : 0,
+      "pngRoundTripIdentical" : true,
+      "qualitativeReview" : "pending-manual-review-current-compositor",
+      "sourceAlphaBytesChanged" : 0,
+      "width" : 512
+    }
+  ],
+  "compositor" : "MaskCompositor.compose backend=.cpu",
+  "compositorParameters" : {
+    "blending" : "Current linear-light, premultiplied-alpha product compositor; straight RGBA8 sRGB output",
+    "geometry" : "Native dimensions; no resize, crop, orientation transform or context-color correction",
+    "mask" : "Original Gray8; zero preserves, 255 replaces; no threshold or feather changes",
+    "outsidePreservation" : "Every canonical RGBA byte at mask=0 must equal canonical source exactly"
+  },
+  "compositorSourceSHA256" : "13aac4d34d8a56a269e64996a155998790ab8cf695ccf474bc830a7c2e5efc00",
+  "createdAt" : "2026-10-17T13:02:33Z",
+  "inference" : "No inference performed by replay; raw.png bytes copied unchanged from the supplied artifacts root",
+  "normalization" : "ImageIO decode; row padding/unused lanes removed; RGB sources receive alpha=255; declared historical untagged values interpreted as sRGB; encoded channels are not color-converted; premultiplied decode buffers are explicitly unassociated",
+  "purpose" : "Current product compositor replay of existing real-model outputs; original generation times kept separately; manual quality judgment required",
+  "qualitativeReview" : "pending-manual-review-current-compositor; replay does not grant a backend capability",
+  "schemaVersion" : 1
+}
