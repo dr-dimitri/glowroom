@@ -6,7 +6,23 @@
 
 Der Wrapper baut den vorhandenen `editing`-Harness in Release-Konfiguration und orchestriert dessen `evaluation`-Szenario. Er startet keinen persönlichen Katalog und verändert keinen Produktionsalgorithmus. Die fachliche Methode, Quellen, Grenzen und Kandidatenentscheidungen stehen in [`docs/LIGHTCRAFT-ALGORITHM-EVALUATION.md`](../../docs/LIGHTCRAFT-ALGORITHM-EVALUATION.md).
 
-Der eingecheckte [Lauf vom 17. Oktober 2026](../../reports/lightcraft-evaluation/run-2026-10-17/summary.json) enthält 126 Qualitätsdatensätze, 54 bestandene Kontrollen und die vollständige Größen-/Timingmatrix. Alle vier Algorithmuskandidaten bleiben mangels isolierter Referenz und Qualitätsnachweis blockiert.
+Der eingecheckte [LC-01-Lauf vom 17. Oktober 2026](../../reports/lightcraft-evaluation/run-2026-10-17/summary.json) enthält 126 Qualitätsdatensätze, 54 bestandene Kontrollen und die vollständige Größen-/Timingmatrix. In diesem historischen Kontrolllauf bleiben alle vier Algorithmuskandidaten mangels isolierter Referenz und Qualitätsnachweis blockiert. Der folgende LC-03-Modus ergänzt die separate Tonwertevaluation; er ändert diese historischen Kontrollwerte nicht.
+
+## LC-03: isolierter Lichter-/Schattenvergleich
+
+```sh
+./scripts/evaluate-lightcraft.sh /tmp/picedit-lc03-run --candidate LC-03
+```
+
+`lc03.py` orchestriert zusätzliche Modi desselben `editing`-Harness: `tone-tune`, `tone-quality`, `tone-timing` und `tone-scale`. [`lc03-manifest.json`](lc03-manifest.json) legt vor der Abnahme die acht Reglerfälle, Matching-ROIs, Detail-/Halo-Ziele und Budgets fest. [`docs/LIGHTCRAFT-TONE-EVALUATION.md`](../../docs/LIGHTCRAFT-TONE-EVALUATION.md) erklärt Verfahren, Quellübernahme, Reihenfolge und Grenzen. Die [numerischen Referenzvektoren](lc03-reference-oracle/README.md) lassen sich ohne Rust im normalen Swift-Testlauf prüfen; nur ihre optionale Neuerzeugung benötigt `rustc` und den gepinnten lokalen Checkout.
+
+Der Wrapper friert das Manifest sowie die Hashes aller Swift-Quellen, Build-Einstiege, Orchestrierung, Referenzvektoren und Lizenzen vor der Abstimmung ein. Danach wird `tuning/calibration.json` gehasht, bevor die getrennte Abnahme beginnt. Jede Veränderung dieser Eingaben oder des Harness-Binaries während des Laufs bricht die Reihe ab. Die qualitätsbezogenen Regeln werden nicht automatisch an Ergebnisse angepasst.
+
+`quality/quality.json` enthält 9 Szenenklassen × 8 Richtungs-/Stärkefälle sowie getrennte Stufendiagnosen. `labeled.html` zeigt Eingabe, PicEdit, angeglichenen Kandidaten, Kandidaten mit identischen Werten, Differenz und Alphakomposite. `blind.html` benutzt neutrale Kopien und einen getrennten Zuordnungsschlüssel; das Erzeugen dieser Seite bedeutet keine erfolgte Blindfreigabe. Fehlende reale Fotos und visuelle Freigabe bleiben ausdrücklich offen. `--real-manifest` ist im LC-03-Modus nicht unterstützt, solange passende Abnahme-ROIs und Referenzen nicht definiert sind.
+
+Die Timingmatrix umfasst 512 × 320, 2400 × 1600, 4096 × 2731 und 4608 × 3072, jeweils fünf getrennte Prozesse pro Adapter. Ein kalter Aufruf, ein ausgeschlossener Warmup und fünf warme Samples werden getrennt erfasst. Die CPU-Referenz darf ihre unveränderliche Steuerbasis bei warmen Reglerbewegungen wiederverwenden. Effektstärken werden außerhalb des Timers pro Sample erfasst; eine Budgetüberschreitung ist nur für Phasen mit angeglichener Tonwirkung ein Veto, und Peak-RSS nur bei angeglichener Wirkung aller Phasen. Andernfalls bleibt sie eine Kostenbeobachtung. Vergleichsmessungen laufen seriell, ohne konkurrierende Builds/Tests.
+
+`summary.json` unterscheidet No-Go durch belastbare gematchte Regressionen beziehungsweise fehlenden primären Gewinn und Blockierung durch fehlende Evidenz. Der isolierte synthetische Modus kann kein Produktions-Go erteilen. Die App behält bis zu einer freigegebenen späteren Integration ihren vorhandenen Graphen.
 
 ## Aufbau
 

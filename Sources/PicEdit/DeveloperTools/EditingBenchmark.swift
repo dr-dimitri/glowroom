@@ -30,6 +30,8 @@ final class Counts: @unchecked Sendable {
         var manifest = ""
         var registry = ""
         var input = ""
+        var calibration = ""
+        var adapter = "picedit"
 
         init() throws {
             let args = Array(CommandLine.arguments.dropFirst())
@@ -48,6 +50,8 @@ final class Counts: @unchecked Sendable {
                 case "--manifest": manifest = value
                 case "--registry": registry = value
                 case "--input": input = value
+                case "--calibration": calibration = value
+                case "--adapter": adapter = value
                 default: throw failure("Unknown option: \(args[index])")
                 }
             }

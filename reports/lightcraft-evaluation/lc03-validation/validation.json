@@ -1,0 +1,71 @@
+{
+  "app_tests": {
+    "count": 546,
+    "suites": 70,
+    "failures": 1,
+    "known_issue": "https://github.com/dr-dimitri/picedit/issues/47",
+    "failure": "expirationDuringFinalCurrentTokenLookupCannotPublishAfterTimerWasCancelled at ImageGenerationServiceTests.swift:294"
+  },
+  "core_tests": {
+    "count": 302,
+    "suites": 41,
+    "failures": 0
+  },
+  "new_lc03_tests": 25,
+  "targeted_final_including_issue47": {
+    "count": 26,
+    "failures": 0
+  },
+  "final_manifest_tests": {
+    "count": 9,
+    "failures": 0
+  },
+  "parallel_cancellation_after_warning_fix": {
+    "count": 1,
+    "failures": 0
+  },
+  "python_tests": {
+    "count": 10,
+    "failures": 0
+  },
+  "clean_app_build": {
+    "status": "passed",
+    "command": "./scripts/build-app.sh",
+    "exit_code": 0,
+    "build_seconds": 119.43,
+    "removed_inactive_outputs": [
+      ".build",
+      ".build-app",
+      "dist/PicEdit.app",
+      "/private/tmp/picedit-lc03-tests"
+    ],
+    "bundle": "dist/PicEdit.app"
+  },
+  "commands": [
+    "PICEDIT_TEST_BUILD_PATH=/private/tmp/picedit-lc03-tests ./scripts/test.sh --jobs 4",
+    "PICEDIT_TEST_BUILD_PATH=/private/tmp/picedit-lc03-tests ./scripts/test.sh --jobs 4 --filter LightcraftToneComparisonTests",
+    "python3 -m unittest discover -s tools/lightcraft-evaluation -p test_*.py",
+    "./scripts/build-developer-tool.sh editing",
+    "./scripts/build-app.sh"
+  ],
+  "resolved_setup_failures": [
+    "Direct swift test lacked the bundled Swift Testing macro plugin; repository scripts/test.sh supplies it.",
+    "Initial new-test compiler errors and an async semaphore warning were fixed and reverified."
+  ],
+  "unrelated_bugs": "Only existing #47 reproduced; no new unrelated bug found.",
+  "log_normalization": "Trailing spaces/tabs and CR line endings removed from stored text logs; raw hashes retained.",
+  "raw_log_sha256": {
+    "targeted-tests.log": "4282a6a3e24c2c825a92eafac78b4514f572c7eed88befbbe08c6832a726ad4c",
+    "final-manifest-tests.log": "17f83d1fc5144ed3daa3ab0468207011f8202c98595e2c756dd620c246a99716",
+    "release-harness-build.log": "226608318d70bc8e5ad277be53e28dde7235d8ceee01a8301dc3b22fc06b94bd",
+    "full-tests.log": "ada8ff46940430122e902672e003fcd5f136dcdabe3ace33dd50fb4eb6cde4a6",
+    "final-targeted-tests.log": "6ca961c64ca97429eb193188308e60e9c1dfe06e90306a447064702434e25299",
+    "parallel-cancellation-test.log": "fe8fec0f28fb6c09bbb674978decbeeeb89e822cac5ee827ef917e65a2ca30f8",
+    "clean-app-build.log": "4ca365a12d232d66b5b2f5407fc27e93e10d4b88178d08adbf252326c19b90bf"
+  },
+  "final_review": {
+    "status": "passed",
+    "open_findings": 0,
+    "corrected_finding": "Clarified that LC-03 noise metrics compare the paired PicEdit output, not clean fixture ground truth."
+  }
+}

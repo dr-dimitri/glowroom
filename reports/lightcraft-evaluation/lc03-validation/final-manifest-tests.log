@@ -1,0 +1,424 @@
+warning: 'picedit': dependency 'swift-collections' is not used by any target
+warning: 'picedit': dependency 'swift-collections' is not used by any target
+Building for debugging...
+[Computing dependencies]
+[7 / 47] Crypto
+[8 / 47] InternalCollectionsUtilities
+[9 / 60] InternalCollectionsUtilities
+[10 / 65] EventSource
+[11 / 91] InternalCollectionsUtilities
+[20 / 93] EventSource
+[23 / 93] Crypto
+[27 / 94] PicEditCore
+[28 / 94] PicEditCore
+[30 / 94] PicEditCore
+[32 / 95] PicEditCore
+[34 / 95] PicEditCore
+[36 / 95] PicEditCore
+[37 / 95] PicEditCore
+[38 / 95] PicEditCore
+[40 / 95] InternalCollectionsUtilities
+[41 / 95] InternalCollectionsUtilities
+[43 / 98] OrderedCollections
+[44 / 98] InternalCollectionsUtilities
+[45 / 111] OrderedCollections
+[46 / 111] OrderedCollections
+[48 / 111] OrderedCollections
+[50 / 111] OrderedCollections
+[54 / 112] OrderedCollections
+[57 / 115] OrderedCollections
+[58 / 115] OrderedCollections
+[63 / 128] OrderedCollections
+[66 / 128] Jinja
+[72 / 129] Jinja
+[75 / 129] Jinja
+[77 / 129] Jinja
+[79 / 129] Jinja
+[80 / 129] InternalCollectionsUtilities
+[86 / 129] InternalCollectionsUtilities
+[90 / 129] EventSource
+[94 / 129] Crypto
+[98 / 132] Crypto
+[99 / 132] HuggingFace
+[105 / 145] HuggingFace
+[107 / 145] HuggingFace
+[108 / 145] HuggingFace
+[109 / 145] HuggingFace
+[110 / 145] HuggingFace
+[113 / 145] HuggingFace
+[117 / 146] HuggingFace
+[119 / 149] Hub
+[122 / 149] Crypto
+/Users/wolfgangbauer/dev/workspace/picedit/Package.swift: PicEditCore: ld: warning: search path '/Library/Developer/CommandLineTools/Developer/Library/Frameworks' not found
+[124 / 149] InternalCollectionsUtilities
+[130 / 156] Crypto
+[133 / 156] Hub
+[138 / 157] Hub
+[141 / 173] Tokenizers
+[143 / 173] PicEditCoreTests-product
+[143 / 186] Hub
+[144 / 186] Tokenizers
+[145 / 186] Tokenizers
+[147 / 186] Tokenizers
+[149 / 187] PicEditCoreTests-product
+[153 / 191] PicEdit-product
+[154 / 191] PicEdit
+[156 / 191] Tokenizers
+[157 / 192] PicEdit-product
+[158 / 204] PicEdit-product
+[161 / 217] Tokenizers
+[163 / 217] Tokenizers
+[164 / 217] PicEditCoreTests-product
+[165 / 217] PicEditCoreTests-product
+[166 / 217] Tokenizers
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/AutoTone.swift:243:33: warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+241 |     }
+242 |
+243 |     private static let kernel = CIColorKernel(source: """
+    |                                 `- warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+244 |         kernel vec4 automaticTone(__sample original, vec4 c0, vec4 c1, vec4 c2, vec4 c3, vec4 c4, vec4 c5) {
+245 |             vec4 o = unpremultiply(original);
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/EditRenderer.swift:276:40: warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+274 |     // renderer, including older Intel Macs. No external Metal compiler, model,
+275 |     // network service, or GPU-generation-specific shader library is required.
+276 |     private static let denoiseKernel = CIColorKernel(source: """
+    |                                        `- warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+277 |         kernel vec4 separateNoise(__sample original, __sample lumaBlur, __sample chromaBlur, float lumaAmount, float chromaAmount) {
+278 |             vec4 o = unpremultiply(original);
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/EditRenderer.swift:294:37: warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+292 |         """)
+293 |
+294 |     private static let toneKernel = CIColorKernel(source: """
+    |                                     `- warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+295 |         kernel vec4 toneAndColor(__sample original, float exposure, float contrast, float highlights, float shadows, float whites, float blacks, float dehaze, float vibrance, float saturation) {
+296 |             vec4 o = unpremultiply(original);
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/EditRenderer.swift:321:41: warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+319 |         """)
+320 |
+321 |     private static let presenceKernel = CIColorKernel(source: """
+    |                                         `- warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+322 |         kernel vec4 localPresence(__sample original, __sample fineBlur, __sample broadBlur, float texture, float clarity) {
+323 |             vec4 o = unpremultiply(original);
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/MaskEditingModel.swift:116:51: warning: no 'async' operations occur within 'await' expression [#UnnecessaryEffectMarker]
+114 |     private var worker: Task<Void, Never>?
+115 |
+116 |     init(rasterizer: @escaping Rasterizer = { try await MaskOverlayWorker.shared.rasterize($0) }) {
+    |                                                   `- warning: no 'async' operations occur within 'await' expression [#UnnecessaryEffectMarker]
+117 |         self.rasterizer = rasterizer
+118 |     }
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/MaskCompositor.swift:166:38: warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+164 |     }
+165 |
+166 |     private static let blendKernel = CIColorKernel(source: """
+    |                                      `- warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+167 |         kernel vec4 piceditMaskBlend(__sample base, __sample candidate, __sample mask) {
+168 |             return mix(base, candidate, mask.r);
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/AutoTone.swift:243:33: warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+241 |     }
+242 |
+243 |     private static let kernel = CIColorKernel(source: """
+    |                                 `- warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+244 |         kernel vec4 automaticTone(__sample original, vec4 c0, vec4 c1, vec4 c2, vec4 c3, vec4 c4, vec4 c5) {
+245 |             vec4 o = unpremultiply(original);
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/EditRenderer.swift:276:40: warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+274 |     // renderer, including older Intel Macs. No external Metal compiler, model,
+275 |     // network service, or GPU-generation-specific shader library is required.
+276 |     private static let denoiseKernel = CIColorKernel(source: """
+    |                                        `- warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+277 |         kernel vec4 separateNoise(__sample original, __sample lumaBlur, __sample chromaBlur, float lumaAmount, float chromaAmount) {
+278 |             vec4 o = unpremultiply(original);
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/EditRenderer.swift:294:37: warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+292 |         """)
+293 |
+294 |     private static let toneKernel = CIColorKernel(source: """
+    |                                     `- warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+295 |         kernel vec4 toneAndColor(__sample original, float exposure, float contrast, float highlights, float shadows, float whites, float blacks, float dehaze, float vibrance, float saturation) {
+296 |             vec4 o = unpremultiply(original);
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/EditRenderer.swift:321:41: warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+319 |         """)
+320 |
+321 |     private static let presenceKernel = CIColorKernel(source: """
+    |                                         `- warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+322 |         kernel vec4 localPresence(__sample original, __sample fineBlur, __sample broadBlur, float texture, float clarity) {
+323 |             vec4 o = unpremultiply(original);
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/MaskEditingModel.swift:116:51: warning: no 'async' operations occur within 'await' expression [#UnnecessaryEffectMarker]
+114 |     private var worker: Task<Void, Never>?
+115 |
+116 |     init(rasterizer: @escaping Rasterizer = { try await MaskOverlayWorker.shared.rasterize($0) }) {
+    |                                                   `- warning: no 'async' operations occur within 'await' expression [#UnnecessaryEffectMarker]
+117 |         self.rasterizer = rasterizer
+118 |     }
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/MaskCompositor.swift:166:38: warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+164 |     }
+165 |
+166 |     private static let blendKernel = CIColorKernel(source: """
+    |                                      `- warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+167 |         kernel vec4 piceditMaskBlend(__sample base, __sample candidate, __sample mask) {
+168 |             return mix(base, candidate, mask.r);
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
+[169 / 217] PicEditCoreTests-product
+[172 / 217] PicEditCoreTests-product
+[174 / 217] PicEditCoreTests-product
+[176 / 217] PicEditCoreTests-product
+[177 / 217] PicEdit-product
+[178 / 217] PicEdit-product
+[179 / 217] PicEdit-product
+/Users/wolfgangbauer/dev/workspace/picedit/Tests/PicEditCoreTests/CatalogCoordinationFileIOTests.swift:270:27: warning: result of call to 'withMaintenance(_:operation:)' is unused [#NoUsage]
+268 |         let foreign = CatalogLifecycleGate(requiresRecovery: false)
+269 |         let foreignCap = try await foreign.beginMaintenance(.restore(UUID()))
+270 |         try await foreign.withMaintenance(foreignCap) {
+    |                           `- warning: result of call to 'withMaintenance(_:operation:)' is unused [#NoUsage]
+271 |             #expect(throws: CatalogCoordinationError.invalidCapability) { try permit.validateGate(foreign) }
+272 |         }
+
+[#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
+[180 / 218] PicEdit-product
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/AI/SystemAICloudKeychain.swift:71:19: warning: 'SecKeychainCopyDefault' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 69 |             // rather than searching/deleting matching items in every keychain.
+ 70 |             var keychain: SecKeychain?
+ 71 |             guard SecKeychainCopyDefault(&keychain) == errSecSuccess, let keychain else { throw AICloudError.keychain }
+    |                   `- warning: 'SecKeychainCopyDefault' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 72 |             if adding { query[kSecUseKeychain as String] = keychain }
+ 73 |             else { query[kSecMatchSearchList as String] = [keychain] }
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/AI/SystemAICloudKeychain.swift:114:15: warning: 'SecTrustedApplicationCreateFromPath' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+112 |     private static func applicationAccess() throws -> SecAccess {
+113 |         var application: SecTrustedApplication?
+114 |         guard SecTrustedApplicationCreateFromPath(nil, &application) == errSecSuccess,
+    |               `- warning: 'SecTrustedApplicationCreateFromPath' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+115 |               let application else { throw AICloudError.keychain }
+116 |         var access: SecAccess?
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/AI/SystemAICloudKeychain.swift:119:15: warning: 'SecAccessCreate' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+117 |         // Explicitly trust only this application, preserving macOS confirmation
+118 |         // for other or changed binaries. Never grant access to all applications.
+119 |         guard SecAccessCreate("PicEdit Anthropic API-Schlüssel" as CFString, [application] as CFArray, &access) == errSecSuccess,
+    |               `- warning: 'SecAccessCreate' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+120 |               let access else { throw AICloudError.keychain }
+121 |         return access
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[183 / 226] PicEdit-product
+/Users/wolfgangbauer/dev/workspace/picedit/Package.swift: PicEditCoreTests-product: ld: warning: search path '/Library/Developer/CommandLineTools/Developer/usr/lib' not found
+/Users/wolfgangbauer/dev/workspace/picedit/Package.swift: PicEditCoreTests-product: ld: warning: search path '/Library/Developer/CommandLineTools/Developer/Library/Frameworks' not found
+[186 / 224] PicEditCoreTests-product
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/MaskEditingModel.swift:116:51: warning: no 'async' operations occur within 'await' expression [#UnnecessaryEffectMarker]
+114 |     private var worker: Task<Void, Never>?
+115 |
+116 |     init(rasterizer: @escaping Rasterizer = { try await MaskOverlayWorker.shared.rasterize($0) }) {
+    |                                                   `- warning: no 'async' operations occur within 'await' expression [#UnnecessaryEffectMarker]
+117 |         self.rasterizer = rasterizer
+118 |     }
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/MaskCompositor.swift:166:38: warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+164 |     }
+165 |
+166 |     private static let blendKernel = CIColorKernel(source: """
+    |                                      `- warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+167 |         kernel vec4 piceditMaskBlend(__sample base, __sample candidate, __sample mask) {
+168 |             return mix(base, candidate, mask.r);
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
+[193 / 224] PicEdit-product
+[194 / 224] PicEdit-product
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/AI/AppleSystemModelRuntime.swift:78:63: warning: 'init(sampling:temperature:maximumResponseTokens:)' is deprecated: replaced by 'init(samplingMode:temperature:maximumResponseTokens:)' [#DeprecatedDeclaration]
+ 76 |             let schema = try prompt.mode == .single ? Self.generationSchema() : Self.lookGenerationSchema()
+ 77 |             let response = try await session.respond(to: prompt.data, schema: schema,
+ 78 |                                                      options: GenerationOptions(sampling: .greedy,
+    |                                                               |- warning: 'init(sampling:temperature:maximumResponseTokens:)' is deprecated: replaced by 'init(samplingMode:temperature:maximumResponseTokens:)' [#DeprecatedDeclaration]
+    |                                                               `- note: use 'init(samplingMode:temperature:maximumResponseTokens:)' instead
+ 79 |                                                                                 maximumResponseTokens: prompt.mode == .single ? 800 : 2_400))
+ 80 |             try Task.checkCancellation()
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[196 / 224] PicEdit-product
+[197 / 224] PicEdit-product
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/AutoTone.swift:243:33: warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+241 |     }
+242 |
+243 |     private static let kernel = CIColorKernel(source: """
+    |                                 `- warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+244 |         kernel vec4 automaticTone(__sample original, vec4 c0, vec4 c1, vec4 c2, vec4 c3, vec4 c4, vec4 c5) {
+245 |             vec4 o = unpremultiply(original);
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/EditRenderer.swift:276:40: warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+274 |     // renderer, including older Intel Macs. No external Metal compiler, model,
+275 |     // network service, or GPU-generation-specific shader library is required.
+276 |     private static let denoiseKernel = CIColorKernel(source: """
+    |                                        `- warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+277 |         kernel vec4 separateNoise(__sample original, __sample lumaBlur, __sample chromaBlur, float lumaAmount, float chromaAmount) {
+278 |             vec4 o = unpremultiply(original);
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/EditRenderer.swift:294:37: warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+292 |         """)
+293 |
+294 |     private static let toneKernel = CIColorKernel(source: """
+    |                                     `- warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+295 |         kernel vec4 toneAndColor(__sample original, float exposure, float contrast, float highlights, float shadows, float whites, float blacks, float dehaze, float vibrance, float saturation) {
+296 |             vec4 o = unpremultiply(original);
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/EditRenderer.swift:321:41: warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+319 |         """)
+320 |
+321 |     private static let presenceKernel = CIColorKernel(source: """
+    |                                         `- warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+322 |         kernel vec4 localPresence(__sample original, __sample fineBlur, __sample broadBlur, float texture, float clarity) {
+323 |             vec4 o = unpremultiply(original);
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[198 / 224] PicEdit
+[199 / 224] PicEdit
+[199 / 224] PicEdit-product
+[201 / 224] PicEdit
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/MaskEditingModel.swift:116:51: warning: no 'async' operations occur within 'await' expression [#UnnecessaryEffectMarker]
+114 |     private var worker: Task<Void, Never>?
+115 |
+116 |     init(rasterizer: @escaping Rasterizer = { try await MaskOverlayWorker.shared.rasterize($0) }) {
+    |                                                   `- warning: no 'async' operations occur within 'await' expression [#UnnecessaryEffectMarker]
+117 |         self.rasterizer = rasterizer
+118 |     }
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/MaskCompositor.swift:166:38: warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+164 |     }
+165 |
+166 |     private static let blendKernel = CIColorKernel(source: """
+    |                                      `- warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+167 |         kernel vec4 piceditMaskBlend(__sample base, __sample candidate, __sample mask) {
+168 |             return mix(base, candidate, mask.r);
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
+[202 / 224] PicEdit-product
+[203 / 224] PicEdit
+[206 / 226] PicEdit
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/AI/SystemAICloudKeychain.swift:71:19: warning: 'SecKeychainCopyDefault' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 69 |             // rather than searching/deleting matching items in every keychain.
+ 70 |             var keychain: SecKeychain?
+ 71 |             guard SecKeychainCopyDefault(&keychain) == errSecSuccess, let keychain else { throw AICloudError.keychain }
+    |                   `- warning: 'SecKeychainCopyDefault' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 72 |             if adding { query[kSecUseKeychain as String] = keychain }
+ 73 |             else { query[kSecMatchSearchList as String] = [keychain] }
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/AI/SystemAICloudKeychain.swift:114:15: warning: 'SecTrustedApplicationCreateFromPath' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+112 |     private static func applicationAccess() throws -> SecAccess {
+113 |         var application: SecTrustedApplication?
+114 |         guard SecTrustedApplicationCreateFromPath(nil, &application) == errSecSuccess,
+    |               `- warning: 'SecTrustedApplicationCreateFromPath' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+115 |               let application else { throw AICloudError.keychain }
+116 |         var access: SecAccess?
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/AI/SystemAICloudKeychain.swift:119:15: warning: 'SecAccessCreate' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+117 |         // Explicitly trust only this application, preserving macOS confirmation
+118 |         // for other or changed binaries. Never grant access to all applications.
+119 |         guard SecAccessCreate("PicEdit Anthropic API-Schlüssel" as CFString, [application] as CFArray, &access) == errSecSuccess,
+    |               `- warning: 'SecAccessCreate' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+120 |               let access else { throw AICloudError.keychain }
+121 |         return access
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[207 / 226] PicEdit
+[208 / 226] PicEdit
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/AI/AppleSystemModelRuntime.swift:78:63: warning: 'init(sampling:temperature:maximumResponseTokens:)' is deprecated: replaced by 'init(samplingMode:temperature:maximumResponseTokens:)' [#DeprecatedDeclaration]
+ 76 |             let schema = try prompt.mode == .single ? Self.generationSchema() : Self.lookGenerationSchema()
+ 77 |             let response = try await session.respond(to: prompt.data, schema: schema,
+ 78 |                                                      options: GenerationOptions(sampling: .greedy,
+    |                                                               |- warning: 'init(sampling:temperature:maximumResponseTokens:)' is deprecated: replaced by 'init(samplingMode:temperature:maximumResponseTokens:)' [#DeprecatedDeclaration]
+    |                                                               `- note: use 'init(samplingMode:temperature:maximumResponseTokens:)' instead
+ 79 |                                                                                 maximumResponseTokens: prompt.mode == .single ? 800 : 2_400))
+ 80 |             try Task.checkCancellation()
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[210 / 226] InternalCollectionsUtilities
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/AutoTone.swift:243:33: warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+241 |     }
+242 |
+243 |     private static let kernel = CIColorKernel(source: """
+    |                                 `- warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+244 |         kernel vec4 automaticTone(__sample original, vec4 c0, vec4 c1, vec4 c2, vec4 c3, vec4 c4, vec4 c5) {
+245 |             vec4 o = unpremultiply(original);
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/EditRenderer.swift:276:40: warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+274 |     // renderer, including older Intel Macs. No external Metal compiler, model,
+275 |     // network service, or GPU-generation-specific shader library is required.
+276 |     private static let denoiseKernel = CIColorKernel(source: """
+    |                                        `- warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+277 |         kernel vec4 separateNoise(__sample original, __sample lumaBlur, __sample chromaBlur, float lumaAmount, float chromaAmount) {
+278 |             vec4 o = unpremultiply(original);
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/EditRenderer.swift:294:37: warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+292 |         """)
+293 |
+294 |     private static let toneKernel = CIColorKernel(source: """
+    |                                     `- warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+295 |         kernel vec4 toneAndColor(__sample original, float exposure, float contrast, float highlights, float shadows, float whites, float blacks, float dehaze, float vibrance, float saturation) {
+296 |             vec4 o = unpremultiply(original);
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/EditRenderer.swift:321:41: warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+319 |         """)
+320 |
+321 |     private static let presenceKernel = CIColorKernel(source: """
+    |                                         `- warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+322 |         kernel vec4 localPresence(__sample original, __sample fineBlur, __sample broadBlur, float texture, float clarity) {
+323 |             vec4 o = unpremultiply(original);
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[217 / 228] Jinja
+[222 / 231] PicEdit
+/Users/wolfgangbauer/dev/workspace/picedit/Package.swift: PicEdit: ld: warning: search path '/Library/Developer/CommandLineTools/Developer/Library/Frameworks' not found
+[224 / 231] PicEdit-product/Users/wolfgangbauer/dev/workspace/picedit/Package.swift: PicEdit-product: ld: warning: search path '/Library/Developer/CommandLineTools/Developer/usr/lib' not found
+/Users/wolfgangbauer/dev/workspace/picedit/Package.swift: PicEdit-product: ld: warning: search path '/Library/Developer/CommandLineTools/Developer/Library/Frameworks' not found
+
+[227 / 232] PicEditTests-product
+[232 / 245] PicEditTests-product
+[234 / 245] PicEditTests-product
+[236 / 247] PicEditTests-product
+[239 / 247] PicEditTests-product
+[241 / 247] PicEditTests-product
+[242 / 247] PicEditTests-product
+[243 / 247] PicEditTests-product
+[244 / 247] PicEditTests-product
+/Users/wolfgangbauer/dev/workspace/picedit/Package.swift: PicEditTests-product: ld: warning: search path '/Library/Developer/CommandLineTools/Developer/usr/lib' not found
+/Users/wolfgangbauer/dev/workspace/picedit/Package.swift: PicEditTests-product: ld: warning: search path '/Library/Developer/CommandLineTools/Developer/Library/Frameworks' not found
+[246 / 247] PicEditTests-product
+[249 / 249] PicEditTests-product
+Build complete! (57,29 Sek.)
+◇ Test run started.
+↳ Testing Library Version: 2084
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite "LC-03 preregistered comparison controls" started.
+◇ Test emptyLineRegionsExposeMissingSupport() started.
+◇ Test strengthUsesInputDefinedROIAlphaWeightsAndSignedChanges() started.
+◇ Test lineContrastIsInvariantToCommonExposureButDetectsCompression() started.
+◇ Test manifestLoadsTheFrozenCompleteDirectionSet() started.
+◇ Test brightAndDarkRegionsHaveEqualWeightDespiteDifferentLineCounts() started.
+◇ Test absentOrNonfiniteStrengthIsMissingEvidence() started.
+◇ Test haloIgnoresSameSidePlateauShiftsAndDetectsBothRingSigns() started.
+◇ Test matchingRejectsMissingNonfiniteNegligibleOrOppositeSignedEffects() started.
+◇ Test invalidManifestsCannotSilentlyChangeThePreregisteredGate() started.
+✔ Test manifestLoadsTheFrozenCompleteDirectionSet() passed after 0.001 seconds.
+✔ Test absentOrNonfiniteStrengthIsMissingEvidence() passed after 0.001 seconds.
+✔ Test strengthUsesInputDefinedROIAlphaWeightsAndSignedChanges() passed after 0.001 seconds.
+✔ Test matchingRejectsMissingNonfiniteNegligibleOrOppositeSignedEffects() passed after 0.001 seconds.
+✔ Test emptyLineRegionsExposeMissingSupport() passed after 0.002 seconds.
+✔ Test lineContrastIsInvariantToCommonExposureButDetectsCompression() passed after 0.003 seconds.
+✔ Test brightAndDarkRegionsHaveEqualWeightDespiteDifferentLineCounts() passed after 0.003 seconds.
+✔ Test haloIgnoresSameSidePlateauShiftsAndDetectsBothRingSigns() passed after 0.003 seconds.
+✔ Test invalidManifestsCannotSilentlyChangeThePreregisteredGate() passed after 0.011 seconds.
+✔ Suite "LC-03 preregistered comparison controls" passed after 0.011 seconds.
+✔ Test run with 9 tests in 1 suite passed after 0.011 seconds.

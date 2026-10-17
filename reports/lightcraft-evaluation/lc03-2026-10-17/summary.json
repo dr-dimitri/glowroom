@@ -1,0 +1,1153 @@
+{
+  "calibration_sha256": "605085088f39af09b08ecacc6fb13975b0882a63d1a7453d319616b9ed8b3bcd",
+  "candidate": "LC-03",
+  "critical_failures": [
+    "fine-lines/shadows-positive-20: gamut_fraction_increase",
+    "fine-lines/shadows-positive-20: clipping_fraction_increase",
+    "fine-lines/highlights-positive-20: gamut_fraction_increase",
+    "fine-lines/highlights-positive-40: gamut_fraction_increase",
+    "hard-edge/highlights-positive-40: gamut_fraction_increase",
+    "colors/highlights-positive-20: clipping_fraction_increase",
+    "saturation/highlights-positive-20: hue_deviation_degrees",
+    "saturation/highlights-positive-20: gamut_fraction_increase",
+    "saturation/highlights-positive-40: hue_deviation_degrees",
+    "saturation/highlights-positive-40: gamut_fraction_increase"
+  ],
+  "decision": "no-go",
+  "manifest_sha256": "19153efe6b749c6554390f0cfcb7025e8ed28e600358c87cf95290bcb142e371",
+  "matched_records": 28,
+  "missing_evidence": [
+    "Licensed real portraits, backlit natural edges, landscape texture and high-ISO photographs",
+    "Blinded visual approval",
+    "Production cache, rapid slider/image changes, cancellation and preview/export integration",
+    "Accelerated path parity if an accelerated path is proposed",
+    "Unmatched or unsupported effect targets: ramp/shadows-positive-20, ramp/shadows-negative-20, ramp/highlights-positive-20, ramp/shadows-positive-40, ramp/shadows-negative-40, ramp/highlights-positive-40, constants/shadows-negative-20, constants/highlights-positive-20, constants/shadows-positive-40, constants/shadows-negative-40, constants/highlights-positive-40, fine-lines/shadows-positive-40, fine-lines/shadows-negative-40, hard-edge/shadows-positive-40, hard-edge/shadows-negative-40, texture/shadows-positive-20, texture/shadows-negative-20, texture/highlights-positive-20, texture/highlights-negative-20, texture/shadows-positive-40, texture/shadows-negative-40, texture/highlights-positive-40, texture/highlights-negative-40, colors/shadows-positive-20, colors/shadows-negative-20, colors/shadows-positive-40, colors/shadows-negative-40, colors/highlights-positive-40, saturation/shadows-positive-20, saturation/shadows-negative-20, saturation/shadows-positive-40, saturation/shadows-negative-40, transparency/shadows-positive-20, transparency/shadows-negative-20, transparency/highlights-positive-20, transparency/highlights-negative-20, transparency/shadows-positive-40, transparency/shadows-negative-40, transparency/highlights-positive-40, transparency/highlights-negative-40, noise/shadows-positive-20, noise/shadows-negative-20, noise/shadows-positive-40, noise/shadows-negative-40",
+    "Matched per-size timing effect targets"
+  ],
+  "primary": {
+    "baseline_mean": 0.06971501709097869,
+    "candidate_mean": 0.003135579300227449,
+    "metric": "log_line_contrast_error",
+    "regressions": [],
+    "relative_improvement": 0.9550228999279238,
+    "required_directions": [
+      "highlights-negative-20",
+      "highlights-positive-20",
+      "shadows-negative-20",
+      "shadows-positive-20"
+    ],
+    "status": "pass"
+  },
+  "production_changed": false,
+  "quality": "quality/quality.json",
+  "quality_records": 72,
+  "scale": "scale/scale.json",
+  "schema_version": 1,
+  "scope": "Pinned isolated CPU tone candidate; no production-path integration or accelerated-path claim",
+  "timings": [
+    {
+      "attributable": false,
+      "budget_exceedances": [],
+      "effect_strength_pairs": [
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "process-cold",
+          "picedit": 0.007281736403834759
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "warmup",
+          "picedit": 0.007281736403834759
+        },
+        {
+          "lightcraft": -0.014071474413434683,
+          "matched": false,
+          "phase": "warm",
+          "picedit": -0.006677301073347705
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "warm",
+          "picedit": 0.006913893914225183
+        },
+        {
+          "lightcraft": 0.01508141751126869,
+          "matched": false,
+          "phase": "warm",
+          "picedit": 0.02138358792553973
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "warm",
+          "picedit": 0.007649990024755724
+        },
+        {
+          "lightcraft": -0.014071474413434683,
+          "matched": false,
+          "phase": "warm",
+          "picedit": -0.005011087745835437
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "process-cold",
+          "picedit": 0.007281736403834759
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "warmup",
+          "picedit": 0.007281736403834759
+        },
+        {
+          "lightcraft": -0.014071474413434683,
+          "matched": false,
+          "phase": "warm",
+          "picedit": -0.006677301073347705
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "warm",
+          "picedit": 0.006913893914225183
+        },
+        {
+          "lightcraft": 0.01508141751126869,
+          "matched": false,
+          "phase": "warm",
+          "picedit": 0.02138358792553973
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "warm",
+          "picedit": 0.007649990024755724
+        },
+        {
+          "lightcraft": -0.014071474413434683,
+          "matched": false,
+          "phase": "warm",
+          "picedit": -0.005011087745835437
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "process-cold",
+          "picedit": 0.007281736403834759
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "warmup",
+          "picedit": 0.007281736403834759
+        },
+        {
+          "lightcraft": -0.014071474413434683,
+          "matched": false,
+          "phase": "warm",
+          "picedit": -0.006677301073347705
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "warm",
+          "picedit": 0.006913893914225183
+        },
+        {
+          "lightcraft": 0.01508141751126869,
+          "matched": false,
+          "phase": "warm",
+          "picedit": 0.02138358792553973
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "warm",
+          "picedit": 0.007649990024755724
+        },
+        {
+          "lightcraft": -0.014071474413434683,
+          "matched": false,
+          "phase": "warm",
+          "picedit": -0.005011087745835437
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "process-cold",
+          "picedit": 0.007281736403834759
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "warmup",
+          "picedit": 0.007281736403834759
+        },
+        {
+          "lightcraft": -0.014071474413434683,
+          "matched": false,
+          "phase": "warm",
+          "picedit": -0.006677301073347705
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "warm",
+          "picedit": 0.006913893914225183
+        },
+        {
+          "lightcraft": 0.01508141751126869,
+          "matched": false,
+          "phase": "warm",
+          "picedit": 0.02138358792553973
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "warm",
+          "picedit": 0.007649990024755724
+        },
+        {
+          "lightcraft": -0.014071474413434683,
+          "matched": false,
+          "phase": "warm",
+          "picedit": -0.005011087745835437
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "process-cold",
+          "picedit": 0.007281736403834759
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "warmup",
+          "picedit": 0.007281736403834759
+        },
+        {
+          "lightcraft": -0.014071474413434683,
+          "matched": false,
+          "phase": "warm",
+          "picedit": -0.006677301073347705
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "warm",
+          "picedit": 0.006913893914225183
+        },
+        {
+          "lightcraft": 0.01508141751126869,
+          "matched": false,
+          "phase": "warm",
+          "picedit": 0.02138358792553973
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "warm",
+          "picedit": 0.007649990024755724
+        },
+        {
+          "lightcraft": -0.014071474413434683,
+          "matched": false,
+          "phase": "warm",
+          "picedit": -0.005011087745835437
+        }
+      ],
+      "failures": [],
+      "height": 320,
+      "lightcraft": {
+        "input_sha256": "326809f90bde9f590acd05807d8e0365f2015a15668770a9c8132258b5e0233a",
+        "note": "OS/driver caches not cleared; warm samples nested within five processes; no statistical independence claim",
+        "peak_rss_bytes": 21118976,
+        "process_cold": {
+          "max_ms": 6.023542,
+          "median_ms": 5.542,
+          "min_ms": 5.206875,
+          "n": 5
+        },
+        "warm": {
+          "max_ms": 0.739042,
+          "median_ms": 0.602334,
+          "min_ms": 0.000208,
+          "n": 25
+        },
+        "warmup_excluded": {
+          "max_ms": 0.0005,
+          "median_ms": 0.000375,
+          "min_ms": 0.000375,
+          "n": 5
+        }
+      },
+      "note": "Ratios describe this isolated CPU implementation and its conversion/readback path, not a hypothetical accelerated implementation.",
+      "phase_attribution": {
+        "cold_latency_ratio": false,
+        "peak_rss_ratio": false,
+        "warm_latency_ratio": false
+      },
+      "picedit": {
+        "input_sha256": "326809f90bde9f590acd05807d8e0365f2015a15668770a9c8132258b5e0233a",
+        "note": "OS/driver caches not cleared; warm samples nested within five processes; no statistical independence claim",
+        "peak_rss_bytes": 46563328,
+        "process_cold": {
+          "max_ms": 52.053791,
+          "median_ms": 50.922292,
+          "min_ms": 48.035083,
+          "n": 5
+        },
+        "warm": {
+          "max_ms": 3.402292,
+          "median_ms": 2.722584,
+          "min_ms": 2.641125,
+          "n": 25
+        },
+        "warmup_excluded": {
+          "max_ms": 2.900375,
+          "median_ms": 2.727542,
+          "min_ms": 2.7085,
+          "n": 5
+        }
+      },
+      "ratios": {
+        "cold_latency_ratio": 0.10883249324284146,
+        "peak_rss_ratio": 0.45355383532723437,
+        "warm_latency_ratio": 0.2212361491876835
+      },
+      "width": 512
+    },
+    {
+      "attributable": false,
+      "budget_exceedances": [],
+      "effect_strength_pairs": [
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "process-cold",
+          "picedit": 0.007281736403889207
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "warmup",
+          "picedit": 0.007281736403889207
+        },
+        {
+          "lightcraft": -0.014071474413388359,
+          "matched": false,
+          "phase": "warm",
+          "picedit": -0.006677301073298208
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "warm",
+          "picedit": 0.006913893914249689
+        },
+        {
+          "lightcraft": 0.01508141751123827,
+          "matched": false,
+          "phase": "warm",
+          "picedit": 0.02138358792548195
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "warm",
+          "picedit": 0.007649990024684318
+        },
+        {
+          "lightcraft": -0.014071474413388359,
+          "matched": false,
+          "phase": "warm",
+          "picedit": -0.005011087745859631
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "process-cold",
+          "picedit": 0.007281736403889207
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "warmup",
+          "picedit": 0.007281736403889207
+        },
+        {
+          "lightcraft": -0.014071474413388359,
+          "matched": false,
+          "phase": "warm",
+          "picedit": -0.006677301073298208
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "warm",
+          "picedit": 0.006913893914249689
+        },
+        {
+          "lightcraft": 0.01508141751123827,
+          "matched": false,
+          "phase": "warm",
+          "picedit": 0.02138358792548195
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "warm",
+          "picedit": 0.007649990024684318
+        },
+        {
+          "lightcraft": -0.014071474413388359,
+          "matched": false,
+          "phase": "warm",
+          "picedit": -0.005011087745859631
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "process-cold",
+          "picedit": 0.007281736403889207
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "warmup",
+          "picedit": 0.007281736403889207
+        },
+        {
+          "lightcraft": -0.014071474413388359,
+          "matched": false,
+          "phase": "warm",
+          "picedit": -0.006677301073298208
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "warm",
+          "picedit": 0.006913893914249689
+        },
+        {
+          "lightcraft": 0.01508141751123827,
+          "matched": false,
+          "phase": "warm",
+          "picedit": 0.02138358792548195
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "warm",
+          "picedit": 0.007649990024684318
+        },
+        {
+          "lightcraft": -0.014071474413388359,
+          "matched": false,
+          "phase": "warm",
+          "picedit": -0.005011087745859631
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "process-cold",
+          "picedit": 0.007281736403889207
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "warmup",
+          "picedit": 0.007281736403889207
+        },
+        {
+          "lightcraft": -0.014071474413388359,
+          "matched": false,
+          "phase": "warm",
+          "picedit": -0.006677301073298208
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "warm",
+          "picedit": 0.006913893914249689
+        },
+        {
+          "lightcraft": 0.01508141751123827,
+          "matched": false,
+          "phase": "warm",
+          "picedit": 0.02138358792548195
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "warm",
+          "picedit": 0.007649990024684318
+        },
+        {
+          "lightcraft": -0.014071474413388359,
+          "matched": false,
+          "phase": "warm",
+          "picedit": -0.005011087745859631
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "process-cold",
+          "picedit": 0.007281736403889207
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "warmup",
+          "picedit": 0.007281736403889207
+        },
+        {
+          "lightcraft": -0.014071474413388359,
+          "matched": false,
+          "phase": "warm",
+          "picedit": -0.006677301073298208
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "warm",
+          "picedit": 0.006913893914249689
+        },
+        {
+          "lightcraft": 0.01508141751123827,
+          "matched": false,
+          "phase": "warm",
+          "picedit": 0.02138358792548195
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "warm",
+          "picedit": 0.007649990024684318
+        },
+        {
+          "lightcraft": -0.014071474413388359,
+          "matched": false,
+          "phase": "warm",
+          "picedit": -0.005011087745859631
+        }
+      ],
+      "failures": [],
+      "height": 1600,
+      "lightcraft": {
+        "input_sha256": "d70ff3b363548d8cff2ee04c47722c87fa6f614c25c54d7f21986c3838b02176",
+        "note": "OS/driver caches not cleared; warm samples nested within five processes; no statistical independence claim",
+        "peak_rss_bytes": 219987968,
+        "process_cold": {
+          "max_ms": 88.096583,
+          "median_ms": 86.18025,
+          "min_ms": 85.559542,
+          "n": 5
+        },
+        "warm": {
+          "max_ms": 16.522542,
+          "median_ms": 12.339958,
+          "min_ms": 0.000916,
+          "n": 25
+        },
+        "warmup_excluded": {
+          "max_ms": 0.004375,
+          "median_ms": 0.0015,
+          "min_ms": 0.001083,
+          "n": 5
+        }
+      },
+      "note": "Ratios describe this isolated CPU implementation and its conversion/readback path, not a hypothetical accelerated implementation.",
+      "phase_attribution": {
+        "cold_latency_ratio": false,
+        "peak_rss_ratio": false,
+        "warm_latency_ratio": false
+      },
+      "picedit": {
+        "input_sha256": "d70ff3b363548d8cff2ee04c47722c87fa6f614c25c54d7f21986c3838b02176",
+        "note": "OS/driver caches not cleared; warm samples nested within five processes; no statistical independence claim",
+        "peak_rss_bytes": 464175104,
+        "process_cold": {
+          "max_ms": 122.045375,
+          "median_ms": 115.416667,
+          "min_ms": 109.008125,
+          "n": 5
+        },
+        "warm": {
+          "max_ms": 54.597917,
+          "median_ms": 51.335458,
+          "min_ms": 49.799834,
+          "n": 25
+        },
+        "warmup_excluded": {
+          "max_ms": 55.101667,
+          "median_ms": 53.576041,
+          "min_ms": 51.054625,
+          "n": 5
+        }
+      },
+      "ratios": {
+        "cold_latency_ratio": 0.7466880844860994,
+        "peak_rss_ratio": 0.47393314743567116,
+        "warm_latency_ratio": 0.24037884302113363
+      },
+      "width": 2400
+    },
+    {
+      "attributable": false,
+      "budget_exceedances": [],
+      "effect_strength_pairs": [
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "process-cold",
+          "picedit": 0.007281736403479097
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "warmup",
+          "picedit": 0.007281736403479097
+        },
+        {
+          "lightcraft": -0.014071474413290598,
+          "matched": false,
+          "phase": "warm",
+          "picedit": -0.0066773010733158075
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "warm",
+          "picedit": 0.006913893914075945
+        },
+        {
+          "lightcraft": 0.015081417511756186,
+          "matched": false,
+          "phase": "warm",
+          "picedit": 0.021383587925948473
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "warm",
+          "picedit": 0.007649990024924786
+        },
+        {
+          "lightcraft": -0.014071474413290598,
+          "matched": false,
+          "phase": "warm",
+          "picedit": -0.005011087745808013
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "process-cold",
+          "picedit": 0.007281736403479097
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "warmup",
+          "picedit": 0.007281736403479097
+        },
+        {
+          "lightcraft": -0.014071474413290598,
+          "matched": false,
+          "phase": "warm",
+          "picedit": -0.0066773010733158075
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "warm",
+          "picedit": 0.006913893914075945
+        },
+        {
+          "lightcraft": 0.015081417511756186,
+          "matched": false,
+          "phase": "warm",
+          "picedit": 0.021383587925948473
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "warm",
+          "picedit": 0.007649990024924786
+        },
+        {
+          "lightcraft": -0.014071474413290598,
+          "matched": false,
+          "phase": "warm",
+          "picedit": -0.005011087745808013
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "process-cold",
+          "picedit": 0.007281736403479097
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "warmup",
+          "picedit": 0.007281736403479097
+        },
+        {
+          "lightcraft": -0.014071474413290598,
+          "matched": false,
+          "phase": "warm",
+          "picedit": -0.0066773010733158075
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "warm",
+          "picedit": 0.006913893914075945
+        },
+        {
+          "lightcraft": 0.015081417511756186,
+          "matched": false,
+          "phase": "warm",
+          "picedit": 0.021383587925948473
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "warm",
+          "picedit": 0.007649990024924786
+        },
+        {
+          "lightcraft": -0.014071474413290598,
+          "matched": false,
+          "phase": "warm",
+          "picedit": -0.005011087745808013
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "process-cold",
+          "picedit": 0.007281736403479097
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "warmup",
+          "picedit": 0.007281736403479097
+        },
+        {
+          "lightcraft": -0.014071474413290598,
+          "matched": false,
+          "phase": "warm",
+          "picedit": -0.0066773010733158075
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "warm",
+          "picedit": 0.006913893914075945
+        },
+        {
+          "lightcraft": 0.015081417511756186,
+          "matched": false,
+          "phase": "warm",
+          "picedit": 0.021383587925948473
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "warm",
+          "picedit": 0.007649990024924786
+        },
+        {
+          "lightcraft": -0.014071474413290598,
+          "matched": false,
+          "phase": "warm",
+          "picedit": -0.005011087745808013
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "process-cold",
+          "picedit": 0.007281736403479097
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "warmup",
+          "picedit": 0.007281736403479097
+        },
+        {
+          "lightcraft": -0.014071474413290598,
+          "matched": false,
+          "phase": "warm",
+          "picedit": -0.0066773010733158075
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "warm",
+          "picedit": 0.006913893914075945
+        },
+        {
+          "lightcraft": 0.015081417511756186,
+          "matched": false,
+          "phase": "warm",
+          "picedit": 0.021383587925948473
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "warm",
+          "picedit": 0.007649990024924786
+        },
+        {
+          "lightcraft": -0.014071474413290598,
+          "matched": false,
+          "phase": "warm",
+          "picedit": -0.005011087745808013
+        }
+      ],
+      "failures": [],
+      "height": 2731,
+      "lightcraft": {
+        "input_sha256": "c9edc0c225ba643bd16504365dcf6bdd493f7bddccc1b9953f86dbeeb187a8c4",
+        "note": "OS/driver caches not cleared; warm samples nested within five processes; no statistical independence claim",
+        "peak_rss_bytes": 604864512,
+        "process_cold": {
+          "max_ms": 269.033416,
+          "median_ms": 261.941709,
+          "min_ms": 258.506916,
+          "n": 5
+        },
+        "warm": {
+          "max_ms": 48.032459,
+          "median_ms": 36.085959,
+          "min_ms": 0.001333,
+          "n": 25
+        },
+        "warmup_excluded": {
+          "max_ms": 0.005792,
+          "median_ms": 0.001542,
+          "min_ms": 0.001333,
+          "n": 5
+        }
+      },
+      "note": "Ratios describe this isolated CPU implementation and its conversion/readback path, not a hypothetical accelerated implementation.",
+      "phase_attribution": {
+        "cold_latency_ratio": false,
+        "peak_rss_ratio": false,
+        "warm_latency_ratio": false
+      },
+      "picedit": {
+        "input_sha256": "c9edc0c225ba643bd16504365dcf6bdd493f7bddccc1b9953f86dbeeb187a8c4",
+        "note": "OS/driver caches not cleared; warm samples nested within five processes; no statistical independence claim",
+        "peak_rss_bytes": 1288404992,
+        "process_cold": {
+          "max_ms": 256.773416,
+          "median_ms": 251.029875,
+          "min_ms": 244.917834,
+          "n": 5
+        },
+        "warm": {
+          "max_ms": 174.938792,
+          "median_ms": 154.582875,
+          "min_ms": 147.484667,
+          "n": 25
+        },
+        "warmup_excluded": {
+          "max_ms": 158.189625,
+          "median_ms": 156.914083,
+          "min_ms": 154.935167,
+          "n": 5
+        }
+      },
+      "ratios": {
+        "cold_latency_ratio": 1.0434682684680459,
+        "peak_rss_ratio": 0.4694676873776037,
+        "warm_latency_ratio": 0.23344085818044205
+      },
+      "width": 4096
+    },
+    {
+      "attributable": false,
+      "budget_exceedances": [],
+      "effect_strength_pairs": [
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "process-cold",
+          "picedit": 0.007281736403494631
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "warmup",
+          "picedit": 0.007281736403494631
+        },
+        {
+          "lightcraft": -0.014071474413279226,
+          "matched": false,
+          "phase": "warm",
+          "picedit": -0.006677301073333311
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "warm",
+          "picedit": 0.006913893914065495
+        },
+        {
+          "lightcraft": 0.015081417511459168,
+          "matched": false,
+          "phase": "warm",
+          "picedit": 0.021383587926197215
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "warm",
+          "picedit": 0.007649990024945416
+        },
+        {
+          "lightcraft": -0.014071474413279226,
+          "matched": false,
+          "phase": "warm",
+          "picedit": -0.005011087745746628
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "process-cold",
+          "picedit": 0.007281736403494631
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "warmup",
+          "picedit": 0.007281736403494631
+        },
+        {
+          "lightcraft": -0.014071474413279226,
+          "matched": false,
+          "phase": "warm",
+          "picedit": -0.006677301073333311
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "warm",
+          "picedit": 0.006913893914065495
+        },
+        {
+          "lightcraft": 0.015081417511459168,
+          "matched": false,
+          "phase": "warm",
+          "picedit": 0.021383587926197215
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "warm",
+          "picedit": 0.007649990024945416
+        },
+        {
+          "lightcraft": -0.014071474413279226,
+          "matched": false,
+          "phase": "warm",
+          "picedit": -0.005011087745746628
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "process-cold",
+          "picedit": 0.007281736403494631
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "warmup",
+          "picedit": 0.007281736403494631
+        },
+        {
+          "lightcraft": -0.014071474413279226,
+          "matched": false,
+          "phase": "warm",
+          "picedit": -0.006677301073333311
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "warm",
+          "picedit": 0.006913893914065495
+        },
+        {
+          "lightcraft": 0.015081417511459168,
+          "matched": false,
+          "phase": "warm",
+          "picedit": 0.021383587926197215
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "warm",
+          "picedit": 0.007649990024945416
+        },
+        {
+          "lightcraft": -0.014071474413279226,
+          "matched": false,
+          "phase": "warm",
+          "picedit": -0.005011087745746628
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "process-cold",
+          "picedit": 0.007281736403494631
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "warmup",
+          "picedit": 0.007281736403494631
+        },
+        {
+          "lightcraft": -0.014071474413279226,
+          "matched": false,
+          "phase": "warm",
+          "picedit": -0.006677301073333311
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "warm",
+          "picedit": 0.006913893914065495
+        },
+        {
+          "lightcraft": 0.015081417511459168,
+          "matched": false,
+          "phase": "warm",
+          "picedit": 0.021383587926197215
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "warm",
+          "picedit": 0.007649990024945416
+        },
+        {
+          "lightcraft": -0.014071474413279226,
+          "matched": false,
+          "phase": "warm",
+          "picedit": -0.005011087745746628
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "process-cold",
+          "picedit": 0.007281736403494631
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "warmup",
+          "picedit": 0.007281736403494631
+        },
+        {
+          "lightcraft": -0.014071474413279226,
+          "matched": false,
+          "phase": "warm",
+          "picedit": -0.006677301073333311
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "warm",
+          "picedit": 0.006913893914065495
+        },
+        {
+          "lightcraft": 0.015081417511459168,
+          "matched": false,
+          "phase": "warm",
+          "picedit": 0.021383587926197215
+        },
+        {
+          "lightcraft": 0,
+          "matched": false,
+          "phase": "warm",
+          "picedit": 0.007649990024945416
+        },
+        {
+          "lightcraft": -0.014071474413279226,
+          "matched": false,
+          "phase": "warm",
+          "picedit": -0.005011087745746628
+        }
+      ],
+      "failures": [],
+      "height": 3072,
+      "lightcraft": {
+        "input_sha256": "a738aa3f2e5d379a52bb2427bb4c61eab91ff17b3e6265d6f283ac38455b5564",
+        "note": "OS/driver caches not cleared; warm samples nested within five processes; no statistical independence claim",
+        "peak_rss_bytes": 757383168,
+        "process_cold": {
+          "max_ms": 350.765459,
+          "median_ms": 349.213834,
+          "min_ms": 340.474084,
+          "n": 5
+        },
+        "warm": {
+          "max_ms": 61.690584,
+          "median_ms": 45.42825,
+          "min_ms": 0.000958,
+          "n": 25
+        },
+        "warmup_excluded": {
+          "max_ms": 0.001666,
+          "median_ms": 0.0015,
+          "min_ms": 0.001333,
+          "n": 5
+        }
+      },
+      "note": "Ratios describe this isolated CPU implementation and its conversion/readback path, not a hypothetical accelerated implementation.",
+      "phase_attribution": {
+        "cold_latency_ratio": false,
+        "peak_rss_ratio": false,
+        "warm_latency_ratio": false
+      },
+      "picedit": {
+        "input_sha256": "a738aa3f2e5d379a52bb2427bb4c61eab91ff17b3e6265d6f283ac38455b5564",
+        "note": "OS/driver caches not cleared; warm samples nested within five processes; no statistical independence claim",
+        "peak_rss_bytes": 1620164608,
+        "process_cold": {
+          "max_ms": 312.830083,
+          "median_ms": 300.166958,
+          "min_ms": 290.605458,
+          "n": 5
+        },
+        "warm": {
+          "max_ms": 199.966959,
+          "median_ms": 193.029583,
+          "min_ms": 187.614375,
+          "n": 25
+        },
+        "warmup_excluded": {
+          "max_ms": 207.576334,
+          "median_ms": 197.106041,
+          "min_ms": 194.272667,
+          "n": 5
+        }
+      },
+      "ratios": {
+        "cold_latency_ratio": 1.16339865096011,
+        "peak_rss_ratio": 0.46747297420287803,
+        "warm_latency_ratio": 0.2353434602819403
+      },
+      "width": 4608
+    }
+  ]
+}

@@ -5,10 +5,11 @@
     { "id": "neutral-ci", "kind": "control", "implemented": true, "missingEvidence": [] },
     { "id": "neutral-rec2020", "kind": "control", "implemented": true, "missingEvidence": [] },
     {
-      "id": "LC-03", "kind": "reference", "implemented": false, "issue": 52,
+      "id": "LC-03", "kind": "reference", "implemented": true, "issue": 52,
       "sourceCommit": "f9b0c8c8a12c8fa17b7afb5baa00f9ee1bbd7b15", "domain": "tone",
-      "primarySceneClass": "hard-edge", "primaryMetric": "halo_overshoot", "minimumRelativeImprovement": 0.1,
-      "missingEvidence": ["Pinned isolated tone adapter and symbol/license inventory", "Matched shadow-lift target and clean expected-look reference", "Separate acceptance measurements", "Licensed real-photo classes and blinded visual approval", "Controlled cold/warm latency and peak RSS including conversion/readback"]
+      "primarySceneClass": "fine-lines", "primaryMetric": "log_line_contrast_error", "minimumRelativeImprovement": 0.1,
+      "comparisonManifest": "lc03-manifest.json",
+      "missingEvidence": ["Use the specialized --candidate LC-03 comparison for frozen matching, acceptance and controlled timing evidence", "Licensed real-photo classes and blinded visual approval"]
     },
     {
       "id": "LC-04", "kind": "reference", "implemented": false, "issue": 53,

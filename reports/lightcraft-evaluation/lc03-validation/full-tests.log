@@ -1,0 +1,2197 @@
+warning: 'picedit': dependency 'swift-collections' is not used by any target
+warning: 'picedit': dependency 'swift-collections' is not used by any target
+Building for debugging...
+[Computing dependencies]
+[1 / 6]
+[2 / 4] PicEditTests-product
+/Users/wolfgangbauer/dev/workspace/picedit/Tests/PicEditTests/LightcraftToneReferenceTests.swift:322:21: warning: instance method 'wait' is unavailable from asynchronous contexts; Await a Task handle instead; this is an error in the Swift 6 language mode
+320 |         defer { worker.cancel(); release.signal() }
+321 |         let started = await Task.detached {
+322 |             entered.wait(timeout: .now() + .seconds(10)) == .success
+    |                     `- warning: instance method 'wait' is unavailable from asynchronous contexts; Await a Task handle instead; this is an error in the Swift 6 language mode
+323 |         }.value
+324 |         try #require(started, "A parallel row worker must have entered before cancellation")
+
+Dispatch.DispatchSemaphore.wait:2:13: note: 'wait(timeout:)' declared here
+1 | class DispatchSemaphore {
+2 | public func wait(timeout: DispatchTime) -> DispatchTimeoutResult}
+  |             `- note: 'wait(timeout:)' declared here
+3 |
+[4 / 6] PicEditTests-product
+/Users/wolfgangbauer/dev/workspace/picedit/Package.swift: PicEditTests-product: ld: warning: search path '/Library/Developer/CommandLineTools/Developer/usr/lib' not found
+/Users/wolfgangbauer/dev/workspace/picedit/Package.swift: PicEditTests-product: ld: warning: search path '/Library/Developer/CommandLineTools/Developer/Library/Frameworks' not found
+[10 / 11] PicEditTests-product
+[12 / 12] PicEditTests-product
+Build complete! (4,22 Sek.)
+◇ Test run started.
+↳ Testing Library Version: 2084
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite "JPEG export" started.
+◇ Suite "Persistent image previews" started.
+◇ Suite "Semantic managed-file destination protection" started.
+◇ Suite "Edit rendering" started.
+◇ Suite "Cloud consent presentation identity" started.
+◇ Suite "Shared semantic inference priority" started.
+◇ Suite "Algorithm evaluation reference controls" started.
+◇ Suite "AI assistant preview and acceptance" started.
+◇ Suite "LC-03 preregistered comparison controls" started.
+◇ Suite "Local AI real-model evaluation v1" started.
+◇ Suite "Algorithm evaluation fixtures" started.
+◇ Suite "Reusable edit rendering sessions" started.
+◇ Suite "Metadata catalog integration" started.
+◇ Suite "Adjusted preview scheduling" started.
+◇ Suite "Asset-bound raw metadata tag editor" started.
+◇ Suite "Semantic original raster preparation" started.
+◇ Suite "Optional Cloud provider" started.
+◇ Suite "Lightcraft isolated tone reference" started.
+◇ Suite "Library projections" started.
+◇ Suite "Semantic model installation" started.
+◇ Suite "AI proposal preview reuse" started.
+◇ Suite "Reusable automatic tone analysis" started.
+◇ Suite "Workspace layout preferences" started.
+◇ Suite "Library multiple selection" started.
+◇ Suite "Local three-look real-model smoke v1" started.
+◇ Suite "Image generation fail-closed and native resource lifecycle" started.
+◇ Suite "Artifact preview bounded admission" started.
+◇ Suite "Bounded Cloud HTTP" started.
+◇ Suite "Semantic native provider contracts" started.
+◇ Suite "System keychain signing policy" started.
+◇ Suite "Library accepted catalog operations" started.
+◇ Suite "Artifact editing controller" started.
+◇ Suite "Local photo metadata real raster smoke v1" started.
+◇ Suite "Editing controller" started.
+◇ Suite "Cloud usage reservations" started.
+◇ Suite "Preview scheduling" started.
+◇ Suite "Image generation reproducible fixtures and golden geometry" started.
+◇ Suite "Three look assistant" started.
+◇ Suite "AI request scheduling" started.
+◇ Suite "Decoded folder path aliases" started.
+◇ Suite "Cloud settings and assistant lifecycle" started.
+◇ Suite "AI editing snapshot boundary" started.
+◇ Suite "Concurrent termination persistence" started.
+◇ Suite "Photo metadata forms, explicit confirmation and lifecycle" started.
+◇ Suite "Local AI provider adapter" started.
+◇ Suite "Artifact preview identity and real native ownership" started.
+◇ Suite "Artifact bootstrap preserves independent metadata and original editing" started.
+◇ Suite "Opt-in native semantic pair" started.
+◇ Suite "Image analysis exact bounded raster" started.
+◇ Suite "Frozen algorithm evaluation metrics and decision gates" started.
+◇ Suite "Local image analysis real raster smoke v1" started.
+◇ Suite "Immutable, color-correct mask composition" started.
+◇ Suite "Image analysis observer and lifecycle" started.
+◇ Suite "Local mask draft" started.
+◇ Suite "Packaged semantic resources" started.
+◇ Suite "Bounded semantic cosine ranking" started.
+◇ Suite "Local AI resident admission accounting" started.
+◇ Suite "Termination drains accepted metadata independently" started.
+◇ Suite "Semantic service scheduling, source identity and maintenance" started.
+◇ Suite "Metadata and image analysis share one actual worker" started.
+◇ Suite "Metadata managed-file protection" started.
+◇ Suite "Automatic tone balancing" started.
+◇ Suite "Image analysis bounded scheduler" started.
+◇ Suite "Semantic offline tokenizer parity" started.
+◇ Suite "Look preview raster and UI reference budgets" started.
+◇ Suite "Semantic library projection and explicit actions" started.
+◇ Suite "Opt-in integrated semantic 10,000-candidate benchmark" started.
+◇ Suite "Library workflows" started.
+◇ Suite "JPEG export controller" started.
+◇ Suite "Workspace dock proposal lifecycle" started.
+◇ Test quarantineFamilyProtectsLateDirectoriesAndAliasesWithoutBlockingOtherParents() started.
+◇ Test testColorNoiseReductionTargetsChromaSeparately() started.
+◇ Test testNeutralReturnsIdenticalBitmap() started.
+◇ Test testCombinedToneExtremesDoNotReverseGradientOrdering() started.
+◇ Test testExtremeSettingsAreClampedAndRenderingStaysBounded() started.
+◇ Test workspaceChangePersistsValidIDAndRequiresNewConsent() started.
+◇ Test directoryIdentityRejectsNestedAndAliasedTargetsWithoutPrefixFalsePositives() started.
+◇ Test reloadingWithSmallerBudgetPrunesOwnedPreviews() started.
+◇ Test testLuminanceNoiseReductionReducesLuminanceVariance() started.
+◇ Test testExposureAndTonalControlsHaveCorrectDirections() started.
+◇ Test editingBaseIsPersistedLosslesslyEvenWithoutAlpha() started.
+◇ Test corruptEntryBecomesMissAndIsRemoved() started.
+◇ Test jpegRejectsModelDirectoryBeforeDecodeAndPreservesExistingPayload() started.
+◇ Test encodingPreservesOrientationAlphaAndColorProfile(alpha:) started.
+◇ Test backupCannotReplaceIndexOrWriteIntoInstalledModel() started.
+◇ Test disabledOversizedAndInaccessibleCachesAreNonfatal() started.
+◇ Test interactiveWorkPassesQueuedIndexWorkWithoutPreemptingActiveLease() started.
+◇ Test keysInvalidateForPathDateSizeAndResolution() started.
+◇ Test jpegRejectsQuarantineFamilyBeforeDecodeAndPreservesExistingPayload() started.
+◇ Test neutralRGBReferenceMeetsCPUToleranceAndPreservesAlphaSeparately() started.
+◇ Test testAllPresenceAndColorSlidersChangePixelsIndependently() started.
+◇ Test budgetEvictsLeastRecentlyUsedPreview() started.
+◇ Test rec2020BridgePreservesWhiteAndSignedExtendedPrimaries() started.
+◇ Test strengthUsesInputDefinedROIAlphaWeightsAndSignedChanges() started.
+◇ Test manifestLoadsTheFrozenCompleteDirectionSet() started.
+◇ Test recencySurvivesRestartAndEvictionLeavesUnownedFilesAlone() started.
+◇ Test matchingRejectsMissingNonfiniteNegligibleOrOppositeSignedEffects() started.
+◇ Test identityRetainsExactSharedInputIncludingAlphaAndExtendedRGB() started.
+◇ Test nonneutralProductionRenderPreservesSourceProfileDepthAndFrozenOrientation(bits:p3:) started.
+◇ Test emptyLineRegionsExposeMissingSupport() started.
+➜ Test twelveGermanTasks() skipped: "Requires PICEDIT_RUN_LOCAL_AI_EVALUATION=1 and a ready German system model"
+◇ Test absentOrNonfiniteStrengthIsMissingEvidence() started.
+◇ Test cachedPrefixInvalidatesAcrossNoiseStrengthAutoAmountAndSourceChanges() started.
+◇ Test brightAndDarkRegionsHaveEqualWeightDespiteDifferentLineCounts() started.
+◇ Test lineContrastIsInvariantToCommonExposureButDetectsCompression() started.
+◇ Test invalidManifestsCannotSilentlyChangeThePreregisteredGate() started.
+➜ Test availabilityOnly() skipped.
+◇ Test nativeRenameTransfersConfirmedTextExactlyOnceAfterRestart() started.
+◇ Test editingArchiveDirectoriesAndNativeAliasesAreProtected() started.
+◇ Test fullResolutionBeyondPreviewLimitDeclaresSRGBAndDPI() started.
+◇ Test selectedEditRunsBeforeQueuedThumbnails() started.
+◇ Test testExtentsProfileAndTransparentEdgesSurviveCombinedEdits() started.
+◇ Test persistsBetweenInstancesWithoutReadingOrChangingOriginal() started.
+◇ Test cancelledGenerationCannotRemoveItsReplacementWaiter() started.
+◇ Test floatRoundTripExplicitlyPreservesStraightAlphaAndExtendedGamut() started.
+◇ Test previewComparisonsAndDiscardNeverEditOrSave() started.
+◇ Test failedRenderReleasesWorkerAndCanBeRetried() started.
+◇ Test haloIgnoresSameSidePlateauShiftsAndDetectsBothRingSigns() started.
+◇ Test normalizationPreservesRawTextWhileAnActualExternalChangeResynchronizes() started.
+◇ Test cancelledRenderRetainsSlotAndObsoleteQueuedEditsNeverRun() started.
+◇ Test cancelledFixtureGenerationCannotProduceAResult() started.
+◇ Test nativeSourceStampDetectsReplacementEvenWhenSizeAndMtimeStayEqual() started.
+◇ Test defaultBatchOnlySuppressesStaleAndChecksBoundsAndCancellation() started.
+◇ Test alphaZeroIsCanonicalAndDimensionsBelongToTheHash() started.
+◇ Test deterministicScenesHaveSeparateTuningAndAcceptanceSeeds() started.
+◇ Test selectedRenderingOverlapsOneThumbnailWithoutExceedingTwoWorkers() started.
+◇ Test cancellationCannotPublishPreparedOrAppliedResults() started.
+◇ Test transparencyUsesWhiteAndRasterIdentityIgnoresFileIdentity() started.
+◇ Test cancellationDuringParallelRowsDiscardsThePartialResult() started.
+◇ Test geometryAndUnsupportedSettingsFailExplicitly() started.
+◇ Test upstreamFineLinesKeepTheirRegionalContrastUnderV2() started.
+◇ Test onePixelAndSingleAxisInputsRemainFiniteAndKeepAlpha() started.
+◇ Test sharedRenderSurvivesOneCancelledWaiter() started.
+◇ Test testContrastChangesTonalSpreadInBothDirections() started.
+◇ Test processAndGeometryHaveDistinctPreparedBases() started.
+◇ Test nonneutralGainKeepsColorRatiosWithoutClippingSignedComponents() started.
+◇ Test nonfiniteBlurScaleIsBoundedAndGuidedParametersRejectInvalidValues() started.
+◇ Test visibleProjectionTracksFiltersSortAndFolderSelection() started.
+◇ Test strongEdgeDoesNotGainAVisibleLightOrDarkRim() started.
+◇ Test medianKeepsTheUpstreamStepAndDropsOnePixelLines() started.
+◇ Test independentlyPreparedImagesRemainDistinctAcrossRapidSelectionChanges() started.
+◇ Test transparentNeighboursDoNotDarkenAConstantVisibleRegion() started.
+◇ Test diagnosticCompositesUseLinearLightAndRetainNoHiddenRGB() started.
+◇ Test imageIOProfilesBitDepthsAndAllEXIFOrientations(bits:p3:) started.
+◇ Test preparedSnapshotMatchesFreshAfterSliderAndExposureChanges() started.
+◇ Test concurrentRequestsShareAnalysisWhileIndependentSourcesProceed() started.
+◇ Test filtersMatchFrozenOriginalRustFloat32Vectors() started.
+◇ Test defaultOffAndNoConsentNeverReadKeyOrSend() started.
+◇ Test comparingCommittedProposalAndOriginalReusesDecodedBaseAndRenderedResults() started.
+◇ Test unusableOrFuturePreferencesFallBackToSafeDefaults(_:) started.
+◇ Test nativeBatchPreservesOrderMissingEntriesAndExactStampBytes() started.
+◇ Test partialOlderPreferencesKeepValidFieldsAndScopeDefaults() started.
+◇ Test resetOnlyChangesTheActiveLayoutAndPreservesFocusReturn() started.
+◇ Test repeatedAnalysisUsesIdentityAndEvictsTheLeastRecentlyUsedSource() started.
+◇ Test bilinearAndQuantizationMatchPinnedPillowFixtures() started.
+◇ Test cachedCurvesMatchFreshAnalysisAcrossAmountsProfilesAndTransparency() started.
+◇ Test restartRestoresEachWorkspaceAndFocusReturnDestination() started.
+◇ Test plainClickReplacesSelectionAndCommandClickTogglesMembership() started.
+◇ Test invalidDirectAssignmentsCannotPoisonGeometryOrSubsequentPersistence() started.
+◇ Test failedAnalysisIsNotCached() started.
+◇ Test invalidPixelsAreRejectedAfterMutableRasterStorageChanges() started.
+◇ Test neutralAndExposureOnlyPreserveSignedExtendedRGBAndAlpha() started.
+◇ Test filmstripClampingDoesNotOverwritePreferredHeightOrHiddenState() started.
+◇ Test cancelledProducerLetsTheRemainingWaiterRetry() started.
+◇ Test analysisCacheDoesNotKeepTheDecodedSourceAlive() started.
+◇ Test transientWindowGeometryProducesFiniteNonnegativeSizes(_:) started.
+◇ Test repeatedFocusEntryDoesNotReplaceOriginOrNormalPanelPreferences() started.
+◇ Test deadlineDropsLateResultAndKeepsNativeLease() started.
+➜ Test groupedRecipesAndUnsupportedTasks() skipped: "Requires PICEDIT_RUN_LOCAL_AI_LOOK_EVALUATION=1 and a ready German system model"
+◇ Test globalBackendChangesAreCompositedBeforePublicationForAllSixNativeMasks() started.
+◇ Test cancellationRetainsSharedAdmissionUntilActualReturnAndOnlyNewestWaiterRuns() started.
+◇ Test revokedSelectionAndMismatchedOutputTokensCannotPublish() started.
+◇ Test absentInstallationStaysUnloaded() started.
+◇ Test readinessFailuresStopBeforeNativeWork(reason:) started.
+◇ Test verifiesImportsReopensAndDeletesOnlyModel() started.
+◇ Test readinessIsRecheckedAfterWaitingForOtherLocalInference() started.
+➜ Test benchmarkRepeatedLargePreviewAnalysis() skipped.
+◇ Test productionNoGoRejectsEveryOperationAndNeverGenerates() started.
+◇ Test smallWindowReservesImageWidthAndLaterRestoresRequestedPanelWidths() started.
+◇ Test invalidDimensionsAndCorruptOutputAreRejectedAndReleaseAdmission() started.
+◇ Test accordionAndDirectRevealOperateWithinCurrentWorkspace() started.
+◇ Test residentBudgetRejectsOversizedModelBeforeNativeLoad() started.
+◇ Test expirationDuringFinalCurrentTokenLookupCannotPublishAfterTimerWasCancelled() started.
+◇ Test compositorMemoryPressureRejectsPublicationAndReleasesInferenceAdmission() started.
+◇ Test actuallySentBytesPassThroughIsolatedURLProtocol() started.
+◇ Test twoEightBit4096PreviewsFitWhileSixteenBitNeedsRetiredCacheOwnership() started.
+◇ Test preferenceUpdatePublishesTheNormalizedLayoutOnce() started.
+◇ Test approvedManifestPinsEveryRuntimeInput() started.
+◇ Test maintenanceWaitsForAcceptedScanAndAlreadyQueuedImportThroughPublication() started.
+◇ Test signedApplicationWithAccessGroupRetainsDataProtectionStore() started.
+◇ Test unsupportedAndUnverifiedClaimsNeverReachNativeWork() started.
+◇ Test largerPreviewIsReusedButChangedFileIsNot() started.
+◇ Test normalizationRejectsInvalidAndKeepsUnitLength() started.
+◇ Test persistedLargerPreviewServesBothProgressiveStagesWithoutDecodingOriginal() started.
+◇ Test acceptedCommitSurvivesObserverCancelSelectionAndClosingAndIsOneUndo() started.
+◇ Test returnAndSubsequentTagSurviveOwnSaves() started.
+◇ Test runningLargerDecodeIsSharedAndOneCancelledWaiterDoesNotCancelOthers() started.
+◇ Test loadsExistingRevisionsAndDebouncesLatestValuesPerImage() started.
+◇ Test invalidInputsFailBeforeAnyModelLoad() started.
+◇ Test ordinaryAdHocAppUsesLocalKeychainWithoutClaimingDeviceOnlyProtection() started.
+➜ Test twoUnlabeledSyntheticImagesProduceNativeMetadataAndExplicitFreshness() skipped: "Requires explicit PICEDIT_RUN_PHOTO_METADATA_EVALUATION=1; an unavailable native model fails the opted-in gate"
+◇ Test cancelledWaiterDoesNotCancelOrRemoveTheSharedAnalysis() started.
+◇ Test opaqueRGBInputExpandsToOpaqueRGBAWhileKeepingPreservedComponents() started.
+◇ Test cancelAllCanRepeatAndStillRetainsNonCooperativeProviderSlot() started.
+◇ Test nativeModelNativeBijectionRestoresCropAndLeavesEveryOutsideByteUntouched() started.
+◇ Test cancellationCannotPublishPreprocessingOrAlterImmutableNativeInput() started.
+◇ Test twentyLookRequestsRemainBoundedAfterCancellation() started.
+◇ Test cancellingBudgetWaiterDoesNotLeakAdmissionOrStartProvider() started.
+◇ Test cancelledDecoderRetainsItsSlotUntilItActuallyReturns() started.
+◇ Test failureInvalidResponseAndNoChangeAllReleaseLease() started.
+◇ Test twentyRapidRequestsKeepOnlyLatestQueuedAndRetainCancelledSlot() started.
+◇ Test goldenAsymmetricGridAndMaskUseTheSameCropCentersAndTopLeftRows() started.
+◇ Test preprocessingIsByteDeterministicAtBothDepthsAndProfilesAndRejectsImplicitDistortion() started.
+◇ Test lookGroupSharesOneCallAndBindsEachOriginalRequest() started.
+◇ Test concurrencyAcrossStoresCannotExceedCountOrBudget() started.
+◇ Test selectedPhotoUsesReservedSlotAheadOfQueuedThumbnails() started.
+◇ Test newerContextSupersedesRunningCallerAndQueuedCancellationIsImmediate() started.
+◇ Test cancelledGenerationCannotRemoveReplacementWithIdenticalContext() started.
+◇ Test writtenFixtureManifestExplicitlyContainsNoModelResult() started.
+◇ Test validatesAndBindsResultsToEachSharedRequest() started.
+◇ Test decodedAliasesPreserveTreeFiltersAndStoredIdentity(reverse:) started.
+◇ Test rejectsInvalidInputsUnsupportedCapabilityAndUnavailableProvider() started.
+◇ Test sharedBudgetRetainsLeaseAcrossCoordinatorsUntilProviderActuallyReturns() started.
+◇ Test defaultLocalKeyOperationsNeverPutSecretIntoPreferences() started.
+◇ Test isolatedPromptHasOnlyAllowedDataAndQuotesUntrustedText() started.
+◇ Test failureAndCallerCancellationStillWaitForBothStores(catalogFails:) started.
+◇ Test successRequiresBothStoresToFinish() started.
+◇ Test nonCooperativeProviderLeavesMainActorResponsive() started.
+◇ Test singleAndLookModesNeverCoalesceAndKeepTheSameWorkerSlot() started.
+◇ Test oneGroupedGenerationUsesAnIsolatedLookPromptAndStrictValidation() started.
+◇ Test invalidGroupPublishesNoPartialResultAndReleasesTheSharedBudget() started.
+◇ Test sharedInferenceSurvivesOneCancelledWaiter() started.
+◇ Test unavailableArtifactsKeepRealMetadataAndOriginalOnlyEditingUsable(kind:) started.
+◇ Test availabilityIsRecheckedAfterEarlierSuccessfulProbe() started.
+◇ Test unavailableReasonsNeverInvokeGeneration(_:) started.
+◇ Test bitmapProviderKeepsReservationAfterBitmapAndPhaseAreReleased() started.
+◇ Test alreadyCancelledRequestDoesNotStartRuntime() started.
+◇ Test validStructuredOutputIsValidatedAndPreservesOtherControls() started.
+◇ Test unsupportedOrRefusedOutputNeverReturnsAPatch(_:) started.
+◇ Test tenSelectionsShareBaselineNeverInferOrSaveAndAcceptOneUndoStep() started.
+◇ Test ambiguousSharedJournalStillBlocksStartupAndMetadataWithUnavailableArtifacts() started.
+◇ Test responseByteLimitAppliesEvenWithLargerInjectedValidator() started.
+◇ Test selectedPhotoRoundTripNeverRevivesSnapshotOrMutatesUndoAndStore() started.
+◇ Test appleAvailabilityAndErrorCategories() started.
+◇ Test cancellationWinsOverALateRuntimeFailure() started.
+◇ Test malformedGuidedResponseIsRejected() started.
+◇ Test invalidOrPartialGroupedOutputIsNeverFilledOrReturned() started.
+◇ Test actualSameSizeReplacementWithRestoredMtimeInvalidatesAllCaches() started.
+◇ Test modeAndCapabilityChecksPrecedeAnyProviderWork() started.
+◇ Test ignoredXComponentsNeverChangeNativeRasterHash(_:) started.
+◇ Test unusedPackedScanlineBitsDoNotChangeNativeRasterHash() started.
+◇ Test modelCannotBypassIndependentValidator() started.
+➜ Test actualLargerDecodedBaseIsClampedInsideExistingRenderWorker() skipped: "Requires PICEDIT_RUN_IMAGE_ANALYSIS_RASTER_TESTS=1 and native Core Image service access"
+◇ Test rawTagLinesSurviveSectionRemountWithoutAnotherWriteOrInference() started.
+➜ Test approvedImportAndProductionProviderMatchFrozenTorchPair() skipped.
+◇ Test germanAvailabilityMessagesAreDistinct() started.
+◇ Test unchangedFixturesAndNeutralHiddenRGBPassControl() started.
+◇ Test gateRequiresMatchedEffectSeparateAcceptanceHumanApprovalAndBudgets() started.
+◇ Test sixSelfAuthoredFixturesHaveStableNativeInputsMasksAndJobBindings() started.
+◇ Test guidedGroupCapabilityQuestionsOverrideInconsistentRecipeStatus() started.
+◇ Test sourceDateSizeAndMissingRegularFileRejectBeforeModel() started.
+◇ Test groundTruthResidualNoiseUsesItsOwnEligibleCount() started.
+◇ Test rasterHashCoversPixelsInterpretationAndEnforcesActualBounds() started.
+◇ Test alphaAndLinearCompositesExposeVisibleFringes() started.
+◇ Test originalIsExplicitReadOnlyAndSurvivesManualSliderChanges() started.
+◇ Test incompleteManifestAndMissingControlMetricAreRejected() started.
+◇ Test zeroAndFullWeightsPreserveCanonicalStraightSamplesAtEveryDepthAndProfile() started.
+➜ Test twoDistinctSyntheticRastersUseNativeAttachmentAndBoundedCache() skipped: "Requires PICEDIT_RUN_IMAGE_ANALYSIS_EVALUATION=1 and a ready German local vision model"
+◇ Test queuedMemoryIsChargedOnlyAtActualGrantAndDuplicateReleaseDoesNotFreeTheNextJob() started.
+◇ Test applicationUsesItsOwnResourcesWithoutDevelopmentPathFallback() started.
+◇ Test boundedMatchingDoesNotAssumeMonotonicResponse() started.
+◇ Test localHaloEnvelopeAndStructuralLossDetectDifferentRegressions() started.
+◇ Test overlongInputIsRejectedBeforeRuntimeAndNoRetriesOccur() started.
+◇ Test nativeRevisionSeparatesMemoryRenderAndDiskKeysWhileDefaultStaysCompatible() started.
+◇ Test removedAndChangedSourcesCannotBecomeHits() started.
+◇ Test neutralHueIsExcludedAndInvalidPixelsFailClosed() started.
+◇ Test cancelledWaiterCannotStrandResidentBytesOrDelayInteractiveWork() started.
+◇ Test missingApplicationResourcesRejectInsteadOfUsingTestBuildResources() started.
+◇ Test invalidAndOversizedResidentRequestsNeverConsumeAdmission() started.
+◇ Test strokeIsOneUndoBoundaryAndEraseOnlyChangesMask() started.
+◇ Test invalidVectorsAreRejectedBeforeAnyRanking(_:) started.
+◇ Test pageBoundaryTiesKeepProjectionOrderAtTopK() started.
+◇ Test leavingImageDoesNotConnectSeparateSegmentsAndUndoRemovesWholeGesture() started.
+◇ Test metadataFailureStillWaitsForCatalogAndEditsAfterCallerCancellation() started.
+◇ Test overlayUsesCanonicalNativeResamplingAndCancellation() started.
+◇ Test nativeCanvasReadsAllEXIFOrientationsWithoutPreviewDimensions() started.
+◇ Test orientationAndProfileDescribeActualPixelsWithoutEXIFPayload() started.
+◇ Test fixedSIMDReductionCoversAllTailLengthsAndDimensionBounds(_:) started.
+◇ Test topKAndPageBoundsAndUniqueCandidateIdentity() started.
+◇ Test identicalFrozen768DVectorsHavePageIndependentScoresAndStableTopK() started.
+◇ Test gestureDraftIsBoundedBeforeValidationAndPreservesAcceptedSegments() started.
+◇ Test overlayIsBoundedAndNeverDecodesSourceOrChangesNativeCanvas() started.
+◇ Test batchesSinglesAndPreparationShareTwoSlotsUntilActualReturn() started.
+◇ Test delayedSourceAndRevisionResultsCannotOverwriteNewDraft() started.
+◇ Test fastPointsCoalesceAndDiscardRejectsUncooperativeWorker() started.
+◇ Test committedActivationRegistersEvenWhenCancellationRacesCommitReturn() started.
+◇ Test actualProductsIncludeNegativeSimilarity() started.
+◇ Test imageEncoderIntegrityFailureRemainsUnavailableUntilReimport(_:) started.
+◇ Test registryBlocksEveryAbsentReferenceAndControlsCannotClaimGo() started.
+◇ Test strongSourceChangesAndRemovedCandidatesCannotAppear() started.
+◇ Test installationFingerprintMismatchCannotReuseOldIndexOrCache() started.
+◇ Test explicitIndexUsesOneImageJobAndFindsPairedGermanEnglishWithoutNames() started.
+◇ Test staleAvailabilityCannotOverwriteNewInstallationState() started.
+◇ Test exactQueryDeduplicatesAndCancellingOneWaiterKeepsNativeLease() started.
+◇ Test invalidProviderVectorIsNeverCached() started.
+◇ Test deleteAndShutdownWaitForNativeReturnAndShutdownIsReusable() started.
+◇ Test alreadyCancelledStatusCannotInvalidateLiveStatus() started.
+◇ Test missingAndChangedSourcesPreserveRowsWithoutBecomingHits() started.
+◇ Test cancelledOnlyWaiterDoesNotStartReplacementBeforeActualReturn() started.
+◇ Test twentyRapidQueriesRetainActualAndOnlyLatestPending() started.
+◇ Test catalogEpochRejectsLateQueriesAndOlderOrForeignSnapshots() started.
+◇ Test alreadyCancelledSearchCannotInvalidateActualQuery() started.
+◇ Test sourceStampChunksCoverEveryCandidateAndFreshFinalHit() started.
+◇ Test normalizedTextCacheIsBoundedAndIndependentOfCandidateOrder() started.
+◇ Test explicitModelRemoveUnloadsBeforeMutatingFiles() started.
+◇ Test scopeValidationKeepsEquivalentURLsAndRejectsEachChangedSourceField() started.
+◇ Test inputBoundsAndMissingIndexDoNotPerformInference() started.
+◇ Test malformedBatchCountCannotBecomeSearchResults() started.
+◇ Test installationHoldsSharedLeaseUntilNoncooperativeCompilerReturns() started.
+◇ Test changedDuringNativeImageWorkCannotCommit() started.
+◇ Test boundedSamplingKeepsProgressivePreviewCurvesConsistent() started.
+◇ Test cancelledRebuildPreservesOldGenerationAndLeaseUntilNativeReturn() started.
+◇ Test statusImportAndRestartPublishOnlyUsableModelMetadata() started.
+➜ Test officialConfigAPIHasAll58ExactFrozenTokens() skipped.
+◇ Test clearInvertAndOverlayOpacityHaveIndependentSemantics() started.
+◇ Test unavailableReasonsStopBeforePreparationAndInference() started.
+◇ Test originalCoalescesAndCachesAcrossSlidersButRebindsObservers() started.
+◇ Test actualSuggestorSourceWithOptionalNativeEvidenceMissingIsAcceptedByRealStore() started.
+◇ Test colorHueAlphaDimensionsAndProfileSurvive() started.
+◇ Test explicitCorruptIndexRebuildPreservesBytesAndReportsQuarantine() started.
+◇ Test damagedMiddlePhotoDoesNotBlockLaterValidPhotosOrMixSpaces(_:) started.
+◇ Test transparentMarginsDoNotBiasTheHistogram() started.
+◇ Test metadataWaitsForActualCanceledVisionReturnAndPerformsOneTypedRequest() started.
+◇ Test malformedResponsesDoNotCacheAndInvalidationDoesNotFreeActualSlot() started.
+◇ Test zeroAmountKeepsOriginalPixelsAndManualSettings() started.
+◇ Test editedEpochAndSourceChangesNeverReuseOriginalResults() started.
+◇ Test liftingSaturatedSubjectsDoesNotClipPreviouslyUnclippedChannels() started.
+◇ Test globalBudgetSerializesIndependentServicesThroughActualReturn() started.
+◇ Test twentyContextsKeepNoncooperativeSlotAndOnlyLatestQueuedContext() started.
+◇ Test cancellationOfOneObserverPreservesSharedActualInference() started.
+◇ Test balancedGradientChangesSubtlyAndLowContrastSceneGainsSeparation() started.
+◇ Test resultCacheRespectsEntryByteBoundsAndLRU() started.
+◇ Test canceledAnalysisStopsBeforeWorkingOnTheBitmap() started.
+◇ Test flatBlackWhiteAndAlmostFlatNoiseStayStable() started.
+◇ Test intermediateStrengthIsConservativeAndManualExposureFollowsAuto() started.
+◇ Test dominantDarkAndBrightScenesKeepTheOppositeTailSafe() started.
+◇ Test explicitFreshnessMissesAnalysisDecodeAndRenderDespiteIdenticalNativeStamp() started.
+◇ Test highDynamicRangeRevealsBothTailsWithoutFlatteningOrClipping() started.
+◇ Test sourceMutationDuringInferenceRejectsAndCacheReplacementRecomputes() started.
+➜ Test productionEncoderSQLiteAndSourceStamps() skipped.
+◇ Test hardOutputLimitIncludesNeutralAndCacheIdentityUsesActualSize() started.
+◇ Test gradientsStayMonotoneAndDoNotAcquireNewClippedPixels() started.
+◇ Test literalAndEmptySemanticQueriesNeverRequestEmbeddingsOrIndex() started.
+◇ Test case passing 1 argument alpha → true to encodingPreservesOrientationAlphaAndColorProfile(alpha:) started.
+◇ Test case passing 1 argument alpha → false to encodingPreservesOrientationAlphaAndColorProfile(alpha:) started.
+◇ Test jpegCannotPublishIntoCatalogStagingOrMetadataQuarantine() started.
+◇ Test editBackupCannotReplaceMetadataOrWriteInsideCatalogStage() started.
+◇ Test case passing 2 arguments bits → 8, p3 → false to nonneutralProductionRenderPreservesSourceProfileDepthAndFrozenOrientation(bits:p3:) started.
+◇ Test case passing 2 arguments bits → 8, p3 → true to nonneutralProductionRenderPreservesSourceProfileDepthAndFrozenOrientation(bits:p3:) started.
+◇ Test case passing 2 arguments bits → 16, p3 → false to nonneutralProductionRenderPreservesSourceProfileDepthAndFrozenOrientation(bits:p3:) started.
+◇ Test case passing 2 arguments bits → 16, p3 → true to nonneutralProductionRenderPreservesSourceProfileDepthAndFrozenOrientation(bits:p3:) started.
+◇ Test containmentAtFilesystemRootAndMissingParentsTerminates() started.
+◇ Test fixedPathsAliasesAndLateOwnedFamiliesAreProtected() started.
+◇ Test persistedLibraryLoadsWithUserMetadata() started.
+◇ Test exportFreezesEditingSettingsOptionsAndDestination() started.
+◇ Test case passing 2 arguments bits → 8, p3 → false to imageIOProfilesBitDepthsAndAllEXIFOrientations(bits:p3:) started.
+◇ Test case passing 2 arguments bits → 8, p3 → true to imageIOProfilesBitDepthsAndAllEXIFOrientations(bits:p3:) started.
+◇ Test case passing 2 arguments bits → 16, p3 → false to imageIOProfilesBitDepthsAndAllEXIFOrientations(bits:p3:) started.
+◇ Test case passing 2 arguments bits → 16, p3 → true to imageIOProfilesBitDepthsAndAllEXIFOrientations(bits:p3:) started.
+◇ Test case passing 1 argument json → "not-json" to unusableOrFuturePreferencesFallBackToSafeDefaults(_:) started.
+◇ Test case passing 1 argument json → "{"version":999,"isFocused":true}" to unusableOrFuturePreferencesFallBackToSafeDefaults(_:) started.
+◇ Test case passing 1 argument json → "null" to unusableOrFuturePreferencesFallBackToSafeDefaults(_:) started.
+◇ Test case passing 1 argument json → "[]" to unusableOrFuturePreferencesFallBackToSafeDefaults(_:) started.
+◇ Test mountedLibraryKeepsFocusReturnPathWhenSearchTemporarilyRemovesSelection(size:) started.
+◇ Test case passing 1 argument width → nan to transientWindowGeometryProducesFiniteNonnegativeSizes(_:) started.
+◇ Test case passing 1 argument width → inf to transientWindowGeometryProducesFiniteNonnegativeSizes(_:) started.
+◇ Test case passing 1 argument width → -20.0 to transientWindowGeometryProducesFiniteNonnegativeSizes(_:) started.
+◇ Test case passing 1 argument width → 0.0 to transientWindowGeometryProducesFiniteNonnegativeSizes(_:) started.
+◇ Test case passing 1 argument width → 240.0 to transientWindowGeometryProducesFiniteNonnegativeSizes(_:) started.
+◇ Test case passing 1 argument width → 500.0 to transientWindowGeometryProducesFiniteNonnegativeSizes(_:) started.
+◇ Test case passing 1 argument reason → .qualityGateFailed to readinessFailuresStopBeforeNativeWork(reason:) started.
+◇ Test case passing 1 argument reason → .unverifiedCapability to readinessFailuresStopBeforeNativeWork(reason:) started.
+◇ Test case passing 1 argument reason → .unsupportedOperation to readinessFailuresStopBeforeNativeWork(reason:) started.
+◇ Test case passing 1 argument reason → .sdkUnavailable to readinessFailuresStopBeforeNativeWork(reason:) started.
+◇ Test case passing 1 argument reason → .unsupportedSystem to readinessFailuresStopBeforeNativeWork(reason:) started.
+◇ Test case passing 1 argument reason → .unsupportedHardware to readinessFailuresStopBeforeNativeWork(reason:) started.
+◇ Test case passing 1 argument reason → .missingWeights to readinessFailuresStopBeforeNativeWork(reason:) started.
+◇ Test case passing 1 argument reason → .corruptWeights to readinessFailuresStopBeforeNativeWork(reason:) started.
+◇ Test case passing 1 argument reason → .hashMismatch to readinessFailuresStopBeforeNativeWork(reason:) started.
+◇ Test case passing 1 argument reason → .memoryPressure to readinessFailuresStopBeforeNativeWork(reason:) started.
+◇ Test case passing 1 argument reverse → false to decodedAliasesPreserveTreeFiltersAndStoredIdentity(reverse:) started.
+◇ Test case passing 1 argument catalogFails → true to failureAndCallerCancellationStillWaitForBothStores(catalogFails:) started.
+◇ Test case passing 1 argument catalogFails → false to failureAndCallerCancellationStillWaitForBothStores(catalogFails:) started.
+◇ Test case passing 1 argument kind → .corruptOwner to unavailableArtifactsKeepRealMetadataAndOriginalOnlyEditingUsable(kind:) started.
+◇ Test case passing 1 argument kind → .unownedTree to unavailableArtifactsKeepRealMetadataAndOriginalOnlyEditingUsable(kind:) started.
+◇ Test case passing 1 argument reason → .unsupportedSystem to unavailableReasonsNeverInvokeGeneration(_:) started.
+◇ Test case passing 1 argument reason → .sdkUnavailable to unavailableReasonsNeverInvokeGeneration(_:) started.
+◇ Test case passing 1 argument reason → .unsupportedHardware to unavailableReasonsNeverInvokeGeneration(_:) started.
+◇ Test case passing 1 argument reason → .disabled to unavailableReasonsNeverInvokeGeneration(_:) started.
+◇ Test case passing 1 argument reason → .modelUnavailable to unavailableReasonsNeverInvokeGeneration(_:) started.
+◇ Test case passing 1 argument reason → .unsupportedLanguage to unavailableReasonsNeverInvokeGeneration(_:) started.
+◇ Test case passing 1 argument status → .imageAnalysis to unsupportedOrRefusedOutputNeverReturnsAPatch(_:) started.
+◇ Test case passing 1 argument reason → .unknown to unavailableReasonsNeverInvokeGeneration(_:) started.
+◇ Test case passing 1 argument status → .whiteBalance to unsupportedOrRefusedOutputNeverReturnsAPatch(_:) started.
+◇ Test case passing 1 argument status → .unsupported to unsupportedOrRefusedOutputNeverReturnsAPatch(_:) started.
+◇ Test case passing 1 argument status → .unsupportedLanguage to unsupportedOrRefusedOutputNeverReturnsAPatch(_:) started.
+◇ Test case passing 1 argument status → .refused to unsupportedOrRefusedOutputNeverReturnsAPatch(_:) started.
+◇ Test case passing 1 argument alpha → noneSkipFirst to ignoredXComponentsNeverChangeNativeRasterHash(_:) started.
+◇ Test case passing 1 argument alpha → noneSkipLast to ignoredXComponentsNeverChangeNativeRasterHash(_:) started.
+◇ Test case passing 1 argument vector → [nan, 0.0] to invalidVectorsAreRejectedBeforeAnyRanking(_:) started.
+◇ Test case passing 1 argument vector → [inf, 0.0] to invalidVectorsAreRejectedBeforeAnyRanking(_:) started.
+◇ Test case passing 1 argument vector → [0.0, 0.0] to invalidVectorsAreRejectedBeforeAnyRanking(_:) started.
+◇ Test case passing 1 argument vector → [2.0, 0.0] to invalidVectorsAreRejectedBeforeAnyRanking(_:) started.
+◇ Test case passing 1 argument vector → [1.0] to invalidVectorsAreRejectedBeforeAnyRanking(_:) started.
+◇ Test case passing 1 argument dimension → 1 to fixedSIMDReductionCoversAllTailLengthsAndDimensionBounds(_:) started.
+◇ Test case passing 1 argument dimension → 3 to fixedSIMDReductionCoversAllTailLengthsAndDimensionBounds(_:) started.
+◇ Test case passing 1 argument dimension → 4 to fixedSIMDReductionCoversAllTailLengthsAndDimensionBounds(_:) started.
+◇ Test case passing 1 argument dimension → 5 to fixedSIMDReductionCoversAllTailLengthsAndDimensionBounds(_:) started.
+◇ Test case passing 1 argument dimension → 7 to fixedSIMDReductionCoversAllTailLengthsAndDimensionBounds(_:) started.
+◇ Test case passing 1 argument dimension → 4095 to fixedSIMDReductionCoversAllTailLengthsAndDimensionBounds(_:) started.
+◇ Test case passing 1 argument dimension → 4096 to fixedSIMDReductionCoversAllTailLengthsAndDimensionBounds(_:) started.
+◇ Test case passing 1 argument failure → .invalidInstallation to imageEncoderIntegrityFailureRemainsUnavailableUntilReimport(_:) started.
+◇ Test case passing 1 argument failure → .installationChanged to imageEncoderIntegrityFailureRemainsUnavailableUntilReimport(_:) started.
+◇ Test case passing 1 argument unavailable → true to damagedMiddlePhotoDoesNotBlockLaterValidPhotosOrMixSpaces(_:) started.
+◇ Test case passing 1 argument unavailable → false to damagedMiddlePhotoDoesNotBlockLaterValidPhotosOrMixSpaces(_:) started.
+✔ Test testNeutralReturnsIdenticalBitmap() passed after 1.065 seconds.
+✔ Test disabledOversizedAndInaccessibleCachesAreNonfatal() passed after 1.066 seconds.
+✔ Test neutralRGBReferenceMeetsCPUToleranceAndPreservesAlphaSeparately() passed after 1.066 seconds.
+✔ Test reloadingWithSmallerBudgetPrunesOwnedPreviews() passed after 1.066 seconds.
+✔ Test keysInvalidateForPathDateSizeAndResolution() passed after 1.066 seconds.
+✔ Test rec2020BridgePreservesWhiteAndSignedExtendedPrimaries() passed after 1.066 seconds.
+✔ Test corruptEntryBecomesMissAndIsRemoved() passed after 1.066 seconds.
+✔ Test editingBaseIsPersistedLosslesslyEvenWithoutAlpha() passed after 1.066 seconds.
+✔ Test manifestLoadsTheFrozenCompleteDirectionSet() passed after 1.066 seconds.
+✔ Test strengthUsesInputDefinedROIAlphaWeightsAndSignedChanges() passed after 1.066 seconds.
+✔ Test encodingPreservesOrientationAlphaAndColorProfile(alpha:) with 2 test cases passed after 1.066 seconds.
+✔ Test identityRetainsExactSharedInputIncludingAlphaAndExtendedRGB() passed after 1.066 seconds.
+✔ Test matchingRejectsMissingNonfiniteNegligibleOrOppositeSignedEffects() passed after 1.066 seconds.
+✔ Test absentOrNonfiniteStrengthIsMissingEvidence() passed after 1.066 seconds.
+✔ Test emptyLineRegionsExposeMissingSupport() passed after 1.066 seconds.
+✔ Test brightAndDarkRegionsHaveEqualWeightDespiteDifferentLineCounts() passed after 1.066 seconds.
+✔ Test lineContrastIsInvariantToCommonExposureButDetectsCompression() passed after 1.066 seconds.
+✔ Test budgetEvictsLeastRecentlyUsedPreview() passed after 1.066 seconds.
+✔ Test recencySurvivesRestartAndEvictionLeavesUnownedFilesAlone() passed after 1.066 seconds.
+✔ Suite "Local AI real-model evaluation v1" passed after 1.068 seconds.
+✔ Test invalidManifestsCannotSilentlyChangeThePreregisteredGate() passed after 1.066 seconds.
+✔ Test fullResolutionBeyondPreviewLimitDeclaresSRGBAndDPI() passed after 1.067 seconds.
+✔ Test nonneutralProductionRenderPreservesSourceProfileDepthAndFrozenOrientation(bits:p3:) with 4 test cases passed after 1.069 seconds.
+✔ Test testCombinedToneExtremesDoNotReverseGradientOrdering() passed after 1.069 seconds.
+✔ Test floatRoundTripExplicitlyPreservesStraightAlphaAndExtendedGamut() passed after 1.069 seconds.
+✔ Test persistsBetweenInstancesWithoutReadingOrChangingOriginal() passed after 1.069 seconds.
+✔ Test normalizationPreservesRawTextWhileAnActualExternalChangeResynchronizes() passed after 1.069 seconds.
+✔ Test haloIgnoresSameSidePlateauShiftsAndDetectsBothRingSigns() passed after 1.069 seconds.
+✔ Test nativeSourceStampDetectsReplacementEvenWhenSizeAndMtimeStayEqual() passed after 1.069 seconds.
+✔ Test alphaZeroIsCanonicalAndDimensionsBelongToTheHash() passed after 1.070 seconds.
+✔ Test testLuminanceNoiseReductionReducesLuminanceVariance() passed after 1.070 seconds.
+✔ Test geometryAndUnsupportedSettingsFailExplicitly() passed after 1.083 seconds.
+✔ Test onePixelAndSingleAxisInputsRemainFiniteAndKeepAlpha() passed after 1.083 seconds.
+✔ Test testExtremeSettingsAreClampedAndRenderingStaysBounded() passed after 1.084 seconds.
+✔ Test nonneutralGainKeepsColorRatiosWithoutClippingSignedComponents() passed after 1.083 seconds.
+✔ Test nonfiniteBlurScaleIsBoundedAndGuidedParametersRejectInvalidValues() passed after 1.083 seconds.
+✔ Test testExtentsProfileAndTransparentEdgesSurviveCombinedEdits() passed after 1.084 seconds.
+✔ Test testColorNoiseReductionTargetsChromaSeparately() passed after 1.084 seconds.
+✔ Test medianKeepsTheUpstreamStepAndDropsOnePixelLines() passed after 1.084 seconds.
+✔ Test testContrastChangesTonalSpreadInBothDirections() passed after 1.084 seconds.
+✔ Test diagnosticCompositesUseLinearLightAndRetainNoHiddenRGB() passed after 1.084 seconds.
+✔ Test transparentNeighboursDoNotDarkenAConstantVisibleRegion() passed after 1.093 seconds.
+✔ Test imageIOProfilesBitDepthsAndAllEXIFOrientations(bits:p3:) with 4 test cases passed after 1.093 seconds.
+✔ Test nativeBatchPreservesOrderMissingEntriesAndExactStampBytes() passed after 1.165 seconds.
+✔ Test filtersMatchFrozenOriginalRustFloat32Vectors() passed after 1.164 seconds.
+✔ Test deterministicScenesHaveSeparateTuningAndAcceptanceSeeds() passed after 1.165 seconds.
+✔ Test testExposureAndTonalControlsHaveCorrectDirections() passed after 1.165 seconds.
+◇ Test case passing 1 argument size → (1000.0, 660.0) to mountedLibraryKeepsFocusReturnPathWhenSearchTemporarilyRemovesSelection(size:) started.
+✔ Test failedAnalysisIsNotCached() passed after 1.165 seconds.
+✔ Test invalidPixelsAreRejectedAfterMutableRasterStorageChanges() passed after 1.165 seconds.
+✔ Test neutralAndExposureOnlyPreserveSignedExtendedRGBAndAlpha() passed after 1.165 seconds.
+✔ Suite "Local three-look real-model smoke v1" passed after 1.198 seconds.
+✔ Test absentInstallationStaysUnloaded() passed after 1.197 seconds.
+✔ Test testAllPresenceAndColorSlidersChangePixelsIndependently() passed after 1.198 seconds.
+✔ Test verifiesImportsReopensAndDeletesOnlyModel() passed after 1.207 seconds.
+✔ Test signedApplicationWithAccessGroupRetainsDataProtectionStore() passed after 1.206 seconds.
+✔ Test approvedManifestPinsEveryRuntimeInput() passed after 1.208 seconds.
+✔ Test returnAndSubsequentTagSurviveOwnSaves() passed after 1.208 seconds.
+✔ Test invalidInputsFailBeforeAnyModelLoad() passed after 1.208 seconds.
+✔ Test ordinaryAdHocAppUsesLocalKeychainWithoutClaimingDeviceOnlyProtection() passed after 1.208 seconds.
+✔ Test normalizationRejectsInvalidAndKeepsUnitLength() passed after 1.216 seconds.
+✔ Suite "Local photo metadata real raster smoke v1" passed after 1.218 seconds.
+✔ Test nativeModelNativeBijectionRestoresCropAndLeavesEveryOutsideByteUntouched() passed after 1.216 seconds.
+✔ Test analysisCacheDoesNotKeepTheDecodedSourceAlive() passed after 1.217 seconds.
+✔ Test goldenAsymmetricGridAndMaskUseTheSameCropCentersAndTopLeftRows() passed after 1.217 seconds.
+✔ Test preprocessingIsByteDeterministicAtBothDepthsAndProfilesAndRejectsImplicitDistortion() passed after 1.217 seconds.
+✔ Test cachedCurvesMatchFreshAnalysisAcrossAmountsProfilesAndTransparency() passed after 1.245 seconds.
+✔ Test repeatedAnalysisUsesIdentityAndEvictsTheLeastRecentlyUsedSource() passed after 1.400 seconds.
+✔ Test unchangedFixturesAndNeutralHiddenRGBPassControl() passed after 1.399 seconds.
+✔ Test groundTruthResidualNoiseUsesItsOwnEligibleCount() passed after 1.401 seconds.
+✔ Test alphaAndLinearCompositesExposeVisibleFringes() passed after 1.402 seconds.
+✔ Test incompleteManifestAndMissingControlMetricAreRejected() passed after 1.402 seconds.
+✔ Test zeroAndFullWeightsPreserveCanonicalStraightSamplesAtEveryDepthAndProfile() passed after 1.402 seconds.
+✔ Suite "Opt-in native semantic pair" passed after 1.405 seconds.
+✔ Suite "Local image analysis real raster smoke v1" passed after 1.405 seconds.
+✔ Test applicationUsesItsOwnResourcesWithoutDevelopmentPathFallback() passed after 1.402 seconds.
+✔ Test boundedMatchingDoesNotAssumeMonotonicResponse() passed after 1.402 seconds.
+✔ Test localHaloEnvelopeAndStructuralLossDetectDifferentRegressions() passed after 1.402 seconds.
+✔ Test removedAndChangedSourcesCannotBecomeHits() passed after 1.405 seconds.
+✔ Test neutralHueIsExcludedAndInvalidPixelsFailClosed() passed after 1.405 seconds.
+✔ Test missingApplicationResourcesRejectInsteadOfUsingTestBuildResources() passed after 1.405 seconds.
+✔ Test gateRequiresMatchedEffectSeparateAcceptanceHumanApprovalAndBudgets() passed after 1.406 seconds.
+✔ Test invalidVectorsAreRejectedBeforeAnyRanking(_:) with 5 test cases passed after 1.406 seconds.
+✔ Test pageBoundaryTiesKeepProjectionOrderAtTopK() passed after 1.406 seconds.
+✔ Test nativeCanvasReadsAllEXIFOrientationsWithoutPreviewDimensions() passed after 1.406 seconds.
+✔ Test fixedSIMDReductionCoversAllTailLengthsAndDimensionBounds(_:) with 7 test cases passed after 1.407 seconds.
+✔ Test topKAndPageBoundsAndUniqueCandidateIdentity() passed after 1.408 seconds.
+✔ Test writtenFixtureManifestExplicitlyContainsNoModelResult() passed after 1.409 seconds.
+✔ Test overlayUsesCanonicalNativeResamplingAndCancellation() passed after 1.408 seconds.
+✔ Test actualProductsIncludeNegativeSimilarity() passed after 1.427 seconds.
+✔ Test registryBlocksEveryAbsentReferenceAndControlsCannotClaimGo() passed after 1.457 seconds.
+✔ Test processAndGeometryHaveDistinctPreparedBases() passed after 1.462 seconds.
+✔ Test colorHueAlphaDimensionsAndProfileSurvive() passed after 1.465 seconds.
+✔ Test zeroAmountKeepsOriginalPixelsAndManualSettings() passed after 1.468 seconds.
+✔ Suite "Semantic offline tokenizer parity" passed after 1.472 seconds.
+✔ Test transparentMarginsDoNotBiasTheHistogram() passed after 1.468 seconds.
+✔ Test balancedGradientChangesSubtlyAndLowContrastSceneGainsSeparation() passed after 1.468 seconds.
+✔ Test liftingSaturatedSubjectsDoesNotClipPreviouslyUnclippedChannels() passed after 1.468 seconds.
+✔ Test intermediateStrengthIsConservativeAndManualExposureFollowsAuto() passed after 1.468 seconds.
+✔ Test highDynamicRangeRevealsBothTailsWithoutFlatteningOrClipping() passed after 1.469 seconds.
+✔ Test dominantDarkAndBrightScenesKeepTheOppositeTailSafe() passed after 1.470 seconds.
+✔ Suite "Opt-in integrated semantic 10,000-candidate benchmark" passed after 1.473 seconds.
+✔ Test preparedSnapshotMatchesFreshAfterSliderAndExposureChanges() passed after 1.489 seconds.
+✔ Test flatBlackWhiteAndAlmostFlatNoiseStayStable() passed after 1.487 seconds.
+✔ Test containmentAtFilesystemRootAndMissingParentsTerminates() passed after 1.463 seconds.
+✔ Test fixedPathsAliasesAndLateOwnedFamiliesAreProtected() passed after 1.416 seconds.
+✔ Test cachedPrefixInvalidatesAcrossNoiseStrengthAutoAmountAndSourceChanges() passed after 1.496 seconds.
+✔ Test gradientsStayMonotoneAndDoNotAcquireNewClippedPixels() passed after 1.495 seconds.
+✔ Test persistedLargerPreviewServesBothProgressiveStagesWithoutDecodingOriginal() passed after 1.497 seconds.
+✔ Test boundedSamplingKeepsProgressivePreviewCurvesConsistent() passed after 1.522 seconds.
+✔ Suite "Persistent image previews" passed after 1.538 seconds.
+✔ Suite "Edit rendering" passed after 1.538 seconds.
+✔ Suite "Algorithm evaluation reference controls" passed after 1.538 seconds.
+✔ Suite "LC-03 preregistered comparison controls" passed after 1.538 seconds.
+✔ Test jpegCannotPublishIntoCatalogStagingOrMetadataQuarantine() passed after 1.522 seconds.
+✔ Suite "Asset-bound raw metadata tag editor" passed after 1.538 seconds.
+✔ Test cancelledFixtureGenerationCannotProduceAResult() passed after 1.536 seconds.
+✔ Suite "Semantic native provider contracts" passed after 1.538 seconds.
+✔ Suite "System keychain signing policy" passed after 1.557 seconds.
+✔ Test concurrencyAcrossStoresCannotExceedCountOrBudget() passed after 1.555 seconds.
+✔ Test transparencyUsesWhiteAndRasterIdentityIgnoresFileIdentity() passed after 1.556 seconds.
+✔ Test bitmapProviderKeepsReservationAfterBitmapAndPhaseAreReleased() passed after 1.559 seconds.
+✔ Suite "Frozen algorithm evaluation metrics and decision gates" passed after 1.563 seconds.
+✔ Suite "Packaged semantic resources" passed after 1.564 seconds.
+✔ Test cancellationCannotPublishPreprocessingOrAlterImmutableNativeInput() passed after 1.613 seconds.
+✔ Test inputBoundsAndMissingIndexDoNotPerformInference() passed after 1.612 seconds.
+✔ Test canceledAnalysisStopsBeforeWorkingOnTheBitmap() passed after 1.612 seconds.
+✔ Test comparingCommittedProposalAndOriginalReusesDecodedBaseAndRenderedResults() passed after 1.720 seconds.
+✔ Test cancellationDuringParallelRowsDiscardsThePartialResult() passed after 1.720 seconds.
+✔ Test cancelledProducerLetsTheRemainingWaiterRetry() passed after 1.720 seconds.
+✔ Test quarantineFamilyProtectsLateDirectoriesAndAliasesWithoutBlockingOtherParents() passed after 1.743 seconds.
+✔ Test directoryIdentityRejectsNestedAndAliasedTargetsWithoutPrefixFalsePositives() passed after 1.743 seconds.
+✔ Test jpegRejectsModelDirectoryBeforeDecodeAndPreservesExistingPayload() passed after 1.743 seconds.
+◇ Test orientationIsAppliedOnceAndSizingUsesOrientedDimensions() started.
+✔ Test sixSelfAuthoredFixturesHaveStableNativeInputsMasksAndJobBindings() passed after 1.742 seconds.
+✔ Test jpegRejectsQuarantineFamilyBeforeDecodeAndPreservesExistingPayload() passed after 1.743 seconds.
+✔ Test defaultBatchOnlySuppressesStaleAndChecksBoundsAndCancellation() passed after 1.743 seconds.
+✔ Suite "Algorithm evaluation fixtures" passed after 1.745 seconds.
+✔ Test editingArchiveDirectoriesAndNativeAliasesAreProtected() passed after 1.743 seconds.
+✔ Test defaultOffAndNoConsentNeverReadKeyOrSend() passed after 1.743 seconds.
+✔ Test cancellationCannotPublishPreparedOrAppliedResults() passed after 1.743 seconds.
+◇ Test tamperingAndSelfDeclaredManifestsAreRejected() started.
+✔ Test isolatedPromptHasOnlyAllowedDataAndQuotesUntrustedText() passed after 1.743 seconds.
+✔ Test oneGroupedGenerationUsesAnIsolatedLookPromptAndStrictValidation() passed after 1.743 seconds.
+✔ Test availabilityIsRecheckedAfterEarlierSuccessfulProbe() passed after 1.743 seconds.
+✔ Test unavailableReasonsNeverInvokeGeneration(_:) with 7 test cases passed after 1.743 seconds.
+✔ Test validStructuredOutputIsValidatedAndPreservesOtherControls() passed after 1.743 seconds.
+✔ Test unsupportedOrRefusedOutputNeverReturnsAPatch(_:) with 5 test cases passed after 1.743 seconds.
+✔ Test appleAvailabilityAndErrorCategories() passed after 1.744 seconds.
+✔ Test malformedGuidedResponseIsRejected() passed after 1.744 seconds.
+✔ Test invalidOrPartialGroupedOutputIsNeverFilledOrReturned() passed after 1.744 seconds.
+✔ Test unusedPackedScanlineBitsDoNotChangeNativeRasterHash() passed after 1.744 seconds.
+✔ Test modelCannotBypassIndependentValidator() passed after 1.744 seconds.
+✔ Test ignoredXComponentsNeverChangeNativeRasterHash(_:) with 2 test cases passed after 1.744 seconds.
+✔ Test germanAvailabilityMessagesAreDistinct() passed after 1.744 seconds.
+✔ Test guidedGroupCapabilityQuestionsOverrideInconsistentRecipeStatus() passed after 1.744 seconds.
+✔ Test sourceDateSizeAndMissingRegularFileRejectBeforeModel() passed after 1.744 seconds.
+✔ Test rasterHashCoversPixelsInterpretationAndEnforcesActualBounds() passed after 1.744 seconds.
+◇ Test halfMaskMixesLinearLightAndPremultipliedAlphaWithoutTransparentMatte() started.
+✔ Test overlongInputIsRejectedBeforeRuntimeAndNoRetriesOccur() passed after 1.745 seconds.
+✔ Test invalidAndOversizedResidentRequestsNeverConsumeAdmission() passed after 1.745 seconds.
+✔ Suite "Automatic tone balancing" passed after 1.748 seconds.
+◇ Test concurrentSourcesProduceIndependentResults() started.
+✔ Suite "AI proposal preview reuse" passed after 1.751 seconds.
+✔ Test actuallySentBytesPassThroughIsolatedURLProtocol() passed after 1.753 seconds.
+✔ Test orientationAndProfileDescribeActualPixelsWithoutEXIFPayload() passed after 1.753 seconds.
+✔ Test unavailableArtifactsKeepRealMetadataAndOriginalOnlyEditingUsable(kind:) with 2 test cases passed after 1.754 seconds.
+✔ Test concurrentRequestsShareAnalysisWhileIndependentSourcesProceed() passed after 1.755 seconds.
+✔ Suite "Image generation reproducible fixtures and golden geometry" passed after 1.757 seconds.
+✔ Test alreadyCancelledRequestDoesNotStartRuntime() passed after 1.755 seconds.
+◇ Test dispatchedCrashUncertaintySurvivesReopenAndNoZeroUnknownCosts() started.
+✔ Test cancellationWinsOverALateRuntimeFailure() passed after 1.755 seconds.
+◇ Test sourceAndStoreAndRasterAreAllPreviewIdentityAndResizePreservesFreshness() started.
+✔ Test halfMaskMixesLinearLightAndPremultipliedAlphaWithoutTransparentMatte() passed after 0.010 seconds.
+✔ Test independentlyPreparedImagesRemainDistinctAcrossRapidSelectionChanges() passed after 1.756 seconds.
+✔ Test ambiguousSharedJournalStillBlocksStartupAndMetadataWithUnavailableArtifacts() passed after 1.757 seconds.
+✔ Test readinessFailuresStopBeforeNativeWork(reason:) with 10 test cases passed after 1.761 seconds.
+✔ Test productionNoGoRejectsEveryOperationAndNeverGenerates() passed after 1.761 seconds.
+✔ Test residentBudgetRejectsOversizedModelBeforeNativeLoad() passed after 1.761 seconds.
+✔ Test tamperingAndSelfDeclaredManifestsAreRejected() passed after 0.018 seconds.
+◇ Test actualSentBytesAreTextOnlySanitizedAndFixedAPI() started.
+✔ Test readinessIsRecheckedAfterWaitingForOtherLocalInference() passed after 1.763 seconds.
+✔ Test compositorMemoryPressureRejectsPublicationAndReleasesInferenceAdmission() passed after 1.763 seconds.
+✔ Test responseByteLimitAppliesEvenWithLargerInjectedValidator() passed after 1.763 seconds.
+✔ Test sourceAndStoreAndRasterAreAllPreviewIdentityAndResizePreservesFreshness() passed after 0.007 seconds.
+✔ Suite "Local AI provider adapter" passed after 1.765 seconds.
+✔ Test twoEightBit4096PreviewsFitWhileSixteenBitNeedsRetiredCacheOwnership() passed after 1.764 seconds.
+✔ Test queuedMemoryIsChargedOnlyAtActualGrantAndDuplicateReleaseDoesNotFreeTheNextJob() passed after 1.763 seconds.
+✔ Test opaqueRGBInputExpandsToOpaqueRGBAWhileKeepingPreservedComponents() passed after 1.766 seconds.
+✔ Test explicitModelRemoveUnloadsBeforeMutatingFiles() passed after 1.767 seconds.
+✔ Test malformedBatchCountCannotBecomeSearchResults() passed after 1.768 seconds.
+✔ Suite "Artifact bootstrap preserves independent metadata and original editing" passed after 1.772 seconds.
+✔ Test actualSameSizeReplacementWithRestoredMtimeInvalidatesAllCaches() passed after 1.770 seconds.
+◇ Test fullProviderBodyObservedAtURLSessionHasNoPhotoMetadata() started.
+✔ Test actualSuggestorSourceWithOptionalNativeEvidenceMissingIsAcceptedByRealStore() passed after 1.769 seconds.
+✔ Test cancelAllCanRepeatAndStillRetainsNonCooperativeProviderSlot() passed after 1.771 seconds.
+✔ Test dispatchedCrashUncertaintySurvivesReopenAndNoZeroUnknownCosts() passed after 0.015 seconds.
+✔ Test explicitFreshnessMissesAnalysisDecodeAndRenderDespiteIdenticalNativeStamp() passed after 1.770 seconds.
+✔ Test unsupportedAndUnverifiedClaimsNeverReachNativeWork() passed after 1.772 seconds.
+✔ Test validatesAndBindsResultsToEachSharedRequest() passed after 1.772 seconds.
+✔ Test lookGroupSharesOneCallAndBindsEachOriginalRequest() passed after 1.772 seconds.
+✔ Test modeAndCapabilityChecksPrecedeAnyProviderWork() passed after 1.772 seconds.
+✔ Suite "Artifact preview identity and real native ownership" passed after 1.775 seconds.
+◇ Test premultipliedNativeInputsHaveADefinedStraightComparisonRaster() started.
+✔ Test cancelledWaiterDoesNotCancelOrRemoveTheSharedAnalysis() passed after 1.773 seconds.
+✔ Test committedActivationRegistersEvenWhenCancellationRacesCommitReturn() passed after 1.772 seconds.
+✔ Test cancelledRebuildPreservesOldGenerationAndLeaseUntilNativeReturn() passed after 1.773 seconds.
+◇ Test extraCheckpointLinksAndTraversalAreRejected() started.
+✔ Test deadlineDropsLateResultAndKeepsNativeLease() passed after 1.779 seconds.
+✔ Test metadataWaitsForActualCanceledVisionReturnAndPerformsOneTypedRequest() passed after 1.778 seconds.
+✔ Test singleAndLookModesNeverCoalesceAndKeepTheSameWorkerSlot() passed after 1.779 seconds.
+✔ Test premultipliedNativeInputsHaveADefinedStraightComparisonRaster() passed after 0.010 seconds.
+✔ Test originalCoalescesAndCachesAcrossSlidersButRebindsObservers() passed after 1.781 seconds.
+◇ Test rgbUsesFourNativeChannelsAndStrideIsAlignedAndActualOutputIsChecked() started.
+✔ Suite "Reusable automatic tone analysis" passed after 1.786 seconds.
+✔ Test interactiveWorkPassesQueuedIndexWorkWithoutPreemptingActiveLease() passed after 1.786 seconds.
+✔ Test newerContextSupersedesRunningCallerAndQueuedCancellationIsImmediate() passed after 1.785 seconds.
+✔ Test cancelledWaiterCannotStrandResidentBytesOrDelayInteractiveWork() passed after 1.785 seconds.
+✔ Test invalidGroupPublishesNoPartialResultAndReleasesTheSharedBudget() passed after 1.786 seconds.
+✔ Test invalidDimensionsAndCorruptOutputAreRejectedAndReleaseAdmission() passed after 1.787 seconds.
+✔ Test rejectsInvalidInputsUnsupportedCapabilityAndUnavailableProvider() passed after 1.786 seconds.
+✔ Test sharedInferenceSurvivesOneCancelledWaiter() passed after 1.786 seconds.
+✔ Test revokedSelectionAndMismatchedOutputTokensCannotPublish() passed after 1.787 seconds.
+◇ Test predispatchReleaseAndReportedPriceReconciliation() started.
+✔ Test batchesSinglesAndPreparationShareTwoSlotsUntilActualReturn() passed after 1.786 seconds.
+✔ Suite "Metadata and image analysis share one actual worker" passed after 1.789 seconds.
+✔ Test cancellationOfOneObserverPreservesSharedActualInference() passed after 1.785 seconds.
+✔ Test changedDuringNativeImageWorkCannotCommit() passed after 1.787 seconds.
+✔ Test cancelledGenerationCannotRemoveReplacementWithIdenticalContext() passed after 1.788 seconds.
+✔ Test sharedBudgetRetainsLeaseAcrossCoordinatorsUntilProviderActuallyReturns() passed after 1.788 seconds.
+✔ Suite "Shared semantic inference priority" passed after 1.792 seconds.
+✔ Test scopeValidationKeepsEquivalentURLsAndRejectsEachChangedSourceField() passed after 1.788 seconds.
+✔ Test extraCheckpointLinksAndTraversalAreRejected() passed after 0.016 seconds.
+✔ Suite "Local AI resident admission accounting" passed after 1.794 seconds.
+✔ Test malformedResponsesDoNotCacheAndInvalidationDoesNotFreeActualSlot() passed after 1.791 seconds.
+✔ Test globalBudgetSerializesIndependentServicesThroughActualReturn() passed after 1.792 seconds.
+◇ Test gradientAndAsymmetricRowsMatchEveryAvailableCoreImageBackend() started.
+✔ Test cancellationRetainsSharedAdmissionUntilActualReturnAndOnlyNewestWaiterRuns() passed after 1.797 seconds.
+✔ Test failureInvalidResponseAndNoChangeAllReleaseLease() passed after 1.798 seconds.
+✔ Test cancellingBudgetWaiterDoesNotLeakAdmissionOrStartProvider() passed after 1.798 seconds.
+✔ Test rgbUsesFourNativeChannelsAndStrideIsAlignedAndActualOutputIsChecked() passed after 0.014 seconds.
+✔ Test actualSentBytesAreTextOnlySanitizedAndFixedAPI() passed after 0.035 seconds.
+✔ Test invalidProviderVectorIsNeverCached() passed after 1.797 seconds.
+✔ Test sourceMutationDuringInferenceRejectsAndCacheReplacementRecomputes() passed after 1.796 seconds.
+✔ Test installationFingerprintMismatchCannotReuseOldIndexOrCache() passed after 1.797 seconds.
+✔ Test explicitCorruptIndexRebuildPreservesBytesAndReportsQuarantine() passed after 1.798 seconds.
+◇ Test sourceHardlinksAreRejectedWithoutChangingTheirTargets() started.
+✔ Test catalogEpochRejectsLateQueriesAndOlderOrForeignSnapshots() passed after 1.800 seconds.
+✔ Test staleAvailabilityCannotOverwriteNewInstallationState() passed after 1.800 seconds.
+✔ Test predispatchReleaseAndReportedPriceReconciliation() passed after 0.015 seconds.
+✔ Test fullProviderBodyObservedAtURLSessionHasNoPhotoMetadata() passed after 0.031 seconds.
+✔ Test alreadyCancelledStatusCannotInvalidateLiveStatus() passed after 1.802 seconds.
+✔ Test alreadyCancelledSearchCannotInvalidateActualQuery() passed after 1.803 seconds.
+◇ Test boundedRetryReportsLiveReadersWithoutDroppingTheirReservation() started.
+◇ Test optionalWorkspaceIsFrozenIntoConsentAndRequest(_:) started.
+✔ Test orientationIsAppliedOnceAndSizingUsesOrientedDimensions() passed after 0.064 seconds.
+◇ Test case passing 1 argument workspace → nil to optionalWorkspaceIsFrozenIntoConsentAndRequest(_:) started.
+✔ Test editedEpochAndSourceChangesNeverReuseOriginalResults() passed after 1.805 seconds.
+◇ Test ledgerFailurePreventsPaidDispatch() started.
+◇ Test oversizedContentLengthOrChunksAreRejected(_:) started.
+✔ Test exactQueryDeduplicatesAndCancellingOneWaiterKeepsNativeLease() passed after 1.807 seconds.
+✔ Test sourceHardlinksAreRejectedWithoutChangingTheirTargets() passed after 0.007 seconds.
+✔ Test imageEncoderIntegrityFailureRemainsUnavailableUntilReimport(_:) with 2 test cases passed after 1.808 seconds.
+◇ Test case passing 1 argument header → true to oversizedContentLengthOrChunksAreRejected(_:) started.
+✔ Test cancelledOnlyWaiterDoesNotStartReplacementBeforeActualReturn() passed after 1.808 seconds.
+✔ Test statusImportAndRestartPublishOnlyUsableModelMetadata() passed after 1.808 seconds.
+◇ Test profilesConvertActualPixelsAndTransparencyBecomesWhite() started.
+◇ Test compilerCacheHardlinksBecomePrivateRuntimeFiles() started.
+✔ Test ledgerFailurePreventsPaidDispatch() passed after 0.003 seconds.
+✔ Test installationHoldsSharedLeaseUntilNoncooperativeCompilerReturns() passed after 1.811 seconds.
+✔ Test resultCacheRespectsEntryByteBoundsAndLRU() passed after 1.811 seconds.
+◇ Test foreignEditDatabaseSymlinkOrHardlinkNeverMutatesOrUploads(_:) started.
+◇ Test case passing 1 argument symbolic → true to foreignEditDatabaseSymlinkOrHardlinkNeverMutatesOrUploads(_:) started.
+◇ Test case passing 1 argument workspace → "wrkspc_01JwQvzr7rXLA5AGx3HKfFUJ" to optionalWorkspaceIsFrozenIntoConsentAndRequest(_:) started.
+✔ Test missingAndChangedSourcesPreserveRowsWithoutBecomingHits() passed after 1.820 seconds.
+✔ Test unavailableReasonsStopBeforePreparationAndInference() passed after 1.820 seconds.
+✔ Test deleteAndShutdownWaitForNativeReturnAndShutdownIsReusable() passed after 1.821 seconds.
+◇ Test case passing 1 argument symbolic → false to foreignEditDatabaseSymlinkOrHardlinkNeverMutatesOrUploads(_:) started.
+✔ Test strongSourceChangesAndRemovedCandidatesCannotAppear() passed after 1.846 seconds.
+✔ Test foreignEditDatabaseSymlinkOrHardlinkNeverMutatesOrUploads(_:) with 2 test cases passed after 0.028 seconds.
+◇ Test case passing 1 argument header → false to oversizedContentLengthOrChunksAreRejected(_:) started.
+✔ Test optionalWorkspaceIsFrozenIntoConsentAndRequest(_:) with 2 test cases passed after 0.041 seconds.
+◇ Test foreignRegularSQLiteAndExistingEmptyFileAreNeverInitialized() started.
+✔ Test compilerCacheHardlinksBecomePrivateRuntimeFiles() passed after 0.040 seconds.
+◇ Test changingWorkspaceRevokesFrozenConsentAndInvalidWorkspaceCannotUpload() started.
+✔ Test boundedRetryReportsLiveReadersWithoutDroppingTheirReservation() passed after 0.046 seconds.
+✔ Test nativeRenameTransfersConfirmedTextExactlyOnceAfterRestart() passed after 1.855 seconds.
+✔ Test oversizedContentLengthOrChunksAreRejected(_:) with 2 test cases passed after 0.046 seconds.
+◇ Test changedReviewOrDiskShortagePreservesPreviousGeneration() started.
+◇ Test retiringAdjustedCacheCannotReleaseActiveNativeImageOwnership() started.
+✔ Test foreignRegularSQLiteAndExistingEmptyFileAreNeverInitialized() passed after 0.010 seconds.
+◇ Test nativeRelocationAcceptsHistoricalRootAliasesWithoutRewritingIdentity() started.
+◇ Test timeoutIsSanitizedAndNoRetry() started.
+✔ Test changingWorkspaceRevokesFrozenConsentAndInvalidWorkspaceCannotUpload() passed after 0.011 seconds.
+◇ Test unknownOwnedSchemaOrVersionRejectedWithoutMutation(_:) started.
+✔ Test twentyRapidRequestsKeepOnlyLatestQueuedAndRetainCancelledSlot() passed after 1.864 seconds.
+✔ Test twentyContextsKeepNoncooperativeSlotAndOnlyLatestQueuedContext() passed after 1.862 seconds.
+✔ Test twentyLookRequestsRemainBoundedAfterCancellation() passed after 1.864 seconds.
+◇ Test case passing 1 argument modification → "PRAGMA user_version=99" to unknownOwnedSchemaOrVersionRejectedWithoutMutation(_:) started.
+MaskCompositor: 8 Core Image fixture comparisons, 0 unavailable backend runs.
+✔ Suite "Image analysis bounded scheduler" passed after 1.869 seconds.
+◇ Test exactFrozenRequestAndOneShotGrant() started.
+✔ Test gradientAndAsymmetricRowsMatchEveryAvailableCoreImageBackend() passed after 0.073 seconds.
+◇ Test case passing 1 argument modification → "PRAGMA application_id=0" to unknownOwnedSchemaOrVersionRejectedWithoutMutation(_:) started.
+✔ Test timeoutIsSanitizedAndNoRetry() passed after 0.009 seconds.
+✔ Test damagedMiddlePhotoDoesNotBlockLaterValidPhotosOrMixSpaces(_:) with 2 test cases passed after 1.872 seconds.
+◇ Test case passing 1 argument modification → "CREATE TABLE foreign_table(secret TEXT)" to unknownOwnedSchemaOrVersionRejectedWithoutMutation(_:) started.
+◇ Test candidateProfileConversionAndAutomaticFallbackKeepTheOutputContract() started.
+✔ Test profilesConvertActualPixelsAndTransparencyBecomesWhite() passed after 0.063 seconds.
+✔ Test exactFrozenRequestAndOneShotGrant() passed after 0.007 seconds.
+✔ Test candidateProfileConversionAndAutomaticFallbackKeepTheOutputContract() passed after 0.001 seconds.
+◇ Test cancellationFinishesWaitingTransport() started.
+◇ Test savedEditsUseTheSameGraphAsThePreview() started.
+◇ Test revocationAndConfigurationInvalidateConsent() started.
+◇ Test veryLowAlphaAndMixedProfilesStayWithinSixteenBitTolerance() started.
+◇ Test case passing 1 argument modification → "CREATE TABLE sqliteXforeign(secret TEXT)" to unknownOwnedSchemaOrVersionRejectedWithoutMutation(_:) started.
+✔ Test changedReviewOrDiskShortagePreservesPreviousGeneration() passed after 0.029 seconds.
+✔ Test explicitIndexUsesOneImageJobAndFindsPairedGermanEnglishWithoutNames() passed after 1.883 seconds.
+✔ Test unknownOwnedSchemaOrVersionRejectedWithoutMutation(_:) with 4 test cases passed after 0.021 seconds.
+✔ Test unusableOrFuturePreferencesFallBackToSafeDefaults(_:) with 4 test cases passed after 1.886 seconds.
+✔ Test partialOlderPreferencesKeepValidFieldsAndScopeDefaults() passed after 1.886 seconds.
+✔ Test resetOnlyChangesTheActiveLayoutAndPreservesFocusReturn() passed after 1.886 seconds.
+✔ Test restartRestoresEachWorkspaceAndFocusReturnDestination() passed after 1.886 seconds.
+✔ Test invalidDirectAssignmentsCannotPoisonGeometryOrSubsequentPersistence() passed after 1.886 seconds.
+✔ Test filmstripClampingDoesNotOverwritePreferredHeightOrHiddenState() passed after 1.886 seconds.
+✔ Test repeatedFocusEntryDoesNotReplaceOriginOrNormalPanelPreferences() passed after 1.886 seconds.
+✔ Test transientWindowGeometryProducesFiniteNonnegativeSizes(_:) with 6 test cases passed after 1.886 seconds.
+✔ Test smallWindowReservesImageWidthAndLaterRestoresRequestedPanelWidths() passed after 1.886 seconds.
+✔ Test accordionAndDirectRevealOperateWithinCurrentWorkspace() passed after 1.886 seconds.
+✔ Test preferenceUpdatePublishesTheNormalizedLayoutOnce() passed after 1.886 seconds.
+✔ Test veryLowAlphaAndMixedProfilesStayWithinSixteenBitTolerance() passed after 0.014 seconds.
+✔ Suite "Workspace layout preferences" passed after 1.894 seconds.
+✔ Test revocationAndConfigurationInvalidateConsent() passed after 0.016 seconds.
+◇ Test cancellationDuringNoncooperativeCompilePreservesPreviousModel() started.
+✔ Test cancellationFinishesWaitingTransport() passed after 0.018 seconds.
+◇ Test invalidPersistedRowsCannotReleaseBudget(_:) started.
+◇ Test case passing 1 argument modification → "amount=-1" to invalidPersistedRowsCannotReleaseBudget(_:) started.
+◇ Test canvasErrorsAndMemoryAdmissionLeaveSourcesUntouched() started.
+◇ Test withdrawingOldConsentCannotRevokeNewPrompt() started.
+◇ Test case passing 1 argument modification → "amount=0" to invalidPersistedRowsCannotReleaseBudget(_:) started.
+◇ Test redirectIsRejectedWithoutCredentialForwarding() started.
+✔ Test canvasErrorsAndMemoryAdmissionLeaveSourcesUntouched() passed after 0.002 seconds.
+✔ Test nonCooperativeProviderLeavesMainActorResponsive() passed after 1.906 seconds.
+✔ Test persistedLibraryLoadsWithUserMetadata() passed after 1.827 seconds.
+✔ Test exportFreezesEditingSettingsOptionsAndDestination() passed after 1.819 seconds.
+✔ Test editBackupCannotReplaceMetadataOrWriteInsideCatalogStage() passed after 1.897 seconds.
+◇ Test case passing 1 argument modification → "amount=9223372036854775807" to invalidPersistedRowsCannotReleaseBudget(_:) started.
+✔ Test twentyRapidQueriesRetainActualAndOnlyLatestPending() passed after 1.911 seconds.
+✔ Suite "AI request scheduling" passed after 1.915 seconds.
+◇ Test oneOwnershipCannotUnderchargeTwoDistinctInputAllocations() started.
+✔ Suite "Metadata managed-file protection" passed after 1.916 seconds.
+✔ Test successRequiresBothStoresToFinish() passed after 1.914 seconds.
+✔ Test failureAndCallerCancellationStillWaitForBothStores(catalogFails:) with 2 test cases passed after 1.914 seconds.
+✔ Test selectedPhotoRoundTripNeverRevivesSnapshotOrMutatesUndoAndStore() passed after 1.914 seconds.
+◇ Test overlappingImportsRemainUniqueAndBrowseable(childFirst:) started.
+◇ Test cancelKeepsLifecycleOpenUntilExporterActuallyStops() started.
+✔ Test withdrawingOldConsentCannotRevokeNewPrompt() passed after 0.012 seconds.
+◇ Test case passing 1 argument modification → "state='unknown'" to invalidPersistedRowsCannotReleaseBudget(_:) started.
+✔ Test oneOwnershipCannotUnderchargeTwoDistinctInputAllocations() passed after 0.001 seconds.
+◇ Test case passing 1 argument childFirst → true to overlappingImportsRemainUniqueAndBrowseable(childFirst:) started.
+✔ Suite "Concurrent termination persistence" passed after 1.918 seconds.
+✔ Test cancellationDuringNoncooperativeCompilePreservesPreviousModel() passed after 0.025 seconds.
+✔ Test metadataFailureStillWaitsForCatalogAndEditsAfterCallerCancellation() passed after 1.918 seconds.
+✔ Test redirectIsRejectedWithoutCredentialForwarding() passed after 0.014 seconds.
+✔ Test plainClickReplacesSelectionAndCommandClickTogglesMembership() passed after 1.920 seconds.
+◇ Test case passing 1 argument modification → "input_tokens=-1" to invalidPersistedRowsCannotReleaseBudget(_:) started.
+◇ Test manualUndoRedoAndNeutralResetInvalidateEqualSettings() started.
+◇ Test staleSettingsMutationAndRevokeCannotReplaceNewConfiguration() started.
+✔ Suite "Termination drains accepted metadata independently" passed after 1.926 seconds.
+✔ Suite "Bounded Cloud HTTP" passed after 1.927 seconds.
+◇ Test automaticAdmissionUsesCPUWhenNativeTextureScratchDoesNotFit() started.
+◇ Test case passing 1 argument modification → "output_tokens=2401" to invalidPersistedRowsCannotReleaseBudget(_:) started.
+◇ Test unrelatedUUIDGenerationIsNeverRemoved() started.
+✔ Test nativeRelocationAcceptsHistoricalRootAliasesWithoutRewritingIdentity() passed after 0.073 seconds.
+◇ Test removingActiveImageUsesFirstRemainingVisibleSelection() started.
+◇ Test case passing 1 argument modification → "pricing='unknown'" to invalidPersistedRowsCannotReleaseBudget(_:) started.
+✔ Test backupCannotReplaceIndexOrWriteIntoInstalledModel() passed after 1.941 seconds.
+◇ Test case passing 1 argument modification → "maximum_output=0" to invalidPersistedRowsCannotReleaseBudget(_:) started.
+✔ Test staleSettingsMutationAndRevokeCannotReplaceNewConfiguration() passed after 0.019 seconds.
+✔ Suite "Semantic managed-file destination protection" passed after 1.946 seconds.
+✔ Test invalidPersistedRowsCannotReleaseBudget(_:) with 8 test cases passed after 0.049 seconds.
+◇ Test twoBookmarkRelocationsAfterRestartRetainOriginalProvenance() started.
+◇ Test missingKeyReleasesReservationWithoutUpload() started.
+◇ Test hotJournalIsPreservedAndNeverReinitializesLedger() started.
+✔ Test hotJournalIsPreservedAndNeverReinitializesLedger() passed after 0.019 seconds.
+✔ Test unrelatedUUIDGenerationIsNeverRemoved() passed after 0.036 seconds.
+◇ Test orphanJournalDoesNotInitializeNewLedger() started.
+◇ Test mutationOfEarlierVerifiedFileIsRejectedAfterWholeTreeVerification() started.
+✔ Test missingKeyReleasesReservationWithoutUpload() passed after 0.024 seconds.
+✔ Test orphanJournalDoesNotInitializeNewLedger() passed after 0.001 seconds.
+✔ Test mutationOfEarlierVerifiedFileIsRejectedAfterWholeTreeVerification() passed after 0.005 seconds.
+◇ Test revokeWhileKeyReadBlocksPreventsResumeAndReleases() started.
+◇ Test failedInitializationRemovesOnlyItsNewEmptyFile() started.
+✔ Test failedInitializationRemovesOnlyItsNewEmptyFile() passed after 0.002 seconds.
+◇ Test boundedMetadataReadRejectsOversizedRegularFiles() started.
+✔ Test boundedMetadataReadRejectsOversizedRegularFiles() passed after 0.002 seconds.
+◇ Test laterHardlinkIsRejectedByAlreadyOpenStore() started.
+✔ Test laterHardlinkIsRejectedByAlreadyOpenStore() passed after 0.002 seconds.
+◇ Test explicitReimportRepairsMetadataAndPreservesUnvalidatedGeneration() started.
+✔ Suite "Cloud usage reservations" passed after 1.990 seconds.
+✔ Test concurrentSourcesProduceIndependentResults() passed after 0.265 seconds.
+✔ Test sharedRenderSurvivesOneCancelledWaiter() passed after 2.014 seconds.
+✔ Test revokeWhileKeyReadBlocksPreventsResumeAndReleases() passed after 0.037 seconds.
+◇ Test interactiveAndBackgroundPathsPreserveWideGamutAlphaAndSixteenBitOutput() started.
+◇ Test cancelAndRevokeAfterDispatchRetainUnknownCosts() started.
+✔ Test explicitReimportRepairsMetadataAndPreservesUnvalidatedGeneration() passed after 0.027 seconds.
+◇ Test pointerAliasesNeverModifyForeignTargetOrUnknownGeneration() started.
+✔ Test cancelAndRevokeAfterDispatchRetainUnknownCosts() passed after 0.020 seconds.
+◇ Test HTTPFailuresAreTypedAndNeverRetried(_:) started.
+◇ Test case passing 1 argument status → 400 to HTTPFailuresAreTypedAndNeverRetried(_:) started.
+◇ Test case passing 1 argument status → 401 to HTTPFailuresAreTypedAndNeverRetried(_:) started.
+◇ Test case passing 1 argument status → 402 to HTTPFailuresAreTypedAndNeverRetried(_:) started.
+◇ Test case passing 1 argument status → 403 to HTTPFailuresAreTypedAndNeverRetried(_:) started.
+✔ Test pointerAliasesNeverModifyForeignTargetOrUnknownGeneration() passed after 0.040 seconds.
+◇ Test cancellationAfterPublicationStillReturnsCommittedGeneration() started.
+◇ Test case passing 1 argument status → 404 to HTTPFailuresAreTypedAndNeverRetried(_:) started.
+◇ Test case passing 1 argument status → 413 to HTTPFailuresAreTypedAndNeverRetried(_:) started.
+✔ Test runningLargerDecodeIsSharedAndOneCancelledWaiterDoesNotCancelOthers() passed after 2.071 seconds.
+◇ Test case passing 1 argument status → 429 to HTTPFailuresAreTypedAndNeverRetried(_:) started.
+✔ Test savedEditsUseTheSameGraphAsThePreview() passed after 0.202 seconds.
+◇ Test qualityAffectsCompressionAndPixelError() started.
+◇ Test case passing 1 argument status → 500 to HTTPFailuresAreTypedAndNeverRetried(_:) started.
+✔ Test twoBookmarkRelocationsAfterRestartRetainOriginalProvenance() passed after 0.136 seconds.
+◇ Test crashBoundaryRecoveryUsesPersistedBytes(_:) started.
+◇ Test case passing 1 argument checkpoint → .afterMetadataStage to crashBoundaryRecoveryUsesPersistedBytes(_:) started.
+◇ Test case passing 1 argument status → 529 to HTTPFailuresAreTypedAndNeverRetried(_:) started.
+✔ Test HTTPFailuresAreTypedAndNeverRetried(_:) with 9 test cases passed after 0.057 seconds.
+◇ Test strictPatchInvalidRefusedAndTruncatedStillSettleUsage() started.
+✔ Test cancellationAfterPublicationStillReturnsCommittedGeneration() passed after 0.037 seconds.
+◇ Test modifiedInstallationMetadataFailsClosedOnReopen() started.
+✔ Test strongEdgeDoesNotGainAVisibleLightOrDarkRim() passed after 2.110 seconds.
+✔ Test strictPatchInvalidRefusedAndTruncatedStillSettleUsage() passed after 0.022 seconds.
+◇ Test malformedAndOversizedResponseUnknownCost() started.
+✔ Test modifiedInstallationMetadataFailsClosedOnReopen() passed after 0.027 seconds.
+✔ Suite "Semantic model installation" passed after 2.124 seconds.
+✔ Test cancelledDecoderRetainsItsSlotUntilItActuallyReturns() passed after 2.130 seconds.
+✔ Test malformedAndOversizedResponseUnknownCost() passed after 0.017 seconds.
+◇ Test noVisionNoCloudLooksAndTextInputBound() started.
+✔ Test noVisionNoCloudLooksAndTextInputBound() passed after 0.001 seconds.
+✔ Suite "Optional Cloud provider" passed after 2.135 seconds.
+✔ Test sourceStampChunksCoverEveryCandidateAndFreshFinalHit() passed after 2.136 seconds.
+✔ Test normalizedTextCacheIsBoundedAndIndependentOfCandidateOrder() passed after 2.140 seconds.
+✔ Suite "Semantic service scheduling, source identity and maintenance" passed after 2.144 seconds.
+✔ Test failedRenderReleasesWorkerAndCanBeRetried() passed after 2.144 seconds.
+✔ Test selectedEditRunsBeforeQueuedThumbnails() passed after 2.144 seconds.
+✔ Test cancelledGenerationCannotRemoveItsReplacementWaiter() passed after 2.144 seconds.
+✔ Test selectedPhotoUsesReservedSlotAheadOfQueuedThumbnails() passed after 2.143 seconds.
+✔ Test cancelledRenderRetainsSlotAndObsoleteQueuedEditsNeverRun() passed after 2.144 seconds.
+✔ Test selectedRenderingOverlapsOneThumbnailWithoutExceedingTwoWorkers() passed after 2.144 seconds.
+✔ Suite "Adjusted preview scheduling" passed after 2.146 seconds.
+✔ Test largerPreviewIsReusedButChangedFileIsNot() passed after 2.143 seconds.
+✔ Suite "Preview scheduling" passed after 2.145 seconds.
+✔ Test nativeRevisionSeparatesMemoryRenderAndDiskKeysWhileDefaultStaysCompatible() passed after 2.145 seconds.
+✔ Suite "Image analysis exact bounded raster" passed after 2.148 seconds.
+✔ Test retiringAdjustedCacheCannotReleaseActiveNativeImageOwnership() passed after 0.288 seconds.
+◇ Test sameSource1536To2400RetiresInsufficientCacheWithoutLargeAllocations() started.
+✔ Test sameSource1536To2400RetiresInsufficientCacheWithoutLargeAllocations() passed after 0.014 seconds.
+✔ Suite "Artifact preview bounded admission" passed after 2.166 seconds.
+✔ Test hardOutputLimitIncludesNeutralAndCacheIdentityUsesActualSize() passed after 2.178 seconds.
+◇ Test resizingPreservesProfileAlphaAndAsymmetricGeometry() started.
+✔ Test resizingPreservesProfileAlphaAndAsymmetricGeometry() passed after 0.009 seconds.
+◇ Test sixteenBitSDRAndGrayscaleUseTheExistingPreviewColorContract(grayscale:) started.
+◇ Test case passing 1 argument grayscale → false to sixteenBitSDRAndGrayscaleUseTheExistingPreviewColorContract(grayscale:) started.
+◇ Test case passing 1 argument checkpoint → .afterCatalogPublish to crashBoundaryRecoveryUsesPersistedBytes(_:) started.
+✔ Test interactiveAndBackgroundPathsPreserveWideGamutAlphaAndSixteenBitOutput() passed after 0.203 seconds.
+◇ Test cancelledRenderDoesNotPoisonFollowingRequest() started.
+◇ Test case passing 1 argument grayscale → true to sixteenBitSDRAndGrayscaleUseTheExistingPreviewColorContract(grayscale:) started.
+✔ Test crashBoundaryRecoveryUsesPersistedBytes(_:) with 2 test cases passed after 0.194 seconds.
+◇ Test destinationTombstoneCreatesResolvableBarrierWithoutMerging() started.
+✘ Test expirationDuringFinalCurrentTokenLookupCannotPublishAfterTimerWasCancelled() recorded an issue at ImageGenerationServiceTests.swift:294:48: Issue recorded
+↳ Expected .timedOut
+✘ Test expirationDuringFinalCurrentTokenLookupCannotPublishAfterTimerWasCancelled() failed after 2.307 seconds with 1 issue.
+✔ Test sixteenBitSDRAndGrayscaleUseTheExistingPreviewColorContract(grayscale:) with 2 test cases passed after 0.124 seconds.
+◇ Test downsampledSemitransparentEdgeKeepsPremultiplicationWithoutDarkFringes() started.
+✔ Test cancelledRenderDoesNotPoisonFollowingRequest() passed after 0.134 seconds.
+✔ Suite "Reusable edit rendering sessions" passed after 2.354 seconds.
+✔ Test downsampledSemitransparentEdgeKeepsPremultiplicationWithoutDarkFringes() passed after 0.046 seconds.
+◇ Test cardsShareExistingDevelopedBaseAndEnforceBytesIncludingViewReferences() started.
+✔ Test destinationTombstoneCreatesResolvableBarrierWithoutMerging() passed after 0.103 seconds.
+◇ Test confirmedTextsFilterBeforeSemanticAndDraftsRemainInvisible() started.
+✔ Test qualityAffectsCompressionAndPixelError() passed after 0.579 seconds.
+◇ Test overwriteRequiresApprovalAndNeverChangesTheOriginal() started.
+◇ Test case passing 1 argument reverse → true to decodedAliasesPreserveTreeFiltersAndStoredIdentity(reverse:) started.
+✔ Test overwriteRequiresApprovalAndNeverChangesTheOriginal() passed after 0.015 seconds.
+◇ Test protectedOriginalsRejectHardlinksSymlinksAndDirectoryAliases() started.
+✔ Test protectedOriginalsRejectHardlinksSymlinksAndDirectoryAliases() passed after 0.005 seconds.
+◇ Test invalidSourceMemoryLimitsAndCancellationLeaveDestinationIntact() started.
+✔ Test invalidSourceMemoryLimitsAndCancellationLeaveDestinationIntact() passed after 0.002 seconds.
+◇ Test concurrentIndependentExportersCannotClobberAnUnapprovedDestination() started.
+✔ Test defaultLocalKeyOperationsNeverPutSecretIntoPreferences() passed after 2.696 seconds.
+◇ Test localFailureNeverFallsBackEvenWhenCloudEnabledAndKeySaved() started.
+✔ Test cancelKeepsLifecycleOpenUntilExporterActuallyStops() passed after 0.782 seconds.
+◇ Test lateCancellationReportsAFileThatAlreadyCommitted() started.
+✔ Test automaticAdmissionUsesCPUWhenNativeTextureScratchDoesNotFit() passed after 0.832 seconds.
+◇ Test largeCanvasIsRefusedBeforeNativeInputIsRead() started.
+✔ Test largeCanvasIsRefusedBeforeNativeInputIsRead() passed after 0.001 seconds.
+◇ Test cancelledWorkDoesNotPublishAndNativeProviderKeepsOutputCharged() started.
+✔ Test cancelledWorkDoesNotPublishAndNativeProviderKeepsOutputCharged() passed after 0.005 seconds.
+✔ Suite "Immutable, color-correct mask composition" passed after 2.764 seconds.
+✔ Test previewComparisonsAndDiscardNeverEditOrSave() passed after 2.823 seconds.
+◇ Test acceptanceFinishesGestureCreatesExactlyOneStepAndSurvivesUICancellation() started.
+✔ Test removingActiveImageUsesFirstRemainingVisibleSelection() passed after 0.961 seconds.
+◇ Test commandClickCanClearTheLastImageWithoutAutomaticReselection() started.
+✔ Test workspaceChangePersistsValidIDAndRequiresNewConsent() passed after 2.911 seconds.
+◇ Test workspaceRejectsInvalidOrHeaderUnsafeInput(_:) started.
+◇ Test case passing 1 argument input → "wrkspc_" to workspaceRejectsInvalidOrHeaderUnsafeInput(_:) started.
+✔ Test lateCancellationReportsAFileThatAlreadyCommitted() passed after 0.230 seconds.
+◇ Test overwriteRequiresExplicitConfirmationAndRetriesTheFrozenRequest() started.
+✔ Test acceptedCommitSurvivesObserverCancelSelectionAndClosingAndIsOneUndo() passed after 2.998 seconds.
+◇ Test pendingParentFlushIsExactAndArtifactDoesNotApplyItsSlidersTwice() started.
+✔ Test manualUndoRedoAndNeutralResetInvalidateEqualSettings() passed after 1.075 seconds.
+◇ Test refreshInvalidatesImmediatelyAndCapturesUpdatedSourceMetadata() started.
+✔ Test originalIsExplicitReadOnlyAndSurvivesManualSliderChanges() passed after 3.009 seconds.
+◇ Test requestDisplayDiscardAndModeSwitchDoNotWriteOrCreateUndo() started.
+◇ Test case passing 1 argument input → "wrkspc_invalid-value" to workspaceRejectsInvalidOrHeaderUnsafeInput(_:) started.
+✔ Test loadsExistingRevisionsAndDebouncesLatestValuesPerImage() passed after 3.060 seconds.
+◇ Test dragUndoRedoAndResetRemainIndependentPerImage() started.
+✔ Test concurrentIndependentExportersCannotClobberAnUnapprovedDestination() passed after 0.438 seconds.
+◇ Test cancellationAndFailureAfterEncodingPreserveDestinationAndRemoveTemporaryOutput() started.
+✔ Test literalAndEmptySemanticQueriesNeverRequestEmbeddingsOrIndex() passed after 3.147 seconds.
+◇ Test everyANDFilterRunsBeforeTopKAndRemovedAssetsCannotBeHits() started.
+◇ Test case passing 1 argument input → "wrkspc_ä" to workspaceRejectsInvalidOrHeaderUnsafeInput(_:) started.
+✔ Test localFailureNeverFallsBackEvenWhenCloudEnabledAndKeySaved() passed after 0.453 seconds.
+◇ Test activeLedgerCannotBeOverwrittenByBackupDestination() started.
+✔ Test cancellationAndFailureAfterEncodingPreserveDestinationAndRemoveTemporaryOutput() passed after 0.034 seconds.
+◇ Test refreshedOriginalIdentityRejectsAnAliasCreatedDuringRendering() started.
+✔ Test refreshedOriginalIdentityRejectsAnAliasCreatedDuringRendering() passed after 0.020 seconds.
+➜ Test explicitlySuppliedCameraRAWExportsAtFullSizeAndAsEditedP3() skipped.
+◇ Test delayedAcceptedImportProtectsAnOpenDialogAndOverwriteRetry(overwritePrompt:) started.
+◇ Test case passing 1 argument overwritePrompt → false to delayedAcceptedImportProtectsAnOpenDialogAndOverwriteRetry(overwritePrompt:) started.
+✔ Test cardsShareExistingDevelopedBaseAndEnforceBytesIncludingViewReferences() passed after 0.860 seconds.
+◇ Test defaultBudgetRejectsOversizedRasterReferencesAndCannotBeRaised() started.
+✔ Test decodedAliasesPreserveTreeFiltersAndStoredIdentity(reverse:) with 2 test cases passed after 3.235 seconds.
+◇ Test refreshAndParentOwnershipUseTheSameAliasComparison(reverse:) started.
+◇ Test case passing 1 argument reverse → false to refreshAndParentOwnershipUseTheSameAliasComparison(reverse:) started.
+✔ Test rawTagLinesSurviveSectionRemountWithoutAnotherWriteOrInference() passed after 3.284 seconds.
+◇ Test rawTagTextResetsForNewProposalAssetAndSourceEvenWithIdenticalTags() started.
+✔ Test globalBackendChangesAreCompositedBeforePublicationForAllSixNativeMasks() passed after 3.316 seconds.
+✘ Suite "Image generation fail-closed and native resource lifecycle" failed after 3.318 seconds with 1 issue.
+✔ Test identicalFrozen768DVectorsHavePageIndependentScoresAndStableTopK() passed after 3.409 seconds.
+✔ Suite "Bounded semantic cosine ranking" passed after 3.412 seconds.
+◇ Test case passing 1 argument input → "workspace_123" to workspaceRejectsInvalidOrHeaderUnsafeInput(_:) started.
+✔ Test dragUndoRedoAndResetRemainIndependentPerImage() passed after 0.365 seconds.
+◇ Test autoToneKeepsManualEditsAndSupportsGroupedUndoResetAndReload() started.
+✔ Test overwriteRequiresExplicitConfirmationAndRetriesTheFrozenRequest() passed after 0.497 seconds.
+◇ Test declinedOverwriteAndFailuresLeaveSettingsAvailableForCorrection() started.
+✔ Test defaultBudgetRejectsOversizedRasterReferencesAndCannotBeRaised() passed after 0.219 seconds.
+◇ Test twentyRapidGroupsReleaseStaleReferencesAndBoundQueuedWork() started.
+✔ Test tenSelectionsShareBaselineNeverInferOrSaveAndAcceptOneUndoStep() passed after 3.442 seconds.
+◇ Test everyContextChangeInvalidatesWholeGroupAndAllCardReferences() started.
+✔ Test commandClickCanClearTheLastImageWithoutAutomaticReselection() passed after 0.544 seconds.
+◇ Test shiftClickKeepsItsAnchorWhileGrowingShrinkingAndReversingTheRange() started.
+◇ Test case passing 1 argument input → "wrkspc_a	b" to workspaceRejectsInvalidOrHeaderUnsafeInput(_:) started.
+✔ Test confirmedTextsFilterBeforeSemanticAndDraftsRemainInvisible() passed after 1.066 seconds.
+◇ Test unavailableMetadataPreservesLiteralSearchAndCatalogWrites() started.
+◇ Test case passing 1 argument size → (1440.0, 900.0) to mountedLibraryKeepsFocusReturnPathWhenSearchTemporarilyRemovesSelection(size:) started.
+✔ Test maintenanceWaitsForAcceptedScanAndAlreadyQueuedImportThroughPublication() passed after 3.460 seconds.
+◇ Test cancelDropsUnstartedQueuedAdmissionButDrainsActualScanner() started.
+✔ Test visibleProjectionTracksFiltersSortAndFolderSelection() passed after 3.466 seconds.
+◇ Test catalogChangesInvalidateMetadataCountsAndFolderProjections() started.
+◇ Test case passing 1 argument reverse → true to refreshAndParentOwnershipUseTheSameAliasComparison(reverse:) started.
+◇ Test case passing 1 argument input → "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" to workspaceRejectsInvalidOrHeaderUnsafeInput(_:) started.
+✔ Test activeLedgerCannotBeOverwrittenByBackupDestination() passed after 0.323 seconds.
+◇ Test rapidSettingsChangesLeaveLatestCloudPolicyAndNoUpload() started.
+✔ Test pendingParentFlushIsExactAndArtifactDoesNotApplyItsSlidersTwice() passed after 0.476 seconds.
+◇ Test ambiguousReceiptRetryUsesSameCommitAndOnlyOneUndo() started.
+✔ Test refreshInvalidatesImmediatelyAndCapturesUpdatedSourceMetadata() passed after 0.484 seconds.
+◇ Test newLibrarySessionAndTerminationCancellationKeepOldRepliesObsolete() started.
+✔ Test workspaceRejectsInvalidOrHeaderUnsafeInput(_:) with 6 test cases passed after 0.577 seconds.
+◇ Test delayedAnswerFromPreviousSheetCannotAnswerNewConsent(_:) started.
+◇ Test case passing 1 argument oldAnswer → false to delayedAnswerFromPreviousSheetCannotAnswerNewConsent(_:) started.
+✔ Test acceptanceFinishesGestureCreatesExactlyOneStepAndSurvivesUICancellation() passed after 0.667 seconds.
+◇ Test delayedResultsCannotSurviveSelectionRoundtripManualChangeUndoResetOrRestore() started.
+✔ Test refreshAndParentOwnershipUseTheSameAliasComparison(reverse:) with 2 test cases passed after 0.257 seconds.
+◇ Test existingMissingUnreadableAndOfflinePathsKeepOneComparison(reverse:) started.
+◇ Test case passing 1 argument reverse → false to existingMissingUnreadableAndOfflinePathsKeepOneComparison(reverse:) started.
+✔ Test shiftClickKeepsItsAnchorWhileGrowingShrinkingAndReversingTheRange() passed after 0.192 seconds.
+◇ Test commandShiftClickAddsTheAnchoredRangeToSeparateSelections() started.
+✔ Test requestDisplayDiscardAndModeSwitchDoNotWriteOrCreateUndo() passed after 0.630 seconds.
+◇ Test editedInputRejectsEqualSettingsAfterUndoAndOriginalDoesNot() started.
+◇ Test case passing 1 argument reverse → true to existingMissingUnreadableAndOfflinePathsKeepOneComparison(reverse:) started.
+✔ Test strokeIsOneUndoBoundaryAndEraseOnlyChangesMask() passed after 3.639 seconds.
+✔ Test clearInvertAndOverlayOpacityHaveIndependentSemantics() passed after 3.639 seconds.
+✔ Test leavingImageDoesNotConnectSeparateSegmentsAndUndoRemovesWholeGesture() passed after 3.639 seconds.
+✔ Test overlayIsBoundedAndNeverDecodesSourceOrChangesNativeCanvas() passed after 3.639 seconds.
+✔ Test gestureDraftIsBoundedBeforeValidationAndPreservesAcceptedSegments() passed after 3.649 seconds.
+✔ Test existingMissingUnreadableAndOfflinePathsKeepOneComparison(reverse:) with 2 test cases passed after 0.171 seconds.
+◇ Test directoryBoundariesRootAndSymlinkCyclesAreBounded() started.
+✔ Test rapidSettingsChangesLeaveLatestCloudPolicyAndNoUpload() passed after 0.193 seconds.
+◇ Test providerChangesDiscardPreviewAndCloudDisablesLooks() started.
+✔ Test fastPointsCoalesceAndDiscardRejectsUncooperativeWorker() passed after 3.668 seconds.
+✔ Test delayedSourceAndRevisionResultsCannotOverwriteNewDraft() passed after 3.668 seconds.
+✔ Suite "Local mask draft" passed after 3.672 seconds.
+✔ Test unavailableMetadataPreservesLiteralSearchAndCatalogWrites() passed after 0.232 seconds.
+◇ Test changedOriginalAtStartupMarksSourceWithoutDisablingSearch() started.
+◇ Test case passing 1 argument overwritePrompt → true to delayedAcceptedImportProtectsAnOpenDialogAndOverwriteRetry(overwritePrompt:) started.
+✔ Test directoryBoundariesRootAndSymlinkCyclesAreBounded() passed after 0.014 seconds.
+✔ Suite "Decoded folder path aliases" passed after 3.682 seconds.
+✔ Test autoToneKeepsManualEditsAndSupportsGroupedUndoResetAndReload() passed after 0.254 seconds.
+◇ Test concurrentFlushAndCancellationStillPersistEditsArrivingDuringSave() started.
+✔ Test ambiguousReceiptRetryUsesSameCommitAndOnlyOneUndo() passed after 0.211 seconds.
+◇ Test selectionABAAndManualChangeRejectUnacceptedDraftWithoutWrites() started.
+✔ Test newLibrarySessionAndTerminationCancellationKeepOldRepliesObsolete() passed after 0.203 seconds.
+◇ Test restoreRotatesSessionEvenWhenSettingsStayIdenticalAndRejectsDuringLock() started.
+◇ Test case passing 1 argument childFirst → false to overlappingImportsRemainUniqueAndBrowseable(childFirst:) started.
+✔ Test providerChangesDiscardPreviewAndCloudDisablesLooks() passed after 0.021 seconds.
+◇ Test settingsConsentRefusalRevokeAndSingleApprovalAreBoundToSnapshot() started.
+✔ Test cancelDropsUnstartedQueuedAdmissionButDrainsActualScanner() passed after 0.232 seconds.
+◇ Test editorialAcceptancePrecedesMutationAndMaintenanceRejectsAllNewCatalogActions() started.
+✔ Test declinedOverwriteAndFailuresLeaveSettingsAvailableForCorrection() passed after 0.270 seconds.
+◇ Test filenamesAndNumericInputsValidateWithoutTouchingDisk() started.
+✔ Test commandShiftClickAddsTheAnchoredRangeToSeparateSelections() passed after 0.060 seconds.
+◇ Test navigationReplacesMultipleSelectionAndShiftNavigationExtendsFromItsAnchor() started.
+✔ Test filenamesAndNumericInputsValidateWithoutTouchingDisk() passed after 0.043 seconds.
+◇ Test missingMetadataShowsNoInventedDimensionsAndDoesNotBlockExport() started.
+✔ Test everyANDFilterRunsBeforeTopKAndRemovedAssetsCannotBeHits() passed after 0.597 seconds.
+◇ Test relevanceTiesRespectExistingSortAtTheTopKBoundary() started.
+✔ Test selectionABAAndManualChangeRejectUnacceptedDraftWithoutWrites() passed after 0.196 seconds.
+◇ Test typedSourceGeometryCacheIdentityAndOriginalOnlyAnalysisStayDistinct() started.
+✔ Test missingMetadataShowsNoInventedDimensionsAndDoesNotBlockExport() passed after 0.157 seconds.
+◇ Test batchFreezesEveryEditAndOptionsAndReservesUniqueNames() started.
+✔ Test navigationReplacesMultipleSelectionAndShiftNavigationExtendsFromItsAnchor() passed after 0.204 seconds.
+◇ Test navigationClampsAtViewBoundariesAndStartsAtFirstImageAfterDeselection() started.
+✔ Test twentyRapidGroupsReleaseStaleReferencesAndBoundQueuedWork() passed after 0.460 seconds.
+◇ Test clearingCardsPreservesAnotherObserverOfTheSameRender() started.
+✔ Test catalogChangesInvalidateMetadataCountsAndFolderProjections() passed after 0.439 seconds.
+◇ Test recentProjectionExpiresAtSevenDayBoundaryAndHandlesClockReversal() started.
+◇ Test case passing 1 argument oldAnswer → true to delayedAnswerFromPreviousSheetCannotAnswerNewConsent(_:) started.
+✔ Test restoreRotatesSessionEvenWhenSettingsStayIdenticalAndRejectsDuringLock() passed after 0.222 seconds.
+◇ Test failedRestoreAndCompletedBackupDoNotRevivePreMaintenanceProposals() started.
+✔ Test rawTagTextResetsForNewProposalAssetAndSourceEvenWithIdenticalTags() passed after 0.625 seconds.
+◇ Test nilSelectionStillLoadsStoreForExplicitImportExport() started.
+✔ Test concurrentFlushAndCancellationStillPersistEditsArrivingDuringSave() passed after 0.232 seconds.
+◇ Test failedSavePreservesLatestPendingValuesAndExplicitFlushRecovers() started.
+✔ Test changedOriginalAtStartupMarksSourceWithoutDisablingSearch() passed after 0.237 seconds.
+◇ Test metadataRetryCannotRebaseAnOlderCatalogOverExternalBytes() started.
+✔ Test editedInputRejectsEqualSettingsAfterUndoAndOriginalDoesNot() passed after 0.273 seconds.
+◇ Test selectionRoundTripAndSourceRefreshRejectDelayedAnalysis() started.
+✔ Test navigationClampsAtViewBoundariesAndStartsAtFirstImageAfterDeselection() passed after 0.016 seconds.
+◇ Test selectAllUsesOnlyVisiblePhotosAndExportOrderFollowsTheView() started.
+✔ Test editorialAcceptancePrecedesMutationAndMaintenanceRejectsAllNewCatalogActions() passed after 0.225 seconds.
+◇ Test ratingsAcceptedDuringScanSurviveTheImportCommit() started.
+✔ Test nilSelectionStillLoadsStoreForExplicitImportExport() passed after 0.011 seconds.
+◇ Test manualMetadataWorksWithoutVisionAndOnlySelectedFieldsAreConfirmed() started.
+✔ Test metadataRetryCannotRebaseAnOlderCatalogOverExternalBytes() passed after 0.008 seconds.
+◇ Test optionalNativeIdentityFieldsDoNotBlockFreshCatalogSource() started.
+✔ Test typedSourceGeometryCacheIdentityAndOriginalOnlyAnalysisStayDistinct() passed after 0.040 seconds.
+◇ Test missingArtifactMetadataPreservesActiveSourceAndHasNoOriginalFallback() started.
+✔ Test failedSavePreservesLatestPendingValuesAndExplicitFlushRecovers() passed after 0.011 seconds.
+◇ Test loadingFailureDisablesChangesWithoutReplacingExistingStore() started.
+✔ Test failedRestoreAndCompletedBackupDoNotRevivePreMaintenanceProposals() passed after 0.018 seconds.
+◇ Test forgedAndMalformedValidatedResultsCannotReachEditingOrPersistence() started.
+✔ Test delayedAcceptedImportProtectsAnOpenDialogAndOverwriteRetry(overwritePrompt:) with 2 test cases passed after 0.754 seconds.
+✔ Test clearingCardsPreservesAnotherObserverOfTheSameRender() passed after 0.027 seconds.
+◇ Test importAcceptedAfterEncodingPreventsFinalRenameWhileScanIsPending() started.
+◇ Test memoryPressureDuringRenderingCannotPublishTheLateCard() started.
+✔ Test optionalNativeIdentityFieldsDoNotBlockFreshCatalogSource() passed after 0.010 seconds.
+✔ Suite "Metadata catalog integration" passed after 3.935 seconds.
+✔ Test loadingFailureDisablesChangesWithoutReplacingExistingStore() passed after 0.017 seconds.
+◇ Test automaticBackupFailureKeepsSuccessfulEditsUsable() started.
+✔ Test batchFreezesEveryEditAndOptionsAndReservesUniqueNames() passed after 0.072 seconds.
+◇ Test generatedBatchNamesRespectByteLimitsAndKeepWholeCharacters() started.
+✔ Test forgedAndMalformedValidatedResultsCannotReachEditingOrPersistence() passed after 0.177 seconds.
+◇ Test confirmedProposalUsesOneUndoOneRevisionAndCanOnlyBeAcceptedOnce() started.
+✔ Test recentProjectionExpiresAtSevenDayBoundaryAndHandlesClockReversal() passed after 0.202 seconds.
+◇ Test treeProjectionHonorsChangedFolderPathAndDirectoryArguments() started.
+✔ Test missingArtifactMetadataPreservesActiveSourceAndHasNoOriginalFallback() passed after 0.184 seconds.
+◇ Test libraryQuitDrainsItsActualInitialLoad() started.
+✔ Test mountedLibraryKeepsFocusReturnPathWhenSearchTemporarilyRemovesSelection(size:) with 2 test cases passed after 3.860 seconds.
+◇ Test workspaceCommandsReturnToGridOrDetailWithoutChangingThePhoto(showsDetail:) started.
+◇ Test case passing 1 argument showsDetail → false to workspaceCommandsReturnToGridOrDetailWithoutChangingThePhoto(showsDetail:) started.
+✔ Test selectAllUsesOnlyVisiblePhotosAndExportOrderFollowsTheView() passed after 0.211 seconds.
+◇ Test filtersDiscardHiddenSelectionsAndKeepAnExistingVisibleImageActive() started.
+✔ Test memoryPressureDuringRenderingCannotPublishTheLateCard() passed after 0.204 seconds.
+➜ Test synthetic2400PixelFirstAndWarmCacheBenchmark() skipped.
+✔ Suite "Look preview raster and UI reference budgets" passed after 4.136 seconds.
+✔ Test delayedAnswerFromPreviousSheetCannotAnswerNewConsent(_:) with 2 test cases passed after 0.646 seconds.
+◇ Test delayedNilSetterCannotDismissNewConsentButItsOwnDismissalCan() started.
+✔ Test relevanceTiesRespectExistingSortAtTheTopKBoundary() passed after 0.388 seconds.
+◇ Test rapidQueryRoundTripRejectsNoncooperativeEarlierReplies() started.
+✔ Test ratingsAcceptedDuringScanSurviveTheImportCommit() passed after 0.223 seconds.
+✔ Test manualMetadataWorksWithoutVisionAndOnlySelectedFieldsAreConfirmed() passed after 0.220 seconds.
+◇ Test failedImportPublicationDoesNotExposeAnUnpersistedOriginalReference() started.
+◇ Test acceptedDraftForARunsToCompletionAfterSelectionBAndClosing() started.
+✔ Test automaticBackupFailureKeepsSuccessfulEditsUsable() passed after 0.200 seconds.
+◇ Test backupFlushesPendingValuesAndRestoreReloadsSettingsAndRevisionHighWater() started.
+✔ Test delayedResultsCannotSurviveSelectionRoundtripManualChangeUndoResetOrRestore() passed after 0.653 seconds.
+◇ Test locksInvalidatePreviewWhileModeChangesPreserveCurrentProposal() started.
+✔ Test libraryQuitDrainsItsActualInitialLoad() passed after 0.044 seconds.
+◇ Test failedInitialLoadUsesOnlyExplicitClosedRecoveryAndCanRetry() started.
+✔ Test overlappingImportsRemainUniqueAndBrowseable(childFirst:) with 2 test cases passed after 2.240 seconds.
+◇ Test removingParentRetainsChildAndRatingsWithoutTouchingFiles() started.
+✔ Test filtersDiscardHiddenSelectionsAndKeepAnExistingVisibleImageActive() passed after 0.027 seconds.
+◇ Test filtersChooseAVisibleReplacementAndHandleAnEmptyResult() started.
+✔ Test confirmedProposalUsesOneUndoOneRevisionAndCanOnlyBeAcceptedOnce() passed after 0.049 seconds.
+◇ Test acceptingCurrentResultPreservesTheCoordinatorsLargerPromptBudget() started.
+✔ Test settingsConsentRefusalRevokeAndSingleApprovalAreBoundToSnapshot() passed after 0.472 seconds.
+◇ Test lateCloudReplyAfterImageRevisionChangeCannotBecomePreview(_:) started.
+◇ Test case passing 1 argument image → true to lateCloudReplyAfterImageRevisionChangeCannotBecomePreview(_:) started.
+✔ Test everyContextChangeInvalidatesWholeGroupAndAllCardReferences() passed after 0.754 seconds.
+◇ Test twentyRapidGroupsKeepOneInferenceAndPublishOnlyLatestGroup() started.
+✔ Test treeProjectionHonorsChangedFolderPathAndDirectoryArguments() passed after 0.090 seconds.
+◇ Test refreshInvalidatesPreviouslyReadImageAndTreeProjections() started.
+✔ Test generatedBatchNamesRespectByteLimitsAndKeepWholeCharacters() passed after 0.242 seconds.
+◇ Test batchOverwriteConfirmationResumesTheFrozenRemainder() started.
+✔ Test selectionRoundTripAndSourceRefreshRejectDelayedAnalysis() passed after 0.299 seconds.
+◇ Test restoreAndBriefTerminationSynchronouslyInvalidateOriginalResults() started.
+✔ Test importAcceptedAfterEncodingPreventsFinalRenameWhileScanIsPending() passed after 0.289 seconds.
+◇ Test currentCatalogProtectsLateOriginalsAndHardlinks(phase:hardlink:) started.
+◇ Test case passing 2 arguments phase → "before-start", hardlink → false to currentCatalogProtectsLateOriginalsAndHardlinks(phase:hardlink:) started.
+✔ Test acceptingCurrentResultPreservesTheCoordinatorsLargerPromptBudget() passed after 0.069 seconds.
+◇ Test case passing 2 arguments phase → "before-start", hardlink → true to currentCatalogProtectsLateOriginalsAndHardlinks(phase:hardlink:) started.
+◇ Test acceptedProposalFinishesGestureAndKeepsAcceptedSaveDespiteCallerCancellation() started.
+◇ Test case passing 2 arguments phase → "after-render", hardlink → false to currentCatalogProtectsLateOriginalsAndHardlinks(phase:hardlink:) started.
+✔ Test failedInitialLoadUsesOnlyExplicitClosedRecoveryAndCanRetry() passed after 0.092 seconds.
+◇ Test healthyRestoreKeepsOrdinarySafetyBackupPath() started.
+◇ Test case passing 2 arguments phase → "after-render", hardlink → true to currentCatalogProtectsLateOriginalsAndHardlinks(phase:hardlink:) started.
+✔ Test failedImportPublicationDoesNotExposeAnUnpersistedOriginalReference() passed after 0.116 seconds.
+◇ Test unchangedQuitDoesNotRegisterAnotherWriteDuringGrantedMaintenance() started.
+◇ Test case passing 1 argument image → false to lateCloudReplyAfterImageRevisionChangeCannotBecomePreview(_:) started.
+✔ Test filtersChooseAVisibleReplacementAndHandleAnEmptyResult() passed after 0.110 seconds.
+◇ Test folderChangesAndRemovalReconcileTheSelectionWithTheCurrentCatalog() started.
+◇ Test case passing 2 arguments phase → "after-snapshot", hardlink → false to currentCatalogProtectsLateOriginalsAndHardlinks(phase:hardlink:) started.
+✔ Test delayedNilSetterCannotDismissNewConsentButItsOwnDismissalCan() passed after 0.136 seconds.
+✔ Suite "Cloud consent presentation identity" passed after 4.274 seconds.
+✔ Test healthyRestoreKeepsOrdinarySafetyBackupPath() passed after 0.026 seconds.
+◇ Test automaticBackupReleasesFlushSlotAndDrainsLaterPendingSaveBeforePrune() started.
+◇ Test case passing 1 argument showsDetail → true to workspaceCommandsReturnToGridOrDetailWithoutChangingThePhoto(showsDetail:) started.
+◇ Test case passing 2 arguments phase → "after-snapshot", hardlink → true to currentCatalogProtectsLateOriginalsAndHardlinks(phase:hardlink:) started.
+✔ Test rapidQueryRoundTripRejectsNoncooperativeEarlierReplies() passed after 0.154 seconds.
+◇ Test catalogChangeDuringSearchCannotPublishRemovedSource() started.
+✔ Test locksInvalidatePreviewWhileModeChangesPreserveCurrentProposal() passed after 0.147 seconds.
+◇ Test cancelThenNewRequestRejectsNonCooperativeOldResponse() started.
+✔ Test acceptedProposalFinishesGestureAndKeepsAcceptedSaveDespiteCallerCancellation() passed after 0.069 seconds.
+◇ Test loadingReadOnlyAndRevisionExhaustionCannotApplyAProposal() started.
+✔ Test unchangedQuitDoesNotRegisterAnotherWriteDuringGrantedMaintenance() passed after 0.039 seconds.
+◇ Test dirtyCatalogRetryRunsOnlyAfterEditorMaintenanceActuallyEnds() started.
+✔ Test refreshInvalidatesPreviouslyReadImageAndTreeProjections() passed after 0.101 seconds.
+◇ Test rapidFiltersAndMetadataChangesPublishOnlyTheLatestProjection() started.
+✔ Test currentCatalogProtectsLateOriginalsAndHardlinks(phase:hardlink:) with 6 test cases passed after 0.083 seconds.
+◇ Test acceptedChangeEpochRejectsFinalPublicationEvenAfterItFinishes() started.
+✔ Test acceptedChangeEpochRejectsFinalPublicationEvenAfterItFinishes() passed after 0.024 seconds.
+◇ Test freshRecoveryProtectionAndUnavailableStateStopAnAlreadyRenderingExport(unavailable:) started.
+◇ Test case passing 1 argument unavailable → false to freshRecoveryProtectionAndUnavailableStateStopAnAlreadyRenderingExport(unavailable:) started.
+◇ Test case passing 1 argument unavailable → true to freshRecoveryProtectionAndUnavailableStateStopAnAlreadyRenderingExport(unavailable:) started.
+✔ Test freshRecoveryProtectionAndUnavailableStateStopAnAlreadyRenderingExport(unavailable:) with 2 test cases passed after 0.026 seconds.
+✔ Suite "JPEG export" passed after 4.356 seconds.
+✔ Test lateCloudReplyAfterImageRevisionChangeCannotBecomePreview(_:) with 2 test cases passed after 0.261 seconds.
+✔ Suite "Cloud settings and assistant lifecycle" passed after 4.425 seconds.
+✔ Test removingParentRetainsChildAndRatingsWithoutTouchingFiles() passed after 0.269 seconds.
+◇ Test refreshFindsAddedAndDeletedPhotosAndKeepsRatings() started.
+✔ Test batchOverwriteConfirmationResumesTheFrozenRemainder() passed after 0.235 seconds.
+◇ Test batchCancellationRecordsCommittedFilesAndDoesNotStartTheRemainder() started.
+✔ Test folderChangesAndRemovalReconcileTheSelectionWithTheCurrentCatalog() passed after 0.194 seconds.
+◇ Test directActiveImageAssignmentKeepsLegacySelectionConsistent() started.
+✔ Test acceptedDraftForARunsToCompletionAfterSelectionBAndClosing() passed after 0.333 seconds.
+◇ Test acceptedDraftTracksItsRevisionAcrossSameSourceCatalogChanges(proposal:) started.
+◇ Test case passing 1 argument proposal → false to acceptedDraftTracksItsRevisionAcrossSameSourceCatalogChanges(proposal:) started.
+✔ Test loadingReadOnlyAndRevisionExhaustionCannotApplyAProposal() passed after 0.186 seconds.
+✔ Suite "AI editing snapshot boundary" passed after 4.485 seconds.
+✔ Test cancelThenNewRequestRejectsNonCooperativeOldResponse() passed after 0.209 seconds.
+◇ Test unavailableReadOnlyUnreadableInvalidAndNoChangeAreSafeAndRetryable() started.
+✔ Test directActiveImageAssignmentKeepsLegacySelectionConsistent() passed after 0.040 seconds.
+✔ Suite "Library multiple selection" passed after 4.503 seconds.
+✔ Test backupFlushesPendingValuesAndRestoreReloadsSettingsAndRevisionHighWater() passed after 0.361 seconds.
+◇ Test manualBackupLocksEditingUntilPendingSnapshotIsComplete() started.
+✔ Test catalogChangeDuringSearchCannotPublishRemovedSource() passed after 0.221 seconds.
+◇ Test confirmedMetadataChangesReplaceCandidatesAndRejectAnOldSemanticReply() started.
+✔ Test automaticBackupReleasesFlushSlotAndDrainsLaterPendingSaveBeforePrune() passed after 0.247 seconds.
+✔ Test batchCancellationRecordsCommittedFilesAndDoesNotStartTheRemainder() passed after 0.070 seconds.
+◇ Test expandedVariantsReloadAfterRestoreAndIgnoreThePreviousEpochRead() started.
+◇ Test failedBatchRetriesOnlyItsUnfinishedFrozenRequests() started.
+✔ Test restoreAndBriefTerminationSynchronouslyInvalidateOriginalResults() passed after 0.306 seconds.
+◇ Test cancelAndNewInputCannotPublishNonCooperativeOldResults() started.
+✔ Test twentyRapidGroupsKeepOneInferenceAndPublishOnlyLatestGroup() passed after 0.323 seconds.
+◇ Test lateGroupsAfterSelectionResetAndRestoreCannotPublishCardsOrSettings() started.
+✔ Test dirtyCatalogRetryRunsOnlyAfterEditorMaintenanceActuallyEnds() passed after 0.238 seconds.
+✔ Suite "Library accepted catalog operations" passed after 4.539 seconds.
+✔ Test workspaceCommandsReturnToGridOrDetailWithoutChangingThePhoto(showsDetail:) with 2 test cases passed after 0.427 seconds.
+◇ Test pendingAndCompletedWorkSurvivesActualSectionUnmountAndModeChanges() started.
+✔ Test manualBackupLocksEditingUntilPendingSnapshotIsComplete() passed after 0.040 seconds.
+◇ Test backupExportPublishesLatestVerifiedPackageToNewName() started.
+✔ Test refreshFindsAddedAndDeletedPhotosAndKeepsRatings() passed after 0.150 seconds.
+◇ Test missingFolderRefreshPreservesCatalog() started.
+✔ Test expandedVariantsReloadAfterRestoreAndIgnoreThePreviousEpochRead() passed after 0.081 seconds.
+◇ Test variantSelectionABARejectsTheOldReadWithoutBlockingTheNewAsset() started.
+✔ Test failedBatchRetriesOnlyItsUnfinishedFrozenRequests() passed after 0.091 seconds.
+◇ Test decliningABatchOverwriteKeepsCommittedResultsVisible() started.
+✔ Test cancelAndNewInputCannotPublishNonCooperativeOldResults() passed after 0.193 seconds.
+✔ Test variantSelectionABARejectsTheOldReadWithoutBlockingTheNewAsset() passed after 0.113 seconds.
+◇ Test everyUnavailableReasonIsDistinctAndErrorsAllowExplicitRetry() started.
+✔ Test pendingAndCompletedWorkSurvivesActualSectionUnmountAndModeChanges() passed after 0.178 seconds.
+◇ Test catalogReloadInvalidatesAnExpandedVariantKeyBeforeAnotherRead() started.
+◇ Test looksKeepSelectionAndComparisonUntilExplicitDiscard() started.
+✔ Test missingFolderRefreshPreservesCatalog() passed after 0.153 seconds.
+✔ Test unavailableReadOnlyUnreadableInvalidAndNoChangeAreSafeAndRetryable() passed after 0.229 seconds.
+◇ Test childRefreshUpdatesParentOwnedPhotosWithoutLosingRatings() started.
+◇ Test damagedPhotoIsRejectedBeforeProviderAndRefusalsRemainRetryable() started.
+✔ Test confirmedMetadataChangesReplaceCandidatesAndRejectAnOldSemanticReply() passed after 0.223 seconds.
+✔ Test catalogReloadInvalidatesAnExpandedVariantKeyBeforeAnotherRead() passed after 0.016 seconds.
+◇ Test explicitIndexScopeUsesFullCandidatesAndImportRequiresOwnConfirmation() started.
+✔ Suite "Artifact editing controller" passed after 4.741 seconds.
+✔ Test lateGroupsAfterSelectionResetAndRestoreCannotPublishCardsOrSettings() passed after 0.233 seconds.
+◇ Test malformedGroupNeverPublishesPartialCardsAndOptionalTextLimitIsEnforced() started.
+✔ Test decliningABatchOverwriteKeepsCommittedResultsVisible() passed after 0.156 seconds.
+✔ Suite "JPEG export controller" passed after 4.771 seconds.
+✔ Test backupExportPublishesLatestVerifiedPackageToNewName() passed after 0.337 seconds.
+◇ Test backupExportRejectsActiveFilesAndSymlinksWithoutChangingThem() started.
+✔ Test looksKeepSelectionAndComparisonUntilExplicitDiscard() passed after 0.193 seconds.
+◇ Test hiddenSectionsStillRejectRealSelectionAndEditChanges() started.
+◇ Test case passing 1 argument proposal → true to acceptedDraftTracksItsRevisionAcrossSameSourceCatalogChanges(proposal:) started.
+✔ Test malformedGroupNeverPublishesPartialCardsAndOptionalTextLimitIsEnforced() passed after 0.200 seconds.
+✔ Suite "Three look assistant" passed after 4.960 seconds.
+✔ Test childRefreshUpdatesParentOwnedPhotosWithoutLosingRatings() passed after 0.276 seconds.
+◇ Test corruptImageRefreshAndRepairPreserveRatings() started.
+✔ Test explicitIndexScopeUsesFullCandidatesAndImportRequiresOwnConfirmation() passed after 0.323 seconds.
+✔ Test damagedPhotoIsRejectedBeforeProviderAndRefusalsRemainRetryable() passed after 0.332 seconds.
+◇ Test unavailableSearchIsHonestAndLiteralReturnStillWorks() started.
+✔ Suite "AI assistant preview and acceptance" passed after 5.074 seconds.
+✔ Test backupExportRejectsActiveFilesAndSymlinksWithoutChangingThem() passed after 0.201 seconds.
+◇ Test failedExportPreservesLocalBackupAndExistingDestination() started.
+✔ Test everyUnavailableReasonIsDistinctAndErrorsAllowExplicitRetry() passed after 0.407 seconds.
+✔ Suite "Image analysis observer and lifecycle" passed after 5.130 seconds.
+✔ Test hiddenSectionsStillRejectRealSelectionAndEditChanges() passed after 0.216 seconds.
+✔ Suite "Workspace dock proposal lifecycle" passed after 5.146 seconds.
+✔ Test unavailableSearchIsHonestAndLiteralReturnStillWorks() passed after 0.094 seconds.
+◇ Test terminationCancelsQueriesAndQuiescesServiceWithoutBreakingCanceledExit() started.
+✔ Test terminationCancelsQueriesAndQuiescesServiceWithoutBreakingCanceledExit() passed after 0.020 seconds.
+✔ Test corruptImageRefreshAndRepairPreserveRatings() passed after 0.176 seconds.
+◇ Test canceledExitKeepsASettledLiteralProjectionImmediatelyAvailable() started.
+◇ Test corruptCatalogEntersReadOnlyModeAndRemainsUntouched() started.
+✔ Test canceledExitKeepsASettledLiteralProjectionImmediatelyAvailable() passed after 0.013 seconds.
+◇ Test canceledExitResumesAnInterruptedLiteralProjectionEvenAfterRepeatedClosing() started.
+✔ Test corruptCatalogEntersReadOnlyModeAndRemainsUntouched() passed after 0.018 seconds.
+◇ Test terminationLocksChangesAndStillSavesLatestCatalog() started.
+✔ Test failedExportPreservesLocalBackupAndExistingDestination() passed after 0.140 seconds.
+✔ Test canceledExitResumesAnInterruptedLiteralProjectionEvenAfterRepeatedClosing() passed after 0.028 seconds.
+◇ Test rejectedBackupKeepsHealthyEditingAndUndoHistoryAvailable() started.
+◇ Test canceledExitProjectsFilterChangesMadeWhileClosing() started.
+✔ Test terminationLocksChangesAndStillSavesLatestCatalog() passed after 0.038 seconds.
+✔ Test rejectedBackupKeepsHealthyEditingAndUndoHistoryAvailable() passed after 0.019 seconds.
+◇ Test queuedFoldersImportAfterCurrentImportWithoutDuplicates() started.
+◇ Test corruptInitialDatabaseCanBeRecoveredWithoutOpeningAnEmptyReplacement() started.
+✔ Test canceledExitProjectsFilterChangesMadeWhileClosing() passed after 0.041 seconds.
+✔ Test queuedFoldersImportAfterCurrentImportWithoutDuplicates() passed after 0.028 seconds.
+◇ Test cancellationDropsQueuedFoldersAndAllowsFreshImport(terminating:) started.
+◇ Test case passing 1 argument terminating → false to cancellationDropsQueuedFoldersAndAllowsFreshImport(terminating:) started.
+◇ Test canceledExitResumesADeferredRecentExpiration() started.
+✔ Test canceledExitResumesADeferredRecentExpiration() passed after 0.014 seconds.
+◇ Test recentSemanticCandidatesExpireAndRecoverOnClockReversal() started.
+✔ Test recentSemanticCandidatesExpireAndRecoverOnClockReversal() passed after 0.017 seconds.
+◇ Test case passing 1 argument terminating → true to cancellationDropsQueuedFoldersAndAllowsFreshImport(terminating:) started.
+◇ Test readOnlyCatalogCannotStartIndexOrImportAndExistingFileSurvives() started.
+✔ Test corruptInitialDatabaseCanBeRecoveredWithoutOpeningAnEmptyReplacement() passed after 0.085 seconds.
+◇ Test restoreLocksEditingAndWaitsForCurrentValuesBeforeReplacement() started.
+✔ Test readOnlyCatalogCannotStartIndexOrImportAndExistingFileSurvives() passed after 0.011 seconds.
+◇ Test workerRejectsForeignAndNonfiniteResultsRatherThanExpandingCandidates() started.
+✔ Test restoreLocksEditingAndWaitsForCurrentValuesBeforeReplacement() passed after 0.020 seconds.
+◇ Test restoreDoesNotDiscardPendingValuesWhenFlushFails() started.
+✔ Test cancellationDropsQueuedFoldersAndAllowsFreshImport(terminating:) with 2 test cases passed after 0.088 seconds.
+◇ Test folderTreeIncludesEmptyBranchesAndSelectionSeparatesSiblingPrefixes() started.
+✔ Test acceptedDraftTracksItsRevisionAcrossSameSourceCatalogChanges(proposal:) with 2 test cases passed after 0.926 seconds.
+✔ Test restoreDoesNotDiscardPendingValuesWhenFlushFails() passed after 0.020 seconds.
+✔ Test workerRejectsForeignAndNonfiniteResultsRatherThanExpandingCandidates() passed after 0.043 seconds.
+◇ Test olderAcceptedDraftAdvancesRevisionWithoutReplacingNewerRawInput(proposal:) started.
+◇ Test case passing 1 argument proposal → false to olderAcceptedDraftAdvancesRevisionWithoutReplacingNewerRawInput(proposal:) started.
+◇ Test literalTypingWithCollapsedControlsDoesNotScanTheSemanticIndex() started.
+◇ Test terminationPreventsLateEditsButStillFlushesAndCanBeCanceled() started.
+✔ Test folderTreeIncludesEmptyBranchesAndSelectionSeparatesSiblingPrefixes() passed after 0.035 seconds.
+◇ Test subfolderRefreshPreservesNavigationUpdatesTreeAndFallsBackAfterDeletion() started.
+✔ Test terminationPreventsLateEditsButStillFlushesAndCanBeCanceled() passed after 0.012 seconds.
+◇ Test terminationFlushWaitsForRestoreToFinishBeforeAllowingQuit() started.
+✔ Test literalTypingWithCollapsedControlsDoesNotScanTheSemanticIndex() passed after 0.037 seconds.
+✔ Suite "Semantic library projection and explicit actions" passed after 5.464 seconds.
+✔ Test terminationFlushWaitsForRestoreToFinishBeforeAllowingQuit() passed after 0.035 seconds.
+✔ Suite "Editing controller" passed after 5.480 seconds.
+✔ Test subfolderRefreshPreservesNavigationUpdatesTreeAndFallsBackAfterDeletion() passed after 0.063 seconds.
+◇ Test removingRootReconcilesOnlyItsOwnSubfolderSelection(removeSelected:) started.
+◇ Test case passing 1 argument removeSelected → false to removingRootReconcilesOnlyItsOwnSubfolderSelection(removeSelected:) started.
+◇ Test case passing 1 argument removeSelected → true to removingRootReconcilesOnlyItsOwnSubfolderSelection(removeSelected:) started.
+✔ Test removingRootReconcilesOnlyItsOwnSubfolderSelection(removeSelected:) with 2 test cases passed after 0.068 seconds.
+◇ Test legacyAssetPathsBuildTreeEvenWhenFolderIsOffline() started.
+✔ Test legacyAssetPathsBuildTreeEvenWhenFolderIsOffline() passed after 0.014 seconds.
+◇ Test loadingLegacyCatalogBackfillsEmptyFoldersWithoutChangingPhotoMetadata() started.
+✔ Test loadingLegacyCatalogBackfillsEmptyFoldersWithoutChangingPhotoMetadata() passed after 0.014 seconds.
+◇ Test terminationWaitsForAcceptedFolderRemoval() started.
+◇ Test case passing 1 argument proposal → true to olderAcceptedDraftAdvancesRevisionWithoutReplacingNewerRawInput(proposal:) started.
+✔ Test terminationWaitsForAcceptedFolderRemoval() passed after 0.014 seconds.
+✔ Suite "Library workflows" passed after 5.613 seconds.
+✔ Test olderAcceptedDraftAdvancesRevisionWithoutReplacingNewerRawInput(proposal:) with 2 test cases passed after 0.375 seconds.
+◇ Test sourceChangeStillRejectsTheOldAcceptedDraftDisplay() started.
+✔ Test sourceChangeStillRejectsTheOldAcceptedDraftDisplay() passed after 0.208 seconds.
+◇ Test acceptedDraftAfterSelectionABAStillCannotReplaceANewerLoadedRevision() started.
+✔ Test rapidFiltersAndMetadataChangesPublishOnlyTheLatestProjection() passed after 1.914 seconds.
+✔ Test acceptedDraftAfterSelectionABAStillCannotReplaceANewerLoadedRevision() passed after 0.210 seconds.
+◇ Test cancelledProjectionDoesNotPoisonWorkerCache() started.
+◇ Test realLibraryClosingContextDrainsPendingSQLiteDraftWithoutFalseSaveFailure() started.
+✔ Test cancelledProjectionDoesNotPoisonWorkerCache() passed after 0.002 seconds.
+✔ Suite "Library projections" passed after 6.221 seconds.
+✔ Test bilinearAndQuantizationMatchPinnedPillowFixtures() passed after 6.302 seconds.
+✔ Suite "Semantic original raster preparation" passed after 6.303 seconds.
+✔ Test realLibraryClosingContextDrainsPendingSQLiteDraftWithoutFalseSaveFailure() passed after 0.181 seconds.
+◇ Test canceledExitRestartsAnInterruptedDetailLoadAndRejectsItsOldReply() started.
+✔ Test canceledExitRestartsAnInterruptedDetailLoadAndRejectsItsOldReply() passed after 0.018 seconds.
+◇ Test roundTripSelectionRejectsNoncooperativeEarlierLoads() started.
+✔ Test roundTripSelectionRejectsNoncooperativeEarlierLoads() passed after 0.025 seconds.
+◇ Test lateVisionCannotOverwriteManualInputOrCreateASearchableConfirmation() started.
+✔ Test lateVisionCannotOverwriteManualInputOrCreateASearchableConfirmation() passed after 0.181 seconds.
+◇ Test selectionSourceAndRestoreEpochInvalidateVisionWithoutCancelingAcceptedWrites() started.
+✔ Test selectionSourceAndRestoreEpochInvalidateVisionWithoutCancelingAcceptedWrites() passed after 0.031 seconds.
+◇ Test partialProposalConfirmationConsumesExactlyOnceAndKeepsUnselectedFieldsVisible() started.
+✔ Test partialProposalConfirmationConsumesExactlyOnceAndKeepsUnselectedFieldsVisible() passed after 0.024 seconds.
+◇ Test staleImportActionsAndDismissalCannotConsumeANewerReview() started.
+✔ Test staleImportActionsAndDismissalCannotConsumeANewerReview() passed after 0.024 seconds.
+◇ Test retryRetainsTheOriginalAcceptedUUIDAndPayload() started.
+✔ Test retryRetainsTheOriginalAcceptedUUIDAndPayload() passed after 0.187 seconds.
+◇ Test readOnlyAndClosingRejectNewManualAndVisionCommands() started.
+✔ Test readOnlyAndClosingRejectNewManualAndVisionCommands() passed after 0.006 seconds.
+◇ Test failedAutosavePreservesItsRawFormAndBlocksOtherFormActions(manual:) started.
+◇ Test case passing 1 argument manual → false to failedAutosavePreservesItsRawFormAndBlocksOtherFormActions(manual:) started.
+◇ Test case passing 1 argument manual → true to failedAutosavePreservesItsRawFormAndBlocksOtherFormActions(manual:) started.
+✔ Test failedAutosavePreservesItsRawFormAndBlocksOtherFormActions(manual:) with 2 test cases passed after 0.724 seconds.
+◇ Test failedAutosaveCanBeExplicitlyDiscardedWithoutBlockingCorrection(manual:) started.
+◇ Test case passing 1 argument manual → false to failedAutosaveCanBeExplicitlyDiscardedWithoutBlockingCorrection(manual:) started.
+◇ Test case passing 1 argument manual → true to failedAutosaveCanBeExplicitlyDiscardedWithoutBlockingCorrection(manual:) started.
+✔ Test failedAutosaveCanBeExplicitlyDiscardedWithoutBlockingCorrection(manual:) with 2 test cases passed after 0.380 seconds.
+◇ Test relocationDetailIncludesAllFieldsAndBothDraftTypes(state:) started.
+◇ Test case passing 1 argument state → .pending to relocationDetailIncludesAllFieldsAndBothDraftTypes(state:) started.
+◇ Test case passing 1 argument state → .edited to relocationDetailIncludesAllFieldsAndBothDraftTypes(state:) started.
+◇ Test case passing 1 argument state → .accepted to relocationDetailIncludesAllFieldsAndBothDraftTypes(state:) started.
+◇ Test case passing 1 argument state → .rejected to relocationDetailIncludesAllFieldsAndBothDraftTypes(state:) started.
+◇ Test case passing 1 argument state → .outdated to relocationDetailIncludesAllFieldsAndBothDraftTypes(state:) started.
+✔ Test relocationDetailIncludesAllFieldsAndBothDraftTypes(state:) with 5 test cases passed after 0.001 seconds.
+◇ Test recoveredOutdatedRawProposalCanBeExplicitlyTransferredToManualWithoutConfirmation() started.
+✔ Test recoveredOutdatedRawProposalCanBeExplicitlyTransferredToManualWithoutConfirmation() passed after 0.531 seconds.
+◇ Test admittedMetadataDraftDrainsBeforeSharedMaintenanceEvenAfterClosing() started.
+✔ Test admittedMetadataDraftDrainsBeforeSharedMaintenanceEvenAfterClosing() passed after 0.175 seconds.
+◇ Test maintenanceRejectsNewMetadataDraftBeforeTaskAndPreservesRawCorrection() started.
+✔ Test maintenanceRejectsNewMetadataDraftBeforeTaskAndPreservesRawCorrection() passed after 0.175 seconds.
+✔ Suite "Photo metadata forms, explicit confirmation and lifecycle" passed after 8.889 seconds.
+✔ Test upstreamFineLinesKeepTheirRegionalContrastUnderV2() passed after 10.084 seconds.
+✔ Suite "Lightcraft isolated tone reference" passed after 10.086 seconds.
+✘ Test run with 546 tests in 70 suites failed after 10.086 seconds with 1 issue.
+◇ Test run started.
+↳ Testing Library Version: 2084
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite "Library import and persistence" started.
+◇ Suite "Durable catalog payloads" started.
+◇ Suite "Real SQL and catalog coordinator crash recovery" started.
+◇ Suite "Editing SQLite rejects unowned journals after artifact awaits" started.
+◇ Suite ArtifactFileSafetyTests started.
+◇ Suite "Editing backup admission, daily reuse and artifact startup diagnosis" started.
+◇ Suite "Artifact wire format and recursive corruption boundaries" started.
+◇ Suite "Strict three-look proposal boundary" started.
+◇ Suite CanvasGeometryTests started.
+◇ Suite MaskDocumentTests started.
+◇ Suite ArtifactLoadEvaluationTests started.
+◇ Suite EditingBackupPackageTests started.
+◇ Suite JPEGExportOptionsTests started.
+◇ Suite "Automatic tone persistence and compatibility" started.
+◇ Suite "Durable editing recovery intent survives real process exits" started.
+◇ Suite "Metadata durable participant identity and shared recovery fence" started.
+◇ Suite "Immutable mask payloads and model geometry" started.
+◇ Suite GeneratedArtifactStoreTests started.
+◇ Suite "Shared artifact resource ownership and actual work limits" started.
+◇ Suite "Catalog native descriptors preserve SQLite locks" started.
+◇ Suite "Crash-safe metadata catalog barriers and relocation" started.
+◇ Suite "Durable photo metadata commands and CAS" started.
+◇ Suite "Strict bounded metadata JSON and manual backup" started.
+◇ Suite "Schema 2 editing source persistence and full CAS" started.
+◇ Suite "Editing remap participant journals and immutable commands" started.
+◇ Suite "Catalog exact-byte publication" started.
+◇ Suite "Explicit damaged editing recovery keeps raw originals" started.
+◇ Suite "Real legacy EditDatabase WAL migration preserves committed pages" started.
+◇ Suite "Joint catalog lifecycle" started.
+◇ Suite "Opt-in durable metadata load evaluation" started.
+◇ Suite "Semantic index persistence and generation isolation" started.
+◇ Suite "Owned metadata SQLite preserves untrusted bytes" started.
+◇ Suite MaskRasterizerTests started.
+◇ Suite "Image generation operation and native output contracts" started.
+◇ Suite "AI editing contracts and strict proposal validation" started.
+◇ Suite "Private SQLite stage cleanup has actual native ownership" started.
+◇ Suite "Image analysis bounded contracts" started.
+◇ Suite "Non-destructive editing database" started.
+◇ Suite "Editing SQLite coordinates in-process inode scopes" started.
+◇ Suite ArtifactPNGCodecTests started.
+◇ Suite "Artifact provenance closure uses a bounded heap stack" started.
+◇ Test artifactDescriptorAwaitIsGuardedBeforeDescriptorSQLRead() started.
+◇ Test actualAfterWithoutOriginalEditingReceiptNeverFabricatesSuccess() started.
+◇ Test unrelatedCatalogIsNeverOverwritten() started.
+◇ Test restoreMaterializationAwaitCannotReplayAnUnownedJournal() started.
+◇ Test originalBytesPublishThroughExistingCASAndRecoverAfterRename() started.
+◇ Test foreignEqualByteInodeRejectedBeforeAndAfterRestart() started.
+◇ Test damagedRecoveryChecksBothJournalInventoryAndCatalogAtInstall() started.
+◇ Test explicitRecoveryCannotReplaceCataloguedOriginalAtDatabaseLeaf(leaf:) started.
+◇ Test independentCorruptEditingStoreDoesNotDisableRealMetadataAfterEmptyInventory() started.
+◇ Test privateCleanupPreflightPreservesWholeUnknownTree() started.
+◇ Test requiredMissingEditingStoreIsNotRecreatedAfterArming() started.
+◇ Test replacedRequiredMetadataStoreUUIDCannotBeAcceptedAsSameParticipant() started.
+◇ Test privateCleanupRejectsEqualByteReplacementBeforeAnyUnlink() started.
+◇ Test publicationAwaitCannotAdmitAnUnownedSidecarToSQLite() started.
+◇ Test symlinkedRasterNeverReadsOrModifiesForeignTarget() started.
+◇ Test externallyChangedCatalogNeverGetsOverwrittenDuringRecovery() started.
+◇ Test existingCorruptOwnerRemainsUntouched(bytes:) started.
+◇ Test optionalMetadataParticipantCompletesAndNewLibrarySessionCanReconcile() started.
+◇ Test privateStageCleanupWaitsForLastActualReadHandle() started.
+◇ Test failedExclusiveRenameRetriesSameDurableDraftClaim() started.
+◇ Test abortIntentStaysPendingUntilParticipantsHaveFinished() started.
+◇ Test interruptedPreparationIsInertAndPreservedOnRestart() started.
+◇ Test parallelFirstOpenPublishesOneCompleteOwner(openers:) started.
+◇ Test fileHandleNeverAllowsUnboundedOrOverflowRead() started.
+◇ Test hardlinkedPayloadAndUnknownJournalPreserveAllBytes() started.
+◇ Test duplicateUnknownInactiveAndOversizedJSONRejectBeforeDecode() started.
+◇ Test unownedArtifactRootAndHardlinkedOwnerArePreserved() started.
+◇ Test occupiedPublicationAndUnknownUUIDStageStayIntact() started.
+◇ Test recoveryPermitRequiresItsRealMaintenanceExecutionAndGate() started.
+◇ Test cancelledFirstOpenLeavesNoPartialFinalRoot() started.
+◇ Test testCancelledScanThrowsCancellationError() started.
+◇ Test lateRootPreparationIsProtectedFromMetadataAndBackupExports() started.
+◇ Test testInvalidCatalogCannotReplaceValidCatalog() started.
+◇ Test immutableLegacySQLRepeatedValidationHasStableVirtualEpochAndNoMutation() started.
+◇ Test eachDurableCrashPhaseRecoversWithoutRebasingOriginalCommands() started.
+◇ Test testScanRecursesAndIgnoresHiddenPackagesAndSymbolicLinks() started.
+◇ Test wrongSchemasAlphaAndNativeNanosecondsNeverNormalizeIntoValidValues() started.
+◇ Test testFileCannotBeScannedAsFolder() started.
+◇ Test tamperedManifestHashAndMissingMaskBindingReject() started.
+◇ Test journalCASAndPhaseOrderingCannotSkipOrReplay() started.
+◇ Test testMetadataReadersOverlapWithoutExceedingWorkerLimit() started.
+◇ Test unownedDirectoryAndSymlinkDoNotAcquireOwnership() started.
+◇ Test testParallelScanMatchesSerialMetadataAndStableCorruptImageOrder() started.
+◇ Test synthesizedCodableCannotAdmitNegativeBytesOrInvalidExpectedState() started.
+◇ Test testMalformedCatalogIsNotSilentlyResetOrModified() started.
+◇ Test testMetadataFailureCancelsSiblingAndNeverReturnsPartialScan() started.
+◇ Test testCatalogRoundTripPreservesMetadataAndUserEdits() started.
+◇ Test testReadsExifAndHonorsImageOrientation() started.
+◇ Test zoomPanResizingAndBackingScaleRoundTrip() started.
+◇ Test testMissingFolderFailsInsteadOfReturningEmptyScan() started.
+◇ Test namesExplanationsAndWireLimitsRemainBounded() started.
+◇ Test exactReferenceDateBitsSurviveCanonicalProvenanceRoundtrip() started.
+◇ Test invalidGeometryAndOrientationCoordinatesReject() started.
+◇ Test automaticBackupReusesVerifiedDayBeforeAnyFurtherCopy() started.
+◇ Test duplicateParameterAndGeometryMismatchRejectSynthesizedDecoders() started.
+◇ Test explicitExportHoldsMaintenanceUntilActualPublicationReturns() started.
+◇ Test pruningFailureIsAWarningAfterSuccessfulPublication() started.
+◇ Test invalidPatchRejectsWholeGroupAndNoEffectIsAnError() started.
+◇ Test countsAndIDsAreExactWithoutFillingOrDiscarding() started.
+◇ Test versionedCanonicalRoundTripAndValidation() started.
+◇ Test testDirectoryTreeIncludesEmptyAndUnicodeFoldersInNaturalOrder() started.
+◇ Test testCancellationStopsQueuedReadsAndDrainsActiveReaders() started.
+◇ Test actualSizeSupportsSinglePixelCanvasAtRetinaScales() started.
+◇ Test inversionIsExactAndSubsequentBrushKeepsMeaning() started.
+◇ Test limitsRejectOversizedStrokeAndDocument() started.
+◇ Test copiedAutomaticPackageCannotInheritCreationReceiptAndReceiptScanIsBounded() started.
+➜ Test largeNativeArtifactPackageRoundtripWithoutOriginals() skipped.
+◇ Test testRejectsFutureCatalogVersionWithoutOverwriting() started.
+◇ Test automaticRotationProtectsFreshCatalogOriginalsThroughDirectAndAliasPaths() started.
+◇ Test canonicalOrderAndEveryTargetUsesTheSameBaseline() started.
+◇ Test testLegacyCatalogWithoutDirectoryTreeLoadsWithEmptyDefault() started.
+◇ Test nativeExportProtectsAbsentThenCreatedManagedDirectoryThroughVarAlias() started.
+◇ Test unknownAndDuplicateFieldsAreRejectedAtEveryLevel() started.
+◇ Test nativeExportRefusesExistingOrCatalogOriginalTargetAndBrokenSource() started.
+◇ Test packageRoundtripMaterializesAllPixelsAndMaskWithoutOriginals() started.
+◇ Test artifactRecoveryReportRetainsOrphansAndUsesVariantReferences() started.
+◇ Test automaticReceiptNeverBlessesReplacementOrUnknownPackageContents() started.
+◇ Test nativeExportPreservesClosedSnapshotPixelsMasksAndSourcePackage() started.
+◇ Test closedSQLReferenceClosureAndHandleIdentityCannotBeRebased() started.
+◇ Test automaticDailyReuseAndSevenPackageRotationSurviveNewAdapter() started.
+◇ Test malformedSettingsRemainRejectedInsteadOfSilentlyResettingEdits() started.
+◇ Test automaticToneSurvivesWALReopenBackupAndRestore() started.
+◇ Test automaticAmountParticipatesInNormalizationAndSettingsIdentity() started.
+◇ Test invalidValuesAndArithmeticOverflowThrow() started.
+◇ Test legacyDatabaseAndBackupOpenAndRestoreWithoutMigrationLoss() started.
+◇ Test modeAllowsAnEmptyLookRequestWhileRetainingInputAndSnapshotChecks() started.
+◇ Test missingCatalogProtectionRefusesRotationWithoutDeletingSuccessfulPackages() started.
+◇ Test aspectFitRejectsLetterboxAndAcceptsExactEdges() started.
+◇ Test everyInstallGapFencesOrdinaryOpenAndExplicitRetryPreservesRawArchives() started.
+◇ Test originalRetainsFullResolutionAndPrintDensityDoesNotResize() started.
+◇ Test nativePayloadSurvivesStoreRestartAndIgnoresLaterDraft() started.
+◇ Test allExifOrientationsPreserveAsymmetricPixelGridAndRoundTrip() started.
+◇ Test longEdgeHandlesBothOrientationsAndUpscaling() started.
+◇ Test existingDestinationAndSymlinkPayloadPreserveForeignBytes() started.
+◇ Test sameIdentityIsNotRecreatedWhenExistingStoreIsCorrupt() started.
+◇ Test invalidJointLinkFailsClosedWithoutRepairOrTextMutation() started.
+◇ Test unknownSchemaExtraFileAndSmallLimitsFailClosed() started.
+◇ Test legacySettingsDefaultOnlyNewControlWithoutChangingExistingEdits() started.
+◇ Test fitIsAnAspectPreservingBoundingBoxWithRoundedPixels() started.
+◇ Test requestFreezesInputAndMaskWithDistinctSourceRevisionAndHashToken() started.
+◇ Test outputMemorySurvivesOperationButScratchAndSlotDoNot() started.
+◇ Test legacySchemaOneMigratesExplicitlyAndStableUUIDSurvivesRestart() started.
+◇ Test jpegBoundariesAndLargeSourceDownscalingAreAccepted() started.
+◇ Test twoTransfersCanOverlapOneCodecAndTransferWaitersRemainBounded() started.
+◇ Test peakBytesAreChargedWhileTheOneCodecWaitsAndQueueIsBounded() started.
+◇ Test realSQLCommitBackupRestorePreservesMaskDocumentAndNativeRaster() started.
+◇ Test existingFamilyRootAliasesProtectPhysicalTargetsAndDanglingDestinations() started.
+◇ Test canceledNoncooperativeWorkKeepsCodecUntilActualReturn() started.
+◇ Test mismatchedRasterOrDocumentCannotBeStaged() started.
+◇ Test nativeRoundtripSurvivesRestartWithoutOriginal(format:) started.
+◇ Test absentParticipantInspectionDoesNotCreateOrMigrate() started.
+◇ Test cropModelAndNativePixelCentresShareOneTransform() started.
+◇ Test importReviewExpiryUsesContinuousElapsedTimeWithoutWriting() started.
+◇ Test sameDraftCommitReplaysAndDifferentCommitIsRejected() started.
+◇ Test foreignStoreCannotClaimDraftOrPublication() started.
+◇ Test sameByteNewInodeRequiresFullValidationAndOldReaderRemainsInvalid() started.
+◇ Test secondRelocationAfterRestartUsesCurrentAssociationNotOldAnalysisPath() started.
+◇ Test optionalCatalogBirthEvidenceDoesNotRejectSuggestorSource() started.
+◇ Test normalizedReplaySurvivesLaterWritesAndRejectsIDCollision() started.
+◇ Test knownOverwriteWarningSurvivesSameNativeRelocationAndRestartUntilTextConfirmation() started.
+◇ Test duplicateBorrowedOwnershipIsCountedOnceAndHeldUntilActualWorkEnds() started.
+◇ Test unsupportedAlphaAndWrongMaskGeometryPreserveOriginal() started.
+◇ Test unverifiedMappingKeepsBothRecordsAndResolutionUsesCurrentCAS() started.
+◇ Test ordinaryMetadataReadAndWriteWaitForTheCommonStartupBarrier() started.
+◇ Test exportImportRoundtripIsConfirmedOnlyAndRetrySurvivesConsumedReview() started.
+◇ Test crashAfterCatalogPublishReplaysExactlyOnceAndPreservesHistoricalProvenance() started.
+◇ Test pinnedReadRejectsSameByteForeignReplacementAndMissingPayload() started.
+◇ Test stagedMappingBlocksOnlyAffectedMetadataAndCrashBeforePublishAbandons() started.
+◇ Test ordinaryGray8MaskKeepsExactSamplesAndNoProfileMetadata() started.
+◇ Test manualRoundtripUsesExactDateAndEmptyConfirmationIsTombstone() started.
+◇ Test historicalProtectionStreamsRowsAndStopsOnFirstMatchingSource() started.
+◇ Test broadObjectsAndHugeNumberTokensAreRejectedBeforeDOMAllocation() started.
+◇ Test restoredMtimeNeverHidesSameInodeContentChangesFromValidationCache() started.
+◇ Test removeRefreshAndLateCatalogKeepConfirmedData() started.
+◇ Test parentDirectoryReplacementCannotPublishThroughStalePinnedFD() started.
+◇ Test competingExpectedVersionsAllowExactlyOneWinner() started.
+◇ Test missingLeavesAndDirectoryRootsUseNativeReachablePrefixComparison() started.
+◇ Test secondRepositoryCatalogChangeCannotUseAStaleProtectionOrSourceMap() started.
+◇ Test destinationAncestorWalkTerminatesAtRootAndProtectsEveryAncestor() started.
+◇ Test manualOriginalOnlyConfirmRetainsCatalogNativeAndOverwriteWarningIsSticky() started.
+◇ Test unexpectedCatalogDigestIsConflictAndCannotGuessMapping() started.
+◇ Test characterByteAggregateAndTagBoundsAreIndependent() started.
+◇ Test rejectedAliasPreservesRealEditingWriter(leaf:raced:) started.
+◇ Test legacyParticipantInspectionDoesNotMigrateOrRecreate() started.
+◇ Test finalSymlinkHardlinkReadOnlyAndHotJournalArePreserved() started.
+◇ Test fullSnapshotCASRejectsStaleAndCompetingWriters() started.
+◇ Test staleActorManualDraftPreservesAnExternallyReconciledOrphanAndSearchState() started.
+◇ Test exportFailurePreservesTargetAndProtectedAliases() started.
+◇ Test replacedStageLeafIsNeitherPublishedNorDeletedAsOwnedCleanup() started.
+◇ Test preparedAbortRequiresPositivePrearmEvidenceAndReleasesSourceFence() started.
+◇ Test publicationAndSQLFailuresLeavePriorStateAndRepeatSafely() started.
+◇ Test changedDestinationAndSourceAfterPreparedNeverOverwriteEdits() started.
+◇ Test lateAIAnswerCannotOverwriteEditedManualDraft() started.
+◇ Test repeatedFreshRasterAndMaskOpensReuseOnlySuccessfulNativeValidation() started.
+◇ Test managedDirectoryFamiliesCoverLateQuarantineAndParentAliases() started.
+◇ Test invalidRequestsAndOversizedRetainsNeverChangeAccounting() started.
+◇ Test repeatedRefreshAndRestartPreserveOverwriteWarning() started.
+◇ Test initializationIsLazyAndInvalidLocationKeepsPreciseReason() started.
+◇ Test newerConfirmationRequiresExplicitManualReviewAndDraftCAS() started.
+◇ Test rollbackAndSearchFailureAreDifferentOutcomes() started.
+◇ Test modelResponseNormalizesOnlyExactVersionedFields() started.
+◇ Test partialAIConfirmKeepsLanguageAndMarksOneConsumedProposal() started.
+◇ Test conflictsDefaultToKeepAndExplicitReplaceBindsCurrentVersion() started.
+◇ Test unknownSchemaAndForeignAndCorruptBytesAreNeverMutated() started.
+◇ Test oldDialogCannotDiscardNewReviewAndMalformedFilesNeverWrite() started.
+◇ Test lateGenerationAndSameSizeRestoredMtimeOverwriteCannotCommit() started.
+◇ Test closedCopyUsesOnlySnapshotClosureAndOriginalPinnedHandle() started.
+◇ Test backupRestoreRotatesEpochAndKeepsDurableStoreIdentityAndSafetyPackage() started.
+◇ Test prepareIsReadOnlyForSourcesAndInspectionNeverCreatesMissingEvidence() started.
+◇ Test lazyInitAndStableIdentityAcrossRestart() started.
+◇ Test draftTypingDoesNotRebuildUnchangedConfirmedSearchSnapshot() started.
+◇ Test legacyMigrationPreservesSettingsRevisionsAndTombstones() started.
+◇ Test opaqueFamilyRecoveryUsesRootPermitAndRetainsEveryOriginalByte() started.
+◇ Test externalTriggerOnLiveHandleIsRejectedBeforeAnyWrite() started.
+◇ Test remapCommitAndCatalogCompletionReplayExactOriginalStateAfterRestart() started.
+◇ Test acceptedGeneratedIsFlatNeutralOneReceiptAndPersistentVariants() started.
+◇ Test sharedPublicationLockReportsActualBytesAndSerializesOtherPublishers() started.
+◇ Test committedUncheckpointedWALUsesLatestSettingsAndRevisions() started.
+◇ Test manualAndAIDraftsHaveIndependentMonotoneCountersAndNoSearchText() started.
+◇ Test orderlyClosedRealLegacyActorRetainsWALHeaderAndMigrates() started.
+◇ Test missingOriginalDirectoryAndFamilyUseTheReachableVolumesCaseSemantics() started.
+◇ Test existingEmptyFileIsNotAbsentAndCorruptFutureFilesSurviveSave() started.
+◇ Test canceledQueuedAdmissionDoesNotWriteAndUnavailableArtifactNeverBecomesOriginal() started.
+◇ Test generatedParentFingerprintCannotBeAppliedToDifferentOriginalAsset() started.
+◇ Test failuresAroundArchiveCheckpointAndCommitRetainLatestDataAndExactArchive() started.
+◇ Test reviewedImportCASIsWholeDocumentAndEmptyTombstoneBlocksInsertMissing() started.
+◇ Test preparedBytesRemainExactAcrossStageAndReloadIncludingAdjacentDates() started.
+◇ Test unrelatedByteChangeRejectsCASAndPreservesCurrentFile() started.
+◇ Test tamperedStageOrForeignLockAliasCannotPublish() started.
+◇ Test readOnlyAndAliasedWALFamiliesAreNotCheckpointed() started.
+◇ Test newlyAppearingWALAndJournalAfterArchiveNeverReachWritableSQLite() started.
+◇ Test firstRealLegacyOpenCommitAndProcessExitMigrateHeaderZeroWAL() started.
+◇ Test changedNativeFamilyBeforeFinalInstallIsPreservedAndNotOverwritten() started.
+◇ Test validForeignAndFutureSQLiteAreNeverOpaqueRecoveryFallbacks() started.
+◇ Test startupFailureAndRecoveryDoNotPublishEarly() started.
+➜ Test realRepositoryImportRestartExportAndLimits() skipped.
+◇ Test unknownLogicalSchemaInWALNeverMutatesAnyOriginalFamilyByte() started.
+◇ Test foreignAndFutureFirstOpenLogicalWALFamiliesRemainByteIdentical() started.
+◇ Test discardedStageNeverDeletesAnUnrelatedReplacementAtItsUUIDLeaf() started.
+◇ Test emptyOpaqueFileCanBeExplicitlyRecoveredButNeverAutomaticallyReinitialized() started.
+◇ Test nativeJournalCrashHasExplicitReadonlyRecoveryWithoutDeletingSidecars() started.
+◇ Test fractionalNativeDatesRoundtripWithoutFingerprintLoss() started.
+◇ Test forceNewAndInstallationChangesSupersedeBuildingHandles() started.
+◇ Test foreignAndRepeatedAdmissionsCannotExecute() started.
+◇ Test readonlyExistingStorePreservesBytesAndMode() started.
+◇ Test existingForeignAndUnknownVersionRemainByteExact() started.
+➜ Test firstOpenWALChildOnly() skipped.
+◇ Test cancellationQueuedBehindCommitCannotActivate() started.
+◇ Test unknownTriggerOnLiveHandleIsRejectedBeforeNextWrite() started.
+◇ Test registeredAndCanceledWorkDrainsOnlyAfterActualReturn() started.
+◇ Test corruptRecordAndMissingSchemaAreNeverReinitialized() started.
+◇ Test unknownAndReplacedSharedMemoryAreRetainedInsteadOfDeleted() started.
+◇ Test inheritedAdmissionCannotChangeItsDomain() started.
+◇ Test emptyFullAndEdgeCrossingMasks() started.
+◇ Test backupPackageCopyDoesNotHoldTheLiveEditingMaintenanceFence() started.
+◇ Test emptyExistingFileAndFinalAliasesNeverBecomeStores() started.
+◇ Test rasterHashSeparatesDimensionsAndCoverage() started.
+◇ Test unknownSchemaIsNotMutated(_:) started.
+◇ Test returningToActiveSpaceSupersedesOtherPendingSpace() started.
+◇ Test lazyInitializationRoundtripLittleEndianAndRestart() started.
+◇ Test durableFenceNeedsExactCoordinatorCompletion() started.
+◇ Test boundedPagesUseStableBinaryAssetOrder() started.
+◇ Test explicitDeletionClearsOnlyOwnedIndexAndInvalidatesHandles() started.
+◇ Test invalidVectorsNeverPersist(_:) started.
+◇ Test narrowCapsulesConnectPointsAndOrderedEraseIsDeterministic() started.
+◇ Test finalSymlinkAndHardlinkDoNotChangeForeignBytes(_:) started.
+◇ Test corruptPersistedRowsAreRejected(_:) started.
+◇ Test failedCommitRollsBackPointerAndEntries() started.
+◇ Test nativeCropAndModelCoordinatesUsePixelCenters() started.
+◇ Test partialBuildResumesAndModelChangePreservesLastActive() started.
+◇ Test unknownAndOrphanFilesRemainUntilExplicitQuarantine() started.
+◇ Test hardnessControlsLinearFeatherWithoutAccumulatingOverlappingSegments() started.
+◇ Test explicitDeletionQuarantinesUnknownExistingIndex() started.
+◇ Test ownMaintenanceRejectsAndExplicitPromotionDrainsOthers() started.
+◇ Test operationClaimsAreIndependentAndOmittedClaimsStayUnverified() started.
+◇ Test invalidParameterAndDescriptorBoundsRejectInsteadOfClamping() started.
+◇ Test resamplingCoordinateGridCropsAndConstantEdges() started.
+◇ Test cancellationAndWorkBudgetsStopLargeRasterization() started.
+◇ Test metadataAndInstallationBoundsAreStrict() started.
+◇ Test emptyPromptNonmaskedOperationAndChangedInpaintCanvasAreRejected() started.
+◇ Test case passing 1 argument leaf → "edits.sqlite" to explicitRecoveryCannotReplaceCataloguedOriginalAtDatabaseLeaf(leaf:) started.
+◇ Test nativeOutputRechecksDimensionsProfileAlphaAndEveryJobTokenComponent() started.
+◇ Test metadataTracksStrongRevisionWithoutErasingOldSourceOnMissingOrRelocation() started.
+◇ Test case passing 1 argument leaf → "edits.sqlite-recovery.json" to explicitRecoveryCannotReplaceCataloguedOriginalAtDatabaseLeaf(leaf:) started.
+◇ Test shallowCleanupRemovesOnlyRegisteredSameInodes() started.
+◇ Test escapedKeysUnicodeAndScientificNumbersAreValid() started.
+◇ Test foreignReplacementAndUnknownChildArePreservedWithoutRecursiveDelete() started.
+◇ Test emptyAndIneffectivePatchesHaveExplicitNoChangeResult() started.
+◇ Test exchangedDirectoryCannotRedirectCleanupIntoForeignTree() started.
+◇ Test case passing 1 argument bytes → 0 bytes to existingCorruptOwnerRemainsUntouched(bytes:) started.
+◇ Test typedByteAndCountLimitsRejectRatherThanTruncate() started.
+◇ Test patchValuesAreAbsoluteAndOtherControlsStayExact() started.
+◇ Test case passing 1 argument bytes → 16 bytes to existingCorruptOwnerRemainsUntouched(bytes:) started.
+◇ Test languageAndCapabilitiesAreExplicit() started.
+◇ Test malformedUnknownAndDuplicateValuesRejectWholeResponse(_:) started.
+◇ Test ineffectivePatchRetainsOnlyItsValidatedExplanation() started.
+◇ Test case passing 1 argument openers → 2 to parallelFirstOpenPublishesOneCompleteOwner(openers:) started.
+◇ Test case passing 1 argument openers → 16 to parallelFirstOpenPublishesOneCompleteOwner(openers:) started.
+◇ Test strictSchemaHasNoModelOwnedIdentityAndKeepsUnicode() started.
+◇ Test malformedUTF8AndSurrogatesAreRejected() started.
+◇ Test originalIgnoresSlidersButRejectsSelectionRestoreSourceAndLifecycleChanges() started.
+◇ Test parameterMappingAndBoundaries(_:) started.
+◇ Test typedProposalsRejectNonfiniteValues(_:) started.
+◇ Test duplicateIDsAndInvalidBaselineRejectWholeTypedPatch() started.
+◇ Test savesSurviveReopenWhileNewestPagesAreStillInWAL() started.
+◇ Test fourteenIDsAreUniqueAndExhaustive() started.
+◇ Test explicitRecoveryPreservesCorruptDatabaseAndSidecars() started.
+◇ Test failedSafetyBackupPreventsRestoreAndDoesNotDisableSaving() started.
+◇ Test actualJournalContentionThroughNativeAliasProducesOneCASWinner() started.
+◇ Test corruptFutureAndInvalidPayloadBackupsNeverModifyActiveData() started.
+◇ Test normalizationClampsEveryControlAndRejectsNonfiniteValues() started.
+◇ Test wrongOwnerMemoryReservationIsRejected() started.
+◇ Test rgbValidationChargesActualNativeRowsIncludingSkipLanes() started.
+◇ Test rawJSONRejectsInvalidSchemaWithoutRepair(_:) started.
+◇ Test all4096AllowedAncestorsSurviveAnActualSwiftWorkerStack() started.
+◇ Test automaticBackupsAreDailyAndRetainSevenWhileManualFilesRemain() started.
+◇ Test queuedInputsStayChargedAndCancelledWaiterReturnsPromptly() started.
+◇ Test overBudgetRejectsBeforeEncodingAndPreservesOriginal() started.
+◇ Test concurrentArrivalsRetainHighestRevision() started.
+◇ Test requestContextIsAppOwnedAndInputValidationPrecedesProviderWork() started.
+◇ Test byteDepthNodeAndTextLimitsAreEnforced() started.
+◇ Test sharedMemoryCapMustCoverDistinctImagesButMayShareOneImage() started.
+◇ Test corruptAndFutureActiveDatabasesAreNeverReinitialized() started.
+◇ Test staleAndEqualRevisionsCannotOverwriteNewerSettings() started.
+◇ Test invalidRecoveryCandidateAndHealthyActiveDatabaseRemainUntouched() started.
+◇ Test failedSaveRollsBackRevisionAndSettingsTogether() started.
+◇ Test restoreMakesSafetyBackupAndKeepsRevisionsMonotonicIncludingRemovedAssets() started.
+◇ Test backupIsStandaloneVerifiedSnapshotOfLiveWAL() started.
+◇ Test dailyBackupMemoDetectsDeletedAndChangedFiles() started.
+◇ Test case passing 1 argument format → RasterCase(bits: 8, alpha: false, p3: false) to nativeRoundtripSurvivesRestartWithoutOriginal(format:) started.
+◇ Test case passing 1 argument format → RasterCase(bits: 8, alpha: false, p3: true) to nativeRoundtripSurvivesRestartWithoutOriginal(format:) started.
+◇ Test case passing 1 argument format → RasterCase(bits: 8, alpha: true, p3: false) to nativeRoundtripSurvivesRestartWithoutOriginal(format:) started.
+◇ Test case passing 1 argument format → RasterCase(bits: 8, alpha: true, p3: true) to nativeRoundtripSurvivesRestartWithoutOriginal(format:) started.
+◇ Test case passing 1 argument format → RasterCase(bits: 16, alpha: false, p3: false) to nativeRoundtripSurvivesRestartWithoutOriginal(format:) started.
+◇ Test case passing 1 argument format → RasterCase(bits: 16, alpha: false, p3: true) to nativeRoundtripSurvivesRestartWithoutOriginal(format:) started.
+◇ Test case passing 1 argument format → RasterCase(bits: 16, alpha: true, p3: false) to nativeRoundtripSurvivesRestartWithoutOriginal(format:) started.
+◇ Test case passing 1 argument format → RasterCase(bits: 16, alpha: true, p3: true) to nativeRoundtripSurvivesRestartWithoutOriginal(format:) started.
+◇ Test case passing 2 arguments leaf → "catalog.json", raced → false to rejectedAliasPreservesRealEditingWriter(leaf:raced:) started.
+◇ Test case passing 1 argument sql → "PRAGMA user_version=99" to unknownSchemaIsNotMutated(_:) started.
+◇ Test case passing 1 argument sql → "PRAGMA application_id=0" to unknownSchemaIsNotMutated(_:) started.
+◇ Test case passing 1 argument sql → "CREATE TABLE sqliteXforeign(secret TEXT)" to unknownSchemaIsNotMutated(_:) started.
+◇ Test case passing 1 argument vector → [0.0, 0.0, 0.0] to invalidVectorsNeverPersist(_:) started.
+◇ Test case passing 1 argument vector → [1.0, 0.0] to invalidVectorsNeverPersist(_:) started.
+◇ Test case passing 1 argument vector → [2.0, 0.0, 0.0] to invalidVectorsNeverPersist(_:) started.
+◇ Test case passing 1 argument symbolic → true to finalSymlinkAndHardlinkDoNotChangeForeignBytes(_:) started.
+◇ Test case passing 1 argument sql → "UPDATE semantic_entries SET vector=x'0000'" to corruptPersistedRowsAreRejected(_:) started.
+◇ Test case passing 1 argument symbolic → false to finalSymlinkAndHardlinkDoNotChangeForeignBytes(_:) started.
+◇ Test case passing 1 argument vector → [nan, 0.0, 1.0] to invalidVectorsNeverPersist(_:) started.
+◇ Test case passing 1 argument sql → "UPDATE semantic_entries SET vector=x'0000C07F0000000000000000'" to corruptPersistedRowsAreRejected(_:) started.
+◇ Test case passing 1 argument sql → "UPDATE semantic_entries SET vector=zeroblob(12)" to corruptPersistedRowsAreRejected(_:) started.
+◇ Test case passing 1 argument vector → [inf, 0.0, 1.0] to invalidVectorsNeverPersist(_:) started.
+◇ Test case passing 1 argument sql → "UPDATE semantic_entries SET source_revision=''" to corruptPersistedRowsAreRejected(_:) started.
+◇ Test case passing 1 argument sql → "UPDATE semantic_entries SET raster_digest='bad'" to corruptPersistedRowsAreRejected(_:) started.
+✔ Test explicitRecoveryCannotReplaceCataloguedOriginalAtDatabaseLeaf(leaf:) with 2 test cases passed after 0.575 seconds.
+✔ Test artifactDescriptorAwaitIsGuardedBeforeDescriptorSQLRead() passed after 0.576 seconds.
+✔ Test damagedRecoveryChecksBothJournalInventoryAndCatalogAtInstall() passed after 0.578 seconds.
+✔ Test unrelatedCatalogIsNeverOverwritten() passed after 0.578 seconds.
+✔ Test foreignEqualByteInodeRejectedBeforeAndAfterRestart() passed after 0.578 seconds.
+✔ Test existingCorruptOwnerRemainsUntouched(bytes:) with 2 test cases passed after 0.578 seconds.
+◇ Test case passing 1 argument json → "{"schemaVersion":1,"description":"x","description":"y","attributes":[]}" to malformedUnknownAndDuplicateValuesRejectWholeResponse(_:) started.
+◇ Test case passing 1 argument json → "{"schemaVersion":1,"description":"x","attributes":[],"rasterSHA256":"forged"}" to malformedUnknownAndDuplicateValuesRejectWholeResponse(_:) started.
+◇ Test case passing 1 argument json → "{"schemaVersion":1,"description":"x","attributes":[],"source":"/secret"}" to malformedUnknownAndDuplicateValuesRejectWholeResponse(_:) started.
+◇ Test case passing 1 argument json → "{"schemaVersion":1,"description":"x","attributes":[{"category":"identity","value":"Name"}]}" to malformedUnknownAndDuplicateValuesRejectWholeResponse(_:) started.
+◇ Test case passing 1 argument json → "{"schemaVersion":1,"description":"x","attributes":[{"category":"color","value":"Rot","confidence":1}]}" to malformedUnknownAndDuplicateValuesRejectWholeResponse(_:) started.
+◇ Test case passing 1 argument json → "{"schemaVersion":1,"description":"x","attributes":[{"category":"color","value":"Rot"},{"category":"color","value":"Rot"}]}" to malformedUnknownAndDuplicateValuesRejectWholeResponse(_:) started.
+◇ Test case passing 1 argument json → "{"schemaVersion":1,"description":" ","attributes":[]}" to malformedUnknownAndDuplicateValuesRejectWholeResponse(_:) started.
+◇ Test case passing 1 argument json → "{"schemaVersion":1.0,"description":"x","attributes":[]}" to malformedUnknownAndDuplicateValuesRejectWholeResponse(_:) started.
+◇ Test case passing 1 argument json → "{"schemaVersion":2,"description":"x","attributes":[]}" to malformedUnknownAndDuplicateValuesRejectWholeResponse(_:) started.
+◇ Test case passing 1 argument json → "{"schemaVersion":1,"description":"x","attributes":[]} trailing" to malformedUnknownAndDuplicateValuesRejectWholeResponse(_:) started.
+◇ Test case passing 1 argument json → "{"schemaVersion":1,"description":"x","attributes":[],"deep":[[[[[[[[[[0]]]]]]]]]]}" to malformedUnknownAndDuplicateValuesRejectWholeResponse(_:) started.
+✔ Test independentCorruptEditingStoreDoesNotDisableRealMetadataAfterEmptyInventory() passed after 0.581 seconds.
+✔ Test fileHandleNeverAllowsUnboundedOrOverflowRead() passed after 0.587 seconds.
+✔ Test interruptedPreparationIsInertAndPreservedOnRestart() passed after 0.587 seconds.
+◇ Test case passing 1 argument parameter → .exposure to parameterMappingAndBoundaries(_:) started.
+◇ Test case passing 1 argument parameter → .highlights to parameterMappingAndBoundaries(_:) started.
+◇ Test case passing 1 argument parameter → .contrast to parameterMappingAndBoundaries(_:) started.
+◇ Test case passing 1 argument parameter → .shadows to parameterMappingAndBoundaries(_:) started.
+✔ Test duplicateUnknownInactiveAndOversizedJSONRejectBeforeDecode() passed after 0.587 seconds.
+◇ Test case passing 1 argument parameter → .blacks to parameterMappingAndBoundaries(_:) started.
+◇ Test case passing 1 argument parameter → .whites to parameterMappingAndBoundaries(_:) started.
+◇ Test case passing 1 argument parameter → .texture to parameterMappingAndBoundaries(_:) started.
+◇ Test case passing 1 argument parameter → .clarity to parameterMappingAndBoundaries(_:) started.
+◇ Test case passing 1 argument parameter → .dehaze to parameterMappingAndBoundaries(_:) started.
+◇ Test case passing 1 argument parameter → .vibrance to parameterMappingAndBoundaries(_:) started.
+◇ Test case passing 1 argument parameter → .saturation to parameterMappingAndBoundaries(_:) started.
+◇ Test case passing 1 argument parameter → .luminanceNoiseReduction to parameterMappingAndBoundaries(_:) started.
+◇ Test case passing 1 argument parameter → .colorNoiseReduction to parameterMappingAndBoundaries(_:) started.
+◇ Test case passing 1 argument parameter → .autoToneAmount to parameterMappingAndBoundaries(_:) started.
+◇ Test case passing 1 argument value → nan to typedProposalsRejectNonfiniteValues(_:) started.
+◇ Test case passing 1 argument value → inf to typedProposalsRejectNonfiniteValues(_:) started.
+✔ Test restoreMaterializationAwaitCannotReplayAnUnownedJournal() passed after 0.591 seconds.
+◇ Test case passing 1 argument value → -inf to typedProposalsRejectNonfiniteValues(_:) started.
+✔ Test originalBytesPublishThroughExistingCASAndRecoverAfterRename() passed after 0.590 seconds.
+✔ Test unownedArtifactRootAndHardlinkedOwnerArePreserved() passed after 0.590 seconds.
+✔ Test hardlinkedPayloadAndUnknownJournalPreserveAllBytes() passed after 0.590 seconds.
+✔ Test recoveryPermitRequiresItsRealMaintenanceExecutionAndGate() passed after 0.590 seconds.
+✔ Test abortIntentStaysPendingUntilParticipantsHaveFinished() passed after 0.591 seconds.
+✔ Test testInvalidCatalogCannotReplaceValidCatalog() passed after 0.590 seconds.
+◇ Test case passing 1 argument testCase → AIInvalidResponse(json: "{\"schemaVersion\":2,\"changes\":[]}", category: PicEditCore.AIProposalValidationError.unsupportedSchemaVersion) to rawJSONRejectsInvalidSchemaWithoutRepair(_:) started.
+◇ Test case passing 1 argument testCase → AIInvalidResponse(json: "{\"schemaVersion\":1,\"changes\":[],\"requestID\":\"forged\"}", category: PicEditCore.AIProposalValidationError.unknownField) to rawJSONRejectsInvalidSchemaWithoutRepair(_:) started.
+◇ Test case passing 1 argument testCase → AIInvalidResponse(json: "{\"schemaVersion\":1,\"changes\":[{\"parameter\":\"shadows\",\"value\":30,\"delta\":10}]}", category: PicEditCore.AIProposalValidationError.unknownField) to rawJSONRejectsInvalidSchemaWithoutRepair(_:) started.
+◇ Test case passing 1 argument testCase → AIInvalidResponse(json: "{\"schemaVersion\":1,\"schemaVersion\":1,\"changes\":[]}", category: PicEditCore.AIProposalValidationError.duplicateField) to rawJSONRejectsInvalidSchemaWithoutRepair(_:) started.
+◇ Test case passing 1 argument testCase → AIInvalidResponse(json: "{\"schemaVersion\":1,\"schema\\u0056ersion\":1,\"changes\":[]}", category: PicEditCore.AIProposalValidationError.duplicateField) to rawJSONRejectsInvalidSchemaWithoutRepair(_:) started.
+◇ Test case passing 1 argument testCase → AIInvalidResponse(json: "{\"schemaVersion\":1,\"changes\":[{\"parameter\":\"shadows\",\"value\":30,\"\\u0076alue\":40}]}", category: PicEditCore.AIProposalValidationError.duplicateField) to rawJSONRejectsInvalidSchemaWithoutRepair(_:) started.
+◇ Test case passing 1 argument testCase → AIInvalidResponse(json: "{\"schemaVersion\":1,\"changes\":[{\"parameter\":\"shadows\",\"value\":30},{\"parameter\":\"shadows\",\"value\":30}]}", category: PicEditCore.AIProposalValidationError.duplicateParameter) to rawJSONRejectsInvalidSchemaWithoutRepair(_:) started.
+◇ Test case passing 1 argument testCase → AIInvalidResponse(json: "{\"schemaVersion\":1,\"changes\":[{\"parameter\":\"unknown\",\"value\":30}]}", category: PicEditCore.AIProposalValidationError.unknownParameter) to rawJSONRejectsInvalidSchemaWithoutRepair(_:) started.
+◇ Test case passing 1 argument testCase → AIInvalidResponse(json: "{\"schemaVersion\":true,\"changes\":[]}", category: PicEditCore.AIProposalValidationError.invalidType) to rawJSONRejectsInvalidSchemaWithoutRepair(_:) started.
+◇ Test case passing 1 argument testCase → AIInvalidResponse(json: "{\"schemaVersion\":\"1\",\"changes\":[]}", category: PicEditCore.AIProposalValidationError.invalidType) to rawJSONRejectsInvalidSchemaWithoutRepair(_:) started.
+◇ Test case passing 1 argument testCase → AIInvalidResponse(json: "{\"schemaVersion\":1.0,\"changes\":[]}", category: PicEditCore.AIProposalValidationError.invalidType) to rawJSONRejectsInvalidSchemaWithoutRepair(_:) started.
+◇ Test case passing 1 argument testCase → AIInvalidResponse(json: "{\"schemaVersion\":1,\"changes\":null}", category: PicEditCore.AIProposalValidationError.invalidType) to rawJSONRejectsInvalidSchemaWithoutRepair(_:) started.
+◇ Test case passing 1 argument testCase → AIInvalidResponse(json: "{\"schemaVersion\":1,\"changes\":{}}", category: PicEditCore.AIProposalValidationError.invalidType) to rawJSONRejectsInvalidSchemaWithoutRepair(_:) started.
+◇ Test case passing 1 argument testCase → AIInvalidResponse(json: "{\"schemaVersion\":1,\"changes\":[null]}", category: PicEditCore.AIProposalValidationError.invalidType) to rawJSONRejectsInvalidSchemaWithoutRepair(_:) started.
+◇ Test case passing 1 argument testCase → AIInvalidResponse(json: "{\"schemaVersion\":1,\"changes\":[{\"parameter\":null,\"value\":3}]}", category: PicEditCore.AIProposalValidationError.invalidType) to rawJSONRejectsInvalidSchemaWithoutRepair(_:) started.
+◇ Test case passing 1 argument testCase → AIInvalidResponse(json: "{\"schemaVersion\":1,\"changes\":[{\"parameter\":\"shadows\",\"value\":true}]}", category: PicEditCore.AIProposalValidationError.invalidType) to rawJSONRejectsInvalidSchemaWithoutRepair(_:) started.
+◇ Test case passing 1 argument testCase → AIInvalidResponse(json: "{\"schemaVersion\":1,\"changes\":[{\"parameter\":\"shadows\",\"value\":null}]}", category: PicEditCore.AIProposalValidationError.invalidType) to rawJSONRejectsInvalidSchemaWithoutRepair(_:) started.
+◇ Test case passing 1 argument testCase → AIInvalidResponse(json: "{\"schemaVersion\":1,\"changes\":[{\"parameter\":\"shadows\",\"value\":\"30\"}]}", category: PicEditCore.AIProposalValidationError.invalidType) to rawJSONRejectsInvalidSchemaWithoutRepair(_:) started.
+◇ Test case passing 1 argument testCase → AIInvalidResponse(json: "{\"schemaVersion\":1,\"changes\":[{\"parameter\":\"shadows\",\"value\":{}}]}", category: PicEditCore.AIProposalValidationError.invalidType) to rawJSONRejectsInvalidSchemaWithoutRepair(_:) started.
+◇ Test case passing 1 argument testCase → AIInvalidResponse(json: "{\"schemaVersion\":1,\"changes\":[],\"explanation\":null}", category: PicEditCore.AIProposalValidationError.invalidType) to rawJSONRejectsInvalidSchemaWithoutRepair(_:) started.
+◇ Test case passing 1 argument testCase → AIInvalidResponse(json: "{\"schemaVersion\":1,\"changes\":[],\"explanation\":false}", category: PicEditCore.AIProposalValidationError.invalidType) to rawJSONRejectsInvalidSchemaWithoutRepair(_:) started.
+◇ Test case passing 1 argument testCase → AIInvalidResponse(json: "{\"schemaVersion\":1}", category: PicEditCore.AIProposalValidationError.missingField) to rawJSONRejectsInvalidSchemaWithoutRepair(_:) started.
+◇ Test case passing 1 argument testCase → AIInvalidResponse(json: "{\"changes\":[]}", category: PicEditCore.AIProposalValidationError.missingField) to rawJSONRejectsInvalidSchemaWithoutRepair(_:) started.
+◇ Test case passing 1 argument testCase → AIInvalidResponse(json: "{\"schemaVersion\":1,\"changes\":[{\"value\":30}]}", category: PicEditCore.AIProposalValidationError.missingField) to rawJSONRejectsInvalidSchemaWithoutRepair(_:) started.
+◇ Test case passing 1 argument testCase → AIInvalidResponse(json: "{\"schemaVersion\":1,\"changes\":[{\"parameter\":\"shadows\"}]}", category: PicEditCore.AIProposalValidationError.missingField) to rawJSONRejectsInvalidSchemaWithoutRepair(_:) started.
+◇ Test case passing 1 argument testCase → AIInvalidResponse(json: "{\"schemaVersion\":1,\"changes\":[{\"parameter\":\"exposure\",\"value\":5.01}]}", category: PicEditCore.AIProposalValidationError.outOfRange) to rawJSONRejectsInvalidSchemaWithoutRepair(_:) started.
+◇ Test case passing 1 argument testCase → AIInvalidResponse(json: "{\"schemaVersion\":1,\"changes\":[{\"parameter\":\"shadows\",\"value\":1e9999}]}", category: PicEditCore.AIProposalValidationError.nonFiniteValue) to rawJSONRejectsInvalidSchemaWithoutRepair(_:) started.
+◇ Test case passing 1 argument testCase → AIInvalidResponse(json: "{\"schemaVersion\":1,\"changes\":[{\"parameter\":\"shadows\",\"value\":NaN}]}", category: PicEditCore.AIProposalValidationError.malformedJSON) to rawJSONRejectsInvalidSchemaWithoutRepair(_:) started.
+◇ Test case passing 1 argument testCase → AIInvalidResponse(json: "{\"schemaVersion\":1,\"changes\":[{\"parameter\":\"shadows\",\"value\":Infinity}]}", category: PicEditCore.AIProposalValidationError.malformedJSON) to rawJSONRejectsInvalidSchemaWithoutRepair(_:) started.
+◇ Test case passing 1 argument testCase → AIInvalidResponse(json: "{\"schemaVersion\":1,\"changes\":[{\"parameter\":\"shadows\",\"value\":01}]}", category: PicEditCore.AIProposalValidationError.malformedJSON) to rawJSONRejectsInvalidSchemaWithoutRepair(_:) started.
+◇ Test case passing 1 argument testCase → AIInvalidResponse(json: "{\"schemaVersion\":1,\"changes\":[{\"parameter\":\"shadows\",\"value\":+1}]}", category: PicEditCore.AIProposalValidationError.malformedJSON) to rawJSONRejectsInvalidSchemaWithoutRepair(_:) started.
+◇ Test case passing 1 argument testCase → AIInvalidResponse(json: "{\"schemaVersion\":1,\"changes\":[{\"parameter\":\"shadows\",\"value\":1.}]}", category: PicEditCore.AIProposalValidationError.malformedJSON) to rawJSONRejectsInvalidSchemaWithoutRepair(_:) started.
+◇ Test case passing 1 argument testCase → AIInvalidResponse(json: "{\"schemaVersion\":1,\"changes\":[{\"parameter\":\"shadows\",\"value\":1e}]}", category: PicEditCore.AIProposalValidationError.malformedJSON) to rawJSONRejectsInvalidSchemaWithoutRepair(_:) started.
+◇ Test case passing 1 argument testCase → AIInvalidResponse(json: "{\"schemaVersion\":1,\"changes\":[],}", category: PicEditCore.AIProposalValidationError.malformedJSON) to rawJSONRejectsInvalidSchemaWithoutRepair(_:) started.
+◇ Test case passing 1 argument testCase → AIInvalidResponse(json: "{\"schemaVersion\":1,\"changes\":[]} {}", category: PicEditCore.AIProposalValidationError.malformedJSON) to rawJSONRejectsInvalidSchemaWithoutRepair(_:) started.
+◇ Test case passing 1 argument testCase → AIInvalidResponse(json: "```json\n{\"schemaVersion\":1,\"changes\":[]}\n```", category: PicEditCore.AIProposalValidationError.malformedJSON) to rawJSONRejectsInvalidSchemaWithoutRepair(_:) started.
+◇ Test case passing 1 argument testCase → AIInvalidResponse(json: "{\"schemaVersion\":1,\"changes\":[", category: PicEditCore.AIProposalValidationError.malformedJSON) to rawJSONRejectsInvalidSchemaWithoutRepair(_:) started.
+◇ Test case passing 1 argument testCase → AIInvalidResponse(json: "{\"schemaVersion\":1,\"changes\":[],\"explanation\":\"\\x\"}", category: PicEditCore.AIProposalValidationError.malformedJSON) to rawJSONRejectsInvalidSchemaWithoutRepair(_:) started.
+◇ Test case passing 1 argument testCase → AIInvalidResponse(json: "", category: PicEditCore.AIProposalValidationError.malformedJSON) to rawJSONRejectsInvalidSchemaWithoutRepair(_:) started.
+◇ Test case passing 1 argument testCase → AIInvalidResponse(json: "[]", category: PicEditCore.AIProposalValidationError.invalidType) to rawJSONRejectsInvalidSchemaWithoutRepair(_:) started.
+✔ Test immutableLegacySQLRepeatedValidationHasStableVirtualEpochAndNoMutation() passed after 0.593 seconds.
+✔ Test testFileCannotBeScannedAsFolder() passed after 0.593 seconds.
+✔ Test publicationAwaitCannotAdmitAnUnownedSidecarToSQLite() passed after 0.598 seconds.
+✔ Test unownedDirectoryAndSymlinkDoNotAcquireOwnership() passed after 0.605 seconds.
+✔ Test wrongSchemasAlphaAndNativeNanosecondsNeverNormalizeIntoValidValues() passed after 0.605 seconds.
+✔ Test synthesizedCodableCannotAdmitNegativeBytesOrInvalidExpectedState() passed after 0.605 seconds.
+✔ Test testMalformedCatalogIsNotSilentlyResetOrModified() passed after 0.608 seconds.
+✔ Test tamperedManifestHashAndMissingMaskBindingReject() passed after 0.608 seconds.
+✔ Test zoomPanResizingAndBackingScaleRoundTrip() passed after 0.608 seconds.
+✔ Test testMissingFolderFailsInsteadOfReturningEmptyScan() passed after 0.608 seconds.
+✔ Test namesExplanationsAndWireLimitsRemainBounded() passed after 0.616 seconds.
+✔ Test invalidGeometryAndOrientationCoordinatesReject() passed after 0.616 seconds.
+✔ Test testCatalogRoundTripPreservesMetadataAndUserEdits() passed after 0.616 seconds.
+✔ Test journalCASAndPhaseOrderingCannotSkipOrReplay() passed after 0.621 seconds.
+✔ Test exactReferenceDateBitsSurviveCanonicalProvenanceRoundtrip() passed after 0.626 seconds.
+✔ Test invalidPatchRejectsWholeGroupAndNoEffectIsAnError() passed after 0.625 seconds.
+✔ Test countsAndIDsAreExactWithoutFillingOrDiscarding() passed after 0.625 seconds.
+✔ Test versionedCanonicalRoundTripAndValidation() passed after 0.625 seconds.
+✔ Test duplicateParameterAndGeometryMismatchRejectSynthesizedDecoders() passed after 0.625 seconds.
+✔ Test lateRootPreparationIsProtectedFromMetadataAndBackupExports() passed after 0.626 seconds.
+✔ Test actualSizeSupportsSinglePixelCanvasAtRetinaScales() passed after 0.626 seconds.
+✔ Test inversionIsExactAndSubsequentBrushKeepsMeaning() passed after 0.626 seconds.
+✔ Test testDirectoryTreeIncludesEmptyAndUnicodeFoldersInNaturalOrder() passed after 0.635 seconds.
+✔ Test automaticBackupReusesVerifiedDayBeforeAnyFurtherCopy() passed after 0.635 seconds.
+✔ Test canonicalOrderAndEveryTargetUsesTheSameBaseline() passed after 0.635 seconds.
+✔ Test testRejectsFutureCatalogVersionWithoutOverwriting() passed after 0.635 seconds.
+✔ Suite ArtifactLoadEvaluationTests passed after 0.637 seconds.
+✔ Test externallyChangedCatalogNeverGetsOverwrittenDuringRecovery() passed after 0.636 seconds.
+✔ Test testLegacyCatalogWithoutDirectoryTreeLoadsWithEmptyDefault() passed after 0.635 seconds.
+✔ Test unknownAndDuplicateFieldsAreRejectedAtEveryLevel() passed after 0.645 seconds.
+✔ Test pruningFailureIsAWarningAfterSuccessfulPublication() passed after 0.645 seconds.
+✔ Test requiredMissingEditingStoreIsNotRecreatedAfterArming() passed after 0.646 seconds.
+✔ Test malformedSettingsRemainRejectedInsteadOfSilentlyResettingEdits() passed after 0.645 seconds.
+✔ Test invalidValuesAndArithmeticOverflowThrow() passed after 0.645 seconds.
+✔ Test automaticAmountParticipatesInNormalizationAndSettingsIdentity() passed after 0.645 seconds.
+✔ Test modeAllowsAnEmptyLookRequestWhileRetainingInputAndSnapshotChecks() passed after 0.646 seconds.
+✔ Test aspectFitRejectsLetterboxAndAcceptsExactEdges() passed after 0.646 seconds.
+✔ Test originalRetainsFullResolutionAndPrintDensityDoesNotResize() passed after 0.646 seconds.
+✔ Test limitsRejectOversizedStrokeAndDocument() passed after 0.646 seconds.
+✔ Test longEdgeHandlesBothOrientationsAndUpscaling() passed after 0.646 seconds.
+✔ Test allExifOrientationsPreserveAsymmetricPixelGridAndRoundTrip() passed after 0.646 seconds.
+✔ Test actualAfterWithoutOriginalEditingReceiptNeverFabricatesSuccess() passed after 0.647 seconds.
+✔ Test replacedRequiredMetadataStoreUUIDCannotBeAcceptedAsSameParticipant() passed after 0.647 seconds.
+✔ Test artifactRecoveryReportRetainsOrphansAndUsesVariantReferences() passed after 0.646 seconds.
+✔ Test fitIsAnAspectPreservingBoundingBoxWithRoundedPixels() passed after 0.646 seconds.
+✔ Test legacySettingsDefaultOnlyNewControlWithoutChangingExistingEdits() passed after 0.646 seconds.
+✔ Test requestFreezesInputAndMaskWithDistinctSourceRevisionAndHashToken() passed after 0.646 seconds.
+✔ Test jpegBoundariesAndLargeSourceDownscalingAreAccepted() passed after 0.646 seconds.
+✔ Test sameIdentityIsNotRecreatedWhenExistingStoreIsCorrupt() passed after 0.646 seconds.
+✔ Test existingFamilyRootAliasesProtectPhysicalTargetsAndDanglingDestinations() passed after 0.646 seconds.
+✔ Test absentParticipantInspectionDoesNotCreateOrMigrate() passed after 0.647 seconds.
+✔ Test cropModelAndNativePixelCentresShareOneTransform() passed after 0.647 seconds.
+✔ Test invalidJointLinkFailsClosedWithoutRepairOrTextMutation() passed after 0.647 seconds.
+✔ Test mismatchedRasterOrDocumentCannotBeStaged() passed after 0.647 seconds.
+✔ Test importReviewExpiryUsesContinuousElapsedTimeWithoutWriting() passed after 0.647 seconds.
+✔ Test legacySchemaOneMigratesExplicitlyAndStableUUIDSurvivesRestart() passed after 0.647 seconds.
+✔ Test automaticToneSurvivesWALReopenBackupAndRestore() passed after 0.647 seconds.
+✔ Test unsupportedAlphaAndWrongMaskGeometryPreserveOriginal() passed after 0.647 seconds.
+✔ Test legacyDatabaseAndBackupOpenAndRestoreWithoutMigrationLoss() passed after 0.648 seconds.
+✔ Test optionalCatalogBirthEvidenceDoesNotRejectSuggestorSource() passed after 0.647 seconds.
+✔ Test broadObjectsAndHugeNumberTokensAreRejectedBeforeDOMAllocation() passed after 0.648 seconds.
+✔ Test normalizedReplaySurvivesLaterWritesAndRejectsIDCollision() passed after 0.648 seconds.
+✔ Test missingLeavesAndDirectoryRootsUseNativeReachablePrefixComparison() passed after 0.648 seconds.
+✔ Test manualRoundtripUsesExactDateAndEmptyConfirmationIsTombstone() passed after 0.648 seconds.
+✔ Test parentDirectoryReplacementCannotPublishThroughStalePinnedFD() passed after 0.648 seconds.
+✔ Test removeRefreshAndLateCatalogKeepConfirmedData() passed after 0.649 seconds.
+✔ Test destinationAncestorWalkTerminatesAtRootAndProtectsEveryAncestor() passed after 0.649 seconds.
+✔ Test exportImportRoundtripIsConfirmedOnlyAndRetrySurvivesConsumedReview() passed after 0.649 seconds.
+✔ Test characterByteAggregateAndTagBoundsAreIndependent() passed after 0.649 seconds.
+✔ Test legacyParticipantInspectionDoesNotMigrateOrRecreate() passed after 0.649 seconds.
+✔ Test unverifiedMappingKeepsBothRecordsAndResolutionUsesCurrentCAS() passed after 0.649 seconds.
+✔ Test finalSymlinkHardlinkReadOnlyAndHotJournalArePreserved() passed after 0.654 seconds.
+✔ Test stagedMappingBlocksOnlyAffectedMetadataAndCrashBeforePublishAbandons() passed after 0.654 seconds.
+✔ Test exportFailurePreservesTargetAndProtectedAliases() passed after 0.654 seconds.
+✔ Test manualOriginalOnlyConfirmRetainsCatalogNativeAndOverwriteWarningIsSticky() passed after 0.654 seconds.
+✔ Test replacedStageLeafIsNeitherPublishedNorDeletedAsOwnedCleanup() passed after 0.654 seconds.
+✔ Test secondRelocationAfterRestartUsesCurrentAssociationNotOldAnalysisPath() passed after 0.655 seconds.
+✔ Test knownOverwriteWarningSurvivesSameNativeRelocationAndRestartUntilTextConfirmation() passed after 0.655 seconds.
+✔ Test staleActorManualDraftPreservesAnExternallyReconciledOrphanAndSearchState() passed after 0.654 seconds.
+✔ Test invalidRequestsAndOversizedRetainsNeverChangeAccounting() passed after 0.654 seconds.
+✔ Test lateAIAnswerCannotOverwriteEditedManualDraft() passed after 0.654 seconds.
+✔ Test initializationIsLazyAndInvalidLocationKeepsPreciseReason() passed after 0.654 seconds.
+✔ Test unexpectedCatalogDigestIsConflictAndCannotGuessMapping() passed after 0.654 seconds.
+✔ Test publicationAndSQLFailuresLeavePriorStateAndRepeatSafely() passed after 0.654 seconds.
+✔ Test modelResponseNormalizesOnlyExactVersionedFields() passed after 0.654 seconds.
+✔ Test secondRepositoryCatalogChangeCannotUseAStaleProtectionOrSourceMap() passed after 0.655 seconds.
+✔ Test managedDirectoryFamiliesCoverLateQuarantineAndParentAliases() passed after 0.654 seconds.
+✔ Test newerConfirmationRequiresExplicitManualReviewAndDraftCAS() passed after 0.654 seconds.
+✔ Test changedDestinationAndSourceAfterPreparedNeverOverwriteEdits() passed after 0.655 seconds.
+✔ Test rollbackAndSearchFailureAreDifferentOutcomes() passed after 0.654 seconds.
+✔ Test unknownSchemaAndForeignAndCorruptBytesAreNeverMutated() passed after 0.654 seconds.
+✔ Test preparedAbortRequiresPositivePrearmEvidenceAndReleasesSourceFence() passed after 0.655 seconds.
+✔ Test crashAfterCatalogPublishReplaysExactlyOnceAndPreservesHistoricalProvenance() passed after 0.655 seconds.
+✔ Test oldDialogCannotDiscardNewReviewAndMalformedFilesNeverWrite() passed after 0.655 seconds.
+✔ Test closedCopyUsesOnlySnapshotClosureAndOriginalPinnedHandle() passed after 0.655 seconds.
+✔ Test partialAIConfirmKeepsLanguageAndMarksOneConsumedProposal() passed after 0.655 seconds.
+✔ Test repeatedRefreshAndRestartPreserveOverwriteWarning() passed after 0.655 seconds.
+✔ Test lazyInitAndStableIdentityAcrossRestart() passed after 0.655 seconds.
+✔ Test conflictsDefaultToKeepAndExplicitReplaceBindsCurrentVersion() passed after 0.655 seconds.
+✔ Test externalTriggerOnLiveHandleIsRejectedBeforeAnyWrite() passed after 0.655 seconds.
+✔ Test legacyMigrationPreservesSettingsRevisionsAndTombstones() passed after 0.658 seconds.
+✔ Test prepareIsReadOnlyForSourcesAndInspectionNeverCreatesMissingEvidence() passed after 0.658 seconds.
+✔ Test lateGenerationAndSameSizeRestoredMtimeOverwriteCannotCommit() passed after 0.659 seconds.
+✔ Test missingOriginalDirectoryAndFamilyUseTheReachableVolumesCaseSemantics() passed after 0.658 seconds.
+✔ Test existingEmptyFileIsNotAbsentAndCorruptFutureFilesSurviveSave() passed after 0.658 seconds.
+✔ Test backupRestoreRotatesEpochAndKeepsDurableStoreIdentityAndSafetyPackage() passed after 0.659 seconds.
+✔ Test manualAndAIDraftsHaveIndependentMonotoneCountersAndNoSearchText() passed after 0.659 seconds.
+✔ Test orderlyClosedRealLegacyActorRetainsWALHeaderAndMigrates() passed after 0.658 seconds.
+✔ Test acceptedGeneratedIsFlatNeutralOneReceiptAndPersistentVariants() passed after 0.658 seconds.
+✔ Test preparedBytesRemainExactAcrossStageAndReloadIncludingAdjacentDates() passed after 0.658 seconds.
+✔ Test unrelatedByteChangeRejectsCASAndPreservesCurrentFile() passed after 0.659 seconds.
+✔ Test tamperedStageOrForeignLockAliasCannotPublish() passed after 0.658 seconds.
+✔ Test generatedParentFingerprintCannotBeAppliedToDifferentOriginalAsset() passed after 0.659 seconds.
+✔ Test opaqueFamilyRecoveryUsesRootPermitAndRetainsEveryOriginalByte() passed after 0.659 seconds.
+✔ Test newlyAppearingWALAndJournalAfterArchiveNeverReachWritableSQLite() passed after 0.659 seconds.
+✔ Suite "Opt-in durable metadata load evaluation" passed after 0.661 seconds.
+✔ Test reviewedImportCASIsWholeDocumentAndEmptyTombstoneBlocksInsertMissing() passed after 0.659 seconds.
+✔ Test changedNativeFamilyBeforeFinalInstallIsPreservedAndNotOverwritten() passed after 0.659 seconds.
+✔ Test discardedStageNeverDeletesAnUnrelatedReplacementAtItsUUIDLeaf() passed after 0.659 seconds.
+✔ Test remapCommitAndCatalogCompletionReplayExactOriginalStateAfterRestart() passed after 0.659 seconds.
+✔ Test validForeignAndFutureSQLiteAreNeverOpaqueRecoveryFallbacks() passed after 0.659 seconds.
+✔ Test draftTypingDoesNotRebuildUnchangedConfirmedSearchSnapshot() passed after 0.659 seconds.
+✔ Test firstRealLegacyOpenCommitAndProcessExitMigrateHeaderZeroWAL() passed after 0.659 seconds.
+✔ Test foreignAndRepeatedAdmissionsCannotExecute() passed after 0.659 seconds.
+✔ Test fractionalNativeDatesRoundtripWithoutFingerprintLoss() passed after 0.659 seconds.
+✔ Test forceNewAndInstallationChangesSupersedeBuildingHandles() passed after 0.659 seconds.
+✔ Test existingForeignAndUnknownVersionRemainByteExact() passed after 0.659 seconds.
+✔ Test readonlyExistingStorePreservesBytesAndMode() passed after 0.662 seconds.
+✔ Test emptyOpaqueFileCanBeExplicitlyRecoveredButNeverAutomaticallyReinitialized() passed after 0.662 seconds.
+✔ Test emptyFullAndEdgeCrossingMasks() passed after 0.662 seconds.
+✔ Test inheritedAdmissionCannotChangeItsDomain() passed after 0.662 seconds.
+✔ Test unknownTriggerOnLiveHandleIsRejectedBeforeNextWrite() passed after 0.662 seconds.
+✔ Test emptyExistingFileAndFinalAliasesNeverBecomeStores() passed after 0.662 seconds.
+✔ Test rasterHashSeparatesDimensionsAndCoverage() passed after 0.662 seconds.
+✔ Test returningToActiveSpaceSupersedesOtherPendingSpace() passed after 0.665 seconds.
+✔ Test nativeJournalCrashHasExplicitReadonlyRecoveryWithoutDeletingSidecars() passed after 0.665 seconds.
+✔ Test durableFenceNeedsExactCoordinatorCompletion() passed after 0.665 seconds.
+✔ Test lazyInitializationRoundtripLittleEndianAndRestart() passed after 0.665 seconds.
+✔ Test unknownSchemaIsNotMutated(_:) with 3 test cases passed after 0.665 seconds.
+✔ Test corruptRecordAndMissingSchemaAreNeverReinitialized() passed after 0.665 seconds.
+✔ Test foreignAndFutureFirstOpenLogicalWALFamiliesRemainByteIdentical() passed after 0.665 seconds.
+✔ Test narrowCapsulesConnectPointsAndOrderedEraseIsDeterministic() passed after 0.665 seconds.
+✔ Test unknownAndReplacedSharedMemoryAreRetainedInsteadOfDeleted() passed after 0.665 seconds.
+✔ Test finalSymlinkAndHardlinkDoNotChangeForeignBytes(_:) with 2 test cases passed after 0.665 seconds.
+✔ Test invalidVectorsNeverPersist(_:) with 5 test cases passed after 0.665 seconds.
+✔ Test unknownLogicalSchemaInWALNeverMutatesAnyOriginalFamilyByte() passed after 0.665 seconds.
+✔ Test nativeCropAndModelCoordinatesUsePixelCenters() passed after 0.665 seconds.
+✔ Test corruptPersistedRowsAreRejected(_:) with 5 test cases passed after 0.665 seconds.
+✔ Test explicitDeletionClearsOnlyOwnedIndexAndInvalidatesHandles() passed after 0.665 seconds.
+✔ Test boundedPagesUseStableBinaryAssetOrder() passed after 0.665 seconds.
+✔ Test hardnessControlsLinearFeatherWithoutAccumulatingOverlappingSegments() passed after 0.665 seconds.
+✔ Test committedUncheckpointedWALUsesLatestSettingsAndRevisions() passed after 0.666 seconds.
+✔ Test operationClaimsAreIndependentAndOmittedClaimsStayUnverified() passed after 0.665 seconds.
+✔ Test invalidParameterAndDescriptorBoundsRejectInsteadOfClamping() passed after 0.665 seconds.
+✔ Test resamplingCoordinateGridCropsAndConstantEdges() passed after 0.665 seconds.
+✔ Test explicitDeletionQuarantinesUnknownExistingIndex() passed after 0.665 seconds.
+✔ Test emptyPromptNonmaskedOperationAndChangedInpaintCanvasAreRejected() passed after 0.665 seconds.
+✔ Test metadataAndInstallationBoundsAreStrict() passed after 0.665 seconds.
+✔ Test escapedKeysUnicodeAndScientificNumbersAreValid() passed after 0.650 seconds.
+✔ Test unknownAndOrphanFilesRemainUntilExplicitQuarantine() passed after 0.665 seconds.
+✔ Test emptyAndIneffectivePatchesHaveExplicitNoChangeResult() passed after 0.641 seconds.
+✔ Test nativeOutputRechecksDimensionsProfileAlphaAndEveryJobTokenComponent() passed after 0.665 seconds.
+✔ Test typedByteAndCountLimitsRejectRatherThanTruncate() passed after 0.634 seconds.
+✔ Test patchValuesAreAbsoluteAndOtherControlsStayExact() passed after 0.634 seconds.
+✔ Test languageAndCapabilitiesAreExplicit() passed after 0.630 seconds.
+✔ Test malformedUnknownAndDuplicateValuesRejectWholeResponse(_:) with 11 test cases passed after 0.630 seconds.
+✔ Test ineffectivePatchRetainsOnlyItsValidatedExplanation() passed after 0.630 seconds.
+✔ Test shallowCleanupRemovesOnlyRegisteredSameInodes() passed after 0.651 seconds.
+✔ Test failedCommitRollsBackPointerAndEntries() passed after 0.666 seconds.
+✔ Test exchangedDirectoryCannotRedirectCleanupIntoForeignTree() passed after 0.642 seconds.
+✔ Test foreignReplacementAndUnknownChildArePreservedWithoutRecursiveDelete() passed after 0.642 seconds.
+✔ Test partialBuildResumesAndModelChangePreservesLastActive() passed after 0.667 seconds.
+✔ Test metadataTracksStrongRevisionWithoutErasingOldSourceOnMissingOrRelocation() passed after 0.667 seconds.
+✔ Test strictSchemaHasNoModelOwnedIdentityAndKeepsUnicode() passed after 0.620 seconds.
+✔ Test malformedUTF8AndSurrogatesAreRejected() passed after 0.620 seconds.
+✔ Test originalIgnoresSlidersButRejectsSelectionRestoreSourceAndLifecycleChanges() passed after 0.619 seconds.
+✔ Test parameterMappingAndBoundaries(_:) with 14 test cases passed after 0.619 seconds.
+✔ Test typedProposalsRejectNonfiniteValues(_:) with 3 test cases passed after 0.619 seconds.
+✔ Test duplicateIDsAndInvalidBaselineRejectWholeTypedPatch() passed after 0.613 seconds.
+✔ Test fourteenIDsAreUniqueAndExhaustive() passed after 0.608 seconds.
+✔ Test rawJSONRejectsInvalidSchemaWithoutRepair(_:) with 40 test cases passed after 0.605 seconds.
+✔ Test normalizationClampsEveryControlAndRejectsNonfiniteValues() passed after 0.606 seconds.
+✔ Test wrongOwnerMemoryReservationIsRejected() passed after 0.607 seconds.
+✔ Test overBudgetRejectsBeforeEncodingAndPreservesOriginal() passed after 0.604 seconds.
+✔ Test requestContextIsAppOwnedAndInputValidationPrecedesProviderWork() passed after 0.598 seconds.
+✔ Test byteDepthNodeAndTextLimitsAreEnforced() passed after 0.598 seconds.
+✔ Test savesSurviveReopenWhileNewestPagesAreStillInWAL() passed after 0.619 seconds.
+✔ Test failedSafetyBackupPreventsRestoreAndDoesNotDisableSaving() passed after 0.617 seconds.
+✔ Test staleAndEqualRevisionsCannotOverwriteNewerSettings() passed after 0.593 seconds.
+✔ Test corruptFutureAndInvalidPayloadBackupsNeverModifyActiveData() passed after 0.609 seconds.
+✔ Test failedSaveRollsBackRevisionAndSettingsTogether() passed after 0.582 seconds.
+✔ Test corruptAndFutureActiveDatabasesAreNeverReinitialized() passed after 0.605 seconds.
+✔ Test automaticBackupsAreDailyAndRetainSevenWhileManualFilesRemain() passed after 0.665 seconds.
+✔ Test explicitRecoveryPreservesCorruptDatabaseAndSidecars() passed after 0.677 seconds.
+✔ Test invalidRecoveryCandidateAndHealthyActiveDatabaseRemainUntouched() passed after 0.652 seconds.
+✔ Test restoreMakesSafetyBackupAndKeepsRevisionsMonotonicIncludingRemovedAssets() passed after 0.637 seconds.
+✔ Test dailyBackupMemoDetectsDeletedAndChangedFiles() passed after 0.628 seconds.
+✔ Test backupIsStandaloneVerifiedSnapshotOfLiveWAL() passed after 0.637 seconds.
+✔ Suite "Editing SQLite rejects unowned journals after artifact awaits" passed after 0.746 seconds.
+✔ Test privateCleanupPreflightPreservesWholeUnknownTree() passed after 0.745 seconds.
+✔ Test privateStageCleanupWaitsForLastActualReadHandle() passed after 0.745 seconds.
+✔ Test privateCleanupRejectsEqualByteReplacementBeforeAnyUnlink() passed after 0.745 seconds.
+✔ Test testCancelledScanThrowsCancellationError() passed after 0.746 seconds.
+✔ Suite "Artifact wire format and recursive corruption boundaries" passed after 0.747 seconds.
+✔ Test occupiedPublicationAndUnknownUUIDStageStayIntact() passed after 0.748 seconds.
+✔ Test cancelledFirstOpenLeavesNoPartialFinalRoot() passed after 0.748 seconds.
+✔ Test symlinkedRasterNeverReadsOrModifiesForeignTarget() passed after 0.748 seconds.
+✔ Suite CanvasGeometryTests passed after 0.750 seconds.
+✔ Suite "Strict three-look proposal boundary" passed after 0.750 seconds.
+✔ Test testReadsExifAndHonorsImageOrientation() passed after 0.749 seconds.
+✔ Suite MaskDocumentTests passed after 0.751 seconds.
+✔ Test readOnlyAndAliasedWALFamiliesAreNotCheckpointed() passed after 0.751 seconds.
+✔ Suite "Automatic tone persistence and compatibility" passed after 0.755 seconds.
+✔ Suite JPEGExportOptionsTests passed after 0.755 seconds.
+✔ Test foreignStoreCannotClaimDraftOrPublication() passed after 0.760 seconds.
+✔ Test duplicateBorrowedOwnershipIsCountedOnceAndHeldUntilActualWorkEnds() passed after 0.760 seconds.
+✔ Test failuresAroundArchiveCheckpointAndCommitRetainLatestDataAndExactArchive() passed after 0.759 seconds.
+✔ Suite "Crash-safe metadata catalog barriers and relocation" passed after 0.762 seconds.
+✔ Suite "Editing remap participant journals and immutable commands" passed after 0.762 seconds.
+✔ Test startupFailureAndRecoveryDoNotPublishEarly() passed after 0.761 seconds.
+✔ Suite "Owned metadata SQLite preserves untrusted bytes" passed after 0.764 seconds.
+✔ Suite "Image generation operation and native output contracts" passed after 0.764 seconds.
+✔ Test cancellationAndWorkBudgetsStopLargeRasterization() passed after 0.761 seconds.
+✔ Suite "AI editing contracts and strict proposal validation" passed after 0.764 seconds.
+✔ Suite "Image analysis bounded contracts" passed after 0.764 seconds.
+✔ Suite "Private SQLite stage cleanup has actual native ownership" passed after 0.764 seconds.
+✔ Test canceledQueuedAdmissionDoesNotWriteAndUnavailableArtifactNeverBecomesOriginal() passed after 0.762 seconds.
+✔ Test fullSnapshotCASRejectsStaleAndCompetingWriters() passed after 0.762 seconds.
+✔ Test competingExpectedVersionsAllowExactlyOneWinner() passed after 0.786 seconds.
+✔ Test cancellationQueuedBehindCommitCannotActivate() passed after 0.786 seconds.
+✔ Test testMetadataFailureCancelsSiblingAndNeverReturnsPartialScan() passed after 0.792 seconds.
+✔ Test testScanRecursesAndIgnoresHiddenPackagesAndSymbolicLinks() passed after 0.793 seconds.
+✔ Suite "Real legacy EditDatabase WAL migration preserves committed pages" passed after 0.794 seconds.
+✔ Test outputMemorySurvivesOperationButScratchAndSlotDoNot() passed after 0.794 seconds.
+✔ Test concurrentArrivalsRetainHighestRevision() passed after 0.716 seconds.
+✔ Test explicitExportHoldsMaintenanceUntilActualPublicationReturns() passed after 0.797 seconds.
+✔ Test sameDraftCommitReplaysAndDifferentCommitIsRejected() passed after 0.797 seconds.
+✔ Suite MaskRasterizerTests passed after 0.801 seconds.
+✔ Suite "Schema 2 editing source persistence and full CAS" passed after 0.801 seconds.
+✔ Test sameByteNewInodeRequiresFullValidationAndOldReaderRemainsInvalid() passed after 0.800 seconds.
+✔ Test pinnedReadRejectsSameByteForeignReplacementAndMissingPayload() passed after 0.801 seconds.
+✔ Test backupPackageCopyDoesNotHoldTheLiveEditingMaintenanceFence() passed after 0.801 seconds.
+✔ Suite "Durable photo metadata commands and CAS" passed after 0.812 seconds.
+✔ Suite "Semantic index persistence and generation isolation" passed after 0.814 seconds.
+✔ Test sharedMemoryCapMustCoverDistinctImagesButMayShareOneImage() passed after 0.737 seconds.
+✔ Suite "Editing backup admission, daily reuse and artifact startup diagnosis" passed after 0.822 seconds.
+✔ Suite "Non-destructive editing database" passed after 0.822 seconds.
+✔ Test testCancellationStopsQueuedReadsAndDrainsActiveReaders() passed after 0.821 seconds.
+◇ Test case passing 2 arguments leaf → "catalog.json", raced → true to rejectedAliasPreservesRealEditingWriter(leaf:raced:) started.
+✔ Test nativeRoundtripSurvivesRestartWithoutOriginal(format:) with 8 test cases passed after 0.820 seconds.
+✔ Test failedExclusiveRenameRetriesSameDurableDraftClaim() passed after 0.821 seconds.
+✔ Test registeredAndCanceledWorkDrainsOnlyAfterActualReturn() passed after 0.821 seconds.
+✔ Test ownMaintenanceRejectsAndExplicitPromotionDrainsOthers() passed after 0.821 seconds.
+✔ Suite "Explicit damaged editing recovery keeps raw originals" passed after 0.826 seconds.
+✔ Test twoTransfersCanOverlapOneCodecAndTransferWaitersRemainBounded() passed after 0.825 seconds.
+✔ Test peakBytesAreChargedWhileTheOneCodecWaitsAndQueueIsBounded() passed after 0.825 seconds.
+✔ Test restoredMtimeNeverHidesSameInodeContentChangesFromValidationCache() passed after 0.861 seconds.
+✔ Suite ArtifactFileSafetyTests passed after 0.870 seconds.
+✔ Suite "Joint catalog lifecycle" passed after 0.870 seconds.
+✔ Test optionalMetadataParticipantCompletesAndNewLibrarySessionCanReconcile() passed after 0.869 seconds.
+✔ Test ordinaryGray8MaskKeepsExactSamplesAndNoProfileMetadata() passed after 0.869 seconds.
+✔ Test queuedInputsStayChargedAndCancelledWaiterReturnsPromptly() passed after 0.803 seconds.
+✔ Test missingCatalogProtectionRefusesRotationWithoutDeletingSuccessfulPackages() passed after 0.888 seconds.
+✔ Test canceledNoncooperativeWorkKeepsCodecUntilActualReturn() passed after 0.892 seconds.
+✔ Test closedSQLReferenceClosureAndHandleIdentityCannotBeRebased() passed after 0.892 seconds.
+✔ Test rgbValidationChargesActualNativeRowsIncludingSkipLanes() passed after 0.821 seconds.
+✔ Test actualJournalContentionThroughNativeAliasProducesOneCASWinner() passed after 0.822 seconds.
+✔ Suite "Shared artifact resource ownership and actual work limits" passed after 0.906 seconds.
+✔ Suite ArtifactPNGCodecTests passed after 0.906 seconds.
+✔ Test unknownSchemaExtraFileAndSmallLimitsFailClosed() passed after 0.905 seconds.
+◇ Test case passing 2 arguments leaf → "catalog-write.lock", raced → false to rejectedAliasPreservesRealEditingWriter(leaf:raced:) started.
+✔ Test copiedAutomaticPackageCannotInheritCreationReceiptAndReceiptScanIsBounded() passed after 0.915 seconds.
+◇ Test cachedReadersWaitForActualWriterWithoutSeeingItsJournal(reader:) started.
+◇ Test case passing 1 argument reader → "state" to cachedReadersWaitForActualWriterWithoutSeeingItsJournal(reader:) started.
+✔ Test nativePayloadSurvivesStoreRestartAndIgnoresLaterDraft() passed after 0.923 seconds.
+✔ Test existingDestinationAndSymlinkPayloadPreserveForeignBytes() passed after 0.932 seconds.
+✔ Test eachDurableCrashPhaseRecoversWithoutRebasingOriginalCommands() passed after 0.933 seconds.
+✔ Suite "Real SQL and catalog coordinator crash recovery" passed after 0.946 seconds.
+◇ Test case passing 2 arguments leaf → "catalog-write.lock", raced → true to rejectedAliasPreservesRealEditingWriter(leaf:raced:) started.
+✔ Test testMetadataReadersOverlapWithoutExceedingWorkerLimit() passed after 0.983 seconds.
+✔ Test nativeExportProtectsAbsentThenCreatedManagedDirectoryThroughVarAlias() passed after 0.987 seconds.
+✔ Test repeatedFreshRasterAndMaskOpensReuseOnlySuccessfulNativeValidation() passed after 0.987 seconds.
+✔ Test automaticReceiptNeverBlessesReplacementOrUnknownPackageContents() passed after 0.988 seconds.
+◇ Test case passing 1 argument reader → "variants" to cachedReadersWaitForActualWriterWithoutSeeingItsJournal(reader:) started.
+✔ Suite GeneratedArtifactStoreTests passed after 0.995 seconds.
+✔ Test parallelFirstOpenPublishesOneCompleteOwner(openers:) with 2 test cases passed after 1.021 seconds.
+✔ Test nativeExportRefusesExistingOrCatalogOriginalTargetAndBrokenSource() passed after 1.027 seconds.
+✔ Suite "Durable catalog payloads" passed after 1.029 seconds.
+✔ Test rejectedAliasPreservesRealEditingWriter(leaf:raced:) with 4 test cases passed after 1.030 seconds.
+◇ Test stableHardlinkNeverOpensAnUnregisteredSQLiteMain(leaf:) started.
+◇ Test case passing 1 argument reader → "identity" to cachedReadersWaitForActualWriterWithoutSeeingItsJournal(reader:) started.
+◇ Test case passing 1 argument leaf → "catalog.json" to stableHardlinkNeverOpensAnUnregisteredSQLiteMain(leaf:) started.
+✔ Test testParallelScanMatchesSerialMetadataAndStableCorruptImageOrder() passed after 1.035 seconds.
+✔ Suite "Library import and persistence" passed after 1.040 seconds.
+✔ Test ordinaryMetadataReadAndWriteWaitForTheCommonStartupBarrier() passed after 1.041 seconds.
+✔ Suite "Metadata durable participant identity and shared recovery fence" passed after 1.043 seconds.
+✔ Test sharedPublicationLockReportsActualBytesAndSerializesOtherPublishers() passed after 1.043 seconds.
+✔ Suite "Catalog exact-byte publication" passed after 1.046 seconds.
+◇ Test case passing 1 argument reader → "receipt" to cachedReadersWaitForActualWriterWithoutSeeingItsJournal(reader:) started.
+✔ Test cachedReadersWaitForActualWriterWithoutSeeingItsJournal(reader:) with 4 test cases passed after 0.144 seconds.
+◇ Test competingFirstOpenCreatesOneStableStoreWithoutEmptyFileObservation() started.
+✔ Test automaticRotationProtectsFreshCatalogOriginalsThroughDirectAndAliasPaths() passed after 1.061 seconds.
+◇ Test case passing 1 argument leaf → "catalog-write.lock" to stableHardlinkNeverOpensAnUnregisteredSQLiteMain(leaf:) started.
+✔ Test competingFirstOpenCreatesOneStableStoreWithoutEmptyFileObservation() passed after 0.011 seconds.
+◇ Test cancellationWhileCooperativeOwnerLivesPreservesForeignSidecars() started.
+✔ Test packageRoundtripMaterializesAllPixelsAndMaskWithoutOriginals() passed after 1.079 seconds.
+✔ Test cancellationWhileCooperativeOwnerLivesPreservesForeignSidecars() passed after 0.008 seconds.
+◇ Test healthyWriterTimeoutOrCancellationNeverBecomesDamagedRecovery(cancel:) started.
+◇ Test case passing 1 argument cancel → false to healthyWriterTimeoutOrCancellationNeverBecomesDamagedRecovery(cancel:) started.
+✔ Test stableHardlinkNeverOpensAnUnregisteredSQLiteMain(leaf:) with 2 test cases passed after 0.055 seconds.
+✔ Suite "Catalog native descriptors preserve SQLite locks" passed after 1.089 seconds.
+✔ Test nativeExportPreservesClosedSnapshotPixelsMasksAndSourcePackage() passed after 1.099 seconds.
+✔ Test realSQLCommitBackupRestorePreservesMaskDocumentAndNativeRaster() passed after 1.137 seconds.
+✔ Suite "Immutable mask payloads and model geometry" passed after 1.139 seconds.
+✔ Test everyInstallGapFencesOrdinaryOpenAndExplicitRetryPreservesRawArchives() passed after 1.239 seconds.
+◇ Test unknownIntentWithMissingMainIsNeverParsedOrSilentlyReset() started.
+✔ Test unknownIntentWithMissingMainIsNeverParsedOrSilentlyReset() passed after 0.022 seconds.
+➜ Test recoveryCrashChildOnly() skipped.
+✔ Suite "Durable editing recovery intent survives real process exits" passed after 1.263 seconds.
+✔ Test automaticDailyReuseAndSevenPackageRotationSurviveNewAdapter() passed after 1.337 seconds.
+✔ Suite EditingBackupPackageTests passed after 1.339 seconds.
+✔ Test historicalProtectionStreamsRowsAndStopsOnFirstMatchingSource() passed after 1.830 seconds.
+✔ Suite "Strict bounded metadata JSON and manual backup" passed after 1.832 seconds.
+◇ Test case passing 1 argument cancel → true to healthyWriterTimeoutOrCancellationNeverBecomesDamagedRecovery(cancel:) started.
+✔ Test healthyWriterTimeoutOrCancellationNeverBecomesDamagedRecovery(cancel:) with 2 test cases passed after 2.045 seconds.
+◇ Test finalRecoveryInstallCannotMoveANativelyLockedOldMain() started.
+✔ Test finalRecoveryInstallCannotMoveANativelyLockedOldMain() passed after 2.031 seconds.
+◇ Test canceledPinAndArtifactDropCannotUnlockAnotherActorsRealSQLiteTransaction(path:) started.
+◇ Test case passing 1 argument path → "open" to canceledPinAndArtifactDropCannotUnlockAnotherActorsRealSQLiteTransaction(path:) started.
+◇ Test case passing 1 argument path → "readOnly" to canceledPinAndArtifactDropCannotUnlockAnotherActorsRealSQLiteTransaction(path:) started.
+✔ Test canceledPinAndArtifactDropCannotUnlockAnotherActorsRealSQLiteTransaction(path:) with 2 test cases passed after 0.062 seconds.
+◇ Test rejectedHardlinkKeepsKernelLocksUntilControlledParentFailureReturns() started.
+✔ Test rejectedHardlinkKeepsKernelLocksUntilControlledParentFailureReturns() passed after 0.019 seconds.
+◇ Test actualNativeCloseWaitsForScopeReleaseAndIsThenDrained() started.
+✔ Test actualNativeCloseWaitsForScopeReleaseAndIsThenDrained() passed after 0.004 seconds.
+◇ Test synchronousReadRejectsNamedReplacementBeforePublishingItsResult() started.
+✔ Test synchronousReadRejectsNamedReplacementBeforePublishingItsResult() passed after 0.004 seconds.
+◇ Test cooperativeContentionHasBoundedDeadlineAndRejectsReplacedNamedInode() started.
+✔ Test cooperativeContentionHasBoundedDeadlineAndRejectsReplacedNamedInode() passed after 0.024 seconds.
+✔ Suite "Editing SQLite coordinates in-process inode scopes" passed after 5.274 seconds.
+✔ Test all4096AllowedAncestorsSurviveAnActualSwiftWorkerStack() passed after 7.297 seconds.
+◇ Test a4097thAncestorStillFailsAtTheExistingBoundary() started.
+✔ Test a4097thAncestorStillFailsAtTheExistingBoundary() passed after 5.871 seconds.
+◇ Test cycleIsRejectedBeforeAnyUnfinishedParentCanBePublished() started.
+✔ Test cycleIsRejectedBeforeAnyUnfinishedParentCanBePublished() passed after 0.006 seconds.
+◇ Test parentFingerprintMismatchCannotBecomeACompleteResult(kind:) started.
+◇ Test case passing 1 argument kind → "manifest" to parentFingerprintMismatchCannotBecomeACompleteResult(kind:) started.
+◇ Test case passing 1 argument kind → "raster" to parentFingerprintMismatchCannotBecomeACompleteResult(kind:) started.
+✔ Test parentFingerprintMismatchCannotBecomeACompleteResult(kind:) with 2 test cases passed after 0.013 seconds.
+◇ Test variantOnlyRootsAndSharedAncestorsAreIncludedExactlyOnce() started.
+✔ Test variantOnlyRootsAndSharedAncestorsAreIncludedExactlyOnce() passed after 0.017 seconds.
+◇ Test missingParentStillFailsClosed() started.
+✔ Test missingParentStillFailsClosed() passed after 0.005 seconds.
+◇ Test cancellationIsObservedDuringActualSQLTraversal() started.
+✔ Test cancellationIsObservedDuringActualSQLTraversal() passed after 0.932 seconds.
+✔ Suite "Artifact provenance closure uses a bounded heap stack" passed after 14.218 seconds.
+✔ Test run with 302 tests in 41 suites passed after 14.219 seconds.
+Note: Some test targets reported failures:
+  - PicEditTests (Swift Testing)

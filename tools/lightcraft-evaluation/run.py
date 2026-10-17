@@ -128,7 +128,11 @@ def main():
     parser.add_argument("output", type=Path)
     parser.add_argument("--binary", required=True, type=Path)
     parser.add_argument("--real-manifest", type=Path)
+    parser.add_argument("--candidate", choices=("LC-01", "LC-03"), default="LC-01")
     args = parser.parse_args()
+    if args.candidate == "LC-03":
+        import lc03
+        return lc03.execute(args)
     # Validate personal fixtures before any output or compute. No downloading,
     # publishing, scanning the user's library, or implicit license assumptions.
     real = real_inputs(args.real_manifest)
