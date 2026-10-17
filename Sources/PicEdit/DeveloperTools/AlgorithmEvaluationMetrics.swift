@@ -363,10 +363,14 @@ struct AlgorithmEvaluationCandidateRegistry: Codable, Sendable {
                   let specializedDetail = candidate.id == "LC-04" && candidate.domain == "detail"
                       && candidate.primarySceneClass == "hard-edge"
                       && candidate.comparisonManifest == "lc04-manifest.json"
+                  let specializedColor = candidate.id == "LC-05" && candidate.domain == "color"
+                      && candidate.primarySceneClass == "colors"
+                      && candidate.comparisonManifest == "lc05-manifest.json"
                   guard let primary = candidate.primaryMetric,
                         AlgorithmEvaluationMetrics.metricNames.contains(primary)
                             || (specializedTone && primary == "log_line_contrast_error")
-                            || (specializedDetail && primary == "halo_area"),
+                            || (specializedDetail && primary == "halo_area")
+                            || (specializedColor && primary == "hue_drift_mean_degrees"),
                         let improvement = candidate.minimumRelativeImprovement,
                         improvement.isFinite, improvement > 0, improvement < 1,
                         let domain = candidate.domain, ["tone", "detail", "color", "denoise"].contains(domain),

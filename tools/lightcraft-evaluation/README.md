@@ -41,6 +41,22 @@ abgeschlossene visuelle Freigabe werden durch synthetische Paarbilder nicht
 ersetzt; `--real-manifest` wird in diesem spezialisierten Modus ausdrücklich
 abgelehnt.
 
+## LC-05: Dynamik und Sättigung bei gleicher Chromawirkung
+
+```sh
+./scripts/evaluate-lightcraft.sh /tmp/picedit-lc05-run --candidate LC-05
+```
+
+`lc05.py` ergänzt `color-tune`, `color-quality`, `color-timing` und `color-scale`.
+Das [Manifest](lc05-manifest.json) trennt Dynamik und Sättigung sowie die
+unbegrenzte ColorOps-Ablation von der Kombination mit der ursprünglichen
+sRGB-Gamutbehandlung. Die 256 × 160 großen Testbilder prüfen Hue-/L-Drift gegen
+die Eingabe bei angeglichener mittlerer Chromaänderung. Positive/negative
+Werte, vollständige Entsättigung, Grau, P3, Alpha und signed RGB besitzen
+getrennte Diagnose- und Grundverträge. Reale Fotos/Blindabnahme und eine
+Produktionsfreigabe werden nicht behauptet; `--real-manifest` wird auch hier
+abgelehnt. Details stehen im [LC-05-Bericht](../../docs/LIGHTCRAFT-COLOR-EVALUATION.md).
+
 ## Aufbau
 
 - `measurement-manifest.json` beschreibt vorab Szenenklassen, Kontrolltoleranzen, kritische Grenzen und Ressourcenbudgets. Die tatsächlich verwendete Kopie wird vor der Abnahme gehasht.
@@ -48,7 +64,7 @@ abgelehnt.
 - `run.py` führt Qualitäts-, Skalen- und Timingläufe seriell zusammen und schreibt Rohdaten sowie deren Provenienz in das gewählte Ergebnisverzeichnis.
 - Der native Modus bleibt in `Sources/PicEdit/DeveloperTools/EditingBenchmark.swift`. Gemeinsame Float-Raster, deterministische Fixtures und Metriken liegen bei den Developer-Tools und sind unabhängig von der Produktionsintegration testbar.
 
-Ein direkter nativer **LC-01-Standardaufruf** verwendet `--scenario evaluation`, `--evaluation-mode quality|timing|scale`, `--output`, `--manifest`, `--registry`, `--iterations`, `--width` und `--height`. Sein Qualitätsmodus verwendet fest 192 × 128 Pixel pro synthetischem Fall. LC-03 und LC-04 verwenden ihre oben beschriebenen spezialisierten Modi und 512 × 320 Pixel. Nur `--backend default` und `--workers 1` sind für die Evaluation zulässig. Für reproduzierbare Abnahmeläufe den Wrapper verwenden, damit Manifest, Reihenfolge, Hostdaten und Hashes zusammen erfasst werden.
+Ein direkter nativer **LC-01-Standardaufruf** verwendet `--scenario evaluation`, `--evaluation-mode quality|timing|scale`, `--output`, `--manifest`, `--registry`, `--iterations`, `--width` und `--height`. Sein Qualitätsmodus verwendet fest 192 × 128 Pixel pro synthetischem Fall. LC-03 und LC-04 verwenden ihre spezialisierten Modi und 512 × 320 Pixel, LC-05 verwendet 256 × 160 Pixel. Nur `--backend default` und `--workers 1` sind für die Evaluation zulässig. Für reproduzierbare Abnahmeläufe den Wrapper verwenden, damit Manifest, Reihenfolge, Hostdaten und Hashes zusammen erfasst werden.
 
 ## Ergebnisvertrag
 
@@ -56,7 +72,7 @@ Die Qualitätsausgabe enthält Eingaben, PicEdit-/Kontroll-Paarbilder, Differenz
 
 `environment.json` enthält Host-/Toolchainangaben, Quell-/Binary-/Manifest-Hashes und Abdeckungslücken. `commands.json` protokolliert jeden nativen Aufruf. `quality/quality.json`, die einzelnen `timing-*/timing.json` und `scale/scale.json` sind die Rohdaten; `summary.json` fasst bestandene Kontrollen, Zeitverteilungen und weiterhin blockierte Kandidaten zusammen. Vorhandene Ergebnisverzeichnisse werden nicht überschrieben. Ein abgebrochener oder fehlgeschlagener Lauf bleibt zur Diagnose erhalten und hat keine erfolgreiche Abschlusszusammenfassung.
 
-Die **LC-01-Standardgrößenmatrix** ist 400 × 267, 2400 × 1600, 4096 × 2731 und 4608 × 3072; LC-03/LC-04 messen die kleinste Timinggröße bei 512 × 320. Timingprozesse werden getrennt gestartet, mit mindestens fünf Wiederholungen, getrenntem Initialaufruf und warmen Samples. Keine parallelen Benchmarks oder Builds während einer Messreihe ausführen. Prozesskalt ist nicht gleichbedeutend mit geleerten System-/Shadercaches. Die Rohdaten enthalten Streuung und Peak-RSS des ganzen Prozesses; fünf Werte ergeben kein belastbares p95.
+Die **LC-01-Standardgrößenmatrix** ist 400 × 267, 2400 × 1600, 4096 × 2731 und 4608 × 3072; LC-03/LC-04/LC-05 messen die kleinste Timinggröße bei 512 × 320. Timingprozesse werden getrennt gestartet, mit mindestens fünf Wiederholungen, getrenntem Initialaufruf und warmen Samples. Keine parallelen Benchmarks oder Builds während einer Messreihe ausführen. Prozesskalt ist nicht gleichbedeutend mit geleerten System-/Shadercaches. Die Rohdaten enthalten Streuung und Peak-RSS des ganzen Prozesses; fünf Werte ergeben kein belastbares p95.
 
 Ein bestandener Kontrollvergleich ist ein Harness-Erfolg. Die Algorithmusentscheidung bleibt bei fehlendem Adapter, echter Bildabdeckung oder visueller Abnahme blockiert. Ergebnisse dürfen nicht durch Weglassen fehlgeschlagener Fälle zu einem Go zusammengefasst werden.
 

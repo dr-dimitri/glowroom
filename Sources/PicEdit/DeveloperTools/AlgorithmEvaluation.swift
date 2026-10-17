@@ -18,6 +18,10 @@ enum AlgorithmEvaluation {
     }
 
     static func run(_ options: Benchmark.Options) throws {
+        if options.evaluationMode.hasPrefix("color-") {
+            try LightcraftColorEvaluation.run(options)
+            return
+        }
         if options.evaluationMode.hasPrefix("detail-") {
             try LightcraftDetailEvaluation.run(options)
             return
@@ -72,6 +76,7 @@ enum AlgorithmEvaluation {
         guard registry.candidates.filter({ $0.kind == "reference" }).allSatisfy({
                   !$0.implemented || ($0.id == "LC-03" && $0.comparisonManifest == "lc03-manifest.json")
                       || ($0.id == "LC-04" && $0.comparisonManifest == "lc04-manifest.json")
+                      || ($0.id == "LC-05" && $0.comparisonManifest == "lc05-manifest.json")
               }),
               Set(registry.candidates.filter({ $0.kind == "control" }).map(\.id)) == Set(["unchanged", "neutral-ci", "neutral-rec2020"]) else {
             throw Benchmark.failure("Register an executable comparison adapter before marking a reference implemented")
@@ -149,6 +154,10 @@ enum AlgorithmEvaluation {
             }
         }
         let decisions = registry.candidates.filter { $0.kind == "reference" }.map { candidate in
+            if candidate.id == "LC-05", candidate.implemented {
+                return AlgorithmEvaluationGate.Decision(candidateID: candidate.id, status: "blocked",
+                    reasons: ["The LC-05 adapter is implemented; use --candidate LC-05 with lc05-manifest.json for separate matched-chroma vibrance/saturation decisions"])
+            }
             if candidate.id == "LC-04", candidate.implemented {
                 return AlgorithmEvaluationGate.Decision(candidateID: candidate.id, status: "blocked",
                     reasons: ["The LC-04 adapter is implemented; use --candidate LC-04 with lc04-manifest.json for the specialized per-control matched-effect comparison"])
@@ -163,7 +172,7 @@ enum AlgorithmEvaluation {
         try writeJSON(["schema_version": 1, "manifest_sha256": manifestSHA, "records": records,
                        "candidates": try object(decisions),
                        "control_failures": failures, "candidate_decision": "blocked",
-                       "reason": "LC-03 and LC-04 use their specialized --candidate comparisons; LC-05..06 remain unimplemented. Generic controls do not establish algorithm acceptance."],
+                       "reason": "LC-03, LC-04 and LC-05 use their specialized --candidate comparisons; LC-06 remains unimplemented. Generic controls do not establish algorithm acceptance."],
                       output.appendingPathComponent("quality.json"))
         guard failures.isEmpty else { throw Benchmark.failure("\(failures.count) control failures; see quality.json") }
     }

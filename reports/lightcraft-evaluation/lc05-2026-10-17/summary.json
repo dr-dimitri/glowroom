@@ -1,0 +1,2481 @@
+{
+  "calibration_sha256": "a4b08661ce0749bdd461c90dd3f233975125e6bf36aaa858501220881951a38b",
+  "candidate": "LC-05",
+  "decisions": {
+    "saturation": {
+      "contracts": {
+        "diagnostic_failures": [
+          "skin-tones/unbounded/-100: full_desaturation_chroma",
+          "red-orange/unbounded/-100: full_desaturation_chroma",
+          "textiles-flowers/unbounded/-100: full_desaturation_chroma",
+          "color-gradients/unbounded/-100: full_desaturation_chroma",
+          "primaries-secondaries/unbounded/-100: full_desaturation_chroma",
+          "p3-boundary/unbounded/-100: full_desaturation_chroma",
+          "grayscale/unbounded/-100: full_desaturation_chroma",
+          "grayscale/unbounded/-100: neutral_chroma_max",
+          "transparency/unbounded/-100: full_desaturation_chroma",
+          "extended-dark/unbounded/-100: full_desaturation_chroma",
+          "extended-dark/unbounded/-100: neutral_chroma_max",
+          "grayscale/saturation-positive-60/unbounded: neutral_chroma_max",
+          "grayscale/saturation-negative-60/unbounded: neutral_chroma_max",
+          "grayscale/saturation-positive-100/unbounded: neutral_chroma_max",
+          "grayscale/saturation-negative-100/unbounded: neutral_chroma_max",
+          "extended-dark/saturation-negative-20/unbounded: neutral_chroma_max",
+          "extended-dark/saturation-negative-60/unbounded: neutral_chroma_max",
+          "extended-dark/saturation-negative-100/unbounded: neutral_chroma_max"
+        ],
+        "expected_zero_diagnostics": 54,
+        "failures": [
+          "skin-tones/gamutMappedSRGB/-100: full_desaturation_chroma",
+          "red-orange/gamutMappedSRGB/-100: full_desaturation_chroma",
+          "textiles-flowers/gamutMappedSRGB/-100: full_desaturation_chroma",
+          "color-gradients/gamutMappedSRGB/-100: full_desaturation_chroma",
+          "primaries-secondaries/gamutMappedSRGB/-100: full_desaturation_chroma",
+          "p3-boundary/gamutMappedSRGB/-100: full_desaturation_chroma",
+          "grayscale/gamutMappedSRGB/-100: full_desaturation_chroma",
+          "grayscale/gamutMappedSRGB/-100: neutral_chroma_max",
+          "transparency/gamutMappedSRGB/-100: full_desaturation_chroma",
+          "extended-dark/gamutMappedSRGB/-100: full_desaturation_chroma",
+          "grayscale/saturation-positive-60/gamutMappedSRGB: neutral_chroma_max",
+          "grayscale/saturation-negative-60/gamutMappedSRGB: neutral_chroma_max",
+          "grayscale/saturation-positive-100/gamutMappedSRGB: neutral_chroma_max",
+          "grayscale/saturation-negative-100/gamutMappedSRGB: neutral_chroma_max"
+        ],
+        "full_desaturation_diagnostics": 18,
+        "missing_evidence": [],
+        "status": "fail",
+        "zero_diagnostics": 54
+      },
+      "critical_failures": [
+        "skin-tones/gamutMappedSRGB/-100: full_desaturation_chroma",
+        "red-orange/gamutMappedSRGB/-100: full_desaturation_chroma",
+        "textiles-flowers/gamutMappedSRGB/-100: full_desaturation_chroma",
+        "color-gradients/gamutMappedSRGB/-100: full_desaturation_chroma",
+        "primaries-secondaries/gamutMappedSRGB/-100: full_desaturation_chroma",
+        "p3-boundary/gamutMappedSRGB/-100: full_desaturation_chroma",
+        "grayscale/gamutMappedSRGB/-100: full_desaturation_chroma",
+        "grayscale/gamutMappedSRGB/-100: neutral_chroma_max",
+        "transparency/gamutMappedSRGB/-100: full_desaturation_chroma",
+        "extended-dark/gamutMappedSRGB/-100: full_desaturation_chroma",
+        "grayscale/saturation-positive-60/gamutMappedSRGB: neutral_chroma_max",
+        "grayscale/saturation-negative-60/gamutMappedSRGB: neutral_chroma_max",
+        "grayscale/saturation-positive-100/gamutMappedSRGB: neutral_chroma_max",
+        "grayscale/saturation-negative-100/gamutMappedSRGB: neutral_chroma_max",
+        "skin-tones/saturation-positive-60: clipping_fraction",
+        "skin-tones/saturation-positive-100: clipping_fraction",
+        "red-orange/saturation-positive-60: clipping_fraction",
+        "red-orange/saturation-positive-100: clipping_fraction",
+        "textiles-flowers/saturation-positive-60: clipping_fraction",
+        "color-gradients/saturation-negative-20: clipping_fraction",
+        "color-gradients/saturation-positive-60: clipping_fraction",
+        "color-gradients/saturation-positive-60: gradation_reversal_fraction",
+        "primaries-secondaries/saturation-positive-60: clipping_fraction",
+        "p3-boundary/saturation-negative-20: clipping_fraction",
+        "transparency/saturation-positive-20: clipping_fraction",
+        "transparency/saturation-positive-60: clipping_fraction",
+        "transparency/saturation-positive-100: clipping_fraction",
+        "extended-dark/saturation-negative-60: clipping_fraction",
+        "extended-dark/saturation-negative-100: clipping_fraction"
+      ],
+      "decision": "no-go",
+      "diagnostic_unbounded": {
+        "informative_targets": 2,
+        "metrics": {
+          "hue_drift_mean_degrees": {
+            "baseline_mean": 0.7218156215764941,
+            "candidate_mean": 0.007900886744977959,
+            "informative": true,
+            "regressions": [],
+            "relative_improvement": 0.9890541483049067,
+            "status": "pass"
+          },
+          "lightness_drift_mean": {
+            "baseline_mean": 0.004138312925144438,
+            "candidate_mean": 4.05311204949472e-08,
+            "informative": true,
+            "regressions": [],
+            "relative_improvement": 0.9999902058831153,
+            "status": "pass"
+          }
+        },
+        "note": "Equal scene/direction weights; deterministic fixtures, no pixel-independence or statistical-significance claim",
+        "reference": "original input",
+        "status": "pass"
+      },
+      "matched_records": 89,
+      "missing_evidence": [
+        "Licensed real-photo portraits across skin tones, natural textiles/flowers and saturated P3 photographs",
+        "Blinded visual approval",
+        "Production process/version, cache, rapid slider/image changes, cancellation, undo and preview/export integration",
+        "Accelerated path parity if a CI/Metal integration is proposed",
+        "Unmatched or unsupported effect targets: textiles-flowers/saturation-positive-100/gamutMappedSRGB, color-gradients/saturation-positive-100/gamutMappedSRGB, p3-boundary/saturation-positive-20/gamutMappedSRGB, p3-boundary/saturation-positive-20/unbounded, p3-boundary/saturation-positive-60/gamutMappedSRGB, p3-boundary/saturation-positive-100/gamutMappedSRGB, grayscale/saturation-positive-20/gamutMappedSRGB, grayscale/saturation-positive-20/unbounded, grayscale/saturation-negative-20/gamutMappedSRGB, grayscale/saturation-negative-20/unbounded, grayscale/saturation-negative-100/gamutMappedSRGB, grayscale/saturation-negative-100/unbounded, extended-dark/saturation-positive-20/gamutMappedSRGB, extended-dark/saturation-positive-20/unbounded, extended-dark/saturation-negative-20/gamutMappedSRGB, extended-dark/saturation-positive-60/gamutMappedSRGB, extended-dark/saturation-positive-60/unbounded, extended-dark/saturation-positive-100/gamutMappedSRGB, extended-dark/saturation-positive-100/unbounded",
+        "grayscale/saturation-positive-60: missing critical evidence: input-defined hue support",
+        "grayscale/saturation-negative-60: missing critical evidence: input-defined hue support",
+        "grayscale/saturation-positive-100: missing critical evidence: input-defined hue support"
+      ],
+      "primary": {
+        "informative_targets": 2,
+        "metrics": {
+          "hue_drift_mean_degrees": {
+            "baseline_mean": 0.7218156215764941,
+            "candidate_mean": 0.1576349053327473,
+            "informative": true,
+            "regressions": [],
+            "relative_improvement": 0.7816133363968184,
+            "status": "pass"
+          },
+          "lightness_drift_mean": {
+            "baseline_mean": 0.004138312925144438,
+            "candidate_mean": 0.00015828790274336423,
+            "informative": true,
+            "regressions": [],
+            "relative_improvement": 0.9617506202149178,
+            "status": "pass"
+          }
+        },
+        "note": "Equal scene/direction weights; deterministic fixtures, no pixel-independence or statistical-significance claim",
+        "reference": "original input",
+        "status": "pass"
+      },
+      "quality_records": 108,
+      "scope": "Isolated mapped CPU color reference; production graph/settings unchanged",
+      "variant": "gamutMappedSRGB"
+    },
+    "vibrance": {
+      "contracts": {
+        "diagnostic_failures": [
+          "grayscale/vibrance-positive-100/unbounded: neutral_chroma_max",
+          "grayscale/vibrance-negative-100/unbounded: neutral_chroma_max",
+          "extended-dark/vibrance-negative-20/unbounded: neutral_chroma_max",
+          "extended-dark/vibrance-negative-60/unbounded: neutral_chroma_max",
+          "extended-dark/vibrance-negative-100/unbounded: neutral_chroma_max"
+        ],
+        "expected_zero_diagnostics": 54,
+        "failures": [
+          "grayscale/vibrance-positive-100/gamutMappedSRGB: neutral_chroma_max",
+          "grayscale/vibrance-negative-100/gamutMappedSRGB: neutral_chroma_max"
+        ],
+        "full_desaturation_diagnostics": 0,
+        "missing_evidence": [],
+        "status": "fail",
+        "zero_diagnostics": 54
+      },
+      "critical_failures": [
+        "grayscale/vibrance-positive-100/gamutMappedSRGB: neutral_chroma_max",
+        "grayscale/vibrance-negative-100/gamutMappedSRGB: neutral_chroma_max",
+        "skin-tones/vibrance-positive-60: clipping_fraction",
+        "color-gradients/vibrance-negative-20: clipping_fraction",
+        "color-gradients/vibrance-negative-60: clipping_fraction",
+        "p3-boundary/vibrance-negative-60: clipping_fraction",
+        "transparency/vibrance-negative-20: clipping_fraction",
+        "transparency/vibrance-positive-60: clipping_fraction",
+        "extended-dark/vibrance-negative-100: clipping_fraction",
+        "extended-dark/vibrance-negative-100: hue_drift_max_degrees",
+        "512x320: warm_latency_ratio 1.20308 exceeds 1.2",
+        "2400x1600: warm_latency_ratio 1.50577 exceeds 1.2",
+        "4096x2731: warm_latency_ratio 1.45499 exceeds 1.2",
+        "4608x3072: warm_latency_ratio 1.48849 exceeds 1.2"
+      ],
+      "decision": "no-go",
+      "diagnostic_unbounded": {
+        "informative_targets": 2,
+        "metrics": {
+          "hue_drift_mean_degrees": {
+            "baseline_mean": 0.5221933918397387,
+            "candidate_mean": 0.007313952983492187,
+            "informative": true,
+            "regressions": [],
+            "relative_improvement": 0.9859937848739825,
+            "status": "pass"
+          },
+          "lightness_drift_mean": {
+            "baseline_mean": 0.0025338624497284338,
+            "candidate_mean": 3.3075830119006286e-08,
+            "informative": true,
+            "regressions": [],
+            "relative_improvement": 0.9999869464776501,
+            "status": "pass"
+          }
+        },
+        "note": "Equal scene/direction weights; deterministic fixtures, no pixel-independence or statistical-significance claim",
+        "reference": "original input",
+        "status": "pass"
+      },
+      "matched_records": 53,
+      "missing_evidence": [
+        "Licensed real-photo portraits across skin tones, natural textiles/flowers and saturated P3 photographs",
+        "Blinded visual approval",
+        "Production process/version, cache, rapid slider/image changes, cancellation, undo and preview/export integration",
+        "Accelerated path parity if a CI/Metal integration is proposed",
+        "Unmatched or unsupported effect targets: skin-tones/vibrance-positive-100/gamutMappedSRGB, skin-tones/vibrance-positive-100/unbounded, red-orange/vibrance-positive-100/gamutMappedSRGB, red-orange/vibrance-positive-100/unbounded, red-orange/vibrance-negative-100/gamutMappedSRGB, red-orange/vibrance-negative-100/unbounded, textiles-flowers/vibrance-positive-100/gamutMappedSRGB, textiles-flowers/vibrance-negative-100/gamutMappedSRGB, textiles-flowers/vibrance-negative-100/unbounded, color-gradients/vibrance-positive-100/gamutMappedSRGB, color-gradients/vibrance-negative-100/gamutMappedSRGB, color-gradients/vibrance-negative-100/unbounded, primaries-secondaries/vibrance-positive-60/gamutMappedSRGB, primaries-secondaries/vibrance-positive-60/unbounded, primaries-secondaries/vibrance-negative-60/gamutMappedSRGB, primaries-secondaries/vibrance-negative-60/unbounded, primaries-secondaries/vibrance-positive-100/gamutMappedSRGB, primaries-secondaries/vibrance-positive-100/unbounded, primaries-secondaries/vibrance-negative-100/gamutMappedSRGB, primaries-secondaries/vibrance-negative-100/unbounded, p3-boundary/vibrance-positive-20/gamutMappedSRGB, p3-boundary/vibrance-positive-20/unbounded, p3-boundary/vibrance-negative-20/gamutMappedSRGB, p3-boundary/vibrance-negative-20/unbounded, p3-boundary/vibrance-positive-60/gamutMappedSRGB, p3-boundary/vibrance-positive-60/unbounded, p3-boundary/vibrance-negative-60/unbounded, p3-boundary/vibrance-positive-100/gamutMappedSRGB, p3-boundary/vibrance-positive-100/unbounded, p3-boundary/vibrance-negative-100/gamutMappedSRGB, p3-boundary/vibrance-negative-100/unbounded, grayscale/vibrance-positive-20/gamutMappedSRGB, grayscale/vibrance-positive-20/unbounded, grayscale/vibrance-negative-20/gamutMappedSRGB, grayscale/vibrance-negative-20/unbounded, grayscale/vibrance-positive-60/gamutMappedSRGB, grayscale/vibrance-positive-60/unbounded, grayscale/vibrance-negative-60/gamutMappedSRGB, grayscale/vibrance-negative-60/unbounded, grayscale/vibrance-negative-100/gamutMappedSRGB, grayscale/vibrance-negative-100/unbounded, transparency/vibrance-positive-100/gamutMappedSRGB, transparency/vibrance-negative-100/gamutMappedSRGB, transparency/vibrance-negative-100/unbounded, extended-dark/vibrance-positive-20/gamutMappedSRGB, extended-dark/vibrance-positive-20/unbounded, extended-dark/vibrance-negative-20/gamutMappedSRGB, extended-dark/vibrance-negative-20/unbounded, extended-dark/vibrance-positive-60/gamutMappedSRGB, extended-dark/vibrance-positive-60/unbounded, extended-dark/vibrance-negative-60/gamutMappedSRGB, extended-dark/vibrance-negative-60/unbounded, extended-dark/vibrance-positive-100/gamutMappedSRGB, extended-dark/vibrance-positive-100/unbounded, extended-dark/vibrance-negative-100/unbounded",
+        "grayscale/vibrance-positive-100: missing critical evidence: input-defined hue support"
+      ],
+      "primary": {
+        "informative_targets": 2,
+        "metrics": {
+          "hue_drift_mean_degrees": {
+            "baseline_mean": 0.5221933918397387,
+            "candidate_mean": 0.12663133446490174,
+            "informative": true,
+            "regressions": [],
+            "relative_improvement": 0.7575010782523175,
+            "status": "pass"
+          },
+          "lightness_drift_mean": {
+            "baseline_mean": 0.0025338624497284338,
+            "candidate_mean": 0.0001346816770244549,
+            "informative": true,
+            "regressions": [],
+            "relative_improvement": 0.9468472816908868,
+            "status": "pass"
+          }
+        },
+        "note": "Equal scene/direction weights; deterministic fixtures, no pixel-independence or statistical-significance claim",
+        "reference": "original input",
+        "status": "pass"
+      },
+      "quality_records": 108,
+      "scope": "Isolated mapped CPU color reference; production graph/settings unchanged",
+      "variant": "gamutMappedSRGB"
+    }
+  },
+  "manifest_sha256": "9cd3ceb0e8649b95464cb07d49f7bc3f89b93f11947a3c4402d6d408f1190b71",
+  "production_changed": false,
+  "quality": "quality/quality.json",
+  "scale": "scale/scale.json",
+  "schema_version": 1,
+  "timings": [
+    {
+      "attributable": true,
+      "budget_exceedances": [
+        "warm_latency_ratio 1.20308 exceeds 1.2"
+      ],
+      "control": "vibrance",
+      "effect_strength_pairs": [
+        {
+          "lightcraft": 0.005463645667087918,
+          "matched": true,
+          "phase": "process-cold",
+          "picedit": 0.005473703248950941
+        },
+        {
+          "lightcraft": 0.005463645667087918,
+          "matched": true,
+          "phase": "warmup",
+          "picedit": 0.005473703248950941
+        },
+        {
+          "lightcraft": 0.0048264189657094645,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.004862292785724081
+        },
+        {
+          "lightcraft": 0.005145296630165375,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.005168341218137128
+        },
+        {
+          "lightcraft": 0.005463645667087918,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.005473703248950941
+        },
+        {
+          "lightcraft": 0.005781486623787217,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.0057783780003830675
+        },
+        {
+          "lightcraft": 0.006098819941160504,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.006082365155070196
+        },
+        {
+          "lightcraft": 0.005463645667087918,
+          "matched": true,
+          "phase": "process-cold",
+          "picedit": 0.005473703248950941
+        },
+        {
+          "lightcraft": 0.005463645667087918,
+          "matched": true,
+          "phase": "warmup",
+          "picedit": 0.005473703248950941
+        },
+        {
+          "lightcraft": 0.0048264189657094645,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.004862292785724081
+        },
+        {
+          "lightcraft": 0.005145296630165375,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.005168341218137128
+        },
+        {
+          "lightcraft": 0.005463645667087918,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.005473703248950941
+        },
+        {
+          "lightcraft": 0.005781486623787217,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.0057783780003830675
+        },
+        {
+          "lightcraft": 0.006098819941160504,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.006082365155070196
+        },
+        {
+          "lightcraft": 0.005463645667087918,
+          "matched": true,
+          "phase": "process-cold",
+          "picedit": 0.005473703248950941
+        },
+        {
+          "lightcraft": 0.005463645667087918,
+          "matched": true,
+          "phase": "warmup",
+          "picedit": 0.005473703248950941
+        },
+        {
+          "lightcraft": 0.0048264189657094645,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.004862292785724081
+        },
+        {
+          "lightcraft": 0.005145296630165375,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.005168341218137128
+        },
+        {
+          "lightcraft": 0.005463645667087918,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.005473703248950941
+        },
+        {
+          "lightcraft": 0.005781486623787217,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.0057783780003830675
+        },
+        {
+          "lightcraft": 0.006098819941160504,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.006082365155070196
+        },
+        {
+          "lightcraft": 0.005463645667087918,
+          "matched": true,
+          "phase": "process-cold",
+          "picedit": 0.005473703248950941
+        },
+        {
+          "lightcraft": 0.005463645667087918,
+          "matched": true,
+          "phase": "warmup",
+          "picedit": 0.005473703248950941
+        },
+        {
+          "lightcraft": 0.0048264189657094645,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.004862292785724081
+        },
+        {
+          "lightcraft": 0.005145296630165375,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.005168341218137128
+        },
+        {
+          "lightcraft": 0.005463645667087918,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.005473703248950941
+        },
+        {
+          "lightcraft": 0.005781486623787217,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.0057783780003830675
+        },
+        {
+          "lightcraft": 0.006098819941160504,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.006082365155070196
+        },
+        {
+          "lightcraft": 0.005463645667087918,
+          "matched": true,
+          "phase": "process-cold",
+          "picedit": 0.005473703248950941
+        },
+        {
+          "lightcraft": 0.005463645667087918,
+          "matched": true,
+          "phase": "warmup",
+          "picedit": 0.005473703248950941
+        },
+        {
+          "lightcraft": 0.0048264189657094645,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.004862292785724081
+        },
+        {
+          "lightcraft": 0.005145296630165375,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.005168341218137128
+        },
+        {
+          "lightcraft": 0.005463645667087918,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.005473703248950941
+        },
+        {
+          "lightcraft": 0.005781486623787217,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.0057783780003830675
+        },
+        {
+          "lightcraft": 0.006098819941160504,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.006082365155070196
+        }
+      ],
+      "failures": [
+        "warm_latency_ratio 1.20308 exceeds 1.2"
+      ],
+      "height": 320,
+      "lightcraft": {
+        "input_sha256": "84282169ebde291344bcff10854519d4e99689ca06f421ef1e794e74e44127ba",
+        "note": "OS/driver caches not cleared; warm samples nested within five processes; no statistical independence claim",
+        "peak_rss_bytes": 16875520,
+        "process_cold": {
+          "max_ms": 4.217834,
+          "median_ms": 4.073208,
+          "min_ms": 3.971292,
+          "n": 5
+        },
+        "warm": {
+          "max_ms": 3.808833,
+          "median_ms": 3.439042,
+          "min_ms": 3.360167,
+          "n": 25
+        },
+        "warmup_excluded": {
+          "max_ms": 3.7915,
+          "median_ms": 3.766166,
+          "min_ms": 3.729916,
+          "n": 5
+        }
+      },
+      "note": "Mapped isolated CPU reference including conversion/readback; no accelerated-path claim. Warm samples share process caches.",
+      "phase_attribution": {
+        "cold_latency_ratio": true,
+        "peak_rss_ratio": true,
+        "warm_latency_ratio": true
+      },
+      "picedit": {
+        "input_sha256": "84282169ebde291344bcff10854519d4e99689ca06f421ef1e794e74e44127ba",
+        "note": "OS/driver caches not cleared; warm samples nested within five processes; no statistical independence claim",
+        "peak_rss_bytes": 47120384,
+        "process_cold": {
+          "max_ms": 53.2575,
+          "median_ms": 51.207417,
+          "min_ms": 48.940083,
+          "n": 5
+        },
+        "warm": {
+          "max_ms": 3.087166,
+          "median_ms": 2.858541,
+          "min_ms": 2.407,
+          "n": 25
+        },
+        "warmup_excluded": {
+          "max_ms": 3.510542,
+          "median_ms": 2.855166,
+          "min_ms": 2.723583,
+          "n": 5
+        }
+      },
+      "ratios": {
+        "cold_latency_ratio": 0.07954332084354108,
+        "peak_rss_ratio": 0.3581363004172462,
+        "warm_latency_ratio": 1.2030759747717454
+      },
+      "width": 512
+    },
+    {
+      "attributable": true,
+      "budget_exceedances": [
+        "warm_latency_ratio 1.50577 exceeds 1.2"
+      ],
+      "control": "vibrance",
+      "effect_strength_pairs": [
+        {
+          "lightcraft": 0.005467840674354082,
+          "matched": true,
+          "phase": "process-cold",
+          "picedit": 0.005475960731621051
+        },
+        {
+          "lightcraft": 0.005467840674354082,
+          "matched": true,
+          "phase": "warmup",
+          "picedit": 0.005475960731621051
+        },
+        {
+          "lightcraft": 0.004830473998185709,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.004864508350360253
+        },
+        {
+          "lightcraft": 0.005149416035793899,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.005170577914114125
+        },
+        {
+          "lightcraft": 0.005467840674354082,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.005475960731621051
+        },
+        {
+          "lightcraft": 0.005785749718233957,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.005780655994312705
+        },
+        {
+          "lightcraft": 0.006103143502050957,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.006084663312810789
+        },
+        {
+          "lightcraft": 0.005467840674354082,
+          "matched": true,
+          "phase": "process-cold",
+          "picedit": 0.005475960731621051
+        },
+        {
+          "lightcraft": 0.005467840674354082,
+          "matched": true,
+          "phase": "warmup",
+          "picedit": 0.005475960731621051
+        },
+        {
+          "lightcraft": 0.004830473998185709,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.004864508350360253
+        },
+        {
+          "lightcraft": 0.005149416035793899,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.005170577914114125
+        },
+        {
+          "lightcraft": 0.005467840674354082,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.005475960731621051
+        },
+        {
+          "lightcraft": 0.005785749718233957,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.005780655994312705
+        },
+        {
+          "lightcraft": 0.006103143502050957,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.006084663312810789
+        },
+        {
+          "lightcraft": 0.005467840674354082,
+          "matched": true,
+          "phase": "process-cold",
+          "picedit": 0.005475960731621051
+        },
+        {
+          "lightcraft": 0.005467840674354082,
+          "matched": true,
+          "phase": "warmup",
+          "picedit": 0.005475960731621051
+        },
+        {
+          "lightcraft": 0.004830473998185709,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.004864508350360253
+        },
+        {
+          "lightcraft": 0.005149416035793899,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.005170577914114125
+        },
+        {
+          "lightcraft": 0.005467840674354082,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.005475960731621051
+        },
+        {
+          "lightcraft": 0.005785749718233957,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.005780655994312705
+        },
+        {
+          "lightcraft": 0.006103143502050957,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.006084663312810789
+        },
+        {
+          "lightcraft": 0.005467840674354082,
+          "matched": true,
+          "phase": "process-cold",
+          "picedit": 0.005475960731621051
+        },
+        {
+          "lightcraft": 0.005467840674354082,
+          "matched": true,
+          "phase": "warmup",
+          "picedit": 0.005475960731621051
+        },
+        {
+          "lightcraft": 0.004830473998185709,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.004864508350360253
+        },
+        {
+          "lightcraft": 0.005149416035793899,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.005170577914114125
+        },
+        {
+          "lightcraft": 0.005467840674354082,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.005475960731621051
+        },
+        {
+          "lightcraft": 0.005785749718233957,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.005780655994312705
+        },
+        {
+          "lightcraft": 0.006103143502050957,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.006084663312810789
+        },
+        {
+          "lightcraft": 0.005467840674354082,
+          "matched": true,
+          "phase": "process-cold",
+          "picedit": 0.005475960731621051
+        },
+        {
+          "lightcraft": 0.005467840674354082,
+          "matched": true,
+          "phase": "warmup",
+          "picedit": 0.005475960731621051
+        },
+        {
+          "lightcraft": 0.004830473998185709,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.004864508350360253
+        },
+        {
+          "lightcraft": 0.005149416035793899,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.005170577914114125
+        },
+        {
+          "lightcraft": 0.005467840674354082,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.005475960731621051
+        },
+        {
+          "lightcraft": 0.005785749718233957,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.005780655994312705
+        },
+        {
+          "lightcraft": 0.006103143502050957,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.006084663312810789
+        }
+      ],
+      "failures": [
+        "warm_latency_ratio 1.50577 exceeds 1.2"
+      ],
+      "height": 1600,
+      "lightcraft": {
+        "input_sha256": "01fbf0d8e77ddfd579d9b7f2ce414b976d2ad893780c83ae522d08379f03a9e6",
+        "note": "OS/driver caches not cleared; warm samples nested within five processes; no statistical independence claim",
+        "peak_rss_bytes": 135282688,
+        "process_cold": {
+          "max_ms": 84.962375,
+          "median_ms": 83.686625,
+          "min_ms": 83.012417,
+          "n": 5
+        },
+        "warm": {
+          "max_ms": 78.875166,
+          "median_ms": 77.04,
+          "min_ms": 76.482958,
+          "n": 25
+        },
+        "warmup_excluded": {
+          "max_ms": 76.935208,
+          "median_ms": 76.8875,
+          "min_ms": 76.40425,
+          "n": 5
+        }
+      },
+      "note": "Mapped isolated CPU reference including conversion/readback; no accelerated-path claim. Warm samples share process caches.",
+      "phase_attribution": {
+        "cold_latency_ratio": true,
+        "peak_rss_ratio": true,
+        "warm_latency_ratio": true
+      },
+      "picedit": {
+        "input_sha256": "01fbf0d8e77ddfd579d9b7f2ce414b976d2ad893780c83ae522d08379f03a9e6",
+        "note": "OS/driver caches not cleared; warm samples nested within five processes; no statistical independence claim",
+        "peak_rss_bytes": 459718656,
+        "process_cold": {
+          "max_ms": 119.382917,
+          "median_ms": 111.174,
+          "min_ms": 109.5745,
+          "n": 5
+        },
+        "warm": {
+          "max_ms": 53.488416,
+          "median_ms": 51.163125,
+          "min_ms": 48.325541,
+          "n": 25
+        },
+        "warmup_excluded": {
+          "max_ms": 54.816125,
+          "median_ms": 51.508875,
+          "min_ms": 51.342041,
+          "n": 5
+        }
+      },
+      "ratios": {
+        "cold_latency_ratio": 0.7527535664813716,
+        "peak_rss_ratio": 0.2942727823514737,
+        "warm_latency_ratio": 1.505771979330817
+      },
+      "width": 2400
+    },
+    {
+      "attributable": true,
+      "budget_exceedances": [
+        "warm_latency_ratio 1.45499 exceeds 1.2"
+      ],
+      "control": "vibrance",
+      "effect_strength_pairs": [
+        {
+          "lightcraft": 0.00546825572436534,
+          "matched": true,
+          "phase": "process-cold",
+          "picedit": 0.005476193334098698
+        },
+        {
+          "lightcraft": 0.00546825572436534,
+          "matched": true,
+          "phase": "warmup",
+          "picedit": 0.005476193334098698
+        },
+        {
+          "lightcraft": 0.004830875414384798,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.0048647357590239585
+        },
+        {
+          "lightcraft": 0.005149824247088429,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.005170807952486164
+        },
+        {
+          "lightcraft": 0.00546825572436534,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.005476193334098698
+        },
+        {
+          "lightcraft": 0.005786172052065731,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.005780891138429134
+        },
+        {
+          "lightcraft": 0.00610357189177578,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.006084900961282348
+        },
+        {
+          "lightcraft": 0.00546825572436534,
+          "matched": true,
+          "phase": "process-cold",
+          "picedit": 0.005476193334098698
+        },
+        {
+          "lightcraft": 0.00546825572436534,
+          "matched": true,
+          "phase": "warmup",
+          "picedit": 0.005476193334098698
+        },
+        {
+          "lightcraft": 0.004830875414384798,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.0048647357590239585
+        },
+        {
+          "lightcraft": 0.005149824247088429,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.005170807952486164
+        },
+        {
+          "lightcraft": 0.00546825572436534,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.005476193334098698
+        },
+        {
+          "lightcraft": 0.005786172052065731,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.005780891138429134
+        },
+        {
+          "lightcraft": 0.00610357189177578,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.006084900961282348
+        },
+        {
+          "lightcraft": 0.00546825572436534,
+          "matched": true,
+          "phase": "process-cold",
+          "picedit": 0.005476193334098698
+        },
+        {
+          "lightcraft": 0.00546825572436534,
+          "matched": true,
+          "phase": "warmup",
+          "picedit": 0.005476193334098698
+        },
+        {
+          "lightcraft": 0.004830875414384798,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.0048647357590239585
+        },
+        {
+          "lightcraft": 0.005149824247088429,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.005170807952486164
+        },
+        {
+          "lightcraft": 0.00546825572436534,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.005476193334098698
+        },
+        {
+          "lightcraft": 0.005786172052065731,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.005780891138429134
+        },
+        {
+          "lightcraft": 0.00610357189177578,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.006084900961282348
+        },
+        {
+          "lightcraft": 0.00546825572436534,
+          "matched": true,
+          "phase": "process-cold",
+          "picedit": 0.005476193334098698
+        },
+        {
+          "lightcraft": 0.00546825572436534,
+          "matched": true,
+          "phase": "warmup",
+          "picedit": 0.005476193334098698
+        },
+        {
+          "lightcraft": 0.004830875414384798,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.0048647357590239585
+        },
+        {
+          "lightcraft": 0.005149824247088429,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.005170807952486164
+        },
+        {
+          "lightcraft": 0.00546825572436534,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.005476193334098698
+        },
+        {
+          "lightcraft": 0.005786172052065731,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.005780891138429134
+        },
+        {
+          "lightcraft": 0.00610357189177578,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.006084900961282348
+        },
+        {
+          "lightcraft": 0.00546825572436534,
+          "matched": true,
+          "phase": "process-cold",
+          "picedit": 0.005476193334098698
+        },
+        {
+          "lightcraft": 0.00546825572436534,
+          "matched": true,
+          "phase": "warmup",
+          "picedit": 0.005476193334098698
+        },
+        {
+          "lightcraft": 0.004830875414384798,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.0048647357590239585
+        },
+        {
+          "lightcraft": 0.005149824247088429,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.005170807952486164
+        },
+        {
+          "lightcraft": 0.00546825572436534,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.005476193334098698
+        },
+        {
+          "lightcraft": 0.005786172052065731,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.005780891138429134
+        },
+        {
+          "lightcraft": 0.00610357189177578,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.006084900961282348
+        }
+      ],
+      "failures": [
+        "warm_latency_ratio 1.45499 exceeds 1.2"
+      ],
+      "height": 2731,
+      "lightcraft": {
+        "input_sha256": "d19541cc2920af8fbccffa5368909604d2611879eaae1eaff9cc4dd681590847",
+        "note": "OS/driver caches not cleared; warm samples nested within five processes; no statistical independence claim",
+        "peak_rss_bytes": 370343936,
+        "process_cold": {
+          "max_ms": 239.509708,
+          "median_ms": 238.849,
+          "min_ms": 237.55,
+          "n": 5
+        },
+        "warm": {
+          "max_ms": 225.667,
+          "median_ms": 222.893583,
+          "min_ms": 221.682875,
+          "n": 25
+        },
+        "warmup_excluded": {
+          "max_ms": 222.730166,
+          "median_ms": 222.294667,
+          "min_ms": 221.903166,
+          "n": 5
+        }
+      },
+      "note": "Mapped isolated CPU reference including conversion/readback; no accelerated-path claim. Warm samples share process caches.",
+      "phase_attribution": {
+        "cold_latency_ratio": true,
+        "peak_rss_ratio": true,
+        "warm_latency_ratio": true
+      },
+      "picedit": {
+        "input_sha256": "d19541cc2920af8fbccffa5368909604d2611879eaae1eaff9cc4dd681590847",
+        "note": "OS/driver caches not cleared; warm samples nested within five processes; no statistical independence claim",
+        "peak_rss_bytes": 1284259840,
+        "process_cold": {
+          "max_ms": 276.756084,
+          "median_ms": 243.0325,
+          "min_ms": 240.53425,
+          "n": 5
+        },
+        "warm": {
+          "max_ms": 237.1645,
+          "median_ms": 153.192834,
+          "min_ms": 146.888334,
+          "n": 25
+        },
+        "warmup_excluded": {
+          "max_ms": 157.992792,
+          "median_ms": 156.463542,
+          "min_ms": 154.438917,
+          "n": 5
+        }
+      },
+      "ratios": {
+        "cold_latency_ratio": 0.9827862528674148,
+        "peak_rss_ratio": 0.2883714996491676,
+        "warm_latency_ratio": 1.4549870067682147
+      },
+      "width": 4096
+    },
+    {
+      "attributable": true,
+      "budget_exceedances": [
+        "warm_latency_ratio 1.48849 exceeds 1.2"
+      ],
+      "control": "vibrance",
+      "effect_strength_pairs": [
+        {
+          "lightcraft": 0.00546831929804455,
+          "matched": true,
+          "phase": "process-cold",
+          "picedit": 0.005476229236039607
+        },
+        {
+          "lightcraft": 0.00546831929804455,
+          "matched": true,
+          "phase": "warmup",
+          "picedit": 0.005476229236039607
+        },
+        {
+          "lightcraft": 0.004830936820150831,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.004864770908380139
+        },
+        {
+          "lightcraft": 0.00514988665630058,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.005170843466340318
+        },
+        {
+          "lightcraft": 0.00546831929804455,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.005476229236039607
+        },
+        {
+          "lightcraft": 0.005786236428013253,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.005780927414836713
+        },
+        {
+          "lightcraft": 0.006103637527896118,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.006084937606058836
+        },
+        {
+          "lightcraft": 0.00546831929804455,
+          "matched": true,
+          "phase": "process-cold",
+          "picedit": 0.005476229236039607
+        },
+        {
+          "lightcraft": 0.00546831929804455,
+          "matched": true,
+          "phase": "warmup",
+          "picedit": 0.005476229236039607
+        },
+        {
+          "lightcraft": 0.004830936820150831,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.004864770908380139
+        },
+        {
+          "lightcraft": 0.00514988665630058,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.005170843466340318
+        },
+        {
+          "lightcraft": 0.00546831929804455,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.005476229236039607
+        },
+        {
+          "lightcraft": 0.005786236428013253,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.005780927414836713
+        },
+        {
+          "lightcraft": 0.006103637527896118,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.006084937606058836
+        },
+        {
+          "lightcraft": 0.00546831929804455,
+          "matched": true,
+          "phase": "process-cold",
+          "picedit": 0.005476229236039607
+        },
+        {
+          "lightcraft": 0.00546831929804455,
+          "matched": true,
+          "phase": "warmup",
+          "picedit": 0.005476229236039607
+        },
+        {
+          "lightcraft": 0.004830936820150831,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.004864770908380139
+        },
+        {
+          "lightcraft": 0.00514988665630058,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.005170843466340318
+        },
+        {
+          "lightcraft": 0.00546831929804455,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.005476229236039607
+        },
+        {
+          "lightcraft": 0.005786236428013253,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.005780927414836713
+        },
+        {
+          "lightcraft": 0.006103637527896118,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.006084937606058836
+        },
+        {
+          "lightcraft": 0.00546831929804455,
+          "matched": true,
+          "phase": "process-cold",
+          "picedit": 0.005476229236039607
+        },
+        {
+          "lightcraft": 0.00546831929804455,
+          "matched": true,
+          "phase": "warmup",
+          "picedit": 0.005476229236039607
+        },
+        {
+          "lightcraft": 0.004830936820150831,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.004864770908380139
+        },
+        {
+          "lightcraft": 0.00514988665630058,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.005170843466340318
+        },
+        {
+          "lightcraft": 0.00546831929804455,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.005476229236039607
+        },
+        {
+          "lightcraft": 0.005786236428013253,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.005780927414836713
+        },
+        {
+          "lightcraft": 0.006103637527896118,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.006084937606058836
+        },
+        {
+          "lightcraft": 0.00546831929804455,
+          "matched": true,
+          "phase": "process-cold",
+          "picedit": 0.005476229236039607
+        },
+        {
+          "lightcraft": 0.00546831929804455,
+          "matched": true,
+          "phase": "warmup",
+          "picedit": 0.005476229236039607
+        },
+        {
+          "lightcraft": 0.004830936820150831,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.004864770908380139
+        },
+        {
+          "lightcraft": 0.00514988665630058,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.005170843466340318
+        },
+        {
+          "lightcraft": 0.00546831929804455,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.005476229236039607
+        },
+        {
+          "lightcraft": 0.005786236428013253,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.005780927414836713
+        },
+        {
+          "lightcraft": 0.006103637527896118,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.006084937606058836
+        }
+      ],
+      "failures": [
+        "warm_latency_ratio 1.48849 exceeds 1.2"
+      ],
+      "height": 3072,
+      "lightcraft": {
+        "input_sha256": "540aece0c7cfa1e130f1a6ee49eade69f668dc9e5ba5a8922881d1ea248f99ce",
+        "note": "OS/driver caches not cleared; warm samples nested within five processes; no statistical independence claim",
+        "peak_rss_bytes": 465403904,
+        "process_cold": {
+          "max_ms": 302.3605,
+          "median_ms": 299.075334,
+          "min_ms": 296.770041,
+          "n": 5
+        },
+        "warm": {
+          "max_ms": 285.738041,
+          "median_ms": 281.830292,
+          "min_ms": 280.321417,
+          "n": 25
+        },
+        "warmup_excluded": {
+          "max_ms": 285.396292,
+          "median_ms": 283.038625,
+          "min_ms": 280.714208,
+          "n": 5
+        }
+      },
+      "note": "Mapped isolated CPU reference including conversion/readback; no accelerated-path claim. Warm samples share process caches.",
+      "phase_attribution": {
+        "cold_latency_ratio": true,
+        "peak_rss_ratio": true,
+        "warm_latency_ratio": true
+      },
+      "picedit": {
+        "input_sha256": "540aece0c7cfa1e130f1a6ee49eade69f668dc9e5ba5a8922881d1ea248f99ce",
+        "note": "OS/driver caches not cleared; warm samples nested within five processes; no statistical independence claim",
+        "peak_rss_bytes": 1616068608,
+        "process_cold": {
+          "max_ms": 303.292709,
+          "median_ms": 291.935333,
+          "min_ms": 285.75575,
+          "n": 5
+        },
+        "warm": {
+          "max_ms": 240.256084,
+          "median_ms": 189.339166,
+          "min_ms": 182.04725,
+          "n": 25
+        },
+        "warmup_excluded": {
+          "max_ms": 196.87925,
+          "median_ms": 191.486542,
+          "min_ms": 186.097084,
+          "n": 5
+        }
+      },
+      "ratios": {
+        "cold_latency_ratio": 1.024457474628465,
+        "peak_rss_ratio": 0.28798523880491095,
+        "warm_latency_ratio": 1.4884944195856444
+      },
+      "width": 4608
+    },
+    {
+      "attributable": true,
+      "budget_exceedances": [],
+      "control": "saturation",
+      "effect_strength_pairs": [
+        {
+          "lightcraft": 0.009738883780416216,
+          "matched": true,
+          "phase": "process-cold",
+          "picedit": 0.009688441384936452
+        },
+        {
+          "lightcraft": 0.009738883780416216,
+          "matched": true,
+          "phase": "warmup",
+          "picedit": 0.009688441384936452
+        },
+        {
+          "lightcraft": 0.008678552163184826,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.00868882850681455
+        },
+        {
+          "lightcraft": 0.009209046190594702,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.009189914477857076
+        },
+        {
+          "lightcraft": 0.009738883780416216,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.009688441384936452
+        },
+        {
+          "lightcraft": 0.010268048359301993,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.010184407016974843
+        },
+        {
+          "lightcraft": 0.010796561997207887,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.010677810050821244
+        },
+        {
+          "lightcraft": 0.009738883780416216,
+          "matched": true,
+          "phase": "process-cold",
+          "picedit": 0.009688441384936452
+        },
+        {
+          "lightcraft": 0.009738883780416216,
+          "matched": true,
+          "phase": "warmup",
+          "picedit": 0.009688441384936452
+        },
+        {
+          "lightcraft": 0.008678552163184826,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.00868882850681455
+        },
+        {
+          "lightcraft": 0.009209046190594702,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.009189914477857076
+        },
+        {
+          "lightcraft": 0.009738883780416216,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.009688441384936452
+        },
+        {
+          "lightcraft": 0.010268048359301993,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.010184407016974843
+        },
+        {
+          "lightcraft": 0.010796561997207887,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.010677810050821244
+        },
+        {
+          "lightcraft": 0.009738883780416216,
+          "matched": true,
+          "phase": "process-cold",
+          "picedit": 0.009688441384936452
+        },
+        {
+          "lightcraft": 0.009738883780416216,
+          "matched": true,
+          "phase": "warmup",
+          "picedit": 0.009688441384936452
+        },
+        {
+          "lightcraft": 0.008678552163184826,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.00868882850681455
+        },
+        {
+          "lightcraft": 0.009209046190594702,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.009189914477857076
+        },
+        {
+          "lightcraft": 0.009738883780416216,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.009688441384936452
+        },
+        {
+          "lightcraft": 0.010268048359301993,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.010184407016974843
+        },
+        {
+          "lightcraft": 0.010796561997207887,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.010677810050821244
+        },
+        {
+          "lightcraft": 0.009738883780416216,
+          "matched": true,
+          "phase": "process-cold",
+          "picedit": 0.009688441384936452
+        },
+        {
+          "lightcraft": 0.009738883780416216,
+          "matched": true,
+          "phase": "warmup",
+          "picedit": 0.009688441384936452
+        },
+        {
+          "lightcraft": 0.008678552163184826,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.00868882850681455
+        },
+        {
+          "lightcraft": 0.009209046190594702,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.009189914477857076
+        },
+        {
+          "lightcraft": 0.009738883780416216,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.009688441384936452
+        },
+        {
+          "lightcraft": 0.010268048359301993,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.010184407016974843
+        },
+        {
+          "lightcraft": 0.010796561997207887,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.010677810050821244
+        },
+        {
+          "lightcraft": 0.009738883780416216,
+          "matched": true,
+          "phase": "process-cold",
+          "picedit": 0.009688441384936452
+        },
+        {
+          "lightcraft": 0.009738883780416216,
+          "matched": true,
+          "phase": "warmup",
+          "picedit": 0.009688441384936452
+        },
+        {
+          "lightcraft": 0.008678552163184826,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.00868882850681455
+        },
+        {
+          "lightcraft": 0.009209046190594702,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.009189914477857076
+        },
+        {
+          "lightcraft": 0.009738883780416216,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.009688441384936452
+        },
+        {
+          "lightcraft": 0.010268048359301993,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.010184407016974843
+        },
+        {
+          "lightcraft": 0.010796561997207887,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.010677810050821244
+        }
+      ],
+      "failures": [],
+      "height": 320,
+      "lightcraft": {
+        "input_sha256": "84282169ebde291344bcff10854519d4e99689ca06f421ef1e794e74e44127ba",
+        "note": "OS/driver caches not cleared; warm samples nested within five processes; no statistical independence claim",
+        "peak_rss_bytes": 17678336,
+        "process_cold": {
+          "max_ms": 3.174834,
+          "median_ms": 3.129916,
+          "min_ms": 3.068,
+          "n": 5
+        },
+        "warm": {
+          "max_ms": 2.829958,
+          "median_ms": 2.365291,
+          "min_ms": 2.314291,
+          "n": 25
+        },
+        "warmup_excluded": {
+          "max_ms": 2.956791,
+          "median_ms": 2.862334,
+          "min_ms": 2.833709,
+          "n": 5
+        }
+      },
+      "note": "Mapped isolated CPU reference including conversion/readback; no accelerated-path claim. Warm samples share process caches.",
+      "phase_attribution": {
+        "cold_latency_ratio": true,
+        "peak_rss_ratio": true,
+        "warm_latency_ratio": true
+      },
+      "picedit": {
+        "input_sha256": "84282169ebde291344bcff10854519d4e99689ca06f421ef1e794e74e44127ba",
+        "note": "OS/driver caches not cleared; warm samples nested within five processes; no statistical independence claim",
+        "peak_rss_bytes": 48037888,
+        "process_cold": {
+          "max_ms": 50.42225,
+          "median_ms": 49.892542,
+          "min_ms": 49.039,
+          "n": 5
+        },
+        "warm": {
+          "max_ms": 4.373,
+          "median_ms": 2.808875,
+          "min_ms": 2.680375,
+          "n": 25
+        },
+        "warmup_excluded": {
+          "max_ms": 2.968083,
+          "median_ms": 2.881709,
+          "min_ms": 2.582042,
+          "n": 5
+        }
+      },
+      "ratios": {
+        "cold_latency_ratio": 0.06273314356281948,
+        "peak_rss_ratio": 0.3680081855388813,
+        "warm_latency_ratio": 0.8420777001468559
+      },
+      "width": 512
+    },
+    {
+      "attributable": true,
+      "budget_exceedances": [],
+      "control": "saturation",
+      "effect_strength_pairs": [
+        {
+          "lightcraft": 0.009741566273799879,
+          "matched": true,
+          "phase": "process-cold",
+          "picedit": 0.009689866681418741
+        },
+        {
+          "lightcraft": 0.009741566273799879,
+          "matched": true,
+          "phase": "warmup",
+          "picedit": 0.009689866681418741
+        },
+        {
+          "lightcraft": 0.008681250835676974,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.008690288362973385
+        },
+        {
+          "lightcraft": 0.009211746335027627,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.009191357076544497
+        },
+        {
+          "lightcraft": 0.009741566273799879,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.009689866681418741
+        },
+        {
+          "lightcraft": 0.010270722524248502,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.010185815116710463
+        },
+        {
+          "lightcraft": 0.010799226537638672,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.010679201095564058
+        },
+        {
+          "lightcraft": 0.009741566273799879,
+          "matched": true,
+          "phase": "process-cold",
+          "picedit": 0.009689866681418741
+        },
+        {
+          "lightcraft": 0.009741566273799879,
+          "matched": true,
+          "phase": "warmup",
+          "picedit": 0.009689866681418741
+        },
+        {
+          "lightcraft": 0.008681250835676974,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.008690288362973385
+        },
+        {
+          "lightcraft": 0.009211746335027627,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.009191357076544497
+        },
+        {
+          "lightcraft": 0.009741566273799879,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.009689866681418741
+        },
+        {
+          "lightcraft": 0.010270722524248502,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.010185815116710463
+        },
+        {
+          "lightcraft": 0.010799226537638672,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.010679201095564058
+        },
+        {
+          "lightcraft": 0.009741566273799879,
+          "matched": true,
+          "phase": "process-cold",
+          "picedit": 0.009689866681418741
+        },
+        {
+          "lightcraft": 0.009741566273799879,
+          "matched": true,
+          "phase": "warmup",
+          "picedit": 0.009689866681418741
+        },
+        {
+          "lightcraft": 0.008681250835676974,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.008690288362973385
+        },
+        {
+          "lightcraft": 0.009211746335027627,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.009191357076544497
+        },
+        {
+          "lightcraft": 0.009741566273799879,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.009689866681418741
+        },
+        {
+          "lightcraft": 0.010270722524248502,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.010185815116710463
+        },
+        {
+          "lightcraft": 0.010799226537638672,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.010679201095564058
+        },
+        {
+          "lightcraft": 0.009741566273799879,
+          "matched": true,
+          "phase": "process-cold",
+          "picedit": 0.009689866681418741
+        },
+        {
+          "lightcraft": 0.009741566273799879,
+          "matched": true,
+          "phase": "warmup",
+          "picedit": 0.009689866681418741
+        },
+        {
+          "lightcraft": 0.008681250835676974,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.008690288362973385
+        },
+        {
+          "lightcraft": 0.009211746335027627,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.009191357076544497
+        },
+        {
+          "lightcraft": 0.009741566273799879,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.009689866681418741
+        },
+        {
+          "lightcraft": 0.010270722524248502,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.010185815116710463
+        },
+        {
+          "lightcraft": 0.010799226537638672,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.010679201095564058
+        },
+        {
+          "lightcraft": 0.009741566273799879,
+          "matched": true,
+          "phase": "process-cold",
+          "picedit": 0.009689866681418741
+        },
+        {
+          "lightcraft": 0.009741566273799879,
+          "matched": true,
+          "phase": "warmup",
+          "picedit": 0.009689866681418741
+        },
+        {
+          "lightcraft": 0.008681250835676974,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.008690288362973385
+        },
+        {
+          "lightcraft": 0.009211746335027627,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.009191357076544497
+        },
+        {
+          "lightcraft": 0.009741566273799879,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.009689866681418741
+        },
+        {
+          "lightcraft": 0.010270722524248502,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.010185815116710463
+        },
+        {
+          "lightcraft": 0.010799226537638672,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.010679201095564058
+        }
+      ],
+      "failures": [],
+      "height": 1600,
+      "lightcraft": {
+        "input_sha256": "01fbf0d8e77ddfd579d9b7f2ce414b976d2ad893780c83ae522d08379f03a9e6",
+        "note": "OS/driver caches not cleared; warm samples nested within five processes; no statistical independence claim",
+        "peak_rss_bytes": 135233536,
+        "process_cold": {
+          "max_ms": 64.553542,
+          "median_ms": 64.42475,
+          "min_ms": 62.254375,
+          "n": 5
+        },
+        "warm": {
+          "max_ms": 53.620042,
+          "median_ms": 53.140333,
+          "min_ms": 52.161292,
+          "n": 25
+        },
+        "warmup_excluded": {
+          "max_ms": 53.334583,
+          "median_ms": 52.794125,
+          "min_ms": 52.599792,
+          "n": 5
+        }
+      },
+      "note": "Mapped isolated CPU reference including conversion/readback; no accelerated-path claim. Warm samples share process caches.",
+      "phase_attribution": {
+        "cold_latency_ratio": true,
+        "peak_rss_ratio": true,
+        "warm_latency_ratio": true
+      },
+      "picedit": {
+        "input_sha256": "01fbf0d8e77ddfd579d9b7f2ce414b976d2ad893780c83ae522d08379f03a9e6",
+        "note": "OS/driver caches not cleared; warm samples nested within five processes; no statistical independence claim",
+        "peak_rss_bytes": 459833344,
+        "process_cold": {
+          "max_ms": 114.888042,
+          "median_ms": 112.59275,
+          "min_ms": 108.6475,
+          "n": 5
+        },
+        "warm": {
+          "max_ms": 52.449834,
+          "median_ms": 50.01875,
+          "min_ms": 48.455625,
+          "n": 25
+        },
+        "warmup_excluded": {
+          "max_ms": 53.591625,
+          "median_ms": 52.237334,
+          "min_ms": 49.680875,
+          "n": 5
+        }
+      },
+      "ratios": {
+        "cold_latency_ratio": 0.5721927033490167,
+        "peak_rss_ratio": 0.2940924962588185,
+        "warm_latency_ratio": 1.0624082569036613
+      },
+      "width": 2400
+    },
+    {
+      "attributable": true,
+      "budget_exceedances": [],
+      "control": "saturation",
+      "effect_strength_pairs": [
+        {
+          "lightcraft": 0.009741831933048218,
+          "matched": true,
+          "phase": "process-cold",
+          "picedit": 0.009690010932815178
+        },
+        {
+          "lightcraft": 0.009741831933048218,
+          "matched": true,
+          "phase": "warmup",
+          "picedit": 0.009690010932815178
+        },
+        {
+          "lightcraft": 0.00868151898841666,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.008690435543276635
+        },
+        {
+          "lightcraft": 0.009212014036896568,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.009191502784615812
+        },
+        {
+          "lightcraft": 0.009741831933048218,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.009690010932815178
+        },
+        {
+          "lightcraft": 0.010270987372815116,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.01018595794072731
+        },
+        {
+          "lightcraft": 0.010799489889671283,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.01067934249853325
+        },
+        {
+          "lightcraft": 0.009741831933048218,
+          "matched": true,
+          "phase": "process-cold",
+          "picedit": 0.009690010932815178
+        },
+        {
+          "lightcraft": 0.009741831933048218,
+          "matched": true,
+          "phase": "warmup",
+          "picedit": 0.009690010932815178
+        },
+        {
+          "lightcraft": 0.00868151898841666,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.008690435543276635
+        },
+        {
+          "lightcraft": 0.009212014036896568,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.009191502784615812
+        },
+        {
+          "lightcraft": 0.009741831933048218,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.009690010932815178
+        },
+        {
+          "lightcraft": 0.010270987372815116,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.01018595794072731
+        },
+        {
+          "lightcraft": 0.010799489889671283,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.01067934249853325
+        },
+        {
+          "lightcraft": 0.009741831933048218,
+          "matched": true,
+          "phase": "process-cold",
+          "picedit": 0.009690010932815178
+        },
+        {
+          "lightcraft": 0.009741831933048218,
+          "matched": true,
+          "phase": "warmup",
+          "picedit": 0.009690010932815178
+        },
+        {
+          "lightcraft": 0.00868151898841666,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.008690435543276635
+        },
+        {
+          "lightcraft": 0.009212014036896568,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.009191502784615812
+        },
+        {
+          "lightcraft": 0.009741831933048218,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.009690010932815178
+        },
+        {
+          "lightcraft": 0.010270987372815116,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.01018595794072731
+        },
+        {
+          "lightcraft": 0.010799489889671283,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.01067934249853325
+        },
+        {
+          "lightcraft": 0.009741831933048218,
+          "matched": true,
+          "phase": "process-cold",
+          "picedit": 0.009690010932815178
+        },
+        {
+          "lightcraft": 0.009741831933048218,
+          "matched": true,
+          "phase": "warmup",
+          "picedit": 0.009690010932815178
+        },
+        {
+          "lightcraft": 0.00868151898841666,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.008690435543276635
+        },
+        {
+          "lightcraft": 0.009212014036896568,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.009191502784615812
+        },
+        {
+          "lightcraft": 0.009741831933048218,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.009690010932815178
+        },
+        {
+          "lightcraft": 0.010270987372815116,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.01018595794072731
+        },
+        {
+          "lightcraft": 0.010799489889671283,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.01067934249853325
+        },
+        {
+          "lightcraft": 0.009741831933048218,
+          "matched": true,
+          "phase": "process-cold",
+          "picedit": 0.009690010932815178
+        },
+        {
+          "lightcraft": 0.009741831933048218,
+          "matched": true,
+          "phase": "warmup",
+          "picedit": 0.009690010932815178
+        },
+        {
+          "lightcraft": 0.00868151898841666,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.008690435543276635
+        },
+        {
+          "lightcraft": 0.009212014036896568,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.009191502784615812
+        },
+        {
+          "lightcraft": 0.009741831933048218,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.009690010932815178
+        },
+        {
+          "lightcraft": 0.010270987372815116,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.01018595794072731
+        },
+        {
+          "lightcraft": 0.010799489889671283,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.01067934249853325
+        }
+      ],
+      "failures": [],
+      "height": 2731,
+      "lightcraft": {
+        "input_sha256": "d19541cc2920af8fbccffa5368909604d2611879eaae1eaff9cc4dd681590847",
+        "note": "OS/driver caches not cleared; warm samples nested within five processes; no statistical independence claim",
+        "peak_rss_bytes": 370245632,
+        "process_cold": {
+          "max_ms": 172.41575,
+          "median_ms": 172.125667,
+          "min_ms": 169.263,
+          "n": 5
+        },
+        "warm": {
+          "max_ms": 155.571541,
+          "median_ms": 153.803417,
+          "min_ms": 152.317834,
+          "n": 25
+        },
+        "warmup_excluded": {
+          "max_ms": 157.159458,
+          "median_ms": 154.606875,
+          "min_ms": 154.025958,
+          "n": 5
+        }
+      },
+      "note": "Mapped isolated CPU reference including conversion/readback; no accelerated-path claim. Warm samples share process caches.",
+      "phase_attribution": {
+        "cold_latency_ratio": true,
+        "peak_rss_ratio": true,
+        "warm_latency_ratio": true
+      },
+      "picedit": {
+        "input_sha256": "d19541cc2920af8fbccffa5368909604d2611879eaae1eaff9cc4dd681590847",
+        "note": "OS/driver caches not cleared; warm samples nested within five processes; no statistical independence claim",
+        "peak_rss_bytes": 1284423680,
+        "process_cold": {
+          "max_ms": 251.622625,
+          "median_ms": 249.288917,
+          "min_ms": 242.978708,
+          "n": 5
+        },
+        "warm": {
+          "max_ms": 157.965583,
+          "median_ms": 154.292666,
+          "min_ms": 147.801083,
+          "n": 25
+        },
+        "warmup_excluded": {
+          "max_ms": 160.039083,
+          "median_ms": 158.312791,
+          "min_ms": 155.048541,
+          "n": 5
+        }
+      },
+      "ratios": {
+        "cold_latency_ratio": 0.6904665842003718,
+        "peak_rss_ratio": 0.28825817973085016,
+        "warm_latency_ratio": 0.9968290845398964
+      },
+      "width": 4096
+    },
+    {
+      "attributable": true,
+      "budget_exceedances": [],
+      "control": "saturation",
+      "effect_strength_pairs": [
+        {
+          "lightcraft": 0.009741874091830359,
+          "matched": true,
+          "phase": "process-cold",
+          "picedit": 0.009690032615839018
+        },
+        {
+          "lightcraft": 0.009741874091830359,
+          "matched": true,
+          "phase": "warmup",
+          "picedit": 0.009690032615839018
+        },
+        {
+          "lightcraft": 0.008681561500384101,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.008690457795862182
+        },
+        {
+          "lightcraft": 0.009212055720604358,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.009191524754501875
+        },
+        {
+          "lightcraft": 0.009741874091830359,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.009690032615839018
+        },
+        {
+          "lightcraft": 0.010271028846720456,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.010185979340516668
+        },
+        {
+          "lightcraft": 0.010799531629853079,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.010679363615442647
+        },
+        {
+          "lightcraft": 0.009741874091830359,
+          "matched": true,
+          "phase": "process-cold",
+          "picedit": 0.009690032615839018
+        },
+        {
+          "lightcraft": 0.009741874091830359,
+          "matched": true,
+          "phase": "warmup",
+          "picedit": 0.009690032615839018
+        },
+        {
+          "lightcraft": 0.008681561500384101,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.008690457795862182
+        },
+        {
+          "lightcraft": 0.009212055720604358,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.009191524754501875
+        },
+        {
+          "lightcraft": 0.009741874091830359,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.009690032615839018
+        },
+        {
+          "lightcraft": 0.010271028846720456,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.010185979340516668
+        },
+        {
+          "lightcraft": 0.010799531629853079,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.010679363615442647
+        },
+        {
+          "lightcraft": 0.009741874091830359,
+          "matched": true,
+          "phase": "process-cold",
+          "picedit": 0.009690032615839018
+        },
+        {
+          "lightcraft": 0.009741874091830359,
+          "matched": true,
+          "phase": "warmup",
+          "picedit": 0.009690032615839018
+        },
+        {
+          "lightcraft": 0.008681561500384101,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.008690457795862182
+        },
+        {
+          "lightcraft": 0.009212055720604358,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.009191524754501875
+        },
+        {
+          "lightcraft": 0.009741874091830359,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.009690032615839018
+        },
+        {
+          "lightcraft": 0.010271028846720456,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.010185979340516668
+        },
+        {
+          "lightcraft": 0.010799531629853079,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.010679363615442647
+        },
+        {
+          "lightcraft": 0.009741874091830359,
+          "matched": true,
+          "phase": "process-cold",
+          "picedit": 0.009690032615839018
+        },
+        {
+          "lightcraft": 0.009741874091830359,
+          "matched": true,
+          "phase": "warmup",
+          "picedit": 0.009690032615839018
+        },
+        {
+          "lightcraft": 0.008681561500384101,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.008690457795862182
+        },
+        {
+          "lightcraft": 0.009212055720604358,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.009191524754501875
+        },
+        {
+          "lightcraft": 0.009741874091830359,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.009690032615839018
+        },
+        {
+          "lightcraft": 0.010271028846720456,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.010185979340516668
+        },
+        {
+          "lightcraft": 0.010799531629853079,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.010679363615442647
+        },
+        {
+          "lightcraft": 0.009741874091830359,
+          "matched": true,
+          "phase": "process-cold",
+          "picedit": 0.009690032615839018
+        },
+        {
+          "lightcraft": 0.009741874091830359,
+          "matched": true,
+          "phase": "warmup",
+          "picedit": 0.009690032615839018
+        },
+        {
+          "lightcraft": 0.008681561500384101,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.008690457795862182
+        },
+        {
+          "lightcraft": 0.009212055720604358,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.009191524754501875
+        },
+        {
+          "lightcraft": 0.009741874091830359,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.009690032615839018
+        },
+        {
+          "lightcraft": 0.010271028846720456,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.010185979340516668
+        },
+        {
+          "lightcraft": 0.010799531629853079,
+          "matched": true,
+          "phase": "warm",
+          "picedit": 0.010679363615442647
+        }
+      ],
+      "failures": [],
+      "height": 3072,
+      "lightcraft": {
+        "input_sha256": "540aece0c7cfa1e130f1a6ee49eade69f668dc9e5ba5a8922881d1ea248f99ce",
+        "note": "OS/driver caches not cleared; warm samples nested within five processes; no statistical independence claim",
+        "peak_rss_bytes": 465354752,
+        "process_cold": {
+          "max_ms": 217.983458,
+          "median_ms": 214.805333,
+          "min_ms": 213.095042,
+          "n": 5
+        },
+        "warm": {
+          "max_ms": 196.86425,
+          "median_ms": 193.9215,
+          "min_ms": 193.014542,
+          "n": 25
+        },
+        "warmup_excluded": {
+          "max_ms": 195.207791,
+          "median_ms": 194.005208,
+          "min_ms": 193.709834,
+          "n": 5
+        }
+      },
+      "note": "Mapped isolated CPU reference including conversion/readback; no accelerated-path claim. Warm samples share process caches.",
+      "phase_attribution": {
+        "cold_latency_ratio": true,
+        "peak_rss_ratio": true,
+        "warm_latency_ratio": true
+      },
+      "picedit": {
+        "input_sha256": "540aece0c7cfa1e130f1a6ee49eade69f668dc9e5ba5a8922881d1ea248f99ce",
+        "note": "OS/driver caches not cleared; warm samples nested within five processes; no statistical independence claim",
+        "peak_rss_bytes": 1616052224,
+        "process_cold": {
+          "max_ms": 299.919666,
+          "median_ms": 298.90325,
+          "min_ms": 296.836,
+          "n": 5
+        },
+        "warm": {
+          "max_ms": 196.767084,
+          "median_ms": 191.854834,
+          "min_ms": 185.448,
+          "n": 25
+        },
+        "warmup_excluded": {
+          "max_ms": 196.11325,
+          "median_ms": 194.331958,
+          "min_ms": 189.099334,
+          "n": 5
+        }
+      },
+      "ratios": {
+        "cold_latency_ratio": 0.7186450230969385,
+        "peak_rss_ratio": 0.28795774362301796,
+        "warm_latency_ratio": 1.010772029856699
+      },
+      "width": 4608
+    }
+  ]
+}

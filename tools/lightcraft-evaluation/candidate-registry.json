@@ -19,10 +19,11 @@
       "missingEvidence": ["Use the specialized --candidate LC-04 comparison for frozen matching, separate clarity/texture decisions, ablations and controlled timing evidence", "Licensed real-photo classes and blinded visual approval"]
     },
     {
-      "id": "LC-05", "kind": "reference", "implemented": false, "issue": 54,
+      "id": "LC-05", "kind": "reference", "implemented": true, "issue": 54,
       "sourceCommit": "f9b0c8c8a12c8fa17b7afb5baa00f9ee1bbd7b15", "domain": "color",
-      "primarySceneClass": "colors", "primaryMetric": "hue_deviation_degrees", "minimumRelativeImprovement": 0.1,
-      "missingEvidence": ["Pinned isolated color adapter and symbol/license inventory", "Matched chroma target and clean expected-look reference", "Separate acceptance measurements", "Licensed real-photo classes and blinded visual approval", "Controlled cold/warm latency and peak RSS including conversion/readback"]
+      "primarySceneClass": "colors", "primaryMetric": "hue_drift_mean_degrees", "minimumRelativeImprovement": 0.1,
+      "comparisonManifest": "lc05-manifest.json", "decisions": ["vibrance", "saturation"],
+      "missingEvidence": ["Use the specialized --candidate LC-05 comparison for frozen chroma matching, input-relative hue/lightness metrics, separate saturation/vibrance decisions and controlled timing evidence", "Licensed real-photo classes and blinded visual approval"]
     },
     {
       "id": "LC-06", "kind": "reference", "implemented": false, "issue": 55,
