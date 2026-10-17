@@ -87,6 +87,15 @@ enum LightcraftToneFilters {
         return Plane(width: width, height: height, values: a)
     }
 
+    /// Common LC-03/LC-04 normalized convolution. The opaque path retains the
+    /// pinned arithmetic; uncovered pixels cannot contribute hidden colour.
+    static func gaussian(_ p: Plane, sigma: Float, coverage: Plane?) throws -> Plane {
+        try validate(p)
+        try validateCoverage(coverage, for: p)
+        let blurredCoverage = try coverage.map { try gaussian($0, sigma: sigma) }
+        return try weightedGaussian(p, sigma: sigma, coverage: coverage, blurredCoverage: blurredCoverage)
+    }
+
     static func resize(_ p: Plane, width: Int, height: Int, filter: Filter) throws -> Plane {
         try validate(p)
         guard width > 0, height > 0, width <= 16_384, height <= 16_384,
