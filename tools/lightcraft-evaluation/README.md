@@ -57,14 +57,37 @@ getrennte Diagnose- und Grundverträge. Reale Fotos/Blindabnahme und eine
 Produktionsfreigabe werden nicht behauptet; `--real-manifest` wird auch hier
 abgelehnt. Details stehen im [LC-05-Bericht](../../docs/LIGHTCRAFT-COLOR-EVALUATION.md).
 
+## LC-06: Luminanz, Chroma und native Skalierung
+
+```sh
+./scripts/evaluate-lightcraft.sh /tmp/picedit-lc06-run --candidate LC-06
+```
+
+`lc06.py` verwendet `denoise-tune`, `denoise-quality`, `denoise-timing` und
+`denoise-scale`. Das [Manifest](lc06-manifest.json) trennt die drei Entscheidungen.
+Acht deterministische Ground-Truth-Szenen mit unabhängigem Tuning-/Abnahmerauschen
+prüfen Detailerhalt bei gleicher positiver Rauschminderung. Die Luminanzreferenz
+verwendet den vollständigen Guided-Filter in Log-Luminanz, die Chromareferenz
+Gaussian-geglättetes RGB/Y. Die Skalierungsablation vergleicht bekannte
+Flächenmittelung mit unveränderten Parametern; unbekannte Decoder-Skalierung
+rechtfertigt keine Epsilon-Anpassung. Die tatsächliche Varianz nichtganzzahliger
+Flächenmittelung kann von der ursprünglichen `scale²`-Näherung abweichen.
+
+Die [40 Original-Rust-Referenzfälle](lc06-reference-oracle/README.md) prüfen die
+Quellentreue unabhängig von der Qualitätsentscheidung. Der
+[LC-06-Bericht](../../docs/LIGHTCRAFT-DENOISE-EVALUATION.md) dokumentiert Matching,
+Stage-/Skalengrenzen und Ergebnisse. Reale Fotos, Original-Problemaufnahmen und
+visuelle Abnahme bleiben separat erforderlich; `--real-manifest` wird abgelehnt.
+Ein synthetischer Erfolg allein erteilt kein Produktions-Go.
+
 ## Aufbau
 
 - `measurement-manifest.json` beschreibt vorab Szenenklassen, Kontrolltoleranzen, kritische Grenzen und Ressourcenbudgets. Die tatsächlich verwendete Kopie wird vor der Abnahme gehasht.
-- `candidate-registry.json` trennt verfügbare Kontrollen von noch nicht implementierten Lightcraft-Verfahren. Ein registrierter Name allein aktiviert keinen Vergleich und ist keine Freigabe.
+- `candidate-registry.json` trennt verfügbare Kontrollen von den spezialisierten Lightcraft-Referenzvergleichen. Ein registrierter Name allein aktiviert keinen Vergleich und ist keine Freigabe.
 - `run.py` führt Qualitäts-, Skalen- und Timingläufe seriell zusammen und schreibt Rohdaten sowie deren Provenienz in das gewählte Ergebnisverzeichnis.
 - Der native Modus bleibt in `Sources/PicEdit/DeveloperTools/EditingBenchmark.swift`. Gemeinsame Float-Raster, deterministische Fixtures und Metriken liegen bei den Developer-Tools und sind unabhängig von der Produktionsintegration testbar.
 
-Ein direkter nativer **LC-01-Standardaufruf** verwendet `--scenario evaluation`, `--evaluation-mode quality|timing|scale`, `--output`, `--manifest`, `--registry`, `--iterations`, `--width` und `--height`. Sein Qualitätsmodus verwendet fest 192 × 128 Pixel pro synthetischem Fall. LC-03 und LC-04 verwenden ihre spezialisierten Modi und 512 × 320 Pixel, LC-05 verwendet 256 × 160 Pixel. Nur `--backend default` und `--workers 1` sind für die Evaluation zulässig. Für reproduzierbare Abnahmeläufe den Wrapper verwenden, damit Manifest, Reihenfolge, Hostdaten und Hashes zusammen erfasst werden.
+Ein direkter nativer **LC-01-Standardaufruf** verwendet `--scenario evaluation`, `--evaluation-mode quality|timing|scale`, `--output`, `--manifest`, `--registry`, `--iterations`, `--width` und `--height`. Sein Qualitätsmodus verwendet fest 192 × 128 Pixel pro synthetischem Fall. LC-03 und LC-04 verwenden ihre spezialisierten Modi und 512 × 320 Pixel, LC-05 und LC-06 verwenden 256 × 160 Pixel. Nur `--backend default` und `--workers 1` sind für die Evaluation zulässig. Für reproduzierbare Abnahmeläufe den Wrapper verwenden, damit Manifest, Reihenfolge, Hostdaten und Hashes zusammen erfasst werden.
 
 ## Ergebnisvertrag
 
@@ -72,7 +95,7 @@ Die Qualitätsausgabe enthält Eingaben, PicEdit-/Kontroll-Paarbilder, Differenz
 
 `environment.json` enthält Host-/Toolchainangaben, Quell-/Binary-/Manifest-Hashes und Abdeckungslücken. `commands.json` protokolliert jeden nativen Aufruf. `quality/quality.json`, die einzelnen `timing-*/timing.json` und `scale/scale.json` sind die Rohdaten; `summary.json` fasst bestandene Kontrollen, Zeitverteilungen und weiterhin blockierte Kandidaten zusammen. Vorhandene Ergebnisverzeichnisse werden nicht überschrieben. Ein abgebrochener oder fehlgeschlagener Lauf bleibt zur Diagnose erhalten und hat keine erfolgreiche Abschlusszusammenfassung.
 
-Die **LC-01-Standardgrößenmatrix** ist 400 × 267, 2400 × 1600, 4096 × 2731 und 4608 × 3072; LC-03/LC-04/LC-05 messen die kleinste Timinggröße bei 512 × 320. Timingprozesse werden getrennt gestartet, mit mindestens fünf Wiederholungen, getrenntem Initialaufruf und warmen Samples. Keine parallelen Benchmarks oder Builds während einer Messreihe ausführen. Prozesskalt ist nicht gleichbedeutend mit geleerten System-/Shadercaches. Die Rohdaten enthalten Streuung und Peak-RSS des ganzen Prozesses; fünf Werte ergeben kein belastbares p95.
+Die **LC-01-Standardgrößenmatrix** ist 400 × 267, 2400 × 1600, 4096 × 2731 und 4608 × 3072; LC-03 bis LC-06 messen die kleinste Timinggröße bei 512 × 320. Timingprozesse werden getrennt gestartet, mit mindestens fünf Wiederholungen, getrenntem Initialaufruf und warmen Samples. Keine parallelen Benchmarks oder Builds während einer Messreihe ausführen. Prozesskalt ist nicht gleichbedeutend mit geleerten System-/Shadercaches. Die Rohdaten enthalten Streuung und Peak-RSS des ganzen Prozesses; fünf Werte ergeben kein belastbares p95.
 
 Ein bestandener Kontrollvergleich ist ein Harness-Erfolg. Die Algorithmusentscheidung bleibt bei fehlendem Adapter, echter Bildabdeckung oder visueller Abnahme blockiert. Ergebnisse dürfen nicht durch Weglassen fehlgeschlagener Fälle zu einem Go zusammengefasst werden.
 

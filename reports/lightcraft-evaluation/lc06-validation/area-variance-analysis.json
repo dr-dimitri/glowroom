@@ -1,0 +1,36 @@
+{
+  "scope": "Mean sum of squared rectangular-overlap weights for independent unit-variance native noise; no color/render outcomes used. Actual finite-footprint averaging is not exactly scale squared for noninteger ratios.",
+  "native_size": [
+    4608,
+    3072
+  ],
+  "records": [
+    {
+      "preview_size": [
+        512,
+        341
+      ],
+      "area_weight_variance_factor": 0.011877271864149469,
+      "upstream_scale_squared": 0.012345679012345678,
+      "actual_over_assumed": 0.9620590209961071
+    },
+    {
+      "preview_size": [
+        2400,
+        1600
+      ],
+      "area_weight_variance_factor": 0.18537808641975417,
+      "upstream_scale_squared": 0.27126736111111116,
+      "actual_over_assumed": 0.6833777777777816
+    },
+    {
+      "preview_size": [
+        4096,
+        2731
+      ],
+      "area_weight_variance_factor": 0.3938702555840993,
+      "upstream_scale_squared": 0.7901234567901234,
+      "actual_over_assumed": 0.49849204222362575
+    }
+  ]
+}

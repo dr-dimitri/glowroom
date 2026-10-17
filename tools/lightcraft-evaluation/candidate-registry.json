@@ -26,10 +26,11 @@
       "missingEvidence": ["Use the specialized --candidate LC-05 comparison for frozen chroma matching, input-relative hue/lightness metrics, separate saturation/vibrance decisions and controlled timing evidence", "Licensed real-photo classes and blinded visual approval"]
     },
     {
-      "id": "LC-06", "kind": "reference", "implemented": false, "issue": 55,
+      "id": "LC-06", "kind": "reference", "implemented": true, "issue": 55,
       "sourceCommit": "f9b0c8c8a12c8fa17b7afb5baa00f9ee1bbd7b15", "domain": "denoise",
-      "primarySceneClass": "noise", "primaryMetric": "edge_loss", "minimumRelativeImprovement": 0.1,
-      "missingEvidence": ["Pinned isolated denoise adapter and symbol/license inventory", "Matched residual-noise target with known clean ground truth", "Separate acceptance measurements", "Licensed real-photo classes and blinded visual approval", "Controlled cold/warm latency and peak RSS including conversion/readback"]
+      "primarySceneClass": "noise", "primaryMetric": "detail_rgb_rmse", "minimumRelativeImprovement": 0.1,
+      "comparisonManifest": "lc06-manifest.json", "decisions": ["luminance", "chroma", "scaling"],
+      "missingEvidence": ["Use the specialized --candidate LC-06 comparison for frozen noise-reduction matching, separate luminance/chroma decisions, native-pixel scaling and controlled timing evidence", "Licensed real-photo classes, blinded visual approval and production sampling metadata"]
     }
   ]
 }

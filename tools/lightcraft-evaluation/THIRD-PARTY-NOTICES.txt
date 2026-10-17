@@ -98,3 +98,32 @@ colour conversion and adjustment through the common bounded LC-03 row pool,
 handles straight alpha separately and adds no rendering cache or dependency.
 Original-function oracle inputs/hashes and frozen numeric results are recorded
 in lc05-reference-oracle. See ../../docs/LIGHTCRAFT-COLOR-EVALUATION.md.
+
+LC-06 adds the following developer-only adaptations at the same pinned commit:
+crates/pipeline/src/local.rs:
+  detail_scale, nr_radius, nr_params, NrLum, NrColor, NR_MIN_SIGMA,
+  NR_MIN_BLEND, apply_nr and log_lum; full guided, guided_coeffs and
+  guided_apply (not guided_fast). Only luminance or chroma NR is active per
+  adapter. The fixed unexposed nr_detail, nr_color_detail and
+  nr_color_smoothness controls are 50; nr_contrast is not implemented.
+crates/raster/src/blur.rs:
+  box_sigma for the variance-based subpixel radius fade, with the shared
+  original Gaussian functions listed above. The original modules are temporary
+  oracle inputs only; Swift reuses the bounded LC-03 Gaussian/row workers.
+crates/color/src/lib.rs and crates/pipeline/src/tone.rs:
+  LUMA_2020, luminance_2020 and GREY for the original-function oracle.
+
+LC-06 keeps the explicit extended-linear-sRGB/Rec.2020 bridge, signed input,
+original luminance floors, and chroma's final nonnegative Rec.2020 clamp.
+Negative luminance can yield large positive chroma outputs because the source
+uses a positive divisor floor but multiplies by the original signed Y; this
+limitation is preserved and independently recorded, not silently corrected.
+It adds normalized alpha coverage to every spatial mean and keeps hidden RGB
+zero; the original source is opaque RGB only. Exact zero and the original
+subpixel no-op bypass colour conversion. Native scale uses full-image geometry,
+never crop dimensions. Epsilon follows scale squared only for explicitly known
+area-averaged inputs; unknown sampling retains native epsilon. The unscaled
+ablation uses native radius/epsilon/blend. No RAW decoder, learned model,
+production rendering change or persistent cache is introduced. Original Rust
+functions, source hashes and 40 frozen cases are recorded in
+lc06-reference-oracle. See ../../docs/LIGHTCRAFT-DENOISE-EVALUATION.md.

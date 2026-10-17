@@ -1,0 +1,434 @@
+[
+  {
+    "A": "lightcraft",
+    "B": "picedit",
+    "direction": "luminance-20",
+    "fixture": "acceptance-flat-dark",
+    "matched": false,
+    "pair": 1,
+    "variant": "lightcraft"
+  },
+  {
+    "A": "picedit",
+    "B": "lightcraft",
+    "direction": "luminance-60",
+    "fixture": "acceptance-flat-dark",
+    "matched": false,
+    "pair": 2,
+    "variant": "lightcraft"
+  },
+  {
+    "A": "picedit",
+    "B": "lightcraft",
+    "direction": "luminance-100",
+    "fixture": "acceptance-flat-dark",
+    "matched": false,
+    "pair": 3,
+    "variant": "lightcraft"
+  },
+  {
+    "A": "picedit",
+    "B": "lightcraft",
+    "direction": "chroma-20",
+    "fixture": "acceptance-flat-dark",
+    "matched": true,
+    "pair": 4,
+    "variant": "lightcraft"
+  },
+  {
+    "A": "picedit",
+    "B": "lightcraft",
+    "direction": "chroma-60",
+    "fixture": "acceptance-flat-dark",
+    "matched": true,
+    "pair": 5,
+    "variant": "lightcraft"
+  },
+  {
+    "A": "lightcraft",
+    "B": "picedit",
+    "direction": "chroma-100",
+    "fixture": "acceptance-flat-dark",
+    "matched": true,
+    "pair": 6,
+    "variant": "lightcraft"
+  },
+  {
+    "A": "lightcraft",
+    "B": "picedit",
+    "direction": "luminance-20",
+    "fixture": "acceptance-flat-bright",
+    "matched": false,
+    "pair": 7,
+    "variant": "lightcraft"
+  },
+  {
+    "A": "picedit",
+    "B": "lightcraft",
+    "direction": "luminance-60",
+    "fixture": "acceptance-flat-bright",
+    "matched": true,
+    "pair": 8,
+    "variant": "lightcraft"
+  },
+  {
+    "A": "lightcraft",
+    "B": "picedit",
+    "direction": "luminance-100",
+    "fixture": "acceptance-flat-bright",
+    "matched": true,
+    "pair": 9,
+    "variant": "lightcraft"
+  },
+  {
+    "A": "picedit",
+    "B": "lightcraft",
+    "direction": "chroma-20",
+    "fixture": "acceptance-flat-bright",
+    "matched": true,
+    "pair": 10,
+    "variant": "lightcraft"
+  },
+  {
+    "A": "picedit",
+    "B": "lightcraft",
+    "direction": "chroma-60",
+    "fixture": "acceptance-flat-bright",
+    "matched": true,
+    "pair": 11,
+    "variant": "lightcraft"
+  },
+  {
+    "A": "lightcraft",
+    "B": "picedit",
+    "direction": "chroma-100",
+    "fixture": "acceptance-flat-bright",
+    "matched": true,
+    "pair": 12,
+    "variant": "lightcraft"
+  },
+  {
+    "A": "lightcraft",
+    "B": "picedit",
+    "direction": "luminance-20",
+    "fixture": "acceptance-dark-edges",
+    "matched": true,
+    "pair": 13,
+    "variant": "lightcraft"
+  },
+  {
+    "A": "lightcraft",
+    "B": "picedit",
+    "direction": "luminance-60",
+    "fixture": "acceptance-dark-edges",
+    "matched": true,
+    "pair": 14,
+    "variant": "lightcraft"
+  },
+  {
+    "A": "lightcraft",
+    "B": "picedit",
+    "direction": "luminance-100",
+    "fixture": "acceptance-dark-edges",
+    "matched": false,
+    "pair": 15,
+    "variant": "lightcraft"
+  },
+  {
+    "A": "picedit",
+    "B": "lightcraft",
+    "direction": "chroma-20",
+    "fixture": "acceptance-dark-edges",
+    "matched": true,
+    "pair": 16,
+    "variant": "lightcraft"
+  },
+  {
+    "A": "lightcraft",
+    "B": "picedit",
+    "direction": "chroma-60",
+    "fixture": "acceptance-dark-edges",
+    "matched": true,
+    "pair": 17,
+    "variant": "lightcraft"
+  },
+  {
+    "A": "lightcraft",
+    "B": "picedit",
+    "direction": "chroma-100",
+    "fixture": "acceptance-dark-edges",
+    "matched": true,
+    "pair": 18,
+    "variant": "lightcraft"
+  },
+  {
+    "A": "picedit",
+    "B": "lightcraft",
+    "direction": "luminance-20",
+    "fixture": "acceptance-fine-lines",
+    "matched": true,
+    "pair": 19,
+    "variant": "lightcraft"
+  },
+  {
+    "A": "picedit",
+    "B": "lightcraft",
+    "direction": "luminance-60",
+    "fixture": "acceptance-fine-lines",
+    "matched": true,
+    "pair": 20,
+    "variant": "lightcraft"
+  },
+  {
+    "A": "lightcraft",
+    "B": "picedit",
+    "direction": "luminance-100",
+    "fixture": "acceptance-fine-lines",
+    "matched": true,
+    "pair": 21,
+    "variant": "lightcraft"
+  },
+  {
+    "A": "picedit",
+    "B": "lightcraft",
+    "direction": "chroma-20",
+    "fixture": "acceptance-fine-lines",
+    "matched": true,
+    "pair": 22,
+    "variant": "lightcraft"
+  },
+  {
+    "A": "picedit",
+    "B": "lightcraft",
+    "direction": "chroma-60",
+    "fixture": "acceptance-fine-lines",
+    "matched": true,
+    "pair": 23,
+    "variant": "lightcraft"
+  },
+  {
+    "A": "lightcraft",
+    "B": "picedit",
+    "direction": "chroma-100",
+    "fixture": "acceptance-fine-lines",
+    "matched": true,
+    "pair": 24,
+    "variant": "lightcraft"
+  },
+  {
+    "A": "picedit",
+    "B": "lightcraft",
+    "direction": "luminance-20",
+    "fixture": "acceptance-color-lines",
+    "matched": true,
+    "pair": 25,
+    "variant": "lightcraft"
+  },
+  {
+    "A": "picedit",
+    "B": "lightcraft",
+    "direction": "luminance-60",
+    "fixture": "acceptance-color-lines",
+    "matched": true,
+    "pair": 26,
+    "variant": "lightcraft"
+  },
+  {
+    "A": "picedit",
+    "B": "lightcraft",
+    "direction": "luminance-100",
+    "fixture": "acceptance-color-lines",
+    "matched": true,
+    "pair": 27,
+    "variant": "lightcraft"
+  },
+  {
+    "A": "picedit",
+    "B": "lightcraft",
+    "direction": "chroma-20",
+    "fixture": "acceptance-color-lines",
+    "matched": true,
+    "pair": 28,
+    "variant": "lightcraft"
+  },
+  {
+    "A": "lightcraft",
+    "B": "picedit",
+    "direction": "chroma-60",
+    "fixture": "acceptance-color-lines",
+    "matched": true,
+    "pair": 29,
+    "variant": "lightcraft"
+  },
+  {
+    "A": "lightcraft",
+    "B": "picedit",
+    "direction": "chroma-100",
+    "fixture": "acceptance-color-lines",
+    "matched": true,
+    "pair": 30,
+    "variant": "lightcraft"
+  },
+  {
+    "A": "lightcraft",
+    "B": "picedit",
+    "direction": "luminance-20",
+    "fixture": "acceptance-texture",
+    "matched": true,
+    "pair": 31,
+    "variant": "lightcraft"
+  },
+  {
+    "A": "picedit",
+    "B": "lightcraft",
+    "direction": "luminance-60",
+    "fixture": "acceptance-texture",
+    "matched": true,
+    "pair": 32,
+    "variant": "lightcraft"
+  },
+  {
+    "A": "lightcraft",
+    "B": "picedit",
+    "direction": "luminance-100",
+    "fixture": "acceptance-texture",
+    "matched": true,
+    "pair": 33,
+    "variant": "lightcraft"
+  },
+  {
+    "A": "lightcraft",
+    "B": "picedit",
+    "direction": "chroma-20",
+    "fixture": "acceptance-texture",
+    "matched": true,
+    "pair": 34,
+    "variant": "lightcraft"
+  },
+  {
+    "A": "picedit",
+    "B": "lightcraft",
+    "direction": "chroma-60",
+    "fixture": "acceptance-texture",
+    "matched": true,
+    "pair": 35,
+    "variant": "lightcraft"
+  },
+  {
+    "A": "lightcraft",
+    "B": "picedit",
+    "direction": "chroma-100",
+    "fixture": "acceptance-texture",
+    "matched": true,
+    "pair": 36,
+    "variant": "lightcraft"
+  },
+  {
+    "A": "lightcraft",
+    "B": "picedit",
+    "direction": "luminance-20",
+    "fixture": "acceptance-transparency",
+    "matched": true,
+    "pair": 37,
+    "variant": "lightcraft"
+  },
+  {
+    "A": "lightcraft",
+    "B": "picedit",
+    "direction": "luminance-60",
+    "fixture": "acceptance-transparency",
+    "matched": true,
+    "pair": 38,
+    "variant": "lightcraft"
+  },
+  {
+    "A": "picedit",
+    "B": "lightcraft",
+    "direction": "luminance-100",
+    "fixture": "acceptance-transparency",
+    "matched": true,
+    "pair": 39,
+    "variant": "lightcraft"
+  },
+  {
+    "A": "lightcraft",
+    "B": "picedit",
+    "direction": "chroma-20",
+    "fixture": "acceptance-transparency",
+    "matched": true,
+    "pair": 40,
+    "variant": "lightcraft"
+  },
+  {
+    "A": "lightcraft",
+    "B": "picedit",
+    "direction": "chroma-60",
+    "fixture": "acceptance-transparency",
+    "matched": true,
+    "pair": 41,
+    "variant": "lightcraft"
+  },
+  {
+    "A": "lightcraft",
+    "B": "picedit",
+    "direction": "chroma-100",
+    "fixture": "acceptance-transparency",
+    "matched": true,
+    "pair": 42,
+    "variant": "lightcraft"
+  },
+  {
+    "A": "picedit",
+    "B": "lightcraft",
+    "direction": "luminance-20",
+    "fixture": "acceptance-p3-dark",
+    "matched": true,
+    "pair": 43,
+    "variant": "lightcraft"
+  },
+  {
+    "A": "picedit",
+    "B": "lightcraft",
+    "direction": "luminance-60",
+    "fixture": "acceptance-p3-dark",
+    "matched": true,
+    "pair": 44,
+    "variant": "lightcraft"
+  },
+  {
+    "A": "lightcraft",
+    "B": "picedit",
+    "direction": "luminance-100",
+    "fixture": "acceptance-p3-dark",
+    "matched": false,
+    "pair": 45,
+    "variant": "lightcraft"
+  },
+  {
+    "A": "picedit",
+    "B": "lightcraft",
+    "direction": "chroma-20",
+    "fixture": "acceptance-p3-dark",
+    "matched": true,
+    "pair": 46,
+    "variant": "lightcraft"
+  },
+  {
+    "A": "lightcraft",
+    "B": "picedit",
+    "direction": "chroma-60",
+    "fixture": "acceptance-p3-dark",
+    "matched": true,
+    "pair": 47,
+    "variant": "lightcraft"
+  },
+  {
+    "A": "picedit",
+    "B": "lightcraft",
+    "direction": "chroma-100",
+    "fixture": "acceptance-p3-dark",
+    "matched": true,
+    "pair": 48,
+    "variant": "lightcraft"
+  }
+]
