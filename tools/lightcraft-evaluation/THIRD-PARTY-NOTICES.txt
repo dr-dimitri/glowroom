@@ -1,5 +1,5 @@
-Lightcraft LC-03 / LC-04 evaluation references
-============================================
+Lightcraft LC-03 / LC-04 / LC-05 evaluation references
+====================================================
 
 Upstream: https://github.com/dr-dimitri/lightcraft
 Pinned commit: f9b0c8c8a12c8fa17b7afb5baa00f9ee1bbd7b15
@@ -68,3 +68,33 @@ ablations, not original Lightcraft algorithms. Strength is separate from
 immutable prepared planes. Upstream original bodies and unchanged finish
 statements are temporary oracle inputs only; hashes and results are preserved
 in lc04-reference-oracle. See ../../docs/LIGHTCRAFT-DETAIL-EVALUATION.md.
+
+LC-05 adds the following developer-only adaptations at the same pinned commit:
+crates/pipeline/src/colorops.rs:
+  The chroma-only saturation/vibrance fast path in ColorOps::apply, wrap and
+  oklch_hue_of_srgb_hue(25) for the positive-vibrance hue heuristic. No mixer,
+  Point Color, B&W, grading, calibration or local colour adjustment is enabled.
+crates/color/src/perceptual.rs:
+  The original OkLab matrices/transforms (signed cbrt and cubing), and the HSV /
+  OkLCh helpers used only by the independent oracle to derive the skin hue.
+crates/color/src/lib.rs:
+  Mat3, Xy, RgbSpace, primary/white definitions and Bradford support, compiled
+  only as temporary oracle inputs. Their arithmetic is unchanged; serde derive
+  attributes are omitted. Swift retains the existing explicit sRGB/Rec.2020
+  colour bridge and stores the original generated Float32 OkLab matrices.
+crates/color/src/transfer.rs:
+  srgb_to_linear in the oracle's fixed sRGB-hue conversion.
+crates/pipeline/src/finish.rs and output.rs:
+  gamut_map_to as an explicit optional SDR-sRGB output policy (peak=1), with
+  OutputSpace::Srgb's [0.2126, 0.7152, 0.0722] luminance weights. The full finish,
+  global tone, proofing and output-encoding pipelines are not imported.
+
+LC-05 preserves signed/extended RGB in the raw diagnostic policy and separately
+evaluates the targeted ColorOps plus destination-gamut-map combination. Both
+policies keep exact zero/zero identity. The upstream approximate gray-axis
+residual remains visible, including at saturation=-100; there is no undisclosed
+gray correction or negative-LMS clamp. The Swift implementation fuses per-pixel
+colour conversion and adjustment through the common bounded LC-03 row pool,
+handles straight alpha separately and adds no rendering cache or dependency.
+Original-function oracle inputs/hashes and frozen numeric results are recorded
+in lc05-reference-oracle. See ../../docs/LIGHTCRAFT-COLOR-EVALUATION.md.

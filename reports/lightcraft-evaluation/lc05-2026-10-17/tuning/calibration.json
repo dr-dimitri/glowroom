@@ -1,0 +1,2165 @@
+{
+  "manifestSHA256" : "9cd3ceb0e8649b95464cb07d49f7bc3f89b93f11947a3c4402d6d408f1190b71",
+  "records" : [
+    {
+      "directionID" : "vibrance-positive-20",
+      "inputSHA256" : "6cf0aea0354fde22c4ffee93bd3a8fe61e23440d3000264debb67791fc4765d6",
+      "matched" : true,
+      "measured" : 0.006230095526060339,
+      "parameter" : 26.3671875,
+      "sceneClass" : "skin-tones",
+      "target" : 0.0062458154458658295,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "vibrance-positive-20",
+      "inputSHA256" : "6cf0aea0354fde22c4ffee93bd3a8fe61e23440d3000264debb67791fc4765d6",
+      "matched" : true,
+      "measured" : 0.0062404599618032996,
+      "parameter" : 24.609375,
+      "sceneClass" : "skin-tones",
+      "target" : 0.0062458154458658295,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "vibrance-negative-20",
+      "inputSHA256" : "6cf0aea0354fde22c4ffee93bd3a8fe61e23440d3000264debb67791fc4765d6",
+      "matched" : true,
+      "measured" : -0.006599181065265738,
+      "parameter" : -19.921875,
+      "sceneClass" : "skin-tones",
+      "target" : -0.006617171708511974,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "vibrance-negative-20",
+      "inputSHA256" : "6cf0aea0354fde22c4ffee93bd3a8fe61e23440d3000264debb67791fc4765d6",
+      "matched" : true,
+      "measured" : -0.006598236681810725,
+      "parameter" : -19.921875,
+      "sceneClass" : "skin-tones",
+      "target" : -0.006617171708511974,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "vibrance-positive-60",
+      "inputSHA256" : "6cf0aea0354fde22c4ffee93bd3a8fe61e23440d3000264debb67791fc4765d6",
+      "matched" : true,
+      "measured" : 0.018202502981852869,
+      "parameter" : 80.078125,
+      "sceneClass" : "skin-tones",
+      "target" : 0.018216324548953795,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "vibrance-positive-60",
+      "inputSHA256" : "6cf0aea0354fde22c4ffee93bd3a8fe61e23440d3000264debb67791fc4765d6",
+      "matched" : true,
+      "measured" : 0.018226097280550059,
+      "parameter" : 71.875,
+      "sceneClass" : "skin-tones",
+      "target" : 0.018216324548953795,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "vibrance-negative-60",
+      "inputSHA256" : "6cf0aea0354fde22c4ffee93bd3a8fe61e23440d3000264debb67791fc4765d6",
+      "matched" : true,
+      "measured" : -0.020312208499228258,
+      "parameter" : -61.328125,
+      "sceneClass" : "skin-tones",
+      "target" : -0.020314135608052526,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "vibrance-negative-60",
+      "inputSHA256" : "6cf0aea0354fde22c4ffee93bd3a8fe61e23440d3000264debb67791fc4765d6",
+      "matched" : true,
+      "measured" : -0.020312208499228258,
+      "parameter" : -61.328125,
+      "sceneClass" : "skin-tones",
+      "target" : -0.020314135608052526,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "vibrance-positive-100",
+      "inputSHA256" : "6cf0aea0354fde22c4ffee93bd3a8fe61e23440d3000264debb67791fc4765d6",
+      "matched" : false,
+      "measured" : 0.022317614257068984,
+      "parameter" : 100,
+      "sceneClass" : "skin-tones",
+      "target" : 0.029078130047027619,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "vibrance-positive-100",
+      "inputSHA256" : "6cf0aea0354fde22c4ffee93bd3a8fe61e23440d3000264debb67791fc4765d6",
+      "matched" : false,
+      "measured" : 0.025358050323276336,
+      "parameter" : 100,
+      "sceneClass" : "skin-tones",
+      "target" : 0.029078130047027619,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "vibrance-negative-100",
+      "inputSHA256" : "6cf0aea0354fde22c4ffee93bd3a8fe61e23440d3000264debb67791fc4765d6",
+      "matched" : true,
+      "measured" : -0.033106945001638757,
+      "parameter" : -100,
+      "sceneClass" : "skin-tones",
+      "target" : -0.034636167382446195,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "vibrance-negative-100",
+      "inputSHA256" : "6cf0aea0354fde22c4ffee93bd3a8fe61e23440d3000264debb67791fc4765d6",
+      "matched" : true,
+      "measured" : -0.033106945001638757,
+      "parameter" : -100,
+      "sceneClass" : "skin-tones",
+      "target" : -0.034636167382446195,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "saturation-positive-20",
+      "inputSHA256" : "6cf0aea0354fde22c4ffee93bd3a8fe61e23440d3000264debb67791fc4765d6",
+      "matched" : true,
+      "measured" : 0.009544715721018702,
+      "parameter" : 18.75,
+      "sceneClass" : "skin-tones",
+      "target" : 0.009521336715324895,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "saturation-positive-20",
+      "inputSHA256" : "6cf0aea0354fde22c4ffee93bd3a8fe61e23440d3000264debb67791fc4765d6",
+      "matched" : true,
+      "measured" : 0.0094725142025212893,
+      "parameter" : 17.3828125,
+      "sceneClass" : "skin-tones",
+      "target" : 0.009521336715324895,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "saturation-negative-20",
+      "inputSHA256" : "6cf0aea0354fde22c4ffee93bd3a8fe61e23440d3000264debb67791fc4765d6",
+      "matched" : true,
+      "measured" : -0.010217541577111498,
+      "parameter" : -18.75,
+      "sceneClass" : "skin-tones",
+      "target" : -0.010215974494864907,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "saturation-negative-20",
+      "inputSHA256" : "6cf0aea0354fde22c4ffee93bd3a8fe61e23440d3000264debb67791fc4765d6",
+      "matched" : true,
+      "measured" : -0.010217541577111498,
+      "parameter" : -18.75,
+      "sceneClass" : "skin-tones",
+      "target" : -0.010215974494864907,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "saturation-positive-60",
+      "inputSHA256" : "6cf0aea0354fde22c4ffee93bd3a8fe61e23440d3000264debb67791fc4765d6",
+      "matched" : true,
+      "measured" : 0.026667699646790298,
+      "parameter" : 56.8359375,
+      "sceneClass" : "skin-tones",
+      "target" : 0.026635744090096215,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "saturation-positive-60",
+      "inputSHA256" : "6cf0aea0354fde22c4ffee93bd3a8fe61e23440d3000264debb67791fc4765d6",
+      "matched" : true,
+      "measured" : 0.026608190671784732,
+      "parameter" : 48.828125,
+      "sceneClass" : "skin-tones",
+      "target" : 0.026635744090096215,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "saturation-negative-60",
+      "inputSHA256" : "6cf0aea0354fde22c4ffee93bd3a8fe61e23440d3000264debb67791fc4765d6",
+      "matched" : true,
+      "measured" : -0.031929811826334226,
+      "parameter" : -58.59375,
+      "sceneClass" : "skin-tones",
+      "target" : -0.031929400994087496,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "saturation-negative-60",
+      "inputSHA256" : "6cf0aea0354fde22c4ffee93bd3a8fe61e23440d3000264debb67791fc4765d6",
+      "matched" : true,
+      "measured" : -0.031929811826334226,
+      "parameter" : -58.59375,
+      "sceneClass" : "skin-tones",
+      "target" : -0.031929400994087496,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "saturation-positive-100",
+      "inputSHA256" : "6cf0aea0354fde22c4ffee93bd3a8fe61e23440d3000264debb67791fc4765d6",
+      "matched" : true,
+      "measured" : 0.041184029317446483,
+      "parameter" : 99.51171875,
+      "sceneClass" : "skin-tones",
+      "target" : 0.041184957245730215,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "saturation-positive-100",
+      "inputSHA256" : "6cf0aea0354fde22c4ffee93bd3a8fe61e23440d3000264debb67791fc4765d6",
+      "matched" : true,
+      "measured" : 0.041189478588635052,
+      "parameter" : 75.5859375,
+      "sceneClass" : "skin-tones",
+      "target" : 0.041184957245730215,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "saturation-negative-100",
+      "inputSHA256" : "6cf0aea0354fde22c4ffee93bd3a8fe61e23440d3000264debb67791fc4765d6",
+      "matched" : true,
+      "measured" : -0.054482530812846687,
+      "parameter" : -100,
+      "sceneClass" : "skin-tones",
+      "target" : -0.054548822770275243,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "saturation-negative-100",
+      "inputSHA256" : "6cf0aea0354fde22c4ffee93bd3a8fe61e23440d3000264debb67791fc4765d6",
+      "matched" : true,
+      "measured" : -0.054482530812846687,
+      "parameter" : -100,
+      "sceneClass" : "skin-tones",
+      "target" : -0.054548822770275243,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "vibrance-positive-20",
+      "inputSHA256" : "c4f1160b11418f2c890094ddfd945158a343e04f01ebdfe49ba6f769e216f905",
+      "matched" : true,
+      "measured" : 0.0063694104770732635,
+      "parameter" : 27.734375,
+      "sceneClass" : "red-orange",
+      "target" : 0.006365990837280323,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "vibrance-positive-20",
+      "inputSHA256" : "c4f1160b11418f2c890094ddfd945158a343e04f01ebdfe49ba6f769e216f905",
+      "matched" : true,
+      "measured" : 0.006362953075358999,
+      "parameter" : 22.265625,
+      "sceneClass" : "red-orange",
+      "target" : 0.006365990837280323,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "vibrance-negative-20",
+      "inputSHA256" : "c4f1160b11418f2c890094ddfd945158a343e04f01ebdfe49ba6f769e216f905",
+      "matched" : true,
+      "measured" : -0.008317093263435339,
+      "parameter" : -23.2421875,
+      "sceneClass" : "red-orange",
+      "target" : -0.008347037104413264,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "vibrance-negative-20",
+      "inputSHA256" : "c4f1160b11418f2c890094ddfd945158a343e04f01ebdfe49ba6f769e216f905",
+      "matched" : true,
+      "measured" : -0.008332053397994825,
+      "parameter" : -25.390625,
+      "sceneClass" : "red-orange",
+      "target" : -0.008347037104413264,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "vibrance-positive-60",
+      "inputSHA256" : "c4f1160b11418f2c890094ddfd945158a343e04f01ebdfe49ba6f769e216f905",
+      "matched" : true,
+      "measured" : 0.019981523396659706,
+      "parameter" : 81.0546875,
+      "sceneClass" : "red-orange",
+      "target" : 0.019983321389122875,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "vibrance-positive-60",
+      "inputSHA256" : "c4f1160b11418f2c890094ddfd945158a343e04f01ebdfe49ba6f769e216f905",
+      "matched" : true,
+      "measured" : 0.019981889575516006,
+      "parameter" : 69.921875,
+      "sceneClass" : "red-orange",
+      "target" : 0.019983321389122875,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "vibrance-negative-60",
+      "inputSHA256" : "c4f1160b11418f2c890094ddfd945158a343e04f01ebdfe49ba6f769e216f905",
+      "matched" : true,
+      "measured" : -0.024079396253808401,
+      "parameter" : -72.65625,
+      "sceneClass" : "red-orange",
+      "target" : -0.024085036762568571,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "vibrance-negative-60",
+      "inputSHA256" : "c4f1160b11418f2c890094ddfd945158a343e04f01ebdfe49ba6f769e216f905",
+      "matched" : true,
+      "measured" : -0.024098859915304121,
+      "parameter" : -73.4375,
+      "sceneClass" : "red-orange",
+      "target" : -0.024085036762568571,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "vibrance-positive-100",
+      "inputSHA256" : "c4f1160b11418f2c890094ddfd945158a343e04f01ebdfe49ba6f769e216f905",
+      "matched" : false,
+      "measured" : 0.024581946133811046,
+      "parameter" : 100,
+      "sceneClass" : "red-orange",
+      "target" : 0.032456863608790312,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "vibrance-positive-100",
+      "inputSHA256" : "c4f1160b11418f2c890094ddfd945158a343e04f01ebdfe49ba6f769e216f905",
+      "matched" : false,
+      "measured" : 0.028577453096793513,
+      "parameter" : 100,
+      "sceneClass" : "red-orange",
+      "target" : 0.032456863608790312,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "vibrance-negative-100",
+      "inputSHA256" : "c4f1160b11418f2c890094ddfd945158a343e04f01ebdfe49ba6f769e216f905",
+      "matched" : false,
+      "measured" : -0.032949373329619933,
+      "parameter" : -100,
+      "sceneClass" : "red-orange",
+      "target" : -0.040573835451956683,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "vibrance-negative-100",
+      "inputSHA256" : "c4f1160b11418f2c890094ddfd945158a343e04f01ebdfe49ba6f769e216f905",
+      "matched" : false,
+      "measured" : -0.032815240163049778,
+      "parameter" : -100,
+      "sceneClass" : "red-orange",
+      "target" : -0.040573835451956683,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "saturation-positive-20",
+      "inputSHA256" : "c4f1160b11418f2c890094ddfd945158a343e04f01ebdfe49ba6f769e216f905",
+      "matched" : true,
+      "measured" : 0.010207441934282416,
+      "parameter" : 19.3359375,
+      "sceneClass" : "red-orange",
+      "target" : 0.010206289244567146,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "saturation-positive-20",
+      "inputSHA256" : "c4f1160b11418f2c890094ddfd945158a343e04f01ebdfe49ba6f769e216f905",
+      "matched" : true,
+      "measured" : 0.010221192114566287,
+      "parameter" : 15.4296875,
+      "sceneClass" : "red-orange",
+      "target" : 0.010206289244567146,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "saturation-negative-20",
+      "inputSHA256" : "c4f1160b11418f2c890094ddfd945158a343e04f01ebdfe49ba6f769e216f905",
+      "matched" : true,
+      "measured" : -0.012772788896986373,
+      "parameter" : -18.75,
+      "sceneClass" : "red-orange",
+      "target" : -0.012778909367962729,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "saturation-negative-20",
+      "inputSHA256" : "c4f1160b11418f2c890094ddfd945158a343e04f01ebdfe49ba6f769e216f905",
+      "matched" : true,
+      "measured" : -0.012808829738795515,
+      "parameter" : -19.3359375,
+      "sceneClass" : "red-orange",
+      "target" : -0.012778909367962729,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "saturation-positive-60",
+      "inputSHA256" : "c4f1160b11418f2c890094ddfd945158a343e04f01ebdfe49ba6f769e216f905",
+      "matched" : true,
+      "measured" : 0.030002831909910349,
+      "parameter" : 59.1796875,
+      "sceneClass" : "red-orange",
+      "target" : 0.030012623178006747,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "saturation-positive-60",
+      "inputSHA256" : "c4f1160b11418f2c890094ddfd945158a343e04f01ebdfe49ba6f769e216f905",
+      "matched" : true,
+      "measured" : 0.030016664681645149,
+      "parameter" : 45.3125,
+      "sceneClass" : "red-orange",
+      "target" : 0.030012623178006747,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "saturation-negative-60",
+      "inputSHA256" : "c4f1160b11418f2c890094ddfd945158a343e04f01ebdfe49ba6f769e216f905",
+      "matched" : true,
+      "measured" : -0.038685231017877596,
+      "parameter" : -58.3984375,
+      "sceneClass" : "red-orange",
+      "target" : -0.038665537930839752,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "saturation-negative-60",
+      "inputSHA256" : "c4f1160b11418f2c890094ddfd945158a343e04f01ebdfe49ba6f769e216f905",
+      "matched" : true,
+      "measured" : -0.038685231017877596,
+      "parameter" : -58.3984375,
+      "sceneClass" : "red-orange",
+      "target" : -0.038665537930839752,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "saturation-positive-100",
+      "inputSHA256" : "c4f1160b11418f2c890094ddfd945158a343e04f01ebdfe49ba6f769e216f905",
+      "matched" : true,
+      "measured" : 0.046155384956629811,
+      "parameter" : 100,
+      "sceneClass" : "red-orange",
+      "target" : 0.047202908481996146,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "saturation-positive-100",
+      "inputSHA256" : "c4f1160b11418f2c890094ddfd945158a343e04f01ebdfe49ba6f769e216f905",
+      "matched" : true,
+      "measured" : 0.04722449285192834,
+      "parameter" : 71.2890625,
+      "sceneClass" : "red-orange",
+      "target" : 0.047202908481996146,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "saturation-negative-100",
+      "inputSHA256" : "c4f1160b11418f2c890094ddfd945158a343e04f01ebdfe49ba6f769e216f905",
+      "matched" : true,
+      "measured" : -0.066178061127357884,
+      "parameter" : -100,
+      "sceneClass" : "red-orange",
+      "target" : -0.066249979341044138,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "saturation-negative-100",
+      "inputSHA256" : "c4f1160b11418f2c890094ddfd945158a343e04f01ebdfe49ba6f769e216f905",
+      "matched" : true,
+      "measured" : -0.066178061127357884,
+      "parameter" : -100,
+      "sceneClass" : "red-orange",
+      "target" : -0.066249979341044138,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "vibrance-positive-20",
+      "inputSHA256" : "800985ca92c359d925a58285b2dc65d79d3036aea6bbd8c4ccb7245eb3a4c53c",
+      "matched" : true,
+      "measured" : 0.005458756225803777,
+      "parameter" : 23.828125,
+      "sceneClass" : "textiles-flowers",
+      "target" : 0.0054710165488919766,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "vibrance-positive-20",
+      "inputSHA256" : "800985ca92c359d925a58285b2dc65d79d3036aea6bbd8c4ccb7245eb3a4c53c",
+      "matched" : true,
+      "measured" : 0.005473015891492666,
+      "parameter" : 18.1640625,
+      "sceneClass" : "textiles-flowers",
+      "target" : 0.0054710165488919766,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "vibrance-negative-20",
+      "inputSHA256" : "800985ca92c359d925a58285b2dc65d79d3036aea6bbd8c4ccb7245eb3a4c53c",
+      "matched" : true,
+      "measured" : -0.007264257017055004,
+      "parameter" : -19.53125,
+      "sceneClass" : "textiles-flowers",
+      "target" : -0.007295057407315851,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "vibrance-negative-20",
+      "inputSHA256" : "800985ca92c359d925a58285b2dc65d79d3036aea6bbd8c4ccb7245eb3a4c53c",
+      "matched" : true,
+      "measured" : -0.007294789369344015,
+      "parameter" : -21.2890625,
+      "sceneClass" : "textiles-flowers",
+      "target" : -0.007295057407315851,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "vibrance-positive-60",
+      "inputSHA256" : "800985ca92c359d925a58285b2dc65d79d3036aea6bbd8c4ccb7245eb3a4c53c",
+      "matched" : true,
+      "measured" : 0.017099713249609485,
+      "parameter" : 68.75,
+      "sceneClass" : "textiles-flowers",
+      "target" : 0.017115582658540823,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "vibrance-positive-60",
+      "inputSHA256" : "800985ca92c359d925a58285b2dc65d79d3036aea6bbd8c4ccb7245eb3a4c53c",
+      "matched" : true,
+      "measured" : 0.017125233515813597,
+      "parameter" : 56.8359375,
+      "sceneClass" : "textiles-flowers",
+      "target" : 0.017115582658540823,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "vibrance-negative-60",
+      "inputSHA256" : "800985ca92c359d925a58285b2dc65d79d3036aea6bbd8c4ccb7245eb3a4c53c",
+      "matched" : true,
+      "measured" : -0.021345698357074269,
+      "parameter" : -62.109375,
+      "sceneClass" : "textiles-flowers",
+      "target" : -0.021353913169102436,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "vibrance-negative-60",
+      "inputSHA256" : "800985ca92c359d925a58285b2dc65d79d3036aea6bbd8c4ccb7245eb3a4c53c",
+      "matched" : true,
+      "measured" : -0.021348971947634614,
+      "parameter" : -62.3046875,
+      "sceneClass" : "textiles-flowers",
+      "target" : -0.021353913169102436,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "vibrance-positive-100",
+      "inputSHA256" : "800985ca92c359d925a58285b2dc65d79d3036aea6bbd8c4ccb7245eb3a4c53c",
+      "matched" : false,
+      "measured" : 0.024248844791006498,
+      "parameter" : 100,
+      "sceneClass" : "textiles-flowers",
+      "target" : 0.02765320687880643,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "vibrance-positive-100",
+      "inputSHA256" : "800985ca92c359d925a58285b2dc65d79d3036aea6bbd8c4ccb7245eb3a4c53c",
+      "matched" : true,
+      "measured" : 0.027659310538174803,
+      "parameter" : 91.796875,
+      "sceneClass" : "textiles-flowers",
+      "target" : 0.02765320687880643,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "vibrance-negative-100",
+      "inputSHA256" : "800985ca92c359d925a58285b2dc65d79d3036aea6bbd8c4ccb7245eb3a4c53c",
+      "matched" : false,
+      "measured" : -0.034265369851865152,
+      "parameter" : -100,
+      "sceneClass" : "textiles-flowers",
+      "target" : -0.036696238624039729,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "vibrance-negative-100",
+      "inputSHA256" : "800985ca92c359d925a58285b2dc65d79d3036aea6bbd8c4ccb7245eb3a4c53c",
+      "matched" : false,
+      "measured" : -0.034265369851865152,
+      "parameter" : -100,
+      "sceneClass" : "textiles-flowers",
+      "target" : -0.036696238624039729,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "saturation-positive-20",
+      "inputSHA256" : "800985ca92c359d925a58285b2dc65d79d3036aea6bbd8c4ccb7245eb3a4c53c",
+      "matched" : true,
+      "measured" : 0.009735504618779414,
+      "parameter" : 17.578125,
+      "sceneClass" : "textiles-flowers",
+      "target" : 0.009686841757662063,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "saturation-positive-20",
+      "inputSHA256" : "800985ca92c359d925a58285b2dc65d79d3036aea6bbd8c4ccb7245eb3a4c53c",
+      "matched" : true,
+      "measured" : 0.009716873046364748,
+      "parameter" : 14.2578125,
+      "sceneClass" : "textiles-flowers",
+      "target" : 0.009686841757662063,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "saturation-negative-20",
+      "inputSHA256" : "800985ca92c359d925a58285b2dc65d79d3036aea6bbd8c4ccb7245eb3a4c53c",
+      "matched" : true,
+      "measured" : -0.012282309989214044,
+      "parameter" : -17.7734375,
+      "sceneClass" : "textiles-flowers",
+      "target" : -0.012281413508676734,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "saturation-negative-20",
+      "inputSHA256" : "800985ca92c359d925a58285b2dc65d79d3036aea6bbd8c4ccb7245eb3a4c53c",
+      "matched" : true,
+      "measured" : -0.012245909905617174,
+      "parameter" : -17.96875,
+      "sceneClass" : "textiles-flowers",
+      "target" : -0.012281413508676734,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "saturation-positive-60",
+      "inputSHA256" : "800985ca92c359d925a58285b2dc65d79d3036aea6bbd8c4ccb7245eb3a4c53c",
+      "matched" : true,
+      "measured" : 0.027582648036589618,
+      "parameter" : 60.15625,
+      "sceneClass" : "textiles-flowers",
+      "target" : 0.027577040622349946,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "saturation-positive-60",
+      "inputSHA256" : "800985ca92c359d925a58285b2dc65d79d3036aea6bbd8c4ccb7245eb3a4c53c",
+      "matched" : true,
+      "measured" : 0.027553317022093338,
+      "parameter" : 40.4296875,
+      "sceneClass" : "textiles-flowers",
+      "target" : 0.027577040622349946,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "saturation-negative-60",
+      "inputSHA256" : "800985ca92c359d925a58285b2dc65d79d3036aea6bbd8c4ccb7245eb3a4c53c",
+      "matched" : true,
+      "measured" : -0.038601234857145283,
+      "parameter" : -56.640625,
+      "sceneClass" : "textiles-flowers",
+      "target" : -0.038598567412967841,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "saturation-negative-60",
+      "inputSHA256" : "800985ca92c359d925a58285b2dc65d79d3036aea6bbd8c4ccb7245eb3a4c53c",
+      "matched" : true,
+      "measured" : -0.038601234857145283,
+      "parameter" : -56.640625,
+      "sceneClass" : "textiles-flowers",
+      "target" : -0.038598567412967841,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "saturation-positive-100",
+      "inputSHA256" : "800985ca92c359d925a58285b2dc65d79d3036aea6bbd8c4ccb7245eb3a4c53c",
+      "matched" : false,
+      "measured" : 0.038168329960631062,
+      "parameter" : 100,
+      "sceneClass" : "textiles-flowers",
+      "target" : 0.042414260355198088,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "saturation-positive-100",
+      "inputSHA256" : "800985ca92c359d925a58285b2dc65d79d3036aea6bbd8c4ccb7245eb3a4c53c",
+      "matched" : true,
+      "measured" : 0.042461389858413343,
+      "parameter" : 62.3046875,
+      "sceneClass" : "textiles-flowers",
+      "target" : 0.042414260355198088,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "saturation-negative-100",
+      "inputSHA256" : "800985ca92c359d925a58285b2dc65d79d3036aea6bbd8c4ccb7245eb3a4c53c",
+      "matched" : true,
+      "measured" : -0.068096672296821897,
+      "parameter" : -100,
+      "sceneClass" : "textiles-flowers",
+      "target" : -0.0681659354500153,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "saturation-negative-100",
+      "inputSHA256" : "800985ca92c359d925a58285b2dc65d79d3036aea6bbd8c4ccb7245eb3a4c53c",
+      "matched" : true,
+      "measured" : -0.068096672296821897,
+      "parameter" : -100,
+      "sceneClass" : "textiles-flowers",
+      "target" : -0.0681659354500153,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "vibrance-positive-20",
+      "inputSHA256" : "0927cc9923e8be185458ec44ba4ddbb7b692887d3be1c247717f0df7b32692d2",
+      "matched" : true,
+      "measured" : 0.0038871939740924033,
+      "parameter" : 30.6640625,
+      "sceneClass" : "color-gradients",
+      "target" : 0.0038897845284536587,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "vibrance-positive-20",
+      "inputSHA256" : "0927cc9923e8be185458ec44ba4ddbb7b692887d3be1c247717f0df7b32692d2",
+      "matched" : true,
+      "measured" : 0.0039047986265075933,
+      "parameter" : 14.0625,
+      "sceneClass" : "color-gradients",
+      "target" : 0.0038897845284536587,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "vibrance-negative-20",
+      "inputSHA256" : "0927cc9923e8be185458ec44ba4ddbb7b692887d3be1c247717f0df7b32692d2",
+      "matched" : true,
+      "measured" : -0.010175178013231565,
+      "parameter" : -25,
+      "sceneClass" : "color-gradients",
+      "target" : -0.010181231820550484,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "vibrance-negative-20",
+      "inputSHA256" : "0927cc9923e8be185458ec44ba4ddbb7b692887d3be1c247717f0df7b32692d2",
+      "matched" : true,
+      "measured" : -0.010199100598229363,
+      "parameter" : -34.5703125,
+      "sceneClass" : "color-gradients",
+      "target" : -0.010181231820550484,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "vibrance-positive-60",
+      "inputSHA256" : "0927cc9923e8be185458ec44ba4ddbb7b692887d3be1c247717f0df7b32692d2",
+      "matched" : true,
+      "measured" : 0.016703607636898966,
+      "parameter" : 86.9140625,
+      "sceneClass" : "color-gradients",
+      "target" : 0.016695508199594315,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "vibrance-positive-60",
+      "inputSHA256" : "0927cc9923e8be185458ec44ba4ddbb7b692887d3be1c247717f0df7b32692d2",
+      "matched" : true,
+      "measured" : 0.016703862710351208,
+      "parameter" : 60.15625,
+      "sceneClass" : "color-gradients",
+      "target" : 0.016695508199594315,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "vibrance-negative-60",
+      "inputSHA256" : "0927cc9923e8be185458ec44ba4ddbb7b692887d3be1c247717f0df7b32692d2",
+      "matched" : true,
+      "measured" : -0.025605123226995118,
+      "parameter" : -81.25,
+      "sceneClass" : "color-gradients",
+      "target" : -0.02561222045897869,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "vibrance-negative-60",
+      "inputSHA256" : "0927cc9923e8be185458ec44ba4ddbb7b692887d3be1c247717f0df7b32692d2",
+      "matched" : true,
+      "measured" : -0.025583661528786404,
+      "parameter" : -86.71875,
+      "sceneClass" : "color-gradients",
+      "target" : -0.02561222045897869,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "vibrance-positive-100",
+      "inputSHA256" : "0927cc9923e8be185458ec44ba4ddbb7b692887d3be1c247717f0df7b32692d2",
+      "matched" : false,
+      "measured" : 0.019510379640135765,
+      "parameter" : 100,
+      "sceneClass" : "color-gradients",
+      "target" : 0.028203789897295151,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "vibrance-positive-100",
+      "inputSHA256" : "0927cc9923e8be185458ec44ba4ddbb7b692887d3be1c247717f0df7b32692d2",
+      "matched" : true,
+      "measured" : 0.027767464777237627,
+      "parameter" : 100,
+      "sceneClass" : "color-gradients",
+      "target" : 0.028203789897295151,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "vibrance-negative-100",
+      "inputSHA256" : "0927cc9923e8be185458ec44ba4ddbb7b692887d3be1c247717f0df7b32692d2",
+      "matched" : false,
+      "measured" : -0.030786307041427357,
+      "parameter" : -100,
+      "sceneClass" : "color-gradients",
+      "target" : -0.042313919256232596,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "vibrance-negative-100",
+      "inputSHA256" : "0927cc9923e8be185458ec44ba4ddbb7b692887d3be1c247717f0df7b32692d2",
+      "matched" : false,
+      "measured" : -0.029427834689863423,
+      "parameter" : -100,
+      "sceneClass" : "color-gradients",
+      "target" : -0.042313919256232596,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "saturation-positive-20",
+      "inputSHA256" : "0927cc9923e8be185458ec44ba4ddbb7b692887d3be1c247717f0df7b32692d2",
+      "matched" : true,
+      "measured" : 0.008473574240727168,
+      "parameter" : 20.1171875,
+      "sceneClass" : "color-gradients",
+      "target" : 0.008458267820779016,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "saturation-positive-20",
+      "inputSHA256" : "0927cc9923e8be185458ec44ba4ddbb7b692887d3be1c247717f0df7b32692d2",
+      "matched" : true,
+      "measured" : 0.0084372316877203597,
+      "parameter" : 10.546875,
+      "sceneClass" : "color-gradients",
+      "target" : 0.008458267820779016,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "saturation-negative-20",
+      "inputSHA256" : "0927cc9923e8be185458ec44ba4ddbb7b692887d3be1c247717f0df7b32692d2",
+      "matched" : true,
+      "measured" : -0.015815528812996475,
+      "parameter" : -18.1640625,
+      "sceneClass" : "color-gradients",
+      "target" : -0.015757565995207175,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "saturation-negative-20",
+      "inputSHA256" : "0927cc9923e8be185458ec44ba4ddbb7b692887d3be1c247717f0df7b32692d2",
+      "matched" : true,
+      "measured" : -0.015780744925085209,
+      "parameter" : -19.7265625,
+      "sceneClass" : "color-gradients",
+      "target" : -0.015757565995207175,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "saturation-positive-60",
+      "inputSHA256" : "0927cc9923e8be185458ec44ba4ddbb7b692887d3be1c247717f0df7b32692d2",
+      "matched" : true,
+      "measured" : 0.028078434312354315,
+      "parameter" : 62.6953125,
+      "sceneClass" : "color-gradients",
+      "target" : 0.028063723789908235,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "saturation-positive-60",
+      "inputSHA256" : "0927cc9923e8be185458ec44ba4ddbb7b692887d3be1c247717f0df7b32692d2",
+      "matched" : true,
+      "measured" : 0.028124106442605067,
+      "parameter" : 35.15625,
+      "sceneClass" : "color-gradients",
+      "target" : 0.028063723789908235,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "saturation-negative-60",
+      "inputSHA256" : "0927cc9923e8be185458ec44ba4ddbb7b692887d3be1c247717f0df7b32692d2",
+      "matched" : true,
+      "measured" : -0.04593600608138091,
+      "parameter" : -57.421875,
+      "sceneClass" : "color-gradients",
+      "target" : -0.045910017290041974,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "saturation-negative-60",
+      "inputSHA256" : "0927cc9923e8be185458ec44ba4ddbb7b692887d3be1c247717f0df7b32692d2",
+      "matched" : true,
+      "measured" : -0.04593600608138091,
+      "parameter" : -57.421875,
+      "sceneClass" : "color-gradients",
+      "target" : -0.045910017290041974,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "saturation-positive-100",
+      "inputSHA256" : "0927cc9923e8be185458ec44ba4ddbb7b692887d3be1c247717f0df7b32692d2",
+      "matched" : false,
+      "measured" : 0.040411969854661438,
+      "parameter" : 100,
+      "sceneClass" : "color-gradients",
+      "target" : 0.043949617865614937,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "saturation-positive-100",
+      "inputSHA256" : "0927cc9923e8be185458ec44ba4ddbb7b692887d3be1c247717f0df7b32692d2",
+      "matched" : true,
+      "measured" : 0.043904856152552761,
+      "parameter" : 54.8828125,
+      "sceneClass" : "color-gradients",
+      "target" : 0.043949617865614937,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "saturation-negative-100",
+      "inputSHA256" : "0927cc9923e8be185458ec44ba4ddbb7b692887d3be1c247717f0df7b32692d2",
+      "matched" : true,
+      "measured" : -0.079923368085667593,
+      "parameter" : -100,
+      "sceneClass" : "color-gradients",
+      "target" : -0.079999977828978233,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "saturation-negative-100",
+      "inputSHA256" : "0927cc9923e8be185458ec44ba4ddbb7b692887d3be1c247717f0df7b32692d2",
+      "matched" : true,
+      "measured" : -0.079923368085667593,
+      "parameter" : -100,
+      "sceneClass" : "color-gradients",
+      "target" : -0.079999977828978233,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "vibrance-positive-20",
+      "inputSHA256" : "c99dcbcc58eff160d4f7e75b4abedf2c9e9056c02d81d033f2fdc4fdb74be1c3",
+      "matched" : true,
+      "measured" : 0.011106234566335386,
+      "parameter" : 50.390625,
+      "sceneClass" : "primaries-secondaries",
+      "target" : 0.011105410886326052,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "vibrance-positive-20",
+      "inputSHA256" : "c99dcbcc58eff160d4f7e75b4abedf2c9e9056c02d81d033f2fdc4fdb74be1c3",
+      "matched" : true,
+      "measured" : 0.011106234566335386,
+      "parameter" : 50.390625,
+      "sceneClass" : "primaries-secondaries",
+      "target" : 0.011105410886326052,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "vibrance-negative-20",
+      "inputSHA256" : "c99dcbcc58eff160d4f7e75b4abedf2c9e9056c02d81d033f2fdc4fdb74be1c3",
+      "matched" : true,
+      "measured" : -0.011585255729576123,
+      "parameter" : -51.171875,
+      "sceneClass" : "primaries-secondaries",
+      "target" : -0.011583959368246117,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "vibrance-negative-20",
+      "inputSHA256" : "c99dcbcc58eff160d4f7e75b4abedf2c9e9056c02d81d033f2fdc4fdb74be1c3",
+      "matched" : true,
+      "measured" : -0.011585255729576123,
+      "parameter" : -51.171875,
+      "sceneClass" : "primaries-secondaries",
+      "target" : -0.011583959368246117,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "vibrance-positive-60",
+      "inputSHA256" : "c99dcbcc58eff160d4f7e75b4abedf2c9e9056c02d81d033f2fdc4fdb74be1c3",
+      "matched" : false,
+      "measured" : 0.02193610413869421,
+      "parameter" : 100,
+      "sceneClass" : "primaries-secondaries",
+      "target" : 0.030903094152321516,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "vibrance-positive-60",
+      "inputSHA256" : "c99dcbcc58eff160d4f7e75b4abedf2c9e9056c02d81d033f2fdc4fdb74be1c3",
+      "matched" : false,
+      "measured" : 0.022040272057322268,
+      "parameter" : 100,
+      "sceneClass" : "primaries-secondaries",
+      "target" : 0.030903094152321516,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "vibrance-negative-60",
+      "inputSHA256" : "c99dcbcc58eff160d4f7e75b4abedf2c9e9056c02d81d033f2fdc4fdb74be1c3",
+      "matched" : false,
+      "measured" : -0.022639886713897737,
+      "parameter" : -100,
+      "sceneClass" : "primaries-secondaries",
+      "target" : -0.036071485264416961,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "vibrance-negative-60",
+      "inputSHA256" : "c99dcbcc58eff160d4f7e75b4abedf2c9e9056c02d81d033f2fdc4fdb74be1c3",
+      "matched" : false,
+      "measured" : -0.022639886713897737,
+      "parameter" : -100,
+      "sceneClass" : "primaries-secondaries",
+      "target" : -0.036071485264416961,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "vibrance-positive-100",
+      "inputSHA256" : "c99dcbcc58eff160d4f7e75b4abedf2c9e9056c02d81d033f2fdc4fdb74be1c3",
+      "matched" : false,
+      "measured" : 0.02193610413869421,
+      "parameter" : 100,
+      "sceneClass" : "primaries-secondaries",
+      "target" : 0.046858679621480534,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "vibrance-positive-100",
+      "inputSHA256" : "c99dcbcc58eff160d4f7e75b4abedf2c9e9056c02d81d033f2fdc4fdb74be1c3",
+      "matched" : false,
+      "measured" : 0.022040272057322268,
+      "parameter" : 100,
+      "sceneClass" : "primaries-secondaries",
+      "target" : 0.046858679621480534,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "vibrance-negative-100",
+      "inputSHA256" : "c99dcbcc58eff160d4f7e75b4abedf2c9e9056c02d81d033f2fdc4fdb74be1c3",
+      "matched" : false,
+      "measured" : -0.022639886713897737,
+      "parameter" : -100,
+      "sceneClass" : "primaries-secondaries",
+      "target" : -0.06208037868025159,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "vibrance-negative-100",
+      "inputSHA256" : "c99dcbcc58eff160d4f7e75b4abedf2c9e9056c02d81d033f2fdc4fdb74be1c3",
+      "matched" : false,
+      "measured" : -0.022639886713897737,
+      "parameter" : -100,
+      "sceneClass" : "primaries-secondaries",
+      "target" : -0.06208037868025159,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "saturation-positive-20",
+      "inputSHA256" : "c99dcbcc58eff160d4f7e75b4abedf2c9e9056c02d81d033f2fdc4fdb74be1c3",
+      "matched" : true,
+      "measured" : 0.020881181187321844,
+      "parameter" : 15.8203125,
+      "sceneClass" : "primaries-secondaries",
+      "target" : 0.02087031415545829,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "saturation-positive-20",
+      "inputSHA256" : "c99dcbcc58eff160d4f7e75b4abedf2c9e9056c02d81d033f2fdc4fdb74be1c3",
+      "matched" : true,
+      "measured" : 0.020798539532051453,
+      "parameter" : 15.625,
+      "sceneClass" : "primaries-secondaries",
+      "target" : 0.02087031415545829,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "saturation-negative-20",
+      "inputSHA256" : "c99dcbcc58eff160d4f7e75b4abedf2c9e9056c02d81d033f2fdc4fdb74be1c3",
+      "matched" : true,
+      "measured" : -0.023658323102419405,
+      "parameter" : -17.7734375,
+      "sceneClass" : "primaries-secondaries",
+      "target" : -0.023609641443809986,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "saturation-negative-20",
+      "inputSHA256" : "c99dcbcc58eff160d4f7e75b4abedf2c9e9056c02d81d033f2fdc4fdb74be1c3",
+      "matched" : true,
+      "measured" : -0.023658323102419405,
+      "parameter" : -17.7734375,
+      "sceneClass" : "primaries-secondaries",
+      "target" : -0.023609641443809986,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "saturation-positive-60",
+      "inputSHA256" : "c99dcbcc58eff160d4f7e75b4abedf2c9e9056c02d81d033f2fdc4fdb74be1c3",
+      "matched" : true,
+      "measured" : 0.049970640625469478,
+      "parameter" : 45.703125,
+      "sceneClass" : "primaries-secondaries",
+      "target" : 0.050001817697597692,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "saturation-positive-60",
+      "inputSHA256" : "c99dcbcc58eff160d4f7e75b4abedf2c9e9056c02d81d033f2fdc4fdb74be1c3",
+      "matched" : true,
+      "measured" : 0.049916475421151761,
+      "parameter" : 37.5,
+      "sceneClass" : "primaries-secondaries",
+      "target" : 0.050001817697597692,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "saturation-negative-60",
+      "inputSHA256" : "c99dcbcc58eff160d4f7e75b4abedf2c9e9056c02d81d033f2fdc4fdb74be1c3",
+      "matched" : true,
+      "measured" : -0.076174596537809378,
+      "parameter" : -57.2265625,
+      "sceneClass" : "primaries-secondaries",
+      "target" : -0.076193887383090381,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "saturation-negative-60",
+      "inputSHA256" : "c99dcbcc58eff160d4f7e75b4abedf2c9e9056c02d81d033f2fdc4fdb74be1c3",
+      "matched" : true,
+      "measured" : -0.076174596537809378,
+      "parameter" : -57.2265625,
+      "sceneClass" : "primaries-secondaries",
+      "target" : -0.076193887383090381,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "saturation-positive-100",
+      "inputSHA256" : "c99dcbcc58eff160d4f7e75b4abedf2c9e9056c02d81d033f2fdc4fdb74be1c3",
+      "matched" : true,
+      "measured" : 0.067411337749650163,
+      "parameter" : 83.7890625,
+      "sceneClass" : "primaries-secondaries",
+      "target" : 0.067411564098668303,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "saturation-positive-100",
+      "inputSHA256" : "c99dcbcc58eff160d4f7e75b4abedf2c9e9056c02d81d033f2fdc4fdb74be1c3",
+      "matched" : true,
+      "measured" : 0.067335248173510776,
+      "parameter" : 50.5859375,
+      "sceneClass" : "primaries-secondaries",
+      "target" : 0.067411564098668303,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "saturation-negative-100",
+      "inputSHA256" : "c99dcbcc58eff160d4f7e75b4abedf2c9e9056c02d81d033f2fdc4fdb74be1c3",
+      "matched" : true,
+      "measured" : -0.13303130545284894,
+      "parameter" : -100,
+      "sceneClass" : "primaries-secondaries",
+      "target" : -0.13311623230097097,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "saturation-negative-100",
+      "inputSHA256" : "c99dcbcc58eff160d4f7e75b4abedf2c9e9056c02d81d033f2fdc4fdb74be1c3",
+      "matched" : true,
+      "measured" : -0.13303130545284894,
+      "parameter" : -100,
+      "sceneClass" : "primaries-secondaries",
+      "target" : -0.13311623230097097,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "vibrance-positive-20",
+      "inputSHA256" : "83521d0e3e172a7563db2b7b5836334ddc9ff7f99cd72c5f55bdb37c6c287cf9",
+      "matched" : false,
+      "measured" : -0.031397286782569443,
+      "parameter" : 100,
+      "sceneClass" : "p3-boundary",
+      "target" : -0.019172984307818081,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "vibrance-positive-20",
+      "inputSHA256" : "83521d0e3e172a7563db2b7b5836334ddc9ff7f99cd72c5f55bdb37c6c287cf9",
+      "matched" : false,
+      "measured" : 0,
+      "parameter" : 0,
+      "sceneClass" : "p3-boundary",
+      "target" : -0.019172984307818081,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "vibrance-negative-20",
+      "inputSHA256" : "83521d0e3e172a7563db2b7b5836334ddc9ff7f99cd72c5f55bdb37c6c287cf9",
+      "matched" : false,
+      "measured" : -0.031475833052081806,
+      "parameter" : -0.1953125,
+      "sceneClass" : "p3-boundary",
+      "target" : -0.024698010253505428,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "vibrance-negative-20",
+      "inputSHA256" : "83521d0e3e172a7563db2b7b5836334ddc9ff7f99cd72c5f55bdb37c6c287cf9",
+      "matched" : false,
+      "measured" : -0.004468337403499482,
+      "parameter" : -100,
+      "sceneClass" : "p3-boundary",
+      "target" : -0.024698010253505428,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "vibrance-positive-60",
+      "inputSHA256" : "83521d0e3e172a7563db2b7b5836334ddc9ff7f99cd72c5f55bdb37c6c287cf9",
+      "matched" : false,
+      "measured" : 0,
+      "parameter" : 0,
+      "sceneClass" : "p3-boundary",
+      "target" : -0.014010826613358365,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "vibrance-positive-60",
+      "inputSHA256" : "83521d0e3e172a7563db2b7b5836334ddc9ff7f99cd72c5f55bdb37c6c287cf9",
+      "matched" : false,
+      "measured" : 0,
+      "parameter" : 0,
+      "sceneClass" : "p3-boundary",
+      "target" : -0.014010826613358365,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "vibrance-negative-60",
+      "inputSHA256" : "83521d0e3e172a7563db2b7b5836334ddc9ff7f99cd72c5f55bdb37c6c287cf9",
+      "matched" : true,
+      "measured" : -0.031475833052081806,
+      "parameter" : -0.1953125,
+      "sceneClass" : "p3-boundary",
+      "target" : -0.031276635917867009,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "vibrance-negative-60",
+      "inputSHA256" : "83521d0e3e172a7563db2b7b5836334ddc9ff7f99cd72c5f55bdb37c6c287cf9",
+      "matched" : false,
+      "measured" : -0.004468337403499482,
+      "parameter" : -100,
+      "sceneClass" : "p3-boundary",
+      "target" : -0.031276635917867009,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "vibrance-positive-100",
+      "inputSHA256" : "83521d0e3e172a7563db2b7b5836334ddc9ff7f99cd72c5f55bdb37c6c287cf9",
+      "matched" : false,
+      "measured" : 0,
+      "parameter" : 0,
+      "sceneClass" : "p3-boundary",
+      "target" : -0.009216642369946782,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "vibrance-positive-100",
+      "inputSHA256" : "83521d0e3e172a7563db2b7b5836334ddc9ff7f99cd72c5f55bdb37c6c287cf9",
+      "matched" : false,
+      "measured" : 0,
+      "parameter" : 0,
+      "sceneClass" : "p3-boundary",
+      "target" : -0.009216642369946782,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "vibrance-negative-100",
+      "inputSHA256" : "83521d0e3e172a7563db2b7b5836334ddc9ff7f99cd72c5f55bdb37c6c287cf9",
+      "matched" : false,
+      "measured" : -0.031801869197847575,
+      "parameter" : -100,
+      "sceneClass" : "p3-boundary",
+      "target" : -0.039316478577579979,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "vibrance-negative-100",
+      "inputSHA256" : "83521d0e3e172a7563db2b7b5836334ddc9ff7f99cd72c5f55bdb37c6c287cf9",
+      "matched" : false,
+      "measured" : -0.004468337403499482,
+      "parameter" : -100,
+      "sceneClass" : "p3-boundary",
+      "target" : -0.039316478577579979,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "saturation-positive-20",
+      "inputSHA256" : "83521d0e3e172a7563db2b7b5836334ddc9ff7f99cd72c5f55bdb37c6c287cf9",
+      "matched" : false,
+      "measured" : 0,
+      "parameter" : 0,
+      "sceneClass" : "p3-boundary",
+      "target" : -0.009725739257194456,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "saturation-positive-20",
+      "inputSHA256" : "83521d0e3e172a7563db2b7b5836334ddc9ff7f99cd72c5f55bdb37c6c287cf9",
+      "matched" : false,
+      "measured" : 0,
+      "parameter" : 0,
+      "sceneClass" : "p3-boundary",
+      "target" : -0.009725739257194456,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "saturation-negative-20",
+      "inputSHA256" : "83521d0e3e172a7563db2b7b5836334ddc9ff7f99cd72c5f55bdb37c6c287cf9",
+      "matched" : true,
+      "measured" : -0.04182344028877507,
+      "parameter" : -13.4765625,
+      "sceneClass" : "p3-boundary",
+      "target" : -0.041775804824483412,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "saturation-negative-20",
+      "inputSHA256" : "83521d0e3e172a7563db2b7b5836334ddc9ff7f99cd72c5f55bdb37c6c287cf9",
+      "matched" : true,
+      "measured" : -0.041875168184469333,
+      "parameter" : -17.96875,
+      "sceneClass" : "p3-boundary",
+      "target" : -0.041775804824483412,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "saturation-positive-60",
+      "inputSHA256" : "83521d0e3e172a7563db2b7b5836334ddc9ff7f99cd72c5f55bdb37c6c287cf9",
+      "matched" : false,
+      "measured" : 0,
+      "parameter" : 0,
+      "sceneClass" : "p3-boundary",
+      "target" : 0.0039166816757461699,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "saturation-positive-60",
+      "inputSHA256" : "83521d0e3e172a7563db2b7b5836334ddc9ff7f99cd72c5f55bdb37c6c287cf9",
+      "matched" : true,
+      "measured" : 0.0040964919436722504,
+      "parameter" : 1.7578125,
+      "sceneClass" : "p3-boundary",
+      "target" : 0.0039166816757461699,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "saturation-negative-60",
+      "inputSHA256" : "83521d0e3e172a7563db2b7b5836334ddc9ff7f99cd72c5f55bdb37c6c287cf9",
+      "matched" : true,
+      "measured" : -0.11288090199897885,
+      "parameter" : -48.4375,
+      "sceneClass" : "p3-boundary",
+      "target" : -0.11272008663043298,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "saturation-negative-60",
+      "inputSHA256" : "83521d0e3e172a7563db2b7b5836334ddc9ff7f99cd72c5f55bdb37c6c287cf9",
+      "matched" : true,
+      "measured" : -0.11288090199897885,
+      "parameter" : -48.4375,
+      "sceneClass" : "p3-boundary",
+      "target" : -0.11272008663043298,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "saturation-positive-100",
+      "inputSHA256" : "83521d0e3e172a7563db2b7b5836334ddc9ff7f99cd72c5f55bdb37c6c287cf9",
+      "matched" : false,
+      "measured" : 0,
+      "parameter" : 0,
+      "sceneClass" : "p3-boundary",
+      "target" : 0.010352566968590686,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "saturation-positive-100",
+      "inputSHA256" : "83521d0e3e172a7563db2b7b5836334ddc9ff7f99cd72c5f55bdb37c6c287cf9",
+      "matched" : true,
+      "measured" : 0.010468802050777475,
+      "parameter" : 4.4921875,
+      "sceneClass" : "p3-boundary",
+      "target" : 0.010352566968590686,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "saturation-negative-100",
+      "inputSHA256" : "83521d0e3e172a7563db2b7b5836334ddc9ff7f99cd72c5f55bdb37c6c287cf9",
+      "matched" : true,
+      "measured" : -0.23297696723473754,
+      "parameter" : -100,
+      "sceneClass" : "p3-boundary",
+      "target" : -0.23305417110338372,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "saturation-negative-100",
+      "inputSHA256" : "83521d0e3e172a7563db2b7b5836334ddc9ff7f99cd72c5f55bdb37c6c287cf9",
+      "matched" : true,
+      "measured" : -0.23297696723473754,
+      "parameter" : -100,
+      "sceneClass" : "p3-boundary",
+      "target" : -0.23305417110338372,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "vibrance-positive-20",
+      "inputSHA256" : "b942bf0a17e48da73e2b1355f6876c4dcbfd7513e3bf344dafcd9ecad6400a45",
+      "matched" : false,
+      "measured" : 0,
+      "parameter" : 0,
+      "sceneClass" : "grayscale",
+      "target" : 6.4585840050768441e-05,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "vibrance-positive-20",
+      "inputSHA256" : "b942bf0a17e48da73e2b1355f6876c4dcbfd7513e3bf344dafcd9ecad6400a45",
+      "matched" : false,
+      "measured" : 0,
+      "parameter" : 0,
+      "sceneClass" : "grayscale",
+      "target" : 6.4585840050768441e-05,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "vibrance-negative-20",
+      "inputSHA256" : "b942bf0a17e48da73e2b1355f6876c4dcbfd7513e3bf344dafcd9ecad6400a45",
+      "matched" : false,
+      "measured" : 0,
+      "parameter" : 0,
+      "sceneClass" : "grayscale",
+      "target" : -6.4586336584945538e-05,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "vibrance-negative-20",
+      "inputSHA256" : "b942bf0a17e48da73e2b1355f6876c4dcbfd7513e3bf344dafcd9ecad6400a45",
+      "matched" : false,
+      "measured" : 0,
+      "parameter" : 0,
+      "sceneClass" : "grayscale",
+      "target" : -6.4586336584945538e-05,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "vibrance-positive-60",
+      "inputSHA256" : "b942bf0a17e48da73e2b1355f6876c4dcbfd7513e3bf344dafcd9ecad6400a45",
+      "matched" : false,
+      "measured" : 0,
+      "parameter" : 0,
+      "sceneClass" : "grayscale",
+      "target" : 0.0001937556793644057,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "vibrance-positive-60",
+      "inputSHA256" : "b942bf0a17e48da73e2b1355f6876c4dcbfd7513e3bf344dafcd9ecad6400a45",
+      "matched" : false,
+      "measured" : 0,
+      "parameter" : 0,
+      "sceneClass" : "grayscale",
+      "target" : 0.0001937556793644057,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "vibrance-negative-60",
+      "inputSHA256" : "b942bf0a17e48da73e2b1355f6876c4dcbfd7513e3bf344dafcd9ecad6400a45",
+      "matched" : false,
+      "measured" : 0,
+      "parameter" : 0,
+      "sceneClass" : "grayscale",
+      "target" : -0.00019375972649092018,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "vibrance-negative-60",
+      "inputSHA256" : "b942bf0a17e48da73e2b1355f6876c4dcbfd7513e3bf344dafcd9ecad6400a45",
+      "matched" : false,
+      "measured" : 0,
+      "parameter" : 0,
+      "sceneClass" : "grayscale",
+      "target" : -0.00019375972649092018,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "vibrance-positive-100",
+      "inputSHA256" : "b942bf0a17e48da73e2b1355f6876c4dcbfd7513e3bf344dafcd9ecad6400a45",
+      "matched" : true,
+      "measured" : 0.0003228850071595912,
+      "parameter" : 66.40625,
+      "sceneClass" : "grayscale",
+      "target" : 0.0003229221994100894,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "vibrance-positive-100",
+      "inputSHA256" : "b942bf0a17e48da73e2b1355f6876c4dcbfd7513e3bf344dafcd9ecad6400a45",
+      "matched" : true,
+      "measured" : 0.00032307929157095145,
+      "parameter" : 66.40625,
+      "sceneClass" : "grayscale",
+      "target" : 0.0003229221994100894,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "vibrance-negative-100",
+      "inputSHA256" : "b942bf0a17e48da73e2b1355f6876c4dcbfd7513e3bf344dafcd9ecad6400a45",
+      "matched" : false,
+      "measured" : -0.00030292915396765423,
+      "parameter" : -82.03125,
+      "sceneClass" : "grayscale",
+      "target" : -0.00032293305379876684,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "vibrance-negative-100",
+      "inputSHA256" : "b942bf0a17e48da73e2b1355f6876c4dcbfd7513e3bf344dafcd9ecad6400a45",
+      "matched" : false,
+      "measured" : -0.00030269091496213036,
+      "parameter" : -82.03125,
+      "sceneClass" : "grayscale",
+      "target" : -0.00032293305379876684,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "saturation-positive-20",
+      "inputSHA256" : "b942bf0a17e48da73e2b1355f6876c4dcbfd7513e3bf344dafcd9ecad6400a45",
+      "matched" : false,
+      "measured" : 0,
+      "parameter" : 0,
+      "sceneClass" : "grayscale",
+      "target" : 7.6156354771678175e-05,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "saturation-positive-20",
+      "inputSHA256" : "b942bf0a17e48da73e2b1355f6876c4dcbfd7513e3bf344dafcd9ecad6400a45",
+      "matched" : false,
+      "measured" : 0,
+      "parameter" : 0,
+      "sceneClass" : "grayscale",
+      "target" : 7.6156354771678175e-05,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "saturation-negative-20",
+      "inputSHA256" : "b942bf0a17e48da73e2b1355f6876c4dcbfd7513e3bf344dafcd9ecad6400a45",
+      "matched" : false,
+      "measured" : 0,
+      "parameter" : 0,
+      "sceneClass" : "grayscale",
+      "target" : -7.6156937810947518e-05,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "saturation-negative-20",
+      "inputSHA256" : "b942bf0a17e48da73e2b1355f6876c4dcbfd7513e3bf344dafcd9ecad6400a45",
+      "matched" : false,
+      "measured" : 0,
+      "parameter" : 0,
+      "sceneClass" : "grayscale",
+      "target" : -7.6156937810947518e-05,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "saturation-positive-60",
+      "inputSHA256" : "b942bf0a17e48da73e2b1355f6876c4dcbfd7513e3bf344dafcd9ecad6400a45",
+      "matched" : true,
+      "measured" : 0.00022869078647275043,
+      "parameter" : 53.515625,
+      "sceneClass" : "grayscale",
+      "target" : 0.00022846610577442126,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "saturation-positive-60",
+      "inputSHA256" : "b942bf0a17e48da73e2b1355f6876c4dcbfd7513e3bf344dafcd9ecad6400a45",
+      "matched" : true,
+      "measured" : 0.00022882135561963323,
+      "parameter" : 53.515625,
+      "sceneClass" : "grayscale",
+      "target" : 0.00022846610577442126,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "saturation-negative-60",
+      "inputSHA256" : "b942bf0a17e48da73e2b1355f6876c4dcbfd7513e3bf344dafcd9ecad6400a45",
+      "matched" : true,
+      "measured" : -0.0002283408383813847,
+      "parameter" : -68.75,
+      "sceneClass" : "grayscale",
+      "target" : -0.00022847173555118398,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "saturation-negative-60",
+      "inputSHA256" : "b942bf0a17e48da73e2b1355f6876c4dcbfd7513e3bf344dafcd9ecad6400a45",
+      "matched" : true,
+      "measured" : -0.00022817441764640201,
+      "parameter" : -68.75,
+      "sceneClass" : "grayscale",
+      "target" : -0.00022847173555118398,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "saturation-positive-100",
+      "inputSHA256" : "b942bf0a17e48da73e2b1355f6876c4dcbfd7513e3bf344dafcd9ecad6400a45",
+      "matched" : true,
+      "measured" : 0.00038071079917217205,
+      "parameter" : 89.0625,
+      "sceneClass" : "grayscale",
+      "target" : 0.00038077101313578377,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "saturation-positive-100",
+      "inputSHA256" : "b942bf0a17e48da73e2b1355f6876c4dcbfd7513e3bf344dafcd9ecad6400a45",
+      "matched" : true,
+      "measured" : 0.00038092821469598007,
+      "parameter" : 89.0625,
+      "sceneClass" : "grayscale",
+      "target" : 0.00038077101313578377,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "saturation-negative-100",
+      "inputSHA256" : "b942bf0a17e48da73e2b1355f6876c4dcbfd7513e3bf344dafcd9ecad6400a45",
+      "matched" : false,
+      "measured" : -0.00030314970206688364,
+      "parameter" : -97.8515625,
+      "sceneClass" : "grayscale",
+      "target" : -0.00038077669927519275,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "saturation-negative-100",
+      "inputSHA256" : "b942bf0a17e48da73e2b1355f6876c4dcbfd7513e3bf344dafcd9ecad6400a45",
+      "matched" : false,
+      "measured" : -0.0003029129818627429,
+      "parameter" : -97.8515625,
+      "sceneClass" : "grayscale",
+      "target" : -0.00038077669927519275,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "vibrance-positive-20",
+      "inputSHA256" : "40a08fdda0dd797555f09ce4cecc699a4d6211fdc6ad74cdfd44cd862329c072",
+      "matched" : true,
+      "measured" : 0.006336503497272994,
+      "parameter" : 27.9296875,
+      "sceneClass" : "transparency",
+      "target" : 0.0063306488414199965,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "vibrance-positive-20",
+      "inputSHA256" : "40a08fdda0dd797555f09ce4cecc699a4d6211fdc6ad74cdfd44cd862329c072",
+      "matched" : true,
+      "measured" : 0.006326967313452984,
+      "parameter" : 17.96875,
+      "sceneClass" : "transparency",
+      "target" : 0.0063306488414199965,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "vibrance-negative-20",
+      "inputSHA256" : "40a08fdda0dd797555f09ce4cecc699a4d6211fdc6ad74cdfd44cd862329c072",
+      "matched" : true,
+      "measured" : -0.010636105033774658,
+      "parameter" : -25.1953125,
+      "sceneClass" : "transparency",
+      "target" : -0.010661564041268419,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "vibrance-negative-20",
+      "inputSHA256" : "40a08fdda0dd797555f09ce4cecc699a4d6211fdc6ad74cdfd44cd862329c072",
+      "matched" : true,
+      "measured" : -0.010681353733267169,
+      "parameter" : -28.90625,
+      "sceneClass" : "transparency",
+      "target" : -0.010661564041268419,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "vibrance-positive-60",
+      "inputSHA256" : "40a08fdda0dd797555f09ce4cecc699a4d6211fdc6ad74cdfd44cd862329c072",
+      "matched" : true,
+      "measured" : 0.021928771379897152,
+      "parameter" : 83.7890625,
+      "sceneClass" : "transparency",
+      "target" : 0.021935096225498395,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "vibrance-positive-60",
+      "inputSHA256" : "40a08fdda0dd797555f09ce4cecc699a4d6211fdc6ad74cdfd44cd862329c072",
+      "matched" : true,
+      "measured" : 0.021938074744086235,
+      "parameter" : 62.3046875,
+      "sceneClass" : "transparency",
+      "target" : 0.021935096225498395,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "vibrance-negative-60",
+      "inputSHA256" : "40a08fdda0dd797555f09ce4cecc699a4d6211fdc6ad74cdfd44cd862329c072",
+      "matched" : true,
+      "measured" : -0.029297807862430462,
+      "parameter" : -78.3203125,
+      "sceneClass" : "transparency",
+      "target" : -0.029313598923796064,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "vibrance-negative-60",
+      "inputSHA256" : "40a08fdda0dd797555f09ce4cecc699a4d6211fdc6ad74cdfd44cd862329c072",
+      "matched" : true,
+      "measured" : -0.029301546624145792,
+      "parameter" : -79.296875,
+      "sceneClass" : "transparency",
+      "target" : -0.029313598923796064,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "vibrance-positive-100",
+      "inputSHA256" : "40a08fdda0dd797555f09ce4cecc699a4d6211fdc6ad74cdfd44cd862329c072",
+      "matched" : false,
+      "measured" : 0.026063934244288437,
+      "parameter" : 100,
+      "sceneClass" : "transparency",
+      "target" : 0.03585123554239409,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "vibrance-positive-100",
+      "inputSHA256" : "40a08fdda0dd797555f09ce4cecc699a4d6211fdc6ad74cdfd44cd862329c072",
+      "matched" : true,
+      "measured" : 0.035210954099329318,
+      "parameter" : 100,
+      "sceneClass" : "transparency",
+      "target" : 0.03585123554239409,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "vibrance-negative-100",
+      "inputSHA256" : "40a08fdda0dd797555f09ce4cecc699a4d6211fdc6ad74cdfd44cd862329c072",
+      "matched" : false,
+      "measured" : -0.037120673688921378,
+      "parameter" : -100,
+      "sceneClass" : "transparency",
+      "target" : -0.049589164305503537,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "vibrance-negative-100",
+      "inputSHA256" : "40a08fdda0dd797555f09ce4cecc699a4d6211fdc6ad74cdfd44cd862329c072",
+      "matched" : false,
+      "measured" : -0.036951701002700094,
+      "parameter" : -100,
+      "sceneClass" : "transparency",
+      "target" : -0.049589164305503537,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "saturation-positive-20",
+      "inputSHA256" : "40a08fdda0dd797555f09ce4cecc699a4d6211fdc6ad74cdfd44cd862329c072",
+      "matched" : true,
+      "measured" : 0.011097046515341205,
+      "parameter" : 18.75,
+      "sceneClass" : "transparency",
+      "target" : 0.011078589438855547,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "saturation-positive-20",
+      "inputSHA256" : "40a08fdda0dd797555f09ce4cecc699a4d6211fdc6ad74cdfd44cd862329c072",
+      "matched" : true,
+      "measured" : 0.011101230137616533,
+      "parameter" : 13.0859375,
+      "sceneClass" : "transparency",
+      "target" : 0.011078589438855547,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "saturation-negative-20",
+      "inputSHA256" : "40a08fdda0dd797555f09ce4cecc699a4d6211fdc6ad74cdfd44cd862329c072",
+      "matched" : true,
+      "measured" : -0.016130373473538927,
+      "parameter" : -18.1640625,
+      "sceneClass" : "transparency",
+      "target" : -0.016133073067323981,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "saturation-negative-20",
+      "inputSHA256" : "40a08fdda0dd797555f09ce4cecc699a4d6211fdc6ad74cdfd44cd862329c072",
+      "matched" : true,
+      "measured" : -0.016071930766354835,
+      "parameter" : -18.9453125,
+      "sceneClass" : "transparency",
+      "target" : -0.016133073067323981,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "saturation-positive-60",
+      "inputSHA256" : "40a08fdda0dd797555f09ce4cecc699a4d6211fdc6ad74cdfd44cd862329c072",
+      "matched" : true,
+      "measured" : 0.033901591710671572,
+      "parameter" : 57.6171875,
+      "sceneClass" : "transparency",
+      "target" : 0.033894759910994311,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "saturation-positive-60",
+      "inputSHA256" : "40a08fdda0dd797555f09ce4cecc699a4d6211fdc6ad74cdfd44cd862329c072",
+      "matched" : true,
+      "measured" : 0.033966451038797987,
+      "parameter" : 40.0390625,
+      "sceneClass" : "transparency",
+      "target" : 0.033894759910994311,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "saturation-negative-60",
+      "inputSHA256" : "40a08fdda0dd797555f09ce4cecc699a4d6211fdc6ad74cdfd44cd862329c072",
+      "matched" : true,
+      "measured" : -0.048547161585109286,
+      "parameter" : -57.2265625,
+      "sceneClass" : "transparency",
+      "target" : -0.04853098893024313,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "saturation-negative-60",
+      "inputSHA256" : "40a08fdda0dd797555f09ce4cecc699a4d6211fdc6ad74cdfd44cd862329c072",
+      "matched" : true,
+      "measured" : -0.048547161585109286,
+      "parameter" : -57.2265625,
+      "sceneClass" : "transparency",
+      "target" : -0.04853098893024313,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "saturation-positive-100",
+      "inputSHA256" : "40a08fdda0dd797555f09ce4cecc699a4d6211fdc6ad74cdfd44cd862329c072",
+      "matched" : true,
+      "measured" : 0.05236197627315603,
+      "parameter" : 100,
+      "sceneClass" : "transparency",
+      "target" : 0.052827753000968848,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "saturation-positive-100",
+      "inputSHA256" : "40a08fdda0dd797555f09ce4cecc699a4d6211fdc6ad74cdfd44cd862329c072",
+      "matched" : true,
+      "measured" : 0.052855115079595665,
+      "parameter" : 62.3046875,
+      "sceneClass" : "transparency",
+      "target" : 0.052827753000968848,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "saturation-negative-100",
+      "inputSHA256" : "40a08fdda0dd797555f09ce4cecc699a4d6211fdc6ad74cdfd44cd862329c072",
+      "matched" : true,
+      "measured" : -0.084769308885644407,
+      "parameter" : -100,
+      "sceneClass" : "transparency",
+      "target" : -0.084838100983867057,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "saturation-negative-100",
+      "inputSHA256" : "40a08fdda0dd797555f09ce4cecc699a4d6211fdc6ad74cdfd44cd862329c072",
+      "matched" : true,
+      "measured" : -0.084769308885644407,
+      "parameter" : -100,
+      "sceneClass" : "transparency",
+      "target" : -0.084838100983867057,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "vibrance-positive-20",
+      "inputSHA256" : "a23691a1d4364d1f48db030c5061122e1ca8e6499182c6023ea79ac1763f0776",
+      "matched" : false,
+      "measured" : -0.05881780369521393,
+      "parameter" : 46.2890625,
+      "sceneClass" : "extended-dark",
+      "target" : -0.040487900605704522,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "vibrance-positive-20",
+      "inputSHA256" : "a23691a1d4364d1f48db030c5061122e1ca8e6499182c6023ea79ac1763f0776",
+      "matched" : false,
+      "measured" : 0,
+      "parameter" : 0,
+      "sceneClass" : "extended-dark",
+      "target" : -0.040487900605704522,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "vibrance-negative-20",
+      "inputSHA256" : "a23691a1d4364d1f48db030c5061122e1ca8e6499182c6023ea79ac1763f0776",
+      "matched" : false,
+      "measured" : -0.060362638929948642,
+      "parameter" : -0.1953125,
+      "sceneClass" : "extended-dark",
+      "target" : -0.045790158137871323,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "vibrance-negative-20",
+      "inputSHA256" : "a23691a1d4364d1f48db030c5061122e1ca8e6499182c6023ea79ac1763f0776",
+      "matched" : false,
+      "measured" : -0.008013338664533364,
+      "parameter" : -100,
+      "sceneClass" : "extended-dark",
+      "target" : -0.045790158137871323,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "vibrance-positive-60",
+      "inputSHA256" : "a23691a1d4364d1f48db030c5061122e1ca8e6499182c6023ea79ac1763f0776",
+      "matched" : false,
+      "measured" : -0.05881780369521393,
+      "parameter" : 46.2890625,
+      "sceneClass" : "extended-dark",
+      "target" : -0.03564636235719669,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "vibrance-positive-60",
+      "inputSHA256" : "a23691a1d4364d1f48db030c5061122e1ca8e6499182c6023ea79ac1763f0776",
+      "matched" : false,
+      "measured" : 0,
+      "parameter" : 0,
+      "sceneClass" : "extended-dark",
+      "target" : -0.03564636235719669,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "vibrance-negative-60",
+      "inputSHA256" : "a23691a1d4364d1f48db030c5061122e1ca8e6499182c6023ea79ac1763f0776",
+      "matched" : false,
+      "measured" : -0.060362638929948642,
+      "parameter" : -0.1953125,
+      "sceneClass" : "extended-dark",
+      "target" : -0.052046645473757355,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "vibrance-negative-60",
+      "inputSHA256" : "a23691a1d4364d1f48db030c5061122e1ca8e6499182c6023ea79ac1763f0776",
+      "matched" : false,
+      "measured" : -0.008013338664533364,
+      "parameter" : -100,
+      "sceneClass" : "extended-dark",
+      "target" : -0.052046645473757355,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "vibrance-positive-100",
+      "inputSHA256" : "a23691a1d4364d1f48db030c5061122e1ca8e6499182c6023ea79ac1763f0776",
+      "matched" : false,
+      "measured" : -0.05881780369521393,
+      "parameter" : 46.2890625,
+      "sceneClass" : "extended-dark",
+      "target" : -0.031131976748144014,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "vibrance-positive-100",
+      "inputSHA256" : "a23691a1d4364d1f48db030c5061122e1ca8e6499182c6023ea79ac1763f0776",
+      "matched" : false,
+      "measured" : 0,
+      "parameter" : 0,
+      "sceneClass" : "extended-dark",
+      "target" : -0.031131976748144014,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "vibrance-negative-100",
+      "inputSHA256" : "a23691a1d4364d1f48db030c5061122e1ca8e6499182c6023ea79ac1763f0776",
+      "matched" : true,
+      "measured" : -0.060362638929948642,
+      "parameter" : -0.1953125,
+      "sceneClass" : "extended-dark",
+      "target" : -0.059896761329748235,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "vibrance-negative-100",
+      "inputSHA256" : "a23691a1d4364d1f48db030c5061122e1ca8e6499182c6023ea79ac1763f0776",
+      "matched" : false,
+      "measured" : -0.008013338664533364,
+      "parameter" : -100,
+      "sceneClass" : "extended-dark",
+      "target" : -0.059896761329748235,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "saturation-positive-20",
+      "inputSHA256" : "a23691a1d4364d1f48db030c5061122e1ca8e6499182c6023ea79ac1763f0776",
+      "matched" : false,
+      "measured" : -0.059343043832649454,
+      "parameter" : 100,
+      "sceneClass" : "extended-dark",
+      "target" : -0.038618403022019895,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "saturation-positive-20",
+      "inputSHA256" : "a23691a1d4364d1f48db030c5061122e1ca8e6499182c6023ea79ac1763f0776",
+      "matched" : false,
+      "measured" : 0,
+      "parameter" : 0,
+      "sceneClass" : "extended-dark",
+      "target" : -0.038618403022019895,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "saturation-negative-20",
+      "inputSHA256" : "a23691a1d4364d1f48db030c5061122e1ca8e6499182c6023ea79ac1763f0776",
+      "matched" : false,
+      "measured" : -0.06035611880321453,
+      "parameter" : -0.1953125,
+      "sceneClass" : "extended-dark",
+      "target" : -0.048590222144063583,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "saturation-negative-20",
+      "inputSHA256" : "a23691a1d4364d1f48db030c5061122e1ca8e6499182c6023ea79ac1763f0776",
+      "matched" : true,
+      "measured" : -0.048529363515089352,
+      "parameter" : -52.5390625,
+      "sceneClass" : "extended-dark",
+      "target" : -0.048590222144063583,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "saturation-positive-60",
+      "inputSHA256" : "a23691a1d4364d1f48db030c5061122e1ca8e6499182c6023ea79ac1763f0776",
+      "matched" : false,
+      "measured" : -0.059343043832649454,
+      "parameter" : 100,
+      "sceneClass" : "extended-dark",
+      "target" : -0.03109675118914439,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "saturation-positive-60",
+      "inputSHA256" : "a23691a1d4364d1f48db030c5061122e1ca8e6499182c6023ea79ac1763f0776",
+      "matched" : false,
+      "measured" : 0,
+      "parameter" : 0,
+      "sceneClass" : "extended-dark",
+      "target" : -0.03109675118914439,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "saturation-negative-60",
+      "inputSHA256" : "a23691a1d4364d1f48db030c5061122e1ca8e6499182c6023ea79ac1763f0776",
+      "matched" : true,
+      "measured" : -0.066446712313025111,
+      "parameter" : -49.0234375,
+      "sceneClass" : "extended-dark",
+      "target" : -0.066446471686059896,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "saturation-negative-60",
+      "inputSHA256" : "a23691a1d4364d1f48db030c5061122e1ca8e6499182c6023ea79ac1763f0776",
+      "matched" : true,
+      "measured" : -0.066389611684882333,
+      "parameter" : -71.875,
+      "sceneClass" : "extended-dark",
+      "target" : -0.066446471686059896,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "saturation-positive-100",
+      "inputSHA256" : "a23691a1d4364d1f48db030c5061122e1ca8e6499182c6023ea79ac1763f0776",
+      "matched" : false,
+      "measured" : 0,
+      "parameter" : 0,
+      "sceneClass" : "extended-dark",
+      "target" : -0.024399534971190209,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "saturation-positive-100",
+      "inputSHA256" : "a23691a1d4364d1f48db030c5061122e1ca8e6499182c6023ea79ac1763f0776",
+      "matched" : false,
+      "measured" : 0,
+      "parameter" : 0,
+      "sceneClass" : "extended-dark",
+      "target" : -0.024399534971190209,
+      "variant" : "unbounded"
+    },
+    {
+      "directionID" : "saturation-negative-100",
+      "inputSHA256" : "a23691a1d4364d1f48db030c5061122e1ca8e6499182c6023ea79ac1763f0776",
+      "matched" : true,
+      "measured" : -0.09236723965106923,
+      "parameter" : -100,
+      "sceneClass" : "extended-dark",
+      "target" : -0.092384388698915978,
+      "variant" : "gamutMappedSRGB"
+    },
+    {
+      "directionID" : "saturation-negative-100",
+      "inputSHA256" : "a23691a1d4364d1f48db030c5061122e1ca8e6499182c6023ea79ac1763f0776",
+      "matched" : true,
+      "measured" : -0.092361210213999928,
+      "parameter" : -100,
+      "sceneClass" : "extended-dark",
+      "target" : -0.092384388698915978,
+      "variant" : "unbounded"
+    }
+  ]
+}

@@ -21,3 +21,16 @@ Do not run timing measurements concurrently with builds or other heavy work. The
 - [`lc04-validation/`](lc04-validation/): native/Python tests, original-Rust oracle verification, harness and clean production-build logs, plus the diagnosed initial failed/interrupted attempts.
 
 Each complete LC-04 run contains 140 quality comparisons, 105 near-zero diagnostics, 96 stage-order diagnostics, 80 separate timing processes, scaling results, frozen manifests/mappings, source/binary hashes and labeled/blind views. See the [method, results and limits](../../docs/LIGHTCRAFT-DETAIL-EVALUATION.md). Reproduce in a new directory with `./scripts/evaluate-lightcraft.sh /tmp/picedit-lc04-reproduction --candidate LC-04`.
+
+## LC-05: independent vibrance and saturation
+
+- [`lc05-2026-10-17/`](lc05-2026-10-17/summary.json): frozen color protocol, separate **No-Go** decisions despite improved matched moderate hue/lightness targets. Critical clipping/gradation guards and independent numerical gray contracts fail; the unbounded output-policy ablation is diagnosed separately.
+- [`lc05-validation/`](lc05-validation/README.md): 88 focused native tests, 53 Python tests, 24 × 20 original-Rust oracle cases, generic LC-01 routing smoke check, build logs and diagnosed initial failed attempts.
+
+The LC-05 run preserves 216 quality comparisons, 108 near-zero diagnostics,
+18 independent full-desaturation cases, 64 stage diagnostics, 80 separate
+timing processes, scale results and all frozen provenance plus paired/blind
+views. Of 216 quality cases, 142 match the required effect strength. Synthetic
+color distributions and the numerical gray tolerance do not establish real-photo
+preference or a visible gray tint. See [method, findings and limits](../../docs/LIGHTCRAFT-COLOR-EVALUATION.md).
+Reproduce in a new directory with `./scripts/evaluate-lightcraft.sh /tmp/picedit-lc05-reproduction --candidate LC-05`.
