@@ -1,0 +1,16 @@
+{
+  "build_environment": {
+    "PICEDIT_BUILD_PATH": null,
+    "PICEDIT_TEST_BUILD_PATH": null,
+    "PICEDIT_BUILD_SYSTEM": null
+  },
+  "active_build_test_harness_processes": [],
+  "app_build_lock_present": false,
+  "removed_generated_paths": [
+    ".build",
+    ".build-app",
+    "dist/PicEdit.app"
+  ],
+  "source_or_user_data_removed": false,
+  "active_locks_removed": false
+}

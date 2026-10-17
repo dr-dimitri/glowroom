@@ -34,3 +34,23 @@ views. Of 216 quality cases, 142 match the required effect strength. Synthetic
 color distributions and the numerical gray tolerance do not establish real-photo
 preference or a visible gray tint. See [method, findings and limits](../../docs/LIGHTCRAFT-COLOR-EVALUATION.md).
 Reproduce in a new directory with `./scripts/evaluate-lightcraft.sh /tmp/picedit-lc05-reproduction --candidate LC-05`.
+
+## LC-06: independent luminance, chroma and native scaling
+
+- [`lc06-2026-10-18/`](lc06-2026-10-18/summary.json): three separate **No-Go**
+  decisions. Luma misses detail/edge targets; chroma regresses on ordinary color
+  lines as well as negative-Y source cases. Native scaling improves distance
+  to downsampled full output, but seven cases violate the noise-reduction guard.
+- [`lc06-validation/`](lc06-validation/README.md): 90 native tests, 78 Python
+  tests, 40 original-Rust oracle cases, generic routing smoke check, analytical
+  area-weight variance, harness and clean production-build evidence.
+
+The archive preserves 48 quality cases (42 matched, including all primary
+cases), 32 zero/near-zero and 32 stage diagnostics, 54 scaling records, 588
+diagnostic/blind PNGs, and 80 timing processes. No timing effect pair matches;
+those latency/RSS values are cost observations, not equal-effect performance
+claims. Original source, binary, manifest and calibration hashes are frozen.
+Licensed real photos, upstream original captures and blinded acceptance remain
+missing; see [results and limits](../../docs/LIGHTCRAFT-DENOISE-EVALUATION.md).
+Reproduce in a new directory with
+`./scripts/evaluate-lightcraft.sh /tmp/picedit-lc06-reproduction --candidate LC-06`.

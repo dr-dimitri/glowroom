@@ -1,0 +1,733 @@
+warning: 'picedit': dependency 'swift-collections' is not used by any target
+warning: 'picedit': dependency 'swift-collections' is not used by any target
+Building for debugging...
+[Computing dependencies]
+[Pre-planning 1 / 511]
+[Planning deferred tasks]
+[4 / 262] Tokenizers
+[139 / 262]
+[143 / 266] EventSource
+[145 / 296]
+[149 / 368]
+[155 / 457]
+[161 / 457]
+[164 / 457]
+[167 / 457]
+[170 / 457]
+[172 / 457]
+[176 / 457]
+[180 / 457]
+[182 / 457]
+[186 / 457]
+[190 / 457]
+[192 / 457]
+[196 / 457] InternalCollectionsUtilities
+[197 / 457]
+[206 / 457]
+[210 / 457]
+[213 / 457]
+[214 / 457]
+[217 / 457]
+[220 / 457]
+[226 / 457]
+[230 / 457]
+[233 / 457]
+[235 / 457]
+[237 / 457]
+[242 / 457]
+[246 / 457]
+[247 / 457]
+[251 / 457]
+[253 / 457]
+[256 / 457]
+[259 / 457]
+[261 / 457]
+[262 / 457]
+[265 / 457]
+[266 / 457]
+[271 / 457]
+[272 / 457]
+[273 / 457]
+[276 / 457]
+[282 / 457]
+[284 / 457] InternalCollectionsUtilities
+[288 / 457] InternalCollectionsUtilities
+[291 / 457] InternalCollectionsUtilities
+[293 / 457]
+[295 / 457] yyjson
+[297 / 457] InternalCollectionsUtilities
+[299 / 457]
+[302 / 457]
+[305 / 457] InternalCollectionsUtilities
+[308 / 457] InternalCollectionsUtilities
+[311 / 458]
+[316 / 471] PicEditCore
+[316 / 471] yyjson
+[318 / 471] OrderedCollections
+[331 / 471] EventSource
+[334 / 471]
+[341 / 471] PicEditCore
+[344 / 471] PicEditCore
+[352 / 471] PicEditCore
+[353 / 471] PicEditCore
+[355 / 471] PicEditCore
+[356 / 471] PicEditCore
+[358 / 471] OrderedCollections
+[359 / 471] OrderedCollections
+[360 / 471] OrderedCollections
+[361 / 471] OrderedCollections
+[362 / 471] OrderedCollections
+[365 / 471] OrderedCollections
+[368 / 471] Jinja
+[370 / 471] InternalCollectionsUtilities
+[375 / 471] EventSource-product
+[377 / 471] Crypto
+[381 / 471] HuggingFace
+[384 / 471] Crypto
+[386 / 471] Crypto
+/Users/wolfgangbauer/dev/workspace/picedit/Package.swift: PicEditCore: ld: warning: search path '/Library/Developer/CommandLineTools/Developer/Library/Frameworks' not found
+[390 / 473] HuggingFace
+[397 / 474] Jinja
+[400 / 524]
+[401 / 540]
+[406 / 540] PicEditCoreTests-product
+[408 / 540] PicEditCoreTests-product
+[414 / 540] PicEditCoreTests-product
+[416 / 540] PicEditCoreTests-product
+[417 / 540] PicEditCoreTests-product
+[418 / 540] PicEditCoreTests-product
+[419 / 540] PicEditCoreTests-product
+[420 / 540] PicEditCoreTests-product
+[421 / 540] PicEditCoreTests-product
+/Users/wolfgangbauer/dev/workspace/picedit/Tests/PicEditCoreTests/CatalogCoordinationFileIOTests.swift:270:27: warning: result of call to 'withMaintenance(_:operation:)' is unused [#NoUsage]
+268 |         let foreign = CatalogLifecycleGate(requiresRecovery: false)
+269 |         let foreignCap = try await foreign.beginMaintenance(.restore(UUID()))
+270 |         try await foreign.withMaintenance(foreignCap) {
+    |                           `- warning: result of call to 'withMaintenance(_:operation:)' is unused [#NoUsage]
+271 |             #expect(throws: CatalogCoordinationError.invalidCapability) { try permit.validateGate(foreign) }
+272 |         }
+
+[#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
+[421 / 540]
+[426 / 540]
+[427 / 540]
+[429 / 540]
+[434 / 540]
+/Users/wolfgangbauer/dev/workspace/picedit/Package.swift: PicEditCoreTests-product: ld: warning: search path '/Library/Developer/CommandLineTools/Developer/usr/lib' not found
+/Users/wolfgangbauer/dev/workspace/picedit/Package.swift: PicEditCoreTests-product: ld: warning: search path '/Library/Developer/CommandLineTools/Developer/Library/Frameworks' not found
+[435 / 540]
+[437 / 540]
+[439 / 540]
+[444 / 540]
+[446 / 540]
+[452 / 540] Jinja
+[454 / 540] Jinja
+[461 / 540] Jinja
+[463 / 540] Jinja
+[465 / 540] Jinja
+[466 / 540] Jinja
+[468 / 540] Jinja
+[470 / 540] HuggingFace
+[470 / 540] Jinja
+[472 / 540] Jinja
+[479 / 540] HuggingFace-product
+[480 / 540] HuggingFace-product
+[481 / 540] HuggingFace-product
+[483 / 540] HuggingFace
+[485 / 540] HuggingFace
+[488 / 540] HuggingFace
+[490 / 541] Jinja
+[492 / 553]
+[494 / 553] Jinja
+[495 / 553] HuggingFace
+[497 / 553]
+[501 / 553] Hub
+[503 / 553] Hub
+[509 / 553] Hub
+[511 / 554] Hub
+[513 / 554] Tokenizers
+[517 / 567] Tokenizers
+[518 / 567] Tokenizers
+[524 / 567] Tokenizers
+[526 / 567] Tokenizers
+[528 / 567] Tokenizers-product
+[529 / 567] Tokenizers-product
+[532 / 567] Tokenizers
+[535 / 568]
+[537 / 569] Tokenizers
+[538 / 569] PicEdit-product
+[544 / 643]
+[547 / 643]
+[548 / 643]
+[549 / 643]
+[551 / 643]
+[556 / 643]
+[561 / 643]
+[563 / 643]
+[566 / 643]
+[567 / 643]
+[570 / 643]
+[572 / 643]
+[575 / 643]
+[578 / 643]
+[581 / 643]
+[582 / 643]
+[583 / 643]
+[584 / 643]
+[585 / 643]
+[586 / 643]
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/AutoTone.swift:243:33: warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+241 |     }
+242 |
+243 |     private static let kernel = CIColorKernel(source: """
+    |                                 `- warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+244 |         kernel vec4 automaticTone(__sample original, vec4 c0, vec4 c1, vec4 c2, vec4 c3, vec4 c4, vec4 c5) {
+245 |             vec4 o = unpremultiply(original);
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/EditRenderer.swift:276:40: warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+274 |     // renderer, including older Intel Macs. No external Metal compiler, model,
+275 |     // network service, or GPU-generation-specific shader library is required.
+276 |     private static let denoiseKernel = CIColorKernel(source: """
+    |                                        `- warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+277 |         kernel vec4 separateNoise(__sample original, __sample lumaBlur, __sample chromaBlur, float lumaAmount, float chromaAmount) {
+278 |             vec4 o = unpremultiply(original);
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/EditRenderer.swift:294:37: warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+292 |         """)
+293 |
+294 |     private static let toneKernel = CIColorKernel(source: """
+    |                                     `- warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+295 |         kernel vec4 toneAndColor(__sample original, float exposure, float contrast, float highlights, float shadows, float whites, float blacks, float dehaze, float vibrance, float saturation) {
+296 |             vec4 o = unpremultiply(original);
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/EditRenderer.swift:321:41: warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+319 |         """)
+320 |
+321 |     private static let presenceKernel = CIColorKernel(source: """
+    |                                         `- warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+322 |         kernel vec4 localPresence(__sample original, __sample fineBlur, __sample broadBlur, float texture, float clarity) {
+323 |             vec4 o = unpremultiply(original);
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/MaskEditingModel.swift:116:51: warning: no 'async' operations occur within 'await' expression [#UnnecessaryEffectMarker]
+114 |     private var worker: Task<Void, Never>?
+115 |
+116 |     init(rasterizer: @escaping Rasterizer = { try await MaskOverlayWorker.shared.rasterize($0) }) {
+    |                                                   `- warning: no 'async' operations occur within 'await' expression [#UnnecessaryEffectMarker]
+117 |         self.rasterizer = rasterizer
+118 |     }
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/MaskCompositor.swift:166:38: warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+164 |     }
+165 |
+166 |     private static let blendKernel = CIColorKernel(source: """
+    |                                      `- warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+167 |         kernel vec4 piceditMaskBlend(__sample base, __sample candidate, __sample mask) {
+168 |             return mix(base, candidate, mask.r);
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
+[590 / 643] PicEdit-product
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/AutoTone.swift:243:33: warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+241 |     }
+242 |
+243 |     private static let kernel = CIColorKernel(source: """
+    |                                 `- warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+244 |         kernel vec4 automaticTone(__sample original, vec4 c0, vec4 c1, vec4 c2, vec4 c3, vec4 c4, vec4 c5) {
+245 |             vec4 o = unpremultiply(original);
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/EditRenderer.swift:276:40: warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+274 |     // renderer, including older Intel Macs. No external Metal compiler, model,
+275 |     // network service, or GPU-generation-specific shader library is required.
+276 |     private static let denoiseKernel = CIColorKernel(source: """
+    |                                        `- warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+277 |         kernel vec4 separateNoise(__sample original, __sample lumaBlur, __sample chromaBlur, float lumaAmount, float chromaAmount) {
+278 |             vec4 o = unpremultiply(original);
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/EditRenderer.swift:294:37: warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+292 |         """)
+293 |
+294 |     private static let toneKernel = CIColorKernel(source: """
+    |                                     `- warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+295 |         kernel vec4 toneAndColor(__sample original, float exposure, float contrast, float highlights, float shadows, float whites, float blacks, float dehaze, float vibrance, float saturation) {
+296 |             vec4 o = unpremultiply(original);
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/EditRenderer.swift:321:41: warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+319 |         """)
+320 |
+321 |     private static let presenceKernel = CIColorKernel(source: """
+    |                                         `- warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+322 |         kernel vec4 localPresence(__sample original, __sample fineBlur, __sample broadBlur, float texture, float clarity) {
+323 |             vec4 o = unpremultiply(original);
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/MaskEditingModel.swift:116:51: warning: no 'async' operations occur within 'await' expression [#UnnecessaryEffectMarker]
+114 |     private var worker: Task<Void, Never>?
+115 |
+116 |     init(rasterizer: @escaping Rasterizer = { try await MaskOverlayWorker.shared.rasterize($0) }) {
+    |                                                   `- warning: no 'async' operations occur within 'await' expression [#UnnecessaryEffectMarker]
+117 |         self.rasterizer = rasterizer
+118 |     }
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/MaskCompositor.swift:166:38: warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+164 |     }
+165 |
+166 |     private static let blendKernel = CIColorKernel(source: """
+    |                                      `- warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+167 |         kernel vec4 piceditMaskBlend(__sample base, __sample candidate, __sample mask) {
+168 |             return mix(base, candidate, mask.r);
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
+[593 / 643] PicEdit-product
+[600 / 643] PicEdit-product
+[601 / 643] PicEdit-product
+[602 / 643] PicEdit-product
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/AI/SystemAICloudKeychain.swift:71:19: warning: 'SecKeychainCopyDefault' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 69 |             // rather than searching/deleting matching items in every keychain.
+ 70 |             var keychain: SecKeychain?
+ 71 |             guard SecKeychainCopyDefault(&keychain) == errSecSuccess, let keychain else { throw AICloudError.keychain }
+    |                   `- warning: 'SecKeychainCopyDefault' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 72 |             if adding { query[kSecUseKeychain as String] = keychain }
+ 73 |             else { query[kSecMatchSearchList as String] = [keychain] }
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/AI/SystemAICloudKeychain.swift:114:15: warning: 'SecTrustedApplicationCreateFromPath' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+112 |     private static func applicationAccess() throws -> SecAccess {
+113 |         var application: SecTrustedApplication?
+114 |         guard SecTrustedApplicationCreateFromPath(nil, &application) == errSecSuccess,
+    |               `- warning: 'SecTrustedApplicationCreateFromPath' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+115 |               let application else { throw AICloudError.keychain }
+116 |         var access: SecAccess?
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/AI/SystemAICloudKeychain.swift:119:15: warning: 'SecAccessCreate' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+117 |         // Explicitly trust only this application, preserving macOS confirmation
+118 |         // for other or changed binaries. Never grant access to all applications.
+119 |         guard SecAccessCreate("PicEdit Anthropic API-Schlüssel" as CFString, [application] as CFArray, &access) == errSecSuccess,
+    |               `- warning: 'SecAccessCreate' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+120 |               let access else { throw AICloudError.keychain }
+121 |         return access
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[604 / 643] PicEdit-product
+[605 / 643] PicEdit-product
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/AI/AppleSystemModelRuntime.swift:78:63: warning: 'init(sampling:temperature:maximumResponseTokens:)' is deprecated: replaced by 'init(samplingMode:temperature:maximumResponseTokens:)' [#DeprecatedDeclaration]
+ 76 |             let schema = try prompt.mode == .single ? Self.generationSchema() : Self.lookGenerationSchema()
+ 77 |             let response = try await session.respond(to: prompt.data, schema: schema,
+ 78 |                                                      options: GenerationOptions(sampling: .greedy,
+    |                                                               |- warning: 'init(sampling:temperature:maximumResponseTokens:)' is deprecated: replaced by 'init(samplingMode:temperature:maximumResponseTokens:)' [#DeprecatedDeclaration]
+    |                                                               `- note: use 'init(samplingMode:temperature:maximumResponseTokens:)' instead
+ 79 |                                                                                 maximumResponseTokens: prompt.mode == .single ? 800 : 2_400))
+ 80 |             try Task.checkCancellation()
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/AutoTone.swift:243:33: warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+241 |     }
+242 |
+243 |     private static let kernel = CIColorKernel(source: """
+    |                                 `- warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+244 |         kernel vec4 automaticTone(__sample original, vec4 c0, vec4 c1, vec4 c2, vec4 c3, vec4 c4, vec4 c5) {
+245 |             vec4 o = unpremultiply(original);
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/EditRenderer.swift:276:40: warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+274 |     // renderer, including older Intel Macs. No external Metal compiler, model,
+275 |     // network service, or GPU-generation-specific shader library is required.
+276 |     private static let denoiseKernel = CIColorKernel(source: """
+    |                                        `- warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+277 |         kernel vec4 separateNoise(__sample original, __sample lumaBlur, __sample chromaBlur, float lumaAmount, float chromaAmount) {
+278 |             vec4 o = unpremultiply(original);
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/EditRenderer.swift:294:37: warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+292 |         """)
+293 |
+294 |     private static let toneKernel = CIColorKernel(source: """
+    |                                     `- warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+295 |         kernel vec4 toneAndColor(__sample original, float exposure, float contrast, float highlights, float shadows, float whites, float blacks, float dehaze, float vibrance, float saturation) {
+296 |             vec4 o = unpremultiply(original);
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/EditRenderer.swift:321:41: warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+319 |         """)
+320 |
+321 |     private static let presenceKernel = CIColorKernel(source: """
+    |                                         `- warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+322 |         kernel vec4 localPresence(__sample original, __sample fineBlur, __sample broadBlur, float texture, float clarity) {
+323 |             vec4 o = unpremultiply(original);
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/MaskEditingModel.swift:116:51: warning: no 'async' operations occur within 'await' expression [#UnnecessaryEffectMarker]
+114 |     private var worker: Task<Void, Never>?
+115 |
+116 |     init(rasterizer: @escaping Rasterizer = { try await MaskOverlayWorker.shared.rasterize($0) }) {
+    |                                                   `- warning: no 'async' operations occur within 'await' expression [#UnnecessaryEffectMarker]
+117 |         self.rasterizer = rasterizer
+118 |     }
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/MaskCompositor.swift:166:38: warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+164 |     }
+165 |
+166 |     private static let blendKernel = CIColorKernel(source: """
+    |                                      `- warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+167 |         kernel vec4 piceditMaskBlend(__sample base, __sample candidate, __sample mask) {
+168 |             return mix(base, candidate, mask.r);
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
+[608 / 643] PicEdit
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/MaskEditingModel.swift:116:51: warning: no 'async' operations occur within 'await' expression [#UnnecessaryEffectMarker]
+114 |     private var worker: Task<Void, Never>?
+115 |
+116 |     init(rasterizer: @escaping Rasterizer = { try await MaskOverlayWorker.shared.rasterize($0) }) {
+    |                                                   `- warning: no 'async' operations occur within 'await' expression [#UnnecessaryEffectMarker]
+117 |         self.rasterizer = rasterizer
+118 |     }
+
+[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
+[609 / 643] PicEdit
+[610 / 643] PicEdit
+[612 / 643] PicEdit-product
+[612 / 643] PicEdit
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/AI/SystemAICloudKeychain.swift:71:19: warning: 'SecKeychainCopyDefault' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 69 |             // rather than searching/deleting matching items in every keychain.
+ 70 |             var keychain: SecKeychain?
+ 71 |             guard SecKeychainCopyDefault(&keychain) == errSecSuccess, let keychain else { throw AICloudError.keychain }
+    |                   `- warning: 'SecKeychainCopyDefault' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 72 |             if adding { query[kSecUseKeychain as String] = keychain }
+ 73 |             else { query[kSecMatchSearchList as String] = [keychain] }
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/AI/SystemAICloudKeychain.swift:114:15: warning: 'SecTrustedApplicationCreateFromPath' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+112 |     private static func applicationAccess() throws -> SecAccess {
+113 |         var application: SecTrustedApplication?
+114 |         guard SecTrustedApplicationCreateFromPath(nil, &application) == errSecSuccess,
+    |               `- warning: 'SecTrustedApplicationCreateFromPath' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+115 |               let application else { throw AICloudError.keychain }
+116 |         var access: SecAccess?
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/AI/SystemAICloudKeychain.swift:119:15: warning: 'SecAccessCreate' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+117 |         // Explicitly trust only this application, preserving macOS confirmation
+118 |         // for other or changed binaries. Never grant access to all applications.
+119 |         guard SecAccessCreate("PicEdit Anthropic API-Schlüssel" as CFString, [application] as CFArray, &access) == errSecSuccess,
+    |               `- warning: 'SecAccessCreate' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+120 |               let access else { throw AICloudError.keychain }
+121 |         return access
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+/Users/wolfgangbauer/dev/workspace/picedit/Package.swift: PicEdit-product: ld: warning: search path '/Library/Developer/CommandLineTools/Developer/usr/lib' not found
+/Users/wolfgangbauer/dev/workspace/picedit/Package.swift: PicEdit-product: ld: warning: search path '/Library/Developer/CommandLineTools/Developer/Library/Frameworks' not found
+[615 / 643] PicEdit
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/AI/AppleSystemModelRuntime.swift:78:63: warning: 'init(sampling:temperature:maximumResponseTokens:)' is deprecated: replaced by 'init(samplingMode:temperature:maximumResponseTokens:)' [#DeprecatedDeclaration]
+ 76 |             let schema = try prompt.mode == .single ? Self.generationSchema() : Self.lookGenerationSchema()
+ 77 |             let response = try await session.respond(to: prompt.data, schema: schema,
+ 78 |                                                      options: GenerationOptions(sampling: .greedy,
+    |                                                               |- warning: 'init(sampling:temperature:maximumResponseTokens:)' is deprecated: replaced by 'init(samplingMode:temperature:maximumResponseTokens:)' [#DeprecatedDeclaration]
+    |                                                               `- note: use 'init(samplingMode:temperature:maximumResponseTokens:)' instead
+ 79 |                                                                                 maximumResponseTokens: prompt.mode == .single ? 800 : 2_400))
+ 80 |             try Task.checkCancellation()
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[615 / 643] PicEdit-product
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/MaskEditingModel.swift:116:51: warning: no 'async' operations occur within 'await' expression [#UnnecessaryEffectMarker]
+114 |     private var worker: Task<Void, Never>?
+115 |
+116 |     init(rasterizer: @escaping Rasterizer = { try await MaskOverlayWorker.shared.rasterize($0) }) {
+    |                                                   `- warning: no 'async' operations occur within 'await' expression [#UnnecessaryEffectMarker]
+117 |         self.rasterizer = rasterizer
+118 |     }
+
+[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
+[617 / 643] PicEdit
+[618 / 643] PicEdit
+[620 / 643] PicEdit
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/AutoTone.swift:243:33: warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+241 |     }
+242 |
+243 |     private static let kernel = CIColorKernel(source: """
+    |                                 `- warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+244 |         kernel vec4 automaticTone(__sample original, vec4 c0, vec4 c1, vec4 c2, vec4 c3, vec4 c4, vec4 c5) {
+245 |             vec4 o = unpremultiply(original);
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/EditRenderer.swift:276:40: warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+274 |     // renderer, including older Intel Macs. No external Metal compiler, model,
+275 |     // network service, or GPU-generation-specific shader library is required.
+276 |     private static let denoiseKernel = CIColorKernel(source: """
+    |                                        `- warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+277 |         kernel vec4 separateNoise(__sample original, __sample lumaBlur, __sample chromaBlur, float lumaAmount, float chromaAmount) {
+278 |             vec4 o = unpremultiply(original);
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/EditRenderer.swift:294:37: warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+292 |         """)
+293 |
+294 |     private static let toneKernel = CIColorKernel(source: """
+    |                                     `- warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+295 |         kernel vec4 toneAndColor(__sample original, float exposure, float contrast, float highlights, float shadows, float whites, float blacks, float dehaze, float vibrance, float saturation) {
+296 |             vec4 o = unpremultiply(original);
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/EditRenderer.swift:321:41: warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+319 |         """)
+320 |
+321 |     private static let presenceKernel = CIColorKernel(source: """
+    |                                         `- warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+322 |         kernel vec4 localPresence(__sample original, __sample fineBlur, __sample broadBlur, float texture, float clarity) {
+323 |             vec4 o = unpremultiply(original);
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/MaskEditingModel.swift:116:51: warning: no 'async' operations occur within 'await' expression [#UnnecessaryEffectMarker]
+114 |     private var worker: Task<Void, Never>?
+115 |
+116 |     init(rasterizer: @escaping Rasterizer = { try await MaskOverlayWorker.shared.rasterize($0) }) {
+    |                                                   `- warning: no 'async' operations occur within 'await' expression [#UnnecessaryEffectMarker]
+117 |         self.rasterizer = rasterizer
+118 |     }
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/MaskCompositor.swift:166:38: warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+164 |     }
+165 |
+166 |     private static let blendKernel = CIColorKernel(source: """
+    |                                      `- warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+167 |         kernel vec4 piceditMaskBlend(__sample base, __sample candidate, __sample mask) {
+168 |             return mix(base, candidate, mask.r);
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
+[621 / 643] PicEdit
+[621 / 643]
+[625 / 643] PicEdit
+/Users/wolfgangbauer/dev/workspace/picedit/Package.swift: PicEdit: ld: warning: search path '/Library/Developer/CommandLineTools/Developer/Library/Frameworks' not found
+[633 / 644] PicEditTests-product
+[639 / 659] PicEditTests-product
+[641 / 659] PicEditTests-product
+[646 / 659] PicEditTests-product
+[648 / 659] PicEditTests-product
+[649 / 659] PicEditTests-product
+[650 / 659] PicEditTests-product
+[651 / 659] PicEditTests-product
+[652 / 659] PicEditTests-product
+[653 / 659] PicEditTests-product
+/Users/wolfgangbauer/dev/workspace/picedit/Package.swift: PicEditTests-product: ld: warning: search path '/Library/Developer/CommandLineTools/Developer/usr/lib' not found
+/Users/wolfgangbauer/dev/workspace/picedit/Package.swift: PicEditTests-product: ld: warning: search path '/Library/Developer/CommandLineTools/Developer/Library/Frameworks' not found
+[655 / 659] PicEditTests-product
+[657 / 659] PicEditTests-product
+Build complete! (120,18 Sek.)
+◇ Test run started.
+↳ Testing Library Version: 2084
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite "Lightcraft isolated denoise reference" started.
+◇ Suite "Edit rendering" started.
+◇ Suite "Algorithm evaluation fixtures" started.
+◇ Suite "LC-06 independent noise and detail measurements" started.
+◇ Suite "Adjusted preview scheduling" started.
+◇ Suite "Frozen algorithm evaluation metrics and decision gates" started.
+◇ Suite "Algorithm evaluation reference controls" started.
+◇ Test nativeAreaAveragedAndUnknownSamplingKeepDistinctVarianceAssumptions() started.
+◇ Suite "JPEG export" started.
+◇ Suite "Automatic tone balancing" started.
+◇ Test testCombinedToneExtremesDoNotReverseGradientOrdering() started.
+◇ Suite "Reusable edit rendering sessions" started.
+◇ Test testColorNoiseReductionTargetsChromaSeparately() started.
+◇ Test deterministicScenesHaveSeparateTuningAndAcceptanceSeeds() started.
+◇ Test testExposureAndTonalControlsHaveCorrectDirections() started.
+◇ Test testExtentsProfileAndTransparentEdgesSurviveCombinedEdits() started.
+◇ Test coveragePreventsHiddenBleedAndPreservesVisibleConstantColour() started.
+◇ Test testLuminanceNoiseReductionReducesLuminanceVariance() started.
+◇ Test testExtremeSettingsAreClampedAndRenderingStaysBounded() started.
+◇ Test testAllPresenceAndColorSlidersChangePixelsIndependently() started.
+◇ Test cancelledFixtureResamplingAndMeasurementsPublishNoResult() started.
+◇ Test testNeutralReturnsIdenticalBitmap() started.
+◇ Test imageIOProfilesBitDepthsAndAllEXIFOrientations(bits:p3:) started.
+◇ Test tileDimensionsNeverSubstituteForFullOriginalGeometry() started.
+◇ Test extraNoiseCannotMasqueradeAsPreservedGroundTruthEdges() started.
+◇ Test areaAverageWeightsCoverageAndNonIntegerPixelFootprints() started.
+◇ Test floatRoundTripExplicitlyPreservesStraightAlphaAndExtendedGamut() started.
+◇ Test diagnosticCompositesUseLinearLightAndRetainNoHiddenRGB() started.
+◇ Test invalidAndUnsupportedInputsAreRejected() started.
+◇ Test incompleteManifestAndMissingControlMetricAreRejected() started.
+◇ Test cancelledGenerationCannotRemoveItsReplacementWaiter() started.
+◇ Test neutralHueIsExcludedAndInvalidPixelsFailClosed() started.
+◇ Test driftAlphaHiddenRGBAndExtendedGamutRemainIndependentContracts() started.
+◇ Test selectedEditRunsBeforeQueuedThumbnails() started.
+◇ Test originalClampAndNearBlackFloorRemainExplicitlyDifferentForEachControl() started.
+◇ Test cancelledFixtureGenerationCannotProduceAResult() started.
+◇ Test alphaZeroIsCanonicalAndDimensionsBelongToTheHash() started.
+◇ Test neutralAndSubpixelFadePreserveExactCanonicalSignedInput() started.
+◇ Test tinyAndTransparentInputsRemainFinite(size:) started.
+◇ Test gateRequiresMatchedEffectSeparateAcceptanceHumanApprovalAndBudgets() started.
+◇ Test unchangedFixturesAndNeutralHiddenRGBPassControl() started.
+◇ Test testContrastChangesTonalSpreadInBothDirections() started.
+◇ Test failedRenderReleasesWorkerAndCanBeRetried() started.
+◇ Test selectedRenderingOverlapsOneThumbnailWithoutExceedingTwoWorkers() started.
+◇ Test alphaAndLinearCompositesExposeVisibleFringes() started.
+◇ Test frozenProfileDepthAndAlphaBoundary(bits:p3:) started.
+◇ Test invalidControlsGeometryAndRasterFailBeforeOutputPublication() started.
+◇ Test cancelledRenderRetainsSlotAndObsoleteQueuedEditsNeverRun() started.
+◇ Test matchingAndDetailRegionsAreIndependent() started.
+◇ Test linearOpponentErrorsAreStableAtBlackAndSeparateLumaFromChroma() started.
+◇ Test sharedRenderSurvivesOneCancelledWaiter() started.
+◇ Test areaAverageRetainsSignedConstantDataAndDoesNotReusePreviousSources() started.
+◇ Test registryBlocksEveryAbsentReferenceAndControlsCannotClaimGo() started.
+◇ Test knownNoiseReductionUsesBothComponentsAndCleanFixedAlpha() started.
+◇ Test groundTruthResidualNoiseUsesItsOwnEligibleCount() started.
+◇ Test radiusVarianceFadeAndFixedHiddenControlsMatchDocumentedConstants() started.
+◇ Test cancelledActiveAndNeutralRequestsPublishNoResult() started.
+◇ Test splitSeedsChangeNoiseButNeverGroundTruthOrSupport() started.
+◇ Test originalRustParametersAndOpaquePixelsMatchWithoutFastGuidedSubstitution() started.
+◇ Test boundedMatchingDoesNotAssumeMonotonicResponse() started.
+◇ Test localHaloEnvelopeAndStructuralLossDetectDifferentRegressions() started.
+◇ Test sourceAndParameterChangesAreIndependentAndDeterministic() started.
+◇ Test rec2020BridgePreservesWhiteAndSignedExtendedPrimaries() started.
+◇ Test areaAverageActuallyAveragesNoiseInsteadOfSelectingOrLanczosSampling() started.
+◇ Test identityRetainsExactSharedInputIncludingAlphaAndExtendedRGB() started.
+◇ Test nonneutralProductionRenderPreservesSourceProfileDepthAndFrozenOrientation(bits:p3:) started.
+◇ Test neutralRGBReferenceMeetsCPUToleranceAndPreservesAlphaSeparately() started.
+◇ Test case passing 2 arguments bits → 8, p3 → false to imageIOProfilesBitDepthsAndAllEXIFOrientations(bits:p3:) started.
+◇ Test case passing 2 arguments bits → 8, p3 → true to imageIOProfilesBitDepthsAndAllEXIFOrientations(bits:p3:) started.
+◇ Test case passing 2 arguments bits → 16, p3 → false to imageIOProfilesBitDepthsAndAllEXIFOrientations(bits:p3:) started.
+◇ Test case passing 2 arguments bits → 16, p3 → true to imageIOProfilesBitDepthsAndAllEXIFOrientations(bits:p3:) started.
+◇ Test case passing 1 argument size → (1, 1) to tinyAndTransparentInputsRemainFinite(size:) started.
+◇ Test case passing 1 argument size → (1, 7) to tinyAndTransparentInputsRemainFinite(size:) started.
+◇ Test case passing 1 argument size → (7, 1) to tinyAndTransparentInputsRemainFinite(size:) started.
+◇ Test case passing 1 argument size → (2, 2) to tinyAndTransparentInputsRemainFinite(size:) started.
+◇ Test case passing 2 arguments bits → 8, p3 → false to frozenProfileDepthAndAlphaBoundary(bits:p3:) started.
+◇ Test case passing 2 arguments bits → 8, p3 → true to frozenProfileDepthAndAlphaBoundary(bits:p3:) started.
+◇ Test case passing 2 arguments bits → 16, p3 → false to frozenProfileDepthAndAlphaBoundary(bits:p3:) started.
+◇ Test case passing 2 arguments bits → 16, p3 → true to frozenProfileDepthAndAlphaBoundary(bits:p3:) started.
+◇ Test fullResolutionBeyondPreviewLimitDeclaresSRGBAndDPI() started.
+◇ Test transparentMarginsDoNotBiasTheHistogram() started.
+◇ Test boundedSamplingKeepsProgressivePreviewCurvesConsistent() started.
+◇ Test highDynamicRangeRevealsBothTailsWithoutFlatteningOrClipping() started.
+◇ Test liftingSaturatedSubjectsDoesNotClipPreviouslyUnclippedChannels() started.
+◇ Test flatBlackWhiteAndAlmostFlatNoiseStayStable() started.
+◇ Test intermediateStrengthIsConservativeAndManualExposureFollowsAuto() started.
+◇ Test balancedGradientChangesSubtlyAndLowContrastSceneGainsSeparation() started.
+◇ Test dominantDarkAndBrightScenesKeepTheOppositeTailSafe() started.
+◇ Test gradientsStayMonotoneAndDoNotAcquireNewClippedPixels() started.
+◇ Test canceledAnalysisStopsBeforeWorkingOnTheBitmap() started.
+◇ Test zeroAmountKeepsOriginalPixelsAndManualSettings() started.
+◇ Test colorHueAlphaDimensionsAndProfileSurvive() started.
+◇ Test cachedPrefixInvalidatesAcrossNoiseStrengthAutoAmountAndSourceChanges() started.
+◇ Test case passing 2 arguments bits → 8, p3 → false to nonneutralProductionRenderPreservesSourceProfileDepthAndFrozenOrientation(bits:p3:) started.
+◇ Test case passing 2 arguments bits → 8, p3 → true to nonneutralProductionRenderPreservesSourceProfileDepthAndFrozenOrientation(bits:p3:) started.
+◇ Test case passing 2 arguments bits → 16, p3 → false to nonneutralProductionRenderPreservesSourceProfileDepthAndFrozenOrientation(bits:p3:) started.
+◇ Test case passing 2 arguments bits → 16, p3 → true to nonneutralProductionRenderPreservesSourceProfileDepthAndFrozenOrientation(bits:p3:) started.
+✔ Test nativeAreaAveragedAndUnknownSamplingKeepDistinctVarianceAssumptions() passed after 0.256 seconds.
+✔ Test tileDimensionsNeverSubstituteForFullOriginalGeometry() passed after 0.255 seconds.
+✔ Test areaAverageWeightsCoverageAndNonIntegerPixelFootprints() passed after 0.256 seconds.
+✔ Test testNeutralReturnsIdenticalBitmap() passed after 0.256 seconds.
+✔ Test floatRoundTripExplicitlyPreservesStraightAlphaAndExtendedGamut() passed after 0.256 seconds.
+✔ Test coveragePreventsHiddenBleedAndPreservesVisibleConstantColour() passed after 0.256 seconds.
+✔ Test imageIOProfilesBitDepthsAndAllEXIFOrientations(bits:p3:) with 4 test cases passed after 0.256 seconds.
+✔ Test diagnosticCompositesUseLinearLightAndRetainNoHiddenRGB() passed after 0.256 seconds.
+✔ Test neutralHueIsExcludedAndInvalidPixelsFailClosed() passed after 0.256 seconds.
+✔ Test incompleteManifestAndMissingControlMetricAreRejected() passed after 0.256 seconds.
+✔ Test invalidAndUnsupportedInputsAreRejected() passed after 0.256 seconds.
+✔ Test originalClampAndNearBlackFloorRemainExplicitlyDifferentForEachControl() passed after 0.256 seconds.
+✔ Test alphaZeroIsCanonicalAndDimensionsBelongToTheHash() passed after 0.256 seconds.
+✔ Test neutralAndSubpixelFadePreserveExactCanonicalSignedInput() passed after 0.256 seconds.
+✔ Test driftAlphaHiddenRGBAndExtendedGamutRemainIndependentContracts() passed after 0.257 seconds.
+✔ Test tinyAndTransparentInputsRemainFinite(size:) with 4 test cases passed after 0.257 seconds.
+✔ Test testCombinedToneExtremesDoNotReverseGradientOrdering() passed after 0.257 seconds.
+✔ Test alphaAndLinearCompositesExposeVisibleFringes() passed after 0.257 seconds.
+✔ Test invalidControlsGeometryAndRasterFailBeforeOutputPublication() passed after 0.257 seconds.
+✔ Test frozenProfileDepthAndAlphaBoundary(bits:p3:) with 4 test cases passed after 0.257 seconds.
+✔ Test testExtentsProfileAndTransparentEdgesSurviveCombinedEdits() passed after 0.257 seconds.
+✔ Test testLuminanceNoiseReductionReducesLuminanceVariance() passed after 0.257 seconds.
+✔ Test testExtremeSettingsAreClampedAndRenderingStaysBounded() passed after 0.257 seconds.
+✔ Test linearOpponentErrorsAreStableAtBlackAndSeparateLumaFromChroma() passed after 0.257 seconds.
+✔ Test radiusVarianceFadeAndFixedHiddenControlsMatchDocumentedConstants() passed after 0.259 seconds.
+✔ Test testColorNoiseReductionTargetsChromaSeparately() passed after 0.259 seconds.
+✔ Test testContrastChangesTonalSpreadInBothDirections() passed after 0.322 seconds.
+✔ Test deterministicScenesHaveSeparateTuningAndAcceptanceSeeds() passed after 0.327 seconds.
+✔ Test boundedMatchingDoesNotAssumeMonotonicResponse() passed after 0.327 seconds.
+✔ Test groundTruthResidualNoiseUsesItsOwnEligibleCount() passed after 0.327 seconds.
+✔ Test matchingAndDetailRegionsAreIndependent() passed after 0.328 seconds.
+✔ Test localHaloEnvelopeAndStructuralLossDetectDifferentRegressions() passed after 0.327 seconds.
+✔ Test areaAverageActuallyAveragesNoiseInsteadOfSelectingOrLanczosSampling() passed after 0.327 seconds.
+✔ Test identityRetainsExactSharedInputIncludingAlphaAndExtendedRGB() passed after 0.327 seconds.
+✔ Test neutralRGBReferenceMeetsCPUToleranceAndPreservesAlphaSeparately() passed after 0.327 seconds.
+✔ Test rec2020BridgePreservesWhiteAndSignedExtendedPrimaries() passed after 0.327 seconds.
+✔ Test knownNoiseReductionUsesBothComponentsAndCleanFixedAlpha() passed after 0.328 seconds.
+✔ Test nonneutralProductionRenderPreservesSourceProfileDepthAndFrozenOrientation(bits:p3:) with 4 test cases passed after 0.327 seconds.
+✔ Test gateRequiresMatchedEffectSeparateAcceptanceHumanApprovalAndBudgets() passed after 0.328 seconds.
+✔ Test testExposureAndTonalControlsHaveCorrectDirections() passed after 0.328 seconds.
+✔ Test originalRustParametersAndOpaquePixelsMatchWithoutFastGuidedSubstitution() passed after 0.328 seconds.
+✔ Test highDynamicRangeRevealsBothTailsWithoutFlatteningOrClipping() passed after 0.205 seconds.
+✔ Test testAllPresenceAndColorSlidersChangePixelsIndependently() passed after 0.328 seconds.
+✔ Test unchangedFixturesAndNeutralHiddenRGBPassControl() passed after 0.328 seconds.
+✔ Test areaAverageRetainsSignedConstantDataAndDoesNotReusePreviousSources() passed after 0.328 seconds.
+✔ Test balancedGradientChangesSubtlyAndLowContrastSceneGainsSeparation() passed after 0.205 seconds.
+✔ Test liftingSaturatedSubjectsDoesNotClipPreviouslyUnclippedChannels() passed after 0.205 seconds.
+✔ Test transparentMarginsDoNotBiasTheHistogram() passed after 0.226 seconds.
+✔ Test flatBlackWhiteAndAlmostFlatNoiseStayStable() passed after 0.205 seconds.
+✔ Test intermediateStrengthIsConservativeAndManualExposureFollowsAuto() passed after 0.205 seconds.
+✔ Test cancelledFixtureGenerationCannotProduceAResult() passed after 0.328 seconds.
+✔ Suite "Algorithm evaluation reference controls" passed after 0.331 seconds.
+✔ Test registryBlocksEveryAbsentReferenceAndControlsCannotClaimGo() passed after 0.331 seconds.
+✔ Suite "Edit rendering" passed after 0.331 seconds.
+✔ Test canceledAnalysisStopsBeforeWorkingOnTheBitmap() passed after 0.208 seconds.
+✔ Suite "Algorithm evaluation fixtures" passed after 0.332 seconds.
+✔ Suite "Frozen algorithm evaluation metrics and decision gates" passed after 0.332 seconds.
+✔ Test cancelledActiveAndNeutralRequestsPublishNoResult() passed after 0.331 seconds.
+✔ Test zeroAmountKeepsOriginalPixelsAndManualSettings() passed after 0.208 seconds.
+✔ Test cancelledFixtureResamplingAndMeasurementsPublishNoResult() passed after 0.339 seconds.
+✔ Test dominantDarkAndBrightScenesKeepTheOppositeTailSafe() passed after 0.218 seconds.
+✔ Test fullResolutionBeyondPreviewLimitDeclaresSRGBAndDPI() passed after 0.259 seconds.
+◇ Test orientationIsAppliedOnceAndSizingUsesOrientedDimensions() started.
+✔ Test failedRenderReleasesWorkerAndCanBeRetried() passed after 0.368 seconds.
+✔ Test cancelledGenerationCannotRemoveItsReplacementWaiter() passed after 0.369 seconds.
+✔ Test selectedRenderingOverlapsOneThumbnailWithoutExceedingTwoWorkers() passed after 0.369 seconds.
+✔ Test colorHueAlphaDimensionsAndProfileSurvive() passed after 0.246 seconds.
+✔ Test orientationIsAppliedOnceAndSizingUsesOrientedDimensions() passed after 0.014 seconds.
+◇ Test profilesConvertActualPixelsAndTransparencyBecomesWhite() started.
+✔ Test selectedEditRunsBeforeQueuedThumbnails() passed after 0.377 seconds.
+✔ Test profilesConvertActualPixelsAndTransparencyBecomesWhite() passed after 0.019 seconds.
+◇ Test savedEditsUseTheSameGraphAsThePreview() started.
+✔ Test cancelledRenderRetainsSlotAndObsoleteQueuedEditsNeverRun() passed after 0.401 seconds.
+✔ Test gradientsStayMonotoneAndDoNotAcquireNewClippedPixels() passed after 0.281 seconds.
+✔ Test sharedRenderSurvivesOneCancelledWaiter() passed after 0.414 seconds.
+✔ Suite "Adjusted preview scheduling" passed after 0.414 seconds.
+✔ Test savedEditsUseTheSameGraphAsThePreview() passed after 0.104 seconds.
+◇ Test qualityAffectsCompressionAndPixelError() started.
+✔ Test extraNoiseCannotMasqueradeAsPreservedGroundTruthEdges() passed after 0.710 seconds.
+✔ Test boundedSamplingKeepsProgressivePreviewCurvesConsistent() passed after 0.598 seconds.
+✔ Suite "Automatic tone balancing" passed after 0.722 seconds.
+✔ Test qualityAffectsCompressionAndPixelError() passed after 0.298 seconds.
+◇ Test overwriteRequiresApprovalAndNeverChangesTheOriginal() started.
+✔ Test overwriteRequiresApprovalAndNeverChangesTheOriginal() passed after 0.014 seconds.
+◇ Test protectedOriginalsRejectHardlinksSymlinksAndDirectoryAliases() started.
+✔ Test protectedOriginalsRejectHardlinksSymlinksAndDirectoryAliases() passed after 0.005 seconds.
+◇ Test invalidSourceMemoryLimitsAndCancellationLeaveDestinationIntact() started.
+✔ Test invalidSourceMemoryLimitsAndCancellationLeaveDestinationIntact() passed after 0.002 seconds.
+◇ Test concurrentIndependentExportersCannotClobberAnUnapprovedDestination() started.
+✔ Test cachedPrefixInvalidatesAcrossNoiseStrengthAutoAmountAndSourceChanges() passed after 0.739 seconds.
+◇ Test concurrentSourcesProduceIndependentResults() started.
+✔ Test concurrentSourcesProduceIndependentResults() passed after 0.100 seconds.
+◇ Test interactiveAndBackgroundPathsPreserveWideGamutAlphaAndSixteenBitOutput() started.
+✔ Test interactiveAndBackgroundPathsPreserveWideGamutAlphaAndSixteenBitOutput() passed after 0.082 seconds.
+◇ Test cancelledRenderDoesNotPoisonFollowingRequest() started.
+✔ Test concurrentIndependentExportersCannotClobberAnUnapprovedDestination() passed after 0.252 seconds.
+◇ Test cancellationAndFailureAfterEncodingPreserveDestinationAndRemoveTemporaryOutput() started.
+✔ Test cancellationAndFailureAfterEncodingPreserveDestinationAndRemoveTemporaryOutput() passed after 0.018 seconds.
+◇ Test refreshedOriginalIdentityRejectsAnAliasCreatedDuringRendering() started.
+✔ Test refreshedOriginalIdentityRejectsAnAliasCreatedDuringRendering() passed after 0.012 seconds.
+➜ Test explicitlySuppliedCameraRAWExportsAtFullSizeAndAsEditedP3() skipped.
+◇ Test delayedAcceptedImportProtectsAnOpenDialogAndOverwriteRetry(overwritePrompt:) started.
+◇ Test case passing 1 argument overwritePrompt → false to delayedAcceptedImportProtectsAnOpenDialogAndOverwriteRetry(overwritePrompt:) started.
+✔ Test cancelledRenderDoesNotPoisonFollowingRequest() passed after 0.051 seconds.
+✔ Suite "Reusable edit rendering sessions" passed after 1.124 seconds.
+◇ Test case passing 1 argument overwritePrompt → true to delayedAcceptedImportProtectsAnOpenDialogAndOverwriteRetry(overwritePrompt:) started.
+✔ Test delayedAcceptedImportProtectsAnOpenDialogAndOverwriteRetry(overwritePrompt:) with 2 test cases passed after 0.066 seconds.
+◇ Test importAcceptedAfterEncodingPreventsFinalRenameWhileScanIsPending() started.
+✔ Test importAcceptedAfterEncodingPreventsFinalRenameWhileScanIsPending() passed after 0.031 seconds.
+◇ Test currentCatalogProtectsLateOriginalsAndHardlinks(phase:hardlink:) started.
+◇ Test case passing 2 arguments phase → "before-start", hardlink → false to currentCatalogProtectsLateOriginalsAndHardlinks(phase:hardlink:) started.
+◇ Test case passing 2 arguments phase → "before-start", hardlink → true to currentCatalogProtectsLateOriginalsAndHardlinks(phase:hardlink:) started.
+◇ Test case passing 2 arguments phase → "after-render", hardlink → false to currentCatalogProtectsLateOriginalsAndHardlinks(phase:hardlink:) started.
+◇ Test case passing 2 arguments phase → "after-render", hardlink → true to currentCatalogProtectsLateOriginalsAndHardlinks(phase:hardlink:) started.
+◇ Test case passing 2 arguments phase → "after-snapshot", hardlink → false to currentCatalogProtectsLateOriginalsAndHardlinks(phase:hardlink:) started.
+◇ Test case passing 2 arguments phase → "after-snapshot", hardlink → true to currentCatalogProtectsLateOriginalsAndHardlinks(phase:hardlink:) started.
+✔ Test currentCatalogProtectsLateOriginalsAndHardlinks(phase:hardlink:) with 6 test cases passed after 0.061 seconds.
+◇ Test acceptedChangeEpochRejectsFinalPublicationEvenAfterItFinishes() started.
+✔ Test acceptedChangeEpochRejectsFinalPublicationEvenAfterItFinishes() passed after 0.017 seconds.
+◇ Test freshRecoveryProtectionAndUnavailableStateStopAnAlreadyRenderingExport(unavailable:) started.
+◇ Test case passing 1 argument unavailable → false to freshRecoveryProtectionAndUnavailableStateStopAnAlreadyRenderingExport(unavailable:) started.
+◇ Test case passing 1 argument unavailable → true to freshRecoveryProtectionAndUnavailableStateStopAnAlreadyRenderingExport(unavailable:) started.
+✔ Test freshRecoveryProtectionAndUnavailableStateStopAnAlreadyRenderingExport(unavailable:) with 2 test cases passed after 0.023 seconds.
+✔ Suite "JPEG export" passed after 1.307 seconds.
+✔ Test splitSeedsChangeNoiseButNeverGroundTruthOrSupport() passed after 1.339 seconds.
+✔ Suite "LC-06 independent noise and detail measurements" passed after 1.340 seconds.
+✔ Test sourceAndParameterChangesAreIndependentAndDeterministic() passed after 2.024 seconds.
+✔ Suite "Lightcraft isolated denoise reference" passed after 2.025 seconds.
+✔ Test run with 90 tests in 10 suites passed after 2.025 seconds.

@@ -1,0 +1,190 @@
+{
+  "schemaVersion": 1,
+  "protocolID": "LC06-denoise-v1",
+  "sourceCommit": "f9b0c8c8a12c8fa17b7afb5baa00f9ee1bbd7b15",
+  "qualityWidth": 256,
+  "qualityHeight": 160,
+  "directions": [
+    {
+      "id": "luminance-20",
+      "control": "luminance",
+      "value": 20,
+      "primary": true
+    },
+    {
+      "id": "luminance-60",
+      "control": "luminance",
+      "value": 60,
+      "primary": true
+    },
+    {
+      "id": "luminance-100",
+      "control": "luminance",
+      "value": 100,
+      "primary": false
+    },
+    {
+      "id": "chroma-20",
+      "control": "chroma",
+      "value": 20,
+      "primary": true
+    },
+    {
+      "id": "chroma-60",
+      "control": "chroma",
+      "value": 60,
+      "primary": true
+    },
+    {
+      "id": "chroma-100",
+      "control": "chroma",
+      "value": 100,
+      "primary": false
+    }
+  ],
+  "matching": {
+    "sceneClasses": [
+      "flat-dark",
+      "flat-bright",
+      "dark-edges",
+      "fine-lines",
+      "color-lines",
+      "texture",
+      "transparency",
+      "p3-dark"
+    ],
+    "minimumAbsoluteTarget": 0.0002,
+    "maximumAbsoluteDeltaError": 1e-05,
+    "maximumRelativeDeltaError": 0.05,
+    "coarseSteps": 33,
+    "refinementSteps": 17,
+    "candidateMinimum": 0,
+    "candidateMaximum": 100,
+    "metric": "Positive reduction = 1 - output RMSE / noisy-input RMSE against clean truth in fixed flat ROI; per-control linear luminance or two-channel opponent chroma. Same positive sign, minimum target, tolerance relative to reduction; freeze tuning before independent noise-seed acceptance."
+  },
+  "primary": {
+    "sceneClasses": [
+      "dark-edges",
+      "fine-lines",
+      "color-lines",
+      "texture"
+    ],
+    "minimumRelativeImprovement": 0.1,
+    "metrics": {
+      "detail_rgb_rmse": {
+        "baselineFloor": 1e-05,
+        "maximumPerCaseRelativeRegression": 0.1,
+        "maximumPerCaseAbsoluteRegression": 1e-05
+      },
+      "edge_gradient_rmse": {
+        "baselineFloor": 1e-05,
+        "maximumPerCaseRelativeRegression": 0.1,
+        "maximumPerCaseAbsoluteRegression": 1e-05
+      }
+    },
+    "rule": "Equal scene/amount weights per control. Both informative input-ground-truth detail/edge errors improve >=10%; below-floor baseline must remain below floor. Per-case regression <=max(absolute guard, relative guard*baseline). Missing support/matching or no informative target blocks acceptance."
+  },
+  "criticalLimits": {
+    "lumaDriftMeanIncrease": 0.005,
+    "chromaFringingIncrease": 0.005,
+    "gamutFractionIncrease": 0.02,
+    "clippingFractionIncrease": 0.02,
+    "alphaError": 0.001
+  },
+  "contracts": {
+    "neutralValues": [
+      0,
+      1
+    ],
+    "alphaTolerance": 0.001,
+    "zeroIdentity": "Control zero preserves canonical noisy input hash exactly, including signed RGB; hidden RGB canonical zero. Finite output required."
+  },
+  "fixedUnexposedParameters": {
+    "nr_detail": 50,
+    "nr_color_detail": 50,
+    "nr_color_smoothness": 50,
+    "nr_contrast": "not evaluated; unused upstream"
+  },
+  "performanceSceneClass": "texture",
+  "performanceBudgets": {
+    "maximumColdLatencyRatio": 1.25,
+    "maximumWarmLatencyRatio": 1.2,
+    "maximumPeakRSSRatio": 1.25,
+    "sizes": [
+      [
+        512,
+        320
+      ],
+      [
+        2400,
+        1600
+      ],
+      [
+        4096,
+        2731
+      ],
+      [
+        4608,
+        3072
+      ]
+    ],
+    "minimumColdProcesses": 5,
+    "minimumWarmSamplesPerProcess": 5
+  },
+  "scaling": {
+    "sceneClass": "texture",
+    "nativeSize": [
+      4608,
+      3072
+    ],
+    "previewSizes": [
+      [
+        512,
+        341
+      ],
+      [
+        2400,
+        1600
+      ],
+      [
+        4096,
+        2731
+      ]
+    ],
+    "variants": [
+      "nativePixels",
+      "unscaled",
+      "picedit"
+    ],
+    "inputSampling": "areaAveraged",
+    "distanceMetrics": {
+      "luminance": "distance_luma_rmse",
+      "chroma": "distance_chroma_rmse"
+    },
+    "minimumRelativeImprovement": 0.1,
+    "distanceFloor": 1e-06,
+    "maximumDistance": 0.002,
+    "minimumNoiseReduction": 0.0002,
+    "maximumNoiseReductionAbsoluteError": 0.02,
+    "maximumNoiseReductionRelativeError": 0.1,
+    "maximumQualityAbsoluteRegression": 0.001,
+    "maximumQualityRelativeRegression": 0.1,
+    "qualityMetrics": [
+      "detail_rgb_rmse",
+      "edge_gradient_rmse",
+      "chroma_fringing_rmse"
+    ],
+    "rule": "Independent scaling factor on the same frozen Lightcraft formula/amount: nativePixels vs unscaled. Each control mean distance to area-downsampled native output improves >=10%, all rows stay <=.002 linear opponent/luminance units. Candidate residual reduction agrees with downsampled native reduction; quality guards relative to downsampled native against correctly area-averaged clean truth. PicEdit is a separate diagnostic, not a donor of matching or Go. These guards are engineering limits, not empirical perceptual thresholds."
+  },
+  "requiredMissingUntilMeasured": [
+    "Licensed real dark/bright RAW-developed photo rasters and source-regression originals (#1129/#815)",
+    "Blinded visual acceptance",
+    "Production process/version, explicit source/native geometry and decoder resampling provenance, cache/undo/cancellation and preview/export integration",
+    "Accelerated path parity if an integrated CI/Metal candidate is proposed"
+  ],
+  "decisionOrder": [
+    "Verified independent contracts, matched critical/performance failure or complete informative primary failure yields no-go per control.",
+    "Missing data/support/matching and real/visual/integration evidence block Go; no informative primary signal is blocked, never a false no-go.",
+    "Scaling has its own complete native/preview matrix and gates; no acceptance inherited from either formula."
+  ]
+}

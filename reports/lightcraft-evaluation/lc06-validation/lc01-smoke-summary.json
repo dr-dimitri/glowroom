@@ -1,0 +1,38 @@
+{
+  "candidate_decision": "blocked",
+  "candidates": [
+    {
+      "candidateID": "LC-03",
+      "reasons": [
+        "The LC-03 adapter is implemented; use --candidate LC-03 with lc03-manifest.json for its specialized matched-effect comparison"
+      ],
+      "status": "blocked"
+    },
+    {
+      "candidateID": "LC-04",
+      "reasons": [
+        "The LC-04 adapter is implemented; use --candidate LC-04 with lc04-manifest.json for the specialized per-control matched-effect comparison"
+      ],
+      "status": "blocked"
+    },
+    {
+      "candidateID": "LC-05",
+      "reasons": [
+        "The LC-05 adapter is implemented; use --candidate LC-05 with lc05-manifest.json for separate matched-chroma vibrance/saturation decisions"
+      ],
+      "status": "blocked"
+    },
+    {
+      "candidateID": "LC-06",
+      "reasons": [
+        "The LC-06 adapter is implemented; use --candidate LC-06 with lc06-manifest.json for separate matched-noise luminance/chroma/scaling decisions"
+      ],
+      "status": "blocked"
+    }
+  ],
+  "control_failures": [],
+  "manifest_sha256": "f07176a58dfcf56f1d7570027dc8ae146ff28b9dbdb34255f785389001e25504",
+  "reason": "LC-03 through LC-06 use their specialized --candidate comparisons. Generic controls do not establish algorithm acceptance.",
+  "schema_version": 1,
+  "record_count": 126
+}

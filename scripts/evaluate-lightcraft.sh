@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
-[[ $# -ge 1 ]] || { echo "Usage: $0 NEW_OUTPUT_DIRECTORY [--candidate LC-01|LC-03|LC-04|LC-05] [--real-manifest PATH]" >&2; exit 2; }
+[[ $# -ge 1 ]] || { echo "Usage: $0 NEW_OUTPUT_DIRECTORY [--candidate LC-01|LC-03|LC-04|LC-05|LC-06] [--real-manifest PATH]" >&2; exit 2; }
 OUTPUT="$1"
 shift
 [[ ! -e "$OUTPUT" ]] || { echo "Output directory already exists: $OUTPUT" >&2; exit 2; }
