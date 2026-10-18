@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 import PicEditCore
 import Testing
@@ -382,17 +383,34 @@ final class SemanticLibraryTests {
         try repository.save(LibraryCatalog(folders: [a,b], assets: photos))
         let service = SemanticLibraryFake(blocked: blocked)
         let model = LibraryModel(repository: repository, semanticSearch: service)
+        let readiness = TestStateSignal(SemanticFixtureReadiness(ready: false, detail: "awaiting model publishers"))
+        let observation = Publishers.CombineLatest4(model.$isLoading, model.$isProjecting,
+                                                    model.$semanticState, model.$semanticScopeIsReady)
+            .sink { loading, projecting, semantic, scopeReady in
+                readiness.update { $0 = SemanticFixtureReadiness(
+                    ready: !loading && !projecting && (!opensControls || (semantic.version == 1 && scopeReady)),
+                    detail: "loading=\(loading), projecting=\(projecting), version=\(semantic.version), scopeReady=\(scopeReady)") }
+            }
+        defer { observation.cancel() }
         model.semanticControlsExpanded = opensControls
-        try await wait { !model.isLoading && !model.isProjecting && (!opensControls || (model.semanticState.version == 1 && model.semanticScopeIsReady)) }
+        try await readiness.wait("semantic library fixture ready", timeout: .seconds(5), until: { $0.ready })
         return (model, service, [a,b], photos)
     }
     private func wait(_ condition: @escaping @MainActor () async -> Bool) async throws {
         let deadline = ContinuousClock.now.advanced(by: .seconds(5))
         while !(await condition()) {
-            guard ContinuousClock.now < deadline else { throw SemanticEmbeddingError.providerFailure }
+            try Task.checkCancellation()
+            guard ContinuousClock.now < deadline else {
+                throw TestSchedulingTimeout(operation: "semantic library state transition", lastState: "condition remains false")
+            }
             try await Task.sleep(for: .milliseconds(5))
         }
     }
+}
+
+private struct SemanticFixtureReadiness: Sendable {
+    let ready: Bool
+    let detail: String
 }
 
 private actor SemanticLibraryFake: SemanticSearchServing {

@@ -140,6 +140,8 @@ swift build
 ./scripts/test-build-app.sh
 ```
 
+Die [Scheduling-Testdokumentation](docs/TEST-SCHEDULING.md) beschreibt suspendierende Fake-Gates, den Erhalt von Workerplätzen bei Abbruch und die Kontrollprobe für blockierende gegenüber suspendierenden Testworkern. Die vollständige Suite bleibt standardmäßig parallel.
+
 Mit einer vollständigen, normal eingerichteten Xcode-Installation ist alternativ `swift test` möglich. Optional setzt `PICEDIT_TEST_BUILD_PATH` ein separates Build-Verzeichnis für die Pakettests.
 
 Vorschau-Smoke-Test und Editing-/Library-Benchmarks kompilieren ihre isolierten Einstiegspunkte innerhalb des echten SwiftPM-App-Targets, einschließlich aller Abhängigkeiten und Ressourcen. Ihre Release-Caches liegen unter `.build-app/developer-tools/<Werkzeug>`; `PICEDIT_DEVELOPER_BUILD_PATH` und `PICEDIT_BUILD_JOBS` erlauben eigene Build-Verzeichnisse und begrenzte Parallelität. Unabhängige Builds benötigen getrennte Verzeichnisse; Vergleichsmessungen nacheinander ausführen. App-Build und reguläres Testskript entfernen eine geerbte `PICEDIT_DEVELOPER_TOOL`-Auswahl, damit keine Benchmark-App veröffentlicht wird.

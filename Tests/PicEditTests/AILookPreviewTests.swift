@@ -196,13 +196,19 @@ struct AILookPreviewTests {
         let source = try lookFixture(width: 64, height: 32)
         let decodes = LookDecodeProbe(source)
         let images = ImagePreviewPipeline(concurrencyLimit: 1, decoder: { decodes.decode($0) })
-        let probe = LookRenderProbe(blocking: true)
-        defer { probe.release() }
+        let probe = LookRenderProbe()
+        let release = TestAsyncLatch()
+        defer { release.releaseAll() }
         let renders = AdjustedPreviewPipeline(maximumConcurrentRenders: 1,
-                                              renderer: { try probe.render($0, settings: $1) })
+            asyncRenderer: { source, settings, priority in
+                let result = try probe.render(source, settings: settings, priority: priority)
+                await release.wait()
+                return result
+            })
         let store = AILookCardStore(imagePipeline: images, renderPipeline: renders, observesMemoryPressure: false)
+        defer { store.clear() }
         store.begin(group: lookGroup(index: 0), selectedID: .natural)
-        try await lookWait { probe.count == 1 }
+        try await probe.waitForCalls(1)
         var latest = lookGroup(index: 1)
         for index in 1...20 {
             latest = lookGroup(index: index)
@@ -216,7 +222,7 @@ struct AILookPreviewTests {
         #expect(store.groupID == latest.request.id)
         #expect(store.cardCount == 0)
         #expect(probe.count == 1)
-        probe.release()
+        release.releaseAll()
         try await lookWait { store.cardCount == 3 && store.pendingIDs.isEmpty }
         #expect(store.groupID == latest.request.id)
         #expect(probe.count == 4)
@@ -231,18 +237,25 @@ struct AILookPreviewTests {
     func clearingCardsPreservesAnotherObserverOfTheSameRender() async throws {
         let source = try lookFixture(width: 64, height: 32)
         let images = ImagePreviewPipeline(decoder: { _ in source })
-        let probe = LookRenderProbe(blocking: true)
-        defer { probe.release() }
+        let probe = LookRenderProbe()
+        let release = TestAsyncLatch()
+        defer { release.releaseAll() }
         let renders = AdjustedPreviewPipeline(maximumConcurrentRenders: 1,
-                                              renderer: { try probe.render($0, settings: $1) })
+            asyncRenderer: { source, settings, priority in
+                let result = try probe.render(source, settings: settings, priority: priority)
+                await release.wait()
+                return result
+            })
         let group = lookGroup()
         let natural = try #require(group.validation.variants.first { $0.proposal.id == .natural })
         let observer = Task {
             try await renders.image(source, request: lookRequest(), settings: natural.target,
                                     maximumOutputPixelSize: 512)
         }
-        try await lookWait { probe.count == 1 }
+        defer { observer.cancel() }
+        try await probe.waitForCalls(1)
         let store = AILookCardStore(imagePipeline: images, renderPipeline: renders, observesMemoryPressure: false)
+        defer { store.clear() }
         store.begin(group: group, selectedID: .natural)
         try await lookWait { await renders.state().waiterCount == 4 }
         store.clear()
@@ -250,7 +263,7 @@ struct AILookPreviewTests {
             let state = await renders.state()
             return state.waiterCount == 1 && state.queuedCount == 0
         }
-        probe.release()
+        release.releaseAll()
         _ = try await observer.value
         #expect(probe.count == 1)
         #expect(store.cardCount == 0)
@@ -260,17 +273,23 @@ struct AILookPreviewTests {
     func memoryPressureDuringRenderingCannotPublishTheLateCard() async throws {
         let source = try lookFixture(width: 64, height: 32)
         let images = ImagePreviewPipeline(decoder: { _ in source })
-        let probe = LookRenderProbe(blocking: true)
-        defer { probe.release() }
+        let probe = LookRenderProbe()
+        let release = TestAsyncLatch()
+        defer { release.releaseAll() }
         let renders = AdjustedPreviewPipeline(maximumConcurrentRenders: 1,
-                                              renderer: { try probe.render($0, settings: $1) })
+            asyncRenderer: { source, settings, priority in
+                let result = try probe.render(source, settings: settings, priority: priority)
+                await release.wait()
+                return result
+            })
         let store = AILookCardStore(imagePipeline: images, renderPipeline: renders, observesMemoryPressure: false)
+        defer { store.clear() }
         store.begin(group: lookGroup(), selectedID: .natural)
-        try await lookWait { probe.count == 1 }
+        try await probe.waitForCalls(1)
         store.handleMemoryPressure()
         try await lookWait { await renders.state().waiterCount == 0 }
         #expect(await renders.state().runningBackground == 1)
-        probe.release()
+        release.releaseAll()
         try await lookWait { await renders.state().runningBackground == 0 }
         #expect(store.cardCount == 0)
         #expect(store.pendingIDs.isEmpty)
@@ -441,33 +460,23 @@ private final class LookRenderProbe: @unchecked Sendable {
     private let lock = NSLock()
     private var inputs: [[Int]] = []
     private var priorities: [PreviewPriority] = []
-    private var blocked: Bool
-    private var gates: [DispatchSemaphore] = []
+    private let calls = TestStateSignal(0)
     private let actualRendering: Bool
-    init(blocking: Bool = false, actualRendering: Bool = false) {
-        blocked = blocking
+    init(actualRendering: Bool = false) {
         self.actualRendering = actualRendering
     }
     var count: Int { lock.lock(); defer { lock.unlock() }; return inputs.count }
     var sizes: [[Int]] { lock.lock(); defer { lock.unlock() }; return inputs }
     var backgroundCount: Int { lock.lock(); defer { lock.unlock() }; return priorities.filter { $0 == .thumbnail }.count }
-    func release() {
-        lock.lock()
-        blocked = false
-        let current = gates
-        gates.removeAll()
-        lock.unlock()
-        for gate in current { gate.signal() }
+    func waitForCalls(_ count: Int) async throws {
+        try await calls.wait("look renderer started", timeout: .seconds(15), until: { $0 >= count })
     }
     func render(_ source: PreviewBitmap, settings: EditSettings, priority: PreviewPriority = .selected) throws -> PreviewBitmap {
-        let gate = DispatchSemaphore(value: 0)
         lock.lock()
         inputs.append([source.image.width, source.image.height])
         priorities.append(priority)
-        let shouldBlock = blocked
-        if shouldBlock { gates.append(gate) }
         lock.unlock()
-        if shouldBlock, gate.wait(timeout: .now() + 15) == .timedOut { throw LookTestError.timeout }
+        calls.update { $0 += 1 }
         return actualRendering ? try EditRenderer.render(source, settings: settings, priority: priority) : source
     }
 }
