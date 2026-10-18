@@ -81,6 +81,73 @@ struct PhotoMetadataModelTests {
         #expect(await f.store.searchReads > 0)
     }
 
+    @Test(arguments: [false, true])
+    func initialRecordReadOutlivesInheritedCatalogAdmissionWithoutNeedingRetry(foreignGate: Bool) async throws {
+        let gate = CatalogLifecycleGate(requiresRecovery: false)
+        let inheritedGate = foreignGate ? CatalogLifecycleGate(requiresRecovery: false) : gate
+        let saved = metadataRecord("a", title: "Nach Neustart bestätigt", tags: ["Landschaft", "Test"], revision: 1)
+        let store = MetadataUIStore(readGate: gate, records: ["a": saved])
+        await store.setReadsBlocked(true)
+        let f = try await admittedFixture(store: store, lifecycle: gate, inheritedGate: inheritedGate)
+
+        // The Task was created under catalog authority, but repository access is
+        // deliberately delayed until that accepted operation has fully returned.
+        try await wait { await store.pendingLoadIDs.count == 1 }
+        await store.completeLoad(try #require(await store.pendingLoadIDs.first), value: saved)
+        try await wait { !f.model.isLoading }
+        #expect(f.model.errorMessage == nil)
+        #expect(f.model.canEditManual)
+        #expect(f.model.record == saved)
+        let initiallyLoaded = f.model.record
+
+        await store.setReadsBlocked(false)
+        f.model.retryLoading()
+        try await wait { !f.model.isLoading }
+        #expect(f.model.errorMessage == nil)
+        #expect(f.model.record == saved)
+        #expect(f.model.record == initiallyLoaded, "Initial loading must agree with a user-initiated reload")
+    }
+
+    @Test(arguments: [false, true])
+    func initialSearchReadWithoutSelectionOutlivesInheritedCatalogAdmission(foreignGate: Bool) async throws {
+        let gate = CatalogLifecycleGate(requiresRecovery: false)
+        let inheritedGate = foreignGate ? CatalogLifecycleGate(requiresRecovery: false) : gate
+        let store = MetadataUIStore(readGate: gate)
+        await store.setReadsBlocked(true)
+        let f = try await admittedFixture(store: store, selected: false, lifecycle: gate, inheritedGate: inheritedGate)
+
+        try await wait { await store.hasBlockedSearch }
+        await store.releaseSearchRead()
+        try await wait { f.model.canManage || f.model.errorMessage != nil }
+        #expect(f.model.canManage)
+        #expect(f.model.errorMessage == nil)
+
+        f.model.retryLoading()
+        try await wait { f.model.canManage || f.model.errorMessage != nil }
+        #expect(f.model.canManage)
+        #expect(f.model.errorMessage == nil)
+        #expect(await store.searchReads == 2)
+    }
+
+    @Test func independentRecordReadStillHonorsActiveMaintenanceAndCanRetryAfterIt() async throws {
+        let gate = CatalogLifecycleGate(requiresRecovery: false)
+        let saved = metadataRecord("a", title: "Geschützter Datensatz", revision: 1)
+        let store = MetadataUIStore(readGate: gate, records: ["a": saved])
+        let maintenance = try await gate.beginMaintenance(.backup(UUID()))
+        let f = fixture(store: store, lifecycle: gate)
+        try await wait { !f.model.isLoading }
+        #expect(f.model.errorMessage != nil)
+        #expect(f.model.record == nil)
+        #expect(!f.model.canEditManual)
+
+        try await gate.finishMaintenance(maintenance)
+        f.model.retryLoading()
+        try await wait { !f.model.isLoading }
+        #expect(f.model.errorMessage == nil)
+        #expect(f.model.canEditManual)
+        #expect(f.model.record == saved)
+    }
+
     @Test func manualMetadataWorksWithoutVisionAndOnlySelectedFieldsAreConfirmed() async throws {
         let f = fixture()
         await f.suggestor.setUnavailable()
@@ -598,6 +665,14 @@ struct PhotoMetadataModelTests {
             selectAsset: { if context.value?.assetID != $0 { context.value = metadataContext($0, selection: 100) } })
         return MetadataUIFixture(model: model, store: store, suggestor: suggestor, context: context)
     }
+    private func admittedFixture(store: MetadataUIStore, selected: Bool = true, lifecycle: CatalogLifecycleGate,
+                                 inheritedGate: CatalogLifecycleGate) async throws -> MetadataUIFixture {
+        let session = try await inheritedGate.waitForStartup()
+        let admission = try inheritedGate.registerAcceptedWrite(domain: .catalog, session: session)
+        return try await inheritedGate.withAcceptedWrite(admission) {
+            await MainActor.run { fixture(store: store, selected: selected, lifecycle: lifecycle) }
+        }
+    }
     private func wait(_ condition: @escaping @MainActor () async -> Bool) async throws {
         let deadline = ContinuousClock.now.advanced(by: .seconds(5))
         while !(await condition()) {
@@ -622,9 +697,9 @@ private func metadataContext(_ id: String, selection: UInt64 = 1, modified: Time
         catalogSessionID: UUID(uuidString: "22222222-2222-2222-2222-222222222222")!, catalogGeneration: catalog,
         canModify: canModify, isClosing: false)
 }
-private func metadataRecord(_ id: String, title: String = "", revision: Int64 = 0) -> PhotoMetadataRecord {
+private func metadataRecord(_ id: String, title: String = "", tags: [String] = [], revision: Int64 = 0) -> PhotoMetadataRecord {
     PhotoMetadataRecord(assetID: id, version: MetadataRecordVersion(recordRevision: revision, confirmedRevision: revision),
-        confirmed: PhotoTextFields(title: title), confirmedProvenance: MetadataConfirmedProvenance(), isOrphaned: false, sourceChanged: false)
+        confirmed: PhotoTextFields(title: title, tags: tags), confirmedProvenance: MetadataConfirmedProvenance(), isOrphaned: false, sourceChanged: false)
 }
 
 private actor MetadataUISuggestor: PhotoMetadataSuggesting {
@@ -663,12 +738,20 @@ private actor MetadataUIStore: PhotoMetadataStoring {
     private var nextRead = 0
     private var loads: [Int: CheckedContinuation<PhotoMetadataRecord?, Error>] = [:]
     private var blockedWrite: CheckedContinuation<Void, Never>?
+    private let readGate: CatalogLifecycleGate?
+    private var blockedSearch: CheckedContinuation<Void, Never>?
+    init(readGate: CatalogLifecycleGate? = nil, records: [String: PhotoMetadataRecord] = [:]) {
+        self.readGate = readGate
+        self.records = records
+    }
     var pendingLoadIDs: [Int] { loads.keys.sorted() }
     var hasBlockedWrite: Bool { blockedWrite != nil }
+    var hasBlockedSearch: Bool { blockedSearch != nil }
     func setReadsBlocked(_ value: Bool) { readsBlocked = value }
     func setWritesBlocked(_ value: Bool) { writesBlocked = value }
     func failNextConfirmation() { confirmationFails = true }
     func completeLoad(_ id: Int, value: PhotoMetadataRecord?) { loads.removeValue(forKey: id)?.resume(returning: value) }
+    func releaseSearchRead() { readsBlocked = false; blockedSearch?.resume(); blockedSearch = nil }
     func releaseWrite(keepingBlocked: Bool = false) { writesBlocked = keepingBlocked; blockedWrite?.resume(); blockedWrite = nil }
     func markDraftOutdated(assetID: String) {
         guard let old = records[assetID], let draft = old.draft else { return }
@@ -681,12 +764,21 @@ private actor MetadataUIStore: PhotoMetadataStoring {
                 fields: draft.fields, source: draft.source, state: .outdated, createdAt: draft.createdAt, modifiedAt: Date()),
             manualDraft: old.manualDraft, isOrphaned: false, sourceChanged: true)
     }
-    func searchState() -> PhotoMetadataSearchState { searchReads += 1; return .available(.empty) }
+    func searchState() async -> PhotoMetadataSearchState {
+        searchReads += 1
+        if readsBlocked { await withCheckedContinuation { blockedSearch = $0 } }
+        guard let readGate else { return .available(.empty) }
+        do { return try await readGate.withRepositoryAccess(domain: .photoMetadata) { .available(.empty) } }
+        catch { return .unavailable(version: .initial, reason: .storageFailure) }
+    }
     func updates() -> AsyncStream<PhotoMetadataSearchState> { AsyncStream { $0.finish() } }
     func record(assetID: String) async throws -> PhotoMetadataRecord? {
         nextRead += 1
-        if readsBlocked { let id = nextRead; return try await withCheckedThrowingContinuation { loads[id] = $0 } }
-        return records[assetID]
+        let value: PhotoMetadataRecord?
+        if readsBlocked { let id = nextRead; value = try await withCheckedThrowingContinuation { loads[id] = $0 } }
+        else { value = records[assetID] }
+        guard let readGate else { return value }
+        return try await readGate.withRepositoryAccess(domain: .photoMetadata) { value }
     }
     private func base(_ header: MetadataCommandHeader) throws -> PhotoMetadataRecord {
         let value = records[header.assetID] ?? metadataRecord(header.assetID)
