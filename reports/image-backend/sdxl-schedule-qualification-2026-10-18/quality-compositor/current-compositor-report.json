@@ -1,0 +1,42 @@
+{
+  "cases" : [
+    {
+      "alphaPolicy" : "Model candidate alpha (opaque RGB input/output)",
+      "caseID" : "05-fine-motif-edges-hard",
+      "comparisonFile" : "05-fine-motif-edges-hard/current-comparison.png",
+      "finalPNGFileSHA256" : "2b8932f59a4fa0186ab56cb23a0a239e7d2fb6bef38cfb37e57ce6cff0ed2826",
+      "finalRGBA8SHA256" : "9f62c086badb12c78c0c33fcf94906fb09bff995dfa56bd3ff6dad9f06198e5f",
+      "height" : 512,
+      "inputFileSHA256" : {
+        "raw.png" : "59bf6224800bee2ff8f7ce07b4dcd072762433c9e649afe9d67cdea448361381",
+        "replace-mask.png" : "26a0c86703ceff7901679361426ac3620c1d0eee2bc43037b783c0ef17eb4d2c",
+        "source.png" : "dbe6a67f1fb95efad1be090cea085d9f9ca8f2afb47f5c6473671694d91208a7"
+      },
+      "maskCanonicalSHA256" : "09632b0dd2ccb248015141c5a323014312acef20d75983821b7530628a4990a6",
+      "normalizedCandidateRGBA8SHA256" : "90eda85d71592876937d19e7c60eacfa92f6955262f0efeefc7c8daf5bc6f8b6",
+      "normalizedSourceRGBA8SHA256" : "a9771ae6fec5e00a38fcb1340467c7560abe96ba45940840829fc53e38fae4ac",
+      "outputAlpha" : "straight RGBA8",
+      "outputProfile" : "sRGB",
+      "outsidePixelsChecked" : 9357,
+      "outsideRGBABytesChanged" : 0,
+      "pngRoundTripIdentical" : true,
+      "qualitativeReview" : "pending-manual-review-current-compositor",
+      "sourceAlphaBytesChanged" : 0,
+      "width" : 512
+    }
+  ],
+  "compositor" : "MaskCompositor.compose backend=.cpu",
+  "compositorParameters" : {
+    "blending" : "Current linear-light, premultiplied-alpha product compositor; straight RGBA8 sRGB output",
+    "geometry" : "Native dimensions; no resize, crop, orientation transform or context-color correction",
+    "mask" : "Original Gray8; zero preserves, 255 replaces; no threshold or feather changes",
+    "outsidePreservation" : "Every canonical RGBA byte at mask=0 must equal canonical source exactly"
+  },
+  "compositorSourceSHA256" : "13aac4d34d8a56a269e64996a155998790ab8cf695ccf474bc830a7c2e5efc00",
+  "createdAt" : "2026-10-18T19:26:51Z",
+  "inference" : "No inference performed by replay; raw.png bytes copied unchanged from the supplied artifacts root",
+  "normalization" : "ImageIO decode; row padding/unused lanes removed; RGB sources receive alpha=255; declared historical untagged values interpreted as sRGB; encoded channels are not color-converted; premultiplied decode buffers are explicitly unassociated",
+  "purpose" : "Current product compositor replay of existing real-model outputs; original generation times kept separately; manual quality judgment required",
+  "qualitativeReview" : "pending-manual-review-current-compositor; replay does not grant a backend capability",
+  "schemaVersion" : 1
+}

@@ -28,6 +28,8 @@ def fixture(root, mode="success"):
                        "sdk_name_regression.cpp": b"fixture name regression source\n",
                        "sdk-sdxl-mask.patch": b"fixture SDXL mask variant patch\n",
                        "sdxl_mask_regression.cpp": b"fixture SDXL mask regression source\n",
+                       "sdxl_reference_schedule.h": b"fixture SDXL reference schedule\n",
+                       "sdxl_schedule_regression.cpp": b"fixture SDXL schedule regression\n",
                        "ggml-metal-group-norm.patch": b"fixture GGML Metal correction patch\n",
                        "ggml_group_norm_regression.cpp": b"fixture group normalization regression source\n"}
     for name, data in source_payloads.items():
@@ -78,6 +80,10 @@ def fixture(root, mode="success"):
               "sdkMaskFixtureSHA256": CONVERTER.MASK_FIXTURE_SHA256,
               "sdkMaskBaselineReproduced": True, "sdkMaskRegressionPassed": True,
               "sdxlMaskInterpolation": "nearest-v1",
+              "sdkScheduleSourceSHA256": hashlib.sha256(source_payloads["sdxl_reference_schedule.h"]).hexdigest(),
+              "sdkScheduleRegressionSourceSHA256": hashlib.sha256(source_payloads["sdxl_schedule_regression.cpp"]).hexdigest(),
+              "sdkScheduleBaselineReproduced": True, "sdkScheduleRegressionPassed": True,
+              "sdxlSchedule": "euler-leading-strength099-v1",
               "ggmlPatchSHA256": hashlib.sha256(source_payloads["ggml-metal-group-norm.patch"]).hexdigest(),
               "metalGroupNormRegressionSourceSHA256": hashlib.sha256(source_payloads["ggml_group_norm_regression.cpp"]).hexdigest(),
               "metalGroupNormBaselineReproduced": True,
@@ -88,6 +94,39 @@ def fixture(root, mode="success"):
 
 
 class ConversionTests(unittest.TestCase):
+    def test_reference_schedule_provenance_is_required_before_helper_start(self):
+        changes = [
+            ("sdkScheduleSourceSHA256", None), ("sdkScheduleSourceSHA256", "changed"),
+            ("sdkScheduleRegressionSourceSHA256", None), ("sdkScheduleRegressionSourceSHA256", "changed"),
+            ("sdkScheduleBaselineReproduced", None), ("sdkScheduleBaselineReproduced", False),
+            ("sdkScheduleRegressionPassed", None), ("sdkScheduleRegressionPassed", False),
+            ("sdxlSchedule", None), ("sdxlSchedule", "discrete"),
+            ("header-source", b"mutated schedule\n"), ("regression-source", b"mutated regression\n"),
+        ]
+        for field, value in changes:
+            with self.subTest(field=field, value=value), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory) / "evaluation"
+                package = fixture(root)
+                path = root / "native-installation.json"
+                native = json.loads(path.read_text())
+                if field == "header-source":
+                    (root / "fixture-tools/sdxl_reference_schedule.h").write_bytes(value)
+                elif field == "regression-source":
+                    (root / "fixture-tools/sdxl_schedule_regression.cpp").write_bytes(value)
+                elif value is None:
+                    del native[field]
+                else:
+                    native[field] = value
+                path.write_text(json.dumps(native))
+                with patch.object(CONVERTER, "TOOLS", root / "fixture-tools"), \
+                        patch.object(CONVERTER.PREPARATION, "load_package", return_value=package), \
+                        patch.object(CONVERTER.subprocess, "Popen", side_effect=AssertionError("process")):
+                    with self.assertRaisesRegex(CONVERTER.PreparationError, "reference schedule or CPU regression"):
+                        CONVERTER.convert(root)
+                self.assertFalse((root / "conversion-events.jsonl").exists())
+                self.assertFalse((root / "conversion.json").exists())
+                self.assertFalse((root / ".sdxl-conversion.lock").exists())
+
     def test_mask_variant_and_cpu_baseline_evidence_are_required_before_helper_start(self):
         changes = [
             ("sdkMaskPatchSHA256", None), ("sdkMaskPatchSHA256", "changed"),

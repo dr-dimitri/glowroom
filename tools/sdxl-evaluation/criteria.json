@@ -22,7 +22,8 @@
     "guidanceScale": 8,
     "strength": 0.99,
     "sampler": "Euler",
-    "scheduler": "discrete"
+    "scheduler": "Euler leading, steps_offset=1; 20 configured steps, strength0.99 selects19 steps at timesteps901,851,...,1; terminal sigma0",
+    "effectiveSteps": 19
   },
   "conversion": "Q8_0 own pinned SDK conversion; VAE F32 is an explicit conservative candidate setting, not an upstream requirement",
   "requiredRemovalCases": [
@@ -46,7 +47,7 @@
     "scope": "Diffusers second encoder prefix normalization before generic te prefix; no forced model version or tensor architecture change"
   },
   "executionVariant": {
-    "name": "V9 SDXL nearest mask conditioning; otherwise V8 settings",
+    "name": "V10 pinned Euler leading schedule; otherwise V9 settings",
     "diagnosticOnly": false,
     "backend": "metal,te=cpu,vae=metal",
     "paramsBackend": "diffusion=metal,te=disk,vae=metal",
@@ -61,7 +62,8 @@
     "precision": "same converted mixed types; no claim of all-F32 execution",
     "limitsUnchanged": true,
     "numericCallbacks": false,
-    "latentMaskInterpolation": "nearest-v1; SDXL Inpaint only; all other model types retain NearestMax"
+    "latentMaskInterpolation": "nearest-v1; SDXL Inpaint only; all other model types retain NearestMax",
+    "schedule": "euler-leading-strength099-v1; explicit public custom_sigmas; original SDK unchanged"
   },
   "ggmlDelta": {
     "file": "ggml-metal-group-norm.patch",
@@ -78,9 +80,11 @@
     "measurement": "cancel request to waitUntilExit confirmation; reader drain excluded; inference lease retained until actual end"
   },
   "qualificationExperiment": {
-    "hypothesis": "NearestMax erases every protected latent cell in fixture05; nearest interpolation matches Diffusers and retains141 cells. Actual quality improvement remains to be measured.",
-    "singleChangedImageFactor": "SDXL Inpaint latent mask resize only; no change to weights, prompts, seed, steps, precision, tiling, native canvas, final native mask or denoise blending",
+    "hypothesis": "The pinned model scheduler uses leading spacing and offset1. V9 SDK discrete instead used linspace999..0 and retained20 steps at strength0.99. V10 supplies the reference-selected19-step schedule901..1 through public custom_sigmas. Quality improvement remains unproven.",
+    "singleChangedImageFactor": "Euler noise schedule including model-declared timestep spacing and strength selection; no change to weights, prompts, seed, configured20 steps, CFG8, strength0.99, precision, tiling, nearest conditioning mask, native canvas or final native mask",
+    "ruledOutFactor": "Original-latent reinsertion is already disabled for fixture05 because SDK3x3 max pooling leaves no protected denoise-mask cell. No blend patch is applied.",
     "firstProbe": "05-fine-motif-edges-hard",
+    "decisionRule": "If mandatory first-case visual quality fails, stop this candidate; do not claim warm, preview, cancellation or product qualification. Expand to full series only if it passes.",
     "fullSeriesRequiredBeforeTechnicalGo": true,
     "productCapabilitiesRemain": "unavailable until all product-route requirements pass"
   }

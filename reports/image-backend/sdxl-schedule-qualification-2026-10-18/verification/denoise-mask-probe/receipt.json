@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "sdkRevision": "8cd731e7b4667eb8f40a153315b9a7125d09a58d",
+  "archiveSHA256": "871c4f03286360bf10b9850ce4c57912311d0d91b117d4e4be19d989a417f08b",
+  "sourceSHA256": {
+    "src/core/tensor.hpp": "9236c4122f7f247c6e5527ac287a92f57c481928c46b881e75cc76341ac65213",
+    "src/core/parallel.h": "061c593c94acc39fe0535749cbc96655ec3ba42db177903c31e75a47099c8492",
+    "src/core/parallel.cpp": "660673c2e445acce94e40ac57206b8023d16953c0a879678e316eb1b702576f6",
+    "src/core/rng.hpp": "b49bb64edc2c20299af1b6c0160b3218a1e8cbfa756aef075a04a3b9e3b423ee",
+    "thirdparty/stb_image.h": "38e08c1c5ab8869ae8d605ddaefa85ad3fea24a2964fd63a099c0c0f79c70bcc",
+    "src/pipeline/image.cpp": "14050098741fde5da0b4c1f9130fd4290f826ec13a94344555ffc773d7e77f6c",
+    "src/pipeline/diffusion_engine.cpp": "8d857beffa75230a2a585e2ceef44399df46fbbb67dc4535078ff999e2f6951c"
+  },
+  "runnerSHA256": "eb5c8bf194f28a1f9b752d7341ab1d735f2aae52c45c0d85a966fb7a1365fa9f",
+  "probeSourceSHA256": "5cbb807ab06ab6d015842e8bb96470fea2c14d5f6ad1b00cdb44181c0f0fa62a",
+  "fixtureSHA256": "26a0c86703ceff7901679361426ac3620c1d0eee2bc43037b783c0ef17eb4d2c",
+  "sourceContractPassed": true,
+  "compileCommand": [
+    "/usr/bin/clang++",
+    "-std=c++17",
+    "-O2",
+    "-I",
+    "/private/tmp/picedit-v10-denoise-mask-probe/src",
+    "-I",
+    "/private/tmp/picedit-v10-denoise-mask-probe/thirdparty",
+    "/private/tmp/picedit-v10-denoise-mask-probe/sdxl_denoise_mask_probe.cpp",
+    "/private/tmp/picedit-v10-denoise-mask-probe/src/core/parallel.cpp",
+    "-o",
+    "/private/tmp/picedit-v10-denoise-mask-probe/sdxl-denoise-mask-probe"
+  ],
+  "result": {
+    "schemaVersion": 1,
+    "test": "v9-fixture05-denoise-blend-noop",
+    "status": "pass",
+    "nativeProtectedPixels": 9357,
+    "nearestProtectedCells": 141,
+    "denoiseProtectedCellsAfterSDKMaxPool": 0,
+    "applyDenoiseMask": false,
+    "wideMaskPositiveControlProtectedCells": 36,
+    "wideMaskAppliesDenoiseMask": true,
+    "actualPinnedSDKTensorPrimitives": true,
+    "modelWeightsLoaded": false,
+    "inferenceExecuted": false,
+    "gpuContextCreated": false
+  },
+  "scope": "SDK nearest/max-pool primitives and source-matched blend selector; no full image pipeline",
+  "modelWeightsLoaded": false,
+  "inferenceExecuted": false,
+  "gpuContextCreated": false
+}

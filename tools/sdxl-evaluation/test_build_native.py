@@ -104,6 +104,7 @@ class NativeBuilderTests(unittest.TestCase):
                     mock.patch.object(BUILDER.platform, "system", return_value="Darwin"), \
                     mock.patch.object(BUILDER.platform, "machine", return_value="arm64"), \
                     mock.patch.object(BUILDER.subprocess, "check_output", return_value="/fixture/tool\n"), \
+                    mock.patch.object(BUILDER, "verify_schedule_strength_contract"), \
                     mock.patch.object(BUILDER.PREPARATION, "run_checked", side_effect=BUILDER.PreparationError("fixture failure")):
                 with self.assertRaises(BUILDER.PreparationError):
                     BUILDER.build(root, cmake=Path(__file__), source_cache=cache)
@@ -168,7 +169,8 @@ class NativeBuilderTests(unittest.TestCase):
     def test_failed_native_regression_never_publishes_helper_or_receipt(self):
         # No real compiler/GPU: fail each ordered regression boundary after
         # mocked tools. A failure must preserve inputs and deny readiness.
-        ordered = ["sdxl-mask-baseline", "metal-group-norm-baseline", "metal-group-norm-patched", "sdxl-mask-patched"]
+        ordered = ["sdxl-mask-baseline", "sdxl-schedule-baseline", "sdxl-schedule-reference",
+                   "metal-group-norm-baseline", "metal-group-norm-patched", "sdxl-mask-patched"]
         for boundary in ordered:
             with self.subTest(boundary=boundary), tempfile.TemporaryDirectory() as folder:
                 root = Path(folder) / "evaluation"; root.mkdir()
@@ -179,6 +181,10 @@ class NativeBuilderTests(unittest.TestCase):
 
                 def command(arguments, log):
                     name = Path(arguments[0]).name
+                    if name == "tool" and "-std=gnu++17" in arguments:
+                        self.assertIn("-DGGML_MAX_NAME=160", arguments)
+                    if name == "sdxl-schedule-regression":
+                        name = "sdxl-schedule-baseline" if len(arguments) == 2 else "sdxl-schedule-reference"
                     if name in ordered:
                         reached.append(name)
                     if name == boundary:
@@ -190,6 +196,7 @@ class NativeBuilderTests(unittest.TestCase):
                         mock.patch.object(BUILDER.platform, "system", return_value="Darwin"), \
                         mock.patch.object(BUILDER.platform, "machine", return_value="arm64"), \
                         mock.patch.object(BUILDER.subprocess, "check_output", return_value="/fixture/tool\n"), \
+                        mock.patch.object(BUILDER, "verify_schedule_strength_contract"), \
                         mock.patch.object(BUILDER.PREPARATION, "run_checked", side_effect=command):
                     with self.assertRaisesRegex(BUILDER.PreparationError, "fixture regression failure"):
                         BUILDER.build(root, cmake=Path(__file__), source_cache=cache)
@@ -199,6 +206,15 @@ class NativeBuilderTests(unittest.TestCase):
                 self.assertFalse((root / "native-installation.json").exists())
                 self.assertEqual(list(root.iterdir()), [])
                 self.assertEqual((cache / entry["name"]).read_bytes(), original)
+
+    def test_changed_strength_slice_is_rejected(self):
+        with tempfile.TemporaryDirectory() as folder:
+            source = Path(folder)
+            image = source / "src/pipeline/image.cpp"
+            image.parent.mkdir(parents=True)
+            image.write_text("t_enc = static_cast<size_t>(plan->sample_steps * request->strength);\n")
+            with self.assertRaisesRegex(BUILDER.PreparationError, "image-strength slicing"):
+                BUILDER.verify_schedule_strength_contract(source)
 
 
 if __name__ == "__main__":

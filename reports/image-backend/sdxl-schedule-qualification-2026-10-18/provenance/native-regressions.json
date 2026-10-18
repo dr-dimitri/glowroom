@@ -1,0 +1,384 @@
+[
+  {
+    "asymmetricCoordinateReferencePassed": true,
+    "fixture05": {
+      "actualProtectedCells": 0,
+      "baselineProtectedCells": 0,
+      "latentCells": 16384,
+      "nativeProtectedPixels": 9357
+    },
+    "gpuContextCreated": false,
+    "inferenceExecuted": false,
+    "mode": "expect-baseline-mask-loss",
+    "modelContextCreated": false,
+    "otherModelModesUnchanged": true,
+    "schemaVersion": 1,
+    "sdkBaseRevision": "8cd731e7b4667eb8f40a153315b9a7125d09a58d",
+    "status": "pass",
+    "test": "sdk-sdxl-inpaint-mask-interpolation"
+  },
+  {
+    "baselineMismatchReproduced": true,
+    "cpuBackendCreated": true,
+    "effectiveSampleSteps": 20,
+    "effectiveSigmas": [
+      14.614653587341309,
+      10.746809959411621,
+      8.081526756286621,
+      6.204939842224121,
+      4.855656147003174,
+      3.8653817176818848,
+      3.1237633228302,
+      2.5571677684783936,
+      2.1156585216522217,
+      1.7648227214813232,
+      1.4805808067321777,
+      1.2458133697509766,
+      1.0481423139572144,
+      0.878428041934967,
+      0.7297186255455017,
+      0.5964337587356567,
+      0.4735848605632782,
+      0.3555458188056946,
+      0.2321643829345703,
+      0.02918369509279728,
+      0.0
+    ],
+    "firstReconstructedTimestep": 999.0,
+    "gpuContextCreated": false,
+    "inferenceExecuted": false,
+    "mode": "expect-baseline-mismatch",
+    "modelWeightsLoaded": false,
+    "planSampleSteps": 20,
+    "schemaVersion": 1,
+    "sdkBaseRevision": "8cd731e7b4667eb8f40a153315b9a7125d09a58d",
+    "sdkEngineObjectCreated": true,
+    "sdkMetadataOnlyFakeVAECreated": true,
+    "status": "pass",
+    "strengthSliceCheck": "source-matched expression; private image preparation not executed",
+    "test": "sdk-sdxl-reference-euler-schedule",
+    "vaeEncodeExecuted": false
+  },
+  {
+    "actualSDKCustomScheduleSelectionPassed": true,
+    "cpuBackendCreated": true,
+    "doublePrecisionSigmaTolerance": 1e-05,
+    "effectiveSampleSteps": 19,
+    "effectiveSigmas": [
+      8.390686988830566,
+      6.506400108337402,
+      5.134433269500732,
+      4.116698265075684,
+      3.3477649688720703,
+      2.756196975708008,
+      2.2928547859191895,
+      1.9234442710876465,
+      1.6236929893493652,
+      1.376179575920105,
+      1.1682164669036865,
+      0.9904093146324158,
+      0.8356532454490662,
+      0.6983985900878906,
+      0.5740507245063782,
+      0.4583331346511841,
+      0.3461872935295105,
+      0.22814729809761047,
+      0.04131447896361351,
+      0.0
+    ],
+    "firstReconstructedTimestep": 900.9998779296875,
+    "gpuContextCreated": false,
+    "independentSigmaDerivationPassed": true,
+    "inferenceExecuted": false,
+    "maxSDKTimestepReconstructionError": 0.000213623046875,
+    "mode": "euler-leading-strength099-v1",
+    "modelWeightsLoaded": false,
+    "pixelwiseDiffusersEquivalenceClaimed": false,
+    "planSampleSteps": 19,
+    "schemaVersion": 1,
+    "sdkBaseRevision": "8cd731e7b4667eb8f40a153315b9a7125d09a58d",
+    "sdkEngineObjectCreated": true,
+    "sdkMetadataOnlyFakeVAECreated": true,
+    "sourceMatchedStrengthSlicePassed": true,
+    "status": "pass",
+    "strengthSliceCheck": "source-matched expression; private image preparation not executed",
+    "test": "sdk-sdxl-reference-euler-schedule",
+    "timestepTolerance": 0.002,
+    "vaeEncodeExecuted": false
+  },
+  {
+    "absoluteTolerance": 0.0001,
+    "allBatchesPassed": false,
+    "cases": [
+      {
+        "allBatchesPassed": true,
+        "batches": [
+          {
+            "allValuesFiniteAndMatched": true,
+            "cpuFinite": true,
+            "index": 0,
+            "maximumAbsoluteErrorOfFiniteValues": 2.384185791015625e-07,
+            "metalFiniteValues": 2240,
+            "metalNonfiniteValues": 0,
+            "numValues": 2240,
+            "unchangedNaNSentinelValues": 0
+          }
+        ],
+        "dimensions": [
+          7,
+          5,
+          64,
+          1
+        ],
+        "groups": 32,
+        "numValues": 2240,
+        "status": "pass"
+      },
+      {
+        "allBatchesPassed": false,
+        "batches": [
+          {
+            "allValuesFiniteAndMatched": true,
+            "cpuFinite": true,
+            "index": 0,
+            "maximumAbsoluteErrorOfFiniteValues": 2.384185791015625e-07,
+            "metalFiniteValues": 2240,
+            "metalNonfiniteValues": 0,
+            "numValues": 2240,
+            "unchangedNaNSentinelValues": 0
+          },
+          {
+            "allValuesFiniteAndMatched": false,
+            "cpuFinite": true,
+            "index": 1,
+            "maximumAbsoluteErrorOfFiniteValues": null,
+            "metalFiniteValues": 0,
+            "metalNonfiniteValues": 2240,
+            "numValues": 2240,
+            "unchangedNaNSentinelValues": 2240
+          }
+        ],
+        "dimensions": [
+          7,
+          5,
+          64,
+          2
+        ],
+        "groups": 32,
+        "numValues": 4480,
+        "status": "baseline-batch-write-bug"
+      },
+      {
+        "allBatchesPassed": false,
+        "batches": [
+          {
+            "allValuesFiniteAndMatched": true,
+            "cpuFinite": true,
+            "index": 0,
+            "maximumAbsoluteErrorOfFiniteValues": 2.384185791015625e-07,
+            "metalFiniteValues": 2240,
+            "metalNonfiniteValues": 0,
+            "numValues": 2240,
+            "unchangedNaNSentinelValues": 0
+          },
+          {
+            "allValuesFiniteAndMatched": false,
+            "cpuFinite": true,
+            "index": 1,
+            "maximumAbsoluteErrorOfFiniteValues": null,
+            "metalFiniteValues": 0,
+            "metalNonfiniteValues": 2240,
+            "numValues": 2240,
+            "unchangedNaNSentinelValues": 2240
+          },
+          {
+            "allValuesFiniteAndMatched": false,
+            "cpuFinite": true,
+            "index": 2,
+            "maximumAbsoluteErrorOfFiniteValues": null,
+            "metalFiniteValues": 0,
+            "metalNonfiniteValues": 2240,
+            "numValues": 2240,
+            "unchangedNaNSentinelValues": 2240
+          }
+        ],
+        "dimensions": [
+          7,
+          5,
+          64,
+          3
+        ],
+        "groups": 32,
+        "numValues": 6720,
+        "status": "baseline-batch-write-bug"
+      }
+    ],
+    "cpuBackend": "CPU",
+    "cpuBackendAvailable": true,
+    "expectedBaselineBugReproduced": true,
+    "ggmlBaseRevision": "d25b121ce1d6ae0c7e62ad080460d9fc1e46dd93",
+    "inferenceExecuted": false,
+    "maximumBytesPerBackendCase": 26880,
+    "maximumValuesPerBackendCase": 6720,
+    "metalBackend": "MTL0",
+    "metalBackendAvailable": true,
+    "metalDevice": "Apple M2 Pro",
+    "mode": "expect-baseline-bug",
+    "modelContextCreated": false,
+    "schemaVersion": 1,
+    "status": "pass",
+    "test": "public-ggml-metal-group-norm-batch"
+  },
+  {
+    "absoluteTolerance": 0.0001,
+    "allBatchesPassed": true,
+    "cases": [
+      {
+        "allBatchesPassed": true,
+        "batches": [
+          {
+            "allValuesFiniteAndMatched": true,
+            "cpuFinite": true,
+            "index": 0,
+            "maximumAbsoluteErrorOfFiniteValues": 2.384185791015625e-07,
+            "metalFiniteValues": 2240,
+            "metalNonfiniteValues": 0,
+            "numValues": 2240,
+            "unchangedNaNSentinelValues": 0
+          }
+        ],
+        "dimensions": [
+          7,
+          5,
+          64,
+          1
+        ],
+        "groups": 32,
+        "numValues": 2240,
+        "status": "pass"
+      },
+      {
+        "allBatchesPassed": true,
+        "batches": [
+          {
+            "allValuesFiniteAndMatched": true,
+            "cpuFinite": true,
+            "index": 0,
+            "maximumAbsoluteErrorOfFiniteValues": 2.384185791015625e-07,
+            "metalFiniteValues": 2240,
+            "metalNonfiniteValues": 0,
+            "numValues": 2240,
+            "unchangedNaNSentinelValues": 0
+          },
+          {
+            "allValuesFiniteAndMatched": true,
+            "cpuFinite": true,
+            "index": 1,
+            "maximumAbsoluteErrorOfFiniteValues": 3.5762786865234375e-07,
+            "metalFiniteValues": 2240,
+            "metalNonfiniteValues": 0,
+            "numValues": 2240,
+            "unchangedNaNSentinelValues": 0
+          }
+        ],
+        "dimensions": [
+          7,
+          5,
+          64,
+          2
+        ],
+        "groups": 32,
+        "numValues": 4480,
+        "status": "pass"
+      },
+      {
+        "allBatchesPassed": true,
+        "batches": [
+          {
+            "allValuesFiniteAndMatched": true,
+            "cpuFinite": true,
+            "index": 0,
+            "maximumAbsoluteErrorOfFiniteValues": 2.384185791015625e-07,
+            "metalFiniteValues": 2240,
+            "metalNonfiniteValues": 0,
+            "numValues": 2240,
+            "unchangedNaNSentinelValues": 0
+          },
+          {
+            "allValuesFiniteAndMatched": true,
+            "cpuFinite": true,
+            "index": 1,
+            "maximumAbsoluteErrorOfFiniteValues": 3.5762786865234375e-07,
+            "metalFiniteValues": 2240,
+            "metalNonfiniteValues": 0,
+            "numValues": 2240,
+            "unchangedNaNSentinelValues": 0
+          },
+          {
+            "allValuesFiniteAndMatched": true,
+            "cpuFinite": true,
+            "index": 2,
+            "maximumAbsoluteErrorOfFiniteValues": 3.5762786865234375e-07,
+            "metalFiniteValues": 2240,
+            "metalNonfiniteValues": 0,
+            "numValues": 2240,
+            "unchangedNaNSentinelValues": 0
+          }
+        ],
+        "dimensions": [
+          7,
+          5,
+          64,
+          3
+        ],
+        "groups": 32,
+        "numValues": 6720,
+        "status": "pass"
+      }
+    ],
+    "cpuBackend": "CPU",
+    "cpuBackendAvailable": true,
+    "expectedBaselineBugReproduced": false,
+    "ggmlBaseRevision": "d25b121ce1d6ae0c7e62ad080460d9fc1e46dd93",
+    "inferenceExecuted": false,
+    "maximumBytesPerBackendCase": 26880,
+    "maximumValuesPerBackendCase": 6720,
+    "metalBackend": "MTL0",
+    "metalBackendAvailable": true,
+    "metalDevice": "Apple M2 Pro",
+    "mode": "all-batches-must-pass",
+    "modelContextCreated": false,
+    "schemaVersion": 1,
+    "status": "pass",
+    "test": "public-ggml-metal-group-norm-batch"
+  },
+  {
+    "asymmetricCoordinateReferencePassed": true,
+    "fixture05": {
+      "actualProtectedCells": 141,
+      "baselineProtectedCells": 0,
+      "latentCells": 16384,
+      "nativeProtectedPixels": 9357
+    },
+    "gpuContextCreated": false,
+    "inferenceExecuted": false,
+    "mode": "sdxl-nearest-v1",
+    "modelContextCreated": false,
+    "otherModelModesUnchanged": true,
+    "schemaVersion": 1,
+    "sdkBaseRevision": "8cd731e7b4667eb8f40a153315b9a7125d09a58d",
+    "status": "pass",
+    "test": "sdk-sdxl-inpaint-mask-interpolation"
+  },
+  {
+    "event": "diagnostic-self-test",
+    "gpuInitialized": false,
+    "inferenceExecuted": false,
+    "modelContextCreated": false,
+    "protocol": 1,
+    "publicCPUTensors": true,
+    "raiiUnregisterCallsChecked": true,
+    "sdkCallbackGetterAvailable": false,
+    "status": "success"
+  }
+]

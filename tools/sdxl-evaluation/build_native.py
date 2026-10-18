@@ -5,6 +5,7 @@ No model conversion or inference runs here. A small explicit CPU/Metal tensor
 regression runs before and after the pinned GGML correction. Each build extracts
 a private source tree and never edits a cache or another evaluation's outputs.
 The SDXL-only nearest-mask variant has a separate CPU baseline/regression.
+The public custom-sigma route is checked against a frozen reference schedule.
 """
 
 import argparse
@@ -38,6 +39,21 @@ SOURCES = [
 ]
 MASK_FIXTURE = REPOSITORY / "reports/image-backend/historical-2026-10-16/fixtures/05-fine-motif-edges-mask-hard.png"
 MASK_FIXTURE_SHA256 = "26a0c86703ceff7901679361426ac3620c1d0eee2bc43037b783c0ef17eb4d2c"
+
+
+def verify_schedule_strength_contract(source):
+    # The native probe executes the real SDK SamplePlan. Its later image-strength
+    # slice is a source-matched expression because the private production image
+    # function also requires an actual VAE encode. Keep this boundary explicit.
+    image = (source / "src/pipeline/image.cpp").read_text()
+    required = [
+        "t_enc = static_cast<size_t>(plan->sample_steps * request->strength);",
+        "if (t_enc == static_cast<size_t>(plan->sample_steps)) {\n                        t_enc--;",
+        "sigma_sched.assign(plan->sigmas.begin() + plan->sample_steps - t_enc - 1, plan->sigmas.end());",
+        "plan->sample_steps = static_cast<int>(plan->sigmas.size() - 1);",
+    ]
+    if any(image.count(fragment) != 1 for fragment in required):
+        raise PreparationError("SDK image-strength slicing no longer matches the schedule regression")
 
 
 def admit_root(root):
@@ -100,11 +116,14 @@ def build(root, cmake=None, source_cache=None):
     metal_regression_hash = PREPARATION.digest(TOOLS / "ggml_group_norm_regression.cpp")[1]
     mask_patch_hash = PREPARATION.digest(TOOLS / "sdk-sdxl-mask.patch")[1]
     mask_regression_hash = PREPARATION.digest(TOOLS / "sdxl_mask_regression.cpp")[1]
+    schedule_hash = PREPARATION.digest(TOOLS / "sdxl_reference_schedule.h")[1]
+    schedule_regression_hash = PREPARATION.digest(TOOLS / "sdxl_schedule_regression.cpp")[1]
     with tempfile.TemporaryDirectory(prefix=".sdxl-native-", dir=root) as directory:
         stage = Path(directory)
         for entry in SOURCES:
             PREPARATION.extract_sources(archives / entry["name"], stage / entry["destination"], entry)
         source, generated = stage / "source", stage / "build"
+        verify_schedule_strength_contract(source)
         # Correct only the SDK's Diffusers second-encoder name alias. A fresh
         # private source tree and exact patch hash preserve the unmodified pins.
         staged_patch = stage / "sdk-sdxl-inpaint.patch"
@@ -121,7 +140,9 @@ def build(root, cmake=None, source_cache=None):
             "-DSD_GGML_SOURCE_DIR=" + str(source / "ggml")], log)
         PREPARATION.run_checked([cmake, "--build", str(generated), "--target", "stable-diffusion", "--parallel", "2"], log)
         staged_helper = stage / "sdxl-helper"
-        arguments = [compiler, "-std=gnu++17", "-O3", "-DNDEBUG", "-isysroot", sdk,
+        # Match the pinned SDK CMakeLists.txt's public ggml_tensor ABI. Private
+        # engine/VAEs used only by the schedule probe enforce this minimum too.
+        arguments = [compiler, "-std=gnu++17", "-O3", "-DNDEBUG", "-DGGML_MAX_NAME=160", "-isysroot", sdk,
                      "-mmacosx-version-min=14.0"]
         for include in [source / "include", source / "thirdparty", source / "src", source / "ggml/include"]:
             arguments += ["-I", str(include)]
@@ -133,6 +154,10 @@ def build(root, cmake=None, source_cache=None):
         shutil.copyfile(TOOLS / "helper.cpp", helper_source)
         if PREPARATION.digest(helper_source)[1] != source_hash:
             raise PreparationError("helper source changed during build")
+        schedule_source = stage / "sdxl_reference_schedule.h"
+        shutil.copyfile(TOOLS / "sdxl_reference_schedule.h", schedule_source)
+        if PREPARATION.digest(schedule_source)[1] != schedule_hash:
+            raise PreparationError("SDXL reference schedule changed during build")
         link_arguments = [*map(str, libraries), "-framework", "Accelerate", "-framework", "Foundation",
                           "-framework", "Metal", "-framework", "MetalKit"]
         mask_regression_source = stage / "sdxl_mask_regression.cpp"
@@ -147,6 +172,15 @@ def build(root, cmake=None, source_cache=None):
         PREPARATION.run_checked(arguments + [str(mask_regression_source), *link_arguments,
                                              "-o", str(mask_baseline_binary)], log)
         PREPARATION.run_checked([str(mask_baseline_binary), str(mask_fixture)], log)
+        schedule_regression_source = stage / "sdxl_schedule_regression.cpp"
+        shutil.copyfile(TOOLS / "sdxl_schedule_regression.cpp", schedule_regression_source)
+        if PREPARATION.digest(schedule_regression_source)[1] != schedule_regression_hash:
+            raise PreparationError("SDXL schedule regression changed during build")
+        schedule_regression_binary = stage / "sdxl-schedule-regression"
+        PREPARATION.run_checked(arguments + [str(schedule_regression_source), *link_arguments,
+                                             "-o", str(schedule_regression_binary)], log)
+        PREPARATION.run_checked([str(schedule_regression_binary), "--expect-baseline-mismatch"], log)
+        PREPARATION.run_checked([str(schedule_regression_binary)], log)
         metal_regression_source = stage / "ggml_group_norm_regression.cpp"
         shutil.copyfile(TOOLS / "ggml_group_norm_regression.cpp", metal_regression_source)
         if PREPARATION.digest(metal_regression_source)[1] != metal_regression_hash:
@@ -199,6 +233,10 @@ def build(root, cmake=None, source_cache=None):
             "sdkMaskFixtureSHA256": MASK_FIXTURE_SHA256,
             "sdkMaskBaselineReproduced": True, "sdkMaskRegressionPassed": True,
             "sdxlMaskInterpolation": "nearest-v1",
+            "sdkScheduleSourceSHA256": schedule_hash,
+            "sdkScheduleRegressionSourceSHA256": schedule_regression_hash,
+            "sdkScheduleBaselineReproduced": True, "sdkScheduleRegressionPassed": True,
+            "sdxlSchedule": "euler-leading-strength099-v1",
             "ggmlPatchSHA256": ggml_patch_hash,
             "metalGroupNormRegressionSourceSHA256": metal_regression_hash,
             "metalGroupNormBaselineReproduced": True, "metalGroupNormRegressionPassed": True,

@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "fixture": "05-fine-motif-edges-hard",
+  "criterion": "Thin protected green lines remain exact; beige background has no new outline, halo or border at fine edges.",
+  "decision": "FAIL",
+  "reviews": [
+    {
+      "reviewer": "primary agent",
+      "imagesOpened": "actual current-comparison; source/raw/mask/current-final panels",
+      "findings": [
+        "The blue rectangle is removed and beige texture generated.",
+        "Thin original green lines remain, but broad black neighboring branches and pale outlines persist.",
+        "Generated branches extend beyond the source motif; edge artifacts remain."
+      ],
+      "decision": "FAIL"
+    },
+    {
+      "reviewer": "independent reference reviewer",
+      "imagesOpened": "current-comparison and current-final at original resolution",
+      "findings": [
+        "Wide black strips with pale gray or white neighboring surfaces/shadows beside nearly every fine green branch.",
+        "Motif appears thickened into three-dimensional slats.",
+        "Extra branches extend upward to the top edge; a horizontal gray-brown strip remains at the bottom."
+      ],
+      "decision": "FAIL"
+    }
+  ],
+  "technicalPreservation": "9357 protected canonical RGBA pixels unchanged; all source alpha unchanged; PNG roundtrip exact. This does not remove synthesized neighboring artifacts.",
+  "imageFiles": [
+    {
+      "path": "quality/artifacts/05-fine-motif-edges-hard/raw-model-1024.png",
+      "sha256": "fdcf86ebcb1ec1ece240744d94e1c87d9c134413f6e63300877bf30cc33a483e"
+    },
+    {
+      "path": "quality/artifacts/05-fine-motif-edges-hard/raw.png",
+      "sha256": "59bf6224800bee2ff8f7ce07b4dcd072762433c9e649afe9d67cdea448361381"
+    },
+    {
+      "path": "quality-compositor/05-fine-motif-edges-hard/current-final.png",
+      "sha256": "2b8932f59a4fa0186ab56cb23a0a239e7d2fb6bef38cfb37e57ce6cff0ed2826"
+    },
+    {
+      "path": "quality-compositor/05-fine-motif-edges-hard/current-comparison.png",
+      "sha256": "bab1fc3f0155d1be329b6d5c965f7687a7505565375ad880d95fbff3f5df436c"
+    }
+  ],
+  "decisionConsequences": "Stop candidate after mandatory failure. No full warm/preview/cancellation series and no product Go; issues13-16 remain blocked."
+}

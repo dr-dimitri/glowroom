@@ -1,0 +1,320 @@
+Build budget: 2 workers (1 compiler jobs; icon generation parallel).
+Fetching https://github.com/huggingface/swift-transformers.git from cache
+Fetched https://github.com/huggingface/swift-transformers.git from cache (0.48s)
+Fetching https://github.com/huggingface/swift-jinja.git from cache
+Fetching https://github.com/ibireme/yyjson.git from cache
+Fetching https://github.com/huggingface/swift-huggingface.git from cache
+Fetching https://github.com/apple/swift-asn1.git from cache
+Fetching https://github.com/apple/swift-crypto.git from cache
+Fetching https://github.com/apple/swift-collections.git from cache
+Fetching https://github.com/mattt/EventSource.git from cache
+Fetched https://github.com/mattt/EventSource.git from cache (0.42s)
+Fetched https://github.com/apple/swift-asn1.git from cache (0.47s)
+Fetched https://github.com/huggingface/swift-huggingface.git from cache (0.47s)
+Fetched https://github.com/ibireme/yyjson.git from cache (0.57s)
+Fetched https://github.com/apple/swift-collections.git from cache (0.58s)
+Fetched https://github.com/apple/swift-crypto.git from cache (0.59s)
+Fetched https://github.com/huggingface/swift-jinja.git from cache (0.62s)
+Computing version for https://github.com/apple/swift-collections.git
+Computed https://github.com/apple/swift-collections.git at 1.2.1 (0.97s)
+Computing version for https://github.com/ibireme/yyjson.git
+Computed https://github.com/ibireme/yyjson.git at 0.13.0 (0.28s)
+Computing version for https://github.com/apple/swift-crypto.git
+Computed https://github.com/apple/swift-crypto.git at 4.5.2 (1.65s)
+Computed https://github.com/apple/swift-collections.git at 1.2.1 (0.00s)
+Computing version for https://github.com/huggingface/swift-huggingface.git
+Computed https://github.com/huggingface/swift-huggingface.git at 1.0.0 (0.28s)
+Computing version for https://github.com/huggingface/swift-jinja.git
+Computed https://github.com/huggingface/swift-jinja.git at 2.5.1 (0.26s)
+Computing version for https://github.com/apple/swift-asn1.git
+Computed https://github.com/apple/swift-asn1.git at 1.7.3 (0.35s)
+Computing version for https://github.com/mattt/EventSource.git
+Computed https://github.com/mattt/EventSource.git at 1.5.1 (0.26s)
+Creating working copy for https://github.com/apple/swift-crypto.git
+Working copy of https://github.com/apple/swift-crypto.git resolved at 4.5.2
+Creating working copy for https://github.com/huggingface/swift-transformers.git
+Working copy of https://github.com/huggingface/swift-transformers.git resolved at e37cacea74498bba66002bb83ecafee3e4ab8884
+Creating working copy for https://github.com/mattt/EventSource.git
+Working copy of https://github.com/mattt/EventSource.git resolved at 1.5.1
+Creating working copy for https://github.com/huggingface/swift-huggingface.git
+Working copy of https://github.com/huggingface/swift-huggingface.git resolved at 1.0.0
+Creating working copy for https://github.com/apple/swift-collections.git
+Working copy of https://github.com/apple/swift-collections.git resolved at 1.2.1
+Creating working copy for https://github.com/huggingface/swift-jinja.git
+Working copy of https://github.com/huggingface/swift-jinja.git resolved at 2.5.1
+Creating working copy for https://github.com/apple/swift-asn1.git
+Working copy of https://github.com/apple/swift-asn1.git resolved at 1.7.3
+Creating working copy for https://github.com/ibireme/yyjson.git
+Working copy of https://github.com/ibireme/yyjson.git resolved at 0.13.0
+warning: 'picedit': dependency 'swift-collections' is not used by any target
+warning: 'picedit': dependency 'swift-collections' is not used by any target
+Building for production...
+[Computing dependencies]
+[Constructing description]
+[Pre-planning 1 / 423]
+[Planning deferred tasks]
+[7 / 179]
+[90 / 179] yyjson
+[98 / 190]
+[105 / 190]
+[121 / 191]
+[124 / 264]
+[127 / 264]
+[129 / 264]
+[131 / 264]
+[134 / 264]
+[137 / 264] PicEdit_PicEdit
+[139 / 264]
+[143 / 264]
+[145 / 264]
+[148 / 264]
+[150 / 264]
+[153 / 264]
+[156 / 264]
+[158 / 264]
+[160 / 264]
+[162 / 264]
+[164 / 264] PicEdit_PicEdit
+[167 / 265] InternalCollectionsUtilities
+[169 / 269]
+[170 / 269]
+[171 / 269]
+[172 / 269]
+[174 / 269] InternalCollectionsUtilities
+[175 / 269]
+[178 / 269] InternalCollectionsUtilities
+[182 / 269] PicEdit_PicEdit
+[183 / 269]
+[185 / 269]
+[187 / 269] InternalCollectionsUtilities
+[190 / 269]
+[193 / 269]
+[194 / 269]
+[195 / 269]
+[196 / 269]
+[199 / 269]
+[201 / 269]
+[203 / 269]
+[204 / 269]
+[205 / 269]
+[206 / 269]
+[208 / 269] PicEditCore
+/Users/wolfgangbauer/dev/workspace/picedit/Package.swift: PicEditCore: ld: warning: search path '/Library/Developer/CommandLineTools/Developer/Library/Frameworks' not found
+[216 / 271] OrderedCollections
+[218 / 272] OrderedCollections
+[218 / 324] OrderedCollections
+[226 / 324]
+[229 / 324]
+[231 / 324]
+[233 / 324]
+[236 / 324]
+[239 / 324]
+[241 / 324]
+[245 / 324]
+[247 / 324] OrderedCollections
+[250 / 324] OrderedCollections-product
+[252 / 324]
+[255 / 324]
+[256 / 324]
+[257 / 324]
+[259 / 324]
+[261 / 324]
+[263 / 324]
+[265 / 324]
+[267 / 324]
+[268 / 324]
+[269 / 324]
+[271 / 324]
+[273 / 324]
+[274 / 324]
+[275 / 324]
+[276 / 324] EventSource
+[284 / 325] EventSource
+[287 / 344] Crypto
+[289 / 351]
+[290 / 351]
+[293 / 351]
+[295 / 351]
+[296 / 351]
+[297 / 351]
+[299 / 351]
+[300 / 351]
+[302 / 351] Crypto
+[303 / 351]
+[310 / 351]
+[311 / 351]
+[312 / 351]
+[313 / 351]
+[316 / 351]
+[317 / 351] Jinja
+[325 / 352]
+[328 / 359]
+[330 / 359]
+[331 / 359]
+[332 / 359]
+[333 / 359]
+[340 / 360]
+[342 / 366]
+[344 / 366]
+[345 / 366]
+[346 / 366] Jinja
+[347 / 366] Jinja
+[354 / 367] Tokenizers
+[356 / 368] Tokenizers
+[362 / 369] Hub
+[365 / 437] Hub
+[367 / 437]
+[369 / 437]
+[370 / 437]
+[371 / 437]
+[372 / 437]
+[374 / 437]
+[375 / 437]
+[377 / 437]
+[378 / 437]
+[380 / 437]
+[382 / 437]
+[383 / 437]
+[385 / 437]
+[387 / 437]
+[389 / 437]
+[391 / 437]
+[392 / 437]
+[394 / 437]
+[396 / 437]
+[397 / 437]
+[399 / 437]
+[402 / 437]
+[404 / 437]
+[405 / 437]
+[407 / 437]
+[408 / 437]
+[410 / 437]
+[411 / 437]
+[412 / 437]
+[413 / 437]
+[414 / 437]
+[415 / 437]
+[416 / 437]
+[417 / 437]
+[419 / 437]
+[420 / 437]
+[421 / 437]
+[422 / 437]
+[423 / 437]
+[425 / 437]
+[426 / 437]
+[428 / 437]
+[430 / 437]
+[430 / 437] Hub
+[431 / 437]
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/AI/AppleSystemModelRuntime.swift:78:63: warning: 'init(sampling:temperature:maximumResponseTokens:)' is deprecated: replaced by 'init(samplingMode:temperature:maximumResponseTokens:)' [#DeprecatedDeclaration]
+ 76 |             let schema = try prompt.mode == .single ? Self.generationSchema() : Self.lookGenerationSchema()
+ 77 |             let response = try await session.respond(to: prompt.data, schema: schema,
+ 78 |                                                      options: GenerationOptions(sampling: .greedy,
+    |                                                               |- warning: 'init(sampling:temperature:maximumResponseTokens:)' is deprecated: replaced by 'init(samplingMode:temperature:maximumResponseTokens:)' [#DeprecatedDeclaration]
+    |                                                               `- note: use 'init(samplingMode:temperature:maximumResponseTokens:)' instead
+ 79 |                                                                                 maximumResponseTokens: prompt.mode == .single ? 800 : 2_400))
+ 80 |             try Task.checkCancellation()
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/AI/SystemAICloudKeychain.swift:71:19: warning: 'SecKeychainCopyDefault' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 69 |             // rather than searching/deleting matching items in every keychain.
+ 70 |             var keychain: SecKeychain?
+ 71 |             guard SecKeychainCopyDefault(&keychain) == errSecSuccess, let keychain else { throw AICloudError.keychain }
+    |                   `- warning: 'SecKeychainCopyDefault' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 72 |             if adding { query[kSecUseKeychain as String] = keychain }
+ 73 |             else { query[kSecMatchSearchList as String] = [keychain] }
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/AI/SystemAICloudKeychain.swift:114:15: warning: 'SecTrustedApplicationCreateFromPath' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+112 |     private static func applicationAccess() throws -> SecAccess {
+113 |         var application: SecTrustedApplication?
+114 |         guard SecTrustedApplicationCreateFromPath(nil, &application) == errSecSuccess,
+    |               `- warning: 'SecTrustedApplicationCreateFromPath' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+115 |               let application else { throw AICloudError.keychain }
+116 |         var access: SecAccess?
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/AI/SystemAICloudKeychain.swift:119:15: warning: 'SecAccessCreate' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+117 |         // Explicitly trust only this application, preserving macOS confirmation
+118 |         // for other or changed binaries. Never grant access to all applications.
+119 |         guard SecAccessCreate("PicEdit Anthropic API-Schlüssel" as CFString, [application] as CFArray, &access) == errSecSuccess,
+    |               `- warning: 'SecAccessCreate' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+120 |               let access else { throw AICloudError.keychain }
+121 |         return access
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/AutoTone.swift:243:33: warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+241 |     }
+242 | 
+243 |     private static let kernel = CIColorKernel(source: """
+    |                                 `- warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+244 |         kernel vec4 automaticTone(__sample original, vec4 c0, vec4 c1, vec4 c2, vec4 c3, vec4 c4, vec4 c5) {
+245 |             vec4 o = unpremultiply(original);
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/EditRenderer.swift:291:40: warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+289 |     // renderer, including older Intel Macs. No external Metal compiler, model,
+290 |     // network service, or GPU-generation-specific shader library is required.
+291 |     private static let denoiseKernel = CIColorKernel(source: """
+    |                                        `- warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+292 |         kernel vec4 separateNoise(__sample original, __sample lumaBlur, __sample chromaBlur, float lumaAmount, float chromaAmount) {
+293 |             vec4 o = unpremultiply(original);
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/EditRenderer.swift:309:37: warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+307 |         """)
+308 | 
+309 |     private static let toneKernel = CIColorKernel(source: """
+    |                                     `- warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+310 |         kernel vec4 toneAndColor(__sample original, float exposure, float contrast, float highlights, float shadows, float whites, float blacks, float dehaze, float vibrance, float saturation) {
+311 |             vec4 o = unpremultiply(original);
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/EditRenderer.swift:336:41: warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+334 |         """)
+335 | 
+336 |     private static let presenceKernel = CIColorKernel(source: """
+    |                                         `- warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+337 |         kernel vec4 localPresence(__sample original, __sample fineBlur, __sample broadBlur, float texture, float clarity) {
+338 |             vec4 o = unpremultiply(original);
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/MaskEditingModel.swift:116:51: warning: no 'async' operations occur within 'await' expression [#UnnecessaryEffectMarker]
+114 |     private var worker: Task<Void, Never>?
+115 | 
+116 |     init(rasterizer: @escaping Rasterizer = { try await MaskOverlayWorker.shared.rasterize($0) }) {
+    |                                                   `- warning: no 'async' operations occur within 'await' expression [#UnnecessaryEffectMarker]
+117 |         self.rasterizer = rasterizer
+118 |     }
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/MaskCompositor.swift:166:38: warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+164 |     }
+165 | 
+166 |     private static let blendKernel = CIColorKernel(source: """
+    |                                      `- warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+167 |         kernel vec4 piceditMaskBlend(__sample base, __sample candidate, __sample mask) {
+168 |             return mix(base, candidate, mask.r);
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/NaturalBalance.swift:201:33: warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+199 |     }
+200 | 
+201 |     private static let kernel = CIColorKernel(source: """
+    |                                 `- warning: 'init(source:)' was deprecated in macOS 10.14: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings) [#DeprecatedDeclaration]
+202 |         kernel vec4 naturalBalance(__sample original, vec4 c0, vec4 c1, vec4 c2, vec4 c3, vec4 c4, ve[432 / 437]
+c4 c5, float boost) {
+203 |             vec4 o = unpremultiply(original);
+
+/Users/wolfgangbauer/dev/workspace/picedit/Sources/PicEdit/Imaging/NaturalBalance.swift:170:28: warning: 'VNDetectFaceRectanglesRequestRevision1' was deprecated in macOS 13.0: renamed to 'VNDetectFaceRectanglesRequestRevision2' [#DeprecatedDeclaration]
+168 |         try Task.checkCancellation()
+169 |         let request = VNDetectFaceRectanglesRequest()
+170 |         request.revision = VNDetectFaceRectanglesRequestRevision1
+    |                            |- warning: 'VNDetectFaceRectanglesRequestRevision1' was deprecated in macOS 13.0: renamed to 'VNDetectFaceRectanglesRequestRevision2' [#DeprecatedDeclaration]
+    |                            `- note: use 'VNDetectFaceRectanglesRequestRevision2' instead
+171 |         do {
+172 |             try VNImageRequestHandler(cgImage: image, options: [:]).perform([request])
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
+/Users/wolfgangbauer/dev/workspace/picedit/Package.swift: PicEdit-product: ld: warning: search path '/Library/Developer/CommandLineTools/Developer/usr/lib' not found
+/Users/wolfgangbauer/dev/workspace/picedit/Package.swift: PicEdit-product: ld: warning: search path '/Library/Developer/CommandLineTools/Developer/Library/Frameworks' not found
+[435 / 437] PicEdit-product
+[436 / 437] PicEdit-product
+Build complete! (217,39 Sek.)
+/Users/wolfgangbauer/dev/workspace/picedit/dist/.picedit-build.Sqlipe/PicEdit.app/Contents/Info.plist: OK
+/Users/wolfgangbauer/dev/workspace/picedit/dist/.picedit-build.Sqlipe/PicEdit.app: replacing existing signature
+Built /Users/wolfgangbauer/dev/workspace/picedit/dist/PicEdit.app
+Open it with: open "/Users/wolfgangbauer/dev/workspace/picedit/dist/PicEdit.app"
