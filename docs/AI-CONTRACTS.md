@@ -34,11 +34,15 @@ Ein Patch enthält **absolute Zielwerte**, keine relativen Werte oder ausführba
 | `exposure` | −5 bis +5 EV |
 | `contrast`, `highlights`, `shadows`, `whites`, `blacks` | −100 bis +100 |
 | `texture`, `clarity`, `dehaze`, `vibrance`, `saturation` | −100 bis +100 |
-| `luminanceNoiseReduction`, `colorNoiseReduction`, `autoToneAmount` | 0 bis 100 |
+| `luminanceNoiseReduction`, `colorNoiseReduction` | 0 bis 100 |
+| `naturalBalanceAmount`, `naturalBalanceColorAmount` | 0 bis 100 |
+| `autoToneAmount` (bisherige Tonwert-Automatik) | 0 bis 100 |
+
+`naturalBalanceAmount` aktiviert den natürlichen Bildausgleich ausschließlich bei einem Wert über 0. `naturalBalanceColorAmount` steuert dessen Farbanteil; Standard ist 50, bei ausgeschaltetem Bildausgleich bleibt dieser Wert ohne Bildwirkung. Beide Felder verwenden bei älteren Bearbeitungen nur bei fehlendem Schlüssel die Vorgaben 0/50; explizites `null` und falsche Typen werden abgewiesen. Bestehendes `autoToneAmount` bleibt unverändert lesbar. Der Renderer verwendet bei aktivem natürlichem Bildausgleich diesen anstelle der bisherigen Automatik. Nicht genannte Regler bleiben auch bei einem Wechsel unverändert: Ein KI-Patch muss das Ausschalten der bisherigen Automatik ausdrücklich mit `autoToneAmount=0` enthalten. Der manuelle Einschalter führt beide Änderungen gemeinsam aus.
 
 Unbekannte Felder, doppelte JSON-Schlüssel einschließlich gleichwertiger Unicode-Escapes, mehrfach genannte Parameter, falsche Typen, nicht endliche Zahlen, unbekannte Versionen und Grenzüberschreitungen werden abgewiesen. JSON in Markdown oder ein gültig aussehender Teil einer ansonsten ungültigen Antwort wird nicht extrahiert. Eine ungültige Antwort wird weder teilweise angewendet noch still in den Wertebereich geklemmt. Das bisherige Normalisieren manueller `EditSettings` und Lesen älterer Datenbanken/Backups bleibt davon getrennt.
 
-Standardgrenzen sind 16 KiB UTF-8 für die Benutzeranweisung, 64 KiB für die rohe Antwort, 2 KiB UTF-8 für die Erklärung, acht Verschachtelungsebenen, 256 JSON-Werte und maximal 14 verschiedene Regleränderungen. Die Prompt-/Antwortgrenzen sind über das injizierte Budget konfigurierbar; der Validator hat zusätzlich eigene konfigurierbare Strukturgrenzen. Eine größere Validatorgrenze umgeht die Antwortgrenze des Budgets nicht. Die Übernahme prüft anschließend nur Snapshot und Patch; sie führt die Promptprüfung nicht mit abweichenden Standardgrenzen erneut aus.
+Standardgrenzen sind 16 KiB UTF-8 für die Benutzeranweisung, 64 KiB für die rohe Antwort, 2 KiB UTF-8 für die Erklärung, acht Verschachtelungsebenen, 256 JSON-Werte und maximal 16 verschiedene Regleränderungen. Die Prompt-/Antwortgrenzen sind über das injizierte Budget konfigurierbar; der Validator hat zusätzlich eigene konfigurierbare Strukturgrenzen. Eine größere Validatorgrenze umgeht die Antwortgrenze des Budgets nicht. Die Übernahme prüft anschließend nur Snapshot und Patch; sie führt die Promptprüfung nicht mit abweichenden Standardgrenzen erneut aus.
 
 ## Gültigkeit und Quellenbezug
 

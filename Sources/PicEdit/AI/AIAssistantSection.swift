@@ -217,15 +217,18 @@ extension EditParameter {
         case .saturation: return "Sättigung"
         case .luminanceNoiseReduction: return "Luminanz-Entrauschung"
         case .colorNoiseReduction: return "Farb-Entrauschung"
-        case .autoToneAmount: return "Tonwert-Automatik"
+        case .autoToneAmount: return "Bisherige Tonwert-Automatik"
+        case .naturalBalanceAmount: return "Natürlicher Bildausgleich"
+        case .naturalBalanceColorAmount: return "Bildausgleich · Farbe"
         }
     }
 
     func assistantValue(_ value: Double, signed: Bool = false) -> String {
-        // Match the inspector's EV precision and numeric scales. Only the
-        // existing automatic tone strength is labelled as a percentage.
+        // Match the inspector's EV precision and numeric scales; balance
+        // strength/color and legacy automatic tone use percentages.
         let format = self == .exposure ? (signed ? "%+.2f" : "%.2f") : (signed ? "%+.0f" : "%.0f")
-        let unit = self == .exposure ? " EV" : self == .autoToneAmount ? " %" : ""
+        let percentage = self == .autoToneAmount || self == .naturalBalanceAmount || self == .naturalBalanceColorAmount
+        let unit = self == .exposure ? " EV" : percentage ? " %" : ""
         return String(format: format, value) + unit
     }
 }

@@ -7,6 +7,59 @@ import Testing
 @Suite("Reusable edit rendering sessions", .serialized)
 struct EditRenderSessionTests {
     @Test
+    func naturalBalancePrefixInvalidatesForStrengthColorNoiseAndLegacySwitches() throws {
+        let cached = EditRenderer.Session(cacheIntermediates: true, lowPriority: false)
+        let reference = EditRenderer.Session(lowPriority: true)
+        let sources = try [fixture(seed: 19), fixture(seed: 113)]
+        let cases: [(Double, Double, Double, Double)] = [
+            (70, 50, 0, 0), (70, 0, 0, 0), (70, 100, 0, 0),
+            (100, 100, 0, 0), (25, 100, 0, 0), (25, 50, 40, 0),
+            (0, 50, 40, 65), (70, 50, 40, 65), (0, 50, 0, 65), (0, 50, 0, 0)
+        ]
+        // Consecutive requests reuse the selected image before a source change.
+        // This detects missing color/strength keys as well as wrong-photo reuse.
+        for (index, values) in cases.enumerated() {
+            var settings = EditSettings.neutral
+            settings.naturalBalanceAmount = values.0
+            settings.naturalBalanceColorAmount = values.1
+            settings.colorNoiseReduction = values.2
+            settings.autoToneAmount = values.3
+            settings.exposure = 0.1 + Double(index) * 0.01
+            let source = sources[index < 5 ? 0 : 1]
+            try equivalent(EditRenderer.render(source, settings: settings, session: cached),
+                           EditRenderer.render(source, settings: settings, session: reference))
+        }
+    }
+
+    @Test
+    func naturalBalancePreservesSixteenBitWideGamutAcrossConcurrentSources() async throws {
+        let cached = EditRenderer.Session(cacheIntermediates: true, lowPriority: false)
+        let reference = EditRenderer.Session(lowPriority: true)
+        let sources = try [fixture(seed: 7, sixteenBit: true), fixture(seed: 151, sixteenBit: true)]
+        var settings = EditSettings.neutral
+        settings.naturalBalanceAmount = 70
+        settings.naturalBalanceColorAmount = 65
+        settings.luminanceNoiseReduction = 20
+        settings.exposure = 0.2
+        let fixedSettings = settings
+        let expected = try sources.map { try EditRenderer.render($0, settings: fixedSettings, session: reference) }
+        try await withThrowingTaskGroup(of: (Int, PreviewBitmap).self) { group in
+            for index in sources.indices {
+                group.addTask { (index, try EditRenderer.render(sources[index], settings: fixedSettings, session: cached)) }
+            }
+            for try await (index, result) in group {
+                #expect(result.image.bitsPerComponent == 16)
+                try equivalent(result, expected[index])
+                let original = try pixels16(sources[index].image), rendered = try pixels16(result.image)
+                for offset in stride(from: 3, to: original.count, by: 4) {
+                    #expect(abs(Int(original[offset]) - Int(rendered[offset])) <= 64)
+                }
+                #expect(rendered.enumerated().contains { $0.offset % 4 != 3 && $0.element % 257 != 0 })
+            }
+        }
+    }
+
+    @Test
     func cachedPrefixInvalidatesAcrossNoiseStrengthAutoAmountAndSourceChanges() throws {
         let interactive = EditRenderer.Session(cacheIntermediates: true, lowPriority: false)
         let reference = EditRenderer.Session(lowPriority: true)

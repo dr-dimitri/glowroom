@@ -181,7 +181,7 @@ struct LightcraftColorReferenceTests {
             #expect(throws: Reference.Failure.self) { _ = try reference.render(input, settings: settings(saturation: value)) }
         }
         for key in [\EditSettings.exposure, \.contrast, \.shadows, \.highlights, \.whites, \.blacks,
-                    \.texture, \.clarity, \.dehaze, \.luminanceNoiseReduction, \.colorNoiseReduction, \.autoToneAmount] {
+                    \.texture, \.clarity, \.dehaze, \.luminanceNoiseReduction, \.colorNoiseReduction, \.autoToneAmount, \.naturalBalanceAmount] {
             var edit = settings(vibrance: 20); edit[keyPath: key] = 1
             #expect(throws: Reference.Failure.self) { _ = try reference.render(input, settings: edit) }
         }

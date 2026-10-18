@@ -6,3 +6,5 @@ dist/
 *.xcodeproj/xcuserdata/
 __pycache__/
 *.pyc
+# Local, user-supplied RAW validation image; never distribute with the sources.
+/IMG_8362.CR3

@@ -145,7 +145,7 @@ struct DevelopInspector: View {
         switch tool {
         case .edit:
             VStack(alignment: .leading, spacing: 14) {
-                autoToneSection(assetID: asset.id)
+                naturalBalanceSection(assetID: asset.id)
                 adjustmentSection("Tonwert", key: "tone", controls: Array(Adjustment.allCases.prefix(6)), assetID: asset.id)
                 adjustmentSection("Präsenz", key: "presence", controls: Array(Adjustment.allCases.dropFirst(6).prefix(5)), assetID: asset.id)
                 adjustmentSection("Entrauschen", key: "noise", controls: Array(Adjustment.allCases.suffix(2)), assetID: asset.id)
@@ -308,47 +308,68 @@ struct DevelopInspector: View {
         return "Alle Änderungen gespeichert"
     }
 
-    private func autoToneSection(assetID: String) -> some View {
-        let amount = editor.settings(for: assetID).autoToneAmount
+    private func naturalBalanceSection(assetID: String) -> some View {
+        let settings = editor.settings(for: assetID)
         return VStack(alignment: .leading, spacing: 10) {
             Toggle(isOn: Binding(
-                get: { editor.settings(for: assetID).autoToneAmount > 0 },
+                get: { editor.settings(for: assetID).naturalBalanceAmount > 0 },
                 set: { enabled in
-                    NSApp.keyWindow?.makeFirstResponder(nil)
-                    editor.endEditing(assetID: assetID)
+                    finishInput(assetID: assetID)
                     var settings = editor.settings(for: assetID)
-                    settings.autoToneAmount = enabled ? 100 : 0
+                    settings.naturalBalanceAmount = enabled ? 70 : 0
+                    if enabled { settings.autoToneAmount = 0 }
                     editor.setSettings(settings, for: assetID)
                 }
             )) {
-                Label("Tonwert-Automatik", systemImage: "wand.and.stars")
+                Label("Natürlicher Bildausgleich", systemImage: "wand.and.stars")
                     .font(.system(size: 11, weight: .medium))
             }.toggleStyle(.switch).controlSize(.small)
-                .help("Gleicht Lichter und Schatten passend zu diesem Foto aus. Manuelle Regler bleiben zusätzlich wirksam.")
+                .help("Analysiert dieses Foto lokal und gleicht Helligkeit, Lichter, Schatten und Farben zurückhaltend aus. Manuelle Regler bleiben zusätzlich wirksam.")
 
-            if amount > 0 {
-                HStack {
-                    Text("Stärke")
-                    Spacer()
-                    Text("\(Int(amount)) %").monospacedDigit().foregroundStyle(Theme.accent)
-                }.font(.system(size: 10)).foregroundStyle(Theme.muted)
-                Slider(value: Binding(
-                    get: { editor.settings(for: assetID).autoToneAmount },
-                    set: { newValue in
-                        var settings = editor.settings(for: assetID)
-                        settings.autoToneAmount = newValue
-                        editor.setSettings(settings, for: assetID)
-                    }
-                ), in: 1...100, step: 1, onEditingChanged: { editing in
-                    if editing { editor.beginEditing(assetID: assetID) }
-                    else { editor.endEditing(assetID: assetID) }
-                }).controlSize(.mini).accessibilityLabel("Automatik-Stärke")
+            if settings.naturalBalanceAmount > 0 {
+                naturalBalanceSlider("Stärke", keyPath: \.naturalBalanceAmount, range: 1...100, assetID: assetID)
+                naturalBalanceSlider("Farbe", keyPath: \.naturalBalanceColorAmount, range: 0...100, assetID: assetID)
+                Text("Farbe 0: nur Tonwerte. Höhere Werte beleben zurückhaltend die Farben.")
+                    .font(.system(size: 10)).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
+            } else if settings.autoToneAmount > 0 {
+                Text("Bisherige Tonwert-Automatik aktiv (\(Int(settings.autoToneAmount)) %). Dein gespeicherter Bildstand bleibt erhalten. Einschalten ersetzt sie durch den natürlichen Bildausgleich.")
+                    .font(.system(size: 10)).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
+                Button("Bisherige Automatik ausschalten") {
+                    finishInput(assetID: assetID)
+                    var settings = editor.settings(for: assetID)
+                    settings.autoToneAmount = 0
+                    editor.setSettings(settings, for: assetID)
+                }.font(.system(size: 10))
             }
-            Text("Helle Bereiche zügeln, Schatten öffnen. Schwarz, Weiß und Kontrast bleiben erhalten.")
+            Text("Nur auf Wunsch aktiv. Helle Bereiche zügeln, Schatten öffnen und natürliche Farben bewahren.")
                 .font(.system(size: 10)).foregroundStyle(Theme.muted).lineSpacing(3)
+                .fixedSize(horizontal: false, vertical: true)
         }.disabled(!editor.canEdit || !library.canModify || library.comparesOriginal || library.comparesCurrentSourceWithoutSettings)
             .padding(12)
             .background(Theme.accent.opacity(0.06), in: RoundedRectangle(cornerRadius: 8))
+    }
+
+    private func naturalBalanceSlider(_ title: String, keyPath: WritableKeyPath<EditSettings, Double>,
+                                      range: ClosedRange<Double>, assetID: String) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            HStack {
+                Text(title)
+                Spacer()
+                Text("\(Int(editor.settings(for: assetID)[keyPath: keyPath])) %")
+                    .monospacedDigit().foregroundStyle(Theme.accent)
+            }.font(.system(size: 10)).foregroundStyle(Theme.muted)
+            Slider(value: Binding(
+                get: { editor.settings(for: assetID)[keyPath: keyPath] },
+                set: { newValue in
+                    var settings = editor.settings(for: assetID)
+                    settings[keyPath: keyPath] = newValue
+                    editor.setSettings(settings, for: assetID)
+                }
+            ), in: range, step: 1, onEditingChanged: { editing in
+                if editing { editor.beginEditing(assetID: assetID) }
+                else { editor.endEditing(assetID: assetID) }
+            }).controlSize(.mini).accessibilityLabel("Bildausgleich · \(title)")
+        }
     }
 
     private func adjustmentSection(_ title: String, key: String, controls: [Adjustment], assetID: String) -> some View {

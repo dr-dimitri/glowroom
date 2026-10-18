@@ -9,17 +9,19 @@ struct AIContractsTests {
         exposure: 1.25, contrast: -22.5, highlights: 11.5, shadows: 10,
         whites: -13, blacks: 14, texture: 15, clarity: -16, dehaze: 17,
         vibrance: -18, saturation: 19, luminanceNoiseReduction: 20,
-        colorNoiseReduction: 21, autoToneAmount: 22
+        colorNoiseReduction: 21, autoToneAmount: 22,
+        naturalBalanceAmount: 23, naturalBalanceColorAmount: 24
     )
 
     @Test
-    func fourteenIDsAreUniqueAndExhaustive() {
-        #expect(EditParameter.allCases.count == 14)
-        #expect(Set(EditParameter.allCases.map(\.rawValue)).count == 14)
+    func sixteenIDsAreUniqueAndExhaustive() {
+        #expect(EditParameter.allCases.count == 16)
+        #expect(Set(EditParameter.allCases.map(\.rawValue)).count == 16)
         #expect(Set(EditParameter.allCases.map(\.rawValue)) == [
             "exposure", "contrast", "highlights", "shadows", "whites", "blacks",
             "texture", "clarity", "dehaze", "vibrance", "saturation",
-            "luminanceNoiseReduction", "colorNoiseReduction", "autoToneAmount"
+            "luminanceNoiseReduction", "colorNoiseReduction", "autoToneAmount",
+            "naturalBalanceAmount", "naturalBalanceColorAmount"
         ])
     }
 
@@ -34,7 +36,8 @@ struct AIContractsTests {
         let expectedRange: ClosedRange<Double>
         switch parameter {
         case .exposure: expectedRange = -5...5
-        case .luminanceNoiseReduction, .colorNoiseReduction, .autoToneAmount: expectedRange = 0...100
+        case .luminanceNoiseReduction, .colorNoiseReduction, .autoToneAmount,
+             .naturalBalanceAmount, .naturalBalanceColorAmount: expectedRange = 0...100
         default: expectedRange = -100...100
         }
         #expect(parameter.range == expectedRange)
@@ -70,6 +73,27 @@ struct AIContractsTests {
         var expected = baseline
         expected.shadows = 30
         #expect(target == expected)
+    }
+
+    @Test
+    func balanceColorPatchDoesNotEnableBalanceOrRewriteLegacyValues() throws {
+        let initial = EditSettings(exposure: 0.3, autoToneAmount: 63)
+        let proposal = EditProposal(changes: [.init(parameter: .naturalBalanceColorAmount, value: 25)])
+        guard case .changes(_, let target) = try validator.validate(proposal, against: initial) else {
+            Issue.record("A saved color preference is an explicit settings change")
+            return
+        }
+        #expect(target.naturalBalanceAmount == 0)
+        #expect(target.autoToneAmount == 63)
+        #expect(target.exposure == 0.3)
+        #expect(target.naturalBalanceColorAmount == 25)
+        let activation = EditProposal(changes: [.init(parameter: .naturalBalanceAmount, value: 70)])
+        guard case .changes(_, let active) = try validator.validate(activation, against: target) else {
+            Issue.record("Explicit balance activation must be representable")
+            return
+        }
+        #expect(active.autoToneAmount == 63) // No implicit edits to unspecified controls.
+        #expect(active.naturalBalanceColorAmount == 25)
     }
 
     @Test
@@ -146,7 +170,7 @@ struct AIContractsTests {
             try EditProposalValidator(maximumJSONValues: 2).validate(minimal, against: baseline)
         }
         expectFailure(.tooManyChanges) {
-            try validator.validate(EditProposal(changes: Array(repeating: .init(parameter: .shadows, value: 2), count: 15)), against: baseline)
+            try validator.validate(EditProposal(changes: Array(repeating: .init(parameter: .shadows, value: 2), count: 17)), against: baseline)
         }
         #expect(throws: AIEditingError.invalidRequest) {
             try EditProposalValidator(maximumNestingDepth: 65).validate(minimal, against: baseline)

@@ -32,7 +32,13 @@ enum EditRenderer {
         private var denoised: CIImage?
         private var balanced: CIImage?
         private var noise: NoiseKey?
-        private var autoAmount: Double?
+        private var balanceKey: BalanceKey?
+
+        private struct BalanceKey: Equatable {
+            let legacy: Double
+            let amount: Double
+            let color: Double
+        }
         private let sourceByteLimit = 64 * 1_024 * 1_024
 
         private struct NoiseKey: Equatable {
@@ -64,7 +70,7 @@ enum EditRenderer {
                     denoised = nil
                     balanced = nil
                     noise = nil
-                    autoAmount = nil
+                    balanceKey = nil
                     context.clearCaches()
                     lock.unlock()
                 }
@@ -82,7 +88,7 @@ enum EditRenderer {
                 denoised = nil
                 balanced = nil
                 noise = nil
-                autoAmount = nil
+                balanceKey = nil
                 // Old-photo intermediates cannot help this source. This is a
                 // thread-safe cache hint; in-flight renders keep their resources.
                 context.clearCaches()
@@ -92,14 +98,13 @@ enum EditRenderer {
                 denoised = try EditRenderer.denoise(base!, settings: settings, extent: extent, scale: scale)
                 noise = noiseKey
                 balanced = nil
-                autoAmount = nil
+                balanceKey = nil
             }
-            if autoAmount != settings.autoToneAmount {
-                let input = denoised!
-                balanced = settings.autoToneAmount > 0
-                    ? try AutoToneRenderer.apply(to: input, original: bitmap.image, amount: settings.autoToneAmount, extent: extent)
-                    : input
-                autoAmount = settings.autoToneAmount
+            let key = BalanceKey(legacy: settings.autoToneAmount, amount: settings.naturalBalanceAmount,
+                                 color: settings.naturalBalanceColorAmount)
+            if balanceKey != key {
+                balanced = try EditRenderer.balance(denoised!, original: bitmap.image, settings: settings, extent: extent)
+                balanceKey = key
             }
             try Task.checkCancellation()
             return balanced!
@@ -247,9 +252,19 @@ enum EditRenderer {
                                extent: CGRect, scale: Double) throws -> CIImage {
         let denoised = try denoise(image, settings: settings, extent: extent, scale: scale)
         try Task.checkCancellation()
+        return try balance(denoised, original: original, settings: settings, extent: extent)
+    }
+
+    private static func balance(_ image: CIImage, original: CGImage, settings: EditSettings, extent: CGRect) throws -> CIImage {
+        // New user-selected balancing replaces, rather than stacks with, the
+        // legacy curve. Previously saved edits keep their original renderer.
+        if settings.naturalBalanceAmount > 0 {
+            return try NaturalBalanceRenderer.apply(to: image, original: original,
+                amount: settings.naturalBalanceAmount, colorAmount: settings.naturalBalanceColorAmount, extent: extent)
+        }
         return settings.autoToneAmount > 0
-            ? try AutoToneRenderer.apply(to: denoised, original: original, amount: settings.autoToneAmount, extent: extent)
-            : denoised
+            ? try AutoToneRenderer.apply(to: image, original: original, amount: settings.autoToneAmount, extent: extent)
+            : image
     }
 
     private static func denoise(_ image: CIImage, settings: EditSettings, extent: CGRect, scale: Double) throws -> CIImage {

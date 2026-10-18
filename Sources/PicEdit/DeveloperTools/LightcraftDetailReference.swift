@@ -178,7 +178,7 @@ struct LightcraftDetailReference: AlgorithmEvaluationReference, Sendable {
         guard active.isFinite,
               [inactive, s.exposure, s.contrast, s.highlights, s.shadows, s.whites, s.blacks,
                s.dehaze, s.vibrance, s.saturation, s.luminanceNoiseReduction,
-               s.colorNoiseReduction, s.autoToneAmount].allSatisfy({ $0 == 0 }) else {
+               s.colorNoiseReduction, s.autoToneAmount, s.naturalBalanceAmount].allSatisfy({ $0 == 0 }) else {
             throw Failure.invalid("Detail reference accepts only its finite Clarity or Texture control")
         }
         return Float(min(100, max(-100, active)) / 100)

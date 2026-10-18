@@ -219,7 +219,7 @@ struct LightcraftDenoiseReference: AlgorithmEvaluationReference, Sendable {
         let active = control == .luminance ? s.luminanceNoiseReduction : s.colorNoiseReduction
         let inactive = control == .luminance ? s.colorNoiseReduction : s.luminanceNoiseReduction
         guard active.isFinite, [inactive, s.exposure, s.contrast, s.highlights, s.shadows, s.whites, s.blacks,
-            s.texture, s.clarity, s.dehaze, s.vibrance, s.saturation, s.autoToneAmount].allSatisfy({ $0 == 0 }) else {
+            s.texture, s.clarity, s.dehaze, s.vibrance, s.saturation, s.autoToneAmount, s.naturalBalanceAmount].allSatisfy({ $0 == 0 }) else {
             throw Failure.invalid("Denoise reference accepts only its finite Luminance or Color NR control")
         }
         return active

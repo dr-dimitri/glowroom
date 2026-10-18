@@ -1,6 +1,6 @@
 # Lokaler Entwicklungsassistent
 
-Der Assistent aus [AI-02](https://github.com/dr-dimitri/picedit/issues/3) und [AI-03](https://github.com/dr-dimitri/picedit/issues/4) übersetzt bewusst eingegebene Anweisungen in die bestehenden 14 Regler. Er erhält keine Bildpixel und kann Bildinhalt, Motive oder Bildqualität nicht beurteilen. Weißabgleich und generative Bildbearbeitung werden als nicht unterstützte Aufgaben gemeldet.
+Der Assistent aus [AI-02](https://github.com/dr-dimitri/picedit/issues/3) und [AI-03](https://github.com/dr-dimitri/picedit/issues/4) übersetzt bewusst eingegebene Anweisungen in 16 numerische Bearbeitungswerte, einschließlich des natürlichen Bildausgleichs und der bisherigen Tonwert-Automatik für vorhandene Bearbeitungen. Er erhält keine Bildpixel und kann Bildinhalt, Motive oder Bildqualität nicht beurteilen. Weißabgleich und generative Bildbearbeitung werden als nicht unterstützte Aufgaben gemeldet.
 
 ## Bedienung und Datenfluss
 
@@ -13,6 +13,10 @@ Der Assistent aus [AI-02](https://github.com/dr-dimitri/picedit/issues/3) und [A
 Neue manuelle Eingaben, Reset, Undo/Redo, A→B→A-Bildwechsel, Import/Refresh, Wartung und Schließen entwerten laufende bzw. sichtbare Vorschläge. Fehlende, gesperrte oder unlesbare Quellen führen zu einem erklärten Fehler. Ein nach Abbruch noch laufender SDK-Aufruf behält seinen Budgetplatz bis zu seiner tatsächlichen Rückkehr; seine Antwort wird verworfen. Angenommene Bearbeitungen gehören anschließend dem normalen Speicherablauf und werden durch Verwerfen der Assistentenansicht nicht abgebrochen.
 
 Der bestehende JPEG-Export friert ausschließlich übernommene Regler ein. Auch bei sichtbarer KI-Vorschau exportiert er den Stand vor dem Vorschlag; erst nach Übernahme enthält ein neu geöffneter Export die neuen Werte. Es gibt keinen zweiten Export-/Speicherpfad.
+
+Der natürliche Bildausgleich lässt sich ausdrücklich anfordern: „Aktiviere den natürlichen Bildausgleich“ schlägt typischerweise Stärke 70 vor. „Reduziere nur den Farbanteil des Bildausgleichs auf 25 Prozent“ ändert nur diesen gespeicherten Wert und schaltet einen deaktivierten Ausgleich nicht ein. Das lokale Rendering führt die bildabhängige Analyse aus; der Textassistent selbst bleibt ohne Bildzugriff. Ein allgemeiner Lookauftrag aktiviert den Bildausgleich nicht von allein. Die Version 2 der Einzel- und Lookprompts beschreibt diese Grenzen und kennzeichnet `autoToneAmount` als Kompatibilitätswert, der nicht neu aktiviert werden soll.
+
+Im Bereich **Bearbeiten** ersetzt **Natürlicher Bildausgleich** die frühere Tonwert-Automatik. Der Schalter beginnt mit Stärke 70 und dem gespeicherten Farbanteil (anfangs 50); beide Regler lassen sich getrennt einstellen. Neue Fotos bleiben unverändert, bis der Schalter eingeschaltet oder ein entsprechender KI-Vorschlag übernommen wird. Bei vorhandenen Bearbeitungen bleibt die alte Tonwert-Automatik aktiv und wird ausdrücklich angezeigt; **Bisherige Automatik ausschalten** beendet sie, der neue Schalter ersetzt sie in einem rückgängig machbaren Schritt. Der Farbanteil bleibt bei ausgeschaltetem Bildausgleich gespeichert, beeinflusst das Bild dann aber nicht.
 
 ## Voraussetzungen und Verfügbarkeit
 

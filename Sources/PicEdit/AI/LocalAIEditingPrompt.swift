@@ -4,8 +4,8 @@ import PicEditCore
 /// Versioned, text-only request. No source identity, request IDs, paths, EXIF or pixels
 /// enter this type. User text is encoded as a JSON string, never as instructions.
 struct LocalAIEditingPrompt: Equatable, Sendable {
-    static let version = 1
-    static let lookVersion = 1
+    static let version = 2
+    static let lookVersion = 2
     static let maximumUserTextBytes = 2_048
     static let instructions = """
     The person's locale is de_DE.
@@ -23,7 +23,10 @@ struct LocalAIEditingPrompt: Equatable, Sendable {
     contrast: globaler Kontrast; highlights/shadows: helle/dunkle Tonwerte;
     whites/blacks: Weiß-/Schwarzpunkt; texture: feine Struktur; clarity: lokaler Kontrast; dehaze: Dunstentfernung;
     vibrance: Dynamik; saturation: Farbsättigung; luminanceNoiseReduction/colorNoiseReduction: Luminanz-/Farbrauschen;
-    autoToneAmount: Anteil der vorhandenen automatischen Tonwertanpassung.
+    naturalBalanceAmount: Stärke des lokalen bildabhängigen natürlichen Bildausgleichs, 0 bis 100; 0 schaltet ihn aus.
+    naturalBalanceColorAmount: Farbanteil dieses Bildausgleichs, 0 bis 100, Standard 50; bei naturalBalanceAmount=0 ohne Bildwirkung.
+    Nur bei ausdrücklich gewünschtem Bildausgleich aktivieren, typischer Start naturalBalanceAmount=70. Der Renderer analysiert die Pixel lokal; du selbst siehst weiterhin keine Pixel.
+    autoToneAmount: veraltete Tonwert-Automatik, nur für bestehende Bearbeitungen. Nicht neu aktivieren; beim ausdrücklich gewünschten Wechsel zum natürlichen Bildausgleich auf 0 setzen.
     Verbindliche Muster (Ausgangswerte 0, wenn nicht anders angegeben):
     'Erhöhe nur die Belichtung etwas.' → {"status":"proposal","changes":[{"parameter":"exposure","value":0.3}],"explanation":"Belichtung etwas erhöhen."}
     'Verringere nur die Belichtung etwas.' bei exposure=1 → {"status":"proposal","changes":[{"parameter":"exposure","value":0.7}],"explanation":"Belichtung etwas verringern."}
@@ -31,6 +34,9 @@ struct LocalAIEditingPrompt: Equatable, Sendable {
     'Erhöhe nur die Schatten' bei shadows=10 → Ziel shadows=30, andere Regler unverändert.
     'Verringere die hellen Tonwerte mit dem Lichterregler.' → {"status":"proposal","changes":[{"parameter":"highlights","value":-20}],"explanation":"Lichter absenken."}
     'Weniger bunt' → nur saturation=-20; 'Mehr Kontrast' → nur contrast=20; 'Mehr feine Struktur' → nur texture=20.
+    'Aktiviere den natürlichen Bildausgleich.' → naturalBalanceAmount=70; zusätzlich autoToneAmount=0 nur falls die bisherige Automatik aktiv ist.
+    'Schalte den natürlichen Bildausgleich aus.' → nur naturalBalanceAmount=0.
+    'Reduziere nur den Farbanteil des Bildausgleichs auf 25 Prozent.' → nur naturalBalanceColorAmount=25; einen ausgeschalteten Bildausgleich nicht mit aktivieren.
     'Was ist auf dem Foto?' → {"status":"imageAnalysis","changes":[],"explanation":"Bildanalyse wird von diesem Anbieter nicht unterstützt."}
     'Wärmer' → {"status":"whiteBalance","changes":[],"explanation":"Weißabgleich ist nicht verfügbar."}
     Erläutere nur die vorgeschlagene Bedienänderung, keine Bildbeobachtungen.
@@ -57,7 +63,11 @@ struct LocalAIEditingPrompt: Equatable, Sendable {
     exposure bedeutet EV und muss -5 bis +5 bleiben (kleine Schritte 0.3, niemals 10 oder 20).
     contrast globaler Kontrast; highlights/shadows helle/dunkle Tonwerte; whites/blacks Weiß-/Schwarzpunkt;
     texture feine Struktur; clarity lokaler Kontrast; dehaze Dunstentfernung; vibrance Dynamik; saturation Farbsättigung;
-    luminanceNoiseReduction/colorNoiseReduction Rauschminderung; autoToneAmount Anteil bestehender automatischer Tonwertanpassung.
+    luminanceNoiseReduction/colorNoiseReduction Rauschminderung;
+    naturalBalanceAmount Stärke des lokalen natürlichen Bildausgleichs (0 aus, 100 maximal);
+    naturalBalanceColorAmount Farbanteil darin (0 bis 100, Standard 50), ohne Wirkung wenn naturalBalanceAmount=0.
+    Bildausgleich nicht allein wegen eines Lookauftrags aktivieren. Nur bei ausdrücklichem Zusatzwunsch naturalBalanceAmount ändern; typischer Start 70.
+    autoToneAmount ist veraltete Tonwert-Automatik für bestehende Bearbeitungen: nicht neu aktivieren; beim ausdrücklich gewünschten Wechsel auf 0 setzen.
     Unveränderte Regler auslassen. Beispiel bei neutralem Ausgang:
     natural: contrast=8, shadows=8; contrasty: contrast=35, clarity=10; desaturated: saturation=-35.
     Bei anderem Ausgang sind diese Zahlen keine festen Presets: erzeuge passende zulässige, wirksame Ziele relativ zum Ausgang.

@@ -108,7 +108,7 @@ struct LightcraftColorReference: AlgorithmEvaluationReference, Sendable {
         guard s.vibrance.isFinite, s.saturation.isFinite,
               [s.exposure, s.contrast, s.highlights, s.shadows, s.whites, s.blacks,
                s.texture, s.clarity, s.dehaze, s.luminanceNoiseReduction,
-               s.colorNoiseReduction, s.autoToneAmount].allSatisfy({ $0 == 0 }) else {
+               s.colorNoiseReduction, s.autoToneAmount, s.naturalBalanceAmount].allSatisfy({ $0 == 0 }) else {
             throw Failure.invalid("Colour reference accepts only finite Vibrance/Saturation controls")
         }
         return (Float(min(100, max(-100, s.vibrance)) / 100), Float(min(100, max(-100, s.saturation)) / 100))
