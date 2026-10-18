@@ -36,8 +36,14 @@ echo 'PASS: incompatible manifest and missing harness rejected before build or e
 env PATH="$STAGING/tools:$PATH" PICEDIT_HARNESS_COMPILE_MARKER="$STAGING/compiled" \
     "$ROOT/scripts/evaluate-image-generation.sh" > "$STAGING/plan"
 [[ ! -e "$STAGING/compiled" ]] || { echo 'Default plan compiled a model harness' >&2; exit 1; }
-status=0
-env PATH="$STAGING/tools:$PATH" PICEDIT_HARNESS_COMPILE_MARKER="$STAGING/compiled" \
-    "$ROOT/scripts/evaluate-image-generation.sh" benchmark > "$STAGING/output" 2>&1 || status=$?
-[[ "$status" == 2 && ! -e "$STAGING/compiled" ]] || { echo 'Inference without --run reached compiler' >&2; exit 1; }
+for mode in benchmark lama; do
+    status=0
+    env PATH="$STAGING/tools:$PATH" PICEDIT_HARNESS_COMPILE_MARKER="$STAGING/compiled" \
+        "$ROOT/scripts/evaluate-image-generation.sh" "$mode" > "$STAGING/output" 2>&1 || status=$?
+    [[ "$status" == 2 && ! -e "$STAGING/compiled" ]] || { echo 'Model loading without --run reached compiler' >&2; exit 1; }
+    status=0
+    env PATH="$STAGING/tools:$PATH" PICEDIT_HARNESS_COMPILE_MARKER="$STAGING/compiled" \
+        "$ROOT/scripts/evaluate-image-generation.sh" "$mode" --out "$STAGING/name --run inside" > "$STAGING/output" 2>&1 || status=$?
+    [[ "$status" == 2 && ! -e "$STAGING/compiled" ]] || { echo 'A path substring bypassed model opt-in' >&2; exit 1; }
+done
 echo 'PASS: image evaluation defaults to a plan and rejects missing inference opt-in'

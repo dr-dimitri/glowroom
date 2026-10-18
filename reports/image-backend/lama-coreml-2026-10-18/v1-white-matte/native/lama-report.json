@@ -1,0 +1,242 @@
+{
+  "compilationSeconds" : 0.34002420818433166,
+  "createdAt" : "2026-10-18T13:46:00Z",
+  "criteriaSHA256" : "8bc0fb5bfa928645afda573da51492d23d68dca979c977edadf8b622ca6dca74",
+  "currentCompositorDirectory" : "picedit-lama-native-20261018-compositor",
+  "currentCompositorReportSHA256" : "f1ca6319be60886e9baf7854ecab1087010272a241c2b47a7a5e326dadecd665",
+  "description" : "\nfunctionName: (null)\ninputs: (\n    \"image : Image (Color, 800 x 800)\",\n    \"mask : Image (Grayscale, 800 x 800)\"\n)\noutputs: (\n    \"output : Image (Color, 800 x 800)\"\n)\nstates: (\n)\npredictedFeatureName: (null)\npredictedProbabilitiesName: (null)\nclassLabels: (null)\nupdatable: NO\ntrainingInputs: (\n)\nparameters: (\n)\nmetadata: {\n    MLModelAuthorKey = \"https:\/\/github.com\/advimman\/lama\";\n    MLModelCreatorDefinedKey =     {\n    };\n    MLModelDescriptionKey = \"LaMa: Resolution-robust Large Mask Inpainting with Fourier Convolutions. Converted by https:\/\/github.com\/john-rocky\/CoreML-Models\";\n    MLModelLicenseKey = \"Apache2.0 License\";\n    MLModelVersionStringKey = \"\";\n}",
+  "hardware" : {
+    "operatingSystem" : "Version 27.0.1 (Build 26A434)",
+    "physicalMemoryBytes" : 17179869184
+  },
+  "interface" : {
+    "imagePixelFormat" : 1111970369,
+    "maskPixelFormat" : 1278226488,
+    "outputName" : "output",
+    "outputPixelFormat" : 1111970369
+  },
+  "loadSeconds" : 2.1968486667610705,
+  "memory" : {
+    "footprintAvailable" : true,
+    "peakFootprintBytes" : 1458292152,
+    "peakRSSBytes" : 772603904
+  },
+  "modelRevision" : "5ed76e3799ab4cad31381750d29880c267477e18",
+  "packageSHA256" : "f0d76abd55c49ab77177491e1c3e6bafea0d346ef2adc512af7382d4e88e75ed",
+  "productCapabilities" : "unchanged-unavailable",
+  "runs" : [
+    {
+      "fixture" : "01-structured-removal-hard",
+      "height" : 512,
+      "id" : "01-structured-removal-hard",
+      "memory" : {
+        "footprintAvailable" : true,
+        "peakFootprintBytes" : 1366476192,
+        "peakRSSBytes" : 772603904
+      },
+      "modelCanvas" : [
+        800,
+        800
+      ],
+      "modelOffset" : [
+        144,
+        144
+      ],
+      "pixelSHA256" : "9bce8cae4238c194a87b56f684f4a77820b9642e12b51fe0e66ed10133ef0474",
+      "predictionSeconds" : 1.5602344167418778,
+      "width" : 512
+    },
+    {
+      "fixture" : "01-structured-removal-hard",
+      "height" : 512,
+      "id" : "warm-1",
+      "memory" : {
+        "footprintAvailable" : true,
+        "peakFootprintBytes" : 1404880312,
+        "peakRSSBytes" : 772603904
+      },
+      "modelCanvas" : [
+        800,
+        800
+      ],
+      "modelOffset" : [
+        144,
+        144
+      ],
+      "pixelSHA256" : "9bce8cae4238c194a87b56f684f4a77820b9642e12b51fe0e66ed10133ef0474",
+      "predictionSeconds" : 0.40209925011731684,
+      "width" : 512
+    },
+    {
+      "fixture" : "01-structured-removal-hard",
+      "height" : 512,
+      "id" : "warm-2",
+      "memory" : {
+        "footprintAvailable" : true,
+        "peakFootprintBytes" : 1422427576,
+        "peakRSSBytes" : 772603904
+      },
+      "modelCanvas" : [
+        800,
+        800
+      ],
+      "modelOffset" : [
+        144,
+        144
+      ],
+      "pixelSHA256" : "9bce8cae4238c194a87b56f684f4a77820b9642e12b51fe0e66ed10133ef0474",
+      "predictionSeconds" : 0.4053244583774358,
+      "width" : 512
+    },
+    {
+      "fixture" : "01-structured-removal-hard",
+      "height" : 512,
+      "id" : "warm-3",
+      "memory" : {
+        "footprintAvailable" : true,
+        "peakFootprintBytes" : 1422493112,
+        "peakRSSBytes" : 772603904
+      },
+      "modelCanvas" : [
+        800,
+        800
+      ],
+      "modelOffset" : [
+        144,
+        144
+      ],
+      "pixelSHA256" : "9bce8cae4238c194a87b56f684f4a77820b9642e12b51fe0e66ed10133ef0474",
+      "predictionSeconds" : 0.4049472501501441,
+      "width" : 512
+    },
+    {
+      "fixture" : "02-edge-object-hard",
+      "height" : 512,
+      "id" : "02-edge-object-hard",
+      "memory" : {
+        "footprintAvailable" : true,
+        "peakFootprintBytes" : 1423754680,
+        "peakRSSBytes" : 772603904
+      },
+      "modelCanvas" : [
+        800,
+        800
+      ],
+      "modelOffset" : [
+        144,
+        144
+      ],
+      "pixelSHA256" : "516c485cba027224bb0629d2d563b902b79a8aceed52b006021a00083ed5ca90",
+      "predictionSeconds" : 0.40167837496846914,
+      "width" : 512
+    },
+    {
+      "fixture" : "03-mask-edge-hard",
+      "height" : 512,
+      "id" : "03-mask-edge-hard",
+      "memory" : {
+        "footprintAvailable" : true,
+        "peakFootprintBytes" : 1440548280,
+        "peakRSSBytes" : 772603904
+      },
+      "modelCanvas" : [
+        800,
+        800
+      ],
+      "modelOffset" : [
+        144,
+        144
+      ],
+      "pixelSHA256" : "df175e3444c6ea51e44f1cd57056f156402f06519a77c120e07a81726913037e",
+      "predictionSeconds" : 0.40167175000533462,
+      "width" : 512
+    },
+    {
+      "fixture" : "03-mask-edge-soft",
+      "height" : 512,
+      "id" : "03-mask-edge-soft",
+      "memory" : {
+        "footprintAvailable" : true,
+        "peakFootprintBytes" : 1457325496,
+        "peakRSSBytes" : 772603904
+      },
+      "modelCanvas" : [
+        800,
+        800
+      ],
+      "modelOffset" : [
+        144,
+        144
+      ],
+      "pixelSHA256" : "5bb51a0fe57c04fcfb1bfc039fa14c304ed50c5b18ca593b924d3b9307b97d15",
+      "predictionSeconds" : 0.4031041250564158,
+      "width" : 512
+    },
+    {
+      "fixture" : "04-partial-alpha-hard",
+      "height" : 512,
+      "id" : "04-partial-alpha-hard",
+      "memory" : {
+        "footprintAvailable" : true,
+        "peakFootprintBytes" : 1457440184,
+        "peakRSSBytes" : 772603904
+      },
+      "modelCanvas" : [
+        800,
+        800
+      ],
+      "modelOffset" : [
+        144,
+        144
+      ],
+      "pixelSHA256" : "e7491d023dc158871e73140a197037cd4fd2bfc8fa21bba369020decd7a9819c",
+      "predictionSeconds" : 0.40140637499280274,
+      "width" : 512
+    },
+    {
+      "fixture" : "05-fine-motif-edges-hard",
+      "height" : 512,
+      "id" : "05-fine-motif-edges-hard",
+      "memory" : {
+        "footprintAvailable" : true,
+        "peakFootprintBytes" : 1457440184,
+        "peakRSSBytes" : 772603904
+      },
+      "modelCanvas" : [
+        800,
+        800
+      ],
+      "modelOffset" : [
+        144,
+        144
+      ],
+      "pixelSHA256" : "87ac3d0bf2ac84ab61e4cf8798009ee2068dd7797e7c99969df810b2192ce7a9",
+      "predictionSeconds" : 0.4016357499640435,
+      "width" : 512
+    },
+    {
+      "fixture" : "06-nonsquare-canvas-hard",
+      "height" : 384,
+      "id" : "06-nonsquare-canvas-hard",
+      "memory" : {
+        "footprintAvailable" : true,
+        "peakFootprintBytes" : 1458292152,
+        "peakRSSBytes" : 772603904
+      },
+      "modelCanvas" : [
+        800,
+        800
+      ],
+      "modelOffset" : [
+        80,
+        208
+      ],
+      "pixelSHA256" : "9613aa25025ee81df19fc157c2fd0936046a73a6ac041bf9e603fd78991e4dbc",
+      "predictionSeconds" : 0.40200933325104415,
+      "width" : 640
+    }
+  ],
+  "schemaVersion" : 1,
+  "scope" : "technical candidate only; no text conditioning; no distribution or product-adapter Go",
+  "status" : "technical-inference-complete-awaiting-compositor-visual-review-and-provenance"
+}

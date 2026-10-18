@@ -441,8 +441,40 @@ private struct ImageGenerationEvaluation {
             print("Wrote \(count) synthetic contract fixtures without model results")
         case "replay":
             let historical = try option("--historical"), output = try option("--out")
-            _ = try await ImageGenerationReplay.run(historicalRoot: historical, outputRoot: output)
+            // Preserve the declared preprocessing when replaying a saved LaMa
+            // series. Historical SD-1.5 and LaMa V1 retain their old default.
+            var alphaPolicy: ImageGenerationReplay.CandidateAlphaPolicy = .historicalWhiteMatte
+            let lamaReport = historical.appendingPathComponent("lama-report.json")
+            if FileManager.default.fileExists(atPath: lamaReport.path),
+               let version = try json(lamaReport)["preprocessingVersion"] as? Int {
+                try require(version == 2, "unsupported-lama-preprocessing-version")
+                alphaPolicy = .straightRGB
+            }
+            _ = try await ImageGenerationReplay.run(historicalRoot: historical, outputRoot: output,
+                                                    candidateAlphaPolicy: alphaPolicy)
             print("Current compositor replay: \(output.path)")
+        case "lama":
+            try require(arguments.contains("--run"), "explicit-run-required")
+            let modelRoot = try option("--root"), output = try option("--out")
+            let repository = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+                .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+            let inspect = arguments.contains("--inspect")
+            let budget = AIResourceBudget.shared
+            let lease = try await budget.acquireLocalInference(residentBytes: Int64(memoryLimit))
+            do {
+                try await Task.detached { try LaMaEvaluation.run(root: modelRoot, repository: repository, output: output, inspectOnly: inspect) }.value
+            } catch { await budget.release(lease); throw error }
+            await budget.release(lease)
+            if !inspect {
+                var report = try json(output.appendingPathComponent("lama-report.json"))
+                let ids = (report["runs"] as! [JSONObject]).compactMap { $0["id"] as? String }
+                let replay = URL(fileURLWithPath: output.path + "-compositor", isDirectory: true)
+                _ = try await ImageGenerationReplay.run(historicalRoot: output, outputRoot: replay, caseIDs: ids,
+                                                       candidateAlphaPolicy: .straightRGB)
+                report["currentCompositorDirectory"] = replay.lastPathComponent
+                report["currentCompositorReportSHA256"] = try hash(replay.appendingPathComponent("current-compositor-report.json"))
+                try writeJSON(report, output.appendingPathComponent("lama-report.json"))
+            }
         case "benchmark":
             try require(arguments.contains("--run"), "explicit-run-required")
             root = try option("--root")

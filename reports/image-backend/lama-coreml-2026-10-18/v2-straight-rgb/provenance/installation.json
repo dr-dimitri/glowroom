@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "purpose": "technical-evaluation-only; no product capability or weight redistribution approval",
+  "repository": "mlboydaisuke/LaMa-CoreML",
+  "revision": "5ed76e3799ab4cad31381750d29880c267477e18",
+  "files": [
+    {
+      "path": "LaMa.mlpackage/Data/com.apple.CoreML/model.mlmodel",
+      "bytes": 1101809,
+      "sha256": "06a100ef99e0fd16326a3a8c4a687d13f7b26f544ea906a75338932d8554f953"
+    },
+    {
+      "path": "LaMa.mlpackage/Data/com.apple.CoreML/weights/weight.bin",
+      "bytes": 215544960,
+      "sha256": "d0541f6044a94cd4982bfdac074fc1ccfe11d8f1f590c299d6b5071b501fc184"
+    },
+    {
+      "path": "LaMa.mlpackage/Manifest.json",
+      "bytes": 617,
+      "sha256": "c814fff3cedf827c044094545ef80b0280b6cb8dd0e5c0bcf69fd31921191e58",
+      "gitBlobSHA1": "294b935fda2cb4bd8d177a12509df8cdde0d5ad9"
+    },
+    {
+      "path": "README.md",
+      "bytes": 3215,
+      "sha256": "2be5f58cc1dcca57b945aa348cf5b4ac78b35c6faea218abb063db73c66da9c8",
+      "gitBlobSHA1": "0958592e9a244cf9b6cd8faccf4fac629d1c7262"
+    }
+  ]
+}
