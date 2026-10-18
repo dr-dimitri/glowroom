@@ -1,0 +1,82 @@
+{
+  "schemaVersion": 1,
+  "scope": "Model-free software validation; actual inference evidence is stored separately per variant",
+  "swiftNormalApplicationTests": {
+    "passed": true,
+    "applicationTests": 687,
+    "applicationSuites": 86,
+    "applicationSeconds": 18.337,
+    "coreTests": 331,
+    "coreSuites": 44,
+    "coreSeconds": 14.015,
+    "newRasterUtilityTestsIncluded": true,
+    "limitation": "Subsequent Swift edits are confined to the explicitly selected developer harness, which was independently rebuilt and exercised."
+  },
+  "rasterTargetedTests": {
+    "passed": true,
+    "testCount": 6,
+    "seconds": 4.424
+  },
+  "pythonOfflineTests": {
+    "passed": true,
+    "testCount": 36,
+    "seconds": 1.268,
+    "inferenceExecuted": false,
+    "includes": "Pinned installation, native builder admission/publication failures, conversion identity, GGUF header bounds"
+  },
+  "shellOptInGuards": {
+    "passed": true,
+    "includes": "Default plan, invalid harness, exact --run requirement including numeric diagnosis, no filename-substring bypass",
+    "finalSourceRechecked": true
+  },
+  "replayCLI": {
+    "reports": [
+      "replay-cli-report.json",
+      "replay-cli-report-v7.json",
+      "replay-cli-report-final.json"
+    ],
+    "fixtures": "Actual archived LaMa PNGs with explicitly synthetic SDXL metadata for routing only; not SDXL quality evidence",
+    "passed": true
+  },
+  "nativeRegressions": {
+    "source": "V8 native build log and source snapshot",
+    "sdkNameRegressionPassed": true,
+    "numericDiagnosticPublicCPUTensorSelfTestPassed": true,
+    "metalGroupNormOriginalDefectReproduced": true,
+    "metalGroupNormPatchedN1N2N3Passed": true,
+    "maximumAbsoluteCPUmetalError": 3.5762786865234375e-07,
+    "absoluteTolerance": 0.0001
+  },
+  "finalCleanApplicationBuild": {
+    "status": "passed",
+    "exitCode": 0,
+    "swiftBuildSeconds": 110.66,
+    "record": "clean-application-build.json",
+    "log": "clean-application-build.log",
+    "signatureVerificationPassed": true
+  },
+  "finalIntegratedDiffReview": {
+    "status": "passed; related findings fixed and reviewed again",
+    "scope": "Swift/native lifecycles, raster mapping/tests, downloader/builder/converter, patches, receipts, archives, docs and integration interfaces",
+    "relatedFindingsFixed": [
+      "Verify and retain original06 before inference so failed series remain replayable",
+      "Clarify GROUP_NORM baseline element count and requested beige-background semantics"
+    ],
+    "archiveChecks": {
+      "sourceIdentityEntriesVerified": 100,
+      "nativeAndCompositorV8FilesByteIdentical": 111,
+      "reportArtifactBindingsVerified": 85,
+      "localDocumentationLinksVerified": 55,
+      "noWeightsOrPrivateRAWOrExecutablesInNewTree": true
+    },
+    "unrelatedIssue": "https://github.com/dr-dimitri/picedit/issues/78",
+    "unrelatedIssueScope": "Old SD15 synthetic preview can false-pass with zero samples; not modified by this change",
+    "whitespaceCheck": "Source/docs/tests pass; immutable raw logs, original license and unified-patch context preserve upstream whitespace and are excluded from formatting cleanup."
+  },
+  "finalDeveloperBuild": {
+    "passed": true,
+    "seconds": 34.87,
+    "scope": "Final Swift harness including early verified original06 archive; no model rerun",
+    "executableSHA256": "bf34d823265cd0231f28b2770d8bbc98024a1a587ff4bf61cde668f63f26ab54"
+  }
+}

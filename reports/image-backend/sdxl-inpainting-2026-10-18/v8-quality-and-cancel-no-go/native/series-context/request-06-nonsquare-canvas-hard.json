@@ -1,0 +1,11 @@
+{
+  "id" : "06-nonsquare-canvas-hard",
+  "mask" : "jobs\/60eb601a-f6b0-4fc4-b0ec-0ab6092f9445-06-nonsquare-canvas-hard\/mask.png",
+  "negativePrompt" : "blurry, distorted, new objects, text, watermark",
+  "numericDiagnostic" : false,
+  "operation" : "generate",
+  "output" : "outputs\/60eb601a-f6b0-4fc4-b0ec-0ab6092f9445-06-nonsquare-canvas-hard.png",
+  "prompt" : "continuous horizontal wood panel boards extending naturally, natural wood texture",
+  "seed" : 4281,
+  "source" : "jobs\/60eb601a-f6b0-4fc4-b0ec-0ab6092f9445-06-nonsquare-canvas-hard\/source.png"
+}

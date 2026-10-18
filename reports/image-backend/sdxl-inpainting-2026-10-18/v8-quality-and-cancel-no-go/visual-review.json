@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "scope": "Actual V8 raw and current-compositor comparison/final PNGs, frozen criteria, one synthetic fixture set/seed/configuration; no inference by review",
+  "decision": "no-go-current-configuration",
+  "rootReviewedAllSevenDistinctCases": true,
+  "independentReviewScopes": {
+    "reviewerA": [
+      "01",
+      "02",
+      "03-hard",
+      "03-soft"
+    ],
+    "reviewerB": [
+      "01",
+      "04",
+      "05",
+      "06"
+    ]
+  },
+  "cases": [
+    {
+      "caseID": "01-structured-removal-hard",
+      "decision": "fail",
+      "observed": "Ball removed and board lines continued; circular softer/differently toned texture remains. Two reviewers fail the strict seam criterion; a third considered the image visually acceptable."
+    },
+    {
+      "caseID": "02-edge-object-hard",
+      "decision": "fail",
+      "observed": "Cup and handle removed; clearly visible rectangular pink/gray-brown patch at right edge with different grain and contrast."
+    },
+    {
+      "caseID": "03-mask-edge-hard",
+      "decision": "fail",
+      "observed": "Yellow object removed; rectangular replacement region has different texture sharpness and tone with local bright/dark flecks."
+    },
+    {
+      "caseID": "03-mask-edge-soft",
+      "decision": "fail",
+      "observed": "Yellow object removed; softer boundary still leaves diffuse smoothed texture region and local flecks."
+    },
+    {
+      "caseID": "04-partial-alpha-hard",
+      "decision": "pass-this-fixture",
+      "observed": "Purple sphere removed and board lines continued; small local texture/tone variation, transparency gradient visually preserved. No claim of broad alpha/profile support."
+    },
+    {
+      "caseID": "05-fine-motif-edges-hard",
+      "decision": "fail",
+      "observed": "Requested beige background produced, but broad generated black branches with pale halos surround the protected thin green lines. The added outlines fail the frozen fine-edge requirement even though the original green pixels are preserved."
+    },
+    {
+      "caseID": "06-nonsquare-canvas-hard",
+      "decision": "fail-diagnostic-only",
+      "observed": "Generated frame/stacked panels and new turquoise rectangles instead of seamless wood continuation; not counted as a required removal case."
+    }
+  ],
+  "reviewDisagreement": "01 is subtle: root and reviewerA fail strict texture/seam criterion; reviewerB accepts. Decision is independently supported by unequivocal required05 failure and cancellation failure.",
+  "preservation": {
+    "allTenCompositorCasesChecked": true,
+    "outsidePixelsCheckedTotal": 2041570,
+    "outsideRGBABytesChangedTotal": 0,
+    "sourceAlphaBytesChangedTotal": 0,
+    "allPNGRoundTripsIdentical": true,
+    "scope": "Normalized synthetic sRGB RGBA8 fixtures and current CPU MaskCompositor only; not native RAW/16bit/product adapter proof"
+  },
+  "compositorReportSHA256": "550d21be8be39d45f32b786c11b60a729f6c5156c043d4e371ce5b1eface4bc2",
+  "productCapabilities": "unchanged-unavailable",
+  "notTested": [
+    "actual ImageGenerationService product adapter",
+    "selected RAW preview cold/warm pipeline",
+    "native large-image/16bit/profile product path",
+    "backgroundEdit or outpaint capability Go"
+  ]
+}

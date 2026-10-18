@@ -1,0 +1,133 @@
+{
+  "binary": "/private/tmp/picedit-sdxl-tool-build/out/Products/Release/PicEdit",
+  "binarySHA256": "6c18daf1225aa7cc263305a737ddd8b2a6b8ecc31fefd5e014bd4476b9920ff3",
+  "inferenceExecuted": false,
+  "metadataModel": "synthetic SDXL replay metadata only",
+  "passed": true,
+  "probes": [
+    {
+      "caseIDs": [
+        "01-structured-removal-hard",
+        "warm-1",
+        "warm-2",
+        "warm-3"
+      ],
+      "command": [
+        "/private/tmp/picedit-sdxl-tool-build/out/Products/Release/PicEdit",
+        "replay",
+        "--historical",
+        "/var/folders/b1/v2c0n8lj4pl6hnj0kpb5jxwm0000gn/T/picedit-sdxl-cli-replay-probe-728pneqx/four-cases",
+        "--out",
+        "/var/folders/b1/v2c0n8lj4pl6hnj0kpb5jxwm0000gn/T/picedit-sdxl-cli-replay-probe-728pneqx/four-cases-compositor"
+      ],
+      "expectedError": null,
+      "name": "four-cases",
+      "passed": true,
+      "returnCode": 0,
+      "stderr": "four-cases.stderr",
+      "stdout": "four-cases.stdout"
+    },
+    {
+      "command": [
+        "/private/tmp/picedit-sdxl-tool-build/out/Products/Release/PicEdit",
+        "replay",
+        "--historical",
+        "/var/folders/b1/v2c0n8lj4pl6hnj0kpb5jxwm0000gn/T/picedit-sdxl-cli-replay-probe-728pneqx/alpha-policy",
+        "--out",
+        "/var/folders/b1/v2c0n8lj4pl6hnj0kpb5jxwm0000gn/T/picedit-sdxl-cli-replay-probe-728pneqx/alpha-policy-compositor"
+      ],
+      "expectedError": null,
+      "name": "alpha-policy",
+      "observedAlphaPolicy": "Straight RGB model input/output, no pre-matting; original source alpha restored before composition",
+      "passed": true,
+      "returnCode": 0,
+      "stderr": "alpha-policy.stderr",
+      "stdout": "alpha-policy.stdout"
+    },
+    {
+      "command": [
+        "/private/tmp/picedit-sdxl-tool-build/out/Products/Release/PicEdit",
+        "replay",
+        "--historical",
+        "/var/folders/b1/v2c0n8lj4pl6hnj0kpb5jxwm0000gn/T/picedit-sdxl-cli-replay-probe-728pneqx/unknown-version",
+        "--out",
+        "/var/folders/b1/v2c0n8lj4pl6hnj0kpb5jxwm0000gn/T/picedit-sdxl-cli-replay-probe-728pneqx/unknown-version-compositor"
+      ],
+      "expectedError": "unsupported-sdxl-preprocessing-version",
+      "name": "unknown-version",
+      "passed": true,
+      "returnCode": -5,
+      "stderr": "unknown-version.stderr",
+      "stdout": "unknown-version.stdout"
+    },
+    {
+      "command": [
+        "/private/tmp/picedit-sdxl-tool-build/out/Products/Release/PicEdit",
+        "replay",
+        "--historical",
+        "/var/folders/b1/v2c0n8lj4pl6hnj0kpb5jxwm0000gn/T/picedit-sdxl-cli-replay-probe-728pneqx/duplicate-id",
+        "--out",
+        "/var/folders/b1/v2c0n8lj4pl6hnj0kpb5jxwm0000gn/T/picedit-sdxl-cli-replay-probe-728pneqx/duplicate-id-compositor"
+      ],
+      "expectedError": "invalid-sdxl-replay-runs",
+      "name": "duplicate-id",
+      "passed": true,
+      "returnCode": -5,
+      "stderr": "duplicate-id.stderr",
+      "stdout": "duplicate-id.stdout"
+    },
+    {
+      "command": [
+        "/private/tmp/picedit-sdxl-tool-build/out/Products/Release/PicEdit",
+        "replay",
+        "--historical",
+        "/var/folders/b1/v2c0n8lj4pl6hnj0kpb5jxwm0000gn/T/picedit-sdxl-cli-replay-probe-728pneqx/missing-id",
+        "--out",
+        "/var/folders/b1/v2c0n8lj4pl6hnj0kpb5jxwm0000gn/T/picedit-sdxl-cli-replay-probe-728pneqx/missing-id-compositor"
+      ],
+      "expectedError": "invalid-sdxl-replay-runs",
+      "name": "missing-id",
+      "passed": true,
+      "returnCode": -5,
+      "stderr": "missing-id.stderr",
+      "stdout": "missing-id.stdout"
+    },
+    {
+      "command": [
+        "/private/tmp/picedit-sdxl-tool-build/out/Products/Release/PicEdit",
+        "replay",
+        "--historical",
+        "/var/folders/b1/v2c0n8lj4pl6hnj0kpb5jxwm0000gn/T/picedit-sdxl-cli-replay-probe-728pneqx/empty-runs",
+        "--out",
+        "/var/folders/b1/v2c0n8lj4pl6hnj0kpb5jxwm0000gn/T/picedit-sdxl-cli-replay-probe-728pneqx/empty-runs-compositor"
+      ],
+      "expectedError": "invalid-sdxl-replay-runs",
+      "name": "empty-runs",
+      "passed": true,
+      "returnCode": -5,
+      "stderr": "empty-runs.stderr",
+      "stdout": "empty-runs.stdout"
+    },
+    {
+      "command": [
+        "/private/tmp/picedit-sdxl-tool-build/out/Products/Release/PicEdit",
+        "replay",
+        "--historical",
+        "/var/folders/b1/v2c0n8lj4pl6hnj0kpb5jxwm0000gn/T/picedit-sdxl-cli-replay-probe-728pneqx/missing-runs",
+        "--out",
+        "/var/folders/b1/v2c0n8lj4pl6hnj0kpb5jxwm0000gn/T/picedit-sdxl-cli-replay-probe-728pneqx/missing-runs-compositor"
+      ],
+      "expectedError": "invalid-sdxl-replay-runs",
+      "name": "missing-runs",
+      "passed": true,
+      "returnCode": -5,
+      "stderr": "missing-runs.stderr",
+      "stdout": "missing-runs.stdout"
+    }
+  ],
+  "purpose": "Synthetic SDXL metadata around existing real LaMa V2 PNGs; CLI/compositor routing regression only; no SDXL inference or quality evidence",
+  "root": "/var/folders/b1/v2c0n8lj4pl6hnj0kpb5jxwm0000gn/T/picedit-sdxl-cli-replay-probe-728pneqx",
+  "schemaVersion": 1,
+  "source": "/Users/wolfgangbauer/dev/workspace/picedit/reports/image-backend/lama-coreml-2026-10-18/v2-straight-rgb",
+  "sourceModel": "archived LaMa Core ML V2"
+}

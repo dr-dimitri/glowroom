@@ -6,6 +6,7 @@ if [[ $# == 0 || "${1:-}" == plan ]]; then
 Image backend gate: fullNoGo (quality); no product generator is enabled.
 No downloads, model load or inference occur in this default mode.
 Explicit preparation: python3 scripts/prepare-image-generation-evaluation.py --help
+SDXL candidate: scripts/evaluate-image-generation.sh sdxl --run --all-fixtures --root /tmp/picedit-sdxl --out /tmp/picedit-sdxl-probe
 Separate LaMa removal-only candidate (no product Go): python3 tools/lama-evaluation/prepare.py --help
   scripts/evaluate-image-generation.sh lama --run --root /tmp/picedit-lama --out /tmp/picedit-lama-probe
 Add --inspect to inspect the downloaded package interface without inference.
@@ -18,10 +19,10 @@ The preceding SwiftPM build can fetch pinned package dependencies into its isola
 PLAN
     exit 0
 fi
-case "$1" in fixtures|replay|benchmark|lama) ;; *) echo "Expected plan, fixtures, replay, benchmark or lama" >&2; exit 2 ;; esac
+case "$1" in fixtures|replay|benchmark|lama|sdxl) ;; *) echo "Expected plan, fixtures, replay, benchmark, lama or sdxl" >&2; exit 2 ;; esac
 RUN=0
 for argument in "$@"; do [[ "$argument" != --run ]] || RUN=1; done
-if [[ ( "$1" == benchmark || "$1" == lama ) && "$RUN" == 0 ]]; then
+if [[ ( "$1" == benchmark || "$1" == lama || "$1" == sdxl ) && "$RUN" == 0 ]]; then
     echo "Model loading requires explicit --run; installation is a separate command." >&2
     exit 2
 fi

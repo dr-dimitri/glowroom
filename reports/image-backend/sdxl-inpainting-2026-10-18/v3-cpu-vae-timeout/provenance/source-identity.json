@@ -1,0 +1,54 @@
+{
+  "baseCommit": "c4b063f62f5175cf832bc95abf580c1f8932d082",
+  "purpose": "Exact sources and SDK delta of corrected V3 measurement",
+  "files": {
+    "tools/sdxl-evaluation/helper.cpp": {
+      "bytes": 18243,
+      "sha256": "342ef94e3ac51526667a74e04ec9ebda71eca2d16cc31b47714eb7b6fbc7e6d5"
+    },
+    "tools/sdxl-evaluation/build_native.py": {
+      "bytes": 9922,
+      "sha256": "d11f955abbc76cccd46fa74096807c70a56c57f9026f27cda583a5f28987d442"
+    },
+    "tools/sdxl-evaluation/sdk-sdxl-inpaint.patch": {
+      "bytes": 851,
+      "sha256": "bb91dc6b5868b9c9db264c416a5695973280b4e29c7667f123819295788fe4ce"
+    },
+    "tools/sdxl-evaluation/sdk_name_regression.cpp": {
+      "bytes": 4436,
+      "sha256": "36114f0c140ab91f88cd088445c236f3b4cc7091ef8d829210cceccc77ab078c"
+    },
+    "tools/sdxl-evaluation/convert.py": {
+      "bytes": 12185,
+      "sha256": "1e74215666083e04fbf037363973d6f61f53b0097dd1e2dd96b7a35824a4596e"
+    },
+    "tools/sdxl-evaluation/prepare.py": {
+      "bytes": 7872,
+      "sha256": "b3324713ca148ba4c40b08d801ccb6d0c405a4841d0765f7e7e6ab03e246ace0"
+    },
+    "tools/sdxl-evaluation/package.json": {
+      "bytes": 10181,
+      "sha256": "d66209fbcb767950b36f815c6148c01193b3e297808d6bf56eadf0cb8a39e7ac"
+    },
+    "tools/sdxl-evaluation/criteria.json": {
+      "bytes": 2258,
+      "sha256": "6599dafb6136c76eb406dbf3f58748075a60ad7c16f71e8de7074c41222bea36"
+    },
+    "Sources/PicEdit/DeveloperTools/ImageGenerationEvaluation.swift": {
+      "bytes": 49589,
+      "sha256": "c6eed24951e06e792230d056317f5f39a17ef1f9d1aa21c9950eed7b9bc8c50f"
+    },
+    "Sources/PicEdit/DeveloperTools/ImageGenerationReplay.swift": {
+      "bytes": 24540,
+      "sha256": "57af1947e6eac360fefc41a32ef9d418ab9d39f619b19562582a5714cb024070"
+    },
+    "Sources/PicEdit/DeveloperTools/SDXLEvaluationRaster.swift": {
+      "bytes": 4059,
+      "sha256": "db12ba3b88bfa6b75687639cc518eb51af737478163a39cf8bee9762502a14c3"
+    },
+    "Sources/PicEdit/Imaging/MaskCompositor.swift": {
+      "bytes": 19236,
+      "sha256": "13aac4d34d8a56a269e64996a155998790ab8cf695ccf474bc830a7c2e5efc00"
+    }
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "sdkRevision": "8cd731e7b4667eb8f40a153315b9a7125d09a58d",
+  "ggmlRevision": "d25b121ce1d6ae0c7e62ad080460d9fc1e46dd93",
+  "sources": [
+    {
+      "name": "stable-diffusion.cpp.tar.gz",
+      "bytes": 125758115,
+      "sha256": "871c4f03286360bf10b9850ce4c57912311d0d91b117d4e4be19d989a417f08b",
+      "revision": "8cd731e7b4667eb8f40a153315b9a7125d09a58d",
+      "destination": "source"
+    },
+    {
+      "name": "ggml.tar.gz",
+      "bytes": 4158450,
+      "sha256": "bbfaebbfe2564a796f1a9309ff87cd6c6a5acdfffe7b779f96b847f57945403b",
+      "revision": "d25b121ce1d6ae0c7e62ad080460d9fc1e46dd93",
+      "destination": "source/ggml"
+    }
+  ],
+  "helperSHA256": "1af861ccd920d4f02057881e5832077d2ad2346557517d800d535d0859a2e103",
+  "helperSourceSHA256": "8bd9be8bdf1e14be2173d753d4fd68e79894e2ef3cb30f6a733a75753155b50c",
+  "builderSHA256": "aa81e2c25ab242a87f0e51e0aea9458e786885c201624dfe7d63f903764a6e82",
+  "publicSDKAPIOnly": true,
+  "inferenceExecuted": false,
+  "conversionExecuted": false,
+  "productCapability": "unavailable",
+  "buildJobs": 2
+}

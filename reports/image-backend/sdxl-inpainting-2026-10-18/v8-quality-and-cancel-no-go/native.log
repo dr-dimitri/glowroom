@@ -1,0 +1,12 @@
+SDXL completed 1/10: 01-structured-removal-hard
+SDXL completed 2/10: warm-1
+SDXL completed 3/10: warm-2
+SDXL completed 4/10: warm-3
+SDXL completed 5/10: 02-edge-object-hard
+SDXL completed 6/10: 03-mask-edge-hard
+SDXL completed 7/10: 03-mask-edge-soft
+SDXL completed 8/10: 04-partial-alpha-hard
+SDXL completed 9/10: 05-fine-motif-edges-hard
+SDXL completed 10/10: 06-nonsquare-canvas-hard
+SDXL REPORT /private/tmp/picedit-sdxl-native-20261018-v8/sdxl-report.json
+Swift/ErrorType.swift:254: Fatal error: Error raised at top level: PicEdit.(unknown context at $10498c24c).Failure.code("operation-timeout")
