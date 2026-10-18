@@ -4,6 +4,8 @@ import SwiftUI
 enum WorkspaceControlFocus: Hashable {
     case focus, library, tools, filmstrip
     case tool(WorkspaceTool)
+    case group(WorkspaceTool)
+    case adjustmentGroup(String)
 }
 
 struct WorkspacePanelVisibility: Equatable {

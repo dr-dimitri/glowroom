@@ -50,7 +50,7 @@ struct LibraryView: View {
                             layout.update(developing: model.isDeveloping) { $0.toolsWidth = width }
                         }
                         Group {
-                            if model.isDeveloping { DevelopInspector(library: model) }
+                            if model.isDeveloping { DevelopInspector(library: model, focusedControl: $focusedWorkspaceControl) }
                             else { InspectorView(model: model) }
                         }.frame(width: widths.tools)
                     }
@@ -134,6 +134,7 @@ struct LibraryView: View {
     }
 
     private var panels: WorkspacePanels { layout.panels(developing: model.isDeveloping) }
+    private var saveStatus: WorkspaceSaveStatus { WorkspaceSaveStatus(editor: editor) }
 
     private var panelVisibility: WorkspacePanelVisibility {
         WorkspacePanelVisibility(isFocused: layout.isFocused, showsLibrary: panels.showsLibrary,
@@ -449,24 +450,16 @@ struct LibraryView: View {
             if !model.selectedIDs.isEmpty {
                 Text("\(model.selectedIDs.count) ausgewählt")
             }
-            if editor.isReadOnly && editor.hasPendingChanges {
-                Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
-                Button("Ungespeicherte Änderungen · Erneut versuchen") { Task { _ = await editor.flush() } }
-                    .buttonStyle(.plain).foregroundStyle(.orange).disabled(editor.isSaving)
-            } else if editor.isSaving || editor.hasPendingChanges {
-                ProgressView().controlSize(.mini)
-                Text("Bearbeitung wird gespeichert …")
-            }
             if !model.showsDetail {
                 Image(systemName: "square.grid.3x3").font(.system(size: 10))
                 Slider(value: $model.gridSize, in: 150...320).controlSize(.mini).frame(width: 90).help("Vorschaugröße")
                 Image(systemName: "square.grid.2x2").font(.system(size: 11))
             }
             workspaceNotices
-            if !editor.isSaving && !editor.hasPendingChanges {
-                Text(editor.isReadOnly ? "Speichern nicht verfügbar" : "Bearbeitung gespeichert")
-                    .foregroundStyle(editor.isReadOnly ? .orange : Theme.accent)
-            }
+            if saveStatus.isBusy { ProgressView().controlSize(.mini) }
+            Text(saveStatus.text)
+                .foregroundStyle(saveStatus.hasError ? .orange : (saveStatus.isBusy ? Theme.muted : Theme.accent))
+                .accessibilityIdentifier("workspace.saveStatus")
         }.font(.system(size: 10)).foregroundStyle(Theme.muted).padding(.horizontal, 20).frame(height: 35)
             .background(Theme.sidebar).overlay(alignment: .top) { Rectangle().fill(Theme.line).frame(height: 1) }
     }
@@ -519,7 +512,7 @@ struct LibraryView: View {
     }
 
     private var hasWorkspaceError: Bool {
-        if editor.isReadOnly || editor.errorMessage != nil || editor.failedArtifactCommitID != nil || photoMetadata.errorMessage != nil || photoMetadata.hasPendingRetry || photoMetadata.recovery != nil { return true }
+        if saveStatus.hasError || photoMetadata.errorMessage != nil || photoMetadata.hasPendingRetry || photoMetadata.recovery != nil { return true }
         if case .failed = assistant.state { return true }
         if case .failed = imageAnalysis.state { return true }
         return false
@@ -529,17 +522,16 @@ struct LibraryView: View {
         ScrollView {
         VStack(alignment: .leading, spacing: 12) {
             Text("Hinweise prüfen").font(.headline)
-            if editor.isReadOnly || editor.errorMessage != nil || editor.failedArtifactCommitID != nil {
+            if saveStatus.hasError {
                 Text(editor.errorMessage ?? "Bearbeitungen können derzeit nicht gespeichert werden.")
-                if let id = editor.failedArtifactCommitID {
-                    Button("Angenommenen Bildstand erneut speichern") { _ = editor.retryAcceptedArtifactCommit(id) }
-                        .disabled(editor.isCommitting || editor.isRestoring || editor.isBackingUp)
-                } else if editor.hasPendingChanges {
-                    Button("Änderungen erneut speichern") { Task { _ = await editor.flush() } }
-                        .disabled(editor.isSaving || editor.isRestoring || editor.isBackingUp || editor.isCommitting || editor.isClosing)
-                } else {
-                    Button("Bearbeitungen erneut laden") { editor.retryLoading() }
-                        .disabled(editor.isLoading || editor.isSaving || editor.isRestoring || editor.isBackingUp || editor.isCommitting || editor.isClosing)
+                if let retry = saveStatus.retryAction {
+                    Button(retry.title) {
+                        switch retry {
+                        case .acceptedArtifact(let id): _ = editor.retryAcceptedArtifactCommit(id)
+                        case .pendingChanges: Task { _ = await editor.flush() }
+                        case .reload: editor.retryLoading()
+                        }
+                    }.disabled(!saveStatus.canRetry)
                 }
             }
             if let error = photoMetadata.errorMessage { Text(error) }
