@@ -78,6 +78,18 @@ final class ArtifactAppBootstrap: Sendable {
         return try await dependencies.coordinator.recoverEditingDatabase(from: url)
     }
 
+    /// Catalog membership is durable before pruning. Independent databases can
+    /// reconcile concurrently; each transaction is atomic and retryable after
+    /// interruption. Never infer removal from an unavailable original file.
+    func reconcileCatalog(_ catalog: LibraryCatalog, reference: MetadataCatalogFileReference) async throws -> Bool {
+        let dependencies = try await services.value
+        let before = try await dependencies.database.loadState()
+        async let editing = dependencies.database.reconcileCatalog(catalog, reference: reference)
+        async let metadata = dependencies.metadata.purgeMissingCatalogAssets(persistedCatalog: catalog, expectedReference: reference)
+        let (state, _) = try await (editing, metadata)
+        return before.storeEpoch != state.storeEpoch
+    }
+
     /// Available even after a failed startup, so explicit recovery/conflict
     /// inspection remains possible without admitting ordinary writes.
     func coordinator() async throws -> any CatalogMutationCoordinating {

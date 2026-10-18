@@ -2,6 +2,94 @@ import Foundation
 import CSQLite
 
 extension PhotoMetadataRepository {
+    /// Permanent catalog removal is separate from reconciliation: relocation
+    /// recovery still needs orphan records until its pending change is resolved.
+    /// Callers drain accepted metadata/UI work before removing catalog assets.
+    @discardableResult
+    public func purgeMissingCatalogAssets(persistedCatalog:LibraryCatalog,
+                                          expectedReference:MetadataCatalogFileReference) async throws -> Int {
+        try await withMetadataAccess {
+            try await self.purgeMissingMetadata(persistedCatalog:persistedCatalog,expectedReference:expectedReference)
+        }
+    }
+    func purgeMissingMetadata(persistedCatalog:LibraryCatalog,expectedReference:MetadataCatalogFileReference) throws -> Int {
+        try PhotoMetadataValidation.reference(expectedReference)
+        let repository = CatalogRepository(directory:fileURL.deletingLastPathComponent())
+        try repository.validate(persistedCatalog)
+        let retained = Set(persistedCatalog.assets.map(\.id))
+        for id in retained { try PhotoMetadataValidation.identifier(id) }
+        let db = try connection()
+        // Publication and all dependent SQL deletions are deliberately ordered.
+        // The native lock keeps a stale catalog snapshot from deleting new data.
+        let removed = try CatalogFileIO.withSnapshotLock(directory:repository.directory) { contents,validateBoundary in
+            guard contents.reference == expectedReference else { throw PhotoMetadataError.catalogConflict }
+            let actual:LibraryCatalog
+            if let bytes = contents.data {
+                do { actual = try JSONDecoder().decode(LibraryCatalog.self,from:bytes) }
+                catch { throw CatalogRepositoryError.corruptCatalog(repository.fileURL) }
+            } else { actual = LibraryCatalog() }
+            guard actual == persistedCatalog else { throw PhotoMetadataError.catalogConflict }
+            return try sql.transaction(db,beforeCommit:{
+                try self.hooks.beforeCommit(); try validateBoundary()
+            }) {
+                try readState(db)
+                guard try journals(on:db,pendingOnly:true).isEmpty else { throw PhotoMetadataError.relocationInProgress }
+                var deleted = 0, changed = false, after:String?
+                while true {
+                    let page = try rowPage(after:after,on:db)
+                    if page.isEmpty { break }
+                    for row in page where !retained.contains(row.assetID) {
+                        try deleteMetadataEntry(table:"metadata_records",column:"asset_id",id:row.assetID,on:db)
+                        deleted += 1; changed = true
+                    }
+                    after = page.last!.assetID
+                }
+                // Receipts contain asset IDs and versions, and must disappear
+                // with their records rather than falsely replaying an old save.
+                after = nil
+                while true {
+                    let suffix = after == nil ? "" : " WHERE id>?"
+                    let page:[MetadataWriteReceipt] = try PhotoMetadataSQLite.statement(db,"SELECT id,digest,receipt FROM metadata_receipts\(suffix) ORDER BY id COLLATE BINARY LIMIT 256") { s in
+                        if let after { try PhotoMetadataSQLite.bind(after,1,s) }
+                        var page:[MetadataWriteReceipt] = []
+                        try PhotoMetadataSQLite.consume(s) { page.append(try Self.decodeReceipt($0)) }; return page
+                    }
+                    if page.isEmpty { break }
+                    for receipt in page where receipt.affected.contains(where:{ !retained.contains($0.assetID) }) {
+                        try deleteMetadataEntry(table:"metadata_receipts",column:"id",id:receipt.operationID.uuidString.lowercased(),on:db)
+                        changed = true
+                    }
+                    after = page.last!.operationID.uuidString.lowercased()
+                }
+                for journal in try journals(on:db) {
+                    let ids = journal.change.expectedRecords.map(\.assetID)
+                        + journal.change.relocations.flatMap { [$0.oldAssetID,$0.newAssetID] }
+                        + journal.receipt.conflicts.flatMap { [$0.oldAssetID,$0.newAssetID] }
+                    guard ids.contains(where:{ !retained.contains($0) }) else { continue }
+                    let id = journal.change.id.uuidString.lowercased()
+                    try deleteMetadataEntry(table:"metadata_coordinations",column:"id",id:id,on:db)
+                    try deleteMetadataEntry(table:"metadata_catalog_changes",column:"id",id:id,on:db)
+                    changed = true
+                }
+                if changed || catalogReference != expectedReference { try bumpSearch(db) }
+                try setCatalogReference(expectedReference,on:db)
+                return deleted
+            }
+        }
+        // A retained import review may contain removed text even when its SQL
+        // row was absent. Requiring a new review also prevents stale import CAS.
+        retainedReview = nil
+        if catalog?.persistedReference != expectedReference {
+            catalog = nil; catalogByID = [:]
+        }
+        refreshSearch(db)
+        return removed
+    }
+    private func deleteMetadataEntry(table:String,column:String,id:String,on db:OpaquePointer) throws {
+        try PhotoMetadataSQLite.statement(db,"DELETE FROM \(table) WHERE \(column)=?") { s in
+            try PhotoMetadataSQLite.bind(id,1,s); try PhotoMetadataSQLite.done(s)
+        }
+    }
     static func decodeJournal(_ s:OpaquePointer) throws -> PhotoMetadataJournal {
         let id = try PhotoMetadataSQLite.text(s,0,maximum:36), state = try PhotoMetadataSQLite.text(s,1,maximum:16)
         let journal = try PhotoMetadataInternalCodec.decode(PhotoMetadataJournal.self,from:PhotoMetadataSQLite.blob(s,2,maximum:PhotoMetadataLimits.maximumJournalBytes),maximum:PhotoMetadataLimits.maximumJournalBytes)

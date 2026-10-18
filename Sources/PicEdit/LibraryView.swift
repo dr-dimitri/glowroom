@@ -88,7 +88,7 @@ struct LibraryView: View {
         .confirmationDialog("„\(folderToRemove?.name ?? "Ordner")“ aus der Bibliothek entfernen?", isPresented: Binding(get: { folderToRemove != nil }, set: { if !$0 { folderToRemove = nil } }), titleVisibility: .visible) {
             Button("Aus Bibliothek entfernen", role: .destructive) { if let folder = folderToRemove { model.removeFolder(folder.id) }; folderToRemove = nil }
             Button("Abbrechen", role: .cancel) { folderToRemove = nil }
-        } message: { Text("Die Originalbilder bleiben auf deinem Mac. Bilder, die auch in einem anderen eingebundenen Ordner liegen, behalten ihre Bewertungen. Die übrigen Einträge werden aus dem Katalog entfernt.") }
+        } message: { Text("Die Originalbilder bleiben auf deinem Mac. Für vollständig entfernte Bilder werden Bearbeitungen, Bildinformationen und Suchindexeinträge gelöscht. Erneutes Hinzufügen erfasst sie neu. Bilder in anderen eingebundenen Ordnern bleiben erhalten.") }
     }
 
     private var panels: WorkspacePanels { layout.panels(developing: model.isDeveloping) }

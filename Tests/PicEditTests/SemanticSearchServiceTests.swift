@@ -5,6 +5,46 @@ import Testing
 
 @Suite("Semantic service scheduling, source identity and maintenance")
 struct SemanticSearchServiceTests {
+    @Test(.timeLimit(.minutes(1))) func catalogRemovalDrainsNativeIndexWorkAndReaddingCannotRestoreCachedVectors() async throws {
+        let f = try await SearchFixture.make(); await f.provider.block(image:true)
+        let indexing = Task { try await f.service.prepareIndex(scope:f.photos,rebuild:true) }
+        // An async event is the precondition. A loaded test executor must not
+        // continue merely because a short polling deadline elapsed.
+        defer { indexing.cancel(); Task { await f.provider.unblock() } }
+        try await f.provider.waitForFirstImageCall()
+        let updates = await f.service.updates()
+        let removing = Task { try await f.service.purgeRemovedAssets(retaining:[f.photos[1].id]) }
+        var maintenanceEntered = false
+        for await state in updates {
+            if state.availability == .unavailable(.busy) { maintenanceEntered = true; break }
+        }
+        try #require(maintenanceEntered,"Catalog cleanup must enter maintenance before assertions")
+        // Cancellation cannot release a running encoder or delete its SQL rows
+        // until the native call has actually returned.
+        #expect(await searchBudgetState(f.budget).activeInferences == 1)
+        #expect(await f.provider.unloads == 0)
+        #expect(try await f.store.records(in:f.generation!).map(\.assetID) == ["a","b"])
+        await f.provider.unblock()
+        await searchErrorAny([.cancelled,.superseded]) { try await indexing.value }
+        try await removing.value
+        #expect(await searchBudgetState(f.budget).activeInferences == 0)
+        #expect(await f.provider.unloads == 1)
+        #expect(try await f.store.records(in:f.generation!).map(\.assetID) == ["b"])
+        await searchError(.superseded) {
+            _ = try await f.service.search(query:"removed",candidates:[f.photos[0]],topK:1)
+        }
+
+        // A newly composed service sees only retained vectors. Reintroducing
+        // the same catalog asset requires fresh indexing, even after restart.
+        let restartedStore = try SemanticIndexStore(directory:f.store.fileURL.deletingLastPathComponent())
+        let restarted = SemanticSearchService(store:restartedStore,installer:f.installer,providerFactory:{ _ in f.provider },preparer:f.preparer,budget:f.budget)
+        await restarted.updateCatalog(snapshotSessionID:f.session,generation:3,assets:f.photos)
+        let status = try await restarted.status(scope:f.photos)
+        #expect(status.indexedCount == 1 && status.missingCount == 1)
+        #expect(try await restartedStore.metadata(in:f.generation!,assetIDs:["a"]).isEmpty)
+        #expect(await f.provider.imageCalls == 1)
+    }
+
     @Test func explicitIndexUsesOneImageJobAndFindsPairedGermanEnglishWithoutNames() async throws {
         let f = try await SearchFixture.make(seed: false)
         #expect(await f.provider.imageCalls == 0)
@@ -513,6 +553,7 @@ private actor SearchProviderFake: SemanticEmbeddingProviding {
     var texts: [String] = [], imageCalls = 0, maximumActive = 0, unloads = 0
     private var active = 0, blockText = false, blockImage = false, invalidNextVector = false, invalidNextInstallation = false
     private var waiting: [CheckedContinuation<Void, Never>] = []
+    private var firstImageCallWaiters: [UUID: CheckedContinuation<Void, Error>] = [:]
     private var nextImageInstallationFailure: SemanticEmbeddingError?
     private var nextAvailability: SemanticAvailability?
     private var availabilityWaiters: [CheckedContinuation<Void, Never>] = []
@@ -541,10 +582,27 @@ private actor SearchProviderFake: SemanticEmbeddingProviding {
     }
     func encodeImage(_ input: SemanticImageInput) async throws -> [Float] {
         imageCalls += 1; active += 1; maximumActive = max(maximumActive, active)
+        let entered = firstImageCallWaiters; firstImageCallWaiters.removeAll()
+        for waiter in entered.values { waiter.resume() }
         if blockImage { await withCheckedContinuation { waiting.append($0) } }
         active -= 1
         if let failure = nextImageInstallationFailure { nextImageInstallationFailure = nil; throw failure }
         return input.values.first == 1 ? [0, 1, 0] : [1, 0, 0]
+    }
+    func waitForFirstImageCall() async throws {
+        try Task.checkCancellation()
+        if imageCalls > 0 { return }
+        let id = UUID()
+        try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { (continuation:CheckedContinuation<Void,Error>) in
+                if Task.isCancelled { continuation.resume(throwing:CancellationError()) }
+                else { firstImageCallWaiters[id] = continuation }
+            }
+        } onCancel:{ Task { await self.cancelFirstImageCallWaiter(id) } }
+        try Task.checkCancellation()
+    }
+    private func cancelFirstImageCallWaiter(_ id:UUID) {
+        firstImageCallWaiters.removeValue(forKey:id)?.resume(throwing:CancellationError())
     }
     func unload() async { unloads += 1 }
     func failNextVector() { invalidNextVector = true }

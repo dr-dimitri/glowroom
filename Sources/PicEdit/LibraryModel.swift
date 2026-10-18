@@ -101,6 +101,7 @@ final class LibraryModel: ObservableObject {
         didSet { if oldValue != isUpdatingCatalog { advanceAISelectionGeneration() } }
     }
     var synchronizeEditing: (@MainActor () async throws -> Void)?
+    var prepareCatalogCleanup: (@MainActor () async throws -> Void)?
     var invalidateEditingSources: (@MainActor () -> Void)?
     let lifecycle: CatalogLifecycleGate?
     private let coordinatorLoader: (@Sendable () async throws -> any CatalogMutationCoordinating)?
@@ -168,6 +169,7 @@ final class LibraryModel: ObservableObject {
          lifecycle: CatalogLifecycleGate? = nil,
          coordinator: (@Sendable () async throws -> any CatalogMutationCoordinating)? = nil,
          editingDependencies: (@Sendable () async throws -> EditingModelDependencies)? = nil,
+         catalogCleanup: CatalogWriter.Cleanup? = nil,
          folderScanner: @escaping @Sendable (LibraryFolder) async throws -> ScanResult = { try await FolderScanner().scan(folder: $0) }) {
         self.lifecycle = lifecycle; self.coordinatorLoader = coordinator
         let metadataSession = UUID()
@@ -175,7 +177,7 @@ final class LibraryModel: ObservableObject {
         self.metadataStore = metadataStore; metadataDirectory = repository.directory
         jpegExportProtection = JPEGExportCatalogProtection(repository: repository)
         writer = CatalogWriter(repository: repository, metadataStore: metadataStore, sessionID: metadataSession,
-            lifecycle: lifecycle, coordinator: coordinator, editingDependencies: editingDependencies)
+            lifecycle: lifecycle, coordinator: coordinator, editingDependencies: editingDependencies, cleanup: catalogCleanup)
         self.now = now; self.folderScanner = folderScanner
         self.semanticSearch = semanticSearch
         if let semanticSearch {
@@ -635,8 +637,9 @@ final class LibraryModel: ObservableObject {
     }
 
     private func loadAcceptedCatalog() async throws {
+        try await prepareCatalogCleanup?()
         let loaded = try await writer.load()
-        if loaded.editingRemapped { try await synchronizeEditing?() }
+        if loaded.editingRemapped || loaded.metadata.editingPruned { try await synchronizeEditing?() }
         activeScopes = loaded.scopes
         // Persist refreshed bookmark/tree metadata under the same admission as
         // loading. No later Task may lose the initial relocation's protection.
@@ -644,6 +647,7 @@ final class LibraryModel: ObservableObject {
         if loaded.updated && !hasPendingRelocation { applyPhotoMetadataCatalogResult(try await saveAcceptedCatalog(loaded.catalog)) }
         else { applyPhotoMetadataCatalogResult(loaded.metadata) }
         catalog = loaded.catalog; catalogNeedsSave = false
+        reportCleanupFailure(loaded.metadata)
         await waitForProjection()
         reconcileSelection()
     }
@@ -795,7 +799,9 @@ final class LibraryModel: ObservableObject {
                             if selectedFolder == id { self.selection = .all }
                         default: break
                         }
-                        self.notice = "Ordner aus der Bibliothek entfernt. Originaldateien bleiben erhalten."
+                        self.notice = value.cleanupError == nil
+                            ? "Ordner und zugehörige Daten aus der Bibliothek entfernt. Originaldateien bleiben erhalten."
+                            : "Ordner entfernt. Die Datenbereinigung muss erneut ausgeführt werden."
                     }
                 } catch { errorMessage = "Änderungen konnten nicht gespeichert werden.\n\n" + error.localizedDescription }
             }
@@ -926,10 +932,54 @@ final class LibraryModel: ObservableObject {
     }
 
     private func saveAcceptedCatalog(_ snapshot: LibraryCatalog) async throws -> CatalogWriteMetadata {
+        let membershipChanged = Set(snapshot.assets.map(\.id)) != Set(catalog.assets.map(\.id))
+        if membershipChanged {
+            // Previously accepted catalog/metadata/edit writes finish before
+            // identity deletion. UI admission is closed by isUpdatingCatalog;
+            // queued imports keep their existing serial input order.
+            while !catalogSaveTasks.isEmpty {
+                for task in Array(catalogSaveTasks.values) { await task.value }
+            }
+            try await prepareCatalogCleanup?()
+        }
         revision += 1
-        let value = try await writer.save(snapshot, revision: revision)
+        var value: CatalogWriteMetadata
+        do { value = try await writer.save(snapshot, revision: revision) }
+        catch {
+            // A pre-import cleanup may already have committed another store's
+            // epoch before a later participant failed. Never reuse that local
+            // baseline for another edit or import until startup reconciliation.
+            if membershipChanged { isReadOnly = true }
+            throw error
+        }
+        if value.editingPruned {
+            do { try await synchronizeEditing?() }
+            catch { value.cleanupError = error.localizedDescription }
+        }
+        reportCleanupFailure(value)
         if catalog == snapshot { catalogNeedsSave = false }
         return value
+    }
+
+    private func reportCleanupFailure(_ value: CatalogWriteMetadata) {
+        guard let error = value.cleanupError else { return }
+        isReadOnly = true
+        errorMessage = "Die Katalogdaten konnten noch nicht vollständig bereinigt werden. Weitere Änderungen sind gesperrt; beim nächsten Start wird die Bereinigung wiederholt.\n\n" + error
+    }
+
+    /// Restoring a backup may contain images removed since that backup. Apply
+    /// current membership before exposing the restored state as editable.
+    func reconcileAfterEditingRestore() async throws {
+        guard !isUpdatingCatalog, !isImporting else { throw CatalogLifecycleError.maintenanceAlreadyPending }
+        isUpdatingCatalog = true
+        defer { isUpdatingCatalog = false }
+        let admission = try registerCatalogWrite()
+        try await withCatalogAdmission(admission) {
+            let value = try await self.writer.cleanupCurrentCatalog()
+            self.reportCleanupFailure(value)
+            if value.cleanupError != nil { throw ArtifactContractError.staleSnapshot }
+            if value.editingPruned { try await self.synchronizeEditing?() }
+        }
     }
 
     private func persist(admission: CatalogAcceptedWriteAdmission?) {

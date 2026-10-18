@@ -11,6 +11,8 @@ struct CatalogWriteMetadata: Sendable {
     let sequence: UInt64
     let blockedAssetIDs: Set<String>
     let protectedSourceURLs: [URL]
+    var cleanupError: String?
+    var editingPruned = false
     init(reference: MetadataCatalogFileReference, reconciliation: MetadataReconciliationResult?,
          error: PhotoMetadataError?, changes: [MetadataCatalogChangeReceipt] = [], sequence: UInt64) {
         self.reference = reference; self.reconciliation = reconciliation; self.error = error
@@ -25,6 +27,7 @@ struct CatalogWriteMetadata: Sendable {
 /// publish between a relocation journal and its exact expected bytes.
 actor CatalogWriter {
     typealias FolderResolver = @Sendable (LibraryFolder) async -> (LibraryFolder, URL?)
+    typealias Cleanup = @Sendable (LibraryCatalog, MetadataCatalogFileReference) async throws -> Bool
     let repository: CatalogRepository
     private let lifecycle: CatalogLifecycleGate?
     private let coordinatorLoader: (@Sendable () async throws -> any CatalogMutationCoordinating)?
@@ -34,6 +37,7 @@ actor CatalogWriter {
     private let sessionID: UUID
     private let resolver: FolderResolver
     private let checkpoint: @Sendable (CatalogWriteCheckpoint) throws -> Void
+    private let cleanup: Cleanup?
     private var busy = false
     private var waiters: [CheckedContinuation<Void, Never>] = []
     private var lastRevision = -1
@@ -47,16 +51,18 @@ actor CatalogWriter {
          checkpoint: @escaping @Sendable (CatalogWriteCheckpoint) throws -> Void = { _ in },
          lifecycle: CatalogLifecycleGate? = nil,
          coordinator: (@Sendable () async throws -> any CatalogMutationCoordinating)? = nil,
-         editingDependencies: (@Sendable () async throws -> EditingModelDependencies)? = nil) {
+         editingDependencies: (@Sendable () async throws -> EditingModelDependencies)? = nil,
+         cleanup: Cleanup? = nil) {
         self.lifecycle = lifecycle; self.coordinatorLoader = coordinator; self.editingDependencies = editingDependencies
         self.repository = repository; metadata = metadataStore; self.sessionID = sessionID
+        self.cleanup = cleanup
         resolver = folderResolver ?? { await Self.resolve($0) }; self.checkpoint = checkpoint
     }
     struct LoadedCatalog: Sendable {
         let catalog: LibraryCatalog
         let scopes: [UUID: URL]
         let updated: Bool
-        let metadata: CatalogWriteMetadata
+        var metadata: CatalogWriteMetadata
         var editingRemapped = false
     }
     func recoveryCatalog() throws -> StoredLibraryCatalog { try repository.loadStored() }
@@ -69,12 +75,41 @@ actor CatalogWriter {
     }
     private var hasPendingChange: Bool { changes.contains { $0.state == .staged || $0.state == .conflicted } }
 
+    func cleanupCurrentCatalog() async throws -> CatalogWriteMetadata {
+        if let lifecycle {
+            return try await lifecycle.withRepositoryAccess(domain: .catalog) { try await self.cleanupCurrentImpl() }
+        }
+        return try await cleanupCurrentImpl()
+    }
+    private func cleanupCurrentImpl() async throws -> CatalogWriteMetadata {
+        await enter(); defer { leave() }
+        guard !hasPendingChange else { throw PhotoMetadataError.relocationInProgress }
+        let current = try repository.loadStored()
+        if let persisted, persisted.reference != current.reference { throw CatalogRepositoryError.concurrentModification }
+        var result = metadataResult(reference: current.reference, reconciliation: nil, error: nil)
+        if let cleanup {
+            do { result.editingPruned = try await cleanup(current.catalog, current.reference) }
+            catch { result.cleanupError = error.localizedDescription }
+        }
+        return result
+    }
+
     func load() async throws -> LoadedCatalog {
-        if let lifecycle { return try await lifecycle.withRepositoryAccess(domain: .catalog) { try await self.loadImpl() } }
-        return try await loadImpl()
+        if let lifecycle { return try await lifecycle.withRepositoryAccess(domain: .catalog) { try await self.loadAndClean() } }
+        return try await loadAndClean()
+    }
+    private func loadAndClean() async throws -> LoadedCatalog {
+        await enter(); defer { leave() }
+        var loaded = try await loadImpl()
+        guard !loaded.metadata.changes.contains(where: { $0.state == .staged || $0.state == .conflicted }), let cleanup else { return loaded }
+        let current = try repository.loadStored()
+        guard current.reference == loaded.metadata.reference else { throw CatalogRepositoryError.concurrentModification }
+        do {
+            loaded.metadata.editingPruned = try await cleanup(current.catalog, current.reference)
+        } catch { loaded.metadata.cleanupError = error.localizedDescription }
+        return loaded
     }
     private func loadImpl() async throws -> LoadedCatalog {
-        await enter(); defer { leave() }
         let stored = try repository.loadStored(); persisted = stored
         let resolved = await withTaskGroup(of: (Int, LibraryFolder, URL?).self) { group in
             var next = 0; var output: [(Int, LibraryFolder, URL?)] = []
@@ -205,6 +240,13 @@ actor CatalogWriter {
             return metadataResult(reference: persisted.reference, reconciliation: nil, error: nil)
         }
         let before = try persisted ?? repository.loadStored()
+        let beforeIDs = Set(before.catalog.assets.map(\.id)), afterIDs = Set(catalog.assets.map(\.id))
+        var editingPruned = false
+        // Clean the durable BEFORE membership before accepting new identities.
+        // This also retries cleanup interrupted after a previous publication.
+        if !afterIDs.isSubset(of: beforeIDs), let cleanup {
+            editingPruned = try await cleanup(before.catalog, before.reference)
+        }
         let prepared = try repository.prepare(catalog)
         if prepared.reference != before.reference {
             let stage = try repository.stage(prepared)
@@ -213,12 +255,20 @@ actor CatalogWriter {
         }
         persisted = StoredLibraryCatalog(catalog: catalog, reference: prepared.reference)
         lastRevision = revision
-        guard let metadata else { return metadataResult(reference: prepared.reference, reconciliation: nil, error: nil) }
-        do {
-            let result = try await metadata.reconcile(await snapshot(catalog, reference: prepared.reference))
-            changes = result.changes
-            return metadataResult(reference: prepared.reference, reconciliation: result, error: nil)
-        } catch { return metadataResult(reference: prepared.reference, reconciliation: nil, error: Self.metadataError(error)) }
+        var result: CatalogWriteMetadata
+        if let metadata {
+            do {
+                let value = try await metadata.reconcile(await snapshot(catalog, reference: prepared.reference))
+                changes = value.changes
+                result = metadataResult(reference: prepared.reference, reconciliation: value, error: nil)
+            } catch { result = metadataResult(reference: prepared.reference, reconciliation: nil, error: Self.metadataError(error)) }
+        } else { result = metadataResult(reference: prepared.reference, reconciliation: nil, error: nil) }
+        if !beforeIDs.isSubset(of: afterIDs), let cleanup {
+            do { editingPruned = try await cleanup(catalog, prepared.reference) || editingPruned }
+            catch { result.cleanupError = error.localizedDescription }
+        }
+        result.editingPruned = editingPruned
+        return result
     }
 
     func retryMetadataReconciliation() async throws -> CatalogWriteMetadata {

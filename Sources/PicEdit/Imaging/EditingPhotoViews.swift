@@ -12,6 +12,12 @@ struct EditingThumbnail: View {
         if let source = try? editor.resolvedSource(for: asset) {
             AssetThumbnail(url: asset.fileURL, modifiedAt: asset.modifiedAt, size: size, fileSize: asset.fileSize,
                 priority: priority, settings: source.settings, source: source.identity)
+                .overlay(alignment: .bottomLeading) {
+                    if editor.showsImportedOriginalFallback {
+                        Text("Original").font(.caption2).padding(4).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 4))
+                            .help("Original ohne Bearbeitungen. Die Bearbeitungsdatenbank ist nicht verfügbar; gespeicherte Bearbeitungen bleiben erhalten.")
+                    }
+                }
         } else {
             Image(systemName: "exclamationmark.triangle").foregroundStyle(.orange)
                 .help("Die gespeicherte Bildquelle ist nicht verfügbar. Das Original wird nicht ersatzweise angezeigt.")
@@ -28,8 +34,14 @@ struct EditingPhotoPreview: View {
     var body: some View {
         if let source = try? editor.resolvedSource(for: asset, intent: intent) {
             PhotoPreview(url: asset.fileURL, modifiedAt: asset.modifiedAt, fileSize: asset.fileSize,
-                settings: intent == .currentEditing ? settingsOverride ?? source.settings : .neutral,
+                settings: editor.showsImportedOriginalFallback ? .neutral : intent == .currentEditing ? settingsOverride ?? source.settings : .neutral,
                 source: source.identity, developing: developing)
+                .overlay(alignment: .top) {
+                    if editor.showsImportedOriginalFallback, intent != .importedOriginal {
+                        Text("Original ohne Bearbeitungen · Bearbeitungsdatenbank nicht verfügbar")
+                            .font(.caption).padding(8).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 6)).padding(8)
+                    }
+                }
         } else {
             VStack(spacing: 8) {
                 Image(systemName: "exclamationmark.triangle").foregroundStyle(.orange)

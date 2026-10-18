@@ -209,6 +209,16 @@ actor SemanticSearchService: SemanticSearchServing {
             notice = preserved.map { "Vorhandene Indexdateien wurden aufbewahrt: \($0.path)" } ?? "Die Indexeinträge wurden gelöscht."
         } catch { notice = Self.sanitized(error).localizedDescription; throw Self.sanitized(error) }
     }
+    /// Stop actual native work before deleting vectors, so a late encoder
+    /// cannot repopulate an asset removed from the durable catalog.
+    func purgeRemovedAssets(retaining assetIDs: Set<String>) async throws {
+        while maintaining { await withCheckedContinuation { maintenanceWaiters.append($0) } }
+        try await beginMaintenance()
+        defer { endMaintenance() }
+        _ = try await store.retainOnlyCatalogAssets(assetIDs)
+        assets = assets.filter { assetIDs.contains($0.key) }
+        querySpace = UUID(); counts = Counts(total: assets.count, missing: assets.count)
+    }
     func shutdown() async {
         // Termination can be cancelled; completing shutdown never permanently
         // closes this service. A later query may load its provider again.
