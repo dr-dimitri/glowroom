@@ -52,6 +52,52 @@ struct CatalogLifecycleGateTests {
         }
     }
 
+    @Test func independentReadOutlivesCatalogAdmissionWithoutReusingIt() async throws {
+        let gate = CatalogLifecycleGate(requiresRecovery: false)
+        let session = try await gate.waitForStartup()
+        let accepted = try gate.registerAcceptedWrite(domain: .catalog, session: session)
+        let publicationFinished = LifecycleLatch()
+        let (inherited, independent) = try await gate.withAcceptedWrite(accepted) {
+            let inherited = Task {
+                await publicationFinished.wait()
+                return try await gate.withRepositoryAccess(domain: .photoMetadata) { 42 }
+            }
+            let independent = Task.detached {
+                await publicationFinished.wait()
+                return try await gate.withRepositoryAccess(domain: .photoMetadata) { 42 }
+            }
+            return (inherited, independent)
+        }
+        // Reproduce an observer read only after catalog publication has returned
+        // and its accepted slot has been removed, without relying on scheduling.
+        await publicationFinished.release()
+        await #expect(throws: CatalogLifecycleError.invalidAdmission) { try await inherited.value }
+        #expect(try await independent.value == 42)
+    }
+
+    @Test func independentReadCannotInheritExclusiveMaintenance() async throws {
+        let gate = CatalogLifecycleGate(requiresRecovery: false)
+        let maintenance = try await gate.beginMaintenance(.backup(UUID()))
+        _ = try await gate.withMaintenance(maintenance) {
+            await #expect(throws: CatalogLifecycleError.maintenanceAlreadyPending) {
+                try await Task.detached {
+                    try await gate.withRepositoryAccess(domain: .photoMetadata) { 42 }
+                }.value
+            }
+        }
+        try await gate.finishMaintenance(maintenance)
+    }
+
+    @Test func independentReadStillRequiresSuccessfulRecovery() async throws {
+        let gate = CatalogLifecycleGate()
+        gate.reportStartupFailure()
+        await #expect(throws: CatalogLifecycleError.recoveryRequired) {
+            try await Task.detached {
+                try await gate.withRepositoryAccess(domain: .photoMetadata) { 42 }
+            }.value
+        }
+    }
+
     @Test func registeredAndCanceledWorkDrainsOnlyAfterActualReturn() async throws {
         let gate = CatalogLifecycleGate(requiresRecovery: false)
         let session = try await gate.waitForStartup()

@@ -218,9 +218,13 @@ final class PhotoMetadataModel: ObservableObject {
         guard !isClosing else { needsLoadResumption = true; return }
         loadID = UUID(); let id = loadID
         loadTask?.cancel(); record = nil; storeReady = false; manualConflictReviewed = false
+        // These observers outlive the UI event that triggered them. Detached
+        // tasks avoid inheriting its short-lived catalog/maintenance admission;
+        // repository access acquires its own slot. Keep UI state on MainActor
+        // and retain the handles for cancellation and stale-result checks.
         guard let context else {
             isLoading = false
-            loadTask = Task { [weak self, store] in
+            loadTask = Task.detached { @MainActor [weak self, store] in
                 do { try await self?.waitForStartup() }
                 catch { self?.errorMessage = Self.message(error); return }
                 let state = await store.searchState()
@@ -233,7 +237,7 @@ final class PhotoMetadataModel: ObservableObject {
             return
         }
         isLoading = true
-        loadTask = Task { [weak self, store] in
+        loadTask = Task.detached { @MainActor [weak self, store] in
             do {
                 try await self?.waitForStartup()
                 let value = try await store.record(assetID: context.assetID)
