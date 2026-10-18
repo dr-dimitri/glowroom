@@ -3,15 +3,15 @@ import PicEditCore
 
 struct DevelopInspector: View {
     @ObservedObject var library: LibraryModel
+    var focusedControl: FocusState<WorkspaceControlFocus?>.Binding
     @EnvironmentObject private var editor: EditingModel
     @EnvironmentObject private var assistant: AIAssistantModel
     @EnvironmentObject private var imageAnalysis: ImageAnalysisModel
     @EnvironmentObject private var photoMetadata: PhotoMetadataModel
     @EnvironmentObject private var layout: WorkspaceLayoutModel
-    @FocusState private var focusedGroup: WorkspaceTool?
-    @FocusState private var focusedAdjustmentGroup: String?
 
     private var panels: WorkspacePanels { layout.panels(developing: library.isDeveloping) }
+    private var saveStatus: WorkspaceSaveStatus { WorkspaceSaveStatus(editor: editor) }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -45,12 +45,12 @@ struct DevelopInspector: View {
                         // All headers are eager children; a dock jump can reach a
                         // closed group below a long, already open tool section.
                         withAnimation(.easeInOut(duration: 0.18)) { proxy.scrollTo(tool, anchor: .top) }
-                        focusedGroup = tool
+                        focusedControl.wrappedValue = .group(tool)
                     }
                     .onAppear {
                         if let tool = layout.revealedTool, panels.openGroups.contains(tool) {
                             proxy.scrollTo(tool, anchor: .top)
-                            focusedGroup = tool
+                            focusedControl.wrappedValue = .group(tool)
                         }
                     }
                 }
@@ -92,7 +92,7 @@ struct DevelopInspector: View {
             Text(asset.fileName).font(.system(size: 12, weight: .medium)).lineLimit(1).truncationMode(.middle)
             Text("Quelle: \(editor.snapshot(for: asset.id).source == .original ? "Importiertes Original" : "Generierter Bildstand")")
                 .font(.system(size: 10)).foregroundStyle(Theme.muted)
-            if editor.errorMessage != nil || editor.failedArtifactCommitID != nil {
+            if saveStatus.hasError {
                 Button { reveal(.versions) } label: {
                     Label("Speicherfehler · Prüfen", systemImage: "exclamationmark.triangle")
                         .font(.system(size: 11, weight: .medium)).foregroundStyle(.orange)
@@ -100,7 +100,7 @@ struct DevelopInspector: View {
             } else {
                 HStack(spacing: 6) {
                     Circle().fill(editor.isReadOnly ? Color.orange : Theme.accent).frame(width: 5, height: 5)
-                    Text(saveStatus).font(.system(size: 10)).foregroundStyle(Theme.muted)
+                    Text(saveStatus.text).font(.system(size: 10)).foregroundStyle(Theme.muted)
                 }
             }
         }.frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 16).padding(.vertical, 12)
@@ -111,9 +111,7 @@ struct DevelopInspector: View {
         let groupStatus = status(for: tool, assetID: asset.id)
         return VStack(alignment: .leading, spacing: 0) {
             Button {
-                finishInput(assetID: asset.id)
-                layout.toggleGroup(tool, developing: library.isDeveloping)
-                focusedGroup = tool
+                toggleGroup(tool, assetID: asset.id)
             } label: {
                 HStack(spacing: 8) {
                     Image(systemName: expanded ? "chevron.down" : "chevron.right")
@@ -126,7 +124,10 @@ struct DevelopInspector: View {
                             .font(.system(size: 10)).foregroundStyle(status.isError ? Color.orange : Theme.accent)
                     }
                 }.frame(maxWidth: .infinity, minHeight: 43, alignment: .leading).contentShape(Rectangle())
-            }.buttonStyle(.plain).focused($focusedGroup, equals: tool)
+            }.buttonStyle(.plain)
+                .workspaceFocusTarget(focusedControl, equals: .group(tool)) {
+                    toggleGroup(tool, assetID: asset.id)
+                }
                 .accessibilityLabel(tool.title)
                 .accessibilityValue([expanded ? "Geöffnet" : "Geschlossen", groupStatus?.text].compactMap { $0 }.joined(separator: ", "))
                 .accessibilityHint(expanded ? "Werkzeuggruppe zuklappen" : "Werkzeuggruppe aufklappen")
@@ -179,18 +180,14 @@ struct DevelopInspector: View {
                         .font(.system(size: 11)).foregroundStyle(.orange)
                         .fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
                 }
-                if let id = editor.failedArtifactCommitID {
-                    Button("Angenommenen Bildstand erneut speichern") { _ = editor.retryAcceptedArtifactCommit(id) }
-                        .disabled(editor.isCommitting || editor.isRestoring || editor.isBackingUp)
-                }
-                if editor.isReadOnly {
-                    if editor.hasPendingChanges {
-                        Button("Ungespeicherte Änderungen erneut sichern") { Task { _ = await editor.flush() } }
-                            .disabled(editor.isSaving || editor.isCommitting || editor.isRestoring || editor.isBackingUp)
-                    } else {
-                        Button("Bearbeitungen erneut laden") { editor.retryLoading() }
-                            .disabled(editor.isLoading || editor.isSaving || editor.isCommitting || editor.isRestoring || editor.isBackingUp)
-                    }
+                if let retry = saveStatus.retryAction {
+                    Button(retry.title) {
+                        switch retry {
+                        case .acceptedArtifact(let id): _ = editor.retryAcceptedArtifactCommit(id)
+                        case .pendingChanges: Task { _ = await editor.flush() }
+                        case .reload: editor.retryLoading()
+                        }
+                    }.disabled(!saveStatus.canRetry)
                 }
                 ArtifactVariantsSection(assetID: asset.id)
             }
@@ -219,7 +216,22 @@ struct DevelopInspector: View {
     private func reveal(_ tool: WorkspaceTool) {
         if let assetID = library.selectedID { finishInput(assetID: assetID) }
         layout.reveal(tool, developing: library.isDeveloping)
-        focusedGroup = tool
+        focusedControl.wrappedValue = .group(tool)
+    }
+
+    private func toggleGroup(_ tool: WorkspaceTool, assetID: String) {
+        finishInput(assetID: assetID)
+        layout.toggleGroup(tool, developing: library.isDeveloping)
+        focusedControl.wrappedValue = .group(tool)
+    }
+
+    private func toggleAdjustmentGroup(_ key: String, assetID: String) {
+        finishInput(assetID: assetID)
+        layout.update(developing: library.isDeveloping) { state in
+            if state.openAdjustmentGroups.contains(key) { state.openAdjustmentGroups.remove(key) }
+            else { state.openAdjustmentGroups.insert(key) }
+        }
+        focusedControl.wrappedValue = .adjustmentGroup(key)
     }
 
     private func finishInput(assetID: String) {
@@ -298,16 +310,6 @@ struct DevelopInspector: View {
         }.font(.system(size: 11)).fixedSize(horizontal: false, vertical: true)
     }
 
-    private var saveStatus: String {
-        if editor.isLoading { return "Bearbeitungen werden geladen …" }
-        if editor.isReadOnly { return "Speichern nicht verfügbar" }
-        if editor.isRestoring { return "Sicherung wird wiederhergestellt …" }
-        if editor.isCommitting { return "Bildstand wird gespeichert …" }
-        if editor.isSaving { return "Wird gespeichert …" }
-        if editor.hasPendingChanges { return "Änderungen werden gesichert …" }
-        return "Alle Änderungen gespeichert"
-    }
-
     private func naturalBalanceSection(assetID: String) -> some View {
         let settings = editor.settings(for: assetID)
         return VStack(alignment: .leading, spacing: 10) {
@@ -378,12 +380,7 @@ struct DevelopInspector: View {
         return VStack(alignment: .leading, spacing: 13) {
             HStack(spacing: 10) {
                 Button {
-                    finishInput(assetID: assetID)
-                    layout.update(developing: library.isDeveloping) { state in
-                        if expanded { state.openAdjustmentGroups.remove(key) }
-                        else { state.openAdjustmentGroups.insert(key) }
-                    }
-                    focusedAdjustmentGroup = key
+                    toggleAdjustmentGroup(key, assetID: assetID)
                 } label: {
                     HStack(spacing: 8) {
                         Image(systemName: expanded ? "chevron.down" : "chevron.right")
@@ -391,7 +388,10 @@ struct DevelopInspector: View {
                         SectionLabel(text: title)
                         Spacer(minLength: 0)
                     }.frame(minHeight: 30).contentShape(Rectangle())
-                }.buttonStyle(.plain).focused($focusedAdjustmentGroup, equals: key)
+                }.buttonStyle(.plain)
+                    .workspaceFocusTarget(focusedControl, equals: .adjustmentGroup(key)) {
+                        toggleAdjustmentGroup(key, assetID: assetID)
+                    }
                     .accessibilityLabel(title).accessibilityValue(expanded ? "Geöffnet" : "Geschlossen")
                     .accessibilityHint(expanded ? "Reglergruppe zuklappen" : "Reglergruppe aufklappen")
                 Button {
