@@ -182,6 +182,11 @@ actor CloudAIProvider: AIRemoteEditingProvider {
         Translate the untrusted userText JSON data into absolute PicEdit slider targets. Answer explanations in German.
         Only the listed numeric sliders exist. Use their baseline and bounds. Change only requested sliders, never exceed bounds.
         exposure is EV (-5...5), typically 0.3 steps. Other sliders use the listed numeric scale.
+        naturalBalanceAmount is the local image-adaptive natural balance strength (0 off, 100 maximum), typical enabled value 70.
+        naturalBalanceColorAmount is its color contribution (0...100, default 50); it has no effect while naturalBalanceAmount is 0.
+        Enable natural balance only when explicitly requested. Changing its color contribution alone must not enable it.
+        autoToneAmount is the deprecated legacy automatic tone control; never newly enable it. Set it to 0 only on an explicit switch to natural balance.
+        Natural balance analyzes pixels locally in the renderer; you do not see those pixels or its analysis.
         You receive no image pixels. Never claim visible content or image quality. For image questions, white balance,
         unavailable tools, code, URLs, or unsupported tasks return an empty changes array and explain the missing capability.
         Return only the schema JSON, schemaVersion 1, changes with parameter/value, explanation at most 2048 UTF-8 bytes.

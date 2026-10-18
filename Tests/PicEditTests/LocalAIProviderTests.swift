@@ -86,7 +86,7 @@ struct LocalAIProviderTests {
         let object = try #require(JSONSerialization.jsonObject(with: Data(prompt.data.utf8)) as? [String: Any])
         #expect(Set(object.keys) == ["promptVersion", "schemaVersion", "responseType", "parameters", "userText"])
         #expect(object["userText"] as? String == request.prompt)
-        #expect(object["promptVersion"] as? Int == 1)
+        #expect(object["promptVersion"] as? Int == 2)
         let parameters = try #require(object["parameters"] as? [[String: Any]])
         #expect(parameters.count == EditParameter.allCases.count)
         #expect(parameters.allSatisfy { Set($0.keys) == ["name", "minimum", "maximum", "baseline"] })
@@ -109,6 +109,28 @@ struct LocalAIProviderTests {
         #expect(settings.shadows == 30)
         #expect(settings.exposure == 1)
         #expect(settings.contrast == 27)
+    }
+
+    @Test
+    func naturalBalanceControlsReachPromptAndValidatedProposalWithoutAutomaticActivation() async throws {
+        let runtime = FakeLocalModelRuntime(output: output([.init(parameter: "naturalBalanceColorAmount", value: 25)]))
+        let request = providerRequest(prompt: "Setze nur den Farbanteil des Bildausgleichs auf 25 Prozent.",
+                                      settings: EditSettings(exposure: 0.5, autoToneAmount: 61))
+        let data = try await LocalAIEditingProvider(runtime: runtime).proposal(for: request)
+        guard case .changes(_, let settings) = try EditProposalValidator().validate(data, against: request.snapshot.settings) else {
+            Issue.record("Expected a validated color preference")
+            return
+        }
+        #expect(settings.naturalBalanceColorAmount == 25)
+        #expect(settings.naturalBalanceAmount == 0 && settings.autoToneAmount == 61 && settings.exposure == 0.5)
+        let prompt = try #require(await runtime.lastPrompt)
+        let object = try #require(JSONSerialization.jsonObject(with: Data(prompt.data.utf8)) as? [String: Any])
+        let parameters = try #require(object["parameters"] as? [[String: Any]])
+        let amount = try #require(parameters.first { $0["name"] as? String == "naturalBalanceAmount" })
+        let color = try #require(parameters.first { $0["name"] as? String == "naturalBalanceColorAmount" })
+        #expect(amount["baseline"] as? Double == 0)
+        #expect(color["baseline"] as? Double == 50)
+        #expect(amount["minimum"] as? Double == 0 && color["maximum"] as? Double == 100)
     }
 
     @Test(arguments: [LocalAIModelOutput.Status.imageAnalysis, .whiteBalance, .unsupported,

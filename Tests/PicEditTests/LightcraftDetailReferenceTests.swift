@@ -182,7 +182,7 @@ struct LightcraftDetailReferenceTests {
                 #expect(throws: LightcraftDetailReference.Failure.self) { _ = try reference.render(input, settings: settings(variant, bad)) }
             }
             for keyPath in [\EditSettings.exposure, \.contrast, \.shadows, \.highlights, \.whites, \.blacks,
-                            \.dehaze, \.vibrance, \.saturation, \.luminanceNoiseReduction, \.colorNoiseReduction, \.autoToneAmount] {
+                            \.dehaze, \.vibrance, \.saturation, \.luminanceNoiseReduction, \.colorNoiseReduction, \.autoToneAmount, \.naturalBalanceAmount] {
                 var edit = settings(variant, 50); edit[keyPath: keyPath] = 1
                 #expect(throws: LightcraftDetailReference.Failure.self) { _ = try reference.render(input, settings: edit) }
             }

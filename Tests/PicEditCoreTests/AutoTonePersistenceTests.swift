@@ -28,6 +28,8 @@ final class AutoTonePersistenceTests {
         let decoded = try JSONDecoder().decode(EditSettings.self, from: legacyJSON)
         #expect(decoded == legacySettings)
         #expect(decoded.autoToneAmount == 0)
+        #expect(decoded.naturalBalanceAmount == 0)
+        #expect(decoded.naturalBalanceColorAmount == 50)
         #expect(try JSONDecoder().decode(EditSettings.self, from: JSONEncoder().encode(decoded)) == decoded)
     }
 
@@ -81,6 +83,65 @@ final class AutoTonePersistenceTests {
         let anotherReopen = try EditDatabase(directory: root)
         #expect(try await anotherReopen.loadAll() == ["landscape.raw": settings])
         #expect(try await anotherReopen.revisions()["landscape.raw"] == 9)
+    }
+
+    @Test
+    func naturalBalanceSurvivesWALReopenBackupAndRestoreWithoutRewritingLegacySettings() async throws {
+        let database = try EditDatabase(directory: root)
+        var active = legacySettings
+        active.naturalBalanceAmount = 70
+        active.naturalBalanceColorAmount = 38
+        var legacy = legacySettings
+        legacy.autoToneAmount = 63
+        try await database.save(active, for: "balanced.raw", revision: 1)
+        try await database.save(legacy, for: "legacy.raw", revision: 1)
+        let reopened = try EditDatabase(directory: root)
+        let expected = ["balanced.raw": active, "legacy.raw": legacy]
+        #expect(try await reopened.loadAll() == expected)
+        let backup = try await reopened.createBackup()
+        try await reopened.save(.neutral, for: "balanced.raw", revision: 2)
+        #expect(try await reopened.restoreBackup(from: backup) == expected)
+        #expect(try await EditDatabase(directory: root).loadAll() == expected)
+    }
+
+    @Test
+    func olderAutomaticEditsDefaultNewBalanceToOffWithoutChangingAppearanceControls() throws {
+        var object = try #require(JSONSerialization.jsonObject(with: legacyJSON) as? [String: Any])
+        object["autoToneAmount"] = 73
+        let decoded = try JSONDecoder().decode(EditSettings.self, from: JSONSerialization.data(withJSONObject: object))
+        var expected = legacySettings
+        expected.autoToneAmount = 73
+        #expect(decoded == expected)
+        #expect(decoded.naturalBalanceAmount == 0)
+        #expect(decoded.naturalBalanceColorAmount == 50)
+    }
+
+    @Test(arguments: ["naturalBalanceAmount", "naturalBalanceColorAmount"])
+    func newBalanceDefaultsApplyOnlyToAbsentKeys(_ key: String) throws {
+        for malformed in [NSNull(), "strong", true] as [Any] {
+            var object = try #require(JSONSerialization.jsonObject(with: legacyJSON) as? [String: Any])
+            object[key] = malformed
+            let data = try JSONSerialization.data(withJSONObject: object)
+            #expect(throws: (any Error).self) { try JSONDecoder().decode(EditSettings.self, from: data) }
+        }
+    }
+
+    @Test
+    func naturalBalanceNormalizationKeepsDormantColorAndLegacyIdentitySeparate() throws {
+        var dormant = EditSettings(naturalBalanceColorAmount: 83)
+        #expect(dormant.isNeutral)
+        #expect(dormant != .neutral)
+        #expect(dormant.normalized.naturalBalanceColorAmount == 83)
+        #expect(try JSONDecoder().decode(EditSettings.self, from: JSONEncoder().encode(dormant)) == dormant)
+        dormant.naturalBalanceAmount = 70
+        #expect(!dormant.isNeutral)
+        var normalized = EditSettings(naturalBalanceAmount: 140, naturalBalanceColorAmount: -1).normalized
+        #expect(normalized.naturalBalanceAmount == 100)
+        #expect(normalized.naturalBalanceColorAmount == 0)
+        normalized = EditSettings(naturalBalanceAmount: .nan, naturalBalanceColorAmount: .infinity).normalized
+        #expect(normalized.naturalBalanceAmount == 0 && normalized.naturalBalanceColorAmount == 0)
+        #expect(normalized.isNeutral)
+        #expect(!EditSettings(autoToneAmount: 60, naturalBalanceColorAmount: 0).isNeutral)
     }
 
     @Test

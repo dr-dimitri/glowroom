@@ -15,15 +15,20 @@ public struct EditSettings: Codable, Hashable, Sendable {
     public var saturation: Double
     public var luminanceNoiseReduction: Double
     public var colorNoiseReduction: Double
-    /// Image-adaptive tone balancing, before the manual controls. Zero disables it.
+    /// Legacy tone balancing retained for existing edits. New balance takes precedence.
     public var autoToneAmount: Double
+    /// Opt-in image-adaptive tone and color balance. Zero disables the whole effect.
+    public var naturalBalanceAmount: Double
+    /// Color contribution within natural balance; dormant while its amount is zero.
+    public var naturalBalanceColorAmount: Double
 
     public init(exposure: Double = 0, contrast: Double = 0, highlights: Double = 0,
                 shadows: Double = 0, whites: Double = 0, blacks: Double = 0,
                 texture: Double = 0, clarity: Double = 0, dehaze: Double = 0,
                 vibrance: Double = 0, saturation: Double = 0,
                 luminanceNoiseReduction: Double = 0, colorNoiseReduction: Double = 0,
-                autoToneAmount: Double = 0) {
+                autoToneAmount: Double = 0, naturalBalanceAmount: Double = 0,
+                naturalBalanceColorAmount: Double = 50) {
         self.exposure = exposure
         self.contrast = contrast
         self.highlights = highlights
@@ -38,12 +43,15 @@ public struct EditSettings: Codable, Hashable, Sendable {
         self.luminanceNoiseReduction = luminanceNoiseReduction
         self.colorNoiseReduction = colorNoiseReduction
         self.autoToneAmount = autoToneAmount
+        self.naturalBalanceAmount = naturalBalanceAmount
+        self.naturalBalanceColorAmount = naturalBalanceColorAmount
     }
 
     private enum CodingKeys: String, CodingKey {
         case exposure, contrast, highlights, shadows, whites, blacks
         case texture, clarity, dehaze, vibrance, saturation
         case luminanceNoiseReduction, colorNoiseReduction, autoToneAmount
+        case naturalBalanceAmount, naturalBalanceColorAmount
     }
 
     public init(from decoder: Decoder) throws {
@@ -61,10 +69,14 @@ public struct EditSettings: Codable, Hashable, Sendable {
         saturation = try values.decode(Double.self, forKey: .saturation)
         luminanceNoiseReduction = try values.decode(Double.self, forKey: .luminanceNoiseReduction)
         colorNoiseReduction = try values.decode(Double.self, forKey: .colorNoiseReduction)
-        // Existing databases and backups predate this field. Only its absence
-        // is a legacy default; malformed values must still fail validation.
+        // Existing databases and backups may predate these controls. Only an
+        // absent key gets a legacy default; malformed values still fail.
         autoToneAmount = values.contains(.autoToneAmount)
             ? try values.decode(Double.self, forKey: .autoToneAmount) : 0
+        naturalBalanceAmount = values.contains(.naturalBalanceAmount)
+            ? try values.decode(Double.self, forKey: .naturalBalanceAmount) : 0
+        naturalBalanceColorAmount = values.contains(.naturalBalanceColorAmount)
+            ? try values.decode(Double.self, forKey: .naturalBalanceColorAmount) : 50
     }
 
     public static let neutral = EditSettings()
@@ -81,8 +93,17 @@ public struct EditSettings: Codable, Hashable, Sendable {
                     saturation: clamp(saturation, -100...100),
                     luminanceNoiseReduction: clamp(luminanceNoiseReduction, 0...100),
                     colorNoiseReduction: clamp(colorNoiseReduction, 0...100),
-                    autoToneAmount: clamp(autoToneAmount, 0...100))
+                    autoToneAmount: clamp(autoToneAmount, 0...100),
+                    naturalBalanceAmount: clamp(naturalBalanceAmount, 0...100),
+                    naturalBalanceColorAmount: clamp(naturalBalanceColorAmount, 0...100))
     }
 
-    public var isNeutral: Bool { normalized == .neutral }
+    public var isNeutral: Bool {
+        var effective = normalized
+        // A saved color preference has no rendering effect until explicitly enabled.
+        if effective.naturalBalanceAmount == 0 {
+            effective.naturalBalanceColorAmount = Self.neutral.naturalBalanceColorAmount
+        }
+        return effective == .neutral
+    }
 }

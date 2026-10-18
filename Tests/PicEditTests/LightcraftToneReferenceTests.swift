@@ -203,9 +203,12 @@ struct LightcraftToneReferenceTests {
             }
         }
         var unsupported = EditSettings.neutral
-        unsupported.clarity = 1
-        #expect(throws: LightcraftToneReference.Failure.self) {
-            _ = try LightcraftToneReference().render(input, settings: unsupported)
+        for keyPath in [\EditSettings.clarity, \.naturalBalanceAmount] {
+            unsupported = .neutral
+            unsupported[keyPath: keyPath] = 1
+            #expect(throws: LightcraftToneReference.Failure.self) {
+                _ = try LightcraftToneReference().render(input, settings: unsupported)
+            }
         }
         let v1 = try LightcraftToneReference(process: .v1).prepare(input)
         #expect(throws: LightcraftToneReference.Failure.self) {

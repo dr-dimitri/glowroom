@@ -111,6 +111,37 @@ final class EditingModelTests {
     }
 
     @Test
+    func naturalBalanceReplacementAndColorGestureShareNormalUndoAndPersistence() async throws {
+        let model = EditingModel(directory: directory)
+        try await waitLoaded(model)
+        let legacy = EditSettings(exposure: 0.25, shadows: 12, autoToneAmount: 63)
+        model.setSettings(legacy, for: "A")
+        var balance = legacy
+        balance.autoToneAmount = 0
+        balance.naturalBalanceAmount = 70
+        model.setSettings(balance, for: "A")
+        model.beginEditing(assetID: "A")
+        for color in stride(from: 45, through: 25, by: -5) {
+            balance.naturalBalanceColorAmount = Double(color)
+            model.setSettings(balance, for: "A")
+        }
+        model.endEditing(assetID: "A")
+        model.undo(assetID: "A")
+        #expect(model.settings(for: "A").naturalBalanceColorAmount == 50)
+        #expect(model.settings(for: "A").naturalBalanceAmount == 70)
+        model.undo(assetID: "A")
+        #expect(model.settings(for: "A") == legacy)
+        model.redo(assetID: "A")
+        model.redo(assetID: "A")
+        #expect(model.settings(for: "A") == balance)
+        #expect(await model.flush())
+        let reopened = EditingModel(directory: directory)
+        try await waitLoaded(reopened)
+        #expect(reopened.settings(for: "A") == balance)
+        #expect(reopened.settings(for: "B").isNeutral)
+    }
+
+    @Test
     func concurrentFlushAndCancellationStillPersistEditsArrivingDuringSave() async throws {
         let store = ControlledEditStore()
         let model = EditingModel(database: LegacySnapshotTestAdapter(store))

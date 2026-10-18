@@ -127,6 +127,34 @@ struct JPEGExporterTests {
         }
     }
 
+    @Test func naturalBalanceExportMatchesPreviewForBothOutputProfiles() async throws {
+        try await withDirectory { directory in
+            let p3 = try #require(CGColorSpace(name: CGColorSpace.displayP3))
+            let source = try fixture(directory, name: "natural.png", width: 192, height: 128, colorSpace: p3) { x, y in
+                let gray = 12 + x * 230 / 191
+                return (UInt8(min(250, gray + y / 8)), UInt8(gray), UInt8(max(5, gray - y / 10)), 255)
+            }
+            let original = try decode(source)
+            var settings = EditSettings.neutral
+            settings.naturalBalanceAmount = 70
+            settings.naturalBalanceColorAmount = 50
+            settings.autoToneAmount = 90 // The same precedence rule applies to full-resolution exports.
+            settings.exposure = 0.1
+            let rendered = try EditRenderer.render(PreviewBitmap(image: original), settings: settings)
+            for profile in JPEGExportColorSpace.allCases {
+                let space = try #require(CGColorSpace(name: profile == .sRGB ? CGColorSpace.sRGB : CGColorSpace.displayP3))
+                let expected = try pixels(rendered.image, space: space)
+                let target = directory.appendingPathComponent("natural-\(profile.rawValue).jpg")
+                _ = try await JPEGExporter().export(.init(sourceURL: source, destinationURL: target,
+                    settings: settings, options: .init(colorSpace: profile, quality: 100)))
+                let exported = try decode(target)
+                #expect(exported.colorSpace?.name == space.name)
+                #expect(meanDifference(expected, try pixels(exported, space: space)) < 3,
+                        "Natural balance must use the same graph in preview and JPEG export")
+            }
+        }
+    }
+
     @Test func overwriteRequiresApprovalAndNeverChangesTheOriginal() async throws {
         try await withDirectory { directory in
             let source = try fixture(directory, name: "original.png")

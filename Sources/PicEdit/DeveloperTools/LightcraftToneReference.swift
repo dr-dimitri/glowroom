@@ -142,7 +142,7 @@ struct LightcraftToneReference: AlgorithmEvaluationReference, Sendable {
         guard [s.exposure, s.shadows, s.highlights].allSatisfy(\.isFinite),
               [s.contrast, s.whites, s.blacks, s.texture, s.clarity, s.dehaze,
                s.vibrance, s.saturation, s.luminanceNoiseReduction, s.colorNoiseReduction,
-               s.autoToneAmount].allSatisfy({ $0 == 0 }) else {
+               s.autoToneAmount, s.naturalBalanceAmount].allSatisfy({ $0 == 0 }) else {
             throw Failure.invalid("Tone reference accepts finite Exposure/Shadows/Highlights only")
         }
         return s.normalized

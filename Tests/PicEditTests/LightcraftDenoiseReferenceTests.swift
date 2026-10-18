@@ -179,7 +179,7 @@ struct LightcraftDenoiseReferenceTests {
                 #expect(throws: Reference.Failure.self) { _ = try reference.render(input, settings: settings(control, value)) }
             }
             for key in [\EditSettings.exposure, \.contrast, \.shadows, \.highlights, \.whites, \.blacks,
-                        \.texture, \.clarity, \.dehaze, \.vibrance, \.saturation, \.autoToneAmount,
+                        \.texture, \.clarity, \.dehaze, \.vibrance, \.saturation, \.autoToneAmount, \.naturalBalanceAmount,
                         control == .luminance ? \.colorNoiseReduction : \.luminanceNoiseReduction] {
                 var edit = settings(control, 40); edit[keyPath: key] = 1
                 #expect(throws: Reference.Failure.self) { _ = try reference.render(input, settings: edit) }
