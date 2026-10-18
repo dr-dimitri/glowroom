@@ -1,6 +1,49 @@
 import AppKit
 import SwiftUI
 
+enum WorkspaceControlFocus: Hashable {
+    case focus, library, tools, filmstrip
+    case tool(WorkspaceTool)
+}
+
+struct WorkspacePanelVisibility: Equatable {
+    let isFocused: Bool
+    let showsLibrary: Bool
+    let showsTools: Bool
+    let showsFilmstrip: Bool
+}
+
+enum WorkspaceFocusRouting {
+    static func target(previous: WorkspacePanelVisibility, current: WorkspacePanelVisibility,
+                       revealedTool: WorkspaceTool?, hasSelection: Bool) -> WorkspaceControlFocus? {
+        if previous.isFocused != current.isFocused {
+            return current.isFocused || hasSelection ? .focus : .library
+        }
+        if previous.showsLibrary && !current.showsLibrary { return .library }
+        if previous.showsTools && !current.showsTools {
+            return current.isFocused ? (hasSelection ? .tool(revealedTool ?? .edit) : .focus) : .tools
+        }
+        if previous.showsFilmstrip && !current.showsFilmstrip { return .filmstrip }
+        return nil
+    }
+}
+
+extension View {
+    /// Return targets must accept programmatic focus even when macOS Keyboard
+    /// Navigation is off. Give their explicit focus item normal button activation.
+    func workspaceFocusTarget(_ binding: FocusState<WorkspaceControlFocus?>.Binding,
+                              equals target: WorkspaceControlFocus,
+                              action: @escaping () -> Void) -> some View {
+        focusable(interactions: [.edit, .activate])
+            .focused(binding, equals: target)
+            .onKeyPress(keys: [.space, .return], phases: .down) { key in
+                guard key.modifiers.intersection([.command, .control, .option]).isEmpty else { return .ignored }
+                action()
+                return .handled
+            }
+    }
+}
+
 /// Presentation commands never create edits, cancel proposals or start analysis.
 @MainActor
 enum WorkspaceActions {
@@ -88,24 +131,30 @@ struct WorkspaceViewCommands: View {
 struct WorkspaceDock: View {
     @ObservedObject var layout: WorkspaceLayoutModel
     @ObservedObject var library: LibraryModel
-    @FocusState private var focusedPanel: String?
+    var focusedControl: FocusState<WorkspaceControlFocus?>.Binding
     private var panels: WorkspacePanels { layout.panels(developing: library.isDeveloping) }
 
     var body: some View {
         HStack(spacing: 6) {
             dockButton("Bibliothek", symbol: "sidebar.left", active: panels.showsLibrary) {
                 WorkspaceActions.toggleLibrary(layout, library: library)
-            }.focused($focusedPanel, equals: "library")
+            }.workspaceFocusTarget(focusedControl, equals: .library) {
+                WorkspaceActions.toggleLibrary(layout, library: library)
+            }
             dockButton("Filmstreifen", symbol: "film", active: panels.showsFilmstrip) {
                 WorkspaceActions.toggleFilmstrip(layout, library: library)
-            }.focused($focusedPanel, equals: "film")
+            }.workspaceFocusTarget(focusedControl, equals: .filmstrip) {
+                WorkspaceActions.toggleFilmstrip(layout, library: library)
+            }
             Divider().frame(height: 22)
             ForEach(WorkspaceTool.allCases) { tool in
                 dockButton(tool.dockTitle, symbol: tool.symbol,
                            active: panels.showsTools && panels.openGroups.contains(tool)) {
                     WorkspaceActions.reveal(tool, layout: layout, library: library)
-                }.disabled(library.selectedAsset == nil)
-                    .focused($focusedPanel, equals: tool.rawValue)
+                }.workspaceFocusTarget(focusedControl, equals: .tool(tool)) {
+                    WorkspaceActions.reveal(tool, layout: layout, library: library)
+                }
+                    .disabled(library.selectedAsset == nil)
             }
             Spacer(minLength: 0)
             if panels.showsTools {
@@ -117,10 +166,6 @@ struct WorkspaceDock: View {
             .padding(.horizontal, 16).frame(height: 50)
             .background(Theme.sidebar)
             .overlay(alignment: .top) { Rectangle().fill(Theme.line).frame(height: 1) }
-            .onChange(of: panels.showsTools) { old, visible in
-                if old && !visible { focusedPanel = layout.revealedTool?.rawValue ?? WorkspaceTool.edit.rawValue }
-            }
-            .onChange(of: panels.showsLibrary) { old, visible in if old && !visible { focusedPanel = "library" } }
     }
 
     private func dockButton(_ title: String, symbol: String, active: Bool, action: @escaping () -> Void) -> some View {
@@ -128,6 +173,7 @@ struct WorkspaceDock: View {
             .foregroundStyle(active ? Theme.accent : Theme.muted)
             .background(active ? Theme.accent.opacity(0.09) : .clear, in: RoundedRectangle(cornerRadius: 5))
             .help(title).accessibilityLabel(title)
+            .accessibilityValue(active ? "Geöffnet" : "Geschlossen")
     }
 }
 

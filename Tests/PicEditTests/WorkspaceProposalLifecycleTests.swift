@@ -114,6 +114,211 @@ final class WorkspaceProposalLifecycleTests {
     }
 
     @Test(arguments: [false, true])
+    func hiddenSectionsRejectAnOriginalSourceReplacement(whilePending: Bool) async throws {
+        let f = try await fixture()
+        let host = WorkspaceSectionTestHost()
+        defer { host.close() }
+        try await host.mount(sections(f))
+        try await wait { f.assistant.availability == .available && f.analysis.availability == .available }
+        let baseline = try #require(f.editor.aiSnapshot(in: f.library))
+        f.assistant.prompt = "Aufhellen"
+        f.assistant.generate()
+        f.analysis.analyze()
+        try await wait {
+            let proposals = await f.provider.requests.count
+            let analyses = await f.service.requests.count
+            return proposals == 1 && analyses == 1
+        }
+        if !whilePending {
+            await f.provider.complete()
+            await f.service.complete()
+            try await wait { f.assistant.state == .previewing && f.analysis.state == .ready }
+        }
+        try await host.unmount()
+        let original = try #require(f.library.selectedAsset).fileURL
+        let bytes = try Data(contentsOf: original)
+        try (bytes + Data([0])).write(to: original)
+        f.library.refreshCurrentFolder()
+        try await wait {
+            !f.library.isImporting && !f.library.isProjecting
+                && f.editor.aiSnapshot(in: f.library)?.source != baseline.source
+                && f.assistant.result == nil && f.assistant.requestID == nil && f.analysis.result == nil
+                && f.analysis.state != .analyzing
+        }
+        if whilePending {
+            await f.provider.complete()
+            await f.service.complete()
+        }
+        try await host.mount(sections(f))
+        try await host.settle()
+        #expect(f.library.selectedID == baseline.assetID)
+        #expect(f.assistant.result == nil && !f.assistant.canAccept)
+        #expect(f.analysis.result == nil)
+        #expect(await f.provider.requests.count == 1)
+        #expect(await f.service.requests.count == 1)
+        #expect(f.editor.settings(for: baseline.assetID) == baseline.settings)
+        #expect(await f.editor.flush())
+        #expect(await f.store.saveCount == 0)
+        #expect(await f.library.finishSaving())
+    }
+
+    @Test
+    func paintedMaskSheetSurvivesLayoutAndGridTransitions() async throws {
+        let f = try await fixture()
+        let host = WorkspaceSectionTestHost(size: NSSize(width: 1_440, height: 900))
+        defer { host.close() }
+        let suite = "PicEdit-WorkspaceMaskSheet-\(UUID())"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let layout = WorkspaceLayoutModel(defaults: defaults)
+        let metadataStore = PhotoMetadataRepository(directory: directory.appendingPathComponent("Metadata"))
+        let metadataAnalysis = ImageAnalysisService(provider: UnavailableImageAnalysisProvider(reason: .sdkUnavailable),
+            budget: AIResourceBudget())
+        let metadata = PhotoMetadataModel(store: metadataStore,
+            suggestor: LocalPhotoMetadataSuggestor(service: metadataAnalysis), library: f.library, editor: f.editor)
+        let assetID = try #require(f.library.selectedID)
+        let baselineSource = try #require(f.editor.aiSnapshot(in: f.library)).source
+        let original = try #require(f.library.selectedAsset).fileURL
+        let originalBytes = try Data(contentsOf: original)
+        let mask = MaskEditingModel()
+        f.library.showsDetail = true
+        try await host.mount(
+            LibraryView(model: f.library, dataDirectory: directory, maskModel: mask)
+                .environmentObject(f.editor)
+                .environmentObject(JPEGExportModel(preferences: nil))
+                .environmentObject(layout)
+                .environmentObject(f.assistant)
+                .environmentObject(f.analysis)
+                .environmentObject(metadata)
+        )
+        let maskButton = try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == "workspace.mask" })
+        #expect(maskButton.accessibilityPerformPress())
+        try await wait("mask sheet opens") { host.sheet != nil }
+        let sheet = try #require(host.sheet)
+        try await wait("initial mask canvas loads") {
+            mask.document != nil && host.accessibilityElements(in: sheet).contains { $0.accessibilityIdentifier() == "mask.canvas" }
+        }
+        let undoBefore = try #require(host.accessibilityElements(in: sheet).first { $0.accessibilityIdentifier() == "mask.undo" })
+        #expect(!undoBefore.isAccessibilityEnabled())
+        // Drive the actual sheet's injected model through its normal stroke
+        // API. This tests view lifetime without activating the test app or
+        // synthesizing global mouse input.
+        mask.beginStroke(at: try MaskPoint(x: 0.25, y: 0.5))
+        mask.appendPoint(try MaskPoint(x: 0.75, y: 0.5))
+        mask.endStroke()
+        let painted = try #require(mask.document)
+        let paintedRevision = mask.revision
+        #expect(!painted.strokes.isEmpty && mask.canUndo)
+        try await wait("painted mask enables undo") {
+            host.accessibilityElements(in: sheet).first { $0.accessibilityIdentifier() == "mask.undo" }?.isAccessibilityEnabled() == true
+        }
+
+        // Keep the actual native sheet and its painted draft alive while the
+        // detail owner disappears, panel subtrees change and focus returns.
+        WorkspaceActions.toggleFocus(layout, library: f.library)
+        WorkspaceActions.toggleTools(layout, library: f.library)
+        WorkspaceActions.toggleLibrary(layout, library: f.library)
+        WorkspaceActions.toggleFilmstrip(layout, library: f.library)
+        WorkspaceActions.showGrid(layout, library: f.library)
+        try await host.settle()
+        #expect(!f.library.showsDetail)
+        #expect(host.sheet === sheet)
+        #expect(mask.document == painted && mask.revision == paintedRevision)
+        #expect(host.accessibilityElements(in: sheet).first { $0.accessibilityIdentifier() == "mask.undo" }?.isAccessibilityEnabled() == true)
+        WorkspaceActions.reveal(.edit, layout: layout, library: f.library)
+        try await host.settle()
+        #expect(host.sheet === sheet)
+        #expect(mask.document == painted && mask.revision == paintedRevision)
+        #expect(host.accessibilityElements(in: sheet).first { $0.accessibilityIdentifier() == "mask.undo" }?.isAccessibilityEnabled() == true)
+        #expect(f.library.selectedID == assetID)
+        #expect(try Data(contentsOf: original) == originalBytes)
+        #expect(!f.editor.hasPendingChanges)
+        #expect(await f.store.saveCount == 0)
+
+        // A source replacement is a real invalidation even when the photo ID
+        // and native sheet stay the same. Its old strokes must not leak into
+        // the newly oriented source canvas.
+        try (originalBytes + Data([0])).write(to: original)
+        f.library.refreshCurrentFolder()
+        try await wait("replacement source resets mask") {
+            !f.library.isImporting && !f.library.isProjecting
+                && f.editor.aiSnapshot(in: f.library)?.source != baselineSource
+                && mask.source != baselineSource && mask.document?.strokes.isEmpty == true
+                && host.accessibilityElements(in: sheet).first { $0.accessibilityIdentifier() == "mask.undo" }?.isAccessibilityEnabled() == false
+                && host.accessibilityElements(in: sheet).contains { $0.accessibilityIdentifier() == "mask.canvas" }
+        }
+        #expect(host.sheet === sheet)
+
+        f.library.select(try #require(f.library.visibleAssets.first { $0.id != assetID }))
+        try await wait("selection change dismisses mask sheet") { host.sheet == nil }
+        let selectedAsset = try #require(f.library.selectedAsset)
+        let selectedSource = try f.editor.resolvedSource(for: selectedAsset).identity
+        let reopen = try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == "workspace.mask" })
+        #expect(reopen.accessibilityPerformPress())
+        try await wait("new selection opens its mask sheet") { host.sheet != nil }
+        let reopenedSheet = try #require(host.sheet)
+        // The test retains the injected object beyond the old sheet's lifetime.
+        // Check its next real presentation, which must start a new empty draft
+        // for the selected photo rather than expose any previous strokes.
+        try await wait("new selection starts an empty mask draft") {
+            mask.source == selectedSource && mask.document?.strokes.isEmpty == true && !mask.canUndo
+                && host.accessibilityElements(in: reopenedSheet).contains { $0.accessibilityIdentifier() == "mask.canvas" }
+                && host.accessibilityElements(in: reopenedSheet).first { $0.accessibilityIdentifier() == "mask.undo" }?.isAccessibilityEnabled() == false
+        }
+        let discard = try #require(host.accessibilityElements(in: reopenedSheet).first {
+            $0.accessibilityRole() == .button && $0.accessibilityLabel() == "Entwurf verwerfen und schließen"
+        })
+        #expect(discard.accessibilityPerformPress())
+        try await wait("explicit discard clears and closes the mask sheet") {
+            host.sheet == nil && mask.document == nil && mask.source == nil
+        }
+        #expect(await metadata.finishSaving())
+        #expect(await f.library.finishSaving())
+    }
+
+    @Test
+    func acceptedProposalSaveFinishesWhileItsSectionsAndDetailAreHidden() async throws {
+        let f = try await fixture()
+        let host = WorkspaceSectionTestHost()
+        defer { host.close() }
+        let suite = "PicEdit-WorkspaceAcceptedSave-\(UUID())"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let layout = WorkspaceLayoutModel(defaults: defaults)
+        try await host.mount(sections(f))
+        try await wait { f.assistant.availability == .available }
+        let assetID = try #require(f.library.selectedID)
+        let originalBytes = try Data(contentsOf: try #require(f.library.selectedAsset).fileURL)
+        f.assistant.prompt = "Aufhellen"
+        f.assistant.generate()
+        try await wait { await f.provider.requests.count == 1 }
+        await f.provider.complete()
+        try await wait { f.assistant.canAccept }
+        await f.store.blockWrites()
+        #expect(f.assistant.acceptProposal())
+        let saving = Task { await f.editor.flush() }
+        try await wait { await f.store.hasBlockedWrite }
+        try await host.unmount()
+        WorkspaceActions.toggleFocus(layout, library: f.library)
+        WorkspaceActions.toggleTools(layout, library: f.library)
+        WorkspaceActions.showGrid(layout, library: f.library)
+        #expect(f.editor.hasPendingChanges && f.editor.isSaving)
+        #expect(f.editor.settings(for: assetID).exposure == 1)
+        #expect(await f.store.saveCount == 0)
+        await f.store.releaseWrite()
+        #expect(await saving.value)
+        try await host.mount(sections(f))
+        #expect(!f.editor.hasPendingChanges)
+        #expect(f.editor.settings(for: assetID).exposure == 1)
+        #expect(f.editor.canUndo(assetID: assetID))
+        #expect(f.assistant.result == nil)
+        #expect(await f.store.saveCount == 1)
+        #expect(await f.provider.requests.count == 1)
+        #expect(try Data(contentsOf: try #require(f.library.selectedAsset).fileURL) == originalBytes)
+        #expect(await f.library.finishSaving())
+    }
+
+    @Test(arguments: [false, true])
     func workspaceCommandsReturnToGridOrDetailWithoutChangingThePhoto(showsDetail: Bool) async throws {
         let f = try await fixture()
         let host = WorkspaceSectionTestHost()
@@ -370,6 +575,7 @@ final class WorkspaceProposalLifecycleTests {
         let assets = try ["A.png", "B.png"].map { name in
             let url = photos.appendingPathComponent(name)
             try png.write(to: url)
+            try FileManager.default.setAttributes([.modificationDate: Date(timeIntervalSince1970: 1)], ofItemAtPath: url.path)
             return PhotoAsset(folderID: folder.id, fileURL: url, fileSize: Int64(png.count),
                 createdAt: Date(timeIntervalSince1970: 1), modifiedAt: Date(timeIntervalSince1970: 1),
                 rating: 3, isFavorite: true)
@@ -403,6 +609,7 @@ final class WorkspaceSectionTestHost {
 
     init(size: NSSize = NSSize(width: 340, height: 900)) {
         _ = NSApplication.shared
+        WorkspaceAccessibilityElement.enableInProcess()
         hosting = NSHostingView(rootView: AnyView(EmptyView()))
         window = NSWindow(contentRect: NSRect(origin: NSPoint(x: -10_000, y: -10_000), size: size),
             styleMask: .borderless, backing: .buffered, defer: false)
@@ -413,6 +620,13 @@ final class WorkspaceSectionTestHost {
     }
 
     var contentSize: NSSize { hosting.bounds.size }
+    var sheet: NSWindow? { window.attachedSheet }
+
+    var accessibilityElements: [WorkspaceAccessibilityElement] { WorkspaceAccessibilityElement.descendants(of: hosting) }
+
+    func accessibilityElements(in sheet: NSWindow) -> [WorkspaceAccessibilityElement] {
+        WorkspaceAccessibilityElement.descendants(of: sheet.contentView)
+    }
 
     func snapshot(to url: URL) throws {
         let bitmap = try #require(hosting.bitmapImageRepForCachingDisplay(in: hosting.bounds))
@@ -445,7 +659,10 @@ final class WorkspaceSectionTestHost {
         try await wait { self.disappearances >= expected }
     }
 
-    func close() { window.close() }
+    func close() {
+        if let sheet = window.attachedSheet { window.endSheet(sheet); sheet.close() }
+        window.close()
+    }
 }
 
 @MainActor
@@ -460,15 +677,15 @@ private struct WorkspaceProposalFixture {
 }
 
 @MainActor
-private func wait(_ condition: @escaping @MainActor () async -> Bool) async throws {
+private func wait(_ stage: String = "condition", _ condition: @escaping @MainActor () async -> Bool) async throws {
     let deadline = ContinuousClock.now.advanced(by: .seconds(15))
     while !(await condition()) {
-        guard ContinuousClock.now < deadline else { throw WorkspaceLifecycleTestError.timeout }
+        guard ContinuousClock.now < deadline else { throw WorkspaceLifecycleTestError.timeout(stage) }
         try await Task.sleep(for: .milliseconds(5))
     }
 }
 
-private enum WorkspaceLifecycleTestError: Error { case timeout }
+private enum WorkspaceLifecycleTestError: Error { case timeout(String) }
 
 private actor WorkspaceProposalProvider: AIEditingProvider {
     nonisolated let id = "workspace-proposal-test"
@@ -526,9 +743,15 @@ private actor WorkspaceProposalStore: LegacySnapshotTestStore {
     private var values: [String: EditSettings] = [:]
     private var versions: [String: Int64] = [:]
     private(set) var saveCount = 0
+    private var blocksWrites = false
+    private var blockedWrite: CheckedContinuation<Void, Never>?
+    var hasBlockedWrite: Bool { blockedWrite != nil }
+    func blockWrites() { blocksWrites = true }
+    func releaseWrite() { blocksWrites = false; blockedWrite?.resume(); blockedWrite = nil }
     func loadAll() -> [String: EditSettings] { values }
     func revisions() -> [String: Int64] { versions }
-    func save(_ settings: EditSettings, for assetID: String, revision: Int64) {
+    func save(_ settings: EditSettings, for assetID: String, revision: Int64) async {
+        if blocksWrites { await withCheckedContinuation { blockedWrite = $0 } }
         values[assetID] = settings; versions[assetID] = revision; saveCount += 1
     }
     func createBackup(automatic: Bool) -> URL { URL(fileURLWithPath: "/tmp/workspace-lifecycle-backup.sqlite") }

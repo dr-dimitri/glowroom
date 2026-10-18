@@ -1,0 +1,74 @@
+[
+  {
+    "image": "1200x800.png",
+    "imageHeight": 175,
+    "imageWidth": 262.5,
+    "requestedWindowHeight": 660,
+    "requestedWindowWidth": 1000,
+    "state": "baseline",
+    "viewportHeight": 195,
+    "viewportWidth": 718,
+    "windowHeight": 660,
+    "windowWidth": 1238
+  },
+  {
+    "image": "800x1200.png",
+    "imageHeight": 175,
+    "imageWidth": 117,
+    "requestedWindowHeight": 660,
+    "requestedWindowWidth": 1000,
+    "state": "baseline",
+    "viewportHeight": 195,
+    "viewportWidth": 718,
+    "windowHeight": 660,
+    "windowWidth": 1238
+  },
+  {
+    "image": "1200x800.png",
+    "imageHeight": 415,
+    "imageWidth": 622.5,
+    "requestedWindowHeight": 900,
+    "requestedWindowWidth": 1440,
+    "state": "baseline",
+    "viewportHeight": 435,
+    "viewportWidth": 920,
+    "windowHeight": 900,
+    "windowWidth": 1440
+  },
+  {
+    "image": "800x1200.png",
+    "imageHeight": 415,
+    "imageWidth": 277,
+    "requestedWindowHeight": 900,
+    "requestedWindowWidth": 1440,
+    "state": "baseline",
+    "viewportHeight": 435,
+    "viewportWidth": 920,
+    "windowHeight": 900,
+    "windowWidth": 1440
+  },
+  {
+    "image": "1200x800.png",
+    "imageHeight": 595,
+    "imageWidth": 892.5,
+    "requestedWindowHeight": 1080,
+    "requestedWindowWidth": 1920,
+    "state": "baseline",
+    "viewportHeight": 615,
+    "viewportWidth": 1400,
+    "windowHeight": 1080,
+    "windowWidth": 1920
+  },
+  {
+    "image": "800x1200.png",
+    "imageHeight": 595,
+    "imageWidth": 397,
+    "requestedWindowHeight": 1080,
+    "requestedWindowWidth": 1920,
+    "state": "baseline",
+    "viewportHeight": 615,
+    "viewportWidth": 1400,
+    "windowHeight": 1080,
+    "windowWidth": 1920
+  }
+]
