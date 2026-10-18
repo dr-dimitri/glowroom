@@ -147,7 +147,7 @@ extension EditingRepository {
             if version == 2 {
                 try EditingSQLite.rows(db,"SELECT id,asset_id,snapshot,created_at FROM editing_variants") {s in
                     let text = try EditingSQLite.text(s,0,maximum:36);guard let uuid = UUID(uuidString:text) else {throw EditingRepositoryError.invalidDatabase}
-                    variants.append(.init(id:.init(rawValue:uuid),assetID:try EditingSQLite.text(s,1,maximum:16_384),snapshot:try ArtifactJSONCodec.decode(EditingSnapshot.self,from:EditingSQLite.blob(s,2,maximum:65_536)),createdAt:Date(timeIntervalSinceReferenceDate:sqlite3_column_double(s,3))))
+                    variants.append(.init(id:.init(rawValue:uuid),assetID:try EditingSQLite.text(s,1,maximum:16_384),snapshot:try ArtifactJSONCodec.decode(EditingSnapshot.self,from:EditingSQLite.blob(s,2,maximum:EditSettings.maximumEncodedBytes)),createdAt:Date(timeIntervalSinceReferenceDate:sqlite3_column_double(s,3))))
                 }
             };return (state,variants)
         }) else {throw EditingRepositoryError.invalidDatabase}

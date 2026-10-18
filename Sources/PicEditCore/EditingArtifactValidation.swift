@@ -99,7 +99,13 @@ public enum ArtifactValueValidation {
 /// Strict syntax/shape preflight precedes Codable. Each persisted blob has an
 /// explicit byte/value/depth cap. No authority is minted by a decoded DTO.
 public enum ArtifactJSONCodec {
-    public static func encode<T:Encodable>(_ value:T) throws -> Data { try EditingContractJSON.encoder().encode(value) }
+    public static func encode<T:Encodable>(_ value:T) throws -> Data {
+        let bytes = try EditingContractJSON.encoder().encode(value)
+        if value is EditSettings || value is EditingSnapshot || value is GeneratedArtifact || value is GeneratedArtifactManifest {
+            guard bytes.count <= EditSettings.maximumEncodedBytes else { throw ArtifactContractError.limitExceeded }
+        }
+        return bytes
+    }
     public static func digest<T:Encodable>(_ value:T) throws -> ArtifactDigest { try digestBytes(encode(value)) }
     public static func digestBytes(_ bytes:Data) throws -> ArtifactDigest {
         try ArtifactDigest(sha256:SHA256.hash(data:bytes).map{String(format:"%02x",$0)}.joined())
@@ -122,6 +128,14 @@ public enum ArtifactJSONCodec {
         case let v as MaskDocument: try v.validate()
         case let v as GenerationMaskBinding: try v.validate()
         case let v as MaskRasterTransform: try v.validate()
+        case let v as LocalAdjustment: try v.validate()
+        case let v as LocalAdjustmentMask: try v.validate()
+        case let v as LocalMaskShape: try v.validate()
+        case let v as LocalAdjustmentSettings:
+            guard v == v.normalized else { throw ArtifactContractError.invalidValue("local adjustment settings") }
+        case let v as EditSettings:
+            guard v == v.normalized else { throw ArtifactContractError.invalidValue("settings") }
+            try v.validateLocalAdjustments()
         case let v as OriginalSourceRevision:
             _ = try OriginalSourceRevision(device:v.device,inode:v.inode,fileSize:v.fileSize,modifiedSeconds:v.modifiedSeconds,modifiedNanoseconds:v.modifiedNanoseconds,changedSeconds:v.changedSeconds,changedNanoseconds:v.changedNanoseconds)
         case let v as GenerationParameters: try ArtifactValueValidation.version(v.schemaVersion);_ = try GenerationParameters(values:v.values)
@@ -135,7 +149,14 @@ public enum ArtifactJSONCodec {
         default: break // private SQL wire envelopes recursively validate below
         }
     }
-    public static func decode<T:Codable>(_ type:T.Type,from data:Data,maximum:Int = 65_536) throws -> T {
+    public static func decode<T:Codable>(_ type:T.Type,from data:Data,maximum:Int? = nil) throws -> T {
+        // Only envelopes that actually contain editing snapshots receive the
+        // larger budget. Small ownership/capability DTO limits stay unchanged.
+        let editEnvelope = type == EditingSnapshot.self || type == EditSettings.self || type == EditingExpectedState.self
+            || type == GeneratedArtifact.self || type == GeneratedArtifactManifest.self || type == GenerationProvenance.self
+            || type == LocalAdjustment.self || type == LocalAdjustmentMask.self || type == LocalMaskShape.self
+            || type == LocalMaskRaster.self
+        let maximum = maximum ?? (editEnvelope ? EditSettings.maximumEncodedBytes : 65_536)
         guard maximum > 0, maximum <= 67_108_864,data.count <= maximum else { throw ArtifactContractError.limitExceeded }
         do {
             var scan = ArtifactJSONScanner(data,maximum:maximum); try scan.validate()

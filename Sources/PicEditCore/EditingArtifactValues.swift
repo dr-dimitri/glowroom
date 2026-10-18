@@ -104,6 +104,7 @@ public struct EditingSnapshot: Codable, Hashable, Sendable {
     private static let defaultedSettings: Set<EditParameter> = [.autoToneAmount, .naturalBalanceAmount, .naturalBalanceColorAmount]
     public init(source: EditableSourceRef = .original, settings: EditSettings = .neutral) throws {
         guard settings == settings.normalized else { throw ArtifactContractError.invalidValue("settings") }
+        try settings.validateLocalAdjustments()
         schemaVersion = 2; self.source = source; self.settings = settings
     }
     private enum CodingKeys: String, CodingKey { case schemaVersion, source, settings }
@@ -120,6 +121,7 @@ public struct EditingSnapshot: Codable, Hashable, Sendable {
         let stringValue: String
         var intValue: Int? { nil }
         init(_ parameter: EditParameter) { stringValue = parameter.rawValue }
+        static let localAdjustments = SettingKey(stringValue: "localAdjustments")!
         init?(stringValue: String) { self.stringValue = stringValue }
         init?(intValue: Int) { return nil }
     }
@@ -127,10 +129,11 @@ public struct EditingSnapshot: Codable, Hashable, Sendable {
         var values = encoder.container(keyedBy: CodingKeys.self)
         try values.encode(schemaVersion, forKey: .schemaVersion)
         try values.encode(source, forKey: .source)
-        let controls = Dictionary(uniqueKeysWithValues: EditParameter.allCases.compactMap { parameter in
-            omittedDefaultSettings.contains(parameter) ? nil : (parameter.rawValue, parameter.value(in: settings))
-        })
-        try values.encode(controls, forKey: .settings)
+        var controls = values.nestedContainer(keyedBy: SettingKey.self, forKey: .settings)
+        for parameter in EditParameter.allCases where !omittedDefaultSettings.contains(parameter) {
+            try controls.encode(parameter.value(in: settings), forKey: SettingKey(parameter))
+        }
+        if !settings.localAdjustments.isEmpty { try controls.encode(settings.localAdjustments, forKey: .localAdjustments) }
     }
     public static func == (lhs: Self, rhs: Self) -> Bool {
         lhs.schemaVersion == rhs.schemaVersion && lhs.source == rhs.source && lhs.settings == rhs.settings

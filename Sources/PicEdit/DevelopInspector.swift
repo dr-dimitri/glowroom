@@ -9,6 +9,7 @@ struct DevelopInspector: View {
     @EnvironmentObject private var imageAnalysis: ImageAnalysisModel
     @EnvironmentObject private var photoMetadata: PhotoMetadataModel
     @EnvironmentObject private var layout: WorkspaceLayoutModel
+    @ViewState private var showsMasks = false
 
     private var panels: WorkspacePanels { layout.panels(developing: library.isDeveloping) }
     private var saveStatus: WorkspaceSaveStatus { WorkspaceSaveStatus(editor: editor) }
@@ -63,6 +64,14 @@ struct DevelopInspector: View {
             Text("Nicht destruktiv · Original unverändert").font(.system(size: 10)).foregroundStyle(Theme.muted)
                 .padding(.bottom, 14)
         }.background(Theme.sidebar)
+            .sheet(isPresented: $showsMasks) {
+                if let asset = library.selectedAsset, let source = try? editor.resolvedSource(for: asset) {
+                    LocalAdjustmentMaskEditor(asset: asset, source: source.identity, settings: source.settings, library: library,
+                        isPresented: $showsMasks)
+                        .id(source.identity)
+                }
+            }
+            .onChange(of: library.selectedID) { _, _ in showsMasks = false }
     }
 
     private var inspectorHeader: some View {
@@ -92,6 +101,11 @@ struct DevelopInspector: View {
             Text(asset.fileName).font(.system(size: 12, weight: .medium)).lineLimit(1).truncationMode(.middle)
             Text("Quelle: \(editor.snapshot(for: asset.id).source == .original ? "Importiertes Original" : "Generierter Bildstand")")
                 .font(.system(size: 10)).foregroundStyle(Theme.muted)
+            Button { finishInput(assetID: asset.id); showsMasks = true } label: {
+                Label("Masken (\(editor.settings(for: asset.id).localAdjustments.count))", systemImage: "circle.dashed.inset.filled")
+                    .font(.system(size: 11))
+            }.disabled(!editor.canEdit || !library.canModify)
+                .accessibilityIdentifier("workspace.local-masks")
             if saveStatus.hasError {
                 Button { reveal(.versions) } label: {
                     Label("Speicherfehler · Prüfen", systemImage: "exclamationmark.triangle")

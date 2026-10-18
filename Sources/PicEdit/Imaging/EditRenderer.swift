@@ -2,14 +2,16 @@ import CoreImage
 import Foundation
 import PicEditCore
 
-enum EditRenderError: LocalizedError {
+enum EditRenderError: LocalizedError, Equatable {
     case unavailable
     case oversizedPreview
+    case insufficientMaskMemory
 
     var errorDescription: String? {
         switch self {
         case .unavailable: "Die Bildbearbeitung konnte nicht gerendert werden."
         case .oversizedPreview: "Die Vorschau ist für die Bildbearbeitung zu groß."
+        case .insufficientMaskMemory: "Die Maskenvorschau überschreitet das verfügbare Speicherbudget. Verkleinere die Vorschau oder deaktiviere vorübergehend einzelne Masken."
         }
     }
 }
@@ -33,6 +35,7 @@ enum EditRenderer {
         private var balanced: CIImage?
         private var noise: NoiseKey?
         private var balanceKey: BalanceKey?
+        fileprivate let localMaskCache = LocalMaskImageCache()
 
         private struct BalanceKey: Equatable {
             let legacy: Double
@@ -62,7 +65,7 @@ enum EditRenderer {
         }
 
         fileprivate func prefix(_ bitmap: PreviewBitmap, settings: EditSettings, extent: CGRect, scale: Double) throws -> CIImage {
-            guard cachesPrefix, bitmap.byteCost <= sourceByteLimit else {
+            guard cachesPrefix, bitmap.resourceOwner == nil, bitmap.byteCost <= sourceByteLimit else {
                 if cachesPrefix {
                     lock.lock()
                     original = nil
@@ -184,13 +187,25 @@ enum EditRenderer {
               original.width <= 4_096, original.height <= 4_096 else {
             throw EditRenderError.oversizedPreview
         }
+        // Direct callers must honor the same local-work limit as the adaptive
+        // preview pipeline. The export graph has its separate full-size budget.
+        guard let localBytes = LocalAdjustmentRenderer.estimatedAdditionalBytes(adjustments: settings.localAdjustments,
+            width: original.width, height: original.height),
+              localBytes <= LocalAdjustmentRenderer.previewWorkingMemoryBudget else {
+            throw EditRenderError.insufficientMaskMemory
+        }
 
         return try autoreleasepool {
             let extent = CGRect(x: 0, y: 0, width: original.width, height: original.height)
             // Keep spatial effects comparable at progressive preview sizes.
             let scale = max(0.25, Double(max(original.width, original.height)) / 1_600)
             let prefix = try session.prefix(bitmap, settings: settings, extent: extent, scale: scale)
-            let image = try manualAdjustments(prefix, settings: settings, extent: extent, scale: scale)
+            let global = try manualAdjustments(prefix, settings: settings, extent: extent, scale: scale)
+            // Artifact mask allocations belong to this render's admitted phase;
+            // retaining their CPU rasters in a global cache would outlive it.
+            let maskCache = bitmap.resourceOwner == nil ? session.localMaskCache : nil
+            let image = try LocalAdjustmentRenderer.apply(to: global, adjustments: settings.localAdjustments,
+                                                          extent: extent, scale: scale, cache: maskCache)
 
             let colorSpace = original.colorSpace ?? CGColorSpace(name: CGColorSpace.sRGB)!
             let highPrecision = original.bitsPerComponent > 8
@@ -218,11 +233,13 @@ enum EditRenderer {
         let extent = image.extent
         let scale = max(0.25, Double(max(original.width, original.height)) / 1_600)
         let prefix = try prefix(image, original: original, settings: settings, extent: extent, scale: scale)
-        return try manualAdjustments(prefix, settings: settings, extent: extent, scale: scale)
+        let global = try manualAdjustments(prefix, settings: settings, extent: extent, scale: scale)
+        return try LocalAdjustmentRenderer.apply(to: global, adjustments: settings.localAdjustments,
+                                                 extent: extent, scale: scale)
     }
 
-    private static func manualAdjustments(_ input: CIImage, settings: EditSettings,
-                                          extent: CGRect, scale: Double) throws -> CIImage {
+    static func manualAdjustments(_ input: CIImage, settings: EditSettings,
+                                  extent: CGRect, scale: Double) throws -> CIImage {
         try Task.checkCancellation()
         var image = input
         if settings.exposure != 0 || settings.contrast != 0 || settings.highlights != 0 || settings.shadows != 0 ||

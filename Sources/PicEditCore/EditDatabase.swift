@@ -78,7 +78,9 @@ public actor EditDatabase {
     public func save(_ settings: EditSettings, for assetID: String, revision: Int64) throws {
         try Self.validateID(assetID)
         guard revision >= 0 else { throw EditDatabaseError.invalidRevision }
+        try settings.normalized.validateLocalAdjustments()
         let payload = try JSONEncoder().encode(settings.normalized)
+        guard payload.count <= EditSettings.maximumEncodedBytes else { throw ArtifactContractError.limitExceeded }
         try connection.transaction {
             try connection.statement("INSERT INTO edit_revisions(asset_id,revision) VALUES(?,?) ON CONFLICT(asset_id) DO UPDATE SET revision=excluded.revision WHERE excluded.revision > edit_revisions.revision") { statement in
                 try connection.bind(assetID, at: 1, to: statement)
@@ -350,6 +352,7 @@ public actor EditDatabase {
                 let id = try database.string(statement, column: 0)
                 try validateID(id)
                 guard sqlite3_column_type(statement, 1) == SQLITE_BLOB,
+                      sqlite3_column_bytes(statement, 1) <= EditSettings.maximumEncodedBytes,
                       let bytes = sqlite3_column_blob(statement, 1) else {
                     throw EditDatabaseError.invalidDatabase("Ungültige Bearbeitungswerte.")
                 }

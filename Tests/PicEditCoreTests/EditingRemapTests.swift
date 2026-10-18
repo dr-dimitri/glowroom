@@ -74,11 +74,11 @@ struct EditingRemapFixture:Sendable {
     let fixture:EditingFixture,oldID:String,newID:String,newURL:URL,stored:StoredEditingState,verified:VerifiedAssetRemap
     let body:CatalogCoordinationRequestBody,coordinatorSHA:ArtifactDigest
     var preparation:CatalogParticipantPreparation {.init(journal:journal(phase:.prepared),nonce:UUID())}
-    init() async throws {
+    init(settings: EditSettings = EditSettings(exposure: 1)) async throws {
         let f = try EditingFixture();fixture = f
         oldID = f.original.standardizedFileURL.path
         let initial = try await f.repository.loadState()
-        stored = try await f.repository.saveSnapshot(EditingSnapshot(settings:EditSettings(exposure:1)),for:oldID,expected:.init(storeEpoch:initial.storeEpoch,revision:nil,snapshot:nil),revision:1)
+        stored = try await f.repository.saveSnapshot(EditingSnapshot(settings:settings),for:oldID,expected:.init(storeEpoch:initial.storeEpoch,revision:nil,snapshot:nil),revision:1)
         let raw = try AssetRemapVerifier.capture(f.original,referenceDate:Date(timeIntervalSinceReferenceDate:750_000_000.123.nextUp))
         let previous = try OriginalSourceFingerprint(standardizedPath:raw.standardizedPath,fileSize:raw.fileSize,modifiedAt:raw.modifiedAt,nativeRevision:raw.nativeRevision,resourceIdentifier:raw.resourceIdentifier,volumeIdentifier:raw.volumeIdentifier,contentSHA256:ArtifactJSONCodec.digestBytes(Data([1,2,3,4])))
         let oldBookmark = try f.directory.bookmarkData(options:[.withSecurityScope],includingResourceValuesForKeys:nil,relativeTo:nil)

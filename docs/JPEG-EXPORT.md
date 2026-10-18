@@ -8,6 +8,8 @@ Der Dialog orientiert sich an den Bereichen Speicherort, Dateieinstellungen und 
 
 ## Verarbeitung
 
+Übernommene [Maskenkorrekturen](MASK-EDITING.md) sind Teil des eingefrorenen Settings-Snapshots. Sie wirken nach den globalen Reglern in Listenreihenfolge mit demselben alphabewussten Graphen wie die Vorschau. Verläufe entstehen in voller Ausgabeauflösung; Pinsel-/Korrekturraster sind auf 2048 und automatische Masken auf 512 Pixel je Kante begrenzt. Ein offener Maskenentwurf fließt erst nach **Übernehmen** in einen neu geöffneten Export ein. Die automatische Erkennung läuft beim Export nicht erneut.
+
 `JPEGExportModel` hält Eingaben, Status, Abbruch und Bestätigung für vorhandene Zieldateien auf dem MainActor. Ein unveränderlicher `JPEGExportRequest` enthält Original, Bearbeitungen, Ausgabemaße, Qualität, Farbraum und Ziel. Bei einer Überschreibbestätigung wird genau dieser Auftrag erneut verwendet. Der Originalschutz bleibt dagegen aktuell: Jeder Auftrag behält den Zugriff auf die Schutzinstanz seiner Bibliothek, auch bei Stapelfortsetzung und erneutem Versuch.
 
 Mehrere Bilder erhalten gemeinsame Exportoptionen und automatisch eindeutige Dateinamen auf Basis von `Originalname-bearbeitet.jpg`. Namenskollisionen innerhalb der Auswahl werden unabhängig von Groß-/Kleinschreibung und Unicode-Normalisierung durch Zahlenzusätze aufgelöst. Die sichtbare Bildreihenfolge bestimmt die Reihenfolge der Aufträge. Bei Namenskonflikten mit vorhandenen Dateien wird jeder betroffene Auftrag ausdrücklich bestätigt; die übrige Warteschlange behält ihre angenommenen Ziele und Optionen. Ein Fehler pausiert den Stapel für einen erneuten Versuch. Ein Abbruch stoppt die verbleibenden Aufträge und zeigt bereits erfolgreich veröffentlichte Ergebnisse weiter an.
@@ -20,7 +22,7 @@ Mehrere Bilder erhalten gemeinsame Exportoptionen und automatisch eindeutige Dat
 4. Bei Bedarf mit Lanczos skalieren, transparente Bereiche auf Weiß zusammensetzen und nach sRGB oder Display P3 umrechnen. Das Ergebnis wird als 8-Bit-JPEG mit der gewählten ppi-Angabe geschrieben. sRGB erhält die standardisierte EXIF-Kennzeichnung `ColorSpace=1`; Display P3 ein eingebettetes ICC-Profil. ImageIO entscheidet über die native Profileinbettung. Beide Arten der Farbraumkennzeichnung sind in der [ICC-Dokumentation](https://www.color.org/whitepapers/ICC_White_Paper36-Embedding_and_referencing_profiles.pdf) beschrieben.
 5. Die fertige temporäre Datei atomar unter dem gewünschten Namen veröffentlichen.
 
-Der Speichercheck schätzt Originalpixel mit 48 und Ausgabepixel mit 12 Byte pro Pixel. Das Budget beträgt ein Viertel des physischen Speichers, höchstens 8 GiB. Dies ist ein Planungsbudget, keine harte Grenze für interne ImageIO-/GPU-Allokationen. Zu große Aufträge scheitern verständlich und werden nicht still verkleinert. RAW-Unterstützung und Decodierung bleiben von macOS/ImageIO abhängig.
+Der Speichercheck schätzt Originalpixel mit 48 und Ausgabepixel mit 12 Byte pro Pixel. Zusätzlich berücksichtigt er aktive lokale Masken mit ihren Zwischenbildern, räumlichen Filtern und begrenzten Auswahl-/Korrekturrastern. Das Budget beträgt ein Viertel des physischen Speichers, höchstens 8 GiB. Dies ist ein konservatives Planungsbudget, keine harte Grenze oder Messung interner ImageIO-/GPU-Allokationen. Zu große Aufträge scheitern verständlich und werden nicht still verkleinert. RAW-Unterstützung und Decodierung bleiben von macOS/ImageIO abhängig.
 
 ## Dateisicherheit und Abbruch
 

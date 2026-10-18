@@ -11,11 +11,11 @@ public struct EditingPackageLimits: Hashable, Sendable {
     public let maximumArtifactManifestBytes: Int
     public init(maximumArtifacts: Int = 4_096, maximumFiles: Int = 16_384,
                 maximumTotalBytes: Int64 = 21_474_836_480, maximumPayloadBytes: Int64 = 536_870_912,
-                maximumManifestBytes: Int = 8_388_608, maximumArtifactManifestBytes: Int = 65_536) throws {
+                maximumManifestBytes: Int = 8_388_608, maximumArtifactManifestBytes: Int = EditSettings.maximumEncodedBytes) throws {
         guard (1...4_096).contains(maximumArtifacts), (1...16_384).contains(maximumFiles),
               maximumTotalBytes > 0, maximumTotalBytes <= 21_474_836_480,
               maximumPayloadBytes > 0, maximumPayloadBytes <= 536_870_912,
-              (1...8_388_608).contains(maximumManifestBytes), (1...65_536).contains(maximumArtifactManifestBytes) else {
+              (1...8_388_608).contains(maximumManifestBytes), (1...EditSettings.maximumEncodedBytes).contains(maximumArtifactManifestBytes) else {
             throw ArtifactContractError.limitExceeded
         }
         self.maximumArtifacts = maximumArtifacts; self.maximumFiles = maximumFiles

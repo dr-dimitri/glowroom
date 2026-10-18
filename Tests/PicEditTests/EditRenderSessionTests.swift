@@ -41,6 +41,9 @@ struct EditRenderSessionTests {
         settings.naturalBalanceColorAmount = 65
         settings.luminanceNoiseReduction = 20
         settings.exposure = 0.2
+        settings.localAdjustments = [try LocalAdjustment(name: "Wide gamut local edit", mask: .init(shape: .radial(
+            center: .init(x: 0.35, y: 0.3), radiusX: 0.6, radiusY: 0.4, rotation: 0.3), opacity: 0.7),
+            settings: .init(exposure: 0.4, texture: 20, saturation: 35))]
         let fixedSettings = settings
         let expected = try sources.map { try EditRenderer.render($0, settings: fixedSettings, session: reference) }
         try await withThrowingTaskGroup(of: (Int, PreviewBitmap).self) { group in

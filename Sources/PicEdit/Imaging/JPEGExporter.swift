@@ -149,7 +149,7 @@ actor JPEGExporter {
             let orientedWidth = swapsAxes ? sourceHeight : sourceWidth
             let orientedHeight = swapsAxes ? sourceWidth : sourceHeight
             let size = try request.options.outputSize(sourceWidth: orientedWidth, sourceHeight: orientedHeight)
-            try validateMemory(sourceWidth: sourceWidth, sourceHeight: sourceHeight, output: size)
+            try validateMemory(sourceWidth: orientedWidth, sourceHeight: orientedHeight, output: size, settings: request.settings)
             try Task.checkCancellation()
 
             // Always develop the actual source image at its original dimensions.
@@ -299,14 +299,17 @@ actor JPEGExporter {
         return Int(value)
     }
 
-    private func validateMemory(sourceWidth: Int, sourceHeight: Int, output: JPEGPixelSize) throws {
+    private func validateMemory(sourceWidth: Int, sourceHeight: Int, output: JPEGPixelSize, settings: EditSettings) throws {
         let source = UInt64(sourceWidth).multipliedReportingOverflow(by: UInt64(sourceHeight))
         let target = UInt64(output.width).multipliedReportingOverflow(by: UInt64(output.height))
         let decoded = source.partialValue.multipliedReportingOverflow(by: 48)
         let rendered = target.partialValue.multipliedReportingOverflow(by: 12)
-        let total = decoded.partialValue.addingReportingOverflow(rendered.partialValue)
+        let base = decoded.partialValue.addingReportingOverflow(rendered.partialValue)
+        guard let local = LocalAdjustmentRenderer.estimatedAdditionalBytes(adjustments: settings.localAdjustments,
+            width: sourceWidth, height: sourceHeight) else { throw JPEGExportError.insufficientMemory }
+        let total = base.partialValue.addingReportingOverflow(local)
         guard !source.overflow, !target.overflow, !decoded.overflow, !rendered.overflow,
-              !total.overflow, total.partialValue <= memoryBudget else { throw JPEGExportError.insufficientMemory }
+              !base.overflow, !total.overflow, total.partialValue <= memoryBudget else { throw JPEGExportError.insufficientMemory }
     }
 
     private func validateDestination(directory: Int32, filename: String, protectedIdentities: Set<FileIdentity>, overwrite: Bool) throws {

@@ -96,6 +96,9 @@ struct JPEGExporterTests {
             settings.texture = 20
             settings.clarity = 15
             settings.colorNoiseReduction = 30
+            settings.localAdjustments = [try LocalAdjustment(name: "Local gradient", mask: .init(shape: .linear(
+                start: .init(x: 0.15, y: 0.2), end: .init(x: 0.8, y: 0.7))),
+                settings: .init(exposure: -0.4, clarity: 25, saturation: -45))]
             let expected = try pixels(EditRenderer.render(PreviewBitmap(image: original), settings: settings).image)
             let target = directory.appendingPathComponent("edited.jpg")
             _ = try await JPEGExporter().export(.init(sourceURL: source, destinationURL: target,
@@ -103,6 +106,26 @@ struct JPEGExporterTests {
             let output = try pixels(decode(target))
             #expect(meanDifference(expected, output) < 3, "JPEG quantization may differ; the underlying edit graph must agree")
             #expect(meanDifference(try pixels(original), output) > 10)
+        }
+    }
+
+    @Test func localMaskCoordinatesApplyToTheFullResolutionExport() async throws {
+        try await withDirectory { directory in
+            let source = try fixture(directory, name: "local-original.png", width: 5_000, height: 40) { _, _ in
+                (80, 80, 80, 255)
+            }
+            var settings = EditSettings.neutral
+            settings.localAdjustments = [try LocalAdjustment(name: "Left half", mask: .init(shape: .linear(
+                start: .init(x: 0.25, y: 0.5), end: .init(x: 0.75, y: 0.5)), feather: 0),
+                settings: .init(exposure: 1))]
+            let target = directory.appendingPathComponent("local-full.jpg")
+            _ = try await JPEGExporter().export(.init(sourceURL: source, destinationURL: target,
+                settings: settings, options: .init(quality: 100)))
+            let image = try decode(target)
+            #expect(image.width == 5_000 && image.height == 40)
+            let values = try pixels(image)
+            #expect(values[(20 * 5_000 + 100) * 4] > 105)
+            #expect(abs(Int(values[(20 * 5_000 + 4_900) * 4]) - 80) <= 2)
         }
     }
 
@@ -224,6 +247,37 @@ struct JPEGExporterTests {
             }
             await #expect(throws: CancellationError.self) { try await task.value }
             #expect(try Data(contentsOf: target) == existing)
+            #expect(try temporaryOutputs(in: directory).isEmpty)
+        }
+    }
+
+    @Test func stackedLocalSpatialEditsAreBudgetedBeforePublishing() async throws {
+        try await withDirectory { directory in
+            let source = try fixture(directory, name: "local-budget.png")
+            let before = try Data(contentsOf: source)
+            let document = try MaskDocument(canvasSize: .init(width: 64, height: 48), strokes: [
+                .init(points: [.init(x: 32, y: 24)], radius: 64)
+            ])
+            var settings = EditSettings.neutral
+            settings.localAdjustments = [try LocalAdjustment(name: "Local", mask: .init(shape: .brush(document), feather: 0),
+                settings: .init(exposure: 0.5))]
+            let exporter = JPEGExporter(memoryBudget: 310_000)
+            _ = try await exporter.export(.init(sourceURL: source, destinationURL: directory.appendingPathComponent("tone.jpg"),
+                settings: settings, options: .init()))
+            settings.localAdjustments[0].settings.texture = 50
+            settings.localAdjustments[0].settings.clarity = 30
+            let target = directory.appendingPathComponent("protected-output.jpg")
+            let existing = Data("keep existing output".utf8)
+            try existing.write(to: target)
+            await #expect(throws: JPEGExportError.insufficientMemory) {
+                try await exporter.export(.init(sourceURL: source, destinationURL: target, settings: settings,
+                    options: .init(), overwriteExisting: true))
+            }
+            #expect(try Data(contentsOf: target) == existing)
+            settings.localAdjustments[0].isEnabled = false
+            _ = try await exporter.export(.init(sourceURL: source, destinationURL: directory.appendingPathComponent("disabled.jpg"),
+                settings: settings, options: .init()))
+            #expect(try Data(contentsOf: source) == before)
             #expect(try temporaryOutputs(in: directory).isEmpty)
         }
     }

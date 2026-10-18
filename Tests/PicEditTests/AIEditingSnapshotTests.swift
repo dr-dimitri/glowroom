@@ -55,6 +55,42 @@ final class AIEditingSnapshotTests {
     }
 
     @Test
+    func localMaskChangesAndUndoInvalidateSuggestionsWithEqualGlobalControls() async throws {
+        let (library, editing, _) = try await fixture()
+        let before = try #require(editing.aiSnapshot(in: library))
+        var settings = before.settings
+        settings.localAdjustments = [try LocalAdjustment(name: "Bereich", mask: LocalAdjustmentMask(
+            shape: .linear(start: LocalMaskPoint(x: 0, y: 0.5), end: LocalMaskPoint(x: 1, y: 0.5))),
+            settings: LocalAdjustmentSettings(exposure: 1))]
+        editing.setSettings(settings, for: before.assetID)
+        #expect(!editing.isCurrentAISnapshot(before, in: library))
+        #expect(!editing.acceptAIProposal(try proposal(before), in: library))
+        let masked = try #require(editing.aiSnapshot(in: library))
+        editing.undo(assetID: before.assetID)
+        #expect(editing.settings(for: before.assetID) == before.settings)
+        #expect(!editing.isCurrentAISnapshot(before, in: library))
+        #expect(!editing.isCurrentAISnapshot(masked, in: library))
+        #expect(await editing.flush())
+    }
+
+    @Test
+    func maskDraftAllowsOpeningSaveToFinishButRejectsUndoAndSelectionRoundTrips() async throws {
+        let (library, editing, _) = try await fixture()
+        let assetID = try #require(library.selectedID)
+        editing.setSettings(EditSettings(exposure: 1), for: assetID)
+        let anchor = try #require(LocalMaskEditingAnchor(editor: editing, library: library))
+        #expect(await editing.flush())
+        #expect(anchor.isCurrent(editor: editing, library: library))
+        editing.undo(assetID: assetID); editing.redo(assetID: assetID)
+        #expect(editing.settings(for: assetID) == anchor.snapshot.settings)
+        #expect(!anchor.isCurrent(editor: editing, library: library))
+        let next = try #require(LocalMaskEditingAnchor(editor: editing, library: library))
+        library.selectedID = library.assets[1].id; library.selectedID = assetID
+        #expect(!next.isCurrent(editor: editing, library: library))
+        #expect(await editing.flush())
+    }
+
+    @Test
     func refreshInvalidatesImmediatelyAndCapturesUpdatedSourceMetadata() async throws {
         let (library, editing, store) = try await fixture(realFiles: true)
         let beforeRefresh = try #require(editing.aiSnapshot(in: library))

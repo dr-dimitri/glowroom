@@ -138,8 +138,8 @@ struct DetailView: View {
                     Text(asset.fileName + previewLabel).font(.system(size: 11)).foregroundStyle(Theme.muted).lineLimit(1)
                     Spacer()
                     Button { showsMaskEditor = true } label: {
-                        Label("Maske", systemImage: "paintbrush.pointed").font(.system(size: 10))
-                    }.buttonStyle(.plain).help("Maskenentwurf auf der aktuellen Bildquelle bearbeiten")
+                        Label("Masken", systemImage: "circle.dashed.inset.filled").font(.system(size: 10))
+                    }.buttonStyle(.plain).help("Masken hinzufügen und Bildbereiche lokal korrigieren")
                         .accessibilityIdentifier("workspace.mask")
                         .disabled(!model.canModify || model.editingRenderIntent != .currentEditing || editor.isLoading || editor.isRestoring || editor.isClosing)
                     Button { toggleZoom(viewport: canvasSize) } label: { Label(zoomed ? "Einpassen" : "Vergrößern", systemImage: zoomed ? "minus.magnifyingglass" : "plus.magnifyingglass").font(.system(size: 10)) }.buttonStyle(.plain).foregroundStyle(Theme.muted)

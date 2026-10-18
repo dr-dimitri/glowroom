@@ -2,6 +2,8 @@ import Foundation
 
 /// Rendering instructions only. Original pixels are never stored or replaced.
 public struct EditSettings: Codable, Hashable, Sendable {
+    /// An edit including bounded vector/raster selections remains a small blob.
+    public static let maximumEncodedBytes = 4_194_304
     public var exposure: Double
     public var contrast: Double
     public var highlights: Double
@@ -21,6 +23,7 @@ public struct EditSettings: Codable, Hashable, Sendable {
     public var naturalBalanceAmount: Double
     /// Color contribution within natural balance; dormant while its amount is zero.
     public var naturalBalanceColorAmount: Double
+    public var localAdjustments: [LocalAdjustment]
 
     public init(exposure: Double = 0, contrast: Double = 0, highlights: Double = 0,
                 shadows: Double = 0, whites: Double = 0, blacks: Double = 0,
@@ -28,7 +31,7 @@ public struct EditSettings: Codable, Hashable, Sendable {
                 vibrance: Double = 0, saturation: Double = 0,
                 luminanceNoiseReduction: Double = 0, colorNoiseReduction: Double = 0,
                 autoToneAmount: Double = 0, naturalBalanceAmount: Double = 0,
-                naturalBalanceColorAmount: Double = 50) {
+                naturalBalanceColorAmount: Double = 50, localAdjustments: [LocalAdjustment] = []) {
         self.exposure = exposure
         self.contrast = contrast
         self.highlights = highlights
@@ -45,6 +48,7 @@ public struct EditSettings: Codable, Hashable, Sendable {
         self.autoToneAmount = autoToneAmount
         self.naturalBalanceAmount = naturalBalanceAmount
         self.naturalBalanceColorAmount = naturalBalanceColorAmount
+        self.localAdjustments = localAdjustments
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -52,6 +56,7 @@ public struct EditSettings: Codable, Hashable, Sendable {
         case texture, clarity, dehaze, vibrance, saturation
         case luminanceNoiseReduction, colorNoiseReduction, autoToneAmount
         case naturalBalanceAmount, naturalBalanceColorAmount
+        case localAdjustments
     }
 
     public init(from decoder: Decoder) throws {
@@ -77,6 +82,49 @@ public struct EditSettings: Codable, Hashable, Sendable {
             ? try values.decode(Double.self, forKey: .naturalBalanceAmount) : 0
         naturalBalanceColorAmount = values.contains(.naturalBalanceColorAmount)
             ? try values.decode(Double.self, forKey: .naturalBalanceColorAmount) : 50
+        localAdjustments = values.contains(.localAdjustments)
+            ? try values.decode([LocalAdjustment].self, forKey: .localAdjustments) : []
+        try validateLocalAdjustments()
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var values = encoder.container(keyedBy: CodingKeys.self)
+        try values.encode(exposure, forKey: .exposure); try values.encode(contrast, forKey: .contrast)
+        try values.encode(highlights, forKey: .highlights); try values.encode(shadows, forKey: .shadows)
+        try values.encode(whites, forKey: .whites); try values.encode(blacks, forKey: .blacks)
+        try values.encode(texture, forKey: .texture); try values.encode(clarity, forKey: .clarity)
+        try values.encode(dehaze, forKey: .dehaze); try values.encode(vibrance, forKey: .vibrance)
+        try values.encode(saturation, forKey: .saturation)
+        try values.encode(luminanceNoiseReduction, forKey: .luminanceNoiseReduction)
+        try values.encode(colorNoiseReduction, forKey: .colorNoiseReduction)
+        try values.encode(autoToneAmount, forKey: .autoToneAmount)
+        try values.encode(naturalBalanceAmount, forKey: .naturalBalanceAmount)
+        try values.encode(naturalBalanceColorAmount, forKey: .naturalBalanceColorAmount)
+        // Absence preserves the exact historical settings/snapshot wire shape.
+        if !localAdjustments.isEmpty { try values.encode(localAdjustments, forKey: .localAdjustments) }
+    }
+
+    public func validateLocalAdjustments() throws {
+        guard localAdjustments.count <= LocalAdjustment.maximumCount,
+              Set(localAdjustments.map(\.id)).count == localAdjustments.count else { throw ArtifactContractError.limitExceeded }
+        var rasterBytes = 0, brushPoints = 0, brushStrokes = 0
+        for adjustment in localAdjustments {
+            try adjustment.validate()
+            if let refinement = adjustment.mask.refinement {
+                brushStrokes += refinement.strokes.count
+                brushPoints += refinement.strokes.reduce(0) { $0 + $1.points.count }
+            }
+            switch adjustment.mask.shape {
+            case .subject(let raster), .sky(let raster): rasterBytes += raster.bytes.count
+            case .brush(let document):
+                brushStrokes += document.strokes.count
+                brushPoints += document.strokes.reduce(0) { $0 + $1.points.count }
+            default: break
+            }
+        }
+        guard rasterBytes <= LocalAdjustment.maximumTotalRasterBytes,
+              brushPoints <= LocalAdjustment.maximumTotalBrushPoints,
+              brushStrokes <= LocalAdjustment.maximumTotalBrushStrokes else { throw ArtifactContractError.limitExceeded }
     }
 
     public static let neutral = EditSettings()
@@ -95,7 +143,8 @@ public struct EditSettings: Codable, Hashable, Sendable {
                     colorNoiseReduction: clamp(colorNoiseReduction, 0...100),
                     autoToneAmount: clamp(autoToneAmount, 0...100),
                     naturalBalanceAmount: clamp(naturalBalanceAmount, 0...100),
-                    naturalBalanceColorAmount: clamp(naturalBalanceColorAmount, 0...100))
+                    naturalBalanceColorAmount: clamp(naturalBalanceColorAmount, 0...100),
+                    localAdjustments: localAdjustments.map(\.normalized))
     }
 
     public var isNeutral: Bool {

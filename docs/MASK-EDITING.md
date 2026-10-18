@@ -1,6 +1,37 @@
 # Masken und nicht-destruktives Compositing
 
-Issue [#11](https://github.com/dr-dimitri/picedit/issues/11) stellt einen lokalen Maskeneditor und die Grundlage für spätere generative Operationen bereit. Ein Bildmodell, automatische Segmentierung, Crop und ein Ebeneneditor sind nicht enthalten. Der Dialog **Maske** in der Einzelbildansicht öffnet einen Entwurf. **Entwurf verwerfen und schließen** sowie ein Quellen-/Bildwechsel verwerfen ihn. Es wird weder eine Bildbearbeitung angenommen noch eine Originaldatei geschrieben.
+## Lokale Korrekturen
+
+**Masken** oberhalb des Einzelbilds oder im Entwickeln-Werkzeugbereich öffnet gespeicherte lokale Korrekturen. **Neue Maske** bietet Pinsel, linearen Verlauf, radialen Verlauf, Motiv und Himmel. Mehrere benannte Masken wirken in Listenreihenfolge aufeinander aufbauend. Das rote **Overlay** zeigt die Auswahl; **Vorher** zeigt den Stand vor dem Öffnen des Dialogs.
+
+1. Eine Maske hinzufügen. Den Pinsel über das Bild ziehen. Einen linearen Verlauf vom gewählten zum ungewählten Bereich ziehen; einen radialen Verlauf von seiner Mitte nach außen aufspannen.
+2. Stärke, weiche Kante und Invertierung anpassen. Mit Pinsel ergänzen oder mit Radierer abziehen; bei Verläufen vorher **Mit Pinsel verfeinern** aktivieren. Zoom, Hand und **Einpassen** helfen beim Zeichnen.
+3. Belichtung, Kontrast, Lichter, Tiefen, Weiß, Schwarz, Struktur, Klarheit, Dunst entfernen, Dynamik und Sättigung für diese Maske einstellen. Globale Regler bleiben erhalten. Benennen, Duplizieren, Deaktivieren und Löschen stehen pro Maske bereit.
+4. **Übernehmen** speichert den gesamten Dialog als einen normalen Rückgängig-Schritt. Lokale Pfeile widerrufen Maskenaktionen und zusammenhängende Reglerbewegungen im Entwurf. **Abbrechen** sowie Bild-/Quellenwechsel verwerfen den Entwurf. Ein bereits angenommener Write bleibt unabhängig vom Abbruch einer Vorschau zuverlässig bestehen.
+
+Lokale Regler zurücksetzen behält die Auswahl; das vollständige **Zurücksetzen** des Fotos entfernt auch seine Masken. Übernommene Masken überstehen Neustart, Backup und Restore. Der JPEG-Export von Originalquellen enthält sie; aktive Rastervarianten behalten die separate Exportsperre aus #16.
+
+**Motiv auswählen** verwendet Apples lokale Vision-Erkennung ab macOS 14. Für **Himmel auswählen** über **Himmelsmodell einrichten …** einmalig etwa 86 MB laden. Anschließend funktioniert die Erkennung offline; Fotos werden nicht hochgeladen. Ohne Modell meldet PicEdit die fehlende Einrichtung. Herkunft, Lizenz, Speicherbedarf und Grenzen stehen unter [Automatische Masken](AUTOMATIC-MASKS.md). Erkennungen sind Vorschläge und können an feinen Kanten ungenau sein. Gespeichert wird die tatsächliche Auswahl; Modellupdates verändern alte Masken nicht.
+
+Geometrie folgt dem orientierten Bild unabhängig von Vorschau und Retina. Pinsel speichern Vektoren auf einem Referenzcanvas bis 1024 Pixel langer Kante; relative Positionen skalieren auf die Ausgabe. Lineare/radiale Verläufe entstehen analytisch in Ausgabeauflösung. Automatische Gray8-Auswahlen sind auf 512 Pixel je Kante, gerenderte Pinsel-/Korrekturraster auf 2048 Pixel lange Kante begrenzt. Sehr feine Kanten sind bei starker Vergrößerung deshalb begrenzt präzise. Pro Bearbeitung gelten höchstens 16 Masken, insgesamt 1 MiB automatische Raster sowie 16.384 Pinsel-/Korrekturpunkte in 1024 Strichen. Bei einem Limit bleibt der vorherige gültige Stand erhalten.
+
+Masken sind Teil der vorhandenen Settings-/Snapshot-Identität für Speicherung, Cache, KI-Stale-Prüfung und Undo. Alte Bearbeitungen ohne Masken behalten ihre kanonischen Snapshot-Bytes und Manifesthashes. Nur Settings enthaltende Persistenzobjekte erhalten ein begrenztes größeres Bytebudget; strenge JSON-Keysets bleiben bestehen. Vorschau und Export teilen denselben alphabewussten CI-Graphen nach den globalen Reglern. Regler und Pinsel verwenden die entwickelte Quelle erneut. Hintergrundarbeit bleibt begrenzt; abhängige Masken-/Strichreihenfolge und SQLite-Writes bleiben bewusst seriell. Core Image parallelisiert Pixeloperationen. Ein Softwarepräferenzvergleich ist ohne bestätigten Backendpfad kein allgemeiner CPU-/GPU-Paritätsnachweis; neue Leistungsgewinne werden nicht behauptet.
+
+Bei vielen aktiven Korrekturen verringert die Vorschau ihre tatsächliche Renderauflösung unterhalb der angeforderten Obergrenze. Pro Worker gilt für zusätzliche Maskenarbeit ein konservatives Planungsbudget von höchstens 512 MiB beziehungsweise einem Sechzehntel des physischen Speichers. Bei Artefaktquellen gehen zusätzlich Basisbild, bestehende Speicherreservierung und Ausgabe in deren gemeinsames Budget ein. Gespeicherte Geometrie und entwickelte Quelle bleiben erhalten; weitere Reglerbewegungen lösen kein neues Decode aus. Der Vollauflösungsexport verwendet seine eigene Speicherzulassung und verkleinert einen zu großen Auftrag nicht still. Diese Zulassungsschätzungen sind keine Messung oder harte Grenze für den gesamten Prozess-/GPU-Speicher.
+
+### Prüfung der lokalen Korrekturen vom 18. Oktober 2026
+
+Der vollständige Lauf mit `PICEDIT_TEST_BUILD_PATH=/private/tmp/picedit-local-masks-tests ./scripts/test.sh --jobs 5` prüfte 739 App-Tests und 341 Core-Tests. Alle Core-Tests und alle Maskenfälle bestanden. Ein unabhängiger semantischer Suchtest schlug wegen einer zu frühen Statusabfrage fehl; seine isolierte Wiederholung bestand. Dieser unveränderte Testpfad ist separat in [#83](https://github.com/dr-dimitri/picedit/issues/83) erfasst. Der gezielte Abschlusslauf der betroffenen Masken-, Vorschau-, Export-, Snapshot- und Editorfälle bestand mit 91 App-Tests und 16 Core-Tests.
+
+Die Prüfungen umfassen historische Snapshot-Bytes und Manifesthashes, maximale Raster-/Vektorlasten, echte SQL-/Backup-/Restore-Roundtrips, veraltete Vorschau-/Erkennungsantworten, Quellenwechsel, Dialogabbruch, zusammenhängendes Undo, Alphaerhalt sowie geteilten Vorschau-/Exportgraphen. Große Original- und Artefaktvorschauen bleiben auch bei wiederholten Reglerbewegungen und noch gehaltener vorheriger Ausgabe im vorgesehenen Zulassungspfad.
+
+Ein ausdrücklich aktivierter nativer Modelltest installierte und kompilierte das gepinnte Apple-Himmelsmodell und erzeugte eine 512 × 341 große Auswahl. Auf der synthetischen Himmel-/Boden-Fixture lag der IoU-Vergleich zwischen automatischer Gerätewahl und CPU bei 0,998130. Das belegt diesen Testfall, keine allgemeine Qualitäts- oder Leistungsparität. Der normale Testlauf benötigt keinen Modelldownload.
+
+Die manuelle UI-Prüfung verwendete ausschließlich synthetische JPEGs im separaten Katalog `/private/tmp/PicEdit-LocalMasks-UI/PreparedCatalog`. Geprüft wurden das Menü mit fünf Maskentypen, linearer Verlauf mit lokaler Belichtung, Invertierung und Overlay, ein gezeichneter Pinselstrich, Übernehmen, gemeinsames Rückgängig/Wiederholen sowie Wiederöffnen und Abbrechen. Unabhängige Reviews prüften Speicherung, Renderer, Modellverwaltung und UI-Lebenszyklus. Befunde zu Speicherplanung, Quellenkohärenz, Maskenorientierung und verzögertem Dialogladen wurden behoben und erneut geprüft.
+
+## Grundlage für generative Operationen
+
+Issue [#11](https://github.com/dr-dimitri/picedit/issues/11) stellt außerdem einen separaten vorübergehenden Maskenentwurf und nicht-destruktives Compositing für spätere generative Operationen bereit. Die folgenden Abschnitte dokumentieren diesen internen Vertrag und seine historische Prüfung. Er ist nicht der oben beschriebene gespeicherte lokale Korrekturdialog. Crop, Ebenen mit eigenen Bildquellen und generative Bildoperationen bleiben außerhalb der lokalen Korrekturen.
 
 ## Werkzeuge und Geometrie
 

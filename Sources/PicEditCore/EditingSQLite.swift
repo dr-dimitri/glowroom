@@ -94,7 +94,7 @@ final class EditingSQLite: @unchecked Sendable {
                 if !created {
                     try Self.rows(db,"SELECT asset_id,settings FROM adjustments") { s in
                         let id = try Self.text(s,0,maximum:16_384)
-                        let settings = try JSONDecoder().decode(EditSettings.self,from:Self.blob(s,1,maximum:65_536))
+                        let settings = try JSONDecoder().decode(EditSettings.self,from:Self.blob(s,1,maximum:EditSettings.maximumEncodedBytes))
                         let snapshot = try EditingSnapshot(settings:settings)
                         try Self.statement(db,"INSERT INTO editing_snapshots(asset_id,snapshot) VALUES(?,?)") { out in
                             try Self.bind(id,1,out); try Self.bind(ArtifactJSONCodec.encode(snapshot),2,out); try Self.done(out)
