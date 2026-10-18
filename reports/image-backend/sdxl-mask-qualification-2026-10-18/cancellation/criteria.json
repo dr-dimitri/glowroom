@@ -1,0 +1,87 @@
+{
+  "schemaVersion": 1,
+  "route": "diffusers/stable-diffusion-xl-1.0-inpainting-0.1@115134f363124c53c7d878647567d04daf26e41e",
+  "reference": "Apple M2 Pro, 16 GiB, macOS 14+, arm64",
+  "maximumCombinedResidentBytes": 6442450944,
+  "maximumLoadSeconds": 45,
+  "maximumPredictionSeconds": 180,
+  "maximumColdSeconds": 240,
+  "maximumCancelUntilNativeReturnSeconds": 5,
+  "previewP95Seconds": 0.25,
+  "previewBaselineMultiplier": 2,
+  "minimumWarmRepeats": 3,
+  "modelCanvas": [
+    1024,
+    1024
+  ],
+  "mapping": "Native integer-centered embedding; identical edge-clamp RGB and binary-mask sampling including artificial padding; no scaling; inverse native crop",
+  "alpha": "Straight RGB, no pre-matting; source alpha held separately and restored before current native soft-mask compositor",
+  "parameters": {
+    "seed": 4281,
+    "steps": 20,
+    "guidanceScale": 8,
+    "strength": 0.99,
+    "sampler": "Euler",
+    "scheduler": "discrete"
+  },
+  "conversion": "Q8_0 own pinned SDK conversion; VAE F32 is an explicit conservative candidate setting, not an upstream requirement",
+  "requiredRemovalCases": [
+    "01-structured-removal-hard",
+    "02-edge-object-hard",
+    "03-mask-edge-hard",
+    "03-mask-edge-soft",
+    "04-partial-alpha-hard",
+    "05-fine-motif-edges-hard"
+  ],
+  "diagnosticOnlyCases": [
+    "06-nonsquare-canvas-hard"
+  ],
+  "quality": "Object disappears without a new object, visible seam, texture discontinuity or halo; source zero-mask RGBA remains byte-identical after current product compositor",
+  "capabilities": "Independent decisions for inpaint, backgroundEdit and outpaint; technical harness or a passing individual image is not a product Go",
+  "productGoRequires": "Sufficient quality and provenance plus actual ImageGenerationService adapter, cancellation/resource-lease correctness and selected interactive product preview measurements; no inference from file size or synthetic preview alone",
+  "minimumPreviewSamplesPerPhase": 1,
+  "sdkDelta": {
+    "file": "sdk-sdxl-inpaint.patch",
+    "sha256": "bb91dc6b5868b9c9db264c416a5695973280b4e29c7667f123819295788fe4ce",
+    "scope": "Diffusers second encoder prefix normalization before generic te prefix; no forced model version or tensor architecture change"
+  },
+  "executionVariant": {
+    "name": "V9 SDXL nearest mask conditioning; otherwise V8 settings",
+    "diagnosticOnly": false,
+    "backend": "metal,te=cpu,vae=metal",
+    "paramsBackend": "diffusion=metal,te=disk,vae=metal",
+    "batchedCFG": true,
+    "maximumManagedVRAMGiB": 5,
+    "vaeTilePixels": [
+      640,
+      640
+    ],
+    "vaeTileOverlap": 0.5,
+    "actualTilePlan": "2x2 tiles at pixel starts 0 and 384; effective overlap 256px (40 percent), target overlap retained",
+    "precision": "same converted mixed types; no claim of all-F32 execution",
+    "limitsUnchanged": true,
+    "numericCallbacks": false,
+    "latentMaskInterpolation": "nearest-v1; SDXL Inpaint only; all other model types retain NearestMax"
+  },
+  "ggmlDelta": {
+    "file": "ggml-metal-group-norm.patch",
+    "sha256": "67dc4d0208f2bda10bac94008b0954584cc12b4592151b9834fc86158624ecf6",
+    "scope": "dispatch and normalize each independent image in GROUP_NORM; unchanged dense tensor layout and group formula",
+    "requiredEvidence": "Actual original batch defect and patched CPU/Metal agreement for N=1,2,3 before helper publication"
+  },
+  "maximumCancelUntilConfirmedProcessEndSeconds": 5,
+  "processContainment": {
+    "forceAfterSeconds": 4,
+    "maximumSeconds": 5,
+    "forcedTerminationIsCooperativeGo": false,
+    "clock": "mach_continuous_time",
+    "measurement": "cancel request to waitUntilExit confirmation; reader drain excluded; inference lease retained until actual end"
+  },
+  "qualificationExperiment": {
+    "hypothesis": "NearestMax erases every protected latent cell in fixture05; nearest interpolation matches Diffusers and retains141 cells. Actual quality improvement remains to be measured.",
+    "singleChangedImageFactor": "SDXL Inpaint latent mask resize only; no change to weights, prompts, seed, steps, precision, tiling, native canvas, final native mask or denoise blending",
+    "firstProbe": "05-fine-motif-edges-hard",
+    "fullSeriesRequiredBeforeTechnicalGo": true,
+    "productCapabilitiesRemain": "unavailable until all product-route requirements pass"
+  }
+}

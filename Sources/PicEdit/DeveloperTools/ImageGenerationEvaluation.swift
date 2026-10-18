@@ -72,7 +72,11 @@ private final class NativeSession: @unchecked Sendable {
     var eventCount = 0, eventBytes = 0, stderrBytes = 0
     let eventFile: FileHandle, stderrFile: FileHandle, directory: URL
     var stopped = false
-    init(directory: URL, helperName: String = "evaluation-helper-current") throws {
+    let containsCancellation: Bool
+    var cancellation: NativeProcessCancellation?
+    var cancellationTrigger = "not-requested", cancellationProbeTriggered = false
+    init(directory: URL, helperName: String = "evaluation-helper-current", containsCancellation: Bool = false) throws {
+        self.containsCancellation = containsCancellation
         self.directory = directory
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let eventsURL = directory.appendingPathComponent("native-events.jsonl")
@@ -173,12 +177,20 @@ private final class NativeSession: @unchecked Sendable {
             let matches = id == nil || (event["id"] as? String) == id
             if matches, event["event"] as? String == "progress", let cancelAtStep,
                let step = event["step"] as? Int, step >= cancelAtStep, cancelledAt == nil {
-                cancelledAt = now(); try send(["operation": "cancel", "id": "cancel-probe"])
+                if containsCancellation {
+                    cancellationProbeTriggered = true
+                    cancelledAt = beginContainedCancellation(reason: "progress-step-gte-\(cancelAtStep)")
+                } else {
+                    cancelledAt = now(); try send(["operation": "cancel", "id": "cancel-probe"])
+                }
                 deadline = min(deadline, cancelledAt! + 5)
             }
             if matches && event["event"] as? String == target {
                 var result = event; result["driverElapsedSeconds"] = now() - begin
-                if let cancelledAt { result["cancelLatencyUntilNativeReturnSeconds"] = now() - cancelledAt }
+                if let cancelledAt {
+                    cancellation?.noteNativeReturn(code: event["code"] as? String ?? "not-cancelled")
+                    result["cancelLatencyUntilNativeReturnSeconds"] = now() - cancelledAt
+                }
                 result["nativePID"] = Int(process.processIdentifier)
                 result["sameProcessContextLeaseHeldUntilThisNativeReturn"] = true
                 return result
@@ -190,11 +202,31 @@ private final class NativeSession: @unchecked Sendable {
         try writeJSON(request, directory.appendingPathComponent("request-\(id).json"))
         try send(request)
         do { return try wait(target: "completed", id: id, timeout: timeout, cancelAtStep: cancelAtStep) }
-        catch { try? send(["operation": "cancel", "id": "guard-cancel"]); throw error }
+        catch {
+            if containsCancellation { _ = beginContainedCancellation(reason: "operation-failure") }
+            else { try? send(["operation": "cancel", "id": "guard-cancel"]) }
+            throw error
+        }
+    }
+    // The caller owns this state. Every SDXL abort/close path shares the first
+    // request's deadline; blocked protocol writes cannot delay the watchdog.
+    private func beginContainedCancellation(reason: String = "close") -> Double {
+        if let cancellation { return cancellation.begin {} }
+        cancellationTrigger = reason
+        let supervisor = NativeProcessCancellation(process: process)
+        cancellation = supervisor
+        return supervisor.begin { [weak self] in
+            try? self?.send(["operation": "cancel", "id": "contained-close"])
+            try? self?.send(["operation": "shutdown"])
+        }
     }
     @discardableResult func stop() -> JSONObject {
         if stopped { return ["alreadyStopped": true] }; stopped = true
-        if process.isRunning {
+        var cancellationReport: JSONObject?
+        if containsCancellation { _ = beginContainedCancellation() }
+        if let cancellation {
+            cancellationReport = cancellation.finish().report
+        } else if process.isRunning {
             try? send(["operation": "cancel", "id": "close"]); try? send(["operation": "shutdown"])
             let deadline = now() + 5
             condition.lock()
@@ -203,14 +235,21 @@ private final class NativeSession: @unchecked Sendable {
             if process.isRunning { kill(process.processIdentifier, SIGKILL) }
         }
         process.waitUntilExit() // Lease is never released merely because Swift stopped waiting.
+        try? input.fileHandleForWriting.close()
         if readers.wait(timeout: .now() + 5) == .timedOut {
             try? output.fileHandleForReading.close(); try? errors.fileHandleForReading.close()
             readers.wait() // No log readers outlive their closed archive handles.
         }
         try? input.fileHandleForWriting.close(); try? eventFile.close(); try? stderrFile.close()
-        return ["nativeExitStatus": Int(process.terminationStatus), "confirmedProcessEnded": !process.isRunning,
+        var result: JSONObject = ["nativeExitStatus": Int(process.terminationStatus), "confirmedProcessEnded": !process.isRunning,
                 "nativePID": Int(process.processIdentifier), "eventCount": eventCount, "eventBytes": eventBytes,
                 "stderrBytes": stderrBytes, "leaseReleasedOnlyAfterProcessExit": true]
+        if let cancellationReport {
+            result["cancellation"] = cancellationReport
+            result["cancellationTrigger"] = cancellationTrigger
+            result["cancellationProbeTriggered"] = cancellationProbeTriggered
+        }
+        return result
     }
 }
 
@@ -362,7 +401,8 @@ private func benchmark(directory: URL, allFixtures: Bool) throws {
     if let failure { throw failure }
 }
 
-private func sdxlBenchmark(directory: URL, allFixtures: Bool, numericDiagnostic: Bool = false) throws {
+private func sdxlBenchmark(directory: URL, allFixtures: Bool, numericDiagnostic: Bool = false,
+                           probeCase: String? = nil, cancellationOnly: Bool = false) throws {
     signal(SIGPIPE, SIG_IGN)
     stopControl.setDeadline(now() + (allFixtures ? 2400 : 1000))
     signal(SIGINT, SIG_IGN); signal(SIGTERM, SIG_IGN)
@@ -385,6 +425,8 @@ private func sdxlBenchmark(directory: URL, allFixtures: Bool, numericDiagnostic:
         "purpose": numericDiagnostic ? "numeric diagnostic only; callback synchronization is not a representative benchmark" :
             "new SDXL technical route; product adapter and capability Go require separate evidence",
         "numericDiagnosticOnly": numericDiagnostic,
+        "qualificationScope": cancellationOnly ? "cancellation-only" : (numericDiagnostic ? "numeric-diagnostic" :
+            (probeCase != nil ? "single-case-quality-probe" : (allFixtures ? "all-fixtures-with-warm-repeats" : "first-fixture-with-warm-repeats"))),
         "clock": "mach_continuous_time includes sleep", "runs": [JSONObject](),
         "coldDefinition": "new process/model context; operating-system and shader caches not purged",
         "memoryScope": "helper peak RSS/footprint plus driver peak RSS, not a kernel-enforced quota",
@@ -428,6 +470,13 @@ private func sdxlBenchmark(directory: URL, allFixtures: Bool, numericDiagnostic:
                     hash(tools.appendingPathComponent("ggml_group_norm_regression.cpp")) ==
                         installation["metalGroupNormRegressionSourceSHA256"] as? String,
                     "sdxl-metal-group-norm-regression-evidence")
+        try require(installation["sdkMaskBaselineReproduced"] as? Bool == true &&
+                    installation["sdkMaskRegressionPassed"] as? Bool == true &&
+                    installation["sdxlMaskInterpolation"] as? String == "nearest-v1" &&
+                    installation["sdkMaskFixtureSHA256"] as? String == "26a0c86703ceff7901679361426ac3620c1d0eee2bc43037b783c0ef17eb4d2c" &&
+                    hash(tools.appendingPathComponent("sdk-sdxl-mask.patch")) == installation["sdkMaskPatchSHA256"] as? String &&
+                    hash(tools.appendingPathComponent("sdxl_mask_regression.cpp")) == installation["sdkMaskRegressionSourceSHA256"] as? String,
+                    "sdxl-reference-mask-regression-evidence")
         try require(installation["sdkRevision"] as? String == package["sdkRevision"] as? String &&
                     installation["ggmlRevision"] as? String == package["ggmlRevision"] as? String,
                     "sdxl-sdk-revision")
@@ -483,6 +532,10 @@ private func sdxlBenchmark(directory: URL, allFixtures: Bool, numericDiagnostic:
                 if !numericDiagnostic { cases += (1...3).map { ("warm-\($0)", fixture, mask) } }
             } else if allFixtures && !numericDiagnostic { cases.append((id, fixture, mask)) }
         } }
+        if let probeCase {
+            cases = cases.filter { $0.0 == probeCase }
+            try require(cases.count == 1, "sdxl-probe-case-must-identify-one-fixture-mask")
+        }
         let modelSize = try ArtifactPixelSize(width: 1024, height: 1024)
         let stamp = UUID().uuidString.lowercased()
         var prepared: [String: (SDXLEvaluationRaster, String, String)] = [:]
@@ -512,11 +565,11 @@ private func sdxlBenchmark(directory: URL, allFixtures: Bool, numericDiagnostic:
         report["verificationAndPreparationSeconds"] = now() - began
         try writeJSON(report, reportURL)
         let cold = now()
-        session = try NativeSession(directory: directory.appendingPathComponent("series-context"), helperName: "sdxl-helper")
+        session = try NativeSession(directory: directory.appendingPathComponent("series-context"), helperName: "sdxl-helper", containsCancellation: true)
         let loaded = try session!.operation(["operation": "load", "id": "load"], timeout: 45)
         report["load"] = loaded
         try require(loaded["status"] as? String == "success", "sdxl-load-failed")
-        for (index, item) in cases.enumerated() {
+        for (index, item) in (cancellationOnly ? [] : cases).enumerated() {
             if index == 1 { preview = ImageGenerationPreviewProbe(); report["previewBaseline"] = preview!.baseline(); preview!.start() }
             let id = (item.1["id"] as! String) + "-" + (item.2["kind"] as! String)
             let (mapping, source, mask) = prepared[id]!
@@ -557,24 +610,39 @@ private func sdxlBenchmark(directory: URL, allFixtures: Bool, numericDiagnostic:
         report["seriesStop"] = session!.stop(); session = nil
         if numericDiagnostic {
             report["status"] = "numeric-diagnostic-only-not-a-performance-or-product-go-series"
+        } else if probeCase != nil && !cancellationOnly {
+            report["status"] = "single-case-inference-complete-awaiting-visual-review-no-product-go"
         } else {
-            session = try NativeSession(directory: directory.appendingPathComponent("cancel-context"), helperName: "sdxl-helper")
+            session = try NativeSession(directory: directory.appendingPathComponent("cancel-context"), helperName: "sdxl-helper", containsCancellation: true)
             report["cancelLoad"] = try session!.operation(["operation": "load", "id": "load"], timeout: 45)
             try require((report["cancelLoad"] as! JSONObject)["status"] as? String == "success", "sdxl-cancel-load")
             let first = cases[0], firstID = (first.1["id"] as! String) + "-" + (first.2["kind"] as! String)
             let input = prepared[firstID]!, output = "outputs/\(stamp)-cancel-must-not-publish.png"
-            let cancellation = try session!.operation(["operation": "generate", "id": "cancel", "source": input.1,
-                "mask": input.2, "output": output, "prompt": first.1["prompt"]!, "negativePrompt": first.1["negativePrompt"]!, "seed": 4281],
-                timeout: 180, cancelAtStep: 2)
-            report["cancellation"] = cancellation
-            report["cancelNoOutputPublished"] = !FileManager.default.fileExists(atPath: root.appendingPathComponent(output).path)
-            report["cancelGatePassed"] = (report["cancelNoOutputPublished"] as? Bool == true) &&
-                cancellation["code"] as? String == "cancelled" &&
-                (cancellation["cancelLatencyUntilNativeReturnSeconds"] as? Double ?? .infinity) <= 5
-            report["cancelStop"] = session!.stop(); session = nil
-            try require(report["previewGatePassed"] as? Bool == true, "sdxl-preview-gate")
-            try require(report["cancelGatePassed"] as? Bool == true, "sdxl-cancel-gate")
-            report["status"] = "technical-measurements-complete-awaiting-visual-review-and-product-route"
+            do {
+                report["cancellation"] = try session!.operation(["operation": "generate", "id": "cancel", "source": input.1,
+                    "mask": input.2, "output": output, "prompt": first.1["prompt"]!, "negativePrompt": first.1["negativePrompt"]!, "seed": 4281],
+                    timeout: 180, cancelAtStep: 2)
+            } catch {
+                report["cancellationOperationFailure"] = String(describing: error)
+            }
+            let stop = session!.stop(); report["cancelStop"] = stop; session = nil
+            let evidence = stop["cancellation"] as? JSONObject
+            let noOutput = !FileManager.default.fileExists(atPath: root.appendingPathComponent(output).path)
+            report["cancelNoOutputPublished"] = noOutput
+            let probeTriggered = stop["cancellationProbeTriggered"] as? Bool == true
+            report["cancelProcessContainmentGatePassed"] = probeTriggered && noOutput && (evidence?["processContainmentGatePassed"] as? Bool == true)
+            report["cancelGatePassed"] = probeTriggered && noOutput && (evidence?["cooperativeGatePassed"] as? Bool == true)
+            report["cancelProbeTriggered"] = probeTriggered
+            report["cancelTriggerDefinition"] = probeTriggered ?
+                "first public SDK progress callback with step >= 2; may be model loading or VAE, not a proven UNet step" :
+                "probe trigger was not observed; close/error containment cannot establish in-flight cancellation"
+            if cancellationOnly {
+                report["status"] = "cancellation-evidence-complete-no-product-go"
+            } else {
+                try require(report["previewGatePassed"] as? Bool == true, "sdxl-preview-gate")
+                try require(report["cancelGatePassed"] as? Bool == true, "sdxl-cancel-gate")
+                report["status"] = "technical-measurements-complete-awaiting-visual-review-and-product-route"
+            }
         }
     } catch { failure = error; report["status"] = "failed-evidence-retained"; report["failure"] = String(describing: error) }
     if let preview { report["interruptedPreview"] = preview.stop(); preview.release() }
@@ -656,11 +724,20 @@ private struct ImageGenerationEvaluation {
             root = try option("--root")
             let output = try option("--out"), all = arguments.contains("--all-fixtures")
             let diagnostic = arguments.contains("--numeric-diagnostic")
+            let cancellationOnly = arguments.contains("--cancellation-only")
+            var probeCase: String?
+            if let index = arguments.firstIndex(of: "--probe-case") {
+                try require(index + 1 < arguments.count && !arguments[index + 1].hasPrefix("--"), "missing-probe-case")
+                probeCase = arguments[index + 1]
+            }
+            try require(!diagnostic || (probeCase == nil && !cancellationOnly), "incompatible-sdxl-probe-modes")
             let budget = AIResourceBudget.shared
             let lease = try await budget.acquireLocalInference(residentBytes: Int64(memoryLimit))
-            do { try await Task.detached { try sdxlBenchmark(directory: output, allFixtures: all, numericDiagnostic: diagnostic) }.value }
+            do { try await Task.detached { try sdxlBenchmark(directory: output, allFixtures: all || probeCase != nil, numericDiagnostic: diagnostic,
+                    probeCase: probeCase, cancellationOnly: cancellationOnly) }.value }
             catch { await budget.release(lease); throw error }
             await budget.release(lease)
+            if cancellationOnly { break }
             let reportURL = output.appendingPathComponent("sdxl-report.json")
             var report = try json(reportURL)
             let ids = (report["runs"] as! [JSONObject]).compactMap { $0["id"] as? String }

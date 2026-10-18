@@ -1,0 +1,75 @@
+{
+  "swift": {
+    "command": "PICEDIT_TEST_BUILD_PATH=/tmp/picedit-issue78-tests ./scripts/test.sh --jobs 3",
+    "exitCode": 0,
+    "picEditTests": 707,
+    "picEditCoreTests": 331,
+    "expectedSkips": 18,
+    "nativeCancellationRegressionTests": 10,
+    "execution": "normal parallel suite, with macOS graphics/process access"
+  },
+  "python": {
+    "command": "python3 -B -m unittest discover -s tools/sdxl-evaluation -v",
+    "tests": 38,
+    "exitCode": 0
+  },
+  "shellGuards": {
+    "command": "./scripts/test-developer-tools.sh",
+    "exitCode": 0
+  },
+  "native": {
+    "sdkMaskBaselineAndPatchedPassed": true,
+    "groupNormBaselineAndPatchedPassed": true,
+    "sdkNameRegressionPassed": true,
+    "diagnosticSelfTestPassed": true
+  },
+  "initialAttempts": [
+    {
+      "scope": "test compile",
+      "result": "failed",
+      "reason": "/private/tmp vs /tmp path alias disagreed with existing Swift module cache; repeated with original /tmp spelling"
+    },
+    {
+      "scope": "sandbox full suite",
+      "result": "aborted",
+      "reason": "macOS Metal/TCC preflight blocked in CIContext initialization; stack diagnosed and exact owned test processes stopped"
+    },
+    {
+      "scope": "initial unsandboxed full suite",
+      "result": "failed",
+      "reason": "blocking real-child tests and shared global GCD control workers caused cancellation and semantic scheduling failures under load; tests now suspend their Swift caller, process control uses bounded dedicated threads; final full suite passes"
+    }
+  ],
+  "review": {
+    "status": "final independent review passed; no remaining findings",
+    "findings": [
+      "share original cancellation deadline across SDXL error and close paths",
+      "distinguish partial/numeric probe scope",
+      "require actual progress-triggered cancellation for both probe gates",
+      "verify frozen mask fixture hash in Swift harness"
+    ]
+  },
+  "noModelOrCloudInOrdinaryTests": true,
+  "whitespace": {
+    "authoredSourcesTestsAndDocs": "pass",
+    "command": "git diff --cached --check -- '*.swift' '*.py' '*.cpp' '*.json' '*.md' '*.sh'",
+    "preservedExceptions": "Unchanged raw build/test logs and Unified-Diff blank context lines retain their exact bytes and may contain trailing whitespace."
+  },
+  "cleanApplicationBuild": {
+    "command": "PICEDIT_BUILD_JOBS=4 ./scripts/build-app.sh",
+    "cleanedBeforeBuild": [
+      ".build/",
+      ".build-app/",
+      "dist/PicEdit.app"
+    ],
+    "activeBuildTestAndModelProcessesCheckedBeforeCleanup": true,
+    "exitCode": 0,
+    "swiftBuildSeconds": 109.03,
+    "bundle": "dist/PicEdit.app",
+    "ordinaryApplicationEntryPoint": true,
+    "infoPlistValidationPassed": true,
+    "strictSignatureVerificationPassed": true,
+    "appBuildAttempts": 1,
+    "sourceIdentitiesMatchFinalReviewedSources": true
+  }
+}

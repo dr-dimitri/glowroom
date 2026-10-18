@@ -1,0 +1,10 @@
+{
+  "id" : "cancel",
+  "mask" : "jobs\/aa52aadc-fc4a-42f9-8081-77ca8a705145-01-structured-removal-hard\/mask.png",
+  "negativePrompt" : "blurry, distorted, new objects, text, watermark",
+  "operation" : "generate",
+  "output" : "outputs\/aa52aadc-fc4a-42f9-8081-77ca8a705145-cancel-must-not-publish.png",
+  "prompt" : "an empty wooden panel, continuous horizontal wood boards, natural wood texture",
+  "seed" : 4281,
+  "source" : "jobs\/aa52aadc-fc4a-42f9-8081-77ca8a705145-01-structured-removal-hard\/source.png"
+}

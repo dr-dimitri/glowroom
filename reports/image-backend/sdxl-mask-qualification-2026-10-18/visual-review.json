@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "decision": "noGo",
+  "requiredCase": "05-fine-motif-edges-hard",
+  "qualityPassed": false,
+  "reviewers": [
+    {
+      "role": "implementation agent",
+      "result": "fail"
+    },
+    {
+      "role": "independent review agent",
+      "result": "fail"
+    }
+  ],
+  "observations": [
+    "Beige background is generated and the blue rectangle removed.",
+    "Thick black branch shapes and pale/light edges surround the preserved thin green lines.",
+    "Final compositor restores protected green cores but leaves invented outlines and shadows around them.",
+    "Generated branch continuations and a flat gray-brown horizontal band remain at the bottom."
+  ],
+  "preservation": {
+    "outsidePixelsChecked": 9357,
+    "outsideRGBABytesChanged": 0,
+    "sourceAlphaBytesChanged": 0,
+    "pngRoundTripIdentical": true
+  },
+  "assets": [
+    {
+      "path": "quality/artifacts/05-fine-motif-edges-hard/raw-model-1024.png",
+      "bytes": 1572467,
+      "sha256": "2cc490928f08d0f3e631fca9b29138d2c58b414b637dbc30e0439b41c4a39768"
+    },
+    {
+      "path": "quality-compositor/05-fine-motif-edges-hard/current-final.png",
+      "bytes": 529911,
+      "sha256": "7499a1875e57cd239672c45d89c1f90473c14007886e28460c9447e56e791b39"
+    },
+    {
+      "path": "quality-compositor/05-fine-motif-edges-hard/current-comparison.png",
+      "bytes": 704884,
+      "sha256": "ab16edc5147962d1ef1615642d69ac02638d041a9d2ddc340fba0d7852b5585a"
+    }
+  ],
+  "scope": "One actual V9 mandatory fixture; no full-series, person, RAW or product-adapter qualification; unchanged V8 reports remain separate."
+}

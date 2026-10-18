@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "sdkRevision": "8cd731e7b4667eb8f40a153315b9a7125d09a58d",
+  "ggmlRevision": "d25b121ce1d6ae0c7e62ad080460d9fc1e46dd93",
+  "sources": [
+    {
+      "name": "stable-diffusion.cpp.tar.gz",
+      "bytes": 125758115,
+      "sha256": "871c4f03286360bf10b9850ce4c57912311d0d91b117d4e4be19d989a417f08b",
+      "revision": "8cd731e7b4667eb8f40a153315b9a7125d09a58d",
+      "destination": "source"
+    },
+    {
+      "name": "ggml.tar.gz",
+      "bytes": 4158450,
+      "sha256": "bbfaebbfe2564a796f1a9309ff87cd6c6a5acdfffe7b779f96b847f57945403b",
+      "revision": "d25b121ce1d6ae0c7e62ad080460d9fc1e46dd93",
+      "destination": "source/ggml"
+    }
+  ],
+  "helperSHA256": "dc4b3c90d7818d4710f22404a95db47d153df838d05ec2c2e29be5956b84b7f1",
+  "helperSourceSHA256": "fd8ad2996e62b568d858d0bb1f4e51198f78e66f4bb453f0f7b95b7638546cdd",
+  "builderSHA256": "95e42167d7637c6a81ca2abc418bfd4a937d93de83560a5020987ee6b5494f8c",
+  "sdkPatchSHA256": "bb91dc6b5868b9c9db264c416a5695973280b4e29c7667f123819295788fe4ce",
+  "sdkNameRegressionSourceSHA256": "36114f0c140ab91f88cd088445c236f3b4cc7091ef8d829210cceccc77ab078c",
+  "sdkNameRegressionPassed": true,
+  "sdkMaskPatchSHA256": "5d27dedd45ee225f4d421f75baddc968a81146c0482e880ca59a1dabf4df3d52",
+  "sdkMaskRegressionSourceSHA256": "1554922df6f89bba5ac47a4ff22357528c01fd2ba4212501d0621f2c1defa322",
+  "sdkMaskFixtureSHA256": "26a0c86703ceff7901679361426ac3620c1d0eee2bc43037b783c0ef17eb4d2c",
+  "sdkMaskBaselineReproduced": true,
+  "sdkMaskRegressionPassed": true,
+  "sdxlMaskInterpolation": "nearest-v1",
+  "ggmlPatchSHA256": "67dc4d0208f2bda10bac94008b0954584cc12b4592151b9834fc86158624ecf6",
+  "metalGroupNormRegressionSourceSHA256": "126a3824a02f79d2ec1ee4c18f62984ab5ad768936cc5690dfa7f260edb40c37",
+  "metalGroupNormBaselineReproduced": true,
+  "metalGroupNormRegressionPassed": true,
+  "numericDiagnosticSelfTestPassed": true,
+  "publicHelperSDKAPIOnly": true,
+  "inferenceExecuted": false,
+  "conversionExecuted": false,
+  "productCapability": "unavailable",
+  "buildJobs": 2
+}

@@ -376,7 +376,7 @@ static json requested_configuration() {
     return {{"model", "model-q8_0.gguf"}, {"weightType", "auto-filetypes-with-SDK-layer-overrides"}, {"conversionType", "q8_0"},
             {"tensorTypeRules", vae_rules}, {"backend", "metal,te=cpu,vae=metal"},
             {"paramsBackend", "diffusion=metal,te=disk,vae=metal"}, {"maxManagedVRAMGiB", 5},
-            {"autoFit", false}, {"eagerLoad", false}, {"mmap", false}, {"batchedCFG", true},
+            {"autoFit", false}, {"eagerLoad", false}, {"mmap", false}, {"batchedCFG", true}, {"latentMaskInterpolation", "nearest-v1"},
             {"flashAttention", "auto"}, {"linearScale", 0}, {"attentionScale", 0}, {"hostThreads", 4},
             {"modelCanvas", {edge, edge}}, {"steps", 20}, {"strength", 0.99}, {"cfg", 8},
             {"sampler", "euler"}, {"scheduler", "discrete"}, {"rng", "cpu"},

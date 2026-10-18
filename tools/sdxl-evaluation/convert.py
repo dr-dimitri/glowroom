@@ -24,6 +24,7 @@ PreparationError = PREPARATION.PreparationError
 EXPECTED_PACKAGE_SHA256 = "d66209fbcb767950b36f815c6148c01193b3e297808d6bf56eadf0cb8a39e7ac"
 MAX_CONVERSION_SECONDS = 600
 VAE_RULES = r"^(first_stage_model\.|vae\.)=f32"
+MASK_FIXTURE_SHA256 = "26a0c86703ceff7901679361426ac3620c1d0eee2bc43037b783c0ef17eb4d2c"
 
 
 def digest_file(path, expected_size=None):
@@ -97,6 +98,13 @@ def verify_native(root, package):
             native.get("sdkNameRegressionSourceSHA256") != regression_hash or
             native.get("sdkNameRegressionPassed") is not True):
         raise PreparationError("Native SDK patch or name-regression provenance mismatch")
+    if (native.get("sdkMaskPatchSHA256") != digest_file(TOOLS / "sdk-sdxl-mask.patch")[1] or
+            native.get("sdkMaskRegressionSourceSHA256") != digest_file(TOOLS / "sdxl_mask_regression.cpp")[1] or
+            native.get("sdkMaskFixtureSHA256") != MASK_FIXTURE_SHA256 or
+            native.get("sdkMaskBaselineReproduced") is not True or
+            native.get("sdkMaskRegressionPassed") is not True or
+            native.get("sdxlMaskInterpolation") != "nearest-v1"):
+        raise PreparationError("Native SDXL mask patch or CPU regression provenance mismatch")
     ggml_patch_hash = digest_file(TOOLS / "ggml-metal-group-norm.patch")[1]
     group_norm_regression_hash = digest_file(TOOLS / "ggml_group_norm_regression.cpp")[1]
     # Current preparations require the real baseline reproduction and corrected
