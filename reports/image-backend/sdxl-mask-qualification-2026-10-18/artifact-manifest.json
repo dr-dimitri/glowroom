@@ -1,0 +1,296 @@
+{
+  "schemaVersion": 1,
+  "noWeightsOrExecutableBinariesIncluded": true,
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 7394,
+      "sha256": "85e90b556ae7f02f050e6968a7b1b6d77db5c8d396790300802edc8663298fbd"
+    },
+    {
+      "path": "cancellation/cancel-context/native-events.jsonl",
+      "bytes": 2300,
+      "sha256": "b1de938b493b7d3662098e35361fc02bfb8ddaaa68fedcda8751a524644be912"
+    },
+    {
+      "path": "cancellation/cancel-context/native-stderr.bin",
+      "bytes": 12433,
+      "sha256": "35eb00143eae1da22be98f93e3a1409b88841f43aa329d2dce974579799b4c68"
+    },
+    {
+      "path": "cancellation/cancel-context/request-cancel.json",
+      "bytes": 515,
+      "sha256": "b3f536a7a66c421ba17b5c02e1ed6b3f07e66838273712f2e824a6b90186729c"
+    },
+    {
+      "path": "cancellation/cancel-context/request-load.json",
+      "bytes": 43,
+      "sha256": "86c914fc4c16c957e93f6b33a43188d5315ae146ab9ab8b4bfc889fe7d6aeb98"
+    },
+    {
+      "path": "cancellation/criteria.json",
+      "bytes": 4340,
+      "sha256": "0ba7f16d76684d66d6f81158f6bfff3b514e1f48e85dd210b92e055192c7fced"
+    },
+    {
+      "path": "cancellation/fixtures/06-canvas-original.png",
+      "bytes": 2104,
+      "sha256": "1ad2c9e1bfc37f7dfa83cd66a975eb8fb347d4933ea78e2f8d4f1e6c3170dc08"
+    },
+    {
+      "path": "cancellation/sdxl-report.json",
+      "bytes": 22375,
+      "sha256": "6402aacddb4e7483760a1ea705544319a23803abeb49c72a77aeb90d5b203b49"
+    },
+    {
+      "path": "cancellation/series-context/native-events.jsonl",
+      "bytes": 1347,
+      "sha256": "4723ef2777260d1421318cf99dfa8c20301fd86127c0a921a80f1cd42dd665b7"
+    },
+    {
+      "path": "cancellation/series-context/native-stderr.bin",
+      "bytes": 7519,
+      "sha256": "0dde700c8500b0eaee224b3e207abe9ad434f8484c06dde0f1d0f90502336152"
+    },
+    {
+      "path": "cancellation/series-context/request-load.json",
+      "bytes": 43,
+      "sha256": "86c914fc4c16c957e93f6b33a43188d5315ae146ab9ab8b4bfc889fe7d6aeb98"
+    },
+    {
+      "path": "cancellation-driver.log",
+      "bytes": 85,
+      "sha256": "fa5b10d9cb9e01a778c0713f8168a49479d4ec5a6c47dc5996bd355f2489d3d2"
+    },
+    {
+      "path": "measurement-summary.json",
+      "bytes": 1340,
+      "sha256": "56a60cd9d75433c68630dbcd69259411941b6a51e952aacd62856bddad745928"
+    },
+    {
+      "path": "provenance/ImageGenerationEvaluation.swift",
+      "bytes": 54256,
+      "sha256": "3f100f9a2e8171571c8747345e5ffd6cd9651203b3b66aacc83cadb9aea5ccd4"
+    },
+    {
+      "path": "provenance/ImageGenerationPreviewProbe.swift",
+      "bytes": 7333,
+      "sha256": "64eb6cc4c0137b820f8943d3a0fa3a559a0537df3c9b2e6c602d021d85e9c904"
+    },
+    {
+      "path": "provenance/NativeProcessCancellation.swift",
+      "bytes": 9955,
+      "sha256": "6708c2c0f5f948ca023fd8d01a1ca2534c603bf94ed1d45b53273161dc6bcfd8"
+    },
+    {
+      "path": "provenance/SDXLEvaluationRaster.swift",
+      "bytes": 4059,
+      "sha256": "db12ba3b88bfa6b75687639cc518eb51af737478163a39cf8bee9762502a14c3"
+    },
+    {
+      "path": "provenance/build_native.py",
+      "bytes": 14975,
+      "sha256": "95e42167d7637c6a81ca2abc418bfd4a937d93de83560a5020987ee6b5494f8c"
+    },
+    {
+      "path": "provenance/conversion.json",
+      "bytes": 1192,
+      "sha256": "967e065ff2199271207ac349cf97ea5ca161862c815253491a4a4ec21bd0f926"
+    },
+    {
+      "path": "provenance/convert.py",
+      "bytes": 13658,
+      "sha256": "98ed7e4661e5479c7ce28de4810c6f35af177c483f6972f083379899797b3f53"
+    },
+    {
+      "path": "provenance/criteria.json",
+      "bytes": 4340,
+      "sha256": "0ba7f16d76684d66d6f81158f6bfff3b514e1f48e85dd210b92e055192c7fced"
+    },
+    {
+      "path": "provenance/ggml-metal-group-norm.patch",
+      "bytes": 1151,
+      "sha256": "67dc4d0208f2bda10bac94008b0954584cc12b4592151b9834fc86158624ecf6"
+    },
+    {
+      "path": "provenance/ggml_group_norm_regression.cpp",
+      "bytes": 8793,
+      "sha256": "126a3824a02f79d2ec1ee4c18f62984ab5ad768936cc5690dfa7f260edb40c37"
+    },
+    {
+      "path": "provenance/helper.cpp",
+      "bytes": 34161,
+      "sha256": "fd8ad2996e62b568d858d0bb1f4e51198f78e66f4bb453f0f7b95b7638546cdd"
+    },
+    {
+      "path": "provenance/native-build.log",
+      "bytes": 99533,
+      "sha256": "e9be38f1e884667e2dd47320d8d3053e64c0ae0909773d48dd739406d95baef9"
+    },
+    {
+      "path": "provenance/native-installation.json",
+      "bytes": 2046,
+      "sha256": "7b61bfb6b0db1d3c4559e474937f220dae800033f1973941d9abdc28eb0947a8"
+    },
+    {
+      "path": "provenance/native-regressions.json",
+      "bytes": 1308,
+      "sha256": "789c27cf4ce141e14b8d3569898005651526447a0d1f695fbb807a38c197aec8"
+    },
+    {
+      "path": "provenance/package.json",
+      "bytes": 10181,
+      "sha256": "d66209fbcb767950b36f815c6148c01193b3e297808d6bf56eadf0cb8a39e7ac"
+    },
+    {
+      "path": "provenance/sdk-sdxl-inpaint.patch",
+      "bytes": 851,
+      "sha256": "bb91dc6b5868b9c9db264c416a5695973280b4e29c7667f123819295788fe4ce"
+    },
+    {
+      "path": "provenance/sdk-sdxl-mask.patch",
+      "bytes": 2622,
+      "sha256": "5d27dedd45ee225f4d421f75baddc968a81146c0482e880ca59a1dabf4df3d52"
+    },
+    {
+      "path": "provenance/sdk_name_regression.cpp",
+      "bytes": 4436,
+      "sha256": "36114f0c140ab91f88cd088445c236f3b4cc7091ef8d829210cceccc77ab078c"
+    },
+    {
+      "path": "provenance/sdxl_mask_regression.cpp",
+      "bytes": 6093,
+      "sha256": "1554922df6f89bba5ac47a4ff22357528c01fd2ba4212501d0621f2c1defa322"
+    },
+    {
+      "path": "provenance/source-identity.json",
+      "bytes": 3652,
+      "sha256": "257fd55275a9db754f40e2c1450210c4bb8d259e04e67c7bdabe60aa6eb37d4c"
+    },
+    {
+      "path": "quality/artifacts/05-fine-motif-edges-hard/raw-model-1024.png",
+      "bytes": 1572467,
+      "sha256": "2cc490928f08d0f3e631fca9b29138d2c58b414b637dbc30e0439b41c4a39768"
+    },
+    {
+      "path": "quality/artifacts/05-fine-motif-edges-hard/raw.png",
+      "bytes": 537876,
+      "sha256": "4c07467a8ec2714a5a20d43545ba03386f408f4a35df124cb458d9e4619e3092"
+    },
+    {
+      "path": "quality/artifacts/05-fine-motif-edges-hard/replace-mask.png",
+      "bytes": 2959,
+      "sha256": "26a0c86703ceff7901679361426ac3620c1d0eee2bc43037b783c0ef17eb4d2c"
+    },
+    {
+      "path": "quality/artifacts/05-fine-motif-edges-hard/source.png",
+      "bytes": 10886,
+      "sha256": "dbe6a67f1fb95efad1be090cea085d9f9ca8f2afb47f5c6473671694d91208a7"
+    },
+    {
+      "path": "quality/criteria.json",
+      "bytes": 4340,
+      "sha256": "0ba7f16d76684d66d6f81158f6bfff3b514e1f48e85dd210b92e055192c7fced"
+    },
+    {
+      "path": "quality/fixtures/06-canvas-original.png",
+      "bytes": 2104,
+      "sha256": "1ad2c9e1bfc37f7dfa83cd66a975eb8fb347d4933ea78e2f8d4f1e6c3170dc08"
+    },
+    {
+      "path": "quality/sdxl-report.json",
+      "bytes": 20625,
+      "sha256": "867464e1564152dd29936b86dc8b12e53626a3c4b9183bd92706ae1918c529eb"
+    },
+    {
+      "path": "quality/series-context/native-events.jsonl",
+      "bytes": 22750,
+      "sha256": "2e4c082c8811292234ebcbe4d408b75fbef205bc3a9e2cb0681176bc2b8b8ba9"
+    },
+    {
+      "path": "quality/series-context/native-stderr.bin",
+      "bytes": 27666,
+      "sha256": "3bd8286d5eb5266361b23f3618bfa2ed9fb62bb89c06ff4852fa50bbd23f8a1f"
+    },
+    {
+      "path": "quality/series-context/request-05-fine-motif-edges-hard.json",
+      "bytes": 548,
+      "sha256": "4a5d119c93d9b62c892e9ae018655143f6d1f95bfb20603b4fbb5be1f642562b"
+    },
+    {
+      "path": "quality/series-context/request-load.json",
+      "bytes": 43,
+      "sha256": "86c914fc4c16c957e93f6b33a43188d5315ae146ab9ab8b4bfc889fe7d6aeb98"
+    },
+    {
+      "path": "quality-compositor/05-fine-motif-edges-hard/current-comparison.png",
+      "bytes": 704884,
+      "sha256": "ab16edc5147962d1ef1615642d69ac02638d041a9d2ddc340fba0d7852b5585a"
+    },
+    {
+      "path": "quality-compositor/05-fine-motif-edges-hard/current-final.png",
+      "bytes": 529911,
+      "sha256": "7499a1875e57cd239672c45d89c1f90473c14007886e28460c9447e56e791b39"
+    },
+    {
+      "path": "quality-compositor/05-fine-motif-edges-hard/raw.png",
+      "bytes": 537876,
+      "sha256": "4c07467a8ec2714a5a20d43545ba03386f408f4a35df124cb458d9e4619e3092"
+    },
+    {
+      "path": "quality-compositor/05-fine-motif-edges-hard/replace-mask.png",
+      "bytes": 2959,
+      "sha256": "26a0c86703ceff7901679361426ac3620c1d0eee2bc43037b783c0ef17eb4d2c"
+    },
+    {
+      "path": "quality-compositor/05-fine-motif-edges-hard/source.png",
+      "bytes": 10886,
+      "sha256": "dbe6a67f1fb95efad1be090cea085d9f9ca8f2afb47f5c6473671694d91208a7"
+    },
+    {
+      "path": "quality-compositor/current-compositor-report.json",
+      "bytes": 2688,
+      "sha256": "8746520eca0d1707b6b3d6c305adb8743db180fa987fcd383b09deafdbf2489f"
+    },
+    {
+      "path": "quality-driver.log",
+      "bytes": 125,
+      "sha256": "3859ed01c67859f7547dc63dfdd6bf57c9e55c71265ebd494b661916f704f347"
+    },
+    {
+      "path": "verification/clean-application-build.json",
+      "bytes": 496,
+      "sha256": "bf0c9dfa342e0c9b603980fb3e7b4baa5c2df7abe9705ad36a3bebf950619576"
+    },
+    {
+      "path": "verification/clean-application-build.log",
+      "bytes": 16319,
+      "sha256": "da29a58441f73714571161ee451f6d8b513073e1bfbcf5b30671aad1d5309f89"
+    },
+    {
+      "path": "verification/harness-build.log",
+      "bytes": 11339,
+      "sha256": "558af9881e0016f17d67354109717c6ff9ef648f7076a3b8d57bd06b9e35fb37"
+    },
+    {
+      "path": "verification/python-tests.log",
+      "bytes": 6733,
+      "sha256": "9d7fe5176dd489a3c29a1eb82cf9e05cda9d1fe785617459d82688e574011046"
+    },
+    {
+      "path": "verification/software-checks.json",
+      "bytes": 2828,
+      "sha256": "7aca225353013b930180292dfc070b0d388c1ed0f36ae15955d9560ce5cd481f"
+    },
+    {
+      "path": "verification/swift-tests.log",
+      "bytes": 254527,
+      "sha256": "538da3f4213d4f026dcc566c41c5a6a33e013ea96264687bd5e1101b1f48c21b"
+    },
+    {
+      "path": "visual-review.json",
+      "bytes": 1613,
+      "sha256": "60dd5b904c759b27aa12ffa347996750f0be5b3b1f17c0ec3c479a915b0dbb4b"
+    }
+  ]
+}

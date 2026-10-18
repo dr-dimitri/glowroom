@@ -26,6 +26,8 @@ def fixture(root, mode="success"):
     source_payloads = {"helper.cpp": b"fixture helper source\n",
                        "sdk-sdxl-inpaint.patch": b"fixture SDK correction patch\n",
                        "sdk_name_regression.cpp": b"fixture name regression source\n",
+                       "sdk-sdxl-mask.patch": b"fixture SDXL mask variant patch\n",
+                       "sdxl_mask_regression.cpp": b"fixture SDXL mask regression source\n",
                        "ggml-metal-group-norm.patch": b"fixture GGML Metal correction patch\n",
                        "ggml_group_norm_regression.cpp": b"fixture group normalization regression source\n"}
     for name, data in source_payloads.items():
@@ -71,6 +73,11 @@ def fixture(root, mode="success"):
               "sdkPatchSHA256": hashlib.sha256(source_payloads["sdk-sdxl-inpaint.patch"]).hexdigest(),
               "sdkNameRegressionSourceSHA256": hashlib.sha256(source_payloads["sdk_name_regression.cpp"]).hexdigest(),
               "sdkNameRegressionPassed": True,
+              "sdkMaskPatchSHA256": hashlib.sha256(source_payloads["sdk-sdxl-mask.patch"]).hexdigest(),
+              "sdkMaskRegressionSourceSHA256": hashlib.sha256(source_payloads["sdxl_mask_regression.cpp"]).hexdigest(),
+              "sdkMaskFixtureSHA256": CONVERTER.MASK_FIXTURE_SHA256,
+              "sdkMaskBaselineReproduced": True, "sdkMaskRegressionPassed": True,
+              "sdxlMaskInterpolation": "nearest-v1",
               "ggmlPatchSHA256": hashlib.sha256(source_payloads["ggml-metal-group-norm.patch"]).hexdigest(),
               "metalGroupNormRegressionSourceSHA256": hashlib.sha256(source_payloads["ggml_group_norm_regression.cpp"]).hexdigest(),
               "metalGroupNormBaselineReproduced": True,
@@ -81,6 +88,40 @@ def fixture(root, mode="success"):
 
 
 class ConversionTests(unittest.TestCase):
+    def test_mask_variant_and_cpu_baseline_evidence_are_required_before_helper_start(self):
+        changes = [
+            ("sdkMaskPatchSHA256", None), ("sdkMaskPatchSHA256", "changed"),
+            ("sdkMaskRegressionSourceSHA256", None), ("sdkMaskRegressionSourceSHA256", "changed"),
+            ("sdkMaskFixtureSHA256", None), ("sdkMaskFixtureSHA256", "changed"),
+            ("sdkMaskBaselineReproduced", None), ("sdkMaskBaselineReproduced", False),
+            ("sdkMaskRegressionPassed", None), ("sdkMaskRegressionPassed", False),
+            ("sdxlMaskInterpolation", None), ("sdxlMaskInterpolation", "nearest-max"),
+            ("patch-source", b"mutated mask patch\n"), ("regression-source", b"mutated CPU regression\n"),
+        ]
+        for field, value in changes:
+            with self.subTest(field=field, value=value), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory) / "evaluation"
+                package = fixture(root)
+                path = root / "native-installation.json"
+                native = json.loads(path.read_text())
+                if field == "patch-source":
+                    (root / "fixture-tools/sdk-sdxl-mask.patch").write_bytes(value)
+                elif field == "regression-source":
+                    (root / "fixture-tools/sdxl_mask_regression.cpp").write_bytes(value)
+                elif value is None:
+                    del native[field]
+                else:
+                    native[field] = value
+                path.write_text(json.dumps(native))
+                with patch.object(CONVERTER, "TOOLS", root / "fixture-tools"), \
+                        patch.object(CONVERTER.PREPARATION, "load_package", return_value=package), \
+                        patch.object(CONVERTER.subprocess, "Popen", side_effect=AssertionError("process")):
+                    with self.assertRaisesRegex(CONVERTER.PreparationError, "mask patch or CPU regression"):
+                        CONVERTER.convert(root)
+                self.assertFalse((root / "conversion-events.jsonl").exists())
+                self.assertFalse((root / "conversion.json").exists())
+                self.assertFalse((root / ".sdxl-conversion.lock").exists())
+
     def test_ggml_patch_and_real_metal_regression_evidence_are_required_before_helper_start(self):
         changes = [
             ("ggmlPatchSHA256", None), ("ggmlPatchSHA256", "changed"),

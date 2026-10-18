@@ -1,0 +1,17 @@
+{
+  "command": "PICEDIT_BUILD_JOBS=4 ./scripts/build-app.sh",
+  "cleanedBeforeBuild": [
+    ".build/",
+    ".build-app/",
+    "dist/PicEdit.app"
+  ],
+  "activeBuildTestAndModelProcessesCheckedBeforeCleanup": true,
+  "exitCode": 0,
+  "swiftBuildSeconds": 109.03,
+  "bundle": "dist/PicEdit.app",
+  "ordinaryApplicationEntryPoint": true,
+  "infoPlistValidationPassed": true,
+  "strictSignatureVerificationPassed": true,
+  "appBuildAttempts": 1,
+  "sourceIdentitiesMatchFinalReviewedSources": true
+}

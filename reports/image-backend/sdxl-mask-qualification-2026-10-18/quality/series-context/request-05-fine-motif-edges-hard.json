@@ -1,0 +1,11 @@
+{
+  "id" : "05-fine-motif-edges-hard",
+  "mask" : "jobs\/4701e1aa-d5d5-436c-9850-892b37abff3f-05-fine-motif-edges-hard\/mask.png",
+  "negativePrompt" : "blurry, distorted, new objects, text, watermark",
+  "numericDiagnostic" : false,
+  "operation" : "generate",
+  "output" : "outputs\/4701e1aa-d5d5-436c-9850-892b37abff3f-05-fine-motif-edges-hard.png",
+  "prompt" : "a plain warm beige wall, smooth plaster texture, empty background",
+  "seed" : 4281,
+  "source" : "jobs\/4701e1aa-d5d5-436c-9850-892b37abff3f-05-fine-motif-edges-hard\/source.png"
+}

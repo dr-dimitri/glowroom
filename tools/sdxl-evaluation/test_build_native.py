@@ -42,6 +42,21 @@ class NativeBuilderTests(unittest.TestCase):
             probe.assert_not_called(); command.assert_not_called()
             self.assertEqual(list(root.iterdir()), [])
 
+    def test_changed_frozen_mask_stops_before_tools_or_build_outputs(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder) / "evaluation"; root.mkdir()
+            cache = Path(folder) / "cache"; cache.mkdir()
+            entry = self.source(cache)
+            bad_fixture = Path(folder) / "mask.png"; bad_fixture.write_bytes(b"changed mask")
+            with mock.patch.object(BUILDER, "SOURCES", [entry]), \
+                    mock.patch.object(BUILDER, "MASK_FIXTURE", bad_fixture), \
+                    mock.patch.object(BUILDER.subprocess, "check_output") as probe, \
+                    mock.patch.object(BUILDER.PREPARATION, "run_checked") as command:
+                with self.assertRaisesRegex(BUILDER.PreparationError, "fixture SHA-256"):
+                    BUILDER.build(root, source_cache=cache)
+            probe.assert_not_called(); command.assert_not_called()
+            self.assertEqual(list(root.iterdir()), [])
+
     def test_foreign_output_is_preserved_before_source_access(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
@@ -150,10 +165,11 @@ class NativeBuilderTests(unittest.TestCase):
                 self.assertEqual(os.fstat(lock.fileno()).st_nlink, 1)
             self.assertTrue((root / ".sdxl-native-build.lock").is_file())
 
-    def test_failed_metal_regression_never_publishes_helper_or_receipt(self):
+    def test_failed_native_regression_never_publishes_helper_or_receipt(self):
         # No real compiler/GPU: fail each ordered regression boundary after
         # mocked tools. A failure must preserve inputs and deny readiness.
-        for boundary in ["metal-group-norm-baseline", "metal-group-norm-patched"]:
+        ordered = ["sdxl-mask-baseline", "metal-group-norm-baseline", "metal-group-norm-patched", "sdxl-mask-patched"]
+        for boundary in ordered:
             with self.subTest(boundary=boundary), tempfile.TemporaryDirectory() as folder:
                 root = Path(folder) / "evaluation"; root.mkdir()
                 cache = Path(folder) / "cache"; cache.mkdir()
@@ -163,10 +179,10 @@ class NativeBuilderTests(unittest.TestCase):
 
                 def command(arguments, log):
                     name = Path(arguments[0]).name
-                    if name.startswith("metal-group-norm-"):
+                    if name in ordered:
                         reached.append(name)
                     if name == boundary:
-                        if boundary.endswith("baseline"):
+                        if boundary == "metal-group-norm-baseline":
                             self.assertIn("--expect-baseline-bug", arguments)
                         raise BUILDER.PreparationError("fixture regression failure")
 
@@ -177,9 +193,7 @@ class NativeBuilderTests(unittest.TestCase):
                         mock.patch.object(BUILDER.PREPARATION, "run_checked", side_effect=command):
                     with self.assertRaisesRegex(BUILDER.PreparationError, "fixture regression failure"):
                         BUILDER.build(root, cmake=Path(__file__), source_cache=cache)
-                expected = ["metal-group-norm-baseline"]
-                if boundary.endswith("patched"):
-                    expected.append("metal-group-norm-patched")
+                expected = ordered[:ordered.index(boundary) + 1]
                 self.assertEqual(reached, expected)
                 self.assertFalse((root / "sdxl-helper").exists())
                 self.assertFalse((root / "native-installation.json").exists())

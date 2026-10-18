@@ -4,6 +4,7 @@
 No model conversion or inference runs here. A small explicit CPU/Metal tensor
 regression runs before and after the pinned GGML correction. Each build extracts
 a private source tree and never edits a cache or another evaluation's outputs.
+The SDXL-only nearest-mask variant has a separate CPU baseline/regression.
 """
 
 import argparse
@@ -35,6 +36,8 @@ SOURCES = [
      "sha256": "bbfaebbfe2564a796f1a9309ff87cd6c6a5acdfffe7b779f96b847f57945403b",
      "revision": "d25b121ce1d6ae0c7e62ad080460d9fc1e46dd93", "destination": "source/ggml"},
 ]
+MASK_FIXTURE = REPOSITORY / "reports/image-backend/historical-2026-10-16/fixtures/05-fine-motif-edges-mask-hard.png"
+MASK_FIXTURE_SHA256 = "26a0c86703ceff7901679361426ac3620c1d0eee2bc43037b783c0ef17eb4d2c"
 
 
 def admit_root(root):
@@ -80,6 +83,8 @@ def build(root, cmake=None, source_cache=None):
     # mock compiler. The actual source extraction verifies the hashes again.
     for entry in SOURCES:
         PREPARATION.verify(archives / entry["name"], entry)
+    if PREPARATION.digest(MASK_FIXTURE)[1] != MASK_FIXTURE_SHA256:
+        raise PreparationError("Frozen mask-regression fixture SHA-256 mismatch")
     if platform.system() != "Darwin" or platform.machine() != "arm64":
         raise PreparationError("native SDXL evaluation requires Apple Silicon macOS")
     cmake = str(Path(cmake).resolve()) if cmake else shutil.which("cmake")
@@ -93,6 +98,8 @@ def build(root, cmake=None, source_cache=None):
     regression_hash = PREPARATION.digest(TOOLS / "sdk_name_regression.cpp")[1]
     ggml_patch_hash = PREPARATION.digest(TOOLS / "ggml-metal-group-norm.patch")[1]
     metal_regression_hash = PREPARATION.digest(TOOLS / "ggml_group_norm_regression.cpp")[1]
+    mask_patch_hash = PREPARATION.digest(TOOLS / "sdk-sdxl-mask.patch")[1]
+    mask_regression_hash = PREPARATION.digest(TOOLS / "sdxl_mask_regression.cpp")[1]
     with tempfile.TemporaryDirectory(prefix=".sdxl-native-", dir=root) as directory:
         stage = Path(directory)
         for entry in SOURCES:
@@ -128,6 +135,18 @@ def build(root, cmake=None, source_cache=None):
             raise PreparationError("helper source changed during build")
         link_arguments = [*map(str, libraries), "-framework", "Accelerate", "-framework", "Foundation",
                           "-framework", "Metal", "-framework", "MetalKit"]
+        mask_regression_source = stage / "sdxl_mask_regression.cpp"
+        shutil.copyfile(TOOLS / "sdxl_mask_regression.cpp", mask_regression_source)
+        if PREPARATION.digest(mask_regression_source)[1] != mask_regression_hash:
+            raise PreparationError("SDXL mask regression source changed during build")
+        mask_fixture = stage / "05-fine-motif-edges-mask-hard.png"
+        shutil.copyfile(MASK_FIXTURE, mask_fixture)
+        if PREPARATION.digest(mask_fixture)[1] != MASK_FIXTURE_SHA256:
+            raise PreparationError("Frozen mask-regression fixture changed during build")
+        mask_baseline_binary = stage / "sdxl-mask-baseline"
+        PREPARATION.run_checked(arguments + [str(mask_regression_source), *link_arguments,
+                                             "-o", str(mask_baseline_binary)], log)
+        PREPARATION.run_checked([str(mask_baseline_binary), str(mask_fixture)], log)
         metal_regression_source = stage / "ggml_group_norm_regression.cpp"
         shutil.copyfile(TOOLS / "ggml_group_norm_regression.cpp", metal_regression_source)
         if PREPARATION.digest(metal_regression_source)[1] != metal_regression_hash:
@@ -137,6 +156,11 @@ def build(root, cmake=None, source_cache=None):
         # This mode succeeds only for the specific reproduced batch defect;
         # missing GPU support or a failed CPU/reference run remains an error.
         PREPARATION.run_checked([str(baseline_binary), "--expect-baseline-bug"], log)
+        staged_mask_patch = stage / "sdk-sdxl-mask.patch"
+        shutil.copyfile(TOOLS / "sdk-sdxl-mask.patch", staged_mask_patch)
+        if PREPARATION.digest(staged_mask_patch)[1] != mask_patch_hash:
+            raise PreparationError("SDXL mask patch changed during build")
+        PREPARATION.run_checked(["/usr/bin/patch", "-p1", "-d", str(source), "-i", str(staged_mask_patch)], log)
         staged_ggml_patch = stage / "ggml-metal-group-norm.patch"
         shutil.copyfile(TOOLS / "ggml-metal-group-norm.patch", staged_ggml_patch)
         if PREPARATION.digest(staged_ggml_patch)[1] != ggml_patch_hash:
@@ -148,6 +172,10 @@ def build(root, cmake=None, source_cache=None):
         metal_regression_binary = stage / "metal-group-norm-patched"
         PREPARATION.run_checked(arguments + [str(metal_regression_source), *link_arguments, "-o", str(metal_regression_binary)], log)
         PREPARATION.run_checked([str(metal_regression_binary)], log)
+        mask_regression_binary = stage / "sdxl-mask-patched"
+        PREPARATION.run_checked(arguments + ["-DPICEDIT_SDXL_MASK_PATCHED", str(mask_regression_source),
+                                             *link_arguments, "-o", str(mask_regression_binary)], log)
+        PREPARATION.run_checked([str(mask_regression_binary), str(mask_fixture)], log)
         regression_source = stage / "sdk_name_regression.cpp"
         shutil.copyfile(TOOLS / "sdk_name_regression.cpp", regression_source)
         if PREPARATION.digest(regression_source)[1] != regression_hash:
@@ -166,6 +194,11 @@ def build(root, cmake=None, source_cache=None):
             "helperSourceSHA256": source_hash, "builderSHA256": builder_hash,
             "sdkPatchSHA256": patch_hash, "sdkNameRegressionSourceSHA256": regression_hash,
             "sdkNameRegressionPassed": True,
+            "sdkMaskPatchSHA256": mask_patch_hash,
+            "sdkMaskRegressionSourceSHA256": mask_regression_hash,
+            "sdkMaskFixtureSHA256": MASK_FIXTURE_SHA256,
+            "sdkMaskBaselineReproduced": True, "sdkMaskRegressionPassed": True,
+            "sdxlMaskInterpolation": "nearest-v1",
             "ggmlPatchSHA256": ggml_patch_hash,
             "metalGroupNormRegressionSourceSHA256": metal_regression_hash,
             "metalGroupNormBaselineReproduced": True, "metalGroupNormRegressionPassed": True,

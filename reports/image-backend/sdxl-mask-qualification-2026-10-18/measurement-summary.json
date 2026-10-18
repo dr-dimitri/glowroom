@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "variant": "V9 SDXL nearest-mask-only",
+  "decision": "noGo",
+  "productCapabilities": "unchanged-unavailable",
+  "nextFeaturesRemainBlocked": [
+    13,
+    14,
+    15,
+    16
+  ],
+  "qualityScope": "single-case-quality-probe",
+  "actualQualityPredictions": 1,
+  "predictionSeconds": 163.943833458,
+  "combinedReportedPeakBytes": 3760754360,
+  "maximumCombinedBytes": 6442450944,
+  "qualityPassed": false,
+  "fullSeriesNotRunBecause": "Predeclared mandatory fine-edge quality case failed; no warm-repeat or interactive preview Go is claimed.",
+  "cancellationProbeTriggered": true,
+  "cancellationTrigger": "first public SDK progress callback with step >= 2; may be model loading or VAE, not a proven UNet step",
+  "nativeCancellationPassed": false,
+  "processContainmentPassed": true,
+  "cancelLatencyUntilNativeReturnSeconds": null,
+  "cancelLatencyUntilProcessEndSeconds": 4.067265833262354,
+  "terminationPath": "forced-sigkill",
+  "noCancelOutputPublished": true,
+  "allModelProcessesConfirmedEnded": true,
+  "remainingRequirements": [
+    "Sufficient fine-edge image quality",
+    "Cooperative native cancellation within existing five-second gate",
+    "Full required quality/cold/warm/memory/preview evidence",
+    "Qualified actual product adapter before Issue13 and own background gate for Issue14"
+  ]
+}

@@ -4,6 +4,32 @@
 
 **Ergebnis der abgeschlossenen V8-Serie: No-Go für diese Konfiguration.** Alle zehn Vorhersagen wurden innerhalb ihrer Zeitgrenzen erzeugt; der erforderliche Qualitätsfall 05 und das native Abbruchgate bestehen jedoch nicht. [Messwerte](../../reports/image-backend/sdxl-inpainting-2026-10-18/v8-quality-and-cancel-no-go/measurement-summary.json), [visuelles Review](../../reports/image-backend/sdxl-inpainting-2026-10-18/v8-quality-and-cancel-no-go/visual-review.json) und damalige Quellen bleiben mit den älteren Versuchen erhalten.
 
+## Fortsetzung V9: isolierte Masken- und Abbruchqualifikation
+
+Der aktuelle Evaluationsbuilder ergänzt eine getrennte **V9-Maskenvariante**. Die [gehashte Diffusers-Referenz](provenance/reference-mask-semantics.json) verwendet gewöhnliches Nearest-Sampling für den UNet-Maskenkanal. Das bisherige SDK-`NearestMax` verliert in Pflichtfall 05 sämtliche geschützten Latentzellen; die neue, ausschließlich für `VERSION_SDXL_INPAINT` gewählte Interpolation erhält 141 von 16.384 Zellen. Der [Patch](sdk-sdxl-mask.patch) ändert weder Originalgewichte, native Masken noch Denoise-Blending. Dies ist eine geprüfte Algorithmusabweichung und zunächst eine Qualitätshypothese, kein Produkt-Go.
+
+**Die tatsächliche V9-Probe ist abgeschlossen und bleibt No-Go:** Nach 163,944 Sekunden sind weiterhin breite schwarze Konturen und helle Säume neben den feinen Erhaltlinien sichtbar. Zwei Sichtungen bestätigen den Pflichtfehler. Die separate Abbruchprobe bestätigt das Prozessende nach 4,067 Sekunden mit SIGKILL, jedoch ohne native kooperative Rückkehr. Entsprechend wird keine vollständige Wiederholungsserie oder Produktfreigabe behauptet; [neue Rohdaten und Entscheidung](../../reports/image-backend/sdxl-mask-qualification-2026-10-18/README.md) bleiben von V1–V8 getrennt.
+
+Der neue [native CPU-Test](sdxl_mask_regression.cpp) prüft die unveränderte Baseline, den tatsächlichen gepatchten SDK-Helfer, asymmetrische Koordinaten und unveränderte andere Modellpfade. Der Builder verlangt vor Veröffentlichung zusätzlich `sdkMaskBaselineReproduced`, `sdkMaskRegressionPassed`, `sdxlMaskInterpolation = nearest-v1` sowie Patch-, Test- und Fixturehashes. Konverter und Swift-Harness weisen alte Receipts für neue Ausführungen ab; historische Installationen und Rohberichte werden nicht umgeschrieben. Ein neuer privater Root mit erneut geprüften Eingaben ist erforderlich.
+
+Zuerst wird ausschließlich dieselbe eingefrorene Pflichtfixture 05 erneut erzeugt. Nur bei ausreichendem Ergebnis folgt eine vollständige Serie. Die separate Abbruchprobe liefert unabhängig davon Messwerte zum Prozessende:
+
+```sh
+./scripts/evaluate-image-generation.sh sdxl --run --probe-case 05-fine-motif-edges-hard --root /private/tmp/picedit-sdxl-qualification-v9 --out /private/tmp/picedit-sdxl-v9-fine-edges
+./scripts/evaluate-image-generation.sh sdxl --run --cancellation-only --root /private/tmp/picedit-sdxl-qualification-v9 --out /private/tmp/picedit-sdxl-v9-cancellation
+```
+
+`--probe-case` wählt genau einen bekannten Fall einschließlich Maskenart; dieser Lauf behauptet keine warmen Wiederholungen oder parallele Vorschau. `--cancellation-only` führt keine vollständige Vorhersage- oder Replayserie aus. Beide benötigen das ausdrückliche `--run`; numerische Diagnose und diese Probenmodi sind gegenseitig ausgeschlossen. `qualificationScope` hält den tatsächlichen Umfang fest. Die ergänzenden [V9-Nachweise](../../reports/image-backend/sdxl-mask-qualification-2026-10-18/README.md) sind von V1–V8 getrennt.
+
+Alle SDXL-Abbruch-/Fehler-/Schließpfade teilen jetzt die erste absolute Fünfsekundenfrist. Ein unabhängiger Wächter versucht nach vier Sekunden SIGKILL und misst bis zur Rückkehr von `Process.waitUntilExit`, vor dem Leeren der Logreader. Auch bei Fristüberschreitung bleibt die Ressourcenlease bis zum tatsächlichen Ende belegt. Blockierendes Schreiben an den Helper darf den Wächter nicht blockieren. `cancelGatePassed` verlangt weiterhin eine kooperative `cancelled`-Rückkehr und bestätigtes Ende innerhalb der unveränderten Frist. `cancelProcessContainmentGatePassed` kann auch bei ausdrücklich ausgewiesener erzwungener Beendigung bestehen; es erteilt kein kooperatives oder Produkt-Go. Beide Probe-Gates verlangen den tatsächlich beobachteten Fortschrittsauslöser; ein Fehler vor diesem Auslöser kann nur Aufräumwerte liefern. Der SDK-Callback kann Laden oder VAE melden und beweist keinen bestimmten UNet-Schritt.
+
+Modellfreie Prüfungen verwenden echte kleine Testprozesse für Kooperation, blockierte Writes, gebrochene Pipes, hängendes Aufräumen, Wiederholungsaufrufe und Ressourcenfreigabe:
+
+```sh
+./scripts/test.sh --jobs 3 --filter NativeProcessCancellationTests
+python3 -B -m unittest discover -s tools/sdxl-evaluation -v
+```
+
 ## Identität und getrennte Vorbereitung
 
 `package.json` pinnt Originalgewichte und Metadaten von `diffusers/stable-diffusion-xl-1.0-inpainting-0.1` in Revision `115134f363124c53c7d878647567d04daf26e41e`, SDK `8cd731e7b4667eb8f40a153315b9a7125d09a58d` und GGML `d25b121ce1d6ae0c7e62ad080460d9fc1e46dd93`. 22 Dateien umfassen **7.071.154.004 Byte**, davon vier F16-Gewichtsdateien mit **6.938.041.649 Byte**. Jede Datei besitzt exakte Länge und SHA-256. Keine Gewichte, SDK-Archive oder Binärdateien werden im Repository verteilt.
