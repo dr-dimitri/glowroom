@@ -95,7 +95,30 @@ actor AdjustedPreviewPipeline {
         let normalized = settings.normalized
         // Small geometry calculations stay serial; another worker would cost
         // more than this constant-size calculation. Scaling uses the render slot.
-        let size = try EditRenderer.outputSize(source, maximumPixelSize: maximumOutputPixelSize)
+        let requestedSize = try EditRenderer.outputSize(source, maximumPixelSize: maximumOutputPixelSize)
+        var fixedBytes: UInt64 = 0
+        var outputBytesPerPixel: UInt64 = 0
+        var totalMemoryBudget = UInt64.max
+        if let resources = source.resourceOwner {
+            // The source remains owned while this additional render phase is
+            // admitted. Fit both the unchanged admission formula and local work
+            // together, rather than consuming the owner's whole budget in masks.
+            let sourcePeak = UInt64(source.byteCost).multipliedReportingOverflow(by: 4)
+            let sourceOwned = UInt64(source.memoryOwnership?.byteCount ?? 0)
+            let fixed = sourcePeak.partialValue.addingReportingOverflow(sourceOwned)
+            guard !sourcePeak.overflow, !fixed.overflow else { throw ArtifactResourceError.capacityExceeded }
+            fixedBytes = fixed.partialValue
+            outputBytesPerPixel = 32
+            let ownerLimit = UInt64((resources as? ArtifactResourceOwner)?.limits.maximumBytes ?? 536_870_912)
+            // A rapid next slider value must coexist with the preceding native
+            // output and bounded caches. Keep planning stable for coalescing;
+            // final admission still checks any other live owners atomically.
+            let retainedOutputHeadroom = min(UInt64(128 * 1_024 * 1_024), ownerLimit / 4)
+            totalMemoryBudget = ownerLimit - retainedOutputHeadroom
+        }
+        let size = try LocalAdjustmentRenderer.previewSize(width: requestedSize.width, height: requestedSize.height,
+            adjustments: normalized.localAdjustments, fixedBytes: fixedBytes,
+            outputBytesPerPixel: outputBytesPerPixel, totalMemoryBudget: totalMemoryBudget)
         guard !normalized.isNeutral || size.width != source.image.width || size.height != source.image.height else { return source }
         let key = Key(request: request, settings: normalized, width: source.image.width, height: source.image.height,
                       outputWidth: size.width, outputHeight: size.height)
@@ -191,12 +214,29 @@ actor AdjustedPreviewPipeline {
                     // thumbnail. It occupies this same bounded worker/CI lane.
                     var phase: ArtifactResourceLease?
                     if let resources = source.resourceOwner {
+                        let sourceBytes = Int64(source.byteCost).multipliedReportingOverflow(by: 4)
+                        let outputPixels = Int64(outputWidth).multipliedReportingOverflow(by: Int64(outputHeight))
+                        let outputBytes = outputPixels.partialValue.multipliedReportingOverflow(by: 32)
+                        let baseBytes = sourceBytes.partialValue.addingReportingOverflow(outputBytes.partialValue)
+                        guard !sourceBytes.overflow, !outputPixels.overflow, !outputBytes.overflow, !baseBytes.overflow,
+                              let local = LocalAdjustmentRenderer.estimatedAdditionalBytes(adjustments: settings.localAdjustments,
+                                width: outputWidth, height: outputHeight), local <= UInt64(Int64.max) else {
+                            throw ArtifactResourceError.capacityExceeded
+                        }
+                        let plannedBytes = baseBytes.partialValue.addingReportingOverflow(Int64(local))
+                        guard !plannedBytes.overflow else { throw ArtifactResourceError.capacityExceeded }
                         phase = try await resources.acquire(kind: .codec,
-                            bytes: Int64(source.byteCost) * 4 + Int64(outputWidth) * Int64(outputHeight) * 32,
+                            bytes: plannedBytes.partialValue,
                             priority: priority == .selected ? .interactive : .background,
                             retaining: source.memoryOwnership.map { [$0] } ?? [])
                     }
-                    let input = try EditRenderer.resized(source, width: outputWidth, height: outputHeight, priority: priority)
+                    var input = try EditRenderer.resized(source, width: outputWidth, height: outputHeight, priority: priority)
+                    if let resources = source.resourceOwner, input.resourceOwner == nil {
+                        // This temporary proxy belongs to the active phase, not
+                        // a retained reservation. Mark its owner so renderer
+                        // prefix/mask caches cannot keep scratch after the lease.
+                        input = PreviewBitmap(image: input.image, resourceOwner: resources)
+                    }
                     var bitmap: PreviewBitmap
                     if settings.isNeutral { bitmap = input }
                     else if let asyncRenderer { bitmap = try await asyncRenderer(input, settings, priority) }

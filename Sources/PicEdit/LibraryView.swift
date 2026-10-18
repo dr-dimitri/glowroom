@@ -12,7 +12,7 @@ struct LibraryView: View {
     @EnvironmentObject private var photoMetadata: PhotoMetadataModel
     @FocusState private var focusedWorkspaceControl: WorkspaceControlFocus?
     let dataDirectory: URL
-    private let maskModel: MaskEditingModel?
+    private let localMaskModel: LocalAdjustmentEditorModel?
     @ViewState<LibraryFolder?> private var folderToRemove: LibraryFolder?
     @ViewState<Bool> private var dropTargeted = false
     @ViewState<Bool> private var showsWorkspaceErrors = false
@@ -24,10 +24,10 @@ struct LibraryView: View {
         let identity = UUID()
     }
 
-    init(model: LibraryModel, dataDirectory: URL, maskModel: MaskEditingModel? = nil) {
+    init(model: LibraryModel, dataDirectory: URL, localMaskModel: LocalAdjustmentEditorModel? = nil) {
         self.model = model
         self.dataDirectory = dataDirectory
-        self.maskModel = maskModel
+        self.localMaskModel = localMaskModel
     }
 
     var body: some View {
@@ -115,7 +115,8 @@ struct LibraryView: View {
         }
         .sheet(isPresented: $showsMaskEditor) {
             if let asset = model.selectedAsset, let source = try? editor.resolvedSource(for: asset) {
-                MaskCanvasView(asset: asset, source: source.identity, settings: source.settings, model: maskModel)
+                LocalAdjustmentMaskEditor(asset: asset, source: source.identity, settings: source.settings, library: model,
+                    isPresented: $showsMaskEditor, model: localMaskModel)
                     .id(source.identity)
             } else {
                 VStack(spacing: 14) {

@@ -176,9 +176,9 @@ public actor GeneratedArtifactStore: GeneratedArtifactStoring {
         descriptors.sort { $0.id.canonicalString < $1.id.canonicalString }
         let manifest = GeneratedArtifactManifest(id: id, raster: .init(format: format, file: payload), provenance: provenance, resources: descriptors)
         let bytes = try EditingContractJSON.encoder().encode(manifest)
-        guard bytes.count <= 65_536 else { throw ArtifactContractError.limitExceeded }
+        guard bytes.count <= EditSettings.maximumEncodedBytes else { throw ArtifactContractError.limitExceeded }
         let artifact = try Self.artifact(manifest, bytes: bytes)
-        try ArtifactFileIO.writeSmall(directory, "artifact.json", bytes: bytes)
+        try ArtifactFileIO.writeSmall(directory, "artifact.json", bytes: bytes, limit: EditSettings.maximumEncodedBytes)
         _ = fsync(directory.fd.value); _ = fsync(staging.fd.value)
         drafts[draftID] = DraftEntry(nonce: nonce, artifact: artifact, directory: directory, commit: nil)
         let ownership = try lease([id], purpose: .draft, draft: draftID)
@@ -396,7 +396,7 @@ public actor GeneratedArtifactStore: GeneratedArtifactStoring {
     }
     internal func readArtifact(_ directory: ArtifactDirectory) throws -> GeneratedArtifact { try Self.readArtifact(directory) }
     internal static func readArtifact(_ directory: ArtifactDirectory) throws -> GeneratedArtifact {
-        let bytes = try ArtifactFileIO.readSmall(directory, "artifact.json")
+        let bytes = try ArtifactFileIO.readSmall(directory, "artifact.json", limit: EditSettings.maximumEncodedBytes)
         let manifest = try ArtifactJSONCodec.decode(GeneratedArtifactManifest.self, from: bytes)
         guard try EditingContractJSON.encoder().encode(manifest) == bytes else { throw ArtifactContractError.corruptArtifact }
         return try artifact(manifest, bytes: bytes)

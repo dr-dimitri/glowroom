@@ -178,12 +178,13 @@ final class WorkspaceProposalLifecycleTests {
             suggestor: LocalPhotoMetadataSuggestor(service: metadataAnalysis), library: f.library, editor: f.editor)
         let assetID = try #require(f.library.selectedID)
         let baselineSource = try #require(f.editor.aiSnapshot(in: f.library)).source
+        let baselineSettings = f.editor.settings(for: assetID)
         let original = try #require(f.library.selectedAsset).fileURL
         let originalBytes = try Data(contentsOf: original)
-        let mask = MaskEditingModel()
+        let mask = LocalAdjustmentEditorModel(settings: baselineSettings)
         f.library.showsDetail = true
         try await host.mount(
-            LibraryView(model: f.library, dataDirectory: directory, maskModel: mask)
+            LibraryView(model: f.library, dataDirectory: directory, localMaskModel: mask)
                 .environmentObject(f.editor)
                 .environmentObject(JPEGExportModel(preferences: nil))
                 .environmentObject(layout)
@@ -196,21 +197,25 @@ final class WorkspaceProposalLifecycleTests {
         try await wait("mask sheet opens") { host.sheet != nil }
         let sheet = try #require(host.sheet)
         try await wait("initial mask canvas loads") {
-            mask.document != nil && host.accessibilityElements(in: sheet).contains { $0.accessibilityIdentifier() == "mask.canvas" }
+            mask.canvasSize != nil && host.accessibilityElements(in: sheet).contains { $0.accessibilityIdentifier() == "local-mask.canvas" }
         }
-        let undoBefore = try #require(host.accessibilityElements(in: sheet).first { $0.accessibilityIdentifier() == "mask.undo" })
+        let undoBefore = try #require(host.accessibilityElements(in: sheet).first { $0.accessibilityIdentifier() == "local-mask.undo" })
         #expect(!undoBefore.isAccessibilityEnabled())
-        // Drive the actual sheet's injected model through its normal stroke
+        // Drive the actual sheet's injected local model through its normal edit
         // API. This tests view lifetime without activating the test app or
         // synthesizing global mouse input.
-        mask.beginStroke(at: try MaskPoint(x: 0.25, y: 0.5))
-        mask.appendPoint(try MaskPoint(x: 0.75, y: 0.5))
-        mask.endStroke()
-        let painted = try #require(mask.document)
-        let paintedRevision = mask.revision
+        mask.add(.brush)
+        let canvas = try #require(mask.canvasSize)
+        let painted = try MaskDocument(canvasSize: canvas, strokes: [MaskStroke(points: [
+            MaskPoint(x: Double(canvas.width) * 0.25, y: Double(canvas.height) * 0.5),
+            MaskPoint(x: Double(canvas.width) * 0.75, y: Double(canvas.height) * 0.5)
+        ], radius: 0.2)])
+        mask.updateSelected { $0.mask.shape = .brush(painted) }
+        let paintedSettings = mask.settings
+        let paintedSelection = mask.selectedID
         #expect(!painted.strokes.isEmpty && mask.canUndo)
         try await wait("painted mask enables undo") {
-            host.accessibilityElements(in: sheet).first { $0.accessibilityIdentifier() == "mask.undo" }?.isAccessibilityEnabled() == true
+            host.accessibilityElements(in: sheet).first { $0.accessibilityIdentifier() == "local-mask.undo" }?.isAccessibilityEnabled() == true
         }
 
         // Keep the actual native sheet and its painted draft alive while the
@@ -223,16 +228,17 @@ final class WorkspaceProposalLifecycleTests {
         try await host.settle()
         #expect(!f.library.showsDetail)
         #expect(host.sheet === sheet)
-        #expect(mask.document == painted && mask.revision == paintedRevision)
-        #expect(host.accessibilityElements(in: sheet).first { $0.accessibilityIdentifier() == "mask.undo" }?.isAccessibilityEnabled() == true)
+        #expect(mask.settings == paintedSettings && mask.selectedID == paintedSelection && mask.canUndo)
+        #expect(host.accessibilityElements(in: sheet).first { $0.accessibilityIdentifier() == "local-mask.undo" }?.isAccessibilityEnabled() == true)
         WorkspaceActions.reveal(.edit, layout: layout, library: f.library)
         try await host.settle()
         #expect(host.sheet === sheet)
-        #expect(mask.document == painted && mask.revision == paintedRevision)
-        #expect(host.accessibilityElements(in: sheet).first { $0.accessibilityIdentifier() == "mask.undo" }?.isAccessibilityEnabled() == true)
+        #expect(mask.settings == paintedSettings && mask.selectedID == paintedSelection && mask.canUndo)
+        #expect(host.accessibilityElements(in: sheet).first { $0.accessibilityIdentifier() == "local-mask.undo" }?.isAccessibilityEnabled() == true)
         #expect(f.library.selectedID == assetID)
         #expect(try Data(contentsOf: original) == originalBytes)
         #expect(!f.editor.hasPendingChanges)
+        #expect(f.editor.settings(for: assetID) == baselineSettings)
         #expect(await f.store.saveCount == 0)
 
         // A source replacement is a real invalidation even when the photo ID
@@ -243,16 +249,23 @@ final class WorkspaceProposalLifecycleTests {
         try await wait("replacement source resets mask") {
             !f.library.isImporting && !f.library.isProjecting
                 && f.editor.aiSnapshot(in: f.library)?.source != baselineSource
-                && mask.source != baselineSource && mask.document?.strokes.isEmpty == true
-                && host.accessibilityElements(in: sheet).first { $0.accessibilityIdentifier() == "mask.undo" }?.isAccessibilityEnabled() == false
-                && host.accessibilityElements(in: sheet).contains { $0.accessibilityIdentifier() == "mask.canvas" }
+                && mask.source != nil && mask.source != baselineSource && mask.bitmap != nil
+                && mask.settings.localAdjustments.isEmpty && !mask.canUndo
+                && host.accessibilityElements(in: sheet).first { $0.accessibilityIdentifier() == "local-mask.undo" }?.isAccessibilityEnabled() == false
+                && host.accessibilityElements(in: sheet).contains { $0.accessibilityIdentifier() == "local-mask.canvas" }
         }
         #expect(host.sheet === sheet)
 
         f.library.select(try #require(f.library.visibleAssets.first { $0.id != assetID }))
-        try await wait("selection change dismisses mask sheet") { host.sheet == nil }
+        do {
+            try await wait("selection change dismisses mask sheet") { host.sheet == nil && mask.source == nil && mask.bitmap == nil }
+        } catch {
+            Issue.record("Mask sheet disposal: sheet=\(host.sheet != nil), source=\(mask.source != nil), bitmap=\(mask.bitmap != nil), selectionChanged=\(f.library.selectedID != assetID)")
+            throw error
+        }
         let selectedAsset = try #require(f.library.selectedAsset)
         let selectedSource = try f.editor.resolvedSource(for: selectedAsset).identity
+        let selectedSettings = f.editor.settings(for: selectedAsset.id)
         let reopen = try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == "workspace.mask" })
         #expect(reopen.accessibilityPerformPress())
         try await wait("new selection opens its mask sheet") { host.sheet != nil }
@@ -261,17 +274,21 @@ final class WorkspaceProposalLifecycleTests {
         // Check its next real presentation, which must start a new empty draft
         // for the selected photo rather than expose any previous strokes.
         try await wait("new selection starts an empty mask draft") {
-            mask.source == selectedSource && mask.document?.strokes.isEmpty == true && !mask.canUndo
-                && host.accessibilityElements(in: reopenedSheet).contains { $0.accessibilityIdentifier() == "mask.canvas" }
-                && host.accessibilityElements(in: reopenedSheet).first { $0.accessibilityIdentifier() == "mask.undo" }?.isAccessibilityEnabled() == false
+            mask.source == selectedSource && mask.settings == selectedSettings && mask.settings.localAdjustments.isEmpty && !mask.canUndo
+                && host.accessibilityElements(in: reopenedSheet).contains { $0.accessibilityIdentifier() == "local-mask.canvas" }
+                && host.accessibilityElements(in: reopenedSheet).first { $0.accessibilityIdentifier() == "local-mask.undo" }?.isAccessibilityEnabled() == false
         }
         let discard = try #require(host.accessibilityElements(in: reopenedSheet).first {
-            $0.accessibilityRole() == .button && $0.accessibilityLabel() == "Entwurf verwerfen und schließen"
+            $0.accessibilityRole() == .button && $0.accessibilityLabel() == "Abbrechen"
         })
         #expect(discard.accessibilityPerformPress())
         try await wait("explicit discard clears and closes the mask sheet") {
-            host.sheet == nil && mask.document == nil && mask.source == nil
+            host.sheet == nil && mask.source == nil && mask.bitmap == nil && mask.settings.localAdjustments.isEmpty && !mask.canUndo
         }
+        #expect(f.editor.settings(for: assetID) == baselineSettings)
+        #expect(f.editor.settings(for: selectedAsset.id) == selectedSettings)
+        #expect(!f.editor.hasPendingChanges)
+        #expect(await f.store.saveCount == 0)
         #expect(await metadata.finishSaving())
         #expect(await f.library.finishSaving())
     }

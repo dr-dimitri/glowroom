@@ -118,7 +118,7 @@ public actor EditingRepository:CoordinatedEditingStoring {
         }
         let query = version == 2 ? "SELECT asset_id,snapshot FROM editing_snapshots" : "SELECT asset_id,settings FROM adjustments"
         try EditingSQLite.rows(db,query) {s in
-            let id = try EditingSQLite.text(s,0,maximum:16_384),data = try EditingSQLite.blob(s,1,maximum:65_536)
+            let id = try EditingSQLite.text(s,0,maximum:16_384),data = try EditingSQLite.blob(s,1,maximum:EditSettings.maximumEncodedBytes)
             let snapshot:EditingSnapshot
             if version == 2 {snapshot = try ArtifactJSONCodec.decode(EditingSnapshot.self,from:data)}
             else {snapshot = try EditingSnapshot(settings:JSONDecoder().decode(EditSettings.self,from:data))}
@@ -135,7 +135,7 @@ public actor EditingRepository:CoordinatedEditingStoring {
         var descriptors:[GeneratedArtifactID:GeneratedArtifact] = [:]
         try EditingSQLite.rows(db,"SELECT id,descriptor FROM generated_artifacts") {s in
             let id = try EditingSQLite.text(s,0,maximum:36)
-            let value = try ArtifactJSONCodec.decode(GeneratedArtifact.self,from:EditingSQLite.blob(s,1,maximum:65_536))
+            let value = try ArtifactJSONCodec.decode(GeneratedArtifact.self,from:EditingSQLite.blob(s,1,maximum:EditSettings.maximumEncodedBytes))
             try ArtifactValueValidation.artifact(value)
             guard id == value.id.canonicalString,descriptors.count < 4_096 else {throw EditingRepositoryError.invalidDatabase};descriptors[value.id] = value
         }
@@ -148,7 +148,7 @@ public actor EditingRepository:CoordinatedEditingStoring {
             let id = try EditingSQLite.text(s,0,maximum:36),assetID = try EditingSQLite.text(s,1,maximum:16_384)
             guard let uuid = UUID(uuidString:id),id == uuid.uuidString.lowercased(),sqlite3_column_type(s,3) == SQLITE_FLOAT || sqlite3_column_type(s,3) == SQLITE_INTEGER,
                   sqlite3_column_double(s,3).isFinite,variants < 100_000 else {throw EditingRepositoryError.invalidDatabase}
-            try ArtifactValueValidation.identifier(assetID);let snapshot = try ArtifactJSONCodec.decode(EditingSnapshot.self,from:EditingSQLite.blob(s,2,maximum:65_536));try check(snapshot);variants += 1
+            try ArtifactValueValidation.identifier(assetID);let snapshot = try ArtifactJSONCodec.decode(EditingSnapshot.self,from:EditingSQLite.blob(s,2,maximum:EditSettings.maximumEncodedBytes));try check(snapshot);variants += 1
         }
         for a in descriptors.values {
             if case .artifact(let parent) = a.provenance.parentSource {
@@ -167,7 +167,7 @@ public actor EditingRepository:CoordinatedEditingStoring {
         try EditingSQLite.statement(db,"SELECT r.revision,s.snapshot FROM edit_revisions r LEFT JOIN editing_snapshots s ON s.asset_id=r.asset_id WHERE r.asset_id=?") {s in
             try EditingSQLite.bind(id,1,s);try EditingSQLite.consume(s) {s in
                 guard sqlite3_column_type(s,0) == SQLITE_INTEGER else {throw EditingRepositoryError.invalidDatabase}
-                let snapshot = sqlite3_column_type(s,1) == SQLITE_NULL ? nil : try ArtifactJSONCodec.decode(EditingSnapshot.self,from:EditingSQLite.blob(s,1,maximum:65_536))
+                let snapshot = sqlite3_column_type(s,1) == SQLITE_NULL ? nil : try ArtifactJSONCodec.decode(EditingSnapshot.self,from:EditingSQLite.blob(s,1,maximum:EditSettings.maximumEncodedBytes))
                 result = try .init(storeEpoch:result.storeEpoch,revision:sqlite3_column_int64(s,0),snapshot:snapshot)
             }
         };return result
@@ -218,7 +218,7 @@ public actor EditingRepository:CoordinatedEditingStoring {
         try EditingSQLite.statement(db,"SELECT descriptor FROM generated_artifacts WHERE id=?") {s in
             try EditingSQLite.bind(id.canonicalString,1,s);var result:GeneratedArtifact?
             try EditingSQLite.consume(s) {
-                let value = try ArtifactJSONCodec.decode(GeneratedArtifact.self,from:EditingSQLite.blob($0,0,maximum:65_536))
+                let value = try ArtifactJSONCodec.decode(GeneratedArtifact.self,from:EditingSQLite.blob($0,0,maximum:EditSettings.maximumEncodedBytes))
                 try ArtifactValueValidation.artifact(value);guard value.id == id else {throw EditingRepositoryError.invalidDatabase};result = value
             };return result
         }
@@ -235,7 +235,9 @@ public actor EditingRepository:CoordinatedEditingStoring {
         }
     }
     static func decodeCommit(_ s:OpaquePointer) throws -> EditingCommitWire {
-        let value = try ArtifactJSONCodec.decode(EditingCommitWire.self,from:EditingSQLite.blob(s,2,maximum:131_072),maximum:131_072)
+        // Only the previous snapshot can contain masks. The generated result
+        // below is flat/neutral, so this is not a two-heavy-snapshot envelope.
+        let value = try ArtifactJSONCodec.decode(EditingCommitWire.self,from:EditingSQLite.blob(s,2,maximum:EditSettings.maximumEncodedBytes),maximum:EditSettings.maximumEncodedBytes)
         guard try EditingSQLite.text(s,0,maximum:36) == value.commitID.canonicalString,
             try EditingSQLite.text(s,1,maximum:64) == value.requestSHA256.sha256,value.version.revision >= 0,
             value.snapshot.source == .artifact(value.artifactID),value.snapshot.settings == .neutral,
@@ -283,8 +285,10 @@ public actor EditingRepository:CoordinatedEditingStoring {
             try addVariant(snapshot,id:r.assetID,on:db);try Self.write(snapshot,id:r.assetID,revision:r.nextRevision,on:db)
             let wire = EditingCommitWire(commitID:r.commitID,assetID:r.assetID,requestSHA256:r.requestSHA256,previous:r.expected,
                 snapshot:snapshot,version:try .init(storeEpoch:epoch,revision:r.nextRevision),artifactID:published.artifact.id)
+            let receiptBytes = try ArtifactJSONCodec.encode(wire)
+            guard receiptBytes.count <= EditSettings.maximumEncodedBytes else { throw ArtifactContractError.limitExceeded }
             try EditingSQLite.statement(db,"INSERT INTO artifact_commits(id,request_sha,receipt) VALUES(?,?,?)") {s in
-                try EditingSQLite.bind(r.commitID.canonicalString,1,s);try EditingSQLite.bind(r.requestSHA256.sha256,2,s);try EditingSQLite.bind(ArtifactJSONCodec.encode(wire),3,s);try EditingSQLite.done(s)
+                try EditingSQLite.bind(r.commitID.canonicalString,1,s);try EditingSQLite.bind(r.requestSHA256.sha256,2,s);try EditingSQLite.bind(receiptBytes,3,s);try EditingSQLite.done(s)
             };return wire.value
         }
     }
@@ -322,7 +326,7 @@ public actor EditingRepository:CoordinatedEditingStoring {
             try EditingSQLite.bind(id,1,s);var result:[EditingVariant] = []
             try EditingSQLite.consume(s) {s in
                 let uuid = try EditingSQLite.text(s,0,maximum:36);guard let raw = UUID(uuidString:uuid),uuid == raw.uuidString.lowercased() else {throw EditingRepositoryError.invalidDatabase}
-                let snapshot = try ArtifactJSONCodec.decode(EditingSnapshot.self,from:EditingSQLite.blob(s,1,maximum:65_536))
+                let snapshot = try ArtifactJSONCodec.decode(EditingSnapshot.self,from:EditingSQLite.blob(s,1,maximum:EditSettings.maximumEncodedBytes))
                 result.append(.init(id:.init(rawValue:raw),assetID:id,snapshot:snapshot,createdAt:Date(timeIntervalSinceReferenceDate:sqlite3_column_double(s,2))))
             };return result
         }}

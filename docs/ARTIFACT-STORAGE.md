@@ -2,6 +2,8 @@
 
 Issue 10 führt eine dauerhafte Bildquelle neben dem importierten Original ein. Diese Grundlage schaltet noch keine generative Endnutzerfunktion frei. Der JPEG-Export für aktive Rastervarianten bleibt bis zur gesonderten Variantenexport-Integration gesperrt.
 
+[Lokale Maskenkorrekturen](MASK-EDITING.md) sind ein optionaler Bestandteil der Settings. Vektor-/Korrekturstriche und eingefrorene automatische Gray8-Auswahlen werden mit Snapshot, Varianten und Backup gespeichert. Ein fehlendes Feld bedeutet keine Masken; kanonische Bytes und Hashes alter Snapshots einschließlich Parent-Provenienz bleiben erhalten. Die strikt validierten Settings enthaltenden Snapshots und Artefaktmanifeste dürfen dafür bis zu 4 MiB groß sein. Die vorhandenen Gesamtpaket- und Ressourcenlimits gelten weiter; Erkennung oder Modelle sind zur Wiederherstellung gespeicherter Masken nicht erforderlich.
+
 ## Bedienung und gespeicherter Stand
 
 Ein `EditingSnapshot` enthält Quelle und Regler gemeinsam. Kataloganker und `PhotoAsset.id` bezeichnen weiterhin das importierte Original. Ein übernommenes flaches Raster enthält bereits die gerenderte Eingabe; die neuen Regler beginnen neutral. Frühere Regler werden dadurch nicht doppelt angewendet.

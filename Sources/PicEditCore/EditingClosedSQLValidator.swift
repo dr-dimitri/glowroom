@@ -56,7 +56,7 @@ enum EditingClosedSQLValidator {
         }
         try EditingSQLite.rows(db,"SELECT snapshot FROM editing_variants") {s in
             try Task.checkCancellation()
-            let value = try ArtifactJSONCodec.decode(EditingSnapshot.self,from:EditingSQLite.blob(s,0,maximum:65_536))
+            let value = try ArtifactJSONCodec.decode(EditingSnapshot.self,from:EditingSQLite.blob(s,0,maximum:EditSettings.maximumEncodedBytes))
             if case .artifact(let id) = value.source {roots.insert(id)}
         }
         var result:[GeneratedArtifactID:GeneratedArtifact] = [:],visiting = Set<GeneratedArtifactID>()

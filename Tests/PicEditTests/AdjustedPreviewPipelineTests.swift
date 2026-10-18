@@ -196,6 +196,170 @@ struct AdjustedPreviewPipelineTests {
         #expect(probe.state.value.maximumActive == 2)
     }
 
+    @Test
+    func localMaskGeometryHasItsOwnCacheIdentityAndIdenticalRequestsCoalesce() async throws {
+        let probe = RenderProbe()
+        defer { probe.releaseAll() }
+        let pipeline = AdjustedPreviewPipeline(maximumConcurrentRenders: 1,
+            asyncRenderer: { bitmap, settings, _ in try await probe.render(bitmap, settings: settings) })
+        let source = try fixture()
+        let original = try localSettings(centerX: 0.25)
+        var moved = original
+        moved.localAdjustments[0].mask.shape = .radial(center: try .init(x: 0.75, y: 0.5),
+            radiusX: 0.2, radiusY: 0.3, rotation: 0)
+        let movedSettings = moved
+        let first = Task { try await pipeline.image(source, request: request, settings: original) }
+        defer { first.cancel() }
+        try await probe.state.wait("original local mask render started") { $0.started.count == 1 }
+        let shared = Task { try await pipeline.image(source, request: request, settings: original) }
+        defer { shared.cancel() }
+        let distinct = Task { try await pipeline.image(source, request: request, settings: movedSettings) }
+        defer { distinct.cancel() }
+        try await waitForTestState("identical mask shares worker while moved geometry queues", state: { await pipeline.state() }) {
+            $0.waiterCount == 3 && $0.queuedCount == 1 && $0.runningBackground == 1
+        }
+        probe.releaseAll()
+        _ = try await first.value
+        _ = try await shared.value
+        _ = try await distinct.value
+        _ = try await pipeline.image(source, request: request, settings: original)
+        _ = try await pipeline.image(source, request: request, settings: movedSettings)
+        #expect(probe.state.value.started.count == 2)
+        #expect(await pipeline.state().cachedCount == 2)
+    }
+
+    @Test
+    func cancelledLocalGeometryDoesNotCacheALateResultOrDropItsReplacement() async throws {
+        let probe = RenderProbe()
+        defer { probe.releaseAll() }
+        let pipeline = AdjustedPreviewPipeline(maximumConcurrentRenders: 1,
+            asyncRenderer: { bitmap, settings, _ in try await probe.render(bitmap, settings: settings) })
+        let source = try fixture()
+        let original = try localSettings(centerX: 0.2)
+        var moved = original
+        moved.localAdjustments[0].mask.shape = .radial(center: try .init(x: 0.8, y: 0.5),
+            radiusX: 0.2, radiusY: 0.3, rotation: 0)
+        let replacementSettings = moved
+        let first = Task { try await pipeline.image(source, request: request, settings: original) }
+        defer { first.cancel() }
+        try await probe.state.wait("local render to cancel started") { $0.started.count == 1 }
+        first.cancel()
+        await expectCancelled(first)
+        let replacement = Task { try await pipeline.image(source, request: request, settings: replacementSettings) }
+        defer { replacement.cancel() }
+        try await waitForTestState("replacement local geometry queued behind occupied worker", state: { await pipeline.state() }) {
+            $0.queuedCount == 1 && $0.waiterCount == 1 && $0.runningBackground == 1
+        }
+        probe.releaseAll()
+        _ = try await replacement.value
+        #expect(await pipeline.state().cachedCount == 1)
+        _ = try await pipeline.image(source, request: request, settings: original)
+        #expect(probe.state.value.started.count == 3, "A late cancelled mask render must be recomputed")
+    }
+
+    @Test
+    func artifactAdmissionIncludesLocalSpatialWorkBeforeCallingTheRenderer() async throws {
+        let resources = ArtifactResourceOwner(limits: try .init(maximumBytes: 50_000))
+        let input = try fixture()
+        var phase: ArtifactResourceLease? = try await resources.acquire(kind: .retainedMemory, bytes: 8_192,
+            priority: .interactive, retaining: [])
+        let memory = try await resources.retain(bytes: Int64(input.byteCost) * 2, from: #require(phase))
+        let source = try input.retainingArtifactMemory(memory, owner: resources)
+        phase = nil
+        try await waitForTestState("input admission released its phase", state: { await resources.state() }) {
+            $0.chargedBytes == Int64(input.byteCost) * 2
+        }
+        let hash = try ArtifactDigest(sha256: String(repeating: "a", count: 64))
+        let format = ArtifactRasterFormat(size: try .init(width: 32, height: 24), bitDepth: .eight,
+            channels: .rgba, profile: .sRGB, iccSHA256: hash)
+        let raster = RasterDescriptor(format: format, file: try .init(sha256: hash, bytes: 64))
+        let request = PreviewRequest(source: .artifact(.init(storeID: .init(), artifactID: .init(),
+            manifestSHA256: hash, raster: raster)), pixelSize: 512)
+        let calls = TestStateSignal(0)
+        let pipeline = AdjustedPreviewPipeline(maximumConcurrentRenders: 1, renderer: { bitmap, _ in
+            calls.update { $0 += 1 }; return bitmap
+        })
+        var edits = EditSettings.neutral
+        edits.localAdjustments = [try LocalAdjustment(name: "Spatial edit", mask: .init(shape: .subject(
+            .init(width: 1, height: 1, bytes: Data([255]))), feather: 0),
+            settings: .init(exposure: 1, texture: 40, clarity: 30))]
+        await #expect(throws: EditRenderError.insufficientMaskMemory) {
+            _ = try await pipeline.image(source, request: request, settings: edits)
+        }
+        #expect(calls.value == 0)
+        edits.localAdjustments[0].isEnabled = false
+        _ = try await pipeline.image(source, request: request, settings: edits)
+        #expect(calls.value == 1, "Dormant local layers should not consume spatial work admission")
+    }
+
+    @Test(arguments: [false, true])
+    func complexLocalEditsUseABoundedProxyAndPreserveEveryMask(artifactSource: Bool) async throws {
+        let input = try fixture(width: 2_400, height: 1_200)
+        let resources = artifactSource ? ArtifactResourceOwner(limits: try .init()) : nil
+        let source: PreviewBitmap
+        let previewRequest: PreviewRequest
+        if let resources {
+            var phase: ArtifactResourceLease? = try await resources.acquire(kind: .retainedMemory,
+                bytes: Int64(input.byteCost) * 2, priority: .interactive, retaining: [])
+            let memory = try await resources.retain(bytes: Int64(input.byteCost) * 2, from: #require(phase))
+            source = try input.retainingArtifactMemory(memory, owner: resources)
+            phase = nil
+            try await waitForTestState("large source phase released before local preview", state: { await resources.state() }) {
+                $0.chargedBytes == Int64(input.byteCost) * 2
+            }
+            let hash = try ArtifactDigest(sha256: String(repeating: "a", count: 64))
+            let format = ArtifactRasterFormat(size: try .init(width: 2_400, height: 1_200), bitDepth: .eight,
+                channels: .rgba, profile: .sRGB, iccSHA256: hash)
+            let raster = RasterDescriptor(format: format, file: try .init(sha256: hash, bytes: 64))
+            previewRequest = PreviewRequest(source: .artifact(.init(storeID: .init(), artifactID: .init(),
+                manifestSHA256: hash, raster: raster)), pixelSize: 2_400)
+        } else { source = input; previewRequest = request }
+        let observations = TestStateSignal<[LocalPreviewObservation]>([])
+        let pipeline = AdjustedPreviewPipeline(maximumConcurrentRenders: 1, asyncRenderer: { bitmap, settings, _ in
+            let charged = await resources?.state().chargedBytes ?? 0
+            observations.update { $0.append(.init(width: bitmap.image.width, height: bitmap.image.height,
+                settings: settings, chargedBytes: charged)) }
+            return bitmap
+        })
+        let prototype = try #require(localSettings(centerX: 0.5).localAdjustments.first)
+        var edits = EditSettings.neutral
+        edits.localAdjustments = try (0..<16).map { index in
+            try LocalAdjustment(name: "Mask \(index)", mask: prototype.mask, settings: prototype.settings)
+        }
+        let adjusted = try await pipeline.image(source, request: previewRequest, settings: edits,
+            priority: .selected, maximumOutputPixelSize: 2_400)
+        let observed = try #require(observations.value.first)
+        #expect(observed.width < 2_400 && observed.width >= 64)
+        #expect(abs(Double(observed.width) / Double(observed.height) - 2) < 0.01)
+        #expect(observed.settings.localAdjustments == edits.localAdjustments)
+        #expect(adjusted.image.width == observed.width && adjusted.image.height == observed.height)
+        let bytes = try #require(LocalAdjustmentRenderer.estimatedAdditionalBytes(adjustments: edits.localAdjustments,
+            width: observed.width, height: observed.height))
+        #expect(bytes <= LocalAdjustmentRenderer.previewWorkingMemoryBudget)
+        if let resources {
+            #expect(observed.chargedBytes > Int64(input.byteCost) * 2)
+            #expect(observed.chargedBytes <= resources.limits.maximumBytes,
+                    "Source ownership, base admission and all local layers must fit together")
+        }
+        var sliderEdits = edits
+        sliderEdits.localAdjustments[0].settings.exposure = 0.8
+        _ = try await pipeline.image(source, request: previewRequest, settings: sliderEdits, priority: .selected)
+        #expect(observations.value.count == 2)
+        #expect(observations.value.last?.settings.localAdjustments == sliderEdits.localAdjustments)
+        if let resources {
+            #expect(try #require(observations.value.last).chargedBytes <= resources.limits.maximumBytes,
+                    "The next slider value must fit while the preceding adjusted image is retained")
+        }
+        withExtendedLifetime(adjusted) {}
+        for index in edits.localAdjustments.indices { edits.localAdjustments[index].isEnabled = false }
+        let disabled = try await pipeline.image(source, request: previewRequest, settings: edits, priority: .selected)
+        #expect(disabled.image.width == source.image.width && disabled.image.height == source.image.height)
+        #expect(observations.value.last?.width == 2_400 && observations.value.last?.height == 1_200)
+        let neutral = try await pipeline.image(source, request: previewRequest, settings: .neutral, priority: .selected)
+        #expect(neutral.image === source.image)
+        #expect(observations.value.count == 3)
+    }
+
     private var request: PreviewRequest {
         PreviewRequest(url: URL(fileURLWithPath: "/tmp/adjusted-preview"),
                        modifiedAt: Date(timeIntervalSince1970: 100), pixelSize: 512)
@@ -207,9 +371,17 @@ struct AdjustedPreviewPipelineTests {
         return result
     }
 
-    private func fixture() throws -> PreviewBitmap {
-        let context = try #require(CGContext(data: nil, width: 32, height: 24, bitsPerComponent: 8,
-            bytesPerRow: 128, space: CGColorSpaceCreateDeviceRGB(),
+    private func localSettings(centerX: Double) throws -> EditSettings {
+        var result = EditSettings.neutral
+        result.localAdjustments = [try LocalAdjustment(name: "Mask", mask: .init(shape: .radial(
+            center: .init(x: centerX, y: 0.5), radiusX: 0.2, radiusY: 0.3, rotation: 0)),
+            settings: .init(exposure: 1))]
+        return result
+    }
+
+    private func fixture(width: Int = 32, height: Int = 24) throws -> PreviewBitmap {
+        let context = try #require(CGContext(data: nil, width: width, height: height, bitsPerComponent: 8,
+            bytesPerRow: width * 4, space: CGColorSpaceCreateDeviceRGB(),
             bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
         return PreviewBitmap(image: try #require(context.makeImage()))
     }
@@ -218,6 +390,13 @@ struct AdjustedPreviewPipelineTests {
         do { _ = try await task.value; Issue.record("Cancelled waiter received a bitmap") }
         catch is CancellationError {} catch { Issue.record("Unexpected error: \(error)") }
     }
+}
+
+private struct LocalPreviewObservation: Sendable {
+    let width: Int
+    let height: Int
+    let settings: EditSettings
+    let chargedBytes: Int64
 }
 
 private struct SynchronousRenderObservation: Sendable {

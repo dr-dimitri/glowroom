@@ -1,0 +1,312 @@
+import CoreImage
+import Foundation
+import PicEditCore
+
+/// Local edits join the same lazy, linear-light graph for previews and export.
+/// Geometry stays independent of the current preview size and display scale.
+enum LocalAdjustmentRenderer {
+    /// Each of the existing two preview lanes may reserve this much additional
+    /// local-edit work. Source decoding and base/global filters retain their own
+    /// bounds; this is a conservative allocation plan, not measured GPU memory.
+    static let previewWorkingMemoryBudget = min(UInt64(512 * 1_024 * 1_024),
+                                                ProcessInfo.processInfo.physicalMemory / 16)
+
+    /// Use the largest aspect-preserving preview that fits its local-edit plan.
+    /// This changes only the render proxy, never masks or the decoded photo base.
+    static func previewSize(width: Int, height: Int, adjustments: [LocalAdjustment],
+                            fixedBytes: UInt64 = 0, outputBytesPerPixel: UInt64 = 0,
+                            totalMemoryBudget: UInt64 = .max) throws -> (width: Int, height: Int) {
+        guard width > 0, height > 0 else { throw EditRenderError.unavailable }
+        // No additional local work means no new resolution policy. Existing
+        // artifact base admission still decides whether its global render fits.
+        if estimatedAdditionalBytes(adjustments: adjustments, width: width, height: height) == 0 {
+            return (width, height)
+        }
+        func fits(_ width: Int, _ height: Int) -> Bool {
+            guard let bytes = estimatedAdditionalBytes(adjustments: adjustments, width: width, height: height) else { return false }
+            guard bytes <= previewWorkingMemoryBudget else { return false }
+            let pixels = UInt64(width).multipliedReportingOverflow(by: UInt64(height))
+            let output = pixels.partialValue.multipliedReportingOverflow(by: outputBytesPerPixel)
+            let base = fixedBytes.addingReportingOverflow(output.partialValue)
+            let total = base.partialValue.addingReportingOverflow(bytes)
+            return !pixels.overflow && !output.overflow && !base.overflow && !total.overflow && total.partialValue <= totalMemoryBudget
+        }
+        if fits(width, height) { return (width, height) }
+        let longest = max(width, height)
+        func size(_ edge: Int) -> (width: Int, height: Int) {
+            let factor = Double(edge) / Double(longest)
+            return (max(1, Int((Double(width) * factor).rounded())),
+                    max(1, Int((Double(height) * factor).rounded())))
+        }
+        var lower = min(64, longest), upper = longest
+        let minimum = size(lower)
+        guard fits(minimum.width, minimum.height) else { throw EditRenderError.insufficientMaskMemory }
+        // Only bounded integer planning is serial. Pixel downsampling occupies
+        // the existing worker after admission, without creating another pool.
+        while lower < upper {
+            let midpoint = lower + (upper - lower + 1) / 2
+            let candidate = size(midpoint)
+            if fits(candidate.width, candidate.height) { lower = midpoint }
+            else { upper = midpoint - 1 }
+        }
+        return size(lower)
+    }
+
+    /// Conservative allocation plan, not a measured Core Image peak or process
+    /// memory limit. Native backends may tile/reuse these buffers. Count every
+    /// saved effective layer so large exports and artifact previews are admitted
+    /// before any mask raster or spatial intermediate is allocated.
+    static func estimatedAdditionalBytes(adjustments: [LocalAdjustment], width: Int, height: Int) -> UInt64? {
+        guard width > 0, height > 0 else { return nil }
+        let pixels = UInt64(width).multipliedReportingOverflow(by: UInt64(height))
+        guard !pixels.overflow else { return nil }
+        var total: UInt64 = 0
+        func add(_ amount: UInt64) -> Bool {
+            let sum = total.addingReportingOverflow(amount)
+            guard !sum.overflow else { return false }
+            total = sum.partialValue
+            return true
+        }
+        for original in adjustments {
+            let layer = original.normalized
+            guard layer.isEffective else { continue }
+            // RGBAh candidate + blend + scalar coverage/strength intermediates.
+            var bytesPerPixel: UInt64 = 32
+            if layer.settings.texture != 0 { bytesPerPixel += 8 }
+            if layer.settings.clarity != 0 { bytesPerPixel += 8 }
+            var rasterPlanes: UInt64 = 0
+            switch layer.mask.shape {
+            case .brush:
+                rasterPlanes += 1
+                if layer.mask.feather > 0 { bytesPerPixel += 8 }
+            case .subject(let raster), .sky(let raster):
+                guard add(UInt64(raster.bytes.count)) else { return nil }
+                if layer.mask.feather > 0 { bytesPerPixel += 8 }
+            case .linear, .radial: break
+            }
+            if let refinement = layer.mask.refinement, !refinement.strokes.isEmpty {
+                rasterPlanes += 2
+                bytesPerPixel += 24 // Two clamp planes and their composed coverage.
+            }
+            let intermediates = pixels.partialValue.multipliedReportingOverflow(by: bytesPerPixel)
+            guard !intermediates.overflow, add(intermediates.partialValue) else { return nil }
+            if rasterPlanes > 0 {
+                guard let size = try? brushSize(CGRect(x: 0, y: 0, width: width, height: height)) else { return nil }
+                let rasters = UInt64(size.width * size.height).multipliedReportingOverflow(by: rasterPlanes)
+                guard !rasters.overflow, add(rasters.partialValue) else { return nil }
+            }
+        }
+        return total
+    }
+
+    static func apply(to input: CIImage, adjustments: [LocalAdjustment], extent: CGRect,
+                      scale: Double, cache: LocalMaskImageCache? = nil) throws -> CIImage {
+        var image = input
+        // Layer order is observable where masks overlap. The admitted renderer
+        // serializes this graph construction; Core Image parallelizes its pixels.
+        for adjustment in adjustments where adjustment.isEffective {
+            try Task.checkCancellation()
+            let candidate = try EditRenderer.manualAdjustments(image, settings: adjustment.settings.editSettings,
+                                                               extent: extent, scale: scale)
+            let mask = try maskImage(adjustment.mask, extent: extent, cache: cache)
+            guard let blended = blendKernel?.apply(extent: extent, arguments: [image, candidate, mask]) else {
+                throw EditRenderError.unavailable
+            }
+            image = blended
+        }
+        try Task.checkCancellation()
+        return image
+    }
+
+    /// Also used by the editor's off-main overlay renderer. Scalar mask inputs
+    /// have no color space: converting coverage through an ICC profile would
+    /// change feathering and the strength of local corrections.
+    static func maskImage(_ mask: LocalAdjustmentMask, extent: CGRect) throws -> CIImage {
+        try maskImage(mask, extent: extent, cache: nil)
+    }
+
+    private static func maskImage(_ mask: LocalAdjustmentMask, extent: CGRect,
+                                  cache: LocalMaskImageCache?) throws -> CIImage {
+        try Task.checkCancellation()
+        let mask = mask.normalized
+        try mask.shape.validate()
+        let size = CIVector(x: extent.width, y: extent.height)
+        let image: CIImage
+        let usesGaussianFeather: Bool
+        switch mask.shape {
+        case let .linear(start, end):
+            guard let result = linearKernel?.apply(extent: extent, arguments: [
+                CIVector(x: start.x, y: start.y), CIVector(x: end.x, y: end.y), size, mask.feather
+            ]) else { throw EditRenderError.unavailable }
+            image = result
+            usesGaussianFeather = false
+        case let .radial(center, radiusX, radiusY, rotation):
+            guard let result = radialKernel?.apply(extent: extent, arguments: [
+                CIVector(x: center.x, y: center.y), CIVector(x: radiusX, y: radiusY),
+                size, rotation, mask.feather
+            ]) else { throw EditRenderError.unavailable }
+            image = result
+            usesGaussianFeather = false
+        case let .brush(document):
+            let raster = try cache?.image(document, extent: extent) ?? brushImage(document, extent: extent)
+            image = raster
+            usesGaussianFeather = true
+        case let .subject(raster), let .sky(raster):
+            let source = try scalarImage(bytes: raster.bytes, width: raster.width, height: raster.height)
+            let scaled = source.clampedToExtent().transformed(by: CGAffineTransform(
+                scaleX: extent.width / CGFloat(raster.width), y: extent.height / CGFloat(raster.height)))
+                .cropped(to: extent)
+            image = scaled
+            usesGaussianFeather = true
+        }
+        var coverage = image
+        if let refinement = mask.refinement, !refinement.strokes.isEmpty {
+            // Max/min brush composition is a monotone clamp. Rasterize the same
+            // ordered operations from zero and one; never invert stroke modes.
+            // This applies paint/erase exactly to an arbitrary automatic/gradient
+            // base without retaining one graph node for every pointer segment.
+            let lowerDocument = try MaskDocument(canvasSize: refinement.canvasSize, strokes: refinement.strokes)
+            let upperDocument = try MaskDocument(canvasSize: refinement.canvasSize, strokes: refinement.strokes, isInverted: true)
+            let lower = try cache?.image(lowerDocument, extent: extent) ?? brushImage(lowerDocument, extent: extent)
+            let upper = try cache?.image(upperDocument, extent: extent) ?? brushImage(upperDocument, extent: extent)
+            guard let result = refinementKernel?.apply(extent: extent, arguments: [coverage, lower, upper]) else {
+                throw EditRenderError.unavailable
+            }
+            coverage = result
+        }
+        if usesGaussianFeather { coverage = feather(coverage, amount: mask.feather, extent: extent) }
+        guard let result = strengthKernel?.apply(extent: extent, arguments: [
+            coverage, mask.isInverted ? 1.0 : 0.0, mask.opacity
+        ]) else { throw EditRenderError.unavailable }
+        try Task.checkCancellation()
+        return result
+    }
+
+    fileprivate static func brushImage(_ document: MaskDocument, extent: CGRect) throws -> CIImage {
+        let size = try brushSize(extent)
+        let raster = try MaskRasterizer.rasterize(document, outputSize: size)
+        let image = try scalarImage(bytes: raster.bytes, width: size.width, height: size.height)
+        return image.clampedToExtent().transformed(by: CGAffineTransform(
+            scaleX: extent.width / CGFloat(size.width), y: extent.height / CGFloat(size.height)))
+            .cropped(to: extent)
+    }
+
+    fileprivate static func brushSize(_ extent: CGRect) throws -> ArtifactPixelSize {
+        guard extent.width.isFinite, extent.height.isFinite, extent.width > 0, extent.height > 0 else {
+            throw EditRenderError.unavailable
+        }
+        // Retaining a full-resolution raster for each exported layer would grow
+        // with photo size and layer count. Only brush weights are capped; their
+        // normalized geometry and all adjustment filters still use output pixels.
+        let factor = min(1, 2_048 / max(extent.width, extent.height))
+        return try ArtifactPixelSize(width: max(1, Int((extent.width * factor).rounded())),
+                                     height: max(1, Int((extent.height * factor).rounded())))
+    }
+
+    private static func scalarImage(bytes: Data, width: Int, height: Int) throws -> CIImage {
+        guard let provider = CGDataProvider(data: bytes as CFData),
+              let image = CGImage(width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 8,
+                  bytesPerRow: width, space: CGColorSpaceCreateDeviceGray(), bitmapInfo: [],
+                  provider: provider, decode: nil, shouldInterpolate: true, intent: .defaultIntent) else {
+            throw EditRenderError.unavailable
+        }
+        // CGImage applies the same top-row convention as the developed source.
+        // Analytic kernels below cross the top-left/CI y boundary exactly once.
+        return CIImage(cgImage: image, options: [.colorSpace: NSNull()])
+    }
+
+    private static func feather(_ image: CIImage, amount: Double, extent: CGRect) -> CIImage {
+        guard amount > 0 else { return image.cropped(to: extent) }
+        return image.clampedToExtent().applyingFilter("CIGaussianBlur", parameters: [
+            kCIInputRadiusKey: 0.025 * min(extent.width, extent.height) * amount
+        ]).cropped(to: extent)
+    }
+
+    private static let blendKernel = CIColorKernel(source: """
+        kernel vec4 piceditLocalBlend(__sample base, __sample candidate, __sample mask) {
+            // Both inputs use the original alpha. Preserve it explicitly so a
+            // local correction never fills transparent edges or hidden RGB.
+            return vec4(mix(base.rgb, candidate.rgb, clamp(mask.r, 0.0, 1.0)), base.a);
+        }
+        """)
+
+    private static let strengthKernel = CIColorKernel(source: """
+        kernel vec4 piceditLocalStrength(__sample mask, float inverted, float opacity) {
+            float weight = mix(clamp(mask.r, 0.0, 1.0), 1.0 - clamp(mask.r, 0.0, 1.0), inverted) * opacity;
+            return vec4(vec3(weight), 1.0);
+        }
+        """)
+
+    private static let refinementKernel = CIColorKernel(source: """
+        kernel vec4 piceditLocalRefinement(__sample base, __sample lower, __sample upper) {
+            float weight = min(max(base.r, lower.r), upper.r);
+            return vec4(vec3(weight), 1.0);
+        }
+        """)
+
+    private static let linearKernel = CIColorKernel(source: """
+        kernel vec4 piceditLocalLinear(vec2 start, vec2 end, vec2 size, float feather) {
+            vec2 point = vec2(destCoord().x, size.y - destCoord().y);
+            vec2 axis = (end - start) * size;
+            float lengthSquared = max(dot(axis, axis), 0.00000001);
+            float ramp = clamp(dot(point - start * size, axis) / lengthSquared, 0.0, 1.0);
+            float weight = 1.0 - mix(ramp, smoothstep(0.0, 1.0, ramp), feather);
+            return vec4(vec3(weight), 1.0);
+        }
+        """)
+
+    private static let radialKernel = CIColorKernel(source: """
+        kernel vec4 piceditLocalRadial(vec2 center, vec2 radius, vec2 size, float rotation, float feather) {
+            vec2 point = vec2(destCoord().x, size.y - destCoord().y) - center * size;
+            float c = cos(rotation);
+            float s = sin(rotation);
+            vec2 local = vec2(c * point.x + s * point.y, -s * point.x + c * point.y);
+            float distance = length(local / max(radius * size, vec2(0.000001)));
+            float weight = 1.0 - smoothstep(1.0 - max(feather, 0.000001), 1.0, distance);
+            return vec4(vec3(weight), 1.0);
+        }
+        """)
+}
+
+/// Geometry caching avoids rerasterizing brush paths while a correction slider
+/// moves. A lane retains at most 16 MiB; in-flight immutable CI graphs keep only
+/// their own references after eviction. The renderer already bounds concurrency.
+final class LocalMaskImageCache: @unchecked Sendable {
+    private struct Key: Hashable {
+        let document: MaskDocument
+        let size: ArtifactPixelSize
+    }
+    private let lock = NSLock()
+    private var entries: [Key: CIImage] = [:]
+    private var order: [Key] = []
+    private var retainedBytes = 0
+    private let byteLimit = 16 * 1_024 * 1_024
+
+    func image(_ document: MaskDocument, extent: CGRect) throws -> CIImage {
+        let key = Key(document: document, size: try LocalAdjustmentRenderer.brushSize(extent))
+        lock.lock()
+        defer { lock.unlock() }
+        try Task.checkCancellation()
+        if let image = entries[key] {
+            order.removeAll { $0 == key }
+            order.append(key)
+            return image.clampedToExtent().transformed(by: CGAffineTransform(
+                scaleX: extent.width / CGFloat(key.size.width), y: extent.height / CGFloat(key.size.height)))
+                .cropped(to: extent)
+        }
+        let rasterExtent = CGRect(x: 0, y: 0, width: key.size.width, height: key.size.height)
+        let image = try LocalAdjustmentRenderer.brushImage(document, extent: rasterExtent)
+        let cost = key.size.width * key.size.height
+        while retainedBytes + cost > byteLimit, let oldest = order.first {
+            entries.removeValue(forKey: oldest)
+            retainedBytes -= oldest.size.width * oldest.size.height
+            order.removeFirst()
+        }
+        entries[key] = image
+        order.append(key)
+        retainedBytes += cost
+        return image.clampedToExtent().transformed(by: CGAffineTransform(
+            scaleX: extent.width / CGFloat(key.size.width), y: extent.height / CGFloat(key.size.height)))
+            .cropped(to: extent)
+    }
+}

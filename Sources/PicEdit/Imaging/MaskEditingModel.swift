@@ -87,6 +87,7 @@ actor MaskOverlayWorker {
 final class MaskEditingModel: ObservableObject {
     typealias Rasterizer = @Sendable (MaskRasterRequest) async throws -> MaskRasterResult
     @Published private(set) var document: MaskDocument?
+    @Published private(set) var previewDocument: MaskDocument?
     @Published private(set) var source: AISourceIdentity?
     @Published private(set) var rasterResult: MaskRasterResult?
     @Published private(set) var isRasterizing = false
@@ -109,26 +110,36 @@ final class MaskEditingModel: ObservableObject {
     private(set) var revision: UInt64 = 0
     private var session = UUID()
     private let rasterizer: Rasterizer
+    private let rendersOverlay: Bool
     private var pending: MaskRasterRequest?
     private var runningCancellation: MaskRasterCancellation?
     private var worker: Task<Void, Never>?
 
-    init(rasterizer: @escaping Rasterizer = { try await MaskOverlayWorker.shared.rasterize($0) }) {
+    init(rasterizer: @escaping Rasterizer = { try await MaskOverlayWorker.shared.rasterize($0) }, rendersOverlay: Bool = true) {
         self.rasterizer = rasterizer
+        self.rendersOverlay = rendersOverlay
     }
 
     /// Explicit new draft: leaving the editor or replacing the source loses no accepted edit.
     func begin(source: AISourceIdentity, canvasSize: ArtifactPixelSize) throws {
+        try load(source: source, document: MaskDocument(canvasSize: canvasSize))
+    }
+
+    /// Local adjustments may reopen a saved vector mask without changing its
+    /// coordinate canvas. The original disposable generation editor uses begin.
+    func load(source: AISourceIdentity, document: MaskDocument) throws {
+        try document.validate()
         discard()
         self.source = source
-        document = try MaskDocument(canvasSize: canvasSize)
+        self.document = document
+        committedPointCount = document.strokes.reduce(0) { $0 + $1.points.count }
         scheduleRaster()
     }
 
     func discard() {
         session = UUID(); revision = 0
         runningCancellation?.cancel(); pending?.cancellation.cancel(); pending = nil
-        source = nil; document = nil; rasterResult = nil
+        source = nil; document = nil; previewDocument = nil; rasterResult = nil
         points = []; completedSegments = []; activeStyle = nil
         activePointCount = 0; draftLimitReached = false; committedPointCount = 0
         undoDocuments = []; redoDocuments = []; updateHistory()
@@ -243,6 +254,10 @@ final class MaskEditingModel: ObservableObject {
             }
             draft = try MaskDocument(canvasSize: draft.canvasSize, strokes: strokes, isInverted: draft.isInverted)
         } catch { errorMessage = error.localizedDescription; return }
+        previewDocument = draft
+        // Local adjustment overlays render this same draft through their shared
+        // filter graph. Avoid a second raster/hash worker for each pointer event.
+        guard rendersOverlay else { isRasterizing = false; return }
         pending = MaskRasterRequest(source: source, session: session, revision: revision,
                                     document: draft, cancellation: MaskRasterCancellation())
         isRasterizing = true
