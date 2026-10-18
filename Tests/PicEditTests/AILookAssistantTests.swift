@@ -91,12 +91,16 @@ final class AILookAssistantTests {
     @Test
     func everyContextChangeInvalidatesWholeGroupAndAllCardReferences() async throws {
         let (library, editor, _, provider, _, model) = try await fixture()
+        defer { model.discard(); Task { await provider.shutdown() } }
         let assetID = try #require(library.selectedID)
         for event in 0..<7 {
+            // Each context case needs its own durable baseline. Inference idle
+            // alone does not drain the previous case's debounced edit save.
+            try #require(await editor.flush(), "context case \(event): prior edits must be durable")
             model.generateLooks()
-            try await wait { await provider.isWaiting }
+            try await provider.waitForRequest(event + 1, operation: "context case \(event): provider started")
             await provider.complete()
-            try await wait { model.state == .previewing }
+            try await wait("context case \(event): looks published", lastState: { "model=\(model.state)" }) { model.state == .previewing }
             let oldGroup = try #require(model.lookGroup)
             switch event {
             case 0:
@@ -110,7 +114,7 @@ final class AILookAssistantTests {
             default: library.beginTermination()
             }
             #expect(!model.acceptProposal())
-            try await wait { model.lookGroup == nil }
+            try await wait("context case \(event): group invalidated", lastState: { "model=\(model.state), group=\(String(describing: model.lookGroup?.request.id))" }) { model.lookGroup == nil }
             for id in AILookID.allCases { #expect(model.cards.bitmap(for: id) == nil) }
             #expect(model.activeProposalResult == nil)
             #expect(model.selectedLookID == nil)
@@ -163,10 +167,12 @@ final class AILookAssistantTests {
     @Test
     func lateGroupsAfterSelectionResetAndRestoreCannotPublishCardsOrSettings() async throws {
         let (library, editor, _, provider, coordinator, model) = try await fixture()
+        defer { model.discard(); Task { await provider.shutdown() } }
         let assetID = try #require(library.selectedID)
-        for event in 0..<3 {
+        for (event, name) in ["selection roundtrip", "reset", "restore"].enumerated() {
+            try #require(await editor.flush(), "\(name): prior edits must be durable before the next request")
             model.generateLooks()
-            try await wait { await provider.isWaiting }
+            try await provider.waitForRequest(event + 1, operation: "\(name): provider started")
             switch event {
             case 0:
                 library.selectedID = library.assets[1].id
@@ -175,10 +181,11 @@ final class AILookAssistantTests {
             default: #expect(await editor.restoreBackup(from: directory.appendingPathComponent("restore.sqlite")))
             }
             let expectedSettings = editor.settings(for: assetID)
-            try await wait { model.state != .generating }
+            try await wait("\(name): request invalidated", lastState: {
+                "model=\(model.state), request=\(String(describing: model.requestID)), pending=\(editor.hasPendingChanges), saving=\(editor.isSaving)"
+            }) { model.state != .generating }
             await provider.complete()
-            let states = await coordinator.stateUpdates()
-            for await state in states { if state.runningCount == 0 { break } }
+            try await waitForInferenceToFinish(coordinator, operation: "\(name): late inference returned")
             #expect(model.lookGroup == nil)
             #expect(model.activeProposalResult == nil)
             #expect(!model.acceptProposal())
@@ -186,6 +193,59 @@ final class AILookAssistantTests {
             #expect(editor.settings(for: assetID) == expectedSettings)
         }
         #expect(await editor.flush())
+        #expect(await library.finishSaving())
+    }
+
+    @Test(arguments: [false, true])
+    func resetPersistenceAcrossLookPreflightRequiresAFlushedBaseline(flushBeforeRequest: Bool) async throws {
+        let (library, editor, store, provider, coordinator, _) = try await fixture()
+        let entered = TestStateSignal<AIEditingSnapshot?>(nil)
+        let release = TestAsyncLatch()
+        // Isolate the existing post-preflight snapshot guard. The lifecycle
+        // tests above retain the production initializer and its UI observers.
+        let model = AIAssistantModel(provider: provider, coordinator: coordinator,
+            snapshot: { editor.aiSnapshot(in: library) }, accept: { _ in false },
+            sourceReadable: { snapshot in
+                entered.update { $0 = snapshot }
+                await release.wait()
+                return true
+            })
+        defer { model.discard(); release.releaseAll(); Task { await provider.shutdown() } }
+        await model.refreshAvailability()
+        let assetID = try #require(library.selectedID)
+        editor.reset(assetID: assetID)
+        try #require(editor.hasPendingChanges)
+        if flushBeforeRequest { try #require(await editor.flush()) }
+        let baseline = try #require(editor.aiSnapshot(in: library))
+        model.generateLooks()
+        let captured = try #require(try await entered.wait("reset look entered source preflight", timeout: .seconds(10), until: { $0 != nil }))
+        #expect(captured == baseline)
+
+        // Hold preflight through the accepted reset's actual persistence, even
+        // if its automatic debounce has already started on a loaded executor.
+        try #require(await editor.flush())
+        let durable = try #require(editor.aiSnapshot(in: library))
+        #expect(durable.source == baseline.source && durable.settings == baseline.settings)
+        #expect(durable.token == baseline.token)
+        #expect((durable.persistedVersion == baseline.persistedVersion) == flushBeforeRequest)
+        #expect(await store.saveCount == 1)
+        release.releaseAll()
+
+        if flushBeforeRequest {
+            try await provider.waitForRequest(1, operation: "flushed reset: provider started after preflight")
+            #expect(await provider.requests.first?.snapshot == durable)
+            await provider.complete()
+            try await wait("flushed reset: looks published", lastState: { "model=\(model.state)" }) { model.state == .previewing }
+            #expect(model.lookGroup?.request.snapshot == durable)
+        } else {
+            try await wait("unflushed reset: stale preflight discarded", lastState: { "model=\(model.state)" }) { model.state == .idle }
+            #expect(await provider.requests.isEmpty)
+            #expect(model.requestID == nil && model.lookGroup == nil && model.activeProposalResult == nil)
+            #expect(!model.acceptProposal())
+            for id in AILookID.allCases { #expect(model.cards.bitmap(for: id) == nil) }
+        }
+        try await waitForInferenceToFinish(coordinator, operation: "reset preflight: inference drained")
+        #expect(editor.aiSnapshot(in: library) == durable)
         #expect(await library.finishSaving())
     }
 
@@ -239,32 +299,61 @@ final class AILookAssistantTests {
         return (library, editor, store, provider, coordinator, model)
     }
 
-    private func wait(_ condition: @escaping @MainActor () async -> Bool) async throws {
+    private func waitForInferenceToFinish(_ coordinator: AIRequestCoordinator, operation: String) async throws {
+        let state = TestStateSignal<AIRequestCoordinator.State?>(nil)
+        let updates = await coordinator.stateUpdates()
+        let observation = Task {
+            for await value in updates { state.update { $0 = value } }
+        }
+        defer { observation.cancel() }
+        try await state.wait(operation, timeout: .seconds(10), until: { $0?.runningCount == 0 && $0?.queuedCount == 0 })
+    }
+
+    private func wait(_ operation: String = "look assistant condition",
+                      lastState: @MainActor () -> String = { "condition remains false" },
+                      _ condition: @escaping @MainActor () async -> Bool) async throws {
         let deadline = ContinuousClock.now.advanced(by: .seconds(10))
         while !(await condition()) {
-            guard ContinuousClock.now < deadline else { throw LookAssistantTestError.timeout }
+            try Task.checkCancellation()
+            guard ContinuousClock.now < deadline else {
+                throw TestSchedulingTimeout(operation: operation, lastState: lastState())
+            }
             try await Task.sleep(for: .milliseconds(5))
         }
     }
 }
 
-private enum LookAssistantTestError: Error { case timeout }
-
 private actor LookProvider: AIEditingProvider {
     nonisolated let id = "look-ui-test"
     nonisolated let capabilities: AIProviderCapabilities = [.textEditing, .lookSuggestions]
     private var continuation: CheckedContinuation<Data, Never>?
+    private var isShutDown = false
+    private struct Progress: Sendable { var requests = 0; var waiting = false }
+    private nonisolated let progress = TestStateSignal(Progress())
     private(set) var requests: [AIEditingRequest] = []
     private var concurrentCalls = 0
     private(set) var maximumConcurrentCalls = 0
     var isWaiting: Bool { continuation != nil }
     func availability() -> AIAvailability { .available }
-    func proposal(for request: AIEditingRequest) async -> Data {
+    func proposal(for request: AIEditingRequest) async throws -> Data {
+        guard !isShutDown else { throw CancellationError() }
         requests.append(request)
         concurrentCalls += 1
         maximumConcurrentCalls = max(maximumConcurrentCalls, concurrentCalls)
         defer { concurrentCalls -= 1 }
-        return await withCheckedContinuation { continuation = $0 } // Ignores cancellation.
+        return await withCheckedContinuation {
+            continuation = $0 // Ignores cancellation until complete().
+            progress.update { $0 = Progress(requests: requests.count, waiting: true) }
+        }
+    }
+    nonisolated func waitForRequest(_ count: Int, operation: String) async throws {
+        try await progress.wait(operation, timeout: .seconds(10), until: { $0.requests == count && $0.waiting })
+    }
+    func shutdown() {
+        // Cleanup must also reject a native fake call that starts only after
+        // test cancellation; a one-off complete() could miss that registration.
+        isShutDown = true
+        complete()
     }
     func complete(data: Data? = nil) {
         let group = AILookProposalGroup(variants: [
@@ -275,6 +364,7 @@ private actor LookProvider: AIEditingProvider {
         let bytes = data ?? (try! JSONEncoder().encode(group))
         let waiter = continuation
         continuation = nil
+        progress.update { $0.waiting = false }
         waiter?.resume(returning: bytes)
     }
 }

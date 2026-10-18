@@ -10,6 +10,12 @@ Die semantischen Service-Tests warten auf Text-/Bild-/Installations-/Vorbereitun
 
 Ein-/Ausreihen, gemeinsame Waiter, ausgewählte gegenüber Hintergrundarbeit, schnelle Änderungen, Abbruch ohne vorzeitige Slot-/Leasefreigabe und Quellenwechsel bleiben Gegenstand der Tests. Produktionslimits und Deadlineprüfungen werden dafür nicht gelockert. Die normale parallele Swift-Testing-Ausführung bleibt eingeschaltet. Die bereits bestehende Serialisierung echter Look-Rastervergleiche dient deren getrennten Bildprüfungen und wurde nicht zur Beruhigung dieser Scheduling-Tests ergänzt.
 
+## Look-Lifecycle und Persistenz
+
+Die unabhängigen Szenarien der Look-Lifecycle-Tests zu [Issue #71](https://github.com/dr-dimitri/picedit/issues/71) verlangen vor jedem Durchlauf ein erfolgreiches `editor.flush()`. Ein Inferenzzustand mit `runningCount == 0` bestätigt nur die Rückkehr der Inferenzarbeit; `canGenerateLooks` zeigt die Verfügbarkeit der Aktion. Beide Zustände garantieren nicht, dass ausstehende Bearbeitungen gespeichert sind. Ein späterer Autosave kann die `persistedVersion` des Bearbeitungssnapshots verändern, während die Quellenprüfung eines neuen Requests suspendiert.
+
+Eine parameterisierte Regression hält diese Quellenprüfung mit `TestAsyncLatch` an und speichert eine zurückgesetzte Bearbeitung entweder vor dem Request oder während der Prüfung. Einstellungen, Quelle und UI-Token bleiben gleich. Ändert sich die `persistedVersion` während der Prüfung, muss der vorhandene Schutz vor veralteten Snapshots vor dem Provideraufruf abbrechen. Bei bereits vor dem Request gespeicherter Bearbeitung darf der Provider erreicht und die Look-Gruppe veröffentlicht werden. Providerstart und Coordinator-Rückkehr werden als gespeicherte Ereignisse beobachtet; die bisherigen Zehnsekundenfristen bleiben reine Hangwächter mit Diagnose der jeweiligen Wartephase. Die Regression verändert keine Produktionslogik.
+
 ## Kontrollprobe und Prüfkommandos
 
 Die kleine Kontrollprobe startet in einem eigenen Prozess die doppelte Anzahl aktiver CPUs als Fake-Worker, begrenzt auf mindestens acht und höchstens 64, und lässt die Steuerung nach 20 ms wieder aufwachen. Auf Rechnern mit mindestens 64 aktiven CPUs liegt die begrenzte Anzahl deshalb nicht über der CPU-Anzahl. Der erste Modus reproduziert den alten synchronen Fünfsekunden-Semaphore-Fake, der zweite verwendet denselben suspendierenden Latch wie die Tests. Beide melden tatsächlich beobachtete Controller-Wartezeit, gestartete Worker und Fake-Timeouts als JSON. Sie messen keine Bildoperation und erlauben keine Aussage über die Laufzeit oder Threadzahl der Anwendung. Die Modi nacheinander ohne zusätzlichen Build oder Benchmark ausführen:
@@ -27,7 +33,7 @@ Die Regressionen und danach die vollständige parallele Suite verwenden denselbe
 
 ```sh
 PICEDIT_TEST_BUILD_PATH=/tmp/picedit-scheduling-tests ./scripts/test.sh --jobs 4 \
-  --filter 'PreviewPipelineTests|AILookPreviewTests|SemanticSearchServiceTests|SemanticLibraryTests|TestSchedulingGatesTests'
+  --filter 'PreviewPipelineTests|AILookPreviewTests|AILookAssistantTests|SemanticSearchServiceTests|SemanticLibraryTests|TestSchedulingGatesTests'
 PICEDIT_TEST_BUILD_PATH=/tmp/picedit-scheduling-tests ./scripts/test.sh --jobs 4
 ```
 
