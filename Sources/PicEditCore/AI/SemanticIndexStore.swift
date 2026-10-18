@@ -199,6 +199,34 @@ public actor SemanticIndexStore {
         }
     }
 
+    /// Catalog removal must erase every generation, including retired and
+    /// superseded work. The service cancels/drains indexing before this barrier.
+    /// Bounded ID pages avoid loading vectors or a full index into memory.
+    @discardableResult
+    public func retainOnlyCatalogAssets(_ assetIDs: Set<String>) throws -> Int {
+        guard assetIDs.allSatisfy(Self.identifier) else { throw SemanticEmbeddingError.invalidInput }
+        return try transaction { connection in
+            var after:String?, removed = 0
+            while true {
+                let suffix = after == nil ? "" : " WHERE asset_id>?"
+                let page:[String] = try Self.statement(connection, "SELECT DISTINCT asset_id FROM semantic_entries\(suffix) ORDER BY asset_id COLLATE BINARY LIMIT \(Self.maximumPageSize)") { statement in
+                    if let after { try Self.bind(after, 1, statement) }
+                    var page:[String] = []
+                    try Self.consume(statement) { page.append(try Self.text($0, 0, maximum: 16_384)) }; return page
+                }
+                if page.isEmpty { break }
+                for id in page where !assetIDs.contains(id) {
+                    try Self.statement(connection, "DELETE FROM semantic_entries WHERE asset_id=?") { statement in
+                        try Self.bind(id, 1, statement); try Self.done(statement)
+                        removed += Int(sqlite3_changes(connection))
+                    }
+                }
+                after = page.last!
+            }
+            return removed
+        }
+    }
+
     /// Caller quiesces its indexing/search service first. Unknown files and their
     /// sidecars are preserved rather than interpreted or deleted.
     @discardableResult public func rebuildAfterExplicitUserAction() throws -> URL? {

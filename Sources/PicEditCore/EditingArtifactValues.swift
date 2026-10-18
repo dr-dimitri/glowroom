@@ -97,6 +97,11 @@ public struct EditingSnapshot: Codable, Hashable, Sendable {
     public let schemaVersion: Int
     public let source: EditableSourceRef
     public let settings: EditSettings
+    // Preserve the wire shape of older snapshots. Adding a defaulted control
+    // must not invalidate strict JSON checks or change signed manifest/journal
+    // bytes merely because a saved snapshot was read by a newer application.
+    private var omittedDefaultSettings: Set<EditParameter> = []
+    private static let defaultedSettings: Set<EditParameter> = [.autoToneAmount, .naturalBalanceAmount, .naturalBalanceColorAmount]
     public init(source: EditableSourceRef = .original, settings: EditSettings = .neutral) throws {
         guard settings == settings.normalized else { throw ArtifactContractError.invalidValue("settings") }
         schemaVersion = 2; self.source = source; self.settings = settings
@@ -108,6 +113,30 @@ public struct EditingSnapshot: Codable, Hashable, Sendable {
         guard version == 2 else { throw ArtifactContractError.unsupportedVersion(version) }
         try self.init(source: values.decode(EditableSourceRef.self, forKey: .source),
                       settings: values.decode(EditSettings.self, forKey: .settings))
+        let controls = try values.nestedContainer(keyedBy: SettingKey.self, forKey: .settings)
+        omittedDefaultSettings = Set(Self.defaultedSettings.filter { !controls.contains(SettingKey($0)) })
+    }
+    private struct SettingKey: CodingKey {
+        let stringValue: String
+        var intValue: Int? { nil }
+        init(_ parameter: EditParameter) { stringValue = parameter.rawValue }
+        init?(stringValue: String) { self.stringValue = stringValue }
+        init?(intValue: Int) { return nil }
+    }
+    public func encode(to encoder: Encoder) throws {
+        var values = encoder.container(keyedBy: CodingKeys.self)
+        try values.encode(schemaVersion, forKey: .schemaVersion)
+        try values.encode(source, forKey: .source)
+        let controls = Dictionary(uniqueKeysWithValues: EditParameter.allCases.compactMap { parameter in
+            omittedDefaultSettings.contains(parameter) ? nil : (parameter.rawValue, parameter.value(in: settings))
+        })
+        try values.encode(controls, forKey: .settings)
+    }
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.schemaVersion == rhs.schemaVersion && lhs.source == rhs.source && lhs.settings == rhs.settings
+    }
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(schemaVersion); hasher.combine(source); hasher.combine(settings)
     }
 }
 

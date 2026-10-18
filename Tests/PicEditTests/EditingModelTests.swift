@@ -201,6 +201,58 @@ final class EditingModelTests {
         #expect(await store.savedSettings()["A"]?.exposure == 2)
         #expect(await store.totalSaveCalls() == 0)
         #expect(model.errorMessage != nil)
+        #expect(model.showsImportedOriginalFallback)
+        let asset = PhotoAsset(id: "A", folderID: UUID(), fileURL: directory.appendingPathComponent("original.jpg"))
+        let source = try model.resolvedSource(for: asset)
+        #expect(source.identity == .original(.init(fileURL: asset.fileURL, modifiedAt: asset.modifiedAt, fileSize: asset.fileSize)))
+        #expect(source.settings.isNeutral)
+        model.invalidateSourcesForCoordination()
+        #expect(!model.showsImportedOriginalFallback)
+        #expect(throws: ArtifactContractError.invalidCapability) { try model.resolvedSource(for: asset) }
+    }
+
+    @Test
+    func failedStartupRecoveryNeverAuthorizesOriginalFallback() async throws {
+        let model = EditingModel(loader: { throw CatalogLifecycleError.recoveryRequired })
+        try await waitLoaded(model)
+        let asset = PhotoAsset(folderID: UUID(), fileURL: directory.appendingPathComponent("original.jpg"))
+        #expect(model.isReadOnly)
+        #expect(!model.showsImportedOriginalFallback)
+        #expect(throws: ArtifactContractError.invalidCapability) { try model.resolvedSource(for: asset) }
+    }
+
+    @Test
+    func catalogStartupTemporarilyPreventsNewEdits() async throws {
+        let model = EditingModel(database: LegacySnapshotTestAdapter(ControlledEditStore()))
+        try await waitLoaded(model)
+        let library = LibraryModel(repository: CatalogRepository(directory: directory.appendingPathComponent("Catalog")))
+        model.library = library
+        #expect(library.isLoading)
+        #expect(!model.canEdit)
+        #expect(!model.canBackUp)
+        #expect(!model.canRestore)
+        #expect(!model.isReadOnly)
+        try await waitUntil { !library.isLoading }
+        #expect(model.canEdit)
+        #expect(model.canBackUp)
+        #expect(model.canRestore)
+    }
+
+    @Test
+    func catalogReadOnlyStatePreventsNewEditsWithoutChangingEditorData() async throws {
+        let model = EditingModel(database: LegacySnapshotTestAdapter(ControlledEditStore(initial: ["A": exposure(2)])))
+        try await waitLoaded(model)
+        let catalogDirectory = directory.appendingPathComponent("BrokenCatalog")
+        try FileManager.default.createDirectory(at: catalogDirectory, withIntermediateDirectories: true)
+        try Data("invalid catalog".utf8).write(to: catalogDirectory.appendingPathComponent("catalog.json"))
+        let library = LibraryModel(repository: CatalogRepository(directory: catalogDirectory))
+        model.library = library
+        try await waitUntil { !library.isLoading }
+        #expect(library.isReadOnly)
+        #expect(!model.canEdit)
+        model.setSettings(exposure(4), for: "A")
+        #expect(model.settings(for: "A").exposure == 2)
+        #expect(!model.hasPendingChanges)
     }
 
     @Test
@@ -393,6 +445,35 @@ final class EditingModelTests {
         let recovered = try await loadStoredState(in: damaged)
         #expect(recovered.byAsset["A"]?.snapshot.settings.exposure == 3)
         #expect((recovered.byAsset["A"]?.version.revision ?? 0) > 15)
+    }
+
+    @Test
+    func damagedDatabaseRecoveryDoesNotRequireAnEarlierLibraryStartupAdmission() async throws {
+        let damaged = directory.appendingPathComponent("RecoveryBeforeLibraryAdmission", isDirectory: true)
+        try FileManager.default.createDirectory(at: damaged, withIntermediateDirectories: true)
+        try Data("damaged database".utf8).write(to: damaged.appendingPathComponent("edits.sqlite"))
+        let valid = try EditDatabase(directory: directory.appendingPathComponent("RecoverySource"))
+        try await valid.save(exposure(2), for: "A", revision: 15)
+        let backup = try await valid.createBackup()
+        let model = EditingModel(directory: damaged)
+        try await waitLoaded(model)
+        let blockedGate = CatalogLifecycleGate()
+        blockedGate.reportStartupFailure()
+        let library = LibraryModel(repository: CatalogRepository(directory: damaged), lifecycle: blockedGate)
+        model.library = library
+        try await waitUntil { !library.isLoading }
+        #expect(library.isReadOnly)
+        #expect(model.canRestore)
+
+        #expect(await model.restoreBackup(from: backup))
+        #expect(model.settings(for: "A").exposure == 2)
+        #expect(model.notice?.contains("Recovery") == true)
+        #expect(!model.isReadOnly)
+        // No separate library recovery coordinator was supplied in this
+        // fixture. Its failed startup continues to fence editing safely.
+        #expect(library.isReadOnly)
+        #expect(!model.canEdit)
+        #expect(!model.showsImportedOriginalFallback)
     }
 
     @Test

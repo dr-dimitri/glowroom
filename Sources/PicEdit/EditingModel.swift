@@ -81,6 +81,7 @@ final class EditingModel: ObservableObject, GeneratedArtifactAccepting {
     private var baselines: [String: EditingExpectedState] = [:]
     private var storeEpoch: UUID?
     private var sourceStateIsCoherent = true
+    private var startupAllowsOriginalPreview = false
     private var revisionsByAsset: [String: Int64] = [:]
     private var pending: [String: PendingEdit] = [:]
     private var histories: [String: History] = [:]
@@ -113,9 +114,18 @@ final class EditingModel: ObservableObject, GeneratedArtifactAccepting {
         guard let directory else { return [] }
         return ["cloud-usage.sqlite", "cloud-usage.sqlite-journal", "cloud-usage.sqlite-wal", "cloud-usage.sqlite-shm"].map { directory.appendingPathComponent($0) }
     }
-    var canEdit: Bool { !isLoading && !isReadOnly && !isRestoring && !isBackingUp && !isClosing && !isCommitting && !commits.values.contains(where: \.failed) }
-    var canBackUp: Bool { !isLoading && !isRestoring && !isBackingUp && !isClosing && !isCommitting && database != nil && storeEpoch != nil }
-    var canRestore: Bool { !isLoading && !isRestoring && !isBackingUp && !isClosing && !isCommitting && database != nil && (storeEpoch != nil || recoverDatabase != nil) }
+    var canEdit: Bool { !isLoading && !isReadOnly && !isRestoring && !isBackingUp && !isClosing && !isCommitting && !commits.values.contains(where: \.failed) && library?.isUpdatingCatalog != true && library?.isLoading != true && library?.isReadOnly != true }
+    /// An unavailable store must not hide healthy imported originals. This is
+    /// display-only and requires a successful shared startup recovery barrier;
+    /// a failed/active catalog coordination never authorizes this fallback.
+    var showsImportedOriginalFallback: Bool {
+        !isLoading && isReadOnly && storeEpoch == nil && sourceStateIsCoherent && startupAllowsOriginalPreview
+    }
+    private var catalogAllowsEditingMaintenance: Bool {
+        library?.isLoading != true && library?.isUpdatingCatalog != true && library?.isImporting != true
+    }
+    var canBackUp: Bool { !isLoading && !isRestoring && !isBackingUp && !isClosing && !isCommitting && database != nil && storeEpoch != nil && catalogAllowsEditingMaintenance }
+    var canRestore: Bool { !isLoading && !isRestoring && !isBackingUp && !isClosing && !isCommitting && database != nil && (storeEpoch != nil || recoverDatabase != nil) && catalogAllowsEditingMaintenance }
     func beginTermination() { isClosing = true }
     func cancelTermination() { isClosing = false }
 
@@ -129,6 +139,7 @@ final class EditingModel: ObservableObject, GeneratedArtifactAccepting {
     }
     private func startLoading() {
         let loader = repositoryLoader
+        startupAllowsOriginalPreview = false
         loadingTask = Task { [weak self] in
             guard let self else { return }
             do {
@@ -137,6 +148,7 @@ final class EditingModel: ObservableObject, GeneratedArtifactAccepting {
                 recoverDatabase = dependencies.recoverDatabase
                 artifactStoreWarning = dependencies.artifactStoreError.map { "Die Ablage generierter Bilder ist nicht verfügbar. Bearbeitungen importierter Originale bleiben möglich.\n\n" + $0 }
                 if let gate { startup = try await gate.waitForStartup() }
+                startupAllowsOriginalPreview = true
                 if let artifacts { artifactStoreID = await artifacts.storeID; if let resources = dependencies.resources { await ArtifactPreviewAccess.shared.register(artifacts, resources: resources) } }
                 let state = try await dependencies.database.loadState()
                 install(state)
@@ -183,7 +195,10 @@ final class EditingModel: ObservableObject, GeneratedArtifactAccepting {
     }
     func localRevision(for assetID: String) -> Int64 { revisionsByAsset[assetID] ?? 0 }
     func resolvedSource(for asset: PhotoAsset, intent: EditingRenderIntent = .currentEditing) throws -> ResolvedEditingSource {
-        if intent != .importedOriginal, storeEpoch == nil || !sourceStateIsCoherent { throw ArtifactContractError.invalidCapability }
+        if intent != .importedOriginal, storeEpoch == nil || !sourceStateIsCoherent {
+            guard showsImportedOriginalFallback else { throw ArtifactContractError.invalidCapability }
+            return try EditingSourceResolver.resolve(asset: asset, snapshot: try EditingSnapshot(), intent: .importedOriginal, artifacts: [:])
+        }
         return try EditingSourceResolver.resolve(asset: asset, snapshot: snapshot(for: asset.id), intent: intent, artifacts: artifactFingerprints)
     }
     func sourceDimensions(for asset: PhotoAsset) -> String {
@@ -659,6 +674,11 @@ extension EditingModel {
             try await loadArtifactMetadata(restored)
             pending.removeAll(); hasPendingChanges = false
             histories.removeAll(); gestureStarts.removeAll(); commits.removeAll()
+            // Ordinary restore uses the already-open catalog admission. Damaged
+            // database recovery must first reopen the library below; startup
+            // may have failed before it could obtain that admission. Its normal
+            // load then cleans against the current durable catalog.
+            if !requiresRecovery { try await library?.reconcileAfterEditingRestore() }
             sourceStateIsCoherent = true; isReadOnly = false; errorMessage = artifactStoreWarning
             notice = requiresRecovery
                 ? "Recovery abgeschlossen. Die beschädigte Datenbankfamilie und generierte Pixel wurden separat gesichert."

@@ -6,6 +6,10 @@ Issue 10 führt eine dauerhafte Bildquelle neben dem importierten Original ein. 
 
 Ein `EditingSnapshot` enthält Quelle und Regler gemeinsam. Kataloganker und `PhotoAsset.id` bezeichnen weiterhin das importierte Original. Ein übernommenes flaches Raster enthält bereits die gerenderte Eingabe; die neuen Regler beginnen neutral. Frühere Regler werden dadurch nicht doppelt angewendet.
 
+Historische Snapshots dürfen die später ergänzten optionalen Regler `autoToneAmount`, `naturalBalanceAmount` und `naturalBalanceColorAmount` auslassen. Beim Decodieren gelten deren Standardwerte; erneutes Codieren erhält die ursprüngliche Feldmenge. Dadurch bleiben eingebettete Manifest- und Journalprüfsummen stabil. Unbekannte Felder, explizites `null` und fehlende Pflichtregler bleiben ungültig. Neue Snapshots enthalten alle aktuellen Regler.
+
+Die Katalogbereinigung entfernt vollständig entfernte Bildkennungen samt Snapshot, Revision, Varianten, Commitbelegen und abgeschlossenen Remapjournalen aus der aktiven SQL-Datei. Weiterhin referenzierte Artefakte einschließlich ihrer transitiven Eltern bleiben erhalten. Unreferenzierte SQL-Deskriptoren werden gelöscht; veröffentlichte unveränderliche Rasterdateien, Pakete und Recoveryarchive bleiben außerhalb dieser Bereinigung erhalten. Ein neuer Store-Epoch verhindert, dass alte Schreibaufträge entfernte Datensätze wiederherstellen. Datenbanktransaktionen und Katalogpublikation bleiben geordnet; unabhängige Metadaten- und Bearbeitungsbereinigung dürfen parallel laufen.
+
 - **Zurücksetzen** neutralisiert nur die Regler der aktiven Quelle.
 - **Zum importierten Original zurückkehren** wechselt die Quelle mit einem eigenen Undo-Schritt.
 - **Importiertes Original anzeigen** zeigt das Original ohne Regler.

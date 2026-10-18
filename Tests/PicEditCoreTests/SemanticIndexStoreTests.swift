@@ -6,6 +6,46 @@ import Testing
 
 @Suite("Semantic index persistence and generation isolation")
 struct SemanticIndexStoreTests {
+    @Test func catalogRemovalPurgesEveryGenerationAndReaddingStartsWithoutVectors() async throws {
+        let f = try IndexFixture(), retired = try await f.prepare()
+        for id in ["removed","kept"] { try await f.store.upsert(f.record(id),in:retired) }
+        try await f.store.activate(retired)
+        let active = try await f.store.prepareGeneration(for:indexDescriptor(model:"active"),installationFingerprint:f.installation)
+        for id in ["removed","kept"] { try await f.store.upsert(f.record(id),in:active) }
+        try await f.store.activate(active)
+        let superseded = try await f.store.prepareGeneration(for:indexDescriptor(model:"superseded"),installationFingerprint:f.installation)
+        try await f.store.upsert(f.record("removed"),in:superseded)
+        let building = try await f.store.prepareGeneration(for:indexDescriptor(model:"building"),installationFingerprint:f.installation)
+        for id in ["removed","kept"] { try await f.store.upsert(f.record(id),in:building) }
+        #expect(try await f.store.retainOnlyCatalogAssets(["kept"]) == 4)
+        #expect(try indexScalar(f.store.fileURL,sql:"SELECT COUNT(*) FROM semantic_entries WHERE asset_id='removed'") == "0")
+        #expect(try indexScalar(f.store.fileURL,sql:"SELECT COUNT(*) FROM semantic_entries WHERE asset_id='kept'") == "3")
+        #expect(try await f.store.activeGeneration() == active)
+        for generation in [retired,active,building] {
+            #expect(try await f.store.records(in:generation) == [f.record("kept")])
+        }
+        #expect(try await f.store.retainOnlyCatalogAssets(["kept","removed"]) == 0)
+        #expect(try await f.store.metadata(in:active,assetIDs:["removed"]).isEmpty)
+        let restarted = try SemanticIndexStore(directory:f.directory)
+        #expect(try await restarted.records(in:active) == [f.record("kept")])
+        #expect(try await restarted.retainOnlyCatalogAssets([]) == 3)
+        #expect(try await restarted.records(in:active).isEmpty)
+    }
+
+    @Test func catalogPruningRollsBackAllGenerationsOnCommitFailure() async throws {
+        let failure = IndexFailureSwitch(),f = try IndexFixture(beforeCommit:{ try failure.check() })
+        let active = try await f.prepare()
+        try await f.store.upsert(f.record("removed"),in:active); try await f.store.activate(active)
+        let building = try await f.store.prepareGeneration(for:indexDescriptor(model:"next"),installationFingerprint:f.installation)
+        try await f.store.upsert(f.record("removed"),in:building)
+        failure.arm()
+        await indexError(.indexUnavailable) { _ = try await f.store.retainOnlyCatalogAssets([]) }
+        #expect(try await f.store.records(in:active) == [f.record("removed")])
+        #expect(try await f.store.records(in:building) == [f.record("removed")])
+        await indexError(.invalidInput) { _ = try await f.store.retainOnlyCatalogAssets([""]) }
+        #expect(try await f.store.retainOnlyCatalogAssets([]) == 2)
+    }
+
     @Test func lazyInitializationRoundtripLittleEndianAndRestart() async throws {
         let f = try IndexFixture()
         #expect(!FileManager.default.fileExists(atPath: f.directory.path))

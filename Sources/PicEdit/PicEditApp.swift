@@ -32,7 +32,12 @@ struct PicEditApp: App {
         let metadataStore = bootstrap.metadata
         let library = LibraryModel(repository: repository, semanticSearch: semantic, metadataStore: metadataStore,
             lifecycle: bootstrap.gate, coordinator: { try await bootstrap.coordinator() },
-            editingDependencies: { try await bootstrap.editingDependencies() })
+            editingDependencies: { try await bootstrap.editingDependencies() },
+            catalogCleanup: { catalog, reference in
+                let changed = try await bootstrap.reconcileCatalog(catalog, reference: reference)
+                try await semantic?.purgeRemovedAssets(retaining: Set(catalog.assets.map(\.id)))
+                return changed
+            })
         let editor = EditingModel(directory: repository.directory, loader: { try await bootstrap.editingDependencies() })
         editor.library = library
         library.synchronizeEditing = { [weak editor] in try await editor?.reloadAfterCatalogChange() }
@@ -50,8 +55,15 @@ struct PicEditApp: App {
         _aiSettings = StateObject(wrappedValue: aiSettings)
         let vision = LocalImageAnalysisFactory.makeSharedService()
         _imageAnalysis = StateObject(wrappedValue: ImageAnalysisModel(service: vision, editor: editor, library: library))
-        _photoMetadata = StateObject(wrappedValue: PhotoMetadataModel(store: metadataStore,
-            suggestor: LocalPhotoMetadataSuggestor(service: vision), library: library, editor: editor))
+        let photoMetadata = PhotoMetadataModel(store: metadataStore,
+            suggestor: LocalPhotoMetadataSuggestor(service: vision), library: library, editor: editor)
+        library.prepareCatalogCleanup = { [weak editor, weak photoMetadata] in
+            guard editor?.isRestoring != true, editor?.isBackingUp != true else { throw CatalogLifecycleError.maintenanceAlreadyPending }
+            let saved = await editor?.flush() ?? true
+            guard saved || editor?.hasPendingChanges == false,
+                  await photoMetadata?.drainAcceptedWrites() ?? true else { throw ArtifactContractError.staleSnapshot }
+        }
+        _photoMetadata = StateObject(wrappedValue: photoMetadata)
     }
 
     var body: some Scene {
