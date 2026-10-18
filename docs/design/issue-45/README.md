@@ -2,7 +2,7 @@
 
 17. Oktober 2026 · [Issue #45](https://github.com/dr-dimitri/picedit/issues/45) · analysierter App-Stand `fba0c9b`.
 
-Umsetzungsstand: Der Bildfokus aus Vorschlag B ist in der Anwendung umgesetzt. Die aktuellen Bedienwege und Zustandsregeln stehen unter [Bildfokus und Arbeitsbereiche](../../WORKSPACE-LAYOUT.md). Die folgenden Bilder bleiben die ursprünglichen statischen Entwürfe.
+Umsetzungsstand: Die klassische Ansicht mit gruppierten Werkzeugen und der Bildfokus sind in der Anwendung umgesetzt. Die aktuellen Bedienwege und Zustandsregeln stehen unter [Bildfokus und Arbeitsbereiche](../../WORKSPACE-LAYOUT.md); der [Abnahmebericht](ACCEPTANCE.md) beschreibt den nativen Stand, Belege und verbleibende manuelle Grenzen. Die folgenden Bilder, Klickwege und Geometrien bleiben die ursprünglichen statischen Entwürfe.
 
 Dies sind **statische Entwürfe zur Entscheidung über das Layout**. Zum Zeitpunkt dieser Entwürfe war die Anwendung noch nicht umgebaut. Beide Ansichten gehören zu einem Bedienkonzept und verwenden dieselben Bearbeitungszustände. Das synthetische Alpensee-Motiv, Dateinamen, Zahlen, Looktitel und Vorschlagswerte sind Beispieldaten. Die Illustration ist kein Foto und kein Ergebnis der Bildverarbeitung. Der ausgeschriebene Looktitel steht exemplarisch für einen erzeugten Vorschlag, nicht für ein neues festes Preset.
 
@@ -83,7 +83,7 @@ Alle Werte sind CSS-Pixel der **gerenderten Mockups**, keine Messungen der laufe
 
 Die zusätzliche Breite führt bei einem höhenbegrenzten Bild nicht automatisch zu einer größeren Bilddarstellung. Im Beispiel sind A geschlossen und B mit offenem Werkzeug deshalb gleich groß. Bei größeren Fenstern oder anderen Bildformaten ändert sich die begrenzende Kante.
 
-Die jetzige App reserviert laut `LibraryView.swift` 218 pt links und 300 pt im Entwickeln-Inspector, laut `PhotoGridView.swift` 98 pt für den Filmstreifen. Ihre dynamischen Kopf-/Scrollhöhen wurden hier nicht live vermessen; daraus wird kein prozentualer Flächengewinn abgeleitet. Ein späterer Prototyp soll die aktuelle App und die neuen Ansichten am selben Foto einschließlich Hochformat und größerer Fenster live vergleichen.
+Der damalige App-Stand `fba0c9b` reservierte laut `LibraryView.swift` 218 pt links und 300 pt im Entwickeln-Inspector, laut `PhotoGridView.swift` 98 pt für den Filmstreifen. Seine dynamischen Kopf-/Scrollhöhen wurden für diese Mockups nicht live vermessen; daraus wird kein prozentualer Flächengewinn abgeleitet. Der native Vergleich gehört zum [Abnahmebericht](ACCEPTANCE.md), getrennt von den hier dargestellten CSS-Geometrien.
 
 ## Dateien, Reproduktion und Prüfung
 
@@ -93,4 +93,4 @@ Die jetzige App reserviert laut `LibraryView.swift` 218 pt links und 300 pt im E
 - Der Renderer erzeugt acht PNGs, prüft horizontalen Überlauf und die Fenstergrenzen der Kopf-/Dock-Schalter und protokolliert Canvas und Einpassgeometrie. Zwei unabhängige Browserseiten arbeiten parallel; Schreiben derselben Datei und die gemeinsame Git-Veröffentlichung bleiben geordnet.
 - Das finale Diff und die Bilder werden unabhängig reviewt; der nach `AGENTS.md` vorgeschriebene vollständige saubere App-Build wird auch für diese Dokumentationsänderung ausgeführt. Der Abschlussbericht im PR dokumentiert die Ergebnisse.
 
-Offen für die UI-Umsetzung bleiben echte Interaktion, kleinere/größere Fenster mit beliebigen Fotos, Tastatur-/VoiceOver-Prüfung, Neustart/Wiederherstellung, Speicherfehler und Zustands-/Integrationstests. Insbesondere dürfen `AIAssistantSection.onDisappear` und `ImageAnalysisSection.onDisappear` beim bloßen Layoutwechsel keine gültigen Vorschläge verwerfen. Gruppenpräferenzen gehören außerhalb des mit `.id(asset.id)` neu erzeugten Entwicklungsbaums. Verfügbare Caches, Abbruch- und Speicherverträge bleiben erhalten. Diese Mockups erfüllen den Entwurfsschritt des Issues; sie schließen Issue 45 nicht ab.
+Die native Umsetzung hält Gruppenpräferenzen außerhalb des mit `.id(asset.id)` neu erzeugten Entwicklungsbaums. `AIAssistantSection` und `ImageAnalysisSection` verwerfen beim bloßen Entfernen aus dem View-Baum keine Vorschläge oder Aufgaben mehr. Zustands-/Integrationstests und native Prüfungen werden im [Abnahmebericht](ACCEPTANCE.md) eingeordnet; insbesondere bleibt ein vollständiger manueller VoiceOver-Durchlauf gesondert nachzuweisen. Diese historischen Mockups belegen den Entwurfsschritt und sind für sich genommen keine Abnahme der Anwendung.

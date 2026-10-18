@@ -121,8 +121,11 @@ struct DetailView: View {
     @EnvironmentObject private var editor: EditingModel
     @EnvironmentObject private var assistant: AIAssistantModel
     @EnvironmentObject private var layout: WorkspaceLayoutModel
+    @Environment(\.workspaceCanvasMeasurement) private var measureCanvas
     @ViewState<Bool> private var zoomed = false
-    @ViewState<Bool> private var showsMaskEditor = false
+    @ViewState private var canvasSize = CGSize.zero
+    @ViewState private var zoomCanvasSize = CGSize.zero
+    @Binding var showsMaskEditor: Bool
     var body: some View {
         GeometryReader { available in
         VStack(spacing: 0) {
@@ -137,8 +140,10 @@ struct DetailView: View {
                     Button { showsMaskEditor = true } label: {
                         Label("Maske", systemImage: "paintbrush.pointed").font(.system(size: 10))
                     }.buttonStyle(.plain).help("Maskenentwurf auf der aktuellen Bildquelle bearbeiten")
+                        .accessibilityIdentifier("workspace.mask")
                         .disabled(!model.canModify || model.editingRenderIntent != .currentEditing || editor.isLoading || editor.isRestoring || editor.isClosing)
-                    Button { zoomed.toggle() } label: { Label(zoomed ? "Einpassen" : "Vergrößern", systemImage: zoomed ? "minus.magnifyingglass" : "plus.magnifyingglass").font(.system(size: 10)) }.buttonStyle(.plain).foregroundStyle(Theme.muted)
+                    Button { toggleZoom(viewport: canvasSize) } label: { Label(zoomed ? "Einpassen" : "Vergrößern", systemImage: zoomed ? "minus.magnifyingglass" : "plus.magnifyingglass").font(.system(size: 10)) }.buttonStyle(.plain).foregroundStyle(Theme.muted)
+                        .accessibilityIdentifier("workspace.zoom")
                     Menu {
                         Button("Aktuelle Bearbeitung") { model.comparesOriginal = false; model.comparesCurrentSourceWithoutSettings = false }
                         Button("Importiertes Original") { model.comparesOriginal = true; model.comparesCurrentSourceWithoutSettings = false }
@@ -150,16 +155,25 @@ struct DetailView: View {
                     if zoomed {
                         ScrollView([.horizontal, .vertical]) {
                             EditingPhotoPreview(asset: asset, intent: model.editingRenderIntent, settingsOverride: previewSettings(for: asset.id), developing: model.isDeveloping)
-                                .frame(width: max(1, geometry.size.width * 2), height: max(1, geometry.size.height * 2))
+                                // Capture magnification once; resizing panels only
+                                // changes the viewport around this scroll content.
+                                .frame(width: zoomCanvasSize.width, height: zoomCanvasSize.height)
                                 .onTapGesture(count: 2) { zoomed = false }
                         }
                     } else {
                         EditingPhotoPreview(asset: asset, intent: model.editingRenderIntent, settingsOverride: previewSettings(for: asset.id), developing: model.isDeveloping)
                             .padding(.horizontal, 25).padding(.vertical, 10)
                             .frame(width: geometry.size.width, height: geometry.size.height)
-                            .onTapGesture(count: 2) { zoomed = true }
+                            .onTapGesture(count: 2) { toggleZoom(viewport: geometry.size) }
                     }
-                }.contextMenu { PhotoContextMenu(asset: asset, model: model) }
+                }.onGeometryChange(for: CGSize.self) { $0.size } action: {
+                    canvasSize = $0
+                    measureCanvas?($0)
+                }
+                    .contextMenu { PhotoContextMenu(asset: asset, model: model) }
+                    .accessibilityElement(children: .contain)
+                    .accessibilityLabel("Bildfläche")
+                    .accessibilityIdentifier("workspace.canvas")
                 HStack(spacing: 18) {
                     IconButton(symbol: "chevron.left", help: "Vorheriges Foto · ←") { model.navigate(-1) }
                     RatingStars(rating: asset.rating, size: 13, onChange: { model.setRating($0) }).disabled(!model.canModify)
@@ -177,19 +191,15 @@ struct DetailView: View {
                 }
             }
         }.frame(maxWidth: .infinity, maxHeight: .infinity).background(Color.black.opacity(0.14))
-            .onChange(of: model.selectedID) { _, _ in zoomed = false; showsMaskEditor = false }
-            .sheet(isPresented: $showsMaskEditor) {
-                if let asset = model.selectedAsset, let source = try? editor.resolvedSource(for: asset) {
-                    MaskCanvasView(asset: asset, source: source.identity, settings: source.settings)
-                        .id(source.identity)
-                } else {
-                    VStack(spacing: 14) {
-                        Text("Die aktuelle Bildquelle ist für den Maskeneditor nicht verfügbar.")
-                        Button("Schließen") { showsMaskEditor = false }.keyboardShortcut(.cancelAction)
-                    }.padding(24)
-                }
-            }
+            .onChange(of: model.selectedID) { _, _ in zoomed = false }
         }
+    }
+
+    private func toggleZoom(viewport: CGSize) {
+        if !zoomed {
+            zoomCanvasSize = CGSize(width: max(1, viewport.width * 2), height: max(1, viewport.height * 2))
+        }
+        zoomed.toggle()
     }
 
     private var previewLabel: String {

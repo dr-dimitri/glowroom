@@ -10,11 +10,25 @@ struct LibraryView: View {
     @EnvironmentObject private var assistant: AIAssistantModel
     @EnvironmentObject private var imageAnalysis: ImageAnalysisModel
     @EnvironmentObject private var photoMetadata: PhotoMetadataModel
-    @FocusState private var focusReturnButton: Bool
+    @FocusState private var focusedWorkspaceControl: WorkspaceControlFocus?
     let dataDirectory: URL
+    private let maskModel: MaskEditingModel?
     @ViewState<LibraryFolder?> private var folderToRemove: LibraryFolder?
     @ViewState<Bool> private var dropTargeted = false
     @ViewState<Bool> private var showsWorkspaceErrors = false
+    @ViewState<Bool> private var showsMaskEditor = false
+    @ViewState private var focusReturnRequest: FocusReturnRequest?
+
+    private struct FocusReturnRequest: Equatable {
+        let target: WorkspaceControlFocus
+        let identity = UUID()
+    }
+
+    init(model: LibraryModel, dataDirectory: URL, maskModel: MaskEditingModel? = nil) {
+        self.model = model
+        self.dataDirectory = dataDirectory
+        self.maskModel = maskModel
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -42,7 +56,9 @@ struct LibraryView: View {
                     }
                 }
             }
-            if layout.isFocused { WorkspaceDock(layout: layout, library: model) }
+            if layout.isFocused {
+                WorkspaceDock(layout: layout, library: model, focusedControl: $focusedWorkspaceControl)
+            }
             if let error = model.coordinationError {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Speicherzuordnung muss geprüft werden").font(.callout)
@@ -61,8 +77,22 @@ struct LibraryView: View {
         .onAppear {
             if layout.isFocused, model.selectedAsset != nil { model.showsDetail = true; model.isDeveloping = true }
         }
-        .onChange(of: panels.showsTools) { old, visible in
-            if old && !visible { focusReturnButton = true }
+        .onChange(of: panelVisibility) { previous, current in
+            // One owner routes focus after removal; the dock and normal controls
+            // must not compete to focus different buttons in the same update.
+            let target = WorkspaceFocusRouting.target(previous: previous, current: current,
+                                                      revealedTool: layout.revealedTool,
+                                                      hasSelection: model.selectedAsset != nil)
+            focusReturnRequest = target.map { FocusReturnRequest(target: $0) }
+            if target != nil { focusedWorkspaceControl = nil }
+        }
+        .task(id: focusReturnRequest) {
+            guard let request = focusReturnRequest else { return }
+            // AppKit first repairs focus after removing the old control. Restore
+            // it after that update; a newer layout cancels this pending request.
+            await Task.yield()
+            guard !Task.isCancelled else { return }
+            focusedWorkspaceControl = request.target
         }
         .onChange(of: model.showsDetail) { _, detail in if !detail {
             // Empty search results are a selection change, not a request to leave focus.
@@ -72,6 +102,7 @@ struct LibraryView: View {
         } }
         .onChange(of: model.selectedID) { old, _ in
             if let old { editor.endEditing(assetID: old) }
+            showsMaskEditor = false
             model.comparesOriginal = false
             model.comparesCurrentSourceWithoutSettings = false
             if layout.isFocused, model.selectedAsset != nil { model.showsDetail = true; model.isDeveloping = true }
@@ -81,6 +112,17 @@ struct LibraryView: View {
         .onChange(of: model.minimumRating) { _, _ in model.reconcileSelection() }
         .sheet(isPresented: Binding(get: { exporter.isPresented }, set: { if !$0 { exporter.cancel() } })) {
             JPEGExportView(model: exporter)
+        }
+        .sheet(isPresented: $showsMaskEditor) {
+            if let asset = model.selectedAsset, let source = try? editor.resolvedSource(for: asset) {
+                MaskCanvasView(asset: asset, source: source.identity, settings: source.settings, model: maskModel)
+                    .id(source.identity)
+            } else {
+                VStack(spacing: 14) {
+                    Text("Die aktuelle Bildquelle ist für den Maskeneditor nicht verfügbar.")
+                    Button("Schließen") { showsMaskEditor = false }.keyboardShortcut(.cancelAction)
+                }.padding(24)
+            }
         }
         .alert("PicEdit", isPresented: Binding(get: { model.errorMessage != nil || editor.errorMessage != nil }, set: { if !$0 { model.errorMessage = nil; editor.errorMessage = nil } })) {
             Button("OK") { model.errorMessage = nil; editor.errorMessage = nil }
@@ -92,6 +134,11 @@ struct LibraryView: View {
     }
 
     private var panels: WorkspacePanels { layout.panels(developing: model.isDeveloping) }
+
+    private var panelVisibility: WorkspacePanelVisibility {
+        WorkspacePanelVisibility(isFocused: layout.isFocused, showsLibrary: panels.showsLibrary,
+                                 showsTools: panels.showsTools, showsFilmstrip: panels.showsFilmstrip)
+    }
 
     private var appHeader: some View {
         HStack(spacing: 12) {
@@ -119,7 +166,10 @@ struct LibraryView: View {
                 Label(layout.isFocused ? "Zur vorherigen Ansicht" : "Bildfokus", systemImage: "viewfinder")
                     .padding(.horizontal, 9).frame(height: 30)
                     .background(Theme.accent.opacity(0.09), in: RoundedRectangle(cornerRadius: 6))
-            }.foregroundStyle(Theme.accent).focused($focusReturnButton)
+            }.foregroundStyle(Theme.accent)
+                .workspaceFocusTarget($focusedWorkspaceControl, equals: .focus) {
+                    WorkspaceActions.toggleFocus(layout, library: model)
+                }
                 .disabled(!layout.isFocused && model.selectedAsset == nil)
                 .help("Bildfokus umschalten · ⇧⌘F")
                 .accessibilityIdentifier("workspace.focus")
@@ -205,9 +255,12 @@ struct LibraryView: View {
                     compactLibraryBar
                 } else {
                     libraryHeading
-                    ViewThatFits(in: .horizontal) {
-                        controlBar
-                        compactControlBar
+                    HStack(spacing: 0) {
+                        ViewThatFits(in: .horizontal) {
+                            controlBar
+                            compactControlBar
+                        }
+                        panelControls
                     }
                 }
             if model.searchMode == .semantic || model.semanticOperationLabel != nil || model.semanticState.isIndexing || model.semanticImportReview != nil {
@@ -224,7 +277,7 @@ struct LibraryView: View {
             } else if model.visibleAssets.isEmpty {
                 emptyState.frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if model.showsDetail {
-                DetailView(model: model)
+                DetailView(model: model, showsMaskEditor: $showsMaskEditor)
             } else {
                 PhotoGridView(model: model)
             }
@@ -280,9 +333,30 @@ struct LibraryView: View {
             Spacer(minLength: 0)
             IconButton(symbol: "arrow.clockwise", help: "Ordner aktualisieren") { model.refreshCurrentFolder() }
                 .disabled(model.isImporting || model.folders.isEmpty || !model.canModify)
-            IconButton(symbol: "sidebar.left", help: "Bibliothek · ⌥⌘L", active: panels.showsLibrary) { WorkspaceActions.toggleLibrary(layout, library: model) }
-            IconButton(symbol: "sidebar.right", help: "Werkzeuge · ⌘I", active: panels.showsTools) { WorkspaceActions.toggleTools(layout, library: model) }
         }.padding(.horizontal, 14).frame(height: 48)
+    }
+
+    private var panelControls: some View {
+        HStack(spacing: 8) {
+            IconButton(symbol: "sidebar.left", help: "Bibliothek · ⌥⌘L", active: panels.showsLibrary) {
+                WorkspaceActions.toggleLibrary(layout, library: model)
+            }.workspaceFocusTarget($focusedWorkspaceControl, equals: .library) {
+                WorkspaceActions.toggleLibrary(layout, library: model)
+            }
+                .accessibilityValue(panels.showsLibrary ? "Geöffnet" : "Geschlossen")
+            IconButton(symbol: "sidebar.right", help: "Werkzeuge · ⌘I", active: panels.showsTools) {
+                WorkspaceActions.toggleTools(layout, library: model)
+            }.workspaceFocusTarget($focusedWorkspaceControl, equals: .tools) {
+                WorkspaceActions.toggleTools(layout, library: model)
+            }
+                .accessibilityValue(panels.showsTools ? "Geöffnet" : "Geschlossen")
+            IconButton(symbol: "film", help: "Filmstreifen · ⌥⌘S", active: panels.showsFilmstrip) {
+                WorkspaceActions.toggleFilmstrip(layout, library: model)
+            }.workspaceFocusTarget($focusedWorkspaceControl, equals: .filmstrip) {
+                WorkspaceActions.toggleFilmstrip(layout, library: model)
+            }
+                .accessibilityValue(panels.showsFilmstrip ? "Geöffnet" : "Geschlossen")
+        }.padding(.trailing, 14).fixedSize()
     }
 
     private var libraryOptionsMenu: some View {
@@ -331,8 +405,6 @@ struct LibraryView: View {
             } label: { Label(model.sort.rawValue, systemImage: "arrow.down").font(.system(size: 10)).foregroundStyle(Theme.muted) }
                 .menuStyle(.borderlessButton).fixedSize()
             IconButton(symbol: "arrow.clockwise", help: "Ordner aktualisieren") { model.refreshCurrentFolder() }.disabled(model.isImporting || model.folders.isEmpty || !model.canModify)
-            IconButton(symbol: "sidebar.left", help: "Bibliothek · ⌥⌘L", active: panels.showsLibrary) { WorkspaceActions.toggleLibrary(layout, library: model) }
-            IconButton(symbol: "sidebar.right", help: "Werkzeuge · ⌘I", active: panels.showsTools) { WorkspaceActions.toggleTools(layout, library: model) }
         }.padding(.horizontal, 22).frame(height: 48)
     }
 
@@ -531,6 +603,9 @@ struct LibraryView: View {
     }
 
     private func handleKey(_ event: NSEvent) -> Bool {
+        // Let workspace buttons activate normally while retaining photo arrows,
+        // ratings and favorites immediately after a panel or focus transition.
+        if focusedWorkspaceControl != nil && [49, 36, 76].contains(event.keyCode) { return false }
         if event.modifierFlags.contains(.command) {
             guard event.charactersIgnoringModifiers?.lowercased() == "a",
                   event.modifierFlags.intersection([.control, .option, .shift]).isEmpty else { return false }

@@ -10,7 +10,7 @@ struct MaskCanvasView: View {
     let settings: EditSettings
     @Environment(\.dismiss) private var dismiss
     @Environment(\.displayScale) private var displayScale
-    @StateObject private var mask = MaskEditingModel()
+    @StateObject private var mask: MaskEditingModel
     @ViewState private var tool: Tool = .brush
     @ViewState private var zoom: Double = 1
     @ViewState private var pan = CGSize.zero
@@ -24,6 +24,13 @@ struct MaskCanvasView: View {
         case brush, erase, pan
         var name: String { switch self { case .brush: return "Pinsel"; case .erase: return "Radierer"; case .pan: return "Hand" } }
         var symbol: String { switch self { case .brush: return "paintbrush.pointed"; case .erase: return "eraser"; case .pan: return "hand.draw" } }
+    }
+
+    init(asset: PhotoAsset, source: AISourceIdentity, settings: EditSettings, model: MaskEditingModel? = nil) {
+        self.asset = asset
+        self.source = source
+        self.settings = settings
+        _mask = StateObject(wrappedValue: model ?? MaskEditingModel())
     }
 
     var body: some View {
@@ -52,6 +59,7 @@ struct MaskCanvasView: View {
                                 switch phase { case .active(let location): cursor = location; case .ended: cursor = nil }
                             }
                             .accessibilityLabel("Maskencanvas für \(asset.fileName)")
+                            .accessibilityIdentifier("mask.canvas")
                             .accessibilityHint("Mit Pinsel oder Radierer ziehen. Mit der Hand das Bild verschieben. Ein Strich ist ein Rückgängig-Schritt.")
                     } else if let loadingError {
                         ContentUnavailableView("Maskencanvas nicht verfügbar", systemImage: "exclamationmark.triangle", description: Text(loadingError))
@@ -117,6 +125,7 @@ struct MaskCanvasView: View {
             Spacer(minLength: 0)
             Button { mask.undo() } label: { Image(systemName: "arrow.uturn.backward") }
                 .disabled(!mask.canUndo).help("Maskenstrich rückgängig").accessibilityLabel("Maskenstrich rückgängig")
+                .accessibilityIdentifier("mask.undo")
             Button { mask.redo() } label: { Image(systemName: "arrow.uturn.forward") }
                 .disabled(!mask.canRedo).help("Maskenstrich wiederholen").accessibilityLabel("Maskenstrich wiederholen")
             Menu {
