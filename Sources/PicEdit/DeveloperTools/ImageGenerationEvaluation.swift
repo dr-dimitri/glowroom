@@ -214,68 +214,6 @@ private final class NativeSession: @unchecked Sendable {
     }
 }
 
-private final class PreviewProbe: @unchecked Sendable {
-    // One bounded background renderer; Core Image chooses its execution backend.
-    let queue = DispatchQueue(label: "picedit.synthetic-preview", qos: .userInitiated)
-    let lock = NSLock(), group = DispatchGroup(), colorSpace = CGColorSpace(name: CGColorSpace.sRGB)!
-    var context: CIContext? = CIContext(options: [.cacheIntermediates: false])
-    var stopped = true, samples: [Double] = [], renderSamples: [Double] = [], skipped = 0, checksum: UInt64 = 0
-    let image: CIImage
-    init() {
-        image = CIFilter(name: "CICheckerboardGenerator", parameters: ["inputWidth": 23,
-            "inputColor0": CIColor(red: 0.2, green: 0.45, blue: 0.7),
-            "inputColor1": CIColor(red: 0.8, green: 0.3, blue: 0.1)])!.outputImage!
-            .cropped(to: CGRect(x: 0, y: 0, width: 256, height: 256))
-    }
-    func render(_ index: Int) -> Double {
-        let begin = now()
-        let processed = image.applyingFilter("CIExposureAdjust", parameters: ["inputEV": sin(Double(index) * 0.13) * 0.5])
-            .applyingFilter("CIColorControls", parameters: ["inputSaturation": 0.9, "inputContrast": 1.05])
-        var pixels = [UInt8](repeating: 0, count: 256 * 256 * 4)
-        pixels.withUnsafeMutableBytes { bytes in
-            context!.render(processed, toBitmap: bytes.baseAddress!, rowBytes: 256 * 4,
-                bounds: CGRect(x: 0, y: 0, width: 256, height: 256), format: .RGBA8, colorSpace: colorSpace)
-        }
-        for index in stride(from: 0, to: pixels.count, by: 4096) { checksum = (checksum &* 1099511628211) ^ UInt64(pixels[index]) }
-        return now() - begin
-    }
-    func start() {
-        lock.lock(); stopped = false; samples = []; renderSamples = []; skipped = 0; checksum = 0; lock.unlock()
-        group.enter(); queue.async {
-            let origin = now(); var previous = -1
-            while true {
-                self.lock.lock(); let stop = self.stopped; self.lock.unlock(); if stop { break }
-                let index = max(previous + 1, Int((now() - origin) / 0.1))
-                if previous >= 0 { self.skipped += max(0, index - previous - 1) }; previous = index
-                let elapsed = autoreleasepool { self.render(index) }
-                self.renderSamples.append(elapsed)
-                self.samples.append(max(elapsed, now() - (origin + Double(index) * 0.1)))
-                if self.samples.count >= 2500 { break }
-                let delay = origin + Double(index + 1) * 0.1 - now()
-                if delay > 0 { Thread.sleep(forTimeInterval: min(delay, 0.1)) }
-            }
-            self.group.leave()
-        }
-    }
-    func stop() -> JSONObject {
-        lock.lock(); stopped = true; lock.unlock(); group.wait()
-        let sorted = samples.sorted()
-        func quantile(_ q: Double) -> Double { sorted.isEmpty ? 0 : sorted[Int(ceil(Double(sorted.count - 1) * q))] }
-        return ["sampleCount": sorted.count, "p50Seconds": quantile(0.5), "p95Seconds": quantile(0.95),
-            "p99Seconds": quantile(0.99), "maximumSeconds": sorted.last ?? 0, "coalescedFrameCount": skipped,
-            "checksum": String(checksum), "source": "procedural256x256-checkerboard", "targetIntervalSeconds": 0.1,
-            "execution": "CIContext-auto-single-background-renderer", "actualPicEditUIOrRAWTest": false,
-            "latencyDefinition": "scheduled-coalesced-request-to-render-return; includes scheduling and GPU wait",
-            "maximumRenderOnlySeconds": renderSamples.max() ?? 0]
-    }
-    func baseline() -> JSONObject {
-        for index in 0..<5 { _ = autoreleasepool { render(index) } }
-        start(); Thread.sleep(forTimeInterval: 3); var value = stop(); value["discardedWarmupRenders"] = 5
-        value["modelContextResidentButNoModelCompute"] = true; return value
-    }
-    func release() { context?.clearCaches(); context = nil }
-}
-
 private func verifyInputs() throws -> [JSONObject] {
     #if !arch(arm64)
     throw Failure.code("unsupported-hardware")
@@ -342,7 +280,7 @@ private func benchmark(directory: URL, allFixtures: Bool) throws {
         "operations": [JSONObject](), "physicalMemoryBytes": ProcessInfo.processInfo.physicalMemory,
         "operatingSystem": ProcessInfo.processInfo.operatingSystemVersionString,
         "harnessExecutableSHA256": try hash(URL(fileURLWithPath: CommandLine.arguments[0]))]
-    var session: NativeSession?, preview: PreviewProbe?, failure: Error?
+    var session: NativeSession?, preview: ImageGenerationPreviewProbe?, failure: Error?
     do {
         let fixtures = try verifyInputs()
         report["installation"] = try json(root.appendingPathComponent("evaluation-installation.json"))
@@ -364,7 +302,7 @@ private func benchmark(directory: URL, allFixtures: Bool) throws {
         try require(loaded["status"] as? String == "success", "load-failed")
         try require(loaded["configurationSHA256"] as? String == configurationSHA, "native-configuration-hash")
         for (index, item) in cases.enumerated() {
-            if index == 1 { preview = PreviewProbe(); report["previewBaseline"] = preview!.baseline(); preview!.start() }
+            if index == 1 { preview = ImageGenerationPreviewProbe(); report["previewBaseline"] = preview!.baseline(); preview!.start() }
             let output = "outputs/\(stamp)-\(item.0).png"
             let request: JSONObject = ["operation": "generate", "id": item.0, "source": item.1["source"]!,
                 "mask": item.2["path"]!, "output": output, "prompt": item.1["prompt"]!,
@@ -373,8 +311,9 @@ private func benchmark(directory: URL, allFixtures: Bool) throws {
             if index == 1 {
                 let value = preview!.stop(); report["previewConcurrent"] = value; preview!.release(); preview = nil
                 let baseline = report["previewBaseline"] as! JSONObject
-                report["previewGatePassed"] = (value["p95Seconds"] as! Double) <= 0.25 &&
-                    (value["p95Seconds"] as! Double) <= (baseline["p95Seconds"] as! Double) * 2
+                let gate = ImageGenerationPreviewGate.evaluate(baseline: baseline, concurrent: value)
+                report["previewGatePassed"] = gate.passed
+                report["previewGateFailureReasons"] = gate.failureReasons
             }
             result["request"] = request
             result["fixtureID"] = item.1["id"]!; result["maskKind"] = item.2["kind"]!
@@ -452,7 +391,7 @@ private func sdxlBenchmark(directory: URL, allFixtures: Bool, numericDiagnostic:
         "hardware": ["physicalMemoryBytes": ProcessInfo.processInfo.physicalMemory,
                      "operatingSystem": ProcessInfo.processInfo.operatingSystemVersionString],
         "harnessExecutableSHA256": try hash(URL(fileURLWithPath: CommandLine.arguments[0]))]
-    var session: NativeSession?, preview: PreviewProbe?, failure: Error?
+    var session: NativeSession?, preview: ImageGenerationPreviewProbe?, failure: Error?
     let began = now()
     do {
         #if !arch(arm64)
@@ -578,7 +517,7 @@ private func sdxlBenchmark(directory: URL, allFixtures: Bool, numericDiagnostic:
         report["load"] = loaded
         try require(loaded["status"] as? String == "success", "sdxl-load-failed")
         for (index, item) in cases.enumerated() {
-            if index == 1 { preview = PreviewProbe(); report["previewBaseline"] = preview!.baseline(); preview!.start() }
+            if index == 1 { preview = ImageGenerationPreviewProbe(); report["previewBaseline"] = preview!.baseline(); preview!.start() }
             let id = (item.1["id"] as! String) + "-" + (item.2["kind"] as! String)
             let (mapping, source, mask) = prepared[id]!
             let output = "outputs/\(stamp)-\(item.0).png"
@@ -598,10 +537,9 @@ private func sdxlBenchmark(directory: URL, allFixtures: Bool, numericDiagnostic:
             if index == 1 {
                 let concurrent = preview!.stop(); report["previewConcurrent"] = concurrent; preview!.release(); preview = nil
                 let baseline = report["previewBaseline"] as! JSONObject
-                report["previewGatePassed"] = (baseline["sampleCount"] as? Int ?? 0) > 0 &&
-                    (concurrent["sampleCount"] as? Int ?? 0) > 0 &&
-                    (concurrent["p95Seconds"] as! Double) <= 0.25 &&
-                    (concurrent["p95Seconds"] as! Double) <= (baseline["p95Seconds"] as! Double) * 2
+                let gate = ImageGenerationPreviewGate.evaluate(baseline: baseline, concurrent: concurrent)
+                report["previewGatePassed"] = gate.passed
+                report["previewGateFailureReasons"] = gate.failureReasons
             }
             let folder = directory.appendingPathComponent("artifacts/\(item.0)")
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
