@@ -6,14 +6,15 @@ import Testing
 @Suite("Semantic service scheduling, source identity and maintenance")
 struct SemanticSearchServiceTests {
     @Test(.timeLimit(.minutes(1))) func catalogRemovalDrainsNativeIndexWorkAndReaddingCannotRestoreCachedVectors() async throws {
-        let f = try await SearchFixture.make(); await f.provider.block(image:true)
+        let f = try await SearchFixture.make(); let nativeGate = await f.provider.block(image:true)
         let indexing = Task { try await f.service.prepareIndex(scope:f.photos,rebuild:true) }
         // An async event is the precondition. A loaded test executor must not
         // continue merely because a short polling deadline elapsed.
-        defer { indexing.cancel(); Task { await f.provider.unblock() } }
+        defer { indexing.cancel(); nativeGate.releaseAll() }
         try await f.provider.waitForFirstImageCall()
         let updates = await f.service.updates()
         let removing = Task { try await f.service.purgeRemovedAssets(retaining:[f.photos[1].id]) }
+        defer { removing.cancel() }
         var maintenanceEntered = false
         for await state in updates {
             if state.availability == .unavailable(.busy) { maintenanceEntered = true; break }
@@ -98,11 +99,14 @@ struct SemanticSearchServiceTests {
         let source = AIOriginalSourceFingerprint(fileURL: URL(fileURLWithPath: "/synthetic/source"), modifiedAt: Date(timeIntervalSince1970: 123), fileSize: 1)
         let batch = Task { try await admission.sourceStamps(sources: Array(repeating: source, count: 64)) }
         let preparation = Task { try await admission.prepare(source: source, priority: .thumbnail) }
-        await searchEventually { await base.active == 2 }
+        defer { batch.cancel(); preparation.cancel(); base.releaseAll() }
+        try await base.waitForStarted(2)
         let single = Task { try await admission.sourceStamp(source: source) }
-        await searchEventually { await admission.schedulingState().waiting == 1 }
+        defer { single.cancel() }
+        _ = try await waitForTestState("single source stamp queued behind both preparation slots", timeout: .seconds(3), state: { await admission.schedulingState() }, until: { $0.waiting == 1 })
         let cancelledPending = Task { try await admission.sourceStamps(sources: [source]) }
-        await searchEventually { await admission.schedulingState().waiting == 2 }
+        defer { cancelledPending.cancel() }
+        _ = try await waitForTestState("second source-stamp batch queued before cancellation", timeout: .seconds(3), state: { await admission.schedulingState() }, until: { $0.waiting == 2 })
         cancelledPending.cancel()
         await searchError(.cancelled) { _ = try await cancelledPending.value }
         #expect(await admission.schedulingState().waiting == 1)
@@ -111,11 +115,11 @@ struct SemanticSearchServiceTests {
         #expect(await admission.schedulingState().active == 2)
         #expect(await admission.schedulingState().waiting == 1)
         #expect(await base.started == 2) // Cancellation cannot release a busy slot.
-        await base.releaseBatch()
+        base.releaseBatch()
         await #expect(throws: CancellationError.self) { _ = try await batch.value }
-        await searchEventually { await base.started == 3 }
+        try await base.waitForStarted(3)
         #expect(await base.maximumActive == 2)
-        await base.releaseRemaining()
+        base.releaseRemaining()
         _ = try await preparation.value; _ = try await single.value
         #expect(await admission.schedulingState().active == 0)
         #expect(await base.maximumActive == 2)
@@ -156,11 +160,13 @@ struct SemanticSearchServiceTests {
     }
 
     @Test func exactQueryDeduplicatesAndCancellingOneWaiterKeepsNativeLease() async throws {
-        let f = try await SearchFixture.make(); await f.provider.block(text: true)
+        let f = try await SearchFixture.make(); let nativeGate = await f.provider.block(text: true)
         let first = Task { try await f.service.search(query: "same", candidates: f.photos, topK: 1) }
-        await searchEventually { await f.provider.texts.count == 1 }
+        defer { first.cancel(); nativeGate.releaseAll() }
+        try await f.provider.waitForTextCalls(1)
         let second = Task { try await f.service.search(query: "same", candidates: f.photos, topK: 1) }
-        await searchEventually { await f.service.schedulingState().waiters == 2 }
+        defer { second.cancel() }
+        _ = try await waitForTestState("both identical semantic query observers admitted before cancellation", timeout: .seconds(3), state: { await f.service.schedulingState() }, until: { $0.waiters == 2 })
         first.cancel()
         await searchError(.cancelled) { _ = try await first.value }
         #expect(await searchBudgetState(f.budget).activeInferences == 1)
@@ -172,13 +178,15 @@ struct SemanticSearchServiceTests {
     }
 
     @Test func alreadyCancelledSearchCannotInvalidateActualQuery() async throws {
-        let f = try await SearchFixture.make(); await f.provider.block(text: true)
+        let f = try await SearchFixture.make(); let nativeGate = await f.provider.block(text: true)
         let current = Task { try await f.service.search(query: "current", candidates: f.photos, topK: 1) }
-        await searchEventually { await f.provider.texts.count == 1 }
+        defer { current.cancel(); nativeGate.releaseAll() }
+        try await f.provider.waitForTextCalls(1)
         let cancelled = Task {
             withUnsafeCurrentTask { $0?.cancel() }
             return try await f.service.search(query: "cancelled", candidates: f.photos, topK: 1)
         }
+        defer { cancelled.cancel() }
         await searchError(.cancelled) { _ = try await cancelled.value }
         await f.provider.unblock()
         #expect(try await current.value.hits.map(\.assetID) == ["a"])
@@ -188,13 +196,15 @@ struct SemanticSearchServiceTests {
     @Test func alreadyCancelledStatusCannotInvalidateLiveStatus() async throws {
         let f = try await SearchFixture.make()
         _ = try await f.service.status(scope: f.photos)
-        await f.provider.blockOneAvailability()
+        let availabilityGate = await f.provider.blockOneAvailability()
         let current = Task { try await f.service.status(scope: f.photos) }
-        await searchEventually { await f.provider.pendingAvailability == 1 }
+        defer { current.cancel(); availabilityGate.releaseAll() }
+        try await f.provider.waitForBlockedAvailability()
         let cancelled = Task {
             withUnsafeCurrentTask { $0?.cancel() }
             return try await f.service.status(scope: [f.photos[1]])
         }
+        defer { cancelled.cancel() }
         await searchError(.cancelled) { _ = try await cancelled.value }
         await f.provider.releaseAvailability()
         #expect(try await current.value.indexedCount == 2)
@@ -203,9 +213,10 @@ struct SemanticSearchServiceTests {
     @Test func staleAvailabilityCannotOverwriteNewInstallationState() async throws {
         let f = try await SearchFixture.make()
         _ = try await f.service.status(scope: f.photos)
-        await f.provider.blockOneAvailability(returning: .unavailable(.invalidInstallation))
+        let availabilityGate = await f.provider.blockOneAvailability(returning: .unavailable(.invalidInstallation))
         let stale = Task { try await f.service.status(scope: f.photos) }
-        await searchEventually { await f.provider.pendingAvailability == 1 }
+        defer { stale.cancel(); availabilityGate.releaseAll() }
+        try await f.provider.waitForBlockedAvailability()
         let review = try await f.service.inspectModel(source: URL(fileURLWithPath: "/synthetic/package"))
         try await f.service.installModel(review)
         await f.provider.releaseAvailability()
@@ -221,9 +232,10 @@ struct SemanticSearchServiceTests {
     }
 
     @Test func twentyRapidQueriesRetainActualAndOnlyLatestPending() async throws {
-        let f = try await SearchFixture.make(); await f.provider.block(text: true)
+        let f = try await SearchFixture.make(); let nativeGate = await f.provider.block(text: true)
         var previous = Task { try await f.service.search(query: "actual", candidates: f.photos, topK: 1) }
-        await searchEventually { await f.provider.texts.count == 1 }
+        defer { previous.cancel(); nativeGate.releaseAll() }
+        try await f.provider.waitForTextCalls(1)
         for index in 1...20 {
             let next = Task { try await f.service.search(query: "pending\(index)", candidates: f.photos, topK: 1) }
             await searchError(.superseded) { _ = try await previous.value }
@@ -238,12 +250,14 @@ struct SemanticSearchServiceTests {
     }
 
     @Test func cancelledOnlyWaiterDoesNotStartReplacementBeforeActualReturn() async throws {
-        let f = try await SearchFixture.make(); await f.provider.block(text: true)
+        let f = try await SearchFixture.make(); let nativeGate = await f.provider.block(text: true)
         let first = Task { try await f.service.search(query: "first", candidates: f.photos, topK: 1) }
-        await searchEventually { await f.provider.texts.count == 1 }
+        defer { first.cancel(); nativeGate.releaseAll() }
+        try await f.provider.waitForTextCalls(1)
         first.cancel(); await searchError(.cancelled) { _ = try await first.value }
         let next = Task { try await f.service.search(query: "next", candidates: f.photos, topK: 1) }
-        await searchEventually { await f.service.schedulingState().pending == 1 }
+        defer { next.cancel() }
+        _ = try await waitForTestState("replacement semantic query queued behind canceled native work", timeout: .seconds(3), state: { await f.service.schedulingState() }, until: { $0.pending == 1 })
         #expect(await f.provider.texts == ["first"])
         #expect(await searchBudgetState(f.budget).activeInferences == 1)
         await f.provider.unblock(); _ = try await next.value
@@ -267,9 +281,10 @@ struct SemanticSearchServiceTests {
     }
 
     @Test func catalogEpochRejectsLateQueriesAndOlderOrForeignSnapshots() async throws {
-        let f = try await SearchFixture.make(); await f.provider.block(text: true)
+        let f = try await SearchFixture.make(); let nativeGate = await f.provider.block(text: true)
         let query = Task { try await f.service.search(query: "first", candidates: f.photos, topK: 1) }
-        await searchEventually { await f.provider.texts.count == 1 }
+        defer { query.cancel(); nativeGate.releaseAll() }
+        try await f.provider.waitForTextCalls(1)
         await f.service.updateCatalog(snapshotSessionID: f.session, generation: 2, assets: [f.photos[1]])
         await searchError(.superseded) { _ = try await query.value }
         await f.service.updateCatalog(snapshotSessionID: UUID(), generation: 999, assets: f.photos)
@@ -327,9 +342,10 @@ struct SemanticSearchServiceTests {
     }
 
     @Test func changedDuringNativeImageWorkCannotCommit() async throws {
-        let f = try await SearchFixture.make(seed: false); await f.provider.block(image: true)
+        let f = try await SearchFixture.make(seed: false); let nativeGate = await f.provider.block(image: true)
         let indexing = Task { try await f.service.prepareIndex(scope: [f.photos[0]], rebuild: false) }
-        await searchEventually { await f.provider.imageCalls == 1 }
+        defer { indexing.cancel(); nativeGate.releaseAll() }
+        try await f.provider.waitForImageCalls(1)
         await f.preparer.change(f.photos[0].fileURL.path)
         await f.provider.unblock()
         try await indexing.value
@@ -338,9 +354,10 @@ struct SemanticSearchServiceTests {
     }
 
     @Test func cancelledRebuildPreservesOldGenerationAndLeaseUntilNativeReturn() async throws {
-        let f = try await SearchFixture.make(); await f.provider.block(image: true)
+        let f = try await SearchFixture.make(); let nativeGate = await f.provider.block(image: true)
         let indexing = Task { try await f.service.prepareIndex(scope: f.photos, rebuild: true) }
-        await searchEventually { await f.provider.imageCalls == 1 }
+        defer { indexing.cancel(); nativeGate.releaseAll() }
+        try await f.provider.waitForImageCalls(1)
         await f.service.cancelIndexing()
         #expect(await searchBudgetState(f.budget).activeInferences == 1)
         #expect(try await f.store.activeGeneration() == f.generation)
@@ -351,20 +368,24 @@ struct SemanticSearchServiceTests {
     }
 
     @Test func deleteAndShutdownWaitForNativeReturnAndShutdownIsReusable() async throws {
-        let f = try await SearchFixture.make(); await f.provider.block(text: true)
+        let f = try await SearchFixture.make(); let nativeGate = await f.provider.block(text: true)
         let query = Task { try await f.service.search(query: "blocked", candidates: f.photos, topK: 1) }
-        await searchEventually { await f.provider.texts.count == 1 }
+        defer { query.cancel(); nativeGate.releaseAll() }
+        try await f.provider.waitForTextCalls(1)
         let closing = Task { await f.service.shutdown() }
+        defer { closing.cancel() }
         await searchError(.superseded) { _ = try await query.value }
         #expect(await f.provider.unloads == 0)
         #expect(await searchBudgetState(f.budget).activeInferences == 1)
         await f.provider.unblock(); await closing.value
         #expect(await f.provider.unloads == 1)
         _ = try await f.service.search(query: "again", candidates: f.photos, topK: 1)
-        await f.provider.block(text: true)
+        let secondNativeGate = await f.provider.block(text: true)
         let second = Task { try await f.service.search(query: "delete", candidates: f.photos, topK: 1) }
-        await searchEventually { await f.provider.texts.count == 3 }
+        defer { second.cancel(); secondNativeGate.releaseAll() }
+        try await f.provider.waitForTextCalls(3)
         let deleting = Task { try await f.service.deleteIndex() }
+        defer { deleting.cancel() }
         await searchError(.superseded) { _ = try await second.value }
         #expect(try await f.store.activeGeneration() == f.generation)
         #expect(await f.provider.unloads == 1)
@@ -410,18 +431,28 @@ struct SemanticSearchServiceTests {
         let f = try await SearchFixture.make()
         _ = try await f.service.search(query: "prime", candidates: f.photos, topK: 1)
         let review = try await f.service.inspectModel(source: URL(fileURLWithPath: "/synthetic/package"))
-        await f.installer.blockInstallation()
+        let installationGate = await f.installer.blockInstallation()
         let installing = Task { try await f.service.installModel(review) }
-        await searchEventually { await f.installer.installs == 1 }
-        let competing = Task { try await f.budget.acquireLocalInference() }
-        await searchEventually { await searchBudgetState(f.budget).waitingInferences == 1 }
+        defer { installing.cancel(); installationGate.releaseAll() }
+        try await f.installer.waitForInstalls(1)
+        let budgetStates = TestStateSignal<AIResourceBudget.State?>(nil)
+        let updates = await f.budget.stateUpdates()
+        let observation = Task {
+            for await state in updates { budgetStates.update { $0 = state } }
+        }
+        defer { observation.cancel() }
+        let competing = Task {
+            let lease = try await f.budget.acquireLocalInference()
+            await f.budget.release(lease)
+        }
+        defer { competing.cancel() }
+        _ = try await budgetStates.wait("competing inference queued while installation retains its lease", timeout: .seconds(3), until: { $0?.waitingInferences == 1 })
         installing.cancel()
         #expect(await searchBudgetState(f.budget).activeInferences == 1)
         #expect(await searchBudgetState(f.budget).waitingInferences == 1)
         await f.installer.unblockInstallation()
         await searchError(.cancelled) { try await installing.value }
-        let lease = try await competing.value
-        await f.budget.release(lease)
+        try await competing.value
         #expect(await searchBudgetState(f.budget).activeInferences == 0)
     }
 
@@ -497,10 +528,12 @@ struct SemanticSearchServiceTests {
     }
 
     @Test func explicitModelRemoveUnloadsBeforeMutatingFiles() async throws {
-        let f = try await SearchFixture.make(); await f.provider.block(text: true)
+        let f = try await SearchFixture.make(); let nativeGate = await f.provider.block(text: true)
         let query = Task { try await f.service.search(query: "blocked", candidates: f.photos, topK: 1) }
-        await searchEventually { await f.provider.texts.count == 1 }
+        defer { query.cancel(); nativeGate.releaseAll() }
+        try await f.provider.waitForTextCalls(1)
         let removing = Task { try await f.service.removeModel() }
+        defer { removing.cancel() }
         await searchError(.superseded) { _ = try await query.value }
         #expect(await f.installer.removals == 0)
         #expect(await f.provider.unloads == 0)
@@ -551,30 +584,35 @@ private struct SearchFixture: Sendable {
 private actor SearchProviderFake: SemanticEmbeddingProviding {
     nonisolated let descriptor: SemanticModelDescriptor
     var texts: [String] = [], imageCalls = 0, maximumActive = 0, unloads = 0
-    private var active = 0, blockText = false, blockImage = false, invalidNextVector = false, invalidNextInstallation = false
-    private var waiting: [CheckedContinuation<Void, Never>] = []
+    private struct Progress: Sendable { var texts = 0, images = 0, pendingAvailability = 0 }
+    private let progress = TestStateSignal(Progress())
+    private var active = 0, invalidNextVector = false, invalidNextInstallation = false
+    private var textGate: TestAsyncLatch?, imageGate: TestAsyncLatch?
     private var firstImageCallWaiters: [UUID: CheckedContinuation<Void, Error>] = [:]
     private var nextImageInstallationFailure: SemanticEmbeddingError?
-    private var nextAvailability: SemanticAvailability?
-    private var availabilityWaiters: [CheckedContinuation<Void, Never>] = []
-    var pendingAvailability: Int { availabilityWaiters.count }
+    private var nextAvailability: (result: SemanticAvailability, gate: TestAsyncLatch)?
+    private var availabilityGate: TestAsyncLatch?
     init(descriptor: SemanticModelDescriptor) { self.descriptor = descriptor }
     func availability() async -> SemanticAvailability {
-        let result = nextAvailability ?? .available
-        if nextAvailability != nil {
-            nextAvailability = nil
-            await withCheckedContinuation { availabilityWaiters.append($0) }
-        }
-        return result
+        guard let next = nextAvailability else { return .available }
+        nextAvailability = nil
+        progress.update { $0.pendingAvailability += 1 }
+        await next.gate.wait()
+        progress.update { $0.pendingAvailability -= 1 }
+        return next.result
     }
-    func blockOneAvailability(returning result: SemanticAvailability = .available) { nextAvailability = result }
+    func blockOneAvailability(returning result: SemanticAvailability = .available) -> TestAsyncLatch {
+        let gate = TestAsyncLatch()
+        nextAvailability = (result, gate); availabilityGate = gate
+        return gate
+    }
     func releaseAvailability() {
-        let values = availabilityWaiters; availabilityWaiters.removeAll()
-        for value in values { value.resume() }
+        availabilityGate?.releaseAll(); availabilityGate = nil
     }
     func encodeText(_ text: String) async throws -> [Float] {
         texts.append(text); active += 1; maximumActive = max(maximumActive, active)
-        if blockText { await withCheckedContinuation { waiting.append($0) } }
+        progress.update { $0.texts = texts.count }
+        if let textGate { await textGate.wait() }
         active -= 1
         if invalidNextInstallation { invalidNextInstallation = false; throw SemanticEmbeddingError.invalidInstallation }
         if invalidNextVector { invalidNextVector = false; return [0, 0, 0] }
@@ -582,34 +620,53 @@ private actor SearchProviderFake: SemanticEmbeddingProviding {
     }
     func encodeImage(_ input: SemanticImageInput) async throws -> [Float] {
         imageCalls += 1; active += 1; maximumActive = max(maximumActive, active)
+        progress.update { $0.images = imageCalls }
         let entered = firstImageCallWaiters; firstImageCallWaiters.removeAll()
         for waiter in entered.values { waiter.resume() }
-        if blockImage { await withCheckedContinuation { waiting.append($0) } }
+        if let imageGate { await imageGate.wait() }
         active -= 1
         if let failure = nextImageInstallationFailure { nextImageInstallationFailure = nil; throw failure }
         return input.values.first == 1 ? [0, 1, 0] : [1, 0, 0]
     }
+    func waitForTextCalls(_ count: Int) async throws {
+        _ = try await progress.wait("semantic provider entered text call \(count)", timeout: .seconds(3), until: { $0.texts >= count })
+    }
+    func waitForImageCalls(_ count: Int) async throws {
+        _ = try await progress.wait("semantic provider entered image call \(count)", timeout: .seconds(3), until: { $0.images >= count })
+    }
+    // The catalog-removal regression already used the enclosing test's time
+    // limit rather than a short watchdog; retain that cancellation-aware event.
     func waitForFirstImageCall() async throws {
         try Task.checkCancellation()
         if imageCalls > 0 { return }
         let id = UUID()
         try await withTaskCancellationHandler {
-            try await withCheckedThrowingContinuation { (continuation:CheckedContinuation<Void,Error>) in
-                if Task.isCancelled { continuation.resume(throwing:CancellationError()) }
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                if Task.isCancelled { continuation.resume(throwing: CancellationError()) }
                 else { firstImageCallWaiters[id] = continuation }
             }
-        } onCancel:{ Task { await self.cancelFirstImageCallWaiter(id) } }
+        } onCancel: { Task { await self.cancelFirstImageCallWaiter(id) } }
         try Task.checkCancellation()
     }
-    private func cancelFirstImageCallWaiter(_ id:UUID) {
-        firstImageCallWaiters.removeValue(forKey:id)?.resume(throwing:CancellationError())
+    private func cancelFirstImageCallWaiter(_ id: UUID) {
+        firstImageCallWaiters.removeValue(forKey: id)?.resume(throwing: CancellationError())
+    }
+    func waitForBlockedAvailability() async throws {
+        _ = try await progress.wait("semantic provider holding its availability response", timeout: .seconds(3), until: { $0.pendingAvailability == 1 })
     }
     func unload() async { unloads += 1 }
     func failNextVector() { invalidNextVector = true }
     func failNextInstallation() { invalidNextInstallation = true }
     func failNextImageInstallation(_ failure: SemanticEmbeddingError) { nextImageInstallationFailure = failure }
-    func block(text: Bool = false, image: Bool = false) { blockText = text; blockImage = image }
-    func unblock() { blockText = false; blockImage = false; let values = waiting; waiting.removeAll(); for value in values { value.resume() } }
+    func block(text: Bool = false, image: Bool = false) -> TestAsyncLatch {
+        let gate = TestAsyncLatch()
+        textGate = text ? gate : nil; imageGate = image ? gate : nil
+        return gate
+    }
+    func unblock() {
+        textGate?.releaseAll(); imageGate?.releaseAll()
+        textGate = nil; imageGate = nil
+    }
 }
 private actor SearchPreparerFake: SemanticImagePreprocessing {
     private var changed = Set<String>(), missing = Set<String>()
@@ -655,8 +712,8 @@ private actor SearchPreparerFake: SemanticImagePreprocessing {
 private actor SearchInstallerFake: SemanticModelInstalling {
     private var model: SemanticInstalledModel?
     var removals = 0, installs = 0
-    private var blocked = false
-    private var installWaiter: CheckedContinuation<Void, Never>?
+    private let entered = TestStateSignal(0)
+    private var installationGate: TestAsyncLatch?
     init(model: SemanticInstalledModel?) { self.model = model }
     func installedModel() async throws -> SemanticInstalledModel? { model }
     func inspect(source: URL) async throws -> SemanticModelImportReview {
@@ -665,13 +722,20 @@ private actor SearchInstallerFake: SemanticModelInstalling {
     }
     func install(_ review: SemanticModelImportReview, progress: @escaping @Sendable (SemanticInstallProgress) -> Void) async throws -> SemanticInstalledModel {
         installs += 1
-        if blocked { await withCheckedContinuation { installWaiter = $0 } }
+        entered.update { $0 = installs }
+        if let installationGate { await installationGate.wait() }
         try Task.checkCancellation()
         guard let model else { throw SemanticEmbeddingError.invalidInstallation }
         return model
     }
-    func blockInstallation() { blocked = true }
-    func unblockInstallation() { blocked = false; installWaiter?.resume(); installWaiter = nil }
+    func blockInstallation() -> TestAsyncLatch {
+        let gate = TestAsyncLatch(); installationGate = gate
+        return gate
+    }
+    func waitForInstalls(_ count: Int) async throws {
+        _ = try await entered.wait("semantic model installation entered call \(count)", timeout: .seconds(3), until: { $0 >= count })
+    }
+    func unblockInstallation() { installationGate?.releaseAll(); installationGate = nil }
     func remove() async throws { removals += 1; model = nil }
     func setInstalled(_ model: SemanticInstalledModel?) { self.model = model }
 }
@@ -680,11 +744,6 @@ private func searchError(_ expected: SemanticEmbeddingError, _ body: () async th
 }
 private func searchErrorAny(_ expected: Set<SemanticEmbeddingError>, _ body: () async throws -> Void) async {
     do { try await body(); Issue.record("Expected failure") } catch { #expect((error as? SemanticEmbeddingError).map(expected.contains) == true) }
-}
-private func searchEventually(_ condition: () async -> Bool) async {
-    let clock = ContinuousClock(), deadline = clock.now.advanced(by: .seconds(3))
-    while clock.now < deadline { if await condition() { return }; try? await Task.sleep(for: .milliseconds(2)) }
-    Issue.record("Timed out waiting for deterministic fake operation")
 }
 private func searchBudgetState(_ budget: AIResourceBudget) async -> AIResourceBudget.State {
     let stream = await budget.stateUpdates(); var iterator = stream.makeAsyncIterator()
@@ -709,14 +768,16 @@ private final class SearchCommitCancellation: @unchecked Sendable {
 /// through cancellation until the test releases the underlying operation.
 private actor SearchPreparationAdmissionProbe: SemanticImagePreprocessing {
     private(set) var active = 0, maximumActive = 0, started = 0
-    private var batch: CheckedContinuation<Void, Never>?
-    private var remaining: [CheckedContinuation<Void, Never>] = []
+    private let entered = TestStateSignal(0)
+    private nonisolated let batch = TestAsyncLatch(), remaining = TestAsyncLatch()
     private func enter(batch isBatch: Bool) async {
         active += 1; started += 1; maximumActive = max(maximumActive, active)
-        await withCheckedContinuation { continuation in
-            if isBatch { batch = continuation } else { remaining.append(continuation) }
-        }
+        entered.update { $0 = started }
+        await (isBatch ? batch : remaining).wait()
         active -= 1
+    }
+    func waitForStarted(_ count: Int) async throws {
+        _ = try await entered.wait("semantic preparation entered operation \(count)", timeout: .seconds(3), until: { $0 >= count })
     }
     func sourceStamps(sources: [AIOriginalSourceFingerprint]) async throws -> [String?] {
         await enter(batch: true); return sources.map { _ in "stamp" }
@@ -728,6 +789,7 @@ private actor SearchPreparationAdmissionProbe: SemanticImagePreprocessing {
         await enter(batch: false)
         return SemanticImageInput(values: [], rasterSHA256: String(repeating: "c", count: 64), sourceRevision: "stamp")
     }
-    func releaseBatch() { batch?.resume(); batch = nil }
-    func releaseRemaining() { let values = remaining; remaining.removeAll(); for value in values { value.resume() } }
+    nonisolated func releaseBatch() { batch.releaseAll() }
+    nonisolated func releaseRemaining() { remaining.releaseAll() }
+    nonisolated func releaseAll() { releaseBatch(); releaseRemaining() }
 }

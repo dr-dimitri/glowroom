@@ -73,6 +73,15 @@ actor ImagePreviewPipeline {
         diskCache: PreviewDiskCache(directory: PreviewDiskCache.defaultDirectory)
     )
 
+    struct State: Equatable, Sendable {
+        let runningCount: Int
+        let runningThumbnailCount: Int
+        let queuedCount: Int
+        let waiterCount: Int
+        let cachedCount: Int
+        let cachedBytes: Int
+    }
+
     private struct CacheEntry {
         let bitmap: PreviewBitmap
         var lastAccess: UInt64
@@ -90,6 +99,7 @@ actor ImagePreviewPipeline {
     private let memoryLimit: Int
     private let diskCache: PreviewDiskCache?
     private let decoder: @Sendable (PreviewRequest) throws -> PreviewBitmap
+    private let asyncDecoder: (@Sendable (PreviewRequest) async throws -> PreviewBitmap)?
     private let entryLimit = 256
     private var cache: [PreviewRequest: CacheEntry] = [:]
     private var cacheBytes = 0
@@ -105,12 +115,14 @@ actor ImagePreviewPipeline {
         concurrencyLimit: Int = 3,
         memoryLimit: Int = 96 * 1_024 * 1_024,
         diskCache: PreviewDiskCache? = nil,
-        decoder: @escaping @Sendable (PreviewRequest) throws -> PreviewBitmap = { try PreviewDecoder.decode($0) }
+        decoder: @escaping @Sendable (PreviewRequest) throws -> PreviewBitmap = { try PreviewDecoder.decode($0) },
+        asyncDecoder: (@Sendable (PreviewRequest) async throws -> PreviewBitmap)? = nil
     ) {
         self.concurrencyLimit = max(1, concurrencyLimit)
         self.memoryLimit = max(0, memoryLimit)
         self.diskCache = diskCache
         self.decoder = decoder
+        self.asyncDecoder = asyncDecoder
     }
 
     func image(for request: PreviewRequest, priority: PreviewPriority = .thumbnail) async throws -> PreviewBitmap {
@@ -129,6 +141,13 @@ actor ImagePreviewPipeline {
         } onCancel: {
             Task { await self.cancel(waiterID: waiterID) }
         }
+    }
+
+    /// Content-free diagnostics for bounded-worker/cache verification.
+    func state() -> State {
+        State(runningCount: running, runningThumbnailCount: runningThumbnails,
+              queuedCount: pending.count, waiterCount: waiterJobs.count,
+              cachedCount: cache.count, cachedBytes: cacheBytes)
     }
 
     private func cachedImage(for request: PreviewRequest) -> PreviewBitmap? {
@@ -200,6 +219,7 @@ actor ImagePreviewPipeline {
             let request = job.request
             let diskCache = self.diskCache
             let decoder = self.decoder
+            let asyncDecoder = self.asyncDecoder
             running += 1
             job.startedAsThumbnail = job.priority == .thumbnail
             if job.startedAsThumbnail { runningThumbnails += 1 }
@@ -252,6 +272,10 @@ actor ImagePreviewPipeline {
                                 bitmap = try decoded.retainingArtifactMemory(ownership, owner: opened.resources)
                                 withExtendedLifetime(lease) {}
                             }
+                        } else if let asyncDecoder {
+                            // Suspending test doubles retain this same worker
+                            // until return, including after caller cancellation.
+                            bitmap = try await asyncDecoder(request)
                         } else { bitmap = try decoder(request) }
                         try Task.checkCancellation()
                         if case .original = request.source { shouldStore = true }

@@ -61,6 +61,7 @@ actor AdjustedPreviewPipeline {
     private var sequence: UInt64 = 0
     private let limit = 32 * 1_024 * 1_024
     private let renderer: @Sendable (PreviewBitmap, EditSettings, PreviewPriority) throws -> PreviewBitmap
+    private let asyncRenderer: (@Sendable (PreviewBitmap, EditSettings, PreviewPriority) async throws -> PreviewBitmap)?
     private var jobs: [UUID: Job] = [:]
     private var currentJob: [Key: UUID] = [:]
     private var waiterJobs: [UUID: UUID] = [:]
@@ -75,8 +76,12 @@ actor AdjustedPreviewPipeline {
 
     init(maximumConcurrentRenders: Int = AdjustedPreviewPipeline.recommendedConcurrentRenders,
          renderer: (@Sendable (PreviewBitmap, EditSettings) throws -> PreviewBitmap)? = nil,
-         priorityRenderer: (@Sendable (PreviewBitmap, EditSettings, PreviewPriority) throws -> PreviewBitmap)? = nil) {
+         priorityRenderer: (@Sendable (PreviewBitmap, EditSettings, PreviewPriority) throws -> PreviewBitmap)? = nil,
+         asyncRenderer: (@Sendable (PreviewBitmap, EditSettings, PreviewPriority) async throws -> PreviewBitmap)? = nil) {
         self.maximumConcurrentRenders = min(2, max(1, maximumConcurrentRenders))
+        // Suspending test doubles can retain a worker slot without occupying a
+        // cooperative executor thread. Production renderers stay synchronous.
+        self.asyncRenderer = asyncRenderer
         if let priorityRenderer { self.renderer = priorityRenderer }
         else if let renderer { self.renderer = { source, settings, _ in try renderer(source, settings) } }
         else { self.renderer = { try EditRenderer.render($0, settings: $1, priority: $2) } }
@@ -175,6 +180,7 @@ actor AdjustedPreviewPipeline {
             let settings = job.key.settings
             let priority = job.priority
             let renderer = self.renderer
+            let asyncRenderer = self.asyncRenderer
             let outputWidth = job.key.outputWidth
             let outputHeight = job.key.outputHeight
             job.task = Task.detached(priority: priority == .selected ? .userInitiated : .utility) { [weak self] in
@@ -191,7 +197,10 @@ actor AdjustedPreviewPipeline {
                             retaining: source.memoryOwnership.map { [$0] } ?? [])
                     }
                     let input = try EditRenderer.resized(source, width: outputWidth, height: outputHeight, priority: priority)
-                    var bitmap = settings.isNeutral ? input : try renderer(input, settings, priority)
+                    var bitmap: PreviewBitmap
+                    if settings.isNeutral { bitmap = input }
+                    else if let asyncRenderer { bitmap = try await asyncRenderer(input, settings, priority) }
+                    else { bitmap = try renderer(input, settings, priority) }
                     if let resources = source.resourceOwner, let phase {
                         let memory = try await resources.retain(bytes: Int64(bitmap.byteCost) * 2, from: phase)
                         bitmap = try bitmap.retainingArtifactMemory(memory, owner: resources)
