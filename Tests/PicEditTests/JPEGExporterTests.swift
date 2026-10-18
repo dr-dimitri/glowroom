@@ -1,4 +1,5 @@
 import CoreGraphics
+import CoreImage
 import CryptoKit
 import Foundation
 import ImageIO
@@ -9,6 +10,88 @@ import UniformTypeIdentifiers
 
 @Suite("JPEG export", .serialized)
 struct JPEGExporterTests {
+    @Test func cropAndClockwiseRotationDetermineExportDimensionsBeforeResizing() async throws {
+        try await withDirectory { directory in
+            let source = try fixture(directory, name: "crop-source.png", width: 128, height: 96) { x, y in
+                (UInt8(x + 30), UInt8(y + 40), 90, 255)
+            }
+            let before = try Data(contentsOf: source)
+            let geometry = DevelopGeometry(crop: try .init(x: 0.25, y: 0.25, width: 0.5, height: 0.5), quarterTurns: 1)
+            let settings = EditSettings(exposure: 0.2, developGeometry: geometry)
+            for mode in [JPEGExportSizeMode.original, .longEdge] {
+                let target = directory.appendingPathComponent("crop-\(mode.rawValue).jpg")
+                let result = try await JPEGExporter().export(.init(sourceURL: source, destinationURL: target,
+                    settings: settings, options: .init(quality: 100, sizeMode: mode, longEdge: 32)))
+                #expect(result.width == (mode == .original ? 48 : 24))
+                #expect(result.height == (mode == .original ? 64 : 32))
+                let output = try decode(target)
+                #expect(output.width == result.width && output.height == result.height)
+                if mode == .original {
+                    let expected = try pixels(EditRenderer.render(.init(image: decode(source)), settings: settings).image)
+                    #expect(meanDifference(expected, try pixels(output)) < 3)
+                }
+            }
+            #expect(try Data(contentsOf: source) == before)
+        }
+    }
+
+    @Test func heifHDRIsReallyTenBitHLGAndRetainsValuesAboveSDRWhite() async throws {
+        try await withDirectory { directory in
+            let source = try fixture(directory, name: "hdr-source.png", width: 96, height: 64) { _, _ in (180, 180, 180, 255) }
+            let before = try Data(contentsOf: source)
+            let target = directory.appendingPathComponent("real-hdr.heic")
+            var settings = EditSettings(exposure: 2)
+            settings.developColor.hdrEnabled = true
+            let result = try await JPEGExporter().export(.init(sourceURL: source, destinationURL: target,
+                settings: settings, options: .init(format: .heif10HDR, quality: 100)))
+            #expect(result.width == 96 && result.height == 64)
+            let metadata = try properties(target)
+            #expect((metadata[kCGImagePropertyDepth] as? NSNumber)?.intValue == 10)
+            let imageSource = try #require(CGImageSourceCreateWithURL(target as CFURL, nil))
+            let ordinary = try #require(CGImageSourceCreateImageAtIndex(imageSource, 0, nil))
+            let space = try #require(ordinary.colorSpace)
+            #expect(CGColorSpaceUsesITUR_2100TF(space))
+            let decodedHDR = try #require(CGImageSourceCreateImageAtIndex(imageSource, 0, [
+                kCGImageSourceDecodeRequest: kCGImageSourceDecodeToHDR,
+                kCGImageSourceShouldAllowFloat: true,
+                kCGImageSourceShouldCacheImmediately: true
+            ] as CFDictionary))
+            var rgba = [Float](repeating: 0, count: 96 * 64 * 4)
+            let linear = try #require(CGColorSpace(name: CGColorSpace.extendedLinearSRGB))
+            rgba.withUnsafeMutableBytes { bytes in
+                EditRenderer.maskCompositingContext().render(CIImage(cgImage: decodedHDR), toBitmap: bytes.baseAddress!,
+                    rowBytes: 96 * 4 * MemoryLayout<Float>.size, bounds: CGRect(x: 0, y: 0, width: 96, height: 64),
+                    format: .RGBAf, colorSpace: linear)
+            }
+            #expect(rgba[(32 * 96 + 48) * 4] > 1.1, "HDR output must preserve light beyond SDR reference white, rather than only changing its label")
+            #expect(try Data(contentsOf: source) == before)
+            #expect(try temporaryOutputs(in: directory).isEmpty)
+        }
+    }
+
+    @Test(arguments: JPEGExportFormat.allCases)
+    func everyFormatPreservesOriginalsAndExistingTargetsAfterEncodingFailure(format: JPEGExportFormat) async throws {
+        try await withDirectory { directory in
+            let source = try fixture(directory, name: "protected.png")
+            let sourceBytes = try Data(contentsOf: source)
+            let target = directory.appendingPathComponent("keep.\(format.fileExtension)")
+            let existing = Data("preserve-existing".utf8)
+            try existing.write(to: target)
+            let exporter = JPEGExporter(beforePublication: { throw PublicationFailure.injected })
+            await #expect(throws: PublicationFailure.injected) {
+                try await exporter.export(.init(sourceURL: source, destinationURL: target, settings: .neutral,
+                    options: .init(format: format), overwriteExisting: true))
+            }
+            #expect(try Data(contentsOf: target) == existing)
+            #expect(try Data(contentsOf: source) == sourceBytes)
+            #expect(try temporaryOutputs(in: directory).isEmpty)
+            await #expect(throws: JPEGExportError.protectedOriginal) {
+                try await JPEGExporter().export(.init(sourceURL: source, destinationURL: source, settings: .neutral,
+                    options: .init(format: format), overwriteExisting: true))
+            }
+        }
+    }
+
     @Test func fullResolutionBeyondPreviewLimitDeclaresSRGBAndDPI() async throws {
         try await withDirectory { directory in
             let source = try fixture(directory, name: "original.png", width: 5_000, height: 40)

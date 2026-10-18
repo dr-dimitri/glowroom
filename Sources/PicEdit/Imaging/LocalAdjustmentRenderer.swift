@@ -11,20 +11,23 @@ enum LocalAdjustmentRenderer {
     static let previewWorkingMemoryBudget = min(UInt64(512 * 1_024 * 1_024),
                                                 ProcessInfo.processInfo.physicalMemory / 16)
 
-    /// Use the largest aspect-preserving preview that fits its local-edit plan.
-    /// This changes only the render proxy, never masks or the decoded photo base.
+    /// Use the largest aspect-preserving proxy that fits the combined local-mask
+    /// and geometry/spot-correction plan. The original decoded base is reused.
     static func previewSize(width: Int, height: Int, adjustments: [LocalAdjustment],
-                            fixedBytes: UInt64 = 0, outputBytesPerPixel: UInt64 = 0,
+                            geometry: DevelopGeometry = .neutral, fixedBytes: UInt64 = 0, outputBytesPerPixel: UInt64 = 0,
                             totalMemoryBudget: UInt64 = .max) throws -> (width: Int, height: Int) {
         guard width > 0, height > 0 else { throw EditRenderError.unavailable }
-        // No additional local work means no new resolution policy. Existing
-        // artifact base admission still decides whether its global render fits.
-        if estimatedAdditionalBytes(adjustments: adjustments, width: width, height: height) == 0 {
-            return (width, height)
+        func additionalBytes(_ width: Int, _ height: Int) -> UInt64? {
+            guard let local = estimatedAdditionalBytes(adjustments: adjustments, width: width, height: height),
+                  let geometryBytes = DevelopGeometryRenderer.estimatedAdditionalBytes(geometry: geometry, width: width, height: height) else { return nil }
+            let sum = local.addingReportingOverflow(geometryBytes)
+            return sum.overflow ? nil : sum.partialValue
         }
+        // A dormant mask or crop transform alone adds no spatial buffers. Keep
+        // the existing resolution policy when no additional work is needed.
+        if additionalBytes(width, height) == 0 { return (width, height) }
         func fits(_ width: Int, _ height: Int) -> Bool {
-            guard let bytes = estimatedAdditionalBytes(adjustments: adjustments, width: width, height: height) else { return false }
-            guard bytes <= previewWorkingMemoryBudget else { return false }
+            guard let bytes = additionalBytes(width, height), bytes <= previewWorkingMemoryBudget else { return false }
             let pixels = UInt64(width).multipliedReportingOverflow(by: UInt64(height))
             let output = pixels.partialValue.multipliedReportingOverflow(by: outputBytesPerPixel)
             let base = fixedBytes.addingReportingOverflow(output.partialValue)
@@ -100,14 +103,15 @@ enum LocalAdjustmentRenderer {
     }
 
     static func apply(to input: CIImage, adjustments: [LocalAdjustment], extent: CGRect,
-                      scale: Double, cache: LocalMaskImageCache? = nil) throws -> CIImage {
+                      scale: Double, cache: LocalMaskImageCache? = nil,
+                      preservesExtendedRange: Bool = false) throws -> CIImage {
         var image = input
         // Layer order is observable where masks overlap. The admitted renderer
         // serializes this graph construction; Core Image parallelizes its pixels.
         for adjustment in adjustments where adjustment.isEffective {
             try Task.checkCancellation()
             let candidate = try EditRenderer.manualAdjustments(image, settings: adjustment.settings.editSettings,
-                                                               extent: extent, scale: scale)
+                extent: extent, scale: scale, preservesExtendedRange: preservesExtendedRange)
             let mask = try maskImage(adjustment.mask, extent: extent, cache: cache)
             guard let blended = blendKernel?.apply(extent: extent, arguments: [image, candidate, mask]) else {
                 throw EditRenderError.unavailable

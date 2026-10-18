@@ -8,6 +8,7 @@ struct PreviewRequest: Hashable, Sendable {
     let source: AISourceIdentity
     let pixelSize: Int
     let allowsEmbeddedPreview: Bool
+    let allowsHDR: Bool
     let sourceRevision: String?
     var url: URL? { if case .original(let value) = source { return URL(fileURLWithPath: value.standardizedPath) }; return nil }
     var displayName: String { url?.lastPathComponent ?? "Generierte Variante" }
@@ -15,24 +16,25 @@ struct PreviewRequest: Hashable, Sendable {
     var fileSize: Int64 { switch source { case .original(let value): return value.fileSize; case .artifact(let value): return value.raster.file.bytes } }
 
     init(url: URL, modifiedAt: Date, pixelSize: Int, fileSize: Int64 = 0, allowsEmbeddedPreview: Bool = true,
-         sourceRevision: String? = nil) {
+         sourceRevision: String? = nil, allowsHDR: Bool = false) {
         self.init(source: .original(.init(fileURL: url, modifiedAt: modifiedAt, fileSize: fileSize)),
-                  pixelSize: pixelSize, allowsEmbeddedPreview: allowsEmbeddedPreview, sourceRevision: sourceRevision)
+                  pixelSize: pixelSize, allowsEmbeddedPreview: allowsEmbeddedPreview, sourceRevision: sourceRevision, allowsHDR: allowsHDR)
     }
-    init(source: AISourceIdentity, pixelSize: Int, allowsEmbeddedPreview: Bool = false, sourceRevision: String? = nil) {
+    init(source: AISourceIdentity, pixelSize: Int, allowsEmbeddedPreview: Bool = false, sourceRevision: String? = nil, allowsHDR: Bool = false) {
         self.source = source; self.pixelSize = min(max(pixelSize, 64), 4_096)
-        if case .original = source { self.allowsEmbeddedPreview = allowsEmbeddedPreview } else { self.allowsEmbeddedPreview = false }
+        if case .original = source { self.allowsEmbeddedPreview = allowsEmbeddedPreview && !allowsHDR } else { self.allowsEmbeddedPreview = false }
         self.sourceRevision = sourceRevision
+        self.allowsHDR = allowsHDR
     }
     func resized(to size: Int) -> Self {
-        Self(source: source, pixelSize: size, allowsEmbeddedPreview: allowsEmbeddedPreview, sourceRevision: sourceRevision)
+        Self(source: source, pixelSize: size, allowsEmbeddedPreview: allowsEmbeddedPreview, sourceRevision: sourceRevision, allowsHDR: allowsHDR)
     }
     func isAdequateArtifactCache(for required: PreviewRequest) -> Bool {
         if case .artifact = source { return hasSameOriginal(as: required) && pixelSize >= required.pixelSize }
         return false
     }
     func hasSameOriginal(as other: PreviewRequest) -> Bool {
-        source == other.source && allowsEmbeddedPreview == other.allowsEmbeddedPreview && sourceRevision == other.sourceRevision
+        source == other.source && allowsHDR == other.allowsHDR && allowsEmbeddedPreview == other.allowsEmbeddedPreview && sourceRevision == other.sourceRevision
     }
 }
 

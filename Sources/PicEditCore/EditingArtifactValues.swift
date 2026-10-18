@@ -105,6 +105,7 @@ public struct EditingSnapshot: Codable, Hashable, Sendable {
     public init(source: EditableSourceRef = .original, settings: EditSettings = .neutral) throws {
         guard settings == settings.normalized else { throw ArtifactContractError.invalidValue("settings") }
         try settings.validateLocalAdjustments()
+        try settings.developGeometry.validate()
         schemaVersion = 2; self.source = source; self.settings = settings
     }
     private enum CodingKeys: String, CodingKey { case schemaVersion, source, settings }
@@ -122,6 +123,8 @@ public struct EditingSnapshot: Codable, Hashable, Sendable {
         var intValue: Int? { nil }
         init(_ parameter: EditParameter) { stringValue = parameter.rawValue }
         static let localAdjustments = SettingKey(stringValue: "localAdjustments")!
+        static let developColor = SettingKey(stringValue: "developColor")!
+        static let developGeometry = SettingKey(stringValue: "developGeometry")!
         init?(stringValue: String) { self.stringValue = stringValue }
         init?(intValue: Int) { return nil }
     }
@@ -134,6 +137,8 @@ public struct EditingSnapshot: Codable, Hashable, Sendable {
             try controls.encode(parameter.value(in: settings), forKey: SettingKey(parameter))
         }
         if !settings.localAdjustments.isEmpty { try controls.encode(settings.localAdjustments, forKey: .localAdjustments) }
+        if !settings.developColor.isNeutral { try controls.encode(settings.developColor, forKey: .developColor) }
+        if !settings.developGeometry.isNeutral { try controls.encode(settings.developGeometry, forKey: .developGeometry) }
     }
     public static func == (lhs: Self, rhs: Self) -> Bool {
         lhs.schemaVersion == rhs.schemaVersion && lhs.source == rhs.source && lhs.settings == rhs.settings

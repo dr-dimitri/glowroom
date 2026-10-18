@@ -11,7 +11,7 @@ enum EditRenderError: LocalizedError, Equatable {
         switch self {
         case .unavailable: "Die Bildbearbeitung konnte nicht gerendert werden."
         case .oversizedPreview: "Die Vorschau ist für die Bildbearbeitung zu groß."
-        case .insufficientMaskMemory: "Die Maskenvorschau überschreitet das verfügbare Speicherbudget. Verkleinere die Vorschau oder deaktiviere vorübergehend einzelne Masken."
+        case .insufficientMaskMemory: "Die Vorschau mit Masken oder Retusche überschreitet das verfügbare Speicherbudget. Verkleinere die Vorschau oder reduziere vorübergehend die Korrekturen."
         }
     }
 }
@@ -47,6 +47,7 @@ enum EditRenderer {
         private struct NoiseKey: Equatable {
             let luminance: Double
             let color: Double
+            let hdr: Bool
         }
 
         init(cacheIntermediates: Bool = false, lowPriority: Bool, softwareRenderer: Bool = false) {
@@ -96,7 +97,8 @@ enum EditRenderer {
                 // thread-safe cache hint; in-flight renders keep their resources.
                 context.clearCaches()
             }
-            let noiseKey = NoiseKey(luminance: settings.luminanceNoiseReduction, color: settings.colorNoiseReduction)
+            let noiseKey = NoiseKey(luminance: settings.luminanceNoiseReduction, color: settings.colorNoiseReduction,
+                                    hdr: settings.developColor.hdrEnabled)
             if noise != noiseKey {
                 denoised = try EditRenderer.denoise(base!, settings: settings, extent: extent, scale: scale)
                 noise = noiseKey
@@ -155,10 +157,11 @@ enum EditRenderer {
             let extent = CGRect(x: 0, y: 0, width: width, height: height)
             let colorSpace = original.colorSpace ?? CGColorSpace(name: CGColorSpace.sRGB)!
             let highPrecision = original.bitsPerComponent > 8
+            let floatingPoint = original.bitmapInfo.contains(.floatComponents)
             let format: CIFormat
             switch colorSpace.model {
-            case .rgb: format = highPrecision ? .RGBA16 : .RGBA8
-            case .monochrome: format = highPrecision ? .LA16 : .LA8
+            case .rgb: format = floatingPoint ? .RGBAh : highPrecision ? .RGBA16 : .RGBA8
+            case .monochrome: format = floatingPoint ? .RGBAh : highPrecision ? .LA16 : .LA8
             default: throw EditRenderError.unavailable
             }
             let session = priority == .selected ? interactive : background
@@ -191,7 +194,10 @@ enum EditRenderer {
         // preview pipeline. The export graph has its separate full-size budget.
         guard let localBytes = LocalAdjustmentRenderer.estimatedAdditionalBytes(adjustments: settings.localAdjustments,
             width: original.width, height: original.height),
-              localBytes <= LocalAdjustmentRenderer.previewWorkingMemoryBudget else {
+              let geometryBytes = DevelopGeometryRenderer.estimatedAdditionalBytes(geometry: settings.developGeometry,
+                width: original.width, height: original.height),
+              geometryBytes <= LocalAdjustmentRenderer.previewWorkingMemoryBudget,
+              localBytes <= LocalAdjustmentRenderer.previewWorkingMemoryBudget - geometryBytes else {
             throw EditRenderError.insufficientMaskMemory
         }
 
@@ -205,17 +211,22 @@ enum EditRenderer {
             // retaining their CPU rasters in a global cache would outlive it.
             let maskCache = bitmap.resourceOwner == nil ? session.localMaskCache : nil
             let image = try LocalAdjustmentRenderer.apply(to: global, adjustments: settings.localAdjustments,
-                                                          extent: extent, scale: scale, cache: maskCache)
+                                                          extent: extent, scale: scale, cache: maskCache,
+                                                          preservesExtendedRange: settings.developColor.hdrEnabled)
+            let developed = try DevelopGeometryRenderer.apply(to: image, geometry: settings.developGeometry, extent: extent)
 
-            let colorSpace = original.colorSpace ?? CGColorSpace(name: CGColorSpace.sRGB)!
+            let colorSpace = settings.developColor.hdrEnabled
+                ? CGColorSpace(name: CGColorSpace.extendedLinearSRGB)!
+                : original.colorSpace ?? CGColorSpace(name: CGColorSpace.sRGB)!
             let highPrecision = original.bitsPerComponent > 8
             let format: CIFormat
             switch colorSpace.model {
-            case .rgb: format = highPrecision ? .RGBA16 : .RGBA8
+            case .rgb: format = settings.developColor.hdrEnabled ? .RGBAh : highPrecision ? .RGBA16 : .RGBA8
             case .monochrome: format = highPrecision ? .LA16 : .LA8
             default: throw EditRenderError.unavailable
             }
-            guard let rendered = session.context.createCGImage(image.cropped(to: extent), from: extent, format: format, colorSpace: colorSpace, deferred: false) else {
+            let outputExtent = developed.extent
+            guard let rendered = session.context.createCGImage(developed, from: outputExtent, format: format, colorSpace: colorSpace, deferred: false) else {
                 throw EditRenderError.unavailable
             }
             try Task.checkCancellation()
@@ -234,21 +245,23 @@ enum EditRenderer {
         let scale = max(0.25, Double(max(original.width, original.height)) / 1_600)
         let prefix = try prefix(image, original: original, settings: settings, extent: extent, scale: scale)
         let global = try manualAdjustments(prefix, settings: settings, extent: extent, scale: scale)
-        return try LocalAdjustmentRenderer.apply(to: global, adjustments: settings.localAdjustments,
-                                                 extent: extent, scale: scale)
+        let local = try LocalAdjustmentRenderer.apply(to: global, adjustments: settings.localAdjustments,
+            extent: extent, scale: scale, preservesExtendedRange: settings.developColor.hdrEnabled)
+        return try DevelopGeometryRenderer.apply(to: local, geometry: settings.developGeometry, extent: extent)
     }
 
     static func manualAdjustments(_ input: CIImage, settings: EditSettings,
-                                  extent: CGRect, scale: Double) throws -> CIImage {
+                                  extent: CGRect, scale: Double, preservesExtendedRange: Bool = false) throws -> CIImage {
         try Task.checkCancellation()
-        var image = input
+        let extended = preservesExtendedRange || settings.developColor.hdrEnabled
+        var image = try DevelopColorAdjustments.input(input, settings: settings.developColor, extent: extent)
         if settings.exposure != 0 || settings.contrast != 0 || settings.highlights != 0 || settings.shadows != 0 ||
             settings.whites != 0 || settings.blacks != 0 || settings.dehaze != 0 || settings.vibrance != 0 || settings.saturation != 0 {
             guard let result = toneKernel?.apply(extent: extent, arguments: [
                 image, settings.exposure, settings.contrast / 100,
                 settings.highlights / 100, settings.shadows / 100,
                 settings.whites / 100, settings.blacks / 100,
-                settings.dehaze / 100, settings.vibrance / 100, settings.saturation / 100
+                settings.dehaze / 100, settings.vibrance / 100, settings.saturation / 100, extended ? 1.0 : 0.0
             ]) else { throw EditRenderError.unavailable }
             image = result
         }
@@ -257,12 +270,12 @@ enum EditRenderer {
             let fine = settings.texture != 0 ? blur(image, radius: 2.5 * scale, extent: extent) : image
             let broad = settings.clarity != 0 ? blur(image, radius: 18 * scale, extent: extent) : image
             guard let result = presenceKernel?.apply(extent: extent, arguments: [
-                image, fine, broad, settings.texture / 100, settings.clarity / 100
+                image, fine, broad, settings.texture / 100, settings.clarity / 100, extended ? 1.0 : 0.0
             ]) else { throw EditRenderError.unavailable }
             image = result
         }
         try Task.checkCancellation()
-        return image
+        return try DevelopColorAdjustments.output(image, settings: settings.developColor, extent: extent)
     }
 
     private static func prefix(_ image: CIImage, original: CGImage, settings: EditSettings,
@@ -290,7 +303,8 @@ enum EditRenderer {
         let chroma = settings.colorNoiseReduction / 100
         let lumaBlur = luminance > 0 ? blur(image, radius: (1 + 2 * luminance) * scale, extent: extent) : image
         let chromaBlur = chroma > 0 ? blur(image, radius: (2 + 4 * chroma) * scale, extent: extent) : image
-        guard let result = denoiseKernel?.apply(extent: extent, arguments: [image, lumaBlur, chromaBlur, luminance, chroma]) else {
+        guard let result = denoiseKernel?.apply(extent: extent, arguments: [image, lumaBlur, chromaBlur, luminance, chroma,
+            settings.developColor.hdrEnabled ? 1.0 : 0.0]) else {
             throw EditRenderError.unavailable
         }
         return result
@@ -306,7 +320,7 @@ enum EditRenderer {
     // renderer, including older Intel Macs. No external Metal compiler, model,
     // network service, or GPU-generation-specific shader library is required.
     private static let denoiseKernel = CIColorKernel(source: """
-        kernel vec4 separateNoise(__sample original, __sample lumaBlur, __sample chromaBlur, float lumaAmount, float chromaAmount) {
+        kernel vec4 separateNoise(__sample original, __sample lumaBlur, __sample chromaBlur, float lumaAmount, float chromaAmount, float hdr) {
             vec4 o = unpremultiply(original);
             vec3 l = unpremultiply(lumaBlur).rgb;
             vec3 c = unpremultiply(chromaBlur).rgb;
@@ -319,12 +333,14 @@ enum EditRenderer {
             float colorWeight = 0.98 * chromaAmount / (1.0 + 12.0 * abs(y - yc));
             float cleanY = mix(y, yl, lumaWeight);
             vec3 cleanChroma = mix(o.rgb - vec3(y), c - vec3(yc), colorWeight);
-            return premultiply(vec4(clamp(vec3(cleanY) + cleanChroma, 0.0, 1.0), o.a));
+            vec3 rgb = vec3(cleanY) + cleanChroma;
+            rgb = mix(clamp(rgb, 0.0, 1.0), max(rgb, vec3(0.0)), hdr);
+            return premultiply(vec4(rgb, o.a));
         }
         """)
 
     private static let toneKernel = CIColorKernel(source: """
-        kernel vec4 toneAndColor(__sample original, float exposure, float contrast, float highlights, float shadows, float whites, float blacks, float dehaze, float vibrance, float saturation) {
+        kernel vec4 toneAndColor(__sample original, float exposure, float contrast, float highlights, float shadows, float whites, float blacks, float dehaze, float vibrance, float saturation, float hdr) {
             vec4 o = unpremultiply(original);
             vec3 rgb = pow(max(o.rgb * exp2(exposure), vec3(0.0)), vec3(1.0 / 2.2));
             rgb = (rgb - vec3(0.5)) * (1.0 + contrast * 0.65) + vec3(0.5);
@@ -346,12 +362,13 @@ enum EditRenderer {
             float spread = clamp(max(max(rgb.r, rgb.g), rgb.b) - min(min(rgb.r, rgb.g), rgb.b), 0.0, 1.0);
             float colorScale = (1.0 + saturation) * (1.0 + vibrance * 0.85 * (1.0 - spread));
             rgb = mix(vec3(y), rgb, colorScale);
-            return premultiply(vec4(pow(clamp(rgb, 0.0, 1.0), vec3(2.2)), o.a));
+            rgb = mix(clamp(rgb, 0.0, 1.0), max(rgb, vec3(0.0)), hdr);
+            return premultiply(vec4(pow(rgb, vec3(2.2)), o.a));
         }
         """)
 
     private static let presenceKernel = CIColorKernel(source: """
-        kernel vec4 localPresence(__sample original, __sample fineBlur, __sample broadBlur, float texture, float clarity) {
+        kernel vec4 localPresence(__sample original, __sample fineBlur, __sample broadBlur, float texture, float clarity, float hdr) {
             vec4 o = unpremultiply(original);
             vec3 rgb = pow(max(o.rgb, vec3(0.0)), vec3(1.0 / 2.2));
             vec3 fine = pow(max(unpremultiply(fineBlur).rgb, vec3(0.0)), vec3(1.0 / 2.2));
@@ -361,7 +378,8 @@ enum EditRenderer {
             float midtones = 4.0 * y * (1.0 - y);
             float detail = texture * 0.90 * (y - dot(fine, weights));
             detail += clarity * 0.75 * midtones * (y - dot(broad, weights));
-            rgb = pow(clamp(rgb + vec3(detail), 0.0, 1.0), vec3(2.2));
+            rgb += vec3(detail);
+            rgb = pow(mix(clamp(rgb, 0.0, 1.0), max(rgb, vec3(0.0)), hdr), vec3(2.2));
             return premultiply(vec4(rgb, o.a));
         }
         """)

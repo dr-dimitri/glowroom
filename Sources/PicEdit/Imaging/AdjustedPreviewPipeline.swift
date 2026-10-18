@@ -22,6 +22,7 @@ actor AdjustedPreviewPipeline {
         let modifiedAt: Date
         let fileSize: Int64
         let allowsEmbeddedPreview: Bool
+        let allowsHDR: Bool
         let sourceRevision: String?
         let settings: EditSettings
         let width: Int
@@ -37,6 +38,7 @@ actor AdjustedPreviewPipeline {
             modifiedAt = request.modifiedAt
             fileSize = request.fileSize
             allowsEmbeddedPreview = request.allowsEmbeddedPreview
+            allowsHDR = request.allowsHDR
             sourceRevision = request.sourceRevision
             self.settings = settings
             self.width = width
@@ -117,7 +119,7 @@ actor AdjustedPreviewPipeline {
             totalMemoryBudget = ownerLimit - retainedOutputHeadroom
         }
         let size = try LocalAdjustmentRenderer.previewSize(width: requestedSize.width, height: requestedSize.height,
-            adjustments: normalized.localAdjustments, fixedBytes: fixedBytes,
+            adjustments: normalized.localAdjustments, geometry: normalized.developGeometry, fixedBytes: fixedBytes,
             outputBytesPerPixel: outputBytesPerPixel, totalMemoryBudget: totalMemoryBudget)
         guard !normalized.isNeutral || size.width != source.image.width || size.height != source.image.height else { return source }
         let key = Key(request: request, settings: normalized, width: source.image.width, height: source.image.height,
@@ -220,10 +222,14 @@ actor AdjustedPreviewPipeline {
                         let baseBytes = sourceBytes.partialValue.addingReportingOverflow(outputBytes.partialValue)
                         guard !sourceBytes.overflow, !outputPixels.overflow, !outputBytes.overflow, !baseBytes.overflow,
                               let local = LocalAdjustmentRenderer.estimatedAdditionalBytes(adjustments: settings.localAdjustments,
-                                width: outputWidth, height: outputHeight), local <= UInt64(Int64.max) else {
+                                width: outputWidth, height: outputHeight),
+                              let geometryBytes = DevelopGeometryRenderer.estimatedAdditionalBytes(geometry: settings.developGeometry,
+                                width: outputWidth, height: outputHeight) else {
                             throw ArtifactResourceError.capacityExceeded
                         }
-                        let plannedBytes = baseBytes.partialValue.addingReportingOverflow(Int64(local))
+                        let additionalBytes = local.addingReportingOverflow(geometryBytes)
+                        guard !additionalBytes.overflow, additionalBytes.partialValue <= UInt64(Int64.max) else { throw ArtifactResourceError.capacityExceeded }
+                        let plannedBytes = baseBytes.partialValue.addingReportingOverflow(Int64(additionalBytes.partialValue))
                         guard !plannedBytes.overflow else { throw ArtifactResourceError.capacityExceeded }
                         phase = try await resources.acquire(kind: .codec,
                             bytes: plannedBytes.partialValue,

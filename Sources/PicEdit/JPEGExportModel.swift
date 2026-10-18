@@ -21,6 +21,15 @@ final class JPEGExportModel: ObservableObject {
     @Published private(set) var needsOverwriteConfirmation = false
     @Published var destinationDirectory: URL
     @Published var filename = ""
+    @Published var format: JPEGExportFormat = .jpeg {
+        didSet {
+            guard format != oldValue, !filename.isEmpty else { return }
+            let oldExtension = (filename as NSString).pathExtension.lowercased()
+            if oldValue.acceptedExtensions.contains(oldExtension) {
+                filename = (filename as NSString).deletingPathExtension + "." + format.fileExtension
+            }
+        }
+    }
     @Published var colorSpace: JPEGExportColorSpace = .sRGB
     @Published var qualityText = "90"
     @Published var sizeMode: JPEGExportSizeMode = .original
@@ -63,6 +72,9 @@ final class JPEGExportModel: ObservableObject {
             if let value = preferences.string(forKey: prefix + "colorSpace"), let stored = JPEGExportColorSpace(rawValue: value) {
                 colorSpace = stored
             }
+            if let value = preferences.string(forKey: prefix + "format"), let stored = JPEGExportFormat(rawValue: value) {
+                format = stored
+            }
             if let value = preferences.string(forKey: prefix + "sizeMode"), let stored = JPEGExportSizeMode(rawValue: value) {
                 sizeMode = stored
             }
@@ -89,7 +101,9 @@ final class JPEGExportModel: ObservableObject {
     var estimatedSize: JPEGPixelSize? {
         guard !isBatch, let snapshot = snapshots.first, snapshot.width > 0, snapshot.height > 0,
               let options = try? makeOptions() else { return nil }
-        return try? options.outputSize(sourceWidth: snapshot.width, sourceHeight: snapshot.height)
+        guard let developed = try? DevelopGeometryRenderer.outputSize(width: snapshot.width, height: snapshot.height,
+            geometry: snapshot.settings.developGeometry) else { return nil }
+        return try? options.outputSize(sourceWidth: developed.width, sourceHeight: developed.height)
     }
     var overwriteFilename: String { pendingOverwrite?.destinationURL.lastPathComponent ?? "" }
     var canExport: Bool {
@@ -104,7 +118,9 @@ final class JPEGExportModel: ObservableObject {
             guard destinationDirectory.isFileURL else { throw InputError.message("Wähle einen lokalen Zielordner aus.") }
             let options = try makeOptions()
             for snapshot in snapshots where snapshot.width > 0 && snapshot.height > 0 {
-                _ = try options.outputSize(sourceWidth: snapshot.width, sourceHeight: snapshot.height)
+                let developed = try DevelopGeometryRenderer.outputSize(width: snapshot.width, height: snapshot.height,
+                    geometry: snapshot.settings.developGeometry)
+                _ = try options.outputSize(sourceWidth: developed.width, sourceHeight: developed.height)
             }
             return nil
         } catch { return error.localizedDescription }
@@ -125,12 +141,12 @@ final class JPEGExportModel: ObservableObject {
         var filenames = Set<String>()
         snapshots = assets.map { asset in
             let base = Self.exportBasename(for: asset.fileURL)
-            var name = base + ".jpg"
+            var name = base + "." + format.fileExtension
             var suffix = 2
             // Reserve names case-insensitively, including Unicode normalization,
             // so different originals cannot replace each other on common volumes.
             while !filenames.insert(name.precomposedStringWithCanonicalMapping.lowercased()).inserted {
-                name = "\(base)-\(suffix).jpg"
+                name = "\(base)-\(suffix).\(format.fileExtension)"
                 suffix += 1
             }
             return Snapshot(sourceURL: asset.fileURL, name: asset.fileName,
@@ -186,7 +202,8 @@ final class JPEGExportModel: ObservableObject {
             let singleFilename = isBatch ? nil : try validatedFilename()
             let requests = snapshots.map { snapshot in
                 JPEGExportRequest(sourceURL: snapshot.sourceURL,
-                    destinationURL: destinationDirectory.appendingPathComponent(singleFilename ?? snapshot.exportFilename),
+                    destinationURL: destinationDirectory.appendingPathComponent(singleFilename ??
+                        ((snapshot.exportFilename as NSString).deletingPathExtension + "." + options.format.fileExtension)),
                     settings: snapshot.settings, options: options, protectedSourceURLs: snapshot.protectedSourceURLs,
                     protectedDirectoryFamilies: snapshot.protectedDirectoryFamilies, catalogProtection: snapshot.catalogProtection)
             }
@@ -344,11 +361,14 @@ final class JPEGExportModel: ObservableObject {
     private func validatedFilename() throws -> String {
         let name = filename.trimmingCharacters(in: .whitespacesAndNewlines)
         let ext = (name as NSString).pathExtension.lowercased()
-        guard !name.isEmpty, name != ".", name != "..", name != ".jpg", name != ".jpeg",
+        guard !name.isEmpty, name != ".", name != "..", !(name as NSString).deletingPathExtension.isEmpty,
+              !format.acceptedExtensions.contains(String(name.dropFirst()).lowercased()),
               !name.contains("/"), !name.contains("\\"), !name.contains(":"),
               name.rangeOfCharacter(from: .controlCharacters) == nil,
-              ext == "jpg" || ext == "jpeg" else {
-            throw InputError.message("Gib einen Dateinamen mit .jpg oder .jpeg ein, ohne Pfadangaben.")
+              format.acceptedExtensions.contains(ext) else {
+            throw InputError.message(format == .jpeg
+                ? "Gib einen Dateinamen mit .jpg oder .jpeg ein, ohne Pfadangaben."
+                : "Gib einen Dateinamen mit .heic oder .heif ein, ohne Pfadangaben.")
         }
         return name
     }
@@ -364,7 +384,7 @@ final class JPEGExportModel: ObservableObject {
             guard let value = Int(text), (1...65535).contains(value) else { return fallback }
             return value
         }
-        return JPEGExportOptions(colorSpace: colorSpace,
+        return JPEGExportOptions(format: format, colorSpace: colorSpace,
             quality: try integer(qualityText, name: "Qualität", range: 0...100), sizeMode: sizeMode,
             longEdge: sizeMode == .longEdge ? try integer(longEdgeText, name: "Lange Kante", range: 1...65535) : inactive(longEdgeText, fallback: 2400),
             width: sizeMode == .fit ? try integer(widthText, name: "Breite", range: 1...65535) : inactive(widthText, fallback: 2400),
@@ -376,6 +396,7 @@ final class JPEGExportModel: ObservableObject {
         guard let preferences else { return }
         preferences.set(destinationDirectory.path, forKey: preferencePrefix + "directory")
         preferences.set(options.colorSpace.rawValue, forKey: preferencePrefix + "colorSpace")
+        preferences.set(options.format.rawValue, forKey: preferencePrefix + "format")
         preferences.set(options.sizeMode.rawValue, forKey: preferencePrefix + "sizeMode")
         for (key, value) in [("quality", options.quality), ("longEdge", options.longEdge), ("width", options.width),
                              ("height", options.height), ("resolution", options.pixelsPerInch)] {

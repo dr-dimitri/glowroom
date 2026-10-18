@@ -24,6 +24,8 @@ public struct EditSettings: Codable, Hashable, Sendable {
     /// Color contribution within natural balance; dormant while its amount is zero.
     public var naturalBalanceColorAmount: Double
     public var localAdjustments: [LocalAdjustment]
+    public var developColor: DevelopColorSettings
+    public var developGeometry: DevelopGeometry
 
     public init(exposure: Double = 0, contrast: Double = 0, highlights: Double = 0,
                 shadows: Double = 0, whites: Double = 0, blacks: Double = 0,
@@ -31,7 +33,8 @@ public struct EditSettings: Codable, Hashable, Sendable {
                 vibrance: Double = 0, saturation: Double = 0,
                 luminanceNoiseReduction: Double = 0, colorNoiseReduction: Double = 0,
                 autoToneAmount: Double = 0, naturalBalanceAmount: Double = 0,
-                naturalBalanceColorAmount: Double = 50, localAdjustments: [LocalAdjustment] = []) {
+                naturalBalanceColorAmount: Double = 50, localAdjustments: [LocalAdjustment] = [],
+                developColor: DevelopColorSettings = .neutral, developGeometry: DevelopGeometry = .neutral) {
         self.exposure = exposure
         self.contrast = contrast
         self.highlights = highlights
@@ -49,6 +52,8 @@ public struct EditSettings: Codable, Hashable, Sendable {
         self.naturalBalanceAmount = naturalBalanceAmount
         self.naturalBalanceColorAmount = naturalBalanceColorAmount
         self.localAdjustments = localAdjustments
+        self.developColor = developColor
+        self.developGeometry = developGeometry
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -57,6 +62,7 @@ public struct EditSettings: Codable, Hashable, Sendable {
         case luminanceNoiseReduction, colorNoiseReduction, autoToneAmount
         case naturalBalanceAmount, naturalBalanceColorAmount
         case localAdjustments
+        case developColor, developGeometry
     }
 
     public init(from decoder: Decoder) throws {
@@ -84,6 +90,11 @@ public struct EditSettings: Codable, Hashable, Sendable {
             ? try values.decode(Double.self, forKey: .naturalBalanceColorAmount) : 50
         localAdjustments = values.contains(.localAdjustments)
             ? try values.decode([LocalAdjustment].self, forKey: .localAdjustments) : []
+        developColor = values.contains(.developColor)
+            ? try values.decode(DevelopColorSettings.self, forKey: .developColor) : .neutral
+        developGeometry = values.contains(.developGeometry)
+            ? try values.decode(DevelopGeometry.self, forKey: .developGeometry) : .neutral
+        try developGeometry.validate()
         try validateLocalAdjustments()
     }
 
@@ -102,6 +113,8 @@ public struct EditSettings: Codable, Hashable, Sendable {
         try values.encode(naturalBalanceColorAmount, forKey: .naturalBalanceColorAmount)
         // Absence preserves the exact historical settings/snapshot wire shape.
         if !localAdjustments.isEmpty { try values.encode(localAdjustments, forKey: .localAdjustments) }
+        if !developColor.isNeutral { try values.encode(developColor, forKey: .developColor) }
+        if !developGeometry.isNeutral { try values.encode(developGeometry, forKey: .developGeometry) }
     }
 
     public func validateLocalAdjustments() throws {
@@ -144,7 +157,8 @@ public struct EditSettings: Codable, Hashable, Sendable {
                     autoToneAmount: clamp(autoToneAmount, 0...100),
                     naturalBalanceAmount: clamp(naturalBalanceAmount, 0...100),
                     naturalBalanceColorAmount: clamp(naturalBalanceColorAmount, 0...100),
-                    localAdjustments: localAdjustments.map(\.normalized))
+                    localAdjustments: localAdjustments.map(\.normalized), developColor: developColor.normalized,
+                    developGeometry: developGeometry.normalized)
     }
 
     public var isNeutral: Bool {

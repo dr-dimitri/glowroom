@@ -55,6 +55,10 @@ enum PreviewDecoder {
             // without a useful embedded image. IfAbsent alone is insufficient:
             // it can return a tiny EXIF thumbnail even for a large preview.
             options[kCGImageSourceCreateThumbnailFromImageAlways] = true
+            if request.allowsHDR {
+                options[kCGImageSourceShouldAllowFloat] = true
+                options[kCGImageSourceDecodeRequest] = kCGImageSourceDecodeToHDR
+            }
             guard let image = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else {
                 throw PreviewFailure.unsupportedOrDamaged
             }

@@ -360,6 +360,93 @@ struct AdjustedPreviewPipelineTests {
         #expect(observations.value.count == 3)
     }
 
+    @Test(arguments: [false, true], [false, true])
+    func complexGeometryUsesCombinedBoundedProxyAndAllowsNextSlider(artifactSource: Bool, withMasks: Bool) async throws {
+        let input = try fixture(width: 2_400, height: 1_200)
+        let resources = artifactSource ? ArtifactResourceOwner(limits: try .init()) : nil
+        let source: PreviewBitmap
+        if let resources {
+            var phase: ArtifactResourceLease? = try await resources.acquire(kind: .retainedMemory,
+                bytes: Int64(input.byteCost) * 2, priority: .interactive, retaining: [])
+            let memory = try await resources.retain(bytes: Int64(input.byteCost) * 2, from: #require(phase))
+            source = try input.retainingArtifactMemory(memory, owner: resources)
+            phase = nil
+            try await waitForTestState("geometry source phase released", state: { await resources.state() }) {
+                $0.chargedBytes == Int64(input.byteCost) * 2
+            }
+        } else { source = input }
+        let observations = TestStateSignal<[LocalPreviewObservation]>([])
+        let pipeline = AdjustedPreviewPipeline(maximumConcurrentRenders: 1, asyncRenderer: { bitmap, settings, _ in
+            let charged = await resources?.state().chargedBytes ?? 0
+            observations.update { $0.append(.init(width: bitmap.image.width, height: bitmap.image.height,
+                settings: settings, chargedBytes: charged)) }
+            return bitmap
+        })
+        let patches = try (0..<128).map { _ in
+            try DevelopRetouchStroke(mode: .heal, source: .init(x: 0.2, y: 0.4),
+                target: .init(x: 0.6, y: 0.6), radius: 0.45)
+        }
+        let eyes = try (0..<128).map { _ in
+            try DevelopRedEyeCorrection(center: .init(x: 0.5, y: 0.5), radiusX: 0.4, radiusY: 0.4)
+        }
+        var edits = withMasks ? try localSettings(centerX: 0.5) : .neutral
+        edits.developGeometry = DevelopGeometry(crop: try .init(x: 0.1, y: 0.1, width: 0.7, height: 0.6),
+            quarterTurns: 1, retouchStrokes: patches, redEyeCorrections: eyes)
+        let adjusted = try await pipeline.image(source, request: request, settings: edits, priority: .selected)
+        let observed = try #require(observations.value.first)
+        #expect(observed.width < 2_400 && observed.width >= 64)
+        #expect(abs(Double(observed.width) / Double(observed.height) - 2) < 0.01)
+        #expect(observed.settings == edits, "Proxy planning must preserve every saved spot correction and mask")
+        let local = try #require(LocalAdjustmentRenderer.estimatedAdditionalBytes(adjustments: edits.localAdjustments,
+            width: observed.width, height: observed.height))
+        let geometry = try #require(DevelopGeometryRenderer.estimatedAdditionalBytes(geometry: edits.developGeometry,
+            width: observed.width, height: observed.height))
+        #expect(geometry > 0)
+        #expect(local + geometry <= LocalAdjustmentRenderer.previewWorkingMemoryBudget)
+        if let resources {
+            #expect(observed.chargedBytes > Int64(input.byteCost) * 2)
+            #expect(observed.chargedBytes <= resources.limits.maximumBytes)
+        }
+        var next = edits; next.exposure = 0.8
+        _ = try await pipeline.image(source, request: request, settings: next, priority: .selected)
+        #expect(observations.value.count == 2)
+        #expect(observations.value.last?.settings == next)
+        if let resources { #expect(try #require(observations.value.last).chargedBytes <= resources.limits.maximumBytes) }
+        withExtendedLifetime(adjusted) {}
+    }
+
+    @Test func croppedAndRotatedPreviewKeepsItsOutputAspectRatioAcrossCacheAndSliderChanges() async throws {
+        let source = try fixture(width: 96, height: 64)
+        let pipeline = AdjustedPreviewPipeline(maximumConcurrentRenders: 1)
+        var edits = EditSettings.neutral
+        edits.developGeometry = DevelopGeometry(crop: try .init(x: 0.25, y: 0, width: 0.5, height: 1), quarterTurns: 1)
+        let first = try await pipeline.image(source, request: request, settings: edits, priority: .selected)
+        #expect(first.image.width == 64 && first.image.height == 48)
+        let cached = try await pipeline.image(source, request: request, settings: edits, priority: .selected)
+        #expect(cached.image === first.image)
+        edits.exposure = 0.5
+        let next = try await pipeline.image(source, request: request, settings: edits, priority: .selected)
+        #expect(next.image.width == 64 && next.image.height == 48)
+        #expect(await pipeline.state().cachedCount == 2)
+    }
+
+    @Test func sdrAndHDRDecodeModesHaveSeparateAdjustedCacheEntries() async throws {
+        let source = try fixture()
+        let calls = TestStateSignal(0)
+        let pipeline = AdjustedPreviewPipeline(maximumConcurrentRenders: 1, renderer: { bitmap, _ in
+            calls.update { $0 += 1 }; return bitmap
+        })
+        let sdr = PreviewRequest(source: request.source, pixelSize: 512, allowsHDR: false)
+        let hdr = PreviewRequest(source: request.source, pixelSize: 512, allowsHDR: true)
+        let edits = settings(0.5)
+        _ = try await pipeline.image(source, request: sdr, settings: edits)
+        _ = try await pipeline.image(source, request: hdr, settings: edits)
+        #expect(calls.value == 2, "HDR source samples cannot reuse a render made from a clipped SDR base")
+        _ = try await pipeline.image(source, request: sdr, settings: edits)
+        _ = try await pipeline.image(source, request: hdr, settings: edits)
+        #expect(calls.value == 2)
+    }
+
     private var request: PreviewRequest {
         PreviewRequest(url: URL(fileURLWithPath: "/tmp/adjusted-preview"),
                        modifiedAt: Date(timeIntervalSince1970: 100), pixelSize: 512)

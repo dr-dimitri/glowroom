@@ -39,7 +39,7 @@ extension AIUnsupportedTaskReason: LocalizedError {
     public var errorDescription: String? {
         switch self {
         case .imageAnalysis: return "Bildanalyse wird von diesem Anbieter nicht unterstützt. Er erhält keine Bildpixel."
-        case .whiteBalance: return "Ein Weißabgleich für wärmere oder kühlere Farben ist in PicEdit noch nicht verfügbar."
+        case .whiteBalance: return "Dieser KI-Anbieter steuert den Weißabgleich nicht. Verwende Temperatur, Tönung oder die Neutralpipette in den Grundeinstellungen."
         case .unsupportedLanguage: return "Das lokale Systemmodell unterstützt die Sprache dieser Anfrage nicht."
         case .other: return "Diese Aufgabe wird vom lokalen Bearbeitungsanbieter nicht unterstützt."
         }

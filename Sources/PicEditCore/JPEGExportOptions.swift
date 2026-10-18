@@ -1,5 +1,14 @@
 import Foundation
 
+public enum JPEGExportFormat: String, CaseIterable, Sendable {
+    case jpeg
+    case heif10HDR
+
+    public var fileExtension: String { self == .jpeg ? "jpg" : "heic" }
+    public var displayName: String { self == .jpeg ? "JPEG" : "HEIF · 10 Bit HDR" }
+    public var acceptedExtensions: Set<String> { self == .jpeg ? ["jpg", "jpeg"] : ["heic", "heif"] }
+}
+
 public enum JPEGExportColorSpace: String, CaseIterable, Sendable {
     case sRGB
     case displayP3
@@ -42,6 +51,7 @@ public enum JPEGExportOptionsError: LocalizedError, Equatable, Sendable {
 /// Output geometry is independent of print density; sizing always retains aspect
 /// ratio and never crops. Full-size requests are not subject to preview limits.
 public struct JPEGExportOptions: Equatable, Sendable {
+    public var format: JPEGExportFormat
     public var colorSpace: JPEGExportColorSpace
     public var quality: Int
     public var sizeMode: JPEGExportSizeMode
@@ -51,10 +61,11 @@ public struct JPEGExportOptions: Equatable, Sendable {
     public var pixelsPerInch: Int
     public var allowUpscaling: Bool
 
-    public init(colorSpace: JPEGExportColorSpace = .sRGB, quality: Int = 90,
+    public init(format: JPEGExportFormat = .jpeg, colorSpace: JPEGExportColorSpace = .sRGB, quality: Int = 90,
                 sizeMode: JPEGExportSizeMode = .original, longEdge: Int = 2_400,
                 width: Int = 2_400, height: Int = 1_600, pixelsPerInch: Int = 300,
                 allowUpscaling: Bool = false) {
+        self.format = format
         self.colorSpace = colorSpace
         self.quality = quality
         self.sizeMode = sizeMode

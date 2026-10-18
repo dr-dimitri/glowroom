@@ -52,12 +52,12 @@ struct JPEGExportView: View {
                 .font(.system(size: 24, weight: .light)).foregroundStyle(Theme.accent)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 5) {
-                Text("Als JPEG exportieren").font(.system(size: 20, weight: .semibold))
+                Text("Foto exportieren").font(.system(size: 20, weight: .semibold))
                 Text(model.sourceName).font(.system(size: 12)).foregroundStyle(Theme.muted)
                     .lineLimit(1).truncationMode(.middle)
             }
             Spacer()
-            Text("JPEG").font(.system(size: 10, weight: .semibold)).tracking(1)
+            Text(model.format == .jpeg ? "JPEG" : "HDR").font(.system(size: 10, weight: .semibold)).tracking(1)
                 .foregroundStyle(Theme.muted).padding(.horizontal, 10).padding(.vertical, 6)
                 .background(Theme.panel, in: RoundedRectangle(cornerRadius: 5))
         }.padding(24)
@@ -77,15 +77,15 @@ struct JPEGExportView: View {
             }
             if model.isBatch {
                 row("Dateinamen") {
-                    Text("Originalname-bearbeitet.jpg")
+                    Text("Originalname-bearbeitet.\(model.format.fileExtension)")
                         .font(.system(size: 12)).frame(maxWidth: .infinity, alignment: .leading)
                 }
                 Text("Gleiche Namen erhalten eine fortlaufende Nummer. Vorhandene Dateien werden nur nach Bestätigung ersetzt.")
                     .font(.system(size: 10)).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
             } else {
                 row("Dateiname") {
-                    TextField("Bild-bearbeitet.jpg", text: $model.filename)
-                        .textFieldStyle(.roundedBorder).accessibilityLabel("Dateiname mit JPEG-Endung")
+                    TextField("Bild-bearbeitet.\(model.format.fileExtension)", text: $model.filename)
+                        .textFieldStyle(.roundedBorder).accessibilityLabel("Exportdateiname")
                 }
             }
             HStack(spacing: 5) {
@@ -103,27 +103,39 @@ struct JPEGExportView: View {
 
     private var fileSection: some View {
         section("Dateieinstellungen", symbol: "doc") {
-            row("Bildformat") { Text("JPEG").font(.system(size: 12)).frame(maxWidth: .infinity, alignment: .leading) }
+            row("Bildformat") {
+                Picker("Bildformat", selection: $model.format) {
+                    ForEach(JPEGExportFormat.allCases, id: \.self) { format in Text(format.displayName).tag(format) }
+                }.labelsHidden().accessibilityLabel("Exportformat")
+            }
             row("Farbraum") {
-                Picker("Farbraum", selection: $model.colorSpace) {
-                    Text("sRGB").tag(JPEGExportColorSpace.sRGB)
-                    Text("Display P3").tag(JPEGExportColorSpace.displayP3)
-                }.labelsHidden().accessibilityLabel("Farbraum des exportierten JPEG")
+                if model.format == .jpeg {
+                    Picker("Farbraum", selection: $model.colorSpace) {
+                        Text("sRGB").tag(JPEGExportColorSpace.sRGB)
+                        Text("Display P3").tag(JPEGExportColorSpace.displayP3)
+                    }.labelsHidden().accessibilityLabel("Farbraum des exportierten JPEG")
+                } else {
+                    Text("Rec. 2100 HLG · 10 Bit").font(.system(size: 12))
+                }
             }
             row("Qualität") {
                 HStack(spacing: 12) {
-                    Slider(value: Binding(
+                    ResettableSlider(value: Binding(
                         get: { Double(min(100, max(0, Int(model.qualityText) ?? 90))) },
                         set: { model.qualityText = String(Int($0.rounded())) }
-                    ), in: 0...100, step: 1)
-                    .accessibilityLabel("JPEG-Qualität")
+                    ), in: 0...100, step: 1, neutralValue: 90)
+                    .accessibilityLabel("Exportqualität")
                     TextField("90", text: $model.qualityText).textFieldStyle(.roundedBorder)
-                        .multilineTextAlignment(.trailing).frame(width: 49).accessibilityLabel("JPEG-Qualität in Prozent")
+                        .multilineTextAlignment(.trailing).frame(width: 49).accessibilityLabel("Exportqualität in Prozent")
                     Text("%").foregroundStyle(Theme.muted)
                 }
             }
             Text("Höhere Qualität bedeutet weniger Kompression und größere Dateien. Transparente Bereiche werden weiß hinterlegt.")
                 .font(.system(size: 10)).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
+            if model.format == .heif10HDR {
+                Text("Speichert den erweiterten Helligkeitsumfang als 10-Bit-HEIF. Die HDR-Wirkung hängt vom Ausgangsbild, der Bearbeitung und dem Anzeigegerät ab.")
+                    .font(.system(size: 10)).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
 
@@ -199,7 +211,7 @@ struct JPEGExportView: View {
         VStack(spacing: 13) {
             Image(systemName: model.wasCancelled ? "stop.circle" : "checkmark.circle")
                 .font(.system(size: 38, weight: .light)).foregroundStyle(Theme.accent).accessibilityHidden(true)
-            Text(model.isBatch ? "\(model.completedCount) von \(model.sourceCount) JPEGs exportiert" : "JPEG exportiert")
+            Text(model.isBatch ? "\(model.completedCount) von \(model.sourceCount) Fotos exportiert" : "Foto exportiert")
                 .font(.system(size: 20, weight: .semibold))
             if model.isBatch {
                 Text(model.wasCancelled ? "Export abgebrochen. Bereits exportierte Bilder bleiben gespeichert." : result.url.deletingLastPathComponent().path)
@@ -231,7 +243,7 @@ struct JPEGExportView: View {
             HStack(spacing: 12) {
                 if model.isExporting {
                     ProgressView().controlSize(.small)
-                    Text(model.isCancelling ? "Export wird abgebrochen …" : "JPEG wird erstellt …")
+                    Text(model.isCancelling ? "Export wird abgebrochen …" : "Foto wird exportiert …")
                         .font(.system(size: 12)).foregroundStyle(Theme.muted)
                         .accessibilityLabel(model.isCancelling ? "Export wird abgebrochen" : "Export läuft")
                 } else if model.result == nil {

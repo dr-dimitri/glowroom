@@ -59,7 +59,7 @@ final class LocalAdjustmentEditorModel: ObservableObject {
     @Published private(set) var canRedo = false
     private let loader: Loader
     private let generator: Generator
-    private let openingSettings: EditSettings
+    private var openingSettings: EditSettings
     private var history: [[LocalAdjustment]] = []
     private var future: [[LocalAdjustment]] = []
     private var groupStart: [LocalAdjustment]?
@@ -81,6 +81,14 @@ final class LocalAdjustmentEditorModel: ObservableObject {
     }
 
     var selected: LocalAdjustment? { settings.localAdjustments.first { $0.id == selectedID } }
+
+    /// Reopening the inline inspector starts from the current accepted edit.
+    func reset(settings: EditSettings) {
+        close()
+        openingSettings = settings
+        self.settings = settings
+        selectedID = settings.localAdjustments.first?.id
+    }
 
     func load(source: AISourceIdentity) async {
         guard !Task.isCancelled else { return }
@@ -140,6 +148,16 @@ final class LocalAdjustmentEditorModel: ObservableObject {
         endChange()
         do { try install(settings.localAdjustments.filter { $0.id != selectedID }); self.selectedID = settings.localAdjustments.first?.id }
         catch { errorMessage = error.localizedDescription }
+    }
+
+    func moveSelected(by offset: Int) {
+        endChange()
+        guard let index = settings.localAdjustments.firstIndex(where: { $0.id == selectedID }) else { return }
+        let destination = index + offset
+        guard settings.localAdjustments.indices.contains(destination), destination != index else { return }
+        var layers = settings.localAdjustments
+        layers.swapAt(index, destination)
+        do { try install(layers) } catch { errorMessage = error.localizedDescription }
     }
 
     func duplicateSelected() {

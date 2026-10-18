@@ -163,11 +163,11 @@ final class WorkspaceProposalLifecycleTests {
     }
 
     @Test
-    func paintedMaskSheetSurvivesLayoutAndGridTransitions() async throws {
+    func paintedInlineMaskSurvivesPanelChangesAndDiscardsOnGridOrSourceChange() async throws {
         let f = try await fixture()
         let host = WorkspaceSectionTestHost(size: NSSize(width: 1_440, height: 900))
         defer { host.close() }
-        let suite = "PicEdit-WorkspaceMaskSheet-\(UUID())"
+        let suite = "PicEdit-WorkspaceInlineMask-\(UUID())"
         let defaults = try #require(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
         let layout = WorkspaceLayoutModel(defaults: defaults)
@@ -194,16 +194,9 @@ final class WorkspaceProposalLifecycleTests {
         )
         let maskButton = try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == "workspace.mask" })
         #expect(maskButton.accessibilityPerformPress())
-        try await wait("mask sheet opens") { host.sheet != nil }
-        let sheet = try #require(host.sheet)
-        try await wait("initial mask canvas loads") {
-            mask.canvasSize != nil && host.accessibilityElements(in: sheet).contains { $0.accessibilityIdentifier() == "local-mask.canvas" }
+        try await wait("inline mask canvas loads without a sheet") {
+            mask.canvasSize != nil && host.sheet == nil && host.accessibilityElements.contains { $0.accessibilityIdentifier() == "local-mask.canvas" }
         }
-        let undoBefore = try #require(host.accessibilityElements(in: sheet).first { $0.accessibilityIdentifier() == "local-mask.undo" })
-        #expect(!undoBefore.isAccessibilityEnabled())
-        // Drive the actual sheet's injected local model through its normal edit
-        // API. This tests view lifetime without activating the test app or
-        // synthesizing global mouse input.
         mask.add(.brush)
         let canvas = try #require(mask.canvasSize)
         let painted = try MaskDocument(canvasSize: canvas, strokes: [MaskStroke(points: [
@@ -212,83 +205,196 @@ final class WorkspaceProposalLifecycleTests {
         ], radius: 0.2)])
         mask.updateSelected { $0.mask.shape = .brush(painted) }
         let paintedSettings = mask.settings
-        let paintedSelection = mask.selectedID
-        #expect(!painted.strokes.isEmpty && mask.canUndo)
-        try await wait("painted mask enables undo") {
-            host.accessibilityElements(in: sheet).first { $0.accessibilityIdentifier() == "local-mask.undo" }?.isAccessibilityEnabled() == true
+        do {
+            try await wait("inline palette enables undo") {
+                host.accessibilityElements.first { $0.accessibilityIdentifier() == "local-mask.undo" }?.isAccessibilityEnabled() == true
+            }
+        } catch {
+            try? host.snapshot(to: URL(fileURLWithPath: "/private/tmp/picedit-inline-mask-lifecycle-failure.png"))
+            Issue.record("Inline palette: developing=\(f.library.isDeveloping), detail=\(f.library.showsDetail), source=\(mask.source != nil), canUndo=\(mask.canUndo), layers=\(mask.settings.localAdjustments.count); AX=\(host.accessibilityElements.compactMap { $0.accessibilityIdentifier() })")
+            throw error
         }
-
-        // Keep the actual native sheet and its painted draft alive while the
-        // detail owner disappears, panel subtrees change and focus returns.
         WorkspaceActions.toggleFocus(layout, library: f.library)
         WorkspaceActions.toggleTools(layout, library: f.library)
         WorkspaceActions.toggleLibrary(layout, library: f.library)
         WorkspaceActions.toggleFilmstrip(layout, library: f.library)
-        WorkspaceActions.showGrid(layout, library: f.library)
         try await host.settle()
-        #expect(!f.library.showsDetail)
-        #expect(host.sheet === sheet)
-        #expect(mask.settings == paintedSettings && mask.selectedID == paintedSelection && mask.canUndo)
-        #expect(host.accessibilityElements(in: sheet).first { $0.accessibilityIdentifier() == "local-mask.undo" }?.isAccessibilityEnabled() == true)
+        #expect(host.sheet == nil)
+        #expect(mask.settings == paintedSettings && mask.canUndo)
+        // Showing a hidden panel preserves its draft. A dock/menu reveal is
+        // navigation and is covered separately with acceptance semantics.
+        layout.update(developing: true) { $0.showsTools = true }
+        try await host.settle()
+        #expect(mask.settings == paintedSettings && mask.canUndo)
+        #expect(host.accessibilityElements.contains { $0.accessibilityIdentifier() == "local-mask.canvas" })
+        #expect(f.editor.settings(for: assetID) == baselineSettings)
+        #expect(try Data(contentsOf: original) == originalBytes)
+
+        WorkspaceActions.showGrid(layout, library: f.library)
+        try await wait("leaving the canvas discards the unaccepted draft") { !f.library.showsDetail && mask.source == nil && mask.bitmap == nil }
         WorkspaceActions.reveal(.edit, layout: layout, library: f.library)
         try await host.settle()
-        #expect(host.sheet === sheet)
-        #expect(mask.settings == paintedSettings && mask.selectedID == paintedSelection && mask.canUndo)
-        #expect(host.accessibilityElements(in: sheet).first { $0.accessibilityIdentifier() == "local-mask.undo" }?.isAccessibilityEnabled() == true)
-        #expect(f.library.selectedID == assetID)
-        #expect(try Data(contentsOf: original) == originalBytes)
-        #expect(!f.editor.hasPendingChanges)
-        #expect(f.editor.settings(for: assetID) == baselineSettings)
-        #expect(await f.store.saveCount == 0)
-
-        // A source replacement is a real invalidation even when the photo ID
-        // and native sheet stay the same. Its old strokes must not leak into
-        // the newly oriented source canvas.
-        try (originalBytes + Data([0])).write(to: original)
-        f.library.refreshCurrentFolder()
-        try await wait("replacement source resets mask") {
-            !f.library.isImporting && !f.library.isProjecting
-                && f.editor.aiSnapshot(in: f.library)?.source != baselineSource
-                && mask.source != nil && mask.source != baselineSource && mask.bitmap != nil
-                && mask.settings.localAdjustments.isEmpty && !mask.canUndo
-                && host.accessibilityElements(in: sheet).first { $0.accessibilityIdentifier() == "local-mask.undo" }?.isAccessibilityEnabled() == false
-                && host.accessibilityElements(in: sheet).contains { $0.accessibilityIdentifier() == "local-mask.canvas" }
-        }
-        #expect(host.sheet === sheet)
-
-        f.library.select(try #require(f.library.visibleAssets.first { $0.id != assetID }))
-        do {
-            try await wait("selection change dismisses mask sheet") { host.sheet == nil && mask.source == nil && mask.bitmap == nil }
-        } catch {
-            Issue.record("Mask sheet disposal: sheet=\(host.sheet != nil), source=\(mask.source != nil), bitmap=\(mask.bitmap != nil), selectionChanged=\(f.library.selectedID != assetID)")
-            throw error
-        }
-        let selectedAsset = try #require(f.library.selectedAsset)
-        let selectedSource = try f.editor.resolvedSource(for: selectedAsset).identity
-        let selectedSettings = f.editor.settings(for: selectedAsset.id)
         let reopen = try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == "workspace.mask" })
         #expect(reopen.accessibilityPerformPress())
-        try await wait("new selection opens its mask sheet") { host.sheet != nil }
-        let reopenedSheet = try #require(host.sheet)
-        // The test retains the injected object beyond the old sheet's lifetime.
-        // Check its next real presentation, which must start a new empty draft
-        // for the selected photo rather than expose any previous strokes.
-        try await wait("new selection starts an empty mask draft") {
-            mask.source == selectedSource && mask.settings == selectedSettings && mask.settings.localAdjustments.isEmpty && !mask.canUndo
-                && host.accessibilityElements(in: reopenedSheet).contains { $0.accessibilityIdentifier() == "local-mask.canvas" }
-                && host.accessibilityElements(in: reopenedSheet).first { $0.accessibilityIdentifier() == "local-mask.undo" }?.isAccessibilityEnabled() == false
+        try await wait("reopening starts a clean draft") { mask.source == baselineSource && mask.canvasSize != nil && mask.settings == baselineSettings && !mask.canUndo }
+        mask.add(.linear)
+        try (originalBytes + Data([0])).write(to: original)
+        f.library.refreshCurrentFolder()
+        try await wait("replaced source discards its old draft") {
+            !f.library.isImporting && !f.library.isProjecting
+                && f.editor.aiSnapshot(in: f.library)?.source != baselineSource && mask.source == nil && mask.bitmap == nil
         }
-        let discard = try #require(host.accessibilityElements(in: reopenedSheet).first {
-            $0.accessibilityRole() == .button && $0.accessibilityLabel() == "Abbrechen"
-        })
+        #expect(host.sheet == nil)
+        let replacedSource = try #require(f.editor.aiSnapshot(in: f.library)).source
+        let reopenAfterReplacement = try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == "workspace.mask" })
+        #expect(reopenAfterReplacement.accessibilityPerformPress())
+        try await wait("replacement gets a new inline canvas") { mask.source == replacedSource && mask.canvasSize != nil && mask.settings == baselineSettings }
+        mask.add(.radial)
+        let discard = try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == "local-mask.cancel" })
         #expect(discard.accessibilityPerformPress())
-        try await wait("explicit discard clears and closes the mask sheet") {
-            host.sheet == nil && mask.source == nil && mask.bitmap == nil && mask.settings.localAdjustments.isEmpty && !mask.canUndo
-        }
+        try await wait("explicit discard closes the inline palette") { mask.source == nil && mask.bitmap == nil }
         #expect(f.editor.settings(for: assetID) == baselineSettings)
-        #expect(f.editor.settings(for: selectedAsset.id) == selectedSettings)
-        #expect(!f.editor.hasPendingChanges)
         #expect(await f.store.saveCount == 0)
+        #expect(await metadata.finishSaving())
+        #expect(await f.library.finishSaving())
+    }
+
+    @Test(arguments: [WorkspaceTool.edit, .assistant])
+    func dockRevealAcceptsTheMaskDraftAndMountsItsDestination(tool: WorkspaceTool) async throws {
+        let f = try await fixture()
+        let host = WorkspaceSectionTestHost(size: NSSize(width: 1_440, height: 900))
+        defer { host.close() }
+        let suite = "PicEdit-RevealMask-\(UUID())"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let layout = WorkspaceLayoutModel(defaults: defaults)
+        let assetID = try #require(f.library.selectedID)
+        let mask = LocalAdjustmentEditorModel(settings: f.editor.settings(for: assetID))
+        let metadata = try await mountLibrary(f, mask: mask, layout: layout, host: host)
+        let previousRequest = layout.revealRequest
+        let open = try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == "workspace.mask" })
+        #expect(open.accessibilityPerformPress())
+        try await wait("mask draft before dock reveal") { mask.canvasSize != nil && mask.source != nil }
+        #expect(layout.revealRequest == previousRequest, "Opening masks must not emit navigation to a hidden edit group")
+        mask.add(.radial); mask.updateSelected { $0.settings.exposure = 1 }
+        let expected = mask.settings
+        #expect(f.editor.settings(for: assetID).localAdjustments.isEmpty)
+        WorkspaceActions.reveal(tool, layout: layout, library: f.library)
+        try await wait("dock target replaces the palette after draft acceptance") {
+            mask.source == nil && f.editor.settings(for: assetID) == expected
+                && host.accessibilityElements.contains { $0.accessibilityIdentifier() == "workspace.group.\(tool.rawValue)" }
+        }
+        #expect(host.sheet == nil)
+        #expect(!host.accessibilityElements.contains { $0.accessibilityIdentifier() == "local-mask.cancel" })
+        #expect(layout.develop.openGroups.contains(tool))
+        if tool == .assistant {
+            // Direct inspector/menu reveals use the same path from geometry tools.
+            let crop = try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == "develop.tool.crop" })
+            #expect(crop.accessibilityPerformPress())
+            try await wait("crop canvas is active") {
+                host.accessibilityElements.contains { $0.accessibilityIdentifier() == "develop.interactive-canvas" }
+            }
+            layout.reveal(.versions, developing: true)
+            try await wait("versions group mounts after leaving crop") {
+                !host.accessibilityElements.contains { $0.accessibilityIdentifier() == "develop.interactive-canvas" }
+                    && host.accessibilityElements.contains { $0.accessibilityIdentifier() == "workspace.group.versions" }
+            }
+        }
+        #expect(f.editor.settings(for: assetID) == expected)
+        f.editor.undo(assetID: assetID)
+        #expect(f.editor.settings(for: assetID).localAdjustments.isEmpty)
+        #expect(await f.editor.flush())
+        #expect(await metadata.finishSaving())
+        #expect(await f.library.finishSaving())
+    }
+
+    @Test func revealDuringAutomaticSelectionWaitsWithoutDiscardingTheDraft() async throws {
+        let f = try await fixture()
+        let host = WorkspaceSectionTestHost(size: NSSize(width: 1_440, height: 900))
+        defer { host.close() }
+        let suite = "PicEdit-RevealInference-\(UUID())"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let layout = WorkspaceLayoutModel(defaults: defaults), gate = WorkspaceMaskInferenceGate()
+        let assetID = try #require(f.library.selectedID)
+        let mask = LocalAdjustmentEditorModel(settings: .neutral, generator: { _, _, _ in try await gate.generate() })
+        let metadata = try await mountLibrary(f, mask: mask, layout: layout, host: host)
+        let open = try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == "workspace.mask" })
+        #expect(open.accessibilityPerformPress())
+        try await wait("draft source for automatic selection") { mask.canvasSize != nil }
+        mask.add(.linear); mask.updateSelected { $0.settings.exposure = 1 }
+        mask.add(.subject)
+        try await wait("automatic selection has started") { await gate.started }
+        WorkspaceActions.reveal(.assistant, layout: layout, library: f.library)
+        try await host.settle()
+        #expect(mask.source != nil && mask.isGenerating && mask.settings.localAdjustments.count == 1)
+        #expect(f.editor.settings(for: assetID).localAdjustments.isEmpty)
+        #expect(host.accessibilityElements.contains { $0.accessibilityIdentifier() == "local-mask.cancel" })
+        await gate.complete()
+        try await wait("completed selection is accepted before assistant navigation") {
+            mask.source == nil && f.editor.settings(for: assetID).localAdjustments.count == 2
+                && host.accessibilityElements.contains { $0.accessibilityIdentifier() == "workspace.group.assistant" }
+        }
+        #expect(f.editor.settings(for: assetID).localAdjustments.first?.settings.exposure == 1)
+        #expect(await f.editor.flush())
+        #expect(await metadata.finishSaving())
+        #expect(await f.library.finishSaving())
+    }
+
+    @Test(arguments: [false, true])
+    func failedAutomaticSelectionKeepsItsDraftUntilANewExplicitReveal(retrySelection: Bool) async throws {
+        let f = try await fixture()
+        let host = WorkspaceSectionTestHost(size: NSSize(width: 1_440, height: 900))
+        defer { host.close() }
+        let suite = "PicEdit-RevealFailedInference-\(UUID())"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let layout = WorkspaceLayoutModel(defaults: defaults), gate = WorkspaceMaskInferenceGate()
+        let assetID = try #require(f.library.selectedID)
+        let mask = LocalAdjustmentEditorModel(settings: .neutral, generator: { _, _, _ in try await gate.generate() })
+        let metadata = try await mountLibrary(f, mask: mask, layout: layout, host: host)
+        let open = try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == "workspace.mask" })
+        #expect(open.accessibilityPerformPress())
+        try await wait("draft source before failed selection") { mask.canvasSize != nil }
+        mask.add(.linear); mask.updateSelected { $0.settings.exposure = 1 }
+        let originalDraft = mask.settings
+        mask.add(.subject)
+        try await wait("failing automatic selection has started") { await gate.pending }
+        WorkspaceActions.reveal(.assistant, layout: layout, library: f.library)
+        try await host.settle()
+        #expect(mask.isGenerating && mask.source != nil)
+        await gate.fail()
+        try await wait("selection error is visible") { mask.errorMessage != nil && !mask.isGenerating }
+        try await host.settle()
+        #expect(mask.source != nil && mask.settings == originalDraft)
+        #expect(f.editor.settings(for: assetID).localAdjustments.isEmpty)
+        #expect(host.accessibilityElements.contains { $0.accessibilityIdentifier() == "local-mask.cancel" })
+
+        if retrySelection {
+            // A later successful selection must not resurrect the destination
+            // whose previous automatic continuation failed.
+            mask.add(.subject)
+            try await wait("replacement automatic selection has started") { await gate.pending }
+            await gate.complete()
+            try await wait("replacement selection finishes in its palette") {
+                !mask.isGenerating && mask.settings.localAdjustments.count == 2
+            }
+            try await host.settle()
+            #expect(mask.source != nil && mask.errorMessage == nil)
+            #expect(f.editor.settings(for: assetID).localAdjustments.isEmpty)
+            #expect(host.accessibilityElements.contains { $0.accessibilityIdentifier() == "local-mask.cancel" })
+        }
+
+        let accepted = mask.settings
+        // An explicit navigation after a failure is allowed, including while
+        // its already-understood error text remains visible in the palette.
+        WorkspaceActions.reveal(.assistant, layout: layout, library: f.library)
+        try await wait("a new explicit reveal accepts the retained draft") {
+            mask.source == nil && f.editor.settings(for: assetID) == accepted
+                && host.accessibilityElements.contains { $0.accessibilityIdentifier() == "workspace.group.assistant" }
+        }
+        #expect(f.editor.settings(for: assetID).localAdjustments.first?.settings.exposure == 1)
+        #expect(await f.editor.flush())
         #expect(await metadata.finishSaving())
         #expect(await f.library.finishSaving())
     }
@@ -584,6 +690,19 @@ final class WorkspaceProposalLifecycleTests {
         }
     }
 
+    private func mountLibrary(_ f: WorkspaceProposalFixture, mask: LocalAdjustmentEditorModel,
+                              layout: WorkspaceLayoutModel, host: WorkspaceSectionTestHost) async throws -> PhotoMetadataModel {
+        let metadata = PhotoMetadataModel(store: PhotoMetadataRepository(directory: directory.appendingPathComponent("Metadata")),
+            suggestor: LocalPhotoMetadataSuggestor(service: ImageAnalysisService(
+                provider: UnavailableImageAnalysisProvider(reason: .sdkUnavailable), budget: AIResourceBudget())),
+            library: f.library, editor: f.editor)
+        f.library.showsDetail = true
+        try await host.mount(LibraryView(model: f.library, dataDirectory: directory, localMaskModel: mask)
+            .environmentObject(f.editor).environmentObject(JPEGExportModel(preferences: nil)).environmentObject(layout)
+            .environmentObject(f.assistant).environmentObject(f.analysis).environmentObject(metadata))
+        return metadata
+    }
+
     private func fixture() async throws -> WorkspaceProposalFixture {
         let photos = directory.appendingPathComponent("Photos")
         try FileManager.default.createDirectory(at: photos, withIntermediateDirectories: true)
@@ -773,4 +892,27 @@ private actor WorkspaceProposalStore: LegacySnapshotTestStore {
     }
     func createBackup(automatic: Bool) -> URL { URL(fileURLWithPath: "/tmp/workspace-lifecycle-backup.sqlite") }
     func restoreBackup(from url: URL) -> [String: EditSettings] { values }
+}
+
+private actor WorkspaceMaskInferenceGate {
+    private var continuation: CheckedContinuation<LocalMaskRaster, Error>?
+    private(set) var started = false
+    var pending: Bool { continuation != nil }
+    func generate() async throws -> LocalMaskRaster {
+        started = true
+        return try await withCheckedThrowingContinuation { continuation = $0 }
+    }
+    func complete() {
+        continuation?.resume(returning: try! LocalMaskRaster(width: 2, height: 2, bytes: Data(repeating: 255, count: 4)))
+        continuation = nil
+    }
+    func fail() {
+        continuation?.resume(throwing: WorkspaceMaskInferenceFailure.unavailable)
+        continuation = nil
+    }
+}
+
+private enum WorkspaceMaskInferenceFailure: LocalizedError {
+    case unavailable
+    var errorDescription: String? { "Die automatische Testauswahl ist fehlgeschlagen." }
 }

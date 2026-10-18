@@ -17,7 +17,7 @@ enum JPEGExportActions {
         let assets = library.selectedAssets
         guard !assets.isEmpty else { return }
         guard assets.allSatisfy({ editor.snapshot(for: $0.id).source == .original }) else {
-            editor.errorMessage = "JPEG-Export generierter Bildquellen wird noch nicht unterstützt. Sichere den vollständigen Bildstand als Bearbeitungspaket."
+            editor.errorMessage = "Der Export generierter Bildquellen wird noch nicht unterstützt. Sichere den vollständigen Bildstand als Bearbeitungspaket."
             return
         }
         for asset in assets { editor.endEditing(assetID: asset.id) }

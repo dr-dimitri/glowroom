@@ -136,6 +136,12 @@ public enum ArtifactJSONCodec {
         case let v as EditSettings:
             guard v == v.normalized else { throw ArtifactContractError.invalidValue("settings") }
             try v.validateLocalAdjustments()
+            try v.developGeometry.validate()
+        case let v as DevelopColorSettings:
+            guard v == v.normalized else { throw ArtifactContractError.invalidValue("develop color settings") }
+        case let v as DevelopGeometry:
+            guard v == v.normalized else { throw ArtifactContractError.invalidValue("develop geometry") }
+            try v.validate()
         case let v as OriginalSourceRevision:
             _ = try OriginalSourceRevision(device:v.device,inode:v.inode,fileSize:v.fileSize,modifiedSeconds:v.modifiedSeconds,modifiedNanoseconds:v.modifiedNanoseconds,changedSeconds:v.changedSeconds,changedNanoseconds:v.changedNanoseconds)
         case let v as GenerationParameters: try ArtifactValueValidation.version(v.schemaVersion);_ = try GenerationParameters(values:v.values)
@@ -155,7 +161,7 @@ public enum ArtifactJSONCodec {
         let editEnvelope = type == EditingSnapshot.self || type == EditSettings.self || type == EditingExpectedState.self
             || type == GeneratedArtifact.self || type == GeneratedArtifactManifest.self || type == GenerationProvenance.self
             || type == LocalAdjustment.self || type == LocalAdjustmentMask.self || type == LocalMaskShape.self
-            || type == LocalMaskRaster.self
+            || type == LocalMaskRaster.self || type == DevelopGeometry.self
         let maximum = maximum ?? (editEnvelope ? EditSettings.maximumEncodedBytes : 65_536)
         guard maximum > 0, maximum <= 67_108_864,data.count <= maximum else { throw ArtifactContractError.limitExceeded }
         do {

@@ -26,7 +26,7 @@ struct AssetThumbnail: View {
     var body: some View {
         AsyncPhotoView(
             request: PreviewRequest(source: source ?? .original(.init(fileURL: url, modifiedAt: modifiedAt, fileSize: fileSize)), pixelSize: pixelSize,
-                                    allowsEmbeddedPreview: settings.isNeutral),
+                                    allowsEmbeddedPreview: settings.isNeutral, allowsHDR: settings.developColor.hdrEnabled),
             priority: priority, settings: settings, showsFailureDescription: false
         )
     }
@@ -45,7 +45,7 @@ struct PhotoPreview: View {
     var body: some View {
         AsyncPhotoView(
             request: PreviewRequest(source: source ?? .original(.init(fileURL: url, modifiedAt: modifiedAt, fileSize: fileSize)), pixelSize: 2_400,
-                                    allowsEmbeddedPreview: !developing && settings.isNeutral, sourceRevision: sourceRevision),
+                                    allowsEmbeddedPreview: !developing && settings.isNeutral, sourceRevision: sourceRevision, allowsHDR: settings.developColor.hdrEnabled),
             priority: .selected, settings: settings, showsFailureDescription: true, progressive: true
         )
     }
@@ -53,6 +53,7 @@ struct PhotoPreview: View {
 
 @MainActor
 private struct AsyncPhotoView: View {
+    @Environment(\.developPreviewSink) private var previewSink
     let request: PreviewRequest
     let priority: PreviewPriority
     let settings: EditSettings
@@ -94,7 +95,7 @@ private struct AsyncPhotoView: View {
     var body: some View {
         ZStack {
             if sameDisplayedPhoto, let displayed {
-                Image(nsImage: displayed.image).resizable().interpolation(.high).aspectRatio(contentMode: .fit)
+                DevelopImageView(image: displayed.image, hdr: displayed.identity.settings.developColor.hdrEnabled)
                     .accessibilityLabel(request.displayName)
             } else if let error = sourceError ?? renderError {
                 failure(error)
@@ -165,6 +166,7 @@ private struct AsyncPhotoView: View {
                 guard renderIdentity == identity else { return }
                 displayed = Displayed(identity: identity, image: NSImage(cgImage: bitmap.image,
                                       size: NSSize(width: bitmap.image.width, height: bitmap.image.height)))
+                if priority == .selected, showsFailureDescription { previewSink?(request, identity.settings, bitmap, sourceBitmap) }
             } catch is CancellationError {
                 // A newer parameter value, photo or source resolution supersedes this result.
             } catch {
@@ -199,5 +201,28 @@ private struct AsyncPhotoView: View {
 
     private var loadingIndicator: some View {
         ProgressView().controlSize(.small).accessibilityLabel("Bildvorschau wird aktualisiert")
+    }
+}
+
+/// AppKit explicitly opts HDR images into EDR. On an SDR display the system
+/// presents a constrained rendition; no alternate source decode is started.
+private struct DevelopImageView: NSViewRepresentable {
+    let image: NSImage
+    let hdr: Bool
+    func makeNSView(context: Context) -> NSImageView {
+        let view = DevelopNSImageView()
+        view.imageScaling = .scaleProportionallyUpOrDown
+        view.imageAlignment = .alignCenter
+        return view
+    }
+    func updateNSView(_ view: NSImageView, context: Context) {
+        view.image = image
+        view.preferredImageDynamicRange = hdr ? .high : .standard
+    }
+}
+
+private final class DevelopNSImageView: NSImageView {
+    override var intrinsicContentSize: NSSize {
+        NSSize(width: NSView.noIntrinsicMetric, height: NSView.noIntrinsicMetric)
     }
 }

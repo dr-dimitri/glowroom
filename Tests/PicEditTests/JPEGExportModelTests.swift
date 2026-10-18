@@ -6,6 +6,54 @@ import Testing
 @Suite("JPEG export controller", .serialized)
 @MainActor
 struct JPEGExportModelTests {
+    @Test func formatSwitchUpdatesExtensionAndFreezesTheAcceptedHDRRequest() async throws {
+        let probe = ExportProbe()
+        let model = JPEGExportModel(preferences: nil, export: { try await probe.export($0) })
+        model.present(asset: asset("hdr.CR3", width: 1200, height: 800), settings: .init(developGeometry:
+            .init(crop: try .init(x: 0.25, y: 0.25, width: 0.5, height: 0.5), quarterTurns: 1)))
+        #expect(model.format == .jpeg && model.filename == "hdr-bearbeitet.jpg")
+        #expect(model.estimatedSize == .init(width: 400, height: 600))
+        model.format = .heif10HDR
+        #expect(model.filename == "hdr-bearbeitet.heic" && model.canExport)
+        model.filename = "chosen.heif"
+        model.startExport()
+        try await wait { await probe.count == 1 }
+        let request = try #require(await probe.lastRequest)
+        #expect(request.options.format == .heif10HDR)
+        #expect(request.destinationURL.lastPathComponent == "chosen.heif")
+        model.format = .jpeg
+        await probe.fail(JPEGExportError.destinationExists)
+        try await wait { model.needsOverwriteConfirmation }
+        model.confirmOverwrite()
+        try await wait { await probe.count == 2 }
+        let retry = try #require(await probe.lastRequest)
+        #expect(retry.options.format == .heif10HDR && retry.destinationURL == request.destinationURL)
+        await probe.succeed(width: 400, height: 600)
+        try await wait { !model.isExporting }
+    }
+
+    @Test func HDRBatchNamesRemainUniqueAfterChangingFormatAfterPresentation() async throws {
+        let probe = ExportProbe()
+        let model = JPEGExportModel(preferences: nil, export: { try await probe.export($0) })
+        model.present(assets: [asset("one/photo.CR3"), asset("two/PHOTO.jpg")], settingsByAsset: [:])
+        model.format = .heif10HDR
+        model.startExport()
+        try await wait { await probe.count == 1 }
+        await probe.succeed(width: 600, height: 400)
+        try await wait { await probe.count == 2 }
+        await probe.succeed(width: 600, height: 400)
+        try await wait { !model.isExporting }
+        let requests = await probe.allRequests
+        #expect(requests.map { $0.destinationURL.lastPathComponent } == ["photo-bearbeitet.heic", "PHOTO-bearbeitet-2.heic"])
+        #expect(requests.allSatisfy { $0.options.format == .heif10HDR })
+        model.cancel()
+        model.present(asset: asset("invalid.jpg"), settings: .neutral)
+        for invalid in [".heic", "wrong.jpg", "../escape.heic"] {
+            model.filename = invalid
+            #expect(!model.canExport)
+        }
+    }
+
     @Test
     func exportFreezesEditingSettingsOptionsAndDestination() async throws {
         let probe = ExportProbe()

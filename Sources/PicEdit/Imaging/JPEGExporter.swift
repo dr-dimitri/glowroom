@@ -64,9 +64,9 @@ enum JPEGExportError: LocalizedError, Equatable {
         case .catalogUnavailable: "Der Originalschutz ist derzeit nicht verfügbar. Behebe zuerst den Bibliotheksfehler und versuche den Export erneut."
         case .invalidDestination: "Das Exportziel muss eine reguläre Datei in einem vorhandenen Ordner sein. Symbolische Verknüpfungen sind nicht zulässig."
         case .insufficientMemory: "Für diese Original- und Ausgabeauflösung reicht das sichere Export-Speicherbudget nicht aus. Wähle kleinere Ausgabemaße oder einen Rechner mit mehr Arbeitsspeicher."
-        case .renderingFailed: "Die JPEG-Ausgabe konnte nicht gerendert werden."
-        case .encodingFailed: "Die JPEG-Datei konnte nicht vollständig geschrieben werden."
-        case let .fileSystem(code): "Die JPEG-Datei konnte nicht gespeichert werden: \(String(cString: strerror(code)))"
+        case .renderingFailed: "Die Bildausgabe konnte nicht gerendert werden."
+        case .encodingFailed: "Die Exportdatei konnte nicht vollständig geschrieben werden."
+        case let .fileSystem(code): "Die Exportdatei konnte nicht gespeichert werden: \(String(cString: strerror(code)))"
         }
     }
 }
@@ -148,13 +148,16 @@ actor JPEGExporter {
             let swapsAxes = (5...8).contains(orientation)
             let orientedWidth = swapsAxes ? sourceHeight : sourceWidth
             let orientedHeight = swapsAxes ? sourceWidth : sourceHeight
-            let size = try request.options.outputSize(sourceWidth: orientedWidth, sourceHeight: orientedHeight)
-            try validateMemory(sourceWidth: orientedWidth, sourceHeight: orientedHeight, output: size, settings: request.settings)
+            let developedSize = try DevelopGeometryRenderer.outputSize(width: orientedWidth, height: orientedHeight,
+                geometry: request.settings.developGeometry)
+            let size = try request.options.outputSize(sourceWidth: developedSize.width, sourceHeight: developedSize.height)
+            try validateMemory(sourceWidth: orientedWidth, sourceHeight: orientedHeight, output: size,
+                settings: request.settings, format: request.options.format)
             try Task.checkCancellation()
 
             // Always develop the actual source image at its original dimensions.
             // In particular, ImageIO must not return an embedded RAW/EXIF preview.
-            let decodeOptions: [CFString: Any] = [
+            var decodeOptions: [CFString: Any] = [
                 kCGImageSourceCreateThumbnailFromImageAlways: true,
                 kCGImageSourceCreateThumbnailWithTransform: true,
                 kCGImageSourceThumbnailMaxPixelSize: max(sourceWidth, sourceHeight),
@@ -162,6 +165,9 @@ actor JPEGExporter {
                 kCGImageSourceShouldCache: true,
                 kCGImageSourceShouldAllowFloat: true
             ]
+            if request.settings.developColor.hdrEnabled || request.options.format == .heif10HDR {
+                decodeOptions[kCGImageSourceDecodeRequest] = kCGImageSourceDecodeToHDR
+            }
             guard let original = CGImageSourceCreateThumbnailAtIndex(source, 0, decodeOptions as CFDictionary) else {
                 throw JPEGExportError.unsupportedOrDamaged
             }
@@ -170,10 +176,12 @@ actor JPEGExporter {
             }
             try Task.checkCancellation()
             defer { context.clearCaches() }
-            var image = try EditRenderer.filterGraph(original, settings: request.settings)
-            if original.width != size.width || original.height != size.height {
-                let horizontal = Double(size.width) / Double(original.width)
-                let vertical = Double(size.height) / Double(original.height)
+            var renderSettings = request.settings
+            if request.options.format == .heif10HDR { renderSettings.developColor.hdrEnabled = true }
+            var image = try EditRenderer.filterGraph(original, settings: renderSettings)
+            if Int(image.extent.width) != size.width || Int(image.extent.height) != size.height {
+                let horizontal = Double(size.width) / Double(image.extent.width)
+                let vertical = Double(size.height) / Double(image.extent.height)
                 image = image.applyingFilter("CILanczosScaleTransform", parameters: [
                     kCIInputScaleKey: vertical, kCIInputAspectRatioKey: horizontal / vertical
                 ])
@@ -181,33 +189,13 @@ actor JPEGExporter {
             let extent = CGRect(x: 0, y: 0, width: size.width, height: size.height)
             image = image.cropped(to: extent)
                 .composited(over: CIImage(color: .white).cropped(to: extent))
-            let colorSpaceName = request.options.colorSpace == .sRGB ? CGColorSpace.sRGB : CGColorSpace.displayP3
-            guard let colorSpace = CGColorSpace(name: colorSpaceName),
-                  let output = context.createCGImage(image, from: extent, format: .RGBA8,
-                                                    colorSpace: colorSpace, deferred: false) else {
-                throw JPEGExportError.renderingFailed
-            }
             try Task.checkCancellation()
 
-            let temporaryName = ".picedit-export-\(UUID().uuidString).jpg"
+            let temporaryName = ".picedit-export-\(UUID().uuidString).\(request.options.format.fileExtension)"
             let outputFD = openat(directory, temporaryName, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0o600)
             guard outputFD >= 0 else { throw JPEGExportError.fileSystem(errno) }
             let sink = JPEGFileSink(descriptor: outputFD)
             defer { unlinkat(directory, temporaryName, 0) }
-            let retainedSink = Unmanaged.passRetained(sink)
-            var callbacks = CGDataConsumerCallbacks(putBytes: { info, bytes, count in
-                guard let info else { return 0 }
-                return Unmanaged<JPEGFileSink>.fromOpaque(info).takeUnretainedValue().write(bytes, count: count)
-            }, releaseConsumer: { info in
-                if let info { Unmanaged<JPEGFileSink>.fromOpaque(info).release() }
-            })
-            guard let consumer = CGDataConsumer(info: retainedSink.toOpaque(), cbks: &callbacks) else {
-                retainedSink.release()
-                throw JPEGExportError.encodingFailed
-            }
-            guard let encoder = CGImageDestinationCreateWithDataConsumer(consumer, UTType.jpeg.identifier as CFString, 1, nil) else {
-                throw JPEGExportError.encodingFailed
-            }
             let dpi = request.options.pixelsPerInch
             let metadata: [CFString: Any] = [
                 kCGImageDestinationLossyCompressionQuality: Double(request.options.quality) / 100,
@@ -224,10 +212,55 @@ actor JPEGExporter {
                     kCGImagePropertyTIFFOrientation: 1
                 ]
             ]
-            // Color conversion already happened in Core Image. ImageIO embeds
-            // P3's ICC profile; sRGB has the standard EXIF ColorSpace=1 tag.
-            CGImageDestinationAddImage(encoder, output, metadata as CFDictionary)
-            guard CGImageDestinationFinalize(encoder) else { throw JPEGExportError.encodingFailed }
+            switch request.options.format {
+            case .jpeg:
+                let colorSpaceName = request.options.colorSpace == .sRGB ? CGColorSpace.sRGB : CGColorSpace.displayP3
+                guard let colorSpace = CGColorSpace(name: colorSpaceName),
+                      let output = context.createCGImage(image, from: extent, format: .RGBA8,
+                                                        colorSpace: colorSpace, deferred: false) else {
+                    throw JPEGExportError.renderingFailed
+                }
+                let retainedSink = Unmanaged.passRetained(sink)
+                var callbacks = CGDataConsumerCallbacks(putBytes: { info, bytes, count in
+                    guard let info else { return 0 }
+                    return Unmanaged<JPEGFileSink>.fromOpaque(info).takeUnretainedValue().write(bytes, count: count)
+                }, releaseConsumer: { info in
+                    if let info { Unmanaged<JPEGFileSink>.fromOpaque(info).release() }
+                })
+                guard let consumer = CGDataConsumer(info: retainedSink.toOpaque(), cbks: &callbacks) else {
+                    retainedSink.release()
+                    throw JPEGExportError.encodingFailed
+                }
+                guard let encoder = CGImageDestinationCreateWithDataConsumer(consumer, UTType.jpeg.identifier as CFString, 1, nil) else {
+                    throw JPEGExportError.encodingFailed
+                }
+                // JPEG retains its established 8-bit SDR profile/metadata path.
+                CGImageDestinationAddImage(encoder, output, metadata as CFDictionary)
+                guard CGImageDestinationFinalize(encoder) else { throw JPEGExportError.encodingFailed }
+            case .heif10HDR:
+                guard let colorSpace = CGColorSpace(name: CGColorSpace.itur_2100_HLG) else {
+                    throw JPEGExportError.renderingFailed
+                }
+                let encoded: Data
+                do {
+                    encoded = try context.heif10Representation(of: image.settingProperties([
+                        kCGImagePropertyOrientation as String: 1,
+                        kCGImagePropertyDPIWidth as String: dpi,
+                        kCGImagePropertyDPIHeight as String: dpi
+                    ]), colorSpace: colorSpace, options: [
+                        CIImageRepresentationOption(rawValue: kCGImageDestinationLossyCompressionQuality as String): Double(request.options.quality) / 100
+                    ])
+                } catch { throw JPEGExportError.encodingFailed }
+                try Task.checkCancellation()
+                // Core Image's 10-bit encoder returns Data. Write only through
+                // the already-exclusive file descriptor, then use exactly the
+                // same protected atomic publication as the streaming JPEG path.
+                let count = encoded.withUnsafeBytes { bytes in
+                    guard let base = bytes.baseAddress else { return 0 }
+                    return sink.write(base, count: bytes.count)
+                }
+                guard !encoded.isEmpty, count == encoded.count else { throw JPEGExportError.encodingFailed }
+            }
             guard fsync(sink.descriptor) == 0 else { throw JPEGExportError.fileSystem(errno) }
             try Task.checkCancellation()
             // An injected boundary permits deterministic cancellation/failure
@@ -299,17 +332,22 @@ actor JPEGExporter {
         return Int(value)
     }
 
-    private func validateMemory(sourceWidth: Int, sourceHeight: Int, output: JPEGPixelSize, settings: EditSettings) throws {
+    private func validateMemory(sourceWidth: Int, sourceHeight: Int, output: JPEGPixelSize, settings: EditSettings,
+                                format: JPEGExportFormat) throws {
         let source = UInt64(sourceWidth).multipliedReportingOverflow(by: UInt64(sourceHeight))
         let target = UInt64(output.width).multipliedReportingOverflow(by: UInt64(output.height))
         let decoded = source.partialValue.multipliedReportingOverflow(by: 48)
-        let rendered = target.partialValue.multipliedReportingOverflow(by: 12)
+        // HEIF additionally retains the encoder's bounded returned Data buffer.
+        let rendered = target.partialValue.multipliedReportingOverflow(by: format == .jpeg ? 12 : 32)
         let base = decoded.partialValue.addingReportingOverflow(rendered.partialValue)
         guard let local = LocalAdjustmentRenderer.estimatedAdditionalBytes(adjustments: settings.localAdjustments,
             width: sourceWidth, height: sourceHeight) else { throw JPEGExportError.insufficientMemory }
-        let total = base.partialValue.addingReportingOverflow(local)
+        guard let geometry = DevelopGeometryRenderer.estimatedAdditionalBytes(geometry: settings.developGeometry,
+            width: sourceWidth, height: sourceHeight) else { throw JPEGExportError.insufficientMemory }
+        let additional = local.addingReportingOverflow(geometry)
+        let total = base.partialValue.addingReportingOverflow(additional.partialValue)
         guard !source.overflow, !target.overflow, !decoded.overflow, !rendered.overflow,
-              !base.overflow, !total.overflow, total.partialValue <= memoryBudget else { throw JPEGExportError.insufficientMemory }
+              !base.overflow, !additional.overflow, !total.overflow, total.partialValue <= memoryBudget else { throw JPEGExportError.insufficientMemory }
     }
 
     private func validateDestination(directory: Int32, filename: String, protectedIdentities: Set<FileIdentity>, overwrite: Bool) throws {
