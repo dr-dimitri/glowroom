@@ -1,0 +1,508 @@
+using 4 threads for model loading --- model_loader.cpp:189
+loading model from '/private/tmp/picedit-sdxl-evaluation-20261018-v2/model-q8_0.gguf' --- diffusion_engine.cpp:730
+load /private/tmp/picedit-sdxl-evaluation-20261018-v2/model-q8_0.gguf using gguf format --- model_loader.cpp:215
+init from '/private/tmp/picedit-sdxl-evaluation-20261018-v2/model-q8_0.gguf' --- model_loader.cpp:261
+GGUF v3, tensor_count=2643, metadata_kv_count=0 --- gguf_reader_ext.h:219
+Version: SD 1.x Inpaint  --- diffusion_engine.cpp:1015
+ggml: ggml_metal_device_init: tensor API disabled for pre-M5 and pre-A19 devices
+ggml: ggml_metal_library_init: using embedded metal library
+ggml: ggml_metal_library_compile_all: compiled 'fa' library in 19.295 sec
+ggml: ggml_metal_library_compile_all: compiled 'mul_mv' library in 19.295 sec
+ggml: ggml_metal_library_compile_all: compiled 'mul_mm' library in 1.395 sec
+ggml: ggml_metal_library_compile_all: compiled 'quantize' library in 0.422 sec
+ggml: ggml_metal_library_compile_all: compiled 'softmax' library in 0.126 sec
+ggml: ggml_metal_library_compile_all: compiled 'norm' library in 0.187 sec
+ggml: ggml_metal_library_compile_all: compiled 'unary' library in 0.199 sec
+ggml: ggml_metal_library_compile_all: compiled 'binbcast' library in 0.142 sec
+ggml: ggml_metal_library_compile_all: compiled 'reduce' library in 0.114 sec
+ggml: ggml_metal_library_compile_all: compiled 'tri' library in 0.126 sec
+ggml: ggml_metal_library_compile_all: compiled 'ssm' library in 0.155 sec
+ggml: ggml_metal_library_compile_all: compiled 'wkv' library in 0.114 sec
+ggml: ggml_metal_library_compile_all: compiled 'gated_delta_net' library in 0.127 sec
+ggml: ggml_metal_library_compile_all: compiled 'solve_tri' library in 0.111 sec
+ggml: ggml_metal_library_compile_all: compiled 'rope' library in 0.144 sec
+ggml: ggml_metal_library_compile_all: compiled 'conv' library in 0.201 sec
+ggml: ggml_metal_library_compile_all: compiled 'upscale' library in 0.142 sec
+ggml: ggml_metal_library_compile_all: compiled 'argsort' library in 0.422 sec
+ggml: ggml_metal_library_compile_all: compiled 'pool' library in 0.117 sec
+ggml: ggml_metal_library_compile_all: compiled 'misc' library in 1.395 sec
+ggml: ggml_metal_library_compile_all: loaded 20 libraries from embedded data in 19.295 sec (max single = 19.295 sec)
+ggml: ggml_metal_rsets_init: creating a residency set collection (keep_alive = 180 s)
+ggml: ggml_metal_device_init: GPU name:   MTL0 (Apple M2 Pro)
+ggml: ggml_metal_device_init: GPU family: MTLGPUFamilyApple8  (1008)
+ggml: ggml_metal_device_init: GPU family: MTLGPUFamilyMetal4  (5002)
+ggml: ggml_metal_device_init: simdgroup reduction   = true
+ggml: ggml_metal_device_init: simdgroup matrix mul. = true
+ggml: ggml_metal_device_init: has unified memory    = true
+ggml: ggml_metal_device_init: has bfloat            = true
+ggml: ggml_metal_device_init: has tensor            = false
+ggml: ggml_metal_device_init: use residency sets    = true
+ggml: ggml_metal_device_init: use shared buffers    = true
+ggml: ggml_metal_device_init: recommendedMaxWorkingSetSize  = 12713.12 MB
+Initializing backend: MTL0 --- ggml_extend_backend.cpp:409
+ggml: ggml_metal_init: allocating
+ggml: ggml_metal_init: found device: Apple M2 Pro
+ggml: ggml_metal_init: picking default device: Apple M2 Pro
+ggml: ggml_metal_init: use fusion         = true
+ggml: ggml_metal_init: use concurrency    = true
+ggml: ggml_metal_init: use graph optimize = true
+using 4 threads for model loading --- model_loader.cpp:189
+Weight type stat:                      f32: 124  |     f16: 1167 |    q8_0: 1350 |     i32: 2     --- diffusion_engine.cpp:1639
+Conditioner weight type stat:          f16: 358  |    q8_0: 355  |     i32: 2     --- diffusion_engine.cpp:1640
+Diffusion model weight type stat:      f16: 685  |    q8_0: 995   --- diffusion_engine.cpp:1641
+VAE weight type stat:                  f32: 124  |     f16: 124   --- diffusion_engine.cpp:1642
+ggml tensor size = 432 bytes --- diffusion_engine.cpp:1644
+Initializing backend: CPU --- ggml_extend_backend.cpp:409
+vocab size: 49408 --- clip_tokenizer.cpp:66
+unet: in_channels = 9, out_channels = 4, model_channels = 320, time_embed_dim = 1280, context_dim = 2048, adm_in_channels = 2816, num_res_blocks = 2, tiny_unet = false --- unet.hpp:140
+using VAE for encoding / decoding --- model_builders.cpp:651
+vae decoder: ch = 128 --- auto_encoder_kl.hpp:529
+flash attention auto: CPU -> on (CPU) --- flash_attn.cpp:66
+ggml: ggml_metal_library_compile_pipeline: compiling pipeline: base = 'kernel_cpy_f32_f32', name = 'kernel_cpy_f32_f32'
+ggml: ggml_metal_library_compile_pipeline: loaded kernel_cpy_f32_f32                            0x1079c8f50 | th_max = 1024 | th_width =   32
+ggml: ggml_metal_library_compile_pipeline: compiling pipeline: base = 'kernel_mul_mm_f32_f32', name = 'kernel_mul_mm_f32_f32_bci=0_bco=0_ne12=4_ne13=1_r2=1_r3=1'
+ggml: ggml_metal_library_compile_pipeline: loaded kernel_mul_mm_f32_f32_bci=0_bco=0_ne12=4_ne13=1_r2=1_r3=1      0x1079c9c90 | th_max =  896 | th_width =   32
+ggml: ggml_metal_library_compile_pipeline: compiling pipeline: base = 'kernel_unary_f32_f32_4', name = 'kernel_unary_f32_f32_4_op=10_cnt=0'
+ggml: ggml_metal_library_compile_pipeline: loaded kernel_unary_f32_f32_4_op=10_cnt=0            0x1079ca690 | th_max = 1024 | th_width =   32
+ggml: ggml_metal_library_compile_pipeline: compiling pipeline: base = 'kernel_soft_max_f32_4', name = 'kernel_soft_max_f32_4'
+ggml: ggml_metal_library_compile_pipeline: loaded kernel_soft_max_f32_4                         0x1079cb190 | th_max = 1024 | th_width =   32
+ggml: ggml_metal_library_compile_pipeline: compiling pipeline: base = 'kernel_cpy_f32_f16', name = 'kernel_cpy_f32_f16'
+ggml: ggml_metal_library_compile_pipeline: loaded kernel_cpy_f32_f16                            0x1079cbb90 | th_max = 1024 | th_width =   32
+ggml: ggml_metal_library_compile_pipeline: compiling pipeline: base = 'kernel_flash_attn_ext_f16_dk64_dv64', name = 'kernel_flash_attn_ext_f16_dk64_dv64_mask=0_sinks=0_bias=0_scap=0_kvpad=0_bcm=0_ns10=64_ns20=64_nsg=4'
+ggml: ggml_metal_library_compile_pipeline: loaded kernel_flash_attn_ext_f16_dk64_dv64_mask=0_sinks=0_bias=0_scap=0_kvpad=0_bcm=0_ns10=64_ns20=64_nsg=4      0x1079cc1d0 | th_max = 1024 | th_width =   32
+ggml: ggml_metal_library_compile_pipeline: compiling pipeline: base = 'kernel_flash_attn_ext_f16_dk128_dv128', name = 'kernel_flash_attn_ext_f16_dk128_dv128_mask=0_sinks=0_bias=0_scap=0_kvpad=0_bcm=0_ns10=128_ns20=128_nsg=4'
+ggml: ggml_metal_library_compile_pipeline: loaded kernel_flash_attn_ext_f16_dk128_dv128_mask=0_sinks=0_bias=0_scap=0_kvpad=0_bcm=0_ns10=128_ns20=128_nsg=4      0x1079c7490 | th_max =  832 | th_width =   32
+flash attention auto: MTL0 -> off (probe: normal 2.932 ms, flash 3.153 ms) --- flash_attn.cpp:95
+conv2d direct auto: MTL0 -> off (no implicit GEMM path) --- conv_direct.cpp:90
+conv3d direct auto: MTL0 -> off (no implicit GEMM path) --- conv_direct.cpp:90
+conv2d direct auto: CPU -> off (no implicit GEMM path) --- conv_direct.cpp:90
+conv3d direct auto: CPU -> off (no implicit GEMM path) --- conv_direct.cpp:90
+validating model metadata --- diffusion_engine.cpp:1319
+Diffusion model tensor 'model.diffusion_model.input_blocks.1.1.norm.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.1.1.norm.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.1.1.proj_in.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.1.1.proj_in.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.1.1.proj_out.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.1.1.proj_out.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.1.1.transformer_blocks.0.attn1.to_k.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.1.1.transformer_blocks.0.attn1.to_out.0.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.1.1.transformer_blocks.0.attn1.to_out.0.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.1.1.transformer_blocks.0.attn1.to_q.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.1.1.transformer_blocks.0.attn1.to_v.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.1.1.transformer_blocks.0.attn2.to_k.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.1.1.transformer_blocks.0.attn2.to_out.0.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.1.1.transformer_blocks.0.attn2.to_out.0.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.1.1.transformer_blocks.0.attn2.to_q.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.1.1.transformer_blocks.0.attn2.to_v.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.1.1.transformer_blocks.0.ff.net.0.proj.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.1.1.transformer_blocks.0.ff.net.0.proj.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.1.1.transformer_blocks.0.ff.net.2.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.1.1.transformer_blocks.0.ff.net.2.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.1.1.transformer_blocks.0.norm1.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.1.1.transformer_blocks.0.norm1.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.1.1.transformer_blocks.0.norm2.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.1.1.transformer_blocks.0.norm2.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.1.1.transformer_blocks.0.norm3.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.1.1.transformer_blocks.0.norm3.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.10.0.emb_layers.1.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.10.0.emb_layers.1.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.10.0.in_layers.0.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.10.0.in_layers.0.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.10.0.in_layers.2.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.10.0.in_layers.2.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.10.0.out_layers.0.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.10.0.out_layers.0.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.10.0.out_layers.3.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.10.0.out_layers.3.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.11.0.emb_layers.1.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.11.0.emb_layers.1.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.11.0.in_layers.0.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.11.0.in_layers.0.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.11.0.in_layers.2.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.11.0.in_layers.2.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.11.0.out_layers.0.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.11.0.out_layers.0.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.11.0.out_layers.3.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.11.0.out_layers.3.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.2.1.norm.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.2.1.norm.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.2.1.proj_in.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.2.1.proj_in.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.2.1.proj_out.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.2.1.proj_out.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.2.1.transformer_blocks.0.attn1.to_k.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.2.1.transformer_blocks.0.attn1.to_out.0.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.2.1.transformer_blocks.0.attn1.to_out.0.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.2.1.transformer_blocks.0.attn1.to_q.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.2.1.transformer_blocks.0.attn1.to_v.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.2.1.transformer_blocks.0.attn2.to_k.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.2.1.transformer_blocks.0.attn2.to_out.0.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.2.1.transformer_blocks.0.attn2.to_out.0.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.2.1.transformer_blocks.0.attn2.to_q.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.2.1.transformer_blocks.0.attn2.to_v.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.2.1.transformer_blocks.0.ff.net.0.proj.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.2.1.transformer_blocks.0.ff.net.0.proj.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.2.1.transformer_blocks.0.ff.net.2.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.2.1.transformer_blocks.0.ff.net.2.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.2.1.transformer_blocks.0.norm1.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.2.1.transformer_blocks.0.norm1.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.2.1.transformer_blocks.0.norm2.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.2.1.transformer_blocks.0.norm2.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.2.1.transformer_blocks.0.norm3.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.2.1.transformer_blocks.0.norm3.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.9.0.op.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.input_blocks.9.0.op.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.10.0.emb_layers.1.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.10.0.emb_layers.1.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.10.0.in_layers.0.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.10.0.in_layers.0.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.10.0.in_layers.2.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.10.0.in_layers.2.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.10.0.out_layers.0.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.10.0.out_layers.0.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.10.0.out_layers.3.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.10.0.out_layers.3.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.10.0.skip_connection.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.10.0.skip_connection.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.10.1.norm.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.10.1.norm.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.10.1.proj_in.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.10.1.proj_in.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.10.1.proj_out.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.10.1.proj_out.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.10.1.transformer_blocks.0.attn1.to_k.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.10.1.transformer_blocks.0.attn1.to_out.0.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.10.1.transformer_blocks.0.attn1.to_out.0.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.10.1.transformer_blocks.0.attn1.to_q.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.10.1.transformer_blocks.0.attn1.to_v.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.10.1.transformer_blocks.0.attn2.to_k.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.10.1.transformer_blocks.0.attn2.to_out.0.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.10.1.transformer_blocks.0.attn2.to_out.0.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.10.1.transformer_blocks.0.attn2.to_q.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.10.1.transformer_blocks.0.attn2.to_v.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.10.1.transformer_blocks.0.ff.net.0.proj.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.10.1.transformer_blocks.0.ff.net.0.proj.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.10.1.transformer_blocks.0.ff.net.2.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.10.1.transformer_blocks.0.ff.net.2.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.10.1.transformer_blocks.0.norm1.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.10.1.transformer_blocks.0.norm1.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.10.1.transformer_blocks.0.norm2.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.10.1.transformer_blocks.0.norm2.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.10.1.transformer_blocks.0.norm3.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.10.1.transformer_blocks.0.norm3.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.11.0.emb_layers.1.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.11.0.emb_layers.1.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.11.0.in_layers.0.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.11.0.in_layers.0.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.11.0.in_layers.2.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.11.0.in_layers.2.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.11.0.out_layers.0.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.11.0.out_layers.0.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.11.0.out_layers.3.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.11.0.out_layers.3.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.11.0.skip_connection.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.11.0.skip_connection.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.11.1.norm.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.11.1.norm.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.11.1.proj_in.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.11.1.proj_in.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.11.1.proj_out.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.11.1.proj_out.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.11.1.transformer_blocks.0.attn1.to_k.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.11.1.transformer_blocks.0.attn1.to_out.0.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.11.1.transformer_blocks.0.attn1.to_out.0.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.11.1.transformer_blocks.0.attn1.to_q.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.11.1.transformer_blocks.0.attn1.to_v.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.11.1.transformer_blocks.0.attn2.to_k.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.11.1.transformer_blocks.0.attn2.to_out.0.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.11.1.transformer_blocks.0.attn2.to_out.0.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.11.1.transformer_blocks.0.attn2.to_q.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.11.1.transformer_blocks.0.attn2.to_v.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.11.1.transformer_blocks.0.ff.net.0.proj.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.11.1.transformer_blocks.0.ff.net.0.proj.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.11.1.transformer_blocks.0.ff.net.2.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.11.1.transformer_blocks.0.ff.net.2.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.11.1.transformer_blocks.0.norm1.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.11.1.transformer_blocks.0.norm1.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.11.1.transformer_blocks.0.norm2.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.11.1.transformer_blocks.0.norm2.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.11.1.transformer_blocks.0.norm3.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.11.1.transformer_blocks.0.norm3.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.2.0.in_layers.0.bias' has wrong shape in model metadata: got [1920, 1, 1, 1], expected [2560, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.2.0.in_layers.0.weight' has wrong shape in model metadata: got [1920, 1, 1, 1], expected [2560, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.2.0.in_layers.2.weight' has wrong shape in model metadata: got [3, 3, 1920, 1280], expected [3, 3, 2560, 1280] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.2.0.skip_connection.weight' has wrong shape in model metadata: got [1, 1, 1920, 1280], expected [1, 1, 2560, 1280] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.2.1.conv.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.2.1.conv.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.3.0.emb_layers.1.bias' has wrong shape in model metadata: got [640, 1, 1, 1], expected [1280, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.3.0.emb_layers.1.weight' has wrong shape in model metadata: got [1280, 640, 1, 1], expected [1280, 1280, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.3.0.in_layers.0.bias' has wrong shape in model metadata: got [1920, 1, 1, 1], expected [2560, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.3.0.in_layers.0.weight' has wrong shape in model metadata: got [1920, 1, 1, 1], expected [2560, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.3.0.in_layers.2.bias' has wrong shape in model metadata: got [640, 1, 1, 1], expected [1280, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.3.0.in_layers.2.weight' has wrong shape in model metadata: got [3, 3, 1920, 640], expected [3, 3, 2560, 1280] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.3.0.out_layers.0.bias' has wrong shape in model metadata: got [640, 1, 1, 1], expected [1280, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.3.0.out_layers.0.weight' has wrong shape in model metadata: got [640, 1, 1, 1], expected [1280, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.3.0.out_layers.3.bias' has wrong shape in model metadata: got [640, 1, 1, 1], expected [1280, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.3.0.out_layers.3.weight' has wrong shape in model metadata: got [3, 3, 640, 640], expected [3, 3, 1280, 1280] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.3.0.skip_connection.bias' has wrong shape in model metadata: got [640, 1, 1, 1], expected [1280, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.3.0.skip_connection.weight' has wrong shape in model metadata: got [1, 1, 1920, 640], expected [1, 1, 2560, 1280] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.3.1.norm.bias' has wrong shape in model metadata: got [640, 1, 1, 1], expected [1280, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.3.1.norm.weight' has wrong shape in model metadata: got [640, 1, 1, 1], expected [1280, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.3.1.proj_in.bias' has wrong shape in model metadata: got [640, 1, 1, 1], expected [1280, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.3.1.proj_in.weight' has wrong shape in model metadata: got [640, 640, 1, 1], expected [1280, 1280, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.3.1.proj_out.bias' has wrong shape in model metadata: got [640, 1, 1, 1], expected [1280, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.3.1.proj_out.weight' has wrong shape in model metadata: got [640, 640, 1, 1], expected [1280, 1280, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.3.1.transformer_blocks.0.attn1.to_k.weight' has wrong shape in model metadata: got [640, 640, 1, 1], expected [1280, 1280, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.3.1.transformer_blocks.0.attn1.to_out.0.bias' has wrong shape in model metadata: got [640, 1, 1, 1], expected [1280, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.3.1.transformer_blocks.0.attn1.to_out.0.weight' has wrong shape in model metadata: got [640, 640, 1, 1], expected [1280, 1280, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.3.1.transformer_blocks.0.attn1.to_q.weight' has wrong shape in model metadata: got [640, 640, 1, 1], expected [1280, 1280, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.3.1.transformer_blocks.0.attn1.to_v.weight' has wrong shape in model metadata: got [640, 640, 1, 1], expected [1280, 1280, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.3.1.transformer_blocks.0.attn2.to_k.weight' has wrong shape in model metadata: got [2048, 640, 1, 1], expected [2048, 1280, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.3.1.transformer_blocks.0.attn2.to_out.0.bias' has wrong shape in model metadata: got [640, 1, 1, 1], expected [1280, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.3.1.transformer_blocks.0.attn2.to_out.0.weight' has wrong shape in model metadata: got [640, 640, 1, 1], expected [1280, 1280, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.3.1.transformer_blocks.0.attn2.to_q.weight' has wrong shape in model metadata: got [640, 640, 1, 1], expected [1280, 1280, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.3.1.transformer_blocks.0.attn2.to_v.weight' has wrong shape in model metadata: got [2048, 640, 1, 1], expected [2048, 1280, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.3.1.transformer_blocks.0.ff.net.0.proj.bias' has wrong shape in model metadata: got [5120, 1, 1, 1], expected [10240, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.3.1.transformer_blocks.0.ff.net.0.proj.weight' has wrong shape in model metadata: got [640, 5120, 1, 1], expected [1280, 10240, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.3.1.transformer_blocks.0.ff.net.2.bias' has wrong shape in model metadata: got [640, 1, 1, 1], expected [1280, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.3.1.transformer_blocks.0.ff.net.2.weight' has wrong shape in model metadata: got [2560, 640, 1, 1], expected [5120, 1280, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.3.1.transformer_blocks.0.norm1.bias' has wrong shape in model metadata: got [640, 1, 1, 1], expected [1280, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.3.1.transformer_blocks.0.norm1.weight' has wrong shape in model metadata: got [640, 1, 1, 1], expected [1280, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.3.1.transformer_blocks.0.norm2.bias' has wrong shape in model metadata: got [640, 1, 1, 1], expected [1280, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.3.1.transformer_blocks.0.norm2.weight' has wrong shape in model metadata: got [640, 1, 1, 1], expected [1280, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.3.1.transformer_blocks.0.norm3.bias' has wrong shape in model metadata: got [640, 1, 1, 1], expected [1280, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.3.1.transformer_blocks.0.norm3.weight' has wrong shape in model metadata: got [640, 1, 1, 1], expected [1280, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.4.0.emb_layers.1.bias' has wrong shape in model metadata: got [640, 1, 1, 1], expected [1280, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.4.0.emb_layers.1.weight' has wrong shape in model metadata: got [1280, 640, 1, 1], expected [1280, 1280, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.4.0.in_layers.0.bias' has wrong shape in model metadata: got [1280, 1, 1, 1], expected [2560, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.4.0.in_layers.0.weight' has wrong shape in model metadata: got [1280, 1, 1, 1], expected [2560, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.4.0.in_layers.2.bias' has wrong shape in model metadata: got [640, 1, 1, 1], expected [1280, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.4.0.in_layers.2.weight' has wrong shape in model metadata: got [3, 3, 1280, 640], expected [3, 3, 2560, 1280] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.4.0.out_layers.0.bias' has wrong shape in model metadata: got [640, 1, 1, 1], expected [1280, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.4.0.out_layers.0.weight' has wrong shape in model metadata: got [640, 1, 1, 1], expected [1280, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.4.0.out_layers.3.bias' has wrong shape in model metadata: got [640, 1, 1, 1], expected [1280, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.4.0.out_layers.3.weight' has wrong shape in model metadata: got [3, 3, 640, 640], expected [3, 3, 1280, 1280] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.4.0.skip_connection.bias' has wrong shape in model metadata: got [640, 1, 1, 1], expected [1280, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.4.0.skip_connection.weight' has wrong shape in model metadata: got [1, 1, 1280, 640], expected [1, 1, 2560, 1280] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.4.1.norm.bias' has wrong shape in model metadata: got [640, 1, 1, 1], expected [1280, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.4.1.norm.weight' has wrong shape in model metadata: got [640, 1, 1, 1], expected [1280, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.4.1.proj_in.bias' has wrong shape in model metadata: got [640, 1, 1, 1], expected [1280, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.4.1.proj_in.weight' has wrong shape in model metadata: got [640, 640, 1, 1], expected [1280, 1280, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.4.1.proj_out.bias' has wrong shape in model metadata: got [640, 1, 1, 1], expected [1280, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.4.1.proj_out.weight' has wrong shape in model metadata: got [640, 640, 1, 1], expected [1280, 1280, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.4.1.transformer_blocks.0.attn1.to_k.weight' has wrong shape in model metadata: got [640, 640, 1, 1], expected [1280, 1280, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.4.1.transformer_blocks.0.attn1.to_out.0.bias' has wrong shape in model metadata: got [640, 1, 1, 1], expected [1280, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.4.1.transformer_blocks.0.attn1.to_out.0.weight' has wrong shape in model metadata: got [640, 640, 1, 1], expected [1280, 1280, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.4.1.transformer_blocks.0.attn1.to_q.weight' has wrong shape in model metadata: got [640, 640, 1, 1], expected [1280, 1280, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.4.1.transformer_blocks.0.attn1.to_v.weight' has wrong shape in model metadata: got [640, 640, 1, 1], expected [1280, 1280, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.4.1.transformer_blocks.0.attn2.to_k.weight' has wrong shape in model metadata: got [2048, 640, 1, 1], expected [2048, 1280, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.4.1.transformer_blocks.0.attn2.to_out.0.bias' has wrong shape in model metadata: got [640, 1, 1, 1], expected [1280, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.4.1.transformer_blocks.0.attn2.to_out.0.weight' has wrong shape in model metadata: got [640, 640, 1, 1], expected [1280, 1280, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.4.1.transformer_blocks.0.attn2.to_q.weight' has wrong shape in model metadata: got [640, 640, 1, 1], expected [1280, 1280, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.4.1.transformer_blocks.0.attn2.to_v.weight' has wrong shape in model metadata: got [2048, 640, 1, 1], expected [2048, 1280, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.4.1.transformer_blocks.0.ff.net.0.proj.bias' has wrong shape in model metadata: got [5120, 1, 1, 1], expected [10240, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.4.1.transformer_blocks.0.ff.net.0.proj.weight' has wrong shape in model metadata: got [640, 5120, 1, 1], expected [1280, 10240, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.4.1.transformer_blocks.0.ff.net.2.bias' has wrong shape in model metadata: got [640, 1, 1, 1], expected [1280, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.4.1.transformer_blocks.0.ff.net.2.weight' has wrong shape in model metadata: got [2560, 640, 1, 1], expected [5120, 1280, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.4.1.transformer_blocks.0.norm1.bias' has wrong shape in model metadata: got [640, 1, 1, 1], expected [1280, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.4.1.transformer_blocks.0.norm1.weight' has wrong shape in model metadata: got [640, 1, 1, 1], expected [1280, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.4.1.transformer_blocks.0.norm2.bias' has wrong shape in model metadata: got [640, 1, 1, 1], expected [1280, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.4.1.transformer_blocks.0.norm2.weight' has wrong shape in model metadata: got [640, 1, 1, 1], expected [1280, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.4.1.transformer_blocks.0.norm3.bias' has wrong shape in model metadata: got [640, 1, 1, 1], expected [1280, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.4.1.transformer_blocks.0.norm3.weight' has wrong shape in model metadata: got [640, 1, 1, 1], expected [1280, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.5.0.emb_layers.1.bias' has wrong shape in model metadata: got [640, 1, 1, 1], expected [1280, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.5.0.emb_layers.1.weight' has wrong shape in model metadata: got [1280, 640, 1, 1], expected [1280, 1280, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.5.0.in_layers.0.bias' has wrong shape in model metadata: got [960, 1, 1, 1], expected [1920, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.5.0.in_layers.0.weight' has wrong shape in model metadata: got [960, 1, 1, 1], expected [1920, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.5.0.in_layers.2.bias' has wrong shape in model metadata: got [640, 1, 1, 1], expected [1280, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.5.0.in_layers.2.weight' has wrong shape in model metadata: got [3, 3, 960, 640], expected [3, 3, 1920, 1280] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.5.0.out_layers.0.bias' has wrong shape in model metadata: got [640, 1, 1, 1], expected [1280, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.5.0.out_layers.0.weight' has wrong shape in model metadata: got [640, 1, 1, 1], expected [1280, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.5.0.out_layers.3.bias' has wrong shape in model metadata: got [640, 1, 1, 1], expected [1280, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.5.0.out_layers.3.weight' has wrong shape in model metadata: got [3, 3, 640, 640], expected [3, 3, 1280, 1280] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.5.0.skip_connection.bias' has wrong shape in model metadata: got [640, 1, 1, 1], expected [1280, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.5.0.skip_connection.weight' has wrong shape in model metadata: got [1, 1, 960, 640], expected [1, 1, 1920, 1280] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.5.1.norm.bias' has wrong shape in model metadata: got [640, 1, 1, 1], expected [1280, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.5.1.norm.weight' has wrong shape in model metadata: got [640, 1, 1, 1], expected [1280, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.5.1.proj_in.bias' has wrong shape in model metadata: got [640, 1, 1, 1], expected [1280, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.5.1.proj_in.weight' has wrong shape in model metadata: got [640, 640, 1, 1], expected [1280, 1280, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.5.1.proj_out.bias' has wrong shape in model metadata: got [640, 1, 1, 1], expected [1280, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.5.1.proj_out.weight' has wrong shape in model metadata: got [640, 640, 1, 1], expected [1280, 1280, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.5.1.transformer_blocks.0.attn1.to_k.weight' has wrong shape in model metadata: got [640, 640, 1, 1], expected [1280, 1280, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.5.1.transformer_blocks.0.attn1.to_out.0.bias' has wrong shape in model metadata: got [640, 1, 1, 1], expected [1280, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.5.1.transformer_blocks.0.attn1.to_out.0.weight' has wrong shape in model metadata: got [640, 640, 1, 1], expected [1280, 1280, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.5.1.transformer_blocks.0.attn1.to_q.weight' has wrong shape in model metadata: got [640, 640, 1, 1], expected [1280, 1280, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.5.1.transformer_blocks.0.attn1.to_v.weight' has wrong shape in model metadata: got [640, 640, 1, 1], expected [1280, 1280, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.5.1.transformer_blocks.0.attn2.to_k.weight' has wrong shape in model metadata: got [2048, 640, 1, 1], expected [2048, 1280, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.5.1.transformer_blocks.0.attn2.to_out.0.bias' has wrong shape in model metadata: got [640, 1, 1, 1], expected [1280, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.5.1.transformer_blocks.0.attn2.to_out.0.weight' has wrong shape in model metadata: got [640, 640, 1, 1], expected [1280, 1280, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.5.1.transformer_blocks.0.attn2.to_q.weight' has wrong shape in model metadata: got [640, 640, 1, 1], expected [1280, 1280, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.5.1.transformer_blocks.0.attn2.to_v.weight' has wrong shape in model metadata: got [2048, 640, 1, 1], expected [2048, 1280, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.5.1.transformer_blocks.0.ff.net.0.proj.bias' has wrong shape in model metadata: got [5120, 1, 1, 1], expected [10240, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.5.1.transformer_blocks.0.ff.net.0.proj.weight' has wrong shape in model metadata: got [640, 5120, 1, 1], expected [1280, 10240, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.5.1.transformer_blocks.0.ff.net.2.bias' has wrong shape in model metadata: got [640, 1, 1, 1], expected [1280, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.5.1.transformer_blocks.0.ff.net.2.weight' has wrong shape in model metadata: got [2560, 640, 1, 1], expected [5120, 1280, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.5.1.transformer_blocks.0.norm1.bias' has wrong shape in model metadata: got [640, 1, 1, 1], expected [1280, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.5.1.transformer_blocks.0.norm1.weight' has wrong shape in model metadata: got [640, 1, 1, 1], expected [1280, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.5.1.transformer_blocks.0.norm2.bias' has wrong shape in model metadata: got [640, 1, 1, 1], expected [1280, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.5.1.transformer_blocks.0.norm2.weight' has wrong shape in model metadata: got [640, 1, 1, 1], expected [1280, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.5.1.transformer_blocks.0.norm3.bias' has wrong shape in model metadata: got [640, 1, 1, 1], expected [1280, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.5.1.transformer_blocks.0.norm3.weight' has wrong shape in model metadata: got [640, 1, 1, 1], expected [1280, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.5.2.conv.bias' has wrong shape in model metadata: got [640, 1, 1, 1], expected [1280, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.5.2.conv.weight' has wrong shape in model metadata: got [3, 3, 640, 640], expected [3, 3, 1280, 1280] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.6.0.emb_layers.1.bias' has wrong shape in model metadata: got [320, 1, 1, 1], expected [640, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.6.0.emb_layers.1.weight' has wrong shape in model metadata: got [1280, 320, 1, 1], expected [1280, 640, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.6.0.in_layers.0.bias' has wrong shape in model metadata: got [960, 1, 1, 1], expected [1920, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.6.0.in_layers.0.weight' has wrong shape in model metadata: got [960, 1, 1, 1], expected [1920, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.6.0.in_layers.2.bias' has wrong shape in model metadata: got [320, 1, 1, 1], expected [640, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.6.0.in_layers.2.weight' has wrong shape in model metadata: got [3, 3, 960, 320], expected [3, 3, 1920, 640] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.6.0.out_layers.0.bias' has wrong shape in model metadata: got [320, 1, 1, 1], expected [640, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.6.0.out_layers.0.weight' has wrong shape in model metadata: got [320, 1, 1, 1], expected [640, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.6.0.out_layers.3.bias' has wrong shape in model metadata: got [320, 1, 1, 1], expected [640, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.6.0.out_layers.3.weight' has wrong shape in model metadata: got [3, 3, 320, 320], expected [3, 3, 640, 640] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.6.0.skip_connection.bias' has wrong shape in model metadata: got [320, 1, 1, 1], expected [640, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.6.0.skip_connection.weight' has wrong shape in model metadata: got [1, 1, 960, 320], expected [1, 1, 1920, 640] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.6.1.norm.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.6.1.norm.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.6.1.proj_in.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.6.1.proj_in.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.6.1.proj_out.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.6.1.proj_out.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.6.1.transformer_blocks.0.attn1.to_k.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.6.1.transformer_blocks.0.attn1.to_out.0.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.6.1.transformer_blocks.0.attn1.to_out.0.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.6.1.transformer_blocks.0.attn1.to_q.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.6.1.transformer_blocks.0.attn1.to_v.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.6.1.transformer_blocks.0.attn2.to_k.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.6.1.transformer_blocks.0.attn2.to_out.0.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.6.1.transformer_blocks.0.attn2.to_out.0.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.6.1.transformer_blocks.0.attn2.to_q.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.6.1.transformer_blocks.0.attn2.to_v.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.6.1.transformer_blocks.0.ff.net.0.proj.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.6.1.transformer_blocks.0.ff.net.0.proj.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.6.1.transformer_blocks.0.ff.net.2.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.6.1.transformer_blocks.0.ff.net.2.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.6.1.transformer_blocks.0.norm1.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.6.1.transformer_blocks.0.norm1.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.6.1.transformer_blocks.0.norm2.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.6.1.transformer_blocks.0.norm2.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.6.1.transformer_blocks.0.norm3.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.6.1.transformer_blocks.0.norm3.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.7.0.emb_layers.1.bias' has wrong shape in model metadata: got [320, 1, 1, 1], expected [640, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.7.0.emb_layers.1.weight' has wrong shape in model metadata: got [1280, 320, 1, 1], expected [1280, 640, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.7.0.in_layers.0.bias' has wrong shape in model metadata: got [640, 1, 1, 1], expected [1280, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.7.0.in_layers.0.weight' has wrong shape in model metadata: got [640, 1, 1, 1], expected [1280, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.7.0.in_layers.2.bias' has wrong shape in model metadata: got [320, 1, 1, 1], expected [640, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.7.0.in_layers.2.weight' has wrong shape in model metadata: got [3, 3, 640, 320], expected [3, 3, 1280, 640] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.7.0.out_layers.0.bias' has wrong shape in model metadata: got [320, 1, 1, 1], expected [640, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.7.0.out_layers.0.weight' has wrong shape in model metadata: got [320, 1, 1, 1], expected [640, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.7.0.out_layers.3.bias' has wrong shape in model metadata: got [320, 1, 1, 1], expected [640, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.7.0.out_layers.3.weight' has wrong shape in model metadata: got [3, 3, 320, 320], expected [3, 3, 640, 640] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.7.0.skip_connection.bias' has wrong shape in model metadata: got [320, 1, 1, 1], expected [640, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.7.0.skip_connection.weight' has wrong shape in model metadata: got [1, 1, 640, 320], expected [1, 1, 1280, 640] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.7.1.norm.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.7.1.norm.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.7.1.proj_in.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.7.1.proj_in.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.7.1.proj_out.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.7.1.proj_out.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.7.1.transformer_blocks.0.attn1.to_k.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.7.1.transformer_blocks.0.attn1.to_out.0.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.7.1.transformer_blocks.0.attn1.to_out.0.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.7.1.transformer_blocks.0.attn1.to_q.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.7.1.transformer_blocks.0.attn1.to_v.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.7.1.transformer_blocks.0.attn2.to_k.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.7.1.transformer_blocks.0.attn2.to_out.0.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.7.1.transformer_blocks.0.attn2.to_out.0.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.7.1.transformer_blocks.0.attn2.to_q.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.7.1.transformer_blocks.0.attn2.to_v.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.7.1.transformer_blocks.0.ff.net.0.proj.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.7.1.transformer_blocks.0.ff.net.0.proj.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.7.1.transformer_blocks.0.ff.net.2.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.7.1.transformer_blocks.0.ff.net.2.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.7.1.transformer_blocks.0.norm1.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.7.1.transformer_blocks.0.norm1.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.7.1.transformer_blocks.0.norm2.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.7.1.transformer_blocks.0.norm2.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.7.1.transformer_blocks.0.norm3.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.7.1.transformer_blocks.0.norm3.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.8.0.emb_layers.1.bias' has wrong shape in model metadata: got [320, 1, 1, 1], expected [640, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.8.0.emb_layers.1.weight' has wrong shape in model metadata: got [1280, 320, 1, 1], expected [1280, 640, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.8.0.in_layers.0.bias' has wrong shape in model metadata: got [640, 1, 1, 1], expected [960, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.8.0.in_layers.0.weight' has wrong shape in model metadata: got [640, 1, 1, 1], expected [960, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.8.0.in_layers.2.bias' has wrong shape in model metadata: got [320, 1, 1, 1], expected [640, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.8.0.in_layers.2.weight' has wrong shape in model metadata: got [3, 3, 640, 320], expected [3, 3, 960, 640] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.8.0.out_layers.0.bias' has wrong shape in model metadata: got [320, 1, 1, 1], expected [640, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.8.0.out_layers.0.weight' has wrong shape in model metadata: got [320, 1, 1, 1], expected [640, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.8.0.out_layers.3.bias' has wrong shape in model metadata: got [320, 1, 1, 1], expected [640, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.8.0.out_layers.3.weight' has wrong shape in model metadata: got [3, 3, 320, 320], expected [3, 3, 640, 640] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.8.0.skip_connection.bias' has wrong shape in model metadata: got [320, 1, 1, 1], expected [640, 1, 1, 1] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.8.0.skip_connection.weight' has wrong shape in model metadata: got [1, 1, 640, 320], expected [1, 1, 960, 640] --- model_manager.cpp:798
+Diffusion model tensor 'model.diffusion_model.output_blocks.8.1.norm.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.8.1.norm.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.8.1.proj_in.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.8.1.proj_in.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.8.1.proj_out.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.8.1.proj_out.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.8.1.transformer_blocks.0.attn1.to_k.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.8.1.transformer_blocks.0.attn1.to_out.0.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.8.1.transformer_blocks.0.attn1.to_out.0.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.8.1.transformer_blocks.0.attn1.to_q.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.8.1.transformer_blocks.0.attn1.to_v.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.8.1.transformer_blocks.0.attn2.to_k.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.8.1.transformer_blocks.0.attn2.to_out.0.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.8.1.transformer_blocks.0.attn2.to_out.0.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.8.1.transformer_blocks.0.attn2.to_q.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.8.1.transformer_blocks.0.attn2.to_v.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.8.1.transformer_blocks.0.ff.net.0.proj.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.8.1.transformer_blocks.0.ff.net.0.proj.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.8.1.transformer_blocks.0.ff.net.2.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.8.1.transformer_blocks.0.ff.net.2.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.8.1.transformer_blocks.0.norm1.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.8.1.transformer_blocks.0.norm1.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.8.1.transformer_blocks.0.norm2.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.8.1.transformer_blocks.0.norm2.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.8.1.transformer_blocks.0.norm3.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.8.1.transformer_blocks.0.norm3.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.8.2.conv.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.8.2.conv.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.9.0.emb_layers.1.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.9.0.emb_layers.1.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.9.0.in_layers.0.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.9.0.in_layers.0.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.9.0.in_layers.2.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.9.0.in_layers.2.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.9.0.out_layers.0.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.9.0.out_layers.0.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.9.0.out_layers.3.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.9.0.out_layers.3.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.9.0.skip_connection.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.9.0.skip_connection.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.9.1.norm.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.9.1.norm.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.9.1.proj_in.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.9.1.proj_in.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.9.1.proj_out.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.9.1.proj_out.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.9.1.transformer_blocks.0.attn1.to_k.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.9.1.transformer_blocks.0.attn1.to_out.0.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.9.1.transformer_blocks.0.attn1.to_out.0.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.9.1.transformer_blocks.0.attn1.to_q.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.9.1.transformer_blocks.0.attn1.to_v.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.9.1.transformer_blocks.0.attn2.to_k.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.9.1.transformer_blocks.0.attn2.to_out.0.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.9.1.transformer_blocks.0.attn2.to_out.0.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.9.1.transformer_blocks.0.attn2.to_q.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.9.1.transformer_blocks.0.attn2.to_v.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.9.1.transformer_blocks.0.ff.net.0.proj.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.9.1.transformer_blocks.0.ff.net.0.proj.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.9.1.transformer_blocks.0.ff.net.2.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.9.1.transformer_blocks.0.ff.net.2.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.9.1.transformer_blocks.0.norm1.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.9.1.transformer_blocks.0.norm1.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.9.1.transformer_blocks.0.norm2.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.9.1.transformer_blocks.0.norm2.weight' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.9.1.transformer_blocks.0.norm3.bias' not in model metadata --- model_manager.cpp:763
+Diffusion model tensor 'model.diffusion_model.output_blocks.9.1.transformer_blocks.0.norm3.weight' not in model metadata --- model_manager.cpp:763
+model metadata validation failed --- diffusion_engine.cpp:1378
+ggml: ggml_metal_free: deallocating

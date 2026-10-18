@@ -1,0 +1,2 @@
+SDXL REPORT /private/tmp/picedit-sdxl-native-20261018-v3/sdxl-report.json
+Swift/ErrorType.swift:254: Fatal error: Error raised at top level: PicEdit.(unknown context at $10347b70c).Failure.code("operation-timeout")

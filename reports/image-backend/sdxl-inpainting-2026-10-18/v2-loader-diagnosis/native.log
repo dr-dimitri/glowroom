@@ -1,0 +1,2 @@
+SDXL REPORT /private/tmp/picedit-sdxl-native-20261018-v2/sdxl-report.json
+Swift/ErrorType.swift:254: Fatal error: Error raised at top level: PicEdit.(unknown context at $104e9277c).Failure.code("sdxl-load-failed")

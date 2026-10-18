@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "sdkRevision": "8cd731e7b4667eb8f40a153315b9a7125d09a58d",
+  "ggmlRevision": "d25b121ce1d6ae0c7e62ad080460d9fc1e46dd93",
+  "sources": [
+    {
+      "name": "stable-diffusion.cpp.tar.gz",
+      "bytes": 125758115,
+      "sha256": "871c4f03286360bf10b9850ce4c57912311d0d91b117d4e4be19d989a417f08b",
+      "revision": "8cd731e7b4667eb8f40a153315b9a7125d09a58d",
+      "destination": "source"
+    },
+    {
+      "name": "ggml.tar.gz",
+      "bytes": 4158450,
+      "sha256": "bbfaebbfe2564a796f1a9309ff87cd6c6a5acdfffe7b779f96b847f57945403b",
+      "revision": "d25b121ce1d6ae0c7e62ad080460d9fc1e46dd93",
+      "destination": "source/ggml"
+    }
+  ],
+  "helperSHA256": "47f8993e802db884f46e0dd469de40af05096eff13c50d80f6465b76f1a5f522",
+  "helperSourceSHA256": "a02ee400055a96101aa4be525834c5ea5e6ee86c82bd930e0288e0e3b0965470",
+  "builderSHA256": "d11f955abbc76cccd46fa74096807c70a56c57f9026f27cda583a5f28987d442",
+  "sdkPatchSHA256": "bb91dc6b5868b9c9db264c416a5695973280b4e29c7667f123819295788fe4ce",
+  "sdkNameRegressionSourceSHA256": "36114f0c140ab91f88cd088445c236f3b4cc7091ef8d829210cceccc77ab078c",
+  "sdkNameRegressionPassed": true,
+  "publicHelperSDKAPIOnly": true,
+  "inferenceExecuted": false,
+  "conversionExecuted": false,
+  "productCapability": "unavailable",
+  "buildJobs": 2
+}

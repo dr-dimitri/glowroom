@@ -1,0 +1,297 @@
+{
+  "allNativeProcessesConfirmedEnded" : true,
+  "clock" : "mach_continuous_time includes sleep",
+  "coldDefinition" : "new process\/model context; operating-system and shader caches not purged",
+  "conversion" : {
+    "conversionSeconds" : 24.007319874945097,
+    "helperSHA256" : "7ec2cc87461c39ca778257c65856cfb85fe83d6575076263e4efaad57705382f",
+    "helperSourceSHA256" : "342ef94e3ac51526667a74e04ec9ebda71eca2d16cc31b47714eb7b6fbc7e6d5",
+    "inferenceExecuted" : false,
+    "maximumConversionSeconds" : 600,
+    "modelBytes" : 4347581632,
+    "modelSHA256" : "55570c0dd79d37cd4d4e44a1e2c7613c161e4ac6385215705968593d0825226e",
+    "native" : {
+      "bytes" : 4347581632,
+      "conversionType" : "q8_0",
+      "event" : "converted",
+      "inferenceExecuted" : false,
+      "memory" : {
+        "footprintBytes" : 433914720,
+        "peakFootprintBytes" : 555582376,
+        "peakRSSBytes" : 550486016,
+        "residentBytes" : 373473280
+      },
+      "output" : "model-q8_0.gguf",
+      "protocol" : 1,
+      "seconds" : 23.425047416000002,
+      "status" : "success",
+      "tensorTypeRules" : "^(first_stage_model\\.|vae\\.)=f32",
+      "threads" : 2
+    },
+    "processScope" : "observed direct converter helper only; no inference context or product capability tested",
+    "productCapability" : "unavailable",
+    "purpose" : "offline-sdxl-q8-preparation-only",
+    "schemaVersion" : 1,
+    "sourcePackageSHA256" : "d66209fbcb767950b36f815c6148c01193b3e297808d6bf56eadf0cb8a39e7ac"
+  },
+  "createdAt" : "2026-10-18T14:35:13Z",
+  "criteriaSHA256" : "44019e6fcc04db85ec0ace556e5b6f554c047ebc34b26437b64cf528ae37c789",
+  "emergencyStop" : {
+    "confirmedProcessEnded" : true,
+    "eventBytes" : 538,
+    "eventCount" : 3,
+    "leaseReleasedOnlyAfterProcessExit" : true,
+    "nativeExitStatus" : 0,
+    "nativePID" : 53994,
+    "stderrBytes" : 76563
+  },
+  "failure" : "code(\"sdxl-load-failed\")",
+  "hardware" : {
+    "operatingSystem" : "Version 27.0.1 (Build 26A434)",
+    "physicalMemoryBytes" : 17179869184
+  },
+  "harnessExecutableSHA256" : "6e49df04fc0c4bc95e82bb0ee89d9e252b657beffa7515f53307bec670cfcfd6",
+  "installation" : {
+    "builderSHA256" : "ae629a072739a3860338992c79fe2d60f977676daca66142209294bbfd3d0bf1",
+    "buildJobs" : 2,
+    "conversionExecuted" : false,
+    "ggmlRevision" : "d25b121ce1d6ae0c7e62ad080460d9fc1e46dd93",
+    "helperSHA256" : "7ec2cc87461c39ca778257c65856cfb85fe83d6575076263e4efaad57705382f",
+    "helperSourceSHA256" : "342ef94e3ac51526667a74e04ec9ebda71eca2d16cc31b47714eb7b6fbc7e6d5",
+    "inferenceExecuted" : false,
+    "productCapability" : "unavailable",
+    "publicSDKAPIOnly" : true,
+    "schemaVersion" : 1,
+    "sdkRevision" : "8cd731e7b4667eb8f40a153315b9a7125d09a58d",
+    "sources" : [
+      {
+        "bytes" : 125758115,
+        "destination" : "source",
+        "name" : "stable-diffusion.cpp.tar.gz",
+        "revision" : "8cd731e7b4667eb8f40a153315b9a7125d09a58d",
+        "sha256" : "871c4f03286360bf10b9850ce4c57912311d0d91b117d4e4be19d989a417f08b"
+      },
+      {
+        "bytes" : 4158450,
+        "destination" : "source\/ggml",
+        "name" : "ggml.tar.gz",
+        "revision" : "d25b121ce1d6ae0c7e62ad080460d9fc1e46dd93",
+        "sha256" : "bbfaebbfe2564a796f1a9309ff87cd6c6a5acdfffe7b779f96b847f57945403b"
+      }
+    ]
+  },
+  "load" : {
+    "code" : "model-load-failed",
+    "driverElapsedSeconds" : 19.543848208151758,
+    "event" : "completed",
+    "id" : "load",
+    "libraryLogCount" : 508,
+    "memory" : {
+      "footprintBytes" : 53363600,
+      "peakFootprintBytes" : 122553328,
+      "peakRSSBytes" : 148832256,
+      "residentBytes" : 110247936
+    },
+    "nativePID" : 53994,
+    "operation" : "load",
+    "protocol" : 1,
+    "sameProcessContextLeaseHeldUntilThisNativeReturn" : true,
+    "seconds" : 19.543677459000001,
+    "status" : "error"
+  },
+  "memoryScope" : "helper peak RSS\/footprint plus driver peak RSS, not a kernel-enforced quota",
+  "ownPeakRSSBytes" : 31539200,
+  "package" : {
+    "conversion" : "own Q8_0 GGUF export, VAE F32; fixed SDK; no LoRA",
+    "files" : [
+      {
+        "bytes" : 246144867,
+        "gitBlobSHA1" : "7d412acb10a08933e52a773be69fc40fedaf30e2",
+        "path" : "source-model\/text_encoder\/model.safetensors",
+        "sha256" : "fc83cf401d930147807e7c44021c164bcc5508c9d4cc0ff35f4e354685ca9cd0",
+        "source" : "https:\/\/huggingface.co\/diffusers\/stable-diffusion-xl-1.0-inpainting-0.1\/resolve\/115134f363124c53c7d878647567d04daf26e41e\/text_encoder\/model.fp16.safetensors",
+        "upstreamPath" : "text_encoder\/model.fp16.safetensors"
+      },
+      {
+        "bytes" : 1389382884,
+        "gitBlobSHA1" : "c53a07410de823714536943eca81438ac2b4ac7e",
+        "path" : "source-model\/text_encoder_2\/model.safetensors",
+        "sha256" : "a8622bd41f8d359df484fdf9de091edb9337a2fd747f0a5c9c320a62e24d1fd3",
+        "source" : "https:\/\/huggingface.co\/diffusers\/stable-diffusion-xl-1.0-inpainting-0.1\/resolve\/115134f363124c53c7d878647567d04daf26e41e\/text_encoder_2\/model.fp16.safetensors",
+        "upstreamPath" : "text_encoder_2\/model.fp16.safetensors"
+      },
+      {
+        "bytes" : 5135178560,
+        "gitBlobSHA1" : "11e0dfbe41c79fa5c7a89c704a8989682d7b1574",
+        "path" : "source-model\/unet\/diffusion_pytorch_model.safetensors",
+        "sha256" : "6470840731e98cc16713ddf3ac7ee458c9fdbcb881a98c6727cd4a938f227d3f",
+        "source" : "https:\/\/huggingface.co\/diffusers\/stable-diffusion-xl-1.0-inpainting-0.1\/resolve\/115134f363124c53c7d878647567d04daf26e41e\/unet\/diffusion_pytorch_model.fp16.safetensors",
+        "upstreamPath" : "unet\/diffusion_pytorch_model.fp16.safetensors"
+      },
+      {
+        "bytes" : 167335338,
+        "gitBlobSHA1" : "ce2ddaa5ae018a316b68776d3b8524eb080738ac",
+        "path" : "source-model\/vae\/diffusion_pytorch_model.safetensors",
+        "sha256" : "4ad62825e5c8b31eefb77355ba6693785619bf7d669d9b1a6fd9f19dec6d65b3",
+        "source" : "https:\/\/huggingface.co\/diffusers\/stable-diffusion-xl-1.0-inpainting-0.1\/resolve\/115134f363124c53c7d878647567d04daf26e41e\/vae\/diffusion_pytorch_model.fp16.safetensors",
+        "upstreamPath" : "vae\/diffusion_pytorch_model.fp16.safetensors"
+      },
+      {
+        "bytes" : 4861,
+        "gitBlobSHA1" : "50a076318d56fcc0f53aadef808cc640c2eeee5e",
+        "path" : "source-model\/README.md",
+        "sha256" : "80f91748ac64a5f0a72d7b133fc6a2ff5291a35464ea341960b8c23ea59affa4",
+        "source" : "https:\/\/huggingface.co\/diffusers\/stable-diffusion-xl-1.0-inpainting-0.1\/resolve\/115134f363124c53c7d878647567d04daf26e41e\/README.md",
+        "upstreamPath" : "README.md"
+      },
+      {
+        "bytes" : 690,
+        "gitBlobSHA1" : "8cab34157f46b4c35107a65e48a7236057ad6e46",
+        "path" : "source-model\/model_index.json",
+        "sha256" : "308a792b15086bf89807b88729ef80d33d5b8264b14a96b57d2c92b5ab7f5a53",
+        "source" : "https:\/\/huggingface.co\/diffusers\/stable-diffusion-xl-1.0-inpainting-0.1\/resolve\/115134f363124c53c7d878647567d04daf26e41e\/model_index.json",
+        "upstreamPath" : "model_index.json"
+      },
+      {
+        "bytes" : 479,
+        "gitBlobSHA1" : "9e13de2afd2250977d01837deed2b1c35b75e552",
+        "path" : "source-model\/scheduler\/scheduler_config.json",
+        "sha256" : "a8e9a8517e8739938ea85819012bad195d41ccb3e11e2501cf196da64099b1f6",
+        "source" : "https:\/\/huggingface.co\/diffusers\/stable-diffusion-xl-1.0-inpainting-0.1\/resolve\/115134f363124c53c7d878647567d04daf26e41e\/scheduler\/scheduler_config.json",
+        "upstreamPath" : "scheduler\/scheduler_config.json"
+      },
+      {
+        "bytes" : 746,
+        "gitBlobSHA1" : "a34c80dc728ab0a61bc5f7e849fad01723f94a01",
+        "path" : "source-model\/text_encoder\/config.json",
+        "sha256" : "46ae51fa8bde7817168d97faa0556cc0ac42ec0a7a53248bab4a52f8f5866f13",
+        "source" : "https:\/\/huggingface.co\/diffusers\/stable-diffusion-xl-1.0-inpainting-0.1\/resolve\/115134f363124c53c7d878647567d04daf26e41e\/text_encoder\/config.json",
+        "upstreamPath" : "text_encoder\/config.json"
+      },
+      {
+        "bytes" : 758,
+        "gitBlobSHA1" : "8f0f26a6056dd0aae0437184a1871eed6006e170",
+        "path" : "source-model\/text_encoder_2\/config.json",
+        "sha256" : "fbcd3aad07a99e28d4c51550bd798903922083527ec69ad026f25699518af82d",
+        "source" : "https:\/\/huggingface.co\/diffusers\/stable-diffusion-xl-1.0-inpainting-0.1\/resolve\/115134f363124c53c7d878647567d04daf26e41e\/text_encoder_2\/config.json",
+        "upstreamPath" : "text_encoder_2\/config.json"
+      },
+      {
+        "bytes" : 524619,
+        "gitBlobSHA1" : "76e821f1b6f0a9709293c3b6b51ed90980b3166b",
+        "path" : "source-model\/tokenizer\/merges.txt",
+        "sha256" : "9fd691f7c8039210e0fced15865466c65820d09b63988b0174bfe25de299051a",
+        "source" : "https:\/\/huggingface.co\/diffusers\/stable-diffusion-xl-1.0-inpainting-0.1\/resolve\/115134f363124c53c7d878647567d04daf26e41e\/tokenizer\/merges.txt",
+        "upstreamPath" : "tokenizer\/merges.txt"
+      },
+      {
+        "bytes" : 472,
+        "gitBlobSHA1" : "2c2130b544c0c5a72d5d00da071ba130a9800fb2",
+        "path" : "source-model\/tokenizer\/special_tokens_map.json",
+        "sha256" : "c4864a9376a8401918425bed71fc14fc0e81f9b59ec45c1cf96cccb2df508eac",
+        "source" : "https:\/\/huggingface.co\/diffusers\/stable-diffusion-xl-1.0-inpainting-0.1\/resolve\/115134f363124c53c7d878647567d04daf26e41e\/tokenizer\/special_tokens_map.json",
+        "upstreamPath" : "tokenizer\/special_tokens_map.json"
+      },
+      {
+        "bytes" : 737,
+        "gitBlobSHA1" : "2e8612a429492973fe60635b3f44a28b065cfac0",
+        "path" : "source-model\/tokenizer\/tokenizer_config.json",
+        "sha256" : "19d7b034cb0cc3ce9766c2231373ab8aa8991fc72e2c8f76558bfaae3de0d563",
+        "source" : "https:\/\/huggingface.co\/diffusers\/stable-diffusion-xl-1.0-inpainting-0.1\/resolve\/115134f363124c53c7d878647567d04daf26e41e\/tokenizer\/tokenizer_config.json",
+        "upstreamPath" : "tokenizer\/tokenizer_config.json"
+      },
+      {
+        "bytes" : 1059962,
+        "gitBlobSHA1" : "469be27c5c010538f845f518c4f5e8574c78f7c8",
+        "path" : "source-model\/tokenizer\/vocab.json",
+        "sha256" : "e089ad92ba36837a0d31433e555c8f45fe601ab5c221d4f607ded32d9f7a4349",
+        "source" : "https:\/\/huggingface.co\/diffusers\/stable-diffusion-xl-1.0-inpainting-0.1\/resolve\/115134f363124c53c7d878647567d04daf26e41e\/tokenizer\/vocab.json",
+        "upstreamPath" : "tokenizer\/vocab.json"
+      },
+      {
+        "bytes" : 524619,
+        "gitBlobSHA1" : "76e821f1b6f0a9709293c3b6b51ed90980b3166b",
+        "path" : "source-model\/tokenizer_2\/merges.txt",
+        "sha256" : "9fd691f7c8039210e0fced15865466c65820d09b63988b0174bfe25de299051a",
+        "source" : "https:\/\/huggingface.co\/diffusers\/stable-diffusion-xl-1.0-inpainting-0.1\/resolve\/115134f363124c53c7d878647567d04daf26e41e\/tokenizer_2\/merges.txt",
+        "upstreamPath" : "tokenizer_2\/merges.txt"
+      },
+      {
+        "bytes" : 460,
+        "gitBlobSHA1" : "ae0c5be6f35217e51c4c000fd325d8de0294e99c",
+        "path" : "source-model\/tokenizer_2\/special_tokens_map.json",
+        "sha256" : "f118ab3a983206e4f32583448de6bd6aae4ee21869135cef1f5848a753cdaab6",
+        "source" : "https:\/\/huggingface.co\/diffusers\/stable-diffusion-xl-1.0-inpainting-0.1\/resolve\/115134f363124c53c7d878647567d04daf26e41e\/tokenizer_2\/special_tokens_map.json",
+        "upstreamPath" : "tokenizer_2\/special_tokens_map.json"
+      },
+      {
+        "bytes" : 725,
+        "gitBlobSHA1" : "a8438e020c4497a429240d6b89e0bf9a6e2ffa92",
+        "path" : "source-model\/tokenizer_2\/tokenizer_config.json",
+        "sha256" : "c9d23941f76a41cbd50eda9290f57be7828f0a7a677939e9ef181f7e12bd1bdf",
+        "source" : "https:\/\/huggingface.co\/diffusers\/stable-diffusion-xl-1.0-inpainting-0.1\/resolve\/115134f363124c53c7d878647567d04daf26e41e\/tokenizer_2\/tokenizer_config.json",
+        "upstreamPath" : "tokenizer_2\/tokenizer_config.json"
+      },
+      {
+        "bytes" : 1059962,
+        "gitBlobSHA1" : "469be27c5c010538f845f518c4f5e8574c78f7c8",
+        "path" : "source-model\/tokenizer_2\/vocab.json",
+        "sha256" : "e089ad92ba36837a0d31433e555c8f45fe601ab5c221d4f607ded32d9f7a4349",
+        "source" : "https:\/\/huggingface.co\/diffusers\/stable-diffusion-xl-1.0-inpainting-0.1\/resolve\/115134f363124c53c7d878647567d04daf26e41e\/tokenizer_2\/vocab.json",
+        "upstreamPath" : "tokenizer_2\/vocab.json"
+      },
+      {
+        "bytes" : 1932,
+        "gitBlobSHA1" : "2fa48c31c3a64ba04fa8a76ac91f086d6309b406",
+        "path" : "source-model\/unet\/config.json",
+        "sha256" : "aaedf41fbcb29d2d8725241413b8525bd97005dea3f86d8056199469032537e9",
+        "source" : "https:\/\/huggingface.co\/diffusers\/stable-diffusion-xl-1.0-inpainting-0.1\/resolve\/115134f363124c53c7d878647567d04daf26e41e\/unet\/config.json",
+        "upstreamPath" : "unet\/config.json"
+      },
+      {
+        "bytes" : 659,
+        "gitBlobSHA1" : "4a3bb2e796869bdfa617fd28162f4087c4f771e3",
+        "path" : "source-model\/vae\/config.json",
+        "sha256" : "b822341e6125efedebffb8e3f35e7288aab06bb4c49853d50a16964bf104a727",
+        "source" : "https:\/\/huggingface.co\/diffusers\/stable-diffusion-xl-1.0-inpainting-0.1\/resolve\/115134f363124c53c7d878647567d04daf26e41e\/vae\/config.json",
+        "upstreamPath" : "vae\/config.json"
+      },
+      {
+        "bytes" : 125758115,
+        "path" : "downloads\/stable-diffusion.cpp.tar.gz",
+        "sha256" : "871c4f03286360bf10b9850ce4c57912311d0d91b117d4e4be19d989a417f08b",
+        "source" : "https:\/\/codeload.github.com\/leejet\/stable-diffusion.cpp\/tar.gz\/8cd731e7b4667eb8f40a153315b9a7125d09a58d"
+      },
+      {
+        "bytes" : 4158450,
+        "path" : "downloads\/ggml.tar.gz",
+        "sha256" : "bbfaebbfe2564a796f1a9309ff87cd6c6a5acdfffe7b779f96b847f57945403b",
+        "source" : "https:\/\/codeload.github.com\/leejet\/ggml\/tar.gz\/d25b121ce1d6ae0c7e62ad080460d9fc1e46dd93"
+      },
+      {
+        "bytes" : 14109,
+        "gitBlobSHA1" : "af7e355e31c0d976933aa0d06759611151ad8c39",
+        "path" : "source-model\/LICENSE-weights.md",
+        "revision" : "462165984030d82259a11f4367a4eed129e94a7b",
+        "sha256" : "19b6998b569b53ac1fc2158a8a3202c8699a9a4605b47075715d9c96be7fb6d0",
+        "source" : "https:\/\/huggingface.co\/stabilityai\/stable-diffusion-xl-base-1.0\/resolve\/462165984030d82259a11f4367a4eed129e94a7b\/LICENSE.md"
+      }
+    ],
+    "ggmlRevision" : "d25b121ce1d6ae0c7e62ad080460d9fc1e46dd93",
+    "model" : "diffusers\/stable-diffusion-xl-1.0-inpainting-0.1",
+    "purpose" : "technical-sdxl-inpainting-evaluation-only",
+    "revision" : "115134f363124c53c7d878647567d04daf26e41e",
+    "schemaVersion" : 1,
+    "sdkRevision" : "8cd731e7b4667eb8f40a153315b9a7125d09a58d"
+  },
+  "preprocessingVersion" : 1,
+  "productCapabilities" : "unchanged-unavailable",
+  "purpose" : "new SDXL technical route; product adapter and capability Go require separate evidence",
+  "runs" : [
+
+  ],
+  "schemaVersion" : 1,
+  "status" : "failed-evidence-retained",
+  "totalDriverSeconds" : 25.485394083196297,
+  "verificationAndPreparationSeconds" : 5.9181289998814464
+}

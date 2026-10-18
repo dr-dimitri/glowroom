@@ -1,0 +1,10 @@
+{
+  "id" : "01-structured-removal-hard",
+  "mask" : "jobs\/6bdd1dd9-427d-49ff-9d03-3dd88461d638-01-structured-removal-hard\/mask.png",
+  "negativePrompt" : "blurry, distorted, new objects, text, watermark",
+  "operation" : "generate",
+  "output" : "outputs\/6bdd1dd9-427d-49ff-9d03-3dd88461d638-01-structured-removal-hard.png",
+  "prompt" : "an empty wooden panel, continuous horizontal wood boards, natural wood texture",
+  "seed" : 4281,
+  "source" : "jobs\/6bdd1dd9-427d-49ff-9d03-3dd88461d638-01-structured-removal-hard\/source.png"
+}

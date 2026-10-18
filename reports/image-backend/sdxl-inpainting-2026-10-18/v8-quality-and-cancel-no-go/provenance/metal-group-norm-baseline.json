@@ -1,0 +1,123 @@
+{
+  "absoluteTolerance": 0.0001,
+  "allBatchesPassed": false,
+  "cases": [
+    {
+      "allBatchesPassed": true,
+      "batches": [
+        {
+          "allValuesFiniteAndMatched": true,
+          "cpuFinite": true,
+          "index": 0,
+          "maximumAbsoluteErrorOfFiniteValues": 2.384185791015625e-07,
+          "metalFiniteValues": 2240,
+          "metalNonfiniteValues": 0,
+          "numValues": 2240,
+          "unchangedNaNSentinelValues": 0
+        }
+      ],
+      "dimensions": [
+        7,
+        5,
+        64,
+        1
+      ],
+      "groups": 32,
+      "numValues": 2240,
+      "status": "pass"
+    },
+    {
+      "allBatchesPassed": false,
+      "batches": [
+        {
+          "allValuesFiniteAndMatched": true,
+          "cpuFinite": true,
+          "index": 0,
+          "maximumAbsoluteErrorOfFiniteValues": 2.384185791015625e-07,
+          "metalFiniteValues": 2240,
+          "metalNonfiniteValues": 0,
+          "numValues": 2240,
+          "unchangedNaNSentinelValues": 0
+        },
+        {
+          "allValuesFiniteAndMatched": false,
+          "cpuFinite": true,
+          "index": 1,
+          "maximumAbsoluteErrorOfFiniteValues": null,
+          "metalFiniteValues": 0,
+          "metalNonfiniteValues": 2240,
+          "numValues": 2240,
+          "unchangedNaNSentinelValues": 2240
+        }
+      ],
+      "dimensions": [
+        7,
+        5,
+        64,
+        2
+      ],
+      "groups": 32,
+      "numValues": 4480,
+      "status": "baseline-batch-write-bug"
+    },
+    {
+      "allBatchesPassed": false,
+      "batches": [
+        {
+          "allValuesFiniteAndMatched": true,
+          "cpuFinite": true,
+          "index": 0,
+          "maximumAbsoluteErrorOfFiniteValues": 2.384185791015625e-07,
+          "metalFiniteValues": 2240,
+          "metalNonfiniteValues": 0,
+          "numValues": 2240,
+          "unchangedNaNSentinelValues": 0
+        },
+        {
+          "allValuesFiniteAndMatched": false,
+          "cpuFinite": true,
+          "index": 1,
+          "maximumAbsoluteErrorOfFiniteValues": null,
+          "metalFiniteValues": 0,
+          "metalNonfiniteValues": 2240,
+          "numValues": 2240,
+          "unchangedNaNSentinelValues": 2240
+        },
+        {
+          "allValuesFiniteAndMatched": false,
+          "cpuFinite": true,
+          "index": 2,
+          "maximumAbsoluteErrorOfFiniteValues": null,
+          "metalFiniteValues": 0,
+          "metalNonfiniteValues": 2240,
+          "numValues": 2240,
+          "unchangedNaNSentinelValues": 2240
+        }
+      ],
+      "dimensions": [
+        7,
+        5,
+        64,
+        3
+      ],
+      "groups": 32,
+      "numValues": 6720,
+      "status": "baseline-batch-write-bug"
+    }
+  ],
+  "cpuBackend": "CPU",
+  "cpuBackendAvailable": true,
+  "expectedBaselineBugReproduced": true,
+  "ggmlBaseRevision": "d25b121ce1d6ae0c7e62ad080460d9fc1e46dd93",
+  "inferenceExecuted": false,
+  "maximumBytesPerBackendCase": 26880,
+  "maximumValuesPerBackendCase": 6720,
+  "metalBackend": "MTL0",
+  "metalBackendAvailable": true,
+  "metalDevice": "Apple M2 Pro",
+  "mode": "expect-baseline-bug",
+  "modelContextCreated": false,
+  "schemaVersion": 1,
+  "status": "pass",
+  "test": "public-ggml-metal-group-norm-batch"
+}

@@ -72,7 +72,7 @@ private final class NativeSession: @unchecked Sendable {
     var eventCount = 0, eventBytes = 0, stderrBytes = 0
     let eventFile: FileHandle, stderrFile: FileHandle, directory: URL
     var stopped = false
-    init(directory: URL) throws {
+    init(directory: URL, helperName: String = "evaluation-helper-current") throws {
         self.directory = directory
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let eventsURL = directory.appendingPathComponent("native-events.jsonl")
@@ -80,7 +80,7 @@ private final class NativeSession: @unchecked Sendable {
         FileManager.default.createFile(atPath: eventsURL.path, contents: nil, attributes: [.posixPermissions: 0o600])
         FileManager.default.createFile(atPath: errorsURL.path, contents: nil, attributes: [.posixPermissions: 0o600])
         eventFile = try FileHandle(forWritingTo: eventsURL); stderrFile = try FileHandle(forWritingTo: errorsURL)
-        process.executableURL = root.appendingPathComponent("evaluation-helper-current")
+        process.executableURL = root.appendingPathComponent(helperName)
         process.arguments = [root.path]
         process.standardInput = input; process.standardOutput = output; process.standardError = errors
         process.terminationHandler = { [weak self] _ in
@@ -423,6 +423,231 @@ private func benchmark(directory: URL, allFixtures: Bool) throws {
     if let failure { throw failure }
 }
 
+private func sdxlBenchmark(directory: URL, allFixtures: Bool, numericDiagnostic: Bool = false) throws {
+    signal(SIGPIPE, SIG_IGN)
+    stopControl.setDeadline(now() + (allFixtures ? 2400 : 1000))
+    signal(SIGINT, SIG_IGN); signal(SIGTERM, SIG_IGN)
+    let interrupt = DispatchSource.makeSignalSource(signal: SIGINT, queue: .global(qos: .userInitiated))
+    let terminate = DispatchSource.makeSignalSource(signal: SIGTERM, queue: .global(qos: .userInitiated))
+    interrupt.setEventHandler { stopControl.request() }; terminate.setEventHandler { stopControl.request() }
+    interrupt.resume(); terminate.resume(); defer { interrupt.cancel(); terminate.cancel() }
+    let lock = open(root.appendingPathComponent("sdxl-evaluation.lock").path, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR)
+    try require(lock >= 0, "sdxl-lock-open"); defer { close(lock) }
+    try require(flock(lock, LOCK_EX | LOCK_NB) == 0, "another-sdxl-evaluation-active")
+    defer { flock(lock, LOCK_UN) }
+    try require(!FileManager.default.fileExists(atPath: directory.path), "report-directory-must-be-new")
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+    let reportURL = directory.appendingPathComponent("sdxl-report.json")
+    let repository = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+        .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+    let tools = repository.appendingPathComponent("tools/sdxl-evaluation")
+    var report: JSONObject = ["schemaVersion": 1, "preprocessingVersion": 1,
+        "createdAt": ISO8601DateFormatter().string(from: Date()), "productCapabilities": "unchanged-unavailable",
+        "purpose": numericDiagnostic ? "numeric diagnostic only; callback synchronization is not a representative benchmark" :
+            "new SDXL technical route; product adapter and capability Go require separate evidence",
+        "numericDiagnosticOnly": numericDiagnostic,
+        "clock": "mach_continuous_time includes sleep", "runs": [JSONObject](),
+        "coldDefinition": "new process/model context; operating-system and shader caches not purged",
+        "memoryScope": "helper peak RSS/footprint plus driver peak RSS, not a kernel-enforced quota",
+        "hardware": ["physicalMemoryBytes": ProcessInfo.processInfo.physicalMemory,
+                     "operatingSystem": ProcessInfo.processInfo.operatingSystemVersionString],
+        "harnessExecutableSHA256": try hash(URL(fileURLWithPath: CommandLine.arguments[0]))]
+    var session: NativeSession?, preview: PreviewProbe?, failure: Error?
+    let began = now()
+    do {
+        #if !arch(arm64)
+        throw Failure.code("unsupported-sdxl-hardware")
+        #endif
+        try require(ProcessInfo.processInfo.physicalMemory >= 16 * 1024 * 1024 * 1024, "minimum-16GiB-required")
+        var pressure: Int32 = 0, count = MemoryLayout<Int32>.size
+        try require(sysctlbyname("kern.memorystatus_vm_pressure_level", &pressure, &count, nil, 0) == 0 && pressure == 1,
+                    "normal-memory-pressure-required")
+        try require(try hash(tools.appendingPathComponent("package.json")) ==
+                    "d66209fbcb767950b36f815c6148c01193b3e297808d6bf56eadf0cb8a39e7ac", "sdxl-package-pin")
+        let package = try json(tools.appendingPathComponent("package.json"))
+        report["package"] = package
+        let criteria = try Data(contentsOf: tools.appendingPathComponent("criteria.json"))
+        report["criteriaSHA256"] = SHA256.hash(data: criteria).map { String(format: "%02x", $0) }.joined()
+        try criteria.write(to: directory.appendingPathComponent("criteria.json"))
+        for entry in package["files"] as! [JSONObject] {
+            let path = entry["path"] as! String
+            try require(!path.hasPrefix("/") && !path.split(separator: "/").contains(".."), "sdxl-input-path")
+            let file = root.appendingPathComponent("inputs").appendingPathComponent(path)
+            let attributes = try FileManager.default.attributesOfItem(atPath: file.path)
+            try require(attributes[.type] as? FileAttributeType == .typeRegular &&
+                        (attributes[.size] as? NSNumber)?.int64Value == (entry["bytes"] as! NSNumber).int64Value,
+                        "sdxl-input-size-or-type")
+            try require(try hash(file) == entry["sha256"] as! String, "sdxl-original-input-hash")
+        }
+        let installation = try json(root.appendingPathComponent("native-installation.json"))
+        try require(!numericDiagnostic || installation["numericDiagnosticSelfTestPassed"] as? Bool == true,
+                    "sdxl-numeric-diagnostic-self-test-evidence")
+        try require(installation["metalGroupNormBaselineReproduced"] as? Bool == true &&
+                    installation["metalGroupNormRegressionPassed"] as? Bool == true &&
+                    hash(tools.appendingPathComponent("ggml-metal-group-norm.patch")) ==
+                        installation["ggmlPatchSHA256"] as? String &&
+                    hash(tools.appendingPathComponent("ggml_group_norm_regression.cpp")) ==
+                        installation["metalGroupNormRegressionSourceSHA256"] as? String,
+                    "sdxl-metal-group-norm-regression-evidence")
+        try require(installation["sdkRevision"] as? String == package["sdkRevision"] as? String &&
+                    installation["ggmlRevision"] as? String == package["ggmlRevision"] as? String,
+                    "sdxl-sdk-revision")
+        try require(try hash(tools.appendingPathComponent("sdk-sdxl-inpaint.patch")) ==
+                    installation["sdkPatchSHA256"] as? String, "sdxl-loader-patch-hash")
+        try require(installation["sdkNameRegressionPassed"] as? Bool == true &&
+                    hash(tools.appendingPathComponent("sdk_name_regression.cpp")) ==
+                    installation["sdkNameRegressionSourceSHA256"] as? String,
+                    "sdxl-loader-regression-evidence")
+        try require(try hash(root.appendingPathComponent("sdxl-helper")) == installation["helperSHA256"] as? String, "sdxl-helper-hash")
+        try require(try hash(tools.appendingPathComponent("helper.cpp")) == installation["helperSourceSHA256"] as? String, "sdxl-helper-source-hash")
+        let conversion = try json(root.appendingPathComponent("conversion.json"))
+        try require(conversion["sourcePackageSHA256"] as? String == "d66209fbcb767950b36f815c6148c01193b3e297808d6bf56eadf0cb8a39e7ac" &&
+                    conversion["helperSHA256"] as? String == installation["helperSHA256"] as? String, "sdxl-conversion-inputs")
+        try require(try hash(root.appendingPathComponent("model-q8_0.gguf")) == conversion["modelSHA256"] as? String, "sdxl-converted-hash")
+        report["installation"] = installation; report["conversion"] = conversion
+        let historical = repository.appendingPathComponent("reports/image-backend/historical-2026-10-16")
+        let manifest = historical.appendingPathComponent("provenance/fixtures-manifest.json")
+        try require(try hash(manifest) == fixtureSHA, "sdxl-fixture-manifest-hash")
+        let fixtures = try json(manifest)["fixtures"] as! [JSONObject]
+        // Retain the native ROI reference before any model work: a later gate
+        // failure must not prevent replay of an already completed case 06.
+        guard let canvasFixture = fixtures.first(where: { $0["id"] as? String == "06-nonsquare-canvas" }),
+              canvasFixture["original"] as? String == "fixtures/06-canvas-original.png",
+              let originalPixelSHA = canvasFixture["originalPixelSHA256"] as? String else {
+            throw Failure.code("sdxl-replay-original-manifest")
+        }
+        let fixtureDirectory = directory.appendingPathComponent("fixtures")
+        try FileManager.default.createDirectory(at: fixtureDirectory, withIntermediateDirectories: true)
+        let replayOriginal = fixtureDirectory.appendingPathComponent("06-canvas-original.png")
+        try FileManager.default.copyItem(at: historical.appendingPathComponent("fixtures/06-canvas-original.png"), to: replayOriginal)
+        let nativeOriginal = try ImageGenerationReplay.loadCanonicalRGBA8(replayOriginal)
+        try require(nativeOriginal.image.width == 384 && nativeOriginal.image.height == 256, "sdxl-replay-original-dimensions")
+        let originalRGBA = try ImageGenerationReplay.rgba8Bytes(nativeOriginal.image)
+        var originalRGB = Data(count: 384 * 256 * 3)
+        try originalRGB.withUnsafeMutableBytes { (output: UnsafeMutableRawBufferPointer) in
+            try originalRGBA.withUnsafeBytes { (source: UnsafeRawBufferPointer) in
+                for pixel in 0..<(384 * 256) {
+                    if pixel.isMultiple(of: 8_192) { try Task.checkCancellation() }
+                    try require(source[pixel * 4 + 3] == 255, "sdxl-replay-original-alpha")
+                    for channel in 0..<3 { output[pixel * 3 + channel] = source[pixel * 4 + channel] }
+                }
+            }
+        }
+        try require(SHA256.hash(data: originalRGB).map { String(format: "%02x", $0) }.joined() == originalPixelSHA,
+                    "sdxl-replay-original-pixel-hash")
+        report["replayOriginal06FileSHA256"] = try hash(replayOriginal)
+        var cases: [(String, JSONObject, JSONObject)] = []
+        for fixture in fixtures { for mask in fixture["masks"] as! [JSONObject] {
+            let id = (fixture["id"] as! String) + "-" + (mask["kind"] as! String)
+            if cases.isEmpty {
+                cases.append((id, fixture, mask))
+                if !numericDiagnostic { cases += (1...3).map { ("warm-\($0)", fixture, mask) } }
+            } else if allFixtures && !numericDiagnostic { cases.append((id, fixture, mask)) }
+        } }
+        let modelSize = try ArtifactPixelSize(width: 1024, height: 1024)
+        let stamp = UUID().uuidString.lowercased()
+        var prepared: [String: (SDXLEvaluationRaster, String, String)] = [:]
+        for item in cases {
+            let id = (item.1["id"] as! String) + "-" + (item.2["kind"] as! String)
+            if prepared[id] != nil { continue }
+            let sourceURL = historical.appendingPathComponent(item.1["source"] as! String)
+            let maskURL = historical.appendingPathComponent(item.2["path"] as! String)
+            try require(try hash(sourceURL) == item.1["sourceFileSHA256"] as! String &&
+                        hash(maskURL) == item.2["fileSHA256"] as! String, "sdxl-fixture-file-hash")
+            let source = try ImageGenerationReplay.loadCanonicalRGBA8(sourceURL)
+            let mask = try ImageGenerationReplay.loadGrayMask(maskURL)
+            let mapping = try SDXLEvaluationRaster(width: source.image.width, height: source.image.height)
+            try require(mapping.width == mask.size.width && mapping.height == mask.size.height, "sdxl-mask-dimensions")
+            let canvas = try mapping.prepare(pixels: ImageGenerationReplay.rgba8Bytes(source.image), mask: mask.bytes)
+            let relative = "jobs/\(stamp)-\(id)"
+            let folder = root.appendingPathComponent(relative)
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            try ImageGenerationReplay.writePNG(ImageGenerationReplay.rgba8Image(size: modelSize, bytes: canvas.pixels), to: folder.appendingPathComponent("source.png"))
+            guard let provider = CGDataProvider(data: canvas.mask as CFData),
+                  let gray = CGImage(width: 1024, height: 1024, bitsPerComponent: 8, bitsPerPixel: 8, bytesPerRow: 1024,
+                    space: CGColorSpaceCreateDeviceGray(), bitmapInfo: [], provider: provider, decode: nil,
+                    shouldInterpolate: false, intent: .defaultIntent) else { throw Failure.code("sdxl-gray-mask") }
+            try ImageGenerationReplay.writePNG(gray, to: folder.appendingPathComponent("mask.png"))
+            prepared[id] = (mapping, relative + "/source.png", relative + "/mask.png")
+        }
+        report["verificationAndPreparationSeconds"] = now() - began
+        try writeJSON(report, reportURL)
+        let cold = now()
+        session = try NativeSession(directory: directory.appendingPathComponent("series-context"), helperName: "sdxl-helper")
+        let loaded = try session!.operation(["operation": "load", "id": "load"], timeout: 45)
+        report["load"] = loaded
+        try require(loaded["status"] as? String == "success", "sdxl-load-failed")
+        for (index, item) in cases.enumerated() {
+            if index == 1 { preview = PreviewProbe(); report["previewBaseline"] = preview!.baseline(); preview!.start() }
+            let id = (item.1["id"] as! String) + "-" + (item.2["kind"] as! String)
+            let (mapping, source, mask) = prepared[id]!
+            let output = "outputs/\(stamp)-\(item.0).png"
+            let request: JSONObject = ["operation": "generate", "id": item.0, "source": source, "mask": mask,
+                "output": output, "prompt": item.1["prompt"]!, "negativePrompt": item.1["negativePrompt"]!,
+                "seed": 4281, "numericDiagnostic": numericDiagnostic]
+            let result = try session!.operation(request, timeout: 180)
+            var runs = report["runs"] as! [JSONObject]
+            runs.append(["id": item.0, "fixture": id, "request": request, "native": result,
+                         "width": mapping.width, "height": mapping.height, "modelOffset": [mapping.offsetX, mapping.offsetY]])
+            report["runs"] = runs; try writeJSON(report, reportURL)
+            try require(result["status"] as? String == "success", "sdxl-generation-failed")
+            if index == 0 {
+                report["coldEndToEndSeconds"] = now() - cold
+                try require(now() - cold <= 240, "sdxl-cold-total-gate")
+            }
+            if index == 1 {
+                let concurrent = preview!.stop(); report["previewConcurrent"] = concurrent; preview!.release(); preview = nil
+                let baseline = report["previewBaseline"] as! JSONObject
+                report["previewGatePassed"] = (baseline["sampleCount"] as? Int ?? 0) > 0 &&
+                    (concurrent["sampleCount"] as? Int ?? 0) > 0 &&
+                    (concurrent["p95Seconds"] as! Double) <= 0.25 &&
+                    (concurrent["p95Seconds"] as! Double) <= (baseline["p95Seconds"] as! Double) * 2
+            }
+            let folder = directory.appendingPathComponent("artifacts/\(item.0)")
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            let modelOutput = root.appendingPathComponent(output)
+            try FileManager.default.copyItem(at: modelOutput, to: folder.appendingPathComponent("raw-model-1024.png"))
+            let bitmap = try ImageGenerationReplay.loadCanonicalRGBA8(modelOutput)
+            let cropped = try mapping.crop(ImageGenerationReplay.rgba8Bytes(bitmap.image))
+            let nativeSize = try ArtifactPixelSize(width: mapping.width, height: mapping.height)
+            try ImageGenerationReplay.writePNG(ImageGenerationReplay.rgba8Image(size: nativeSize, bytes: cropped), to: folder.appendingPathComponent("raw.png"))
+            for (from, to) in [(item.1["source"] as! String, "source.png"), (item.2["path"] as! String, "replace-mask.png")] {
+                try FileManager.default.copyItem(at: historical.appendingPathComponent(from), to: folder.appendingPathComponent(to))
+            }
+            print("SDXL completed \(index + 1)/\(cases.count): \(item.0)"); fflush(stdout)
+        }
+        report["seriesStop"] = session!.stop(); session = nil
+        if numericDiagnostic {
+            report["status"] = "numeric-diagnostic-only-not-a-performance-or-product-go-series"
+        } else {
+            session = try NativeSession(directory: directory.appendingPathComponent("cancel-context"), helperName: "sdxl-helper")
+            report["cancelLoad"] = try session!.operation(["operation": "load", "id": "load"], timeout: 45)
+            try require((report["cancelLoad"] as! JSONObject)["status"] as? String == "success", "sdxl-cancel-load")
+            let first = cases[0], firstID = (first.1["id"] as! String) + "-" + (first.2["kind"] as! String)
+            let input = prepared[firstID]!, output = "outputs/\(stamp)-cancel-must-not-publish.png"
+            let cancellation = try session!.operation(["operation": "generate", "id": "cancel", "source": input.1,
+                "mask": input.2, "output": output, "prompt": first.1["prompt"]!, "negativePrompt": first.1["negativePrompt"]!, "seed": 4281],
+                timeout: 180, cancelAtStep: 2)
+            report["cancellation"] = cancellation
+            report["cancelNoOutputPublished"] = !FileManager.default.fileExists(atPath: root.appendingPathComponent(output).path)
+            report["cancelGatePassed"] = (report["cancelNoOutputPublished"] as? Bool == true) &&
+                cancellation["code"] as? String == "cancelled" &&
+                (cancellation["cancelLatencyUntilNativeReturnSeconds"] as? Double ?? .infinity) <= 5
+            report["cancelStop"] = session!.stop(); session = nil
+            try require(report["previewGatePassed"] as? Bool == true, "sdxl-preview-gate")
+            try require(report["cancelGatePassed"] as? Bool == true, "sdxl-cancel-gate")
+            report["status"] = "technical-measurements-complete-awaiting-visual-review-and-product-route"
+        }
+    } catch { failure = error; report["status"] = "failed-evidence-retained"; report["failure"] = String(describing: error) }
+    if let preview { report["interruptedPreview"] = preview.stop(); preview.release() }
+    if let session { report["emergencyStop"] = session.stop() }
+    report["allNativeProcessesConfirmedEnded"] = true
+    report["ownPeakRSSBytes"] = ownPeakRSS(); report["totalDriverSeconds"] = now() - began
+    try writeJSON(report, reportURL)
+    print("SDXL REPORT \(reportURL.path)"); fflush(stdout)
+    if let failure { throw failure }
+}
+
 @main
 private struct ImageGenerationEvaluation {
     static func main() async throws {
@@ -444,13 +669,26 @@ private struct ImageGenerationEvaluation {
             // Preserve the declared preprocessing when replaying a saved LaMa
             // series. Historical SD-1.5 and LaMa V1 retain their old default.
             var alphaPolicy: ImageGenerationReplay.CandidateAlphaPolicy = .historicalWhiteMatte
+            var replayCaseIDs: [String]?
             let lamaReport = historical.appendingPathComponent("lama-report.json")
             if FileManager.default.fileExists(atPath: lamaReport.path),
                let version = try json(lamaReport)["preprocessingVersion"] as? Int {
                 try require(version == 2, "unsupported-lama-preprocessing-version")
                 alphaPolicy = .straightRGB
             }
+            let sdxlReport = historical.appendingPathComponent("sdxl-report.json")
+            if FileManager.default.fileExists(atPath: sdxlReport.path) {
+                try require(!FileManager.default.fileExists(atPath: lamaReport.path), "ambiguous-replay-provenance")
+                let metadata = try json(sdxlReport)
+                try require(metadata["preprocessingVersion"] as? Int == 1, "unsupported-sdxl-preprocessing-version")
+                guard let runs = metadata["runs"] as? [JSONObject] else { throw Failure.code("invalid-sdxl-replay-runs") }
+                let ids = runs.compactMap { $0["id"] as? String }
+                try require(!ids.isEmpty && ids.count == runs.count && Set(ids).count == ids.count, "invalid-sdxl-replay-runs")
+                replayCaseIDs = ids
+                alphaPolicy = .straightRGB
+            }
             _ = try await ImageGenerationReplay.run(historicalRoot: historical, outputRoot: output,
+                                                    caseIDs: replayCaseIDs ?? ImageGenerationReplay.distinctCaseIDs,
                                                     candidateAlphaPolicy: alphaPolicy)
             print("Current compositor replay: \(output.path)")
         case "lama":
@@ -475,6 +713,24 @@ private struct ImageGenerationEvaluation {
                 report["currentCompositorReportSHA256"] = try hash(replay.appendingPathComponent("current-compositor-report.json"))
                 try writeJSON(report, output.appendingPathComponent("lama-report.json"))
             }
+        case "sdxl":
+            try require(arguments.contains("--run"), "explicit-run-required")
+            root = try option("--root")
+            let output = try option("--out"), all = arguments.contains("--all-fixtures")
+            let diagnostic = arguments.contains("--numeric-diagnostic")
+            let budget = AIResourceBudget.shared
+            let lease = try await budget.acquireLocalInference(residentBytes: Int64(memoryLimit))
+            do { try await Task.detached { try sdxlBenchmark(directory: output, allFixtures: all, numericDiagnostic: diagnostic) }.value }
+            catch { await budget.release(lease); throw error }
+            await budget.release(lease)
+            let reportURL = output.appendingPathComponent("sdxl-report.json")
+            var report = try json(reportURL)
+            let ids = (report["runs"] as! [JSONObject]).compactMap { $0["id"] as? String }
+            let replay = URL(fileURLWithPath: output.path + "-compositor", isDirectory: true)
+            _ = try await ImageGenerationReplay.run(historicalRoot: output, outputRoot: replay,
+                                                    caseIDs: ids, candidateAlphaPolicy: .straightRGB)
+            report["currentCompositorReportSHA256"] = try hash(replay.appendingPathComponent("current-compositor-report.json"))
+            try writeJSON(report, reportURL)
         case "benchmark":
             try require(arguments.contains("--run"), "explicit-run-required")
             root = try option("--root")
