@@ -1,0 +1,133 @@
+{
+  "schemaVersion": 1,
+  "purpose": "Reference source evidence for the isolated SDXL Inpaint nearest-mask experiment; no model inference or product qualification claim.",
+  "retrievedOn": "2026-10-18",
+  "upstream": {
+    "repository": "https://github.com/huggingface/diffusers",
+    "tag": "v0.36.0",
+    "tagObjectSHA1": "5b03a0ac5b043ca99161b208e03d6f2240514e53",
+    "commit": "9380e58821092ad05e618fa8a259030136ba43c0",
+    "tagResolutionAPI": "https://api.github.com/repos/huggingface/diffusers/git/tags/5b03a0ac5b043ca99161b208e03d6f2240514e53",
+    "source": "https://github.com/huggingface/diffusers/blob/9380e58821092ad05e618fa8a259030136ba43c0/src/diffusers/pipelines/stable_diffusion_xl/pipeline_stable_diffusion_xl_inpaint.py",
+    "path": "src/diffusers/pipelines/stable_diffusion_xl/pipeline_stable_diffusion_xl_inpaint.py",
+    "bytes": 90191,
+    "sha256": "65f405a4336599de8b1bfe65fce5c2077dfa8cdaf752dc704c132dd7a8f8465f",
+    "gitBlobSHA1": "54a1e311804c4b221e5e62477fcc0a148eb28773",
+    "fullFileDistribution": "The full source file was fetched solely for byte hashes and line verification; only the small unchanged excerpts below are distributed."
+  },
+  "license": {
+    "spdx": "Apache-2.0",
+    "attribution": "Hugging Face, 2025; unchanged excerpts from the official Diffusers source.",
+    "source": "https://github.com/huggingface/diffusers/blob/9380e58821092ad05e618fa8a259030136ba43c0/LICENSE",
+    "localFile": "REFERENCE-DIFFUSERS-LICENSE.txt",
+    "bytes": 11357,
+    "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+    "gitBlobSHA1": "261eeb9e9f8b2b4b0d119366dda99c6fd7d35c64"
+  },
+  "defaultInterpolationMode": {
+    "value": "nearest",
+    "primaryDocumentation": "https://docs.pytorch.org/docs/2.14/generated/torch.nn.functional.interpolate.html",
+    "scope": "Documentation confirms the default argument; no full PyTorch or Diffusers inference was run."
+  },
+  "excerpts": [
+    {
+      "id": "mask-downsample",
+      "startLine": 860,
+      "endLine": 862,
+      "source": "https://github.com/huggingface/diffusers/blob/9380e58821092ad05e618fa8a259030136ba43c0/src/diffusers/pipelines/stable_diffusion_xl/pipeline_stable_diffusion_xl_inpaint.py#L860-L862",
+      "utf8": "        mask = torch.nn.functional.interpolate(\n            mask, size=(height // self.vae_scale_factor, width // self.vae_scale_factor)\n        )\n",
+      "bytes": 147,
+      "sha256": "3e13bd1e492fdba04ba35388f919be15c490d86fffefb6b3da7b66f56cd2e389",
+      "interpretation": "The omitted mode argument uses torch.nn.functional.interpolate default nearest; this motivates the V9 mask-only change."
+    },
+    {
+      "id": "nine-channel-concatenation",
+      "startLine": 1605,
+      "endLine": 1606,
+      "source": "https://github.com/huggingface/diffusers/blob/9380e58821092ad05e618fa8a259030136ba43c0/src/diffusers/pipelines/stable_diffusion_xl/pipeline_stable_diffusion_xl_inpaint.py#L1605-L1606",
+      "utf8": "                if num_channels_unet == 9:\n                    latent_model_input = torch.cat([latent_model_input, mask, masked_image_latents], dim=1)\n",
+      "bytes": 151,
+      "sha256": "be80c150c08876636353d9211d80d5d30b56478ce87f9a5ae2b02d1991e741f6",
+      "interpretation": "The true inpaint UNet receives the latent, mask and encoded masked image as nine channels."
+    },
+    {
+      "id": "four-channel-latent-preservation-guard",
+      "startLine": 1639,
+      "endLine": 1639,
+      "source": "https://github.com/huggingface/diffusers/blob/9380e58821092ad05e618fa8a259030136ba43c0/src/diffusers/pipelines/stable_diffusion_xl/pipeline_stable_diffusion_xl_inpaint.py#L1639-L1639",
+      "utf8": "                if num_channels_unet == 4:\n",
+      "bytes": 43,
+      "sha256": "b3b79a7825cc0fffeb1226ed9a36d35c2105d0e1909921007d8e2ac98a0762db",
+      "interpretation": "Original-latent reinsertion is guarded by four input channels. This further implementation difference is intentionally not changed in V9."
+    }
+  ],
+  "nativeComparison": [
+    {
+      "path": "src/pipeline/image.cpp",
+      "revision": "8cd731e7b4667eb8f40a153315b9a7125d09a58d",
+      "source": "https://github.com/leejet/stable-diffusion.cpp/blob/8cd731e7b4667eb8f40a153315b9a7125d09a58d/src/pipeline/image.cpp",
+      "bytes": 52923,
+      "sha256": "14050098741fde5da0b4c1f9130fd4290f826ec13a94344555ffc773d7e77f6c",
+      "reviewedLineRanges": [
+        [
+          213,
+          218
+        ],
+        [
+          409,
+          415
+        ]
+      ],
+      "interpretation": "NearestMax downsamples the latent conditioning mask; the later 3x3 dilation supplies the denoise mask. V9 changes only the SDXL Inpaint downsampling mode, leaving the denoise-blending algorithm present.",
+      "retrieval": "Read exact file bytes from the already pinned local SDK source archive; web fetch of image.cpp unavailable."
+    },
+    {
+      "path": "src/core/tensor.hpp",
+      "revision": "8cd731e7b4667eb8f40a153315b9a7125d09a58d",
+      "source": "https://github.com/leejet/stable-diffusion.cpp/blob/8cd731e7b4667eb8f40a153315b9a7125d09a58d/src/core/tensor.hpp",
+      "bytes": 76277,
+      "sha256": "9236c4122f7f247c6e5527ac287a92f57c481928c46b881e75cc76341ac65213",
+      "reviewedLineRanges": [
+        [
+          1311,
+          1329
+        ]
+      ],
+      "interpretation": "Ordinary Nearest computes the floor of outputIndex*inputSize/outputSize; reduction modes including NearestMax inspect the source cell region instead.",
+      "retrieval": "Read exact file bytes from the already pinned local SDK source archive; web fetch of image.cpp unavailable."
+    },
+    {
+      "path": "src/pipeline/diffusion_engine.cpp",
+      "revision": "8cd731e7b4667eb8f40a153315b9a7125d09a58d",
+      "source": "https://github.com/leejet/stable-diffusion.cpp/blob/8cd731e7b4667eb8f40a153315b9a7125d09a58d/src/pipeline/diffusion_engine.cpp",
+      "bytes": 152133,
+      "sha256": "8d857beffa75230a2a585e2ceef44399df46fbbb67dc4535078ff999e2f6951c",
+      "reviewedLineRanges": [
+        [
+          2282,
+          2284
+        ],
+        [
+          2750,
+          2752
+        ]
+      ],
+      "interpretation": "An enabled denoise mask causes per-step original-latent replacement outside it. This remains a known difference from the reference for nine-channel SDXL, intentionally deferred from V9.",
+      "retrieval": "Read exact file bytes from the already pinned local SDK source archive; web fetch of image.cpp unavailable."
+    }
+  ],
+  "experiment": {
+    "id": "V9",
+    "singleChangedFactor": "Use ordinary nearest latent conditioning-mask downsampling only for VERSION_SDXL_INPAINT instead of NearestMax.",
+    "retained": "Existing pinned weights and export, encoder-name and Metal GROUP_NORM corrections, seed, prompt, Euler/discrete scheduler, 20 steps, CFG 8, strength 0.99, 1024 model canvas, integer-centered native embedding, VAE tiling, and denoise-blending algorithm.",
+    "firstRequiredFixture": "05-fine-motif-edges-hard",
+    "decisionRule": "Rerun the identical frozen fixture, replay with the current compositor, and perform visual review. If this mandatory quality case still fails, stop this candidate as No-Go. Expand to all quality, cold/warm, memory, preview and actual cancellation gates only if the initial case passes.",
+    "limits": "All existing gates remain unchanged, including 6 GiB combined process memory and <=5 s actual process-return cancellation.",
+    "claimsExcluded": [
+      "Reference pixel equivalence to full Diffusers",
+      "Proven cause of every V8 artifact",
+      "Image quality improvement before actual rerun",
+      "Any product Go or authorization for issues 13-16 from a mask regression alone"
+    ]
+  }
+}

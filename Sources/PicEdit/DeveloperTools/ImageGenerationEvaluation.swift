@@ -477,6 +477,12 @@ private func sdxlBenchmark(directory: URL, allFixtures: Bool, numericDiagnostic:
                     hash(tools.appendingPathComponent("sdk-sdxl-mask.patch")) == installation["sdkMaskPatchSHA256"] as? String &&
                     hash(tools.appendingPathComponent("sdxl_mask_regression.cpp")) == installation["sdkMaskRegressionSourceSHA256"] as? String,
                     "sdxl-reference-mask-regression-evidence")
+        try require(installation["sdkScheduleBaselineReproduced"] as? Bool == true &&
+                    installation["sdkScheduleRegressionPassed"] as? Bool == true &&
+                    installation["sdxlSchedule"] as? String == "euler-leading-strength099-v1" &&
+                    hash(tools.appendingPathComponent("sdxl_reference_schedule.h")) == installation["sdkScheduleSourceSHA256"] as? String &&
+                    hash(tools.appendingPathComponent("sdxl_schedule_regression.cpp")) == installation["sdkScheduleRegressionSourceSHA256"] as? String,
+                    "sdxl-reference-schedule-regression-evidence")
         try require(installation["sdkRevision"] as? String == package["sdkRevision"] as? String &&
                     installation["ggmlRevision"] as? String == package["ggmlRevision"] as? String,
                     "sdxl-sdk-revision")

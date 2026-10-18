@@ -4,9 +4,34 @@
 
 **Ergebnis der abgeschlossenen V8-Serie: No-Go für diese Konfiguration.** Alle zehn Vorhersagen wurden innerhalb ihrer Zeitgrenzen erzeugt; der erforderliche Qualitätsfall 05 und das native Abbruchgate bestehen jedoch nicht. [Messwerte](../../reports/image-backend/sdxl-inpainting-2026-10-18/v8-quality-and-cancel-no-go/measurement-summary.json), [visuelles Review](../../reports/image-backend/sdxl-inpainting-2026-10-18/v8-quality-and-cancel-no-go/visual-review.json) und damalige Quellen bleiben mit den älteren Versuchen erhalten.
 
+## Fortsetzung V10: gepinnter Euler-Zeitplan
+
+**Die tatsächliche V10-Einzelprobe bleibt No-Go:** 157,055 s bei 19 tatsächlichen Schritten, unveränderte Erhaltpixel, aber weiterhin breite dunkle Konturen und helle Säume. Zwei Sichtungen bestätigen den Pflichtfehler; keine vollständige Serie oder neue Abbruchfreigabe. [Rohdaten und Entscheidung](../../reports/image-backend/sdxl-schedule-qualification-2026-10-18/README.md).
+
+Der aktuelle Builder verwendet den [gepinnten Modellzeitplan](provenance/reference-scheduler-semantics.json): Euler mit `leading`, `steps_offset=1`, 20 angeforderten Schritten und Stärke 0,99. Die Referenz wählt daraus 19 tatsächliche Schritte bei Trainingszeitpunkten 901, 851, …, 1 und eine abschließende Sigma-Null. Das bisherige SDK-`discrete` verwendete dagegen 20 Schritte von 999 bis 0. V10 übergibt die ausgewählten Sigmas über die öffentliche `custom_sigmas`-Schnittstelle. Gewichte, CFG, Prompt, Seed, Nearest-Maske, Kachelung und finale Komposition bleiben gleich. Dies prüft eine Zeitplanabweichung; es behauptet keine vollständige numerische Gleichheit mit Diffusers.
+
+Die zunächst erwogene Abschaltung der Original-Latent-Rückmischung wird nicht umgesetzt: Nach der tatsächlichen 3×3-Maskenerweiterung enthält Pflichtfall 05 bereits keine Erhaltzelle mehr und das SDK überspringt diesen Pfad. Eine kleine native CPU-Probe dokumentiert diese Ausschlussdiagnose ohne Modelllauf. Sie kann mit einem gepinnten Offline-Archiv in einem neuen Ausgabeordner reproduziert werden:
+
+```sh
+python3 -B tools/sdxl-evaluation/probe_denoise_mask.py --help
+```
+
+Der Runner prüft Archiv, Quellvertrag und Fixture vor der Kompilierung. Die breite Kontrollmaske prüft, dass die Bedingung nicht stets falsch ist.
+
+Builder, Konverter und Swift-Harness verlangen für neue Ausführungen zusätzlich `sdkScheduleBaselineReproduced`, `sdkScheduleRegressionPassed`, `sdxlSchedule = euler-leading-strength099-v1` und die Hashes des Zeitplan-Headers sowie des nativen Regressionstests. Der Test prüft den tatsächlichen SDK-Zeitplan, die tatsächliche öffentliche Übergabe und die quellgeprüfte Formel der nachfolgenden Stärkeauswahl. Diese kleine Probe führt den privaten VAE-Bildpfad nicht aus; dessen tatsächliche Schrittzahl muss zusätzlich das Inferenzlog bestätigen. Bestehende V9-Receipts autorisieren keine neue V10-Ausführung.
+
+Ein frischer privater Root und neue Ausgabeordner bewahren frühere Nachweise. Zuerst wird nur Pflichtfall 05 erzeugt; bei Qualitätsfehler endet der Kandidat als No-Go. Erst ein bestandener Pflichtfall rechtfertigt die vollständige Serie einschließlich Abbruch- und Vorschauprüfung. Alle Zeit-, Speicher- und Produktgates gelten unverändert.
+
+```sh
+python3 -B tools/sdxl-evaluation/prepare.py --root /private/tmp/picedit-sdxl-qualification-v10 --offline --source-cache /private/tmp/picedit-sdxl-qualification-v9/inputs
+python3 -B tools/sdxl-evaluation/build_native.py --root /private/tmp/picedit-sdxl-qualification-v10 --build --cmake /absolute/path/to/cmake
+python3 -B tools/sdxl-evaluation/convert.py --root /private/tmp/picedit-sdxl-qualification-v10 --convert
+./scripts/evaluate-image-generation.sh sdxl --run --probe-case 05-fine-motif-edges-hard --root /private/tmp/picedit-sdxl-qualification-v10 --out /private/tmp/picedit-sdxl-v10-fine-edges
+```
+
 ## Fortsetzung V9: isolierte Masken- und Abbruchqualifikation
 
-Der aktuelle Evaluationsbuilder ergänzt eine getrennte **V9-Maskenvariante**. Die [gehashte Diffusers-Referenz](provenance/reference-mask-semantics.json) verwendet gewöhnliches Nearest-Sampling für den UNet-Maskenkanal. Das bisherige SDK-`NearestMax` verliert in Pflichtfall 05 sämtliche geschützten Latentzellen; die neue, ausschließlich für `VERSION_SDXL_INPAINT` gewählte Interpolation erhält 141 von 16.384 Zellen. Der [Patch](sdk-sdxl-mask.patch) ändert weder Originalgewichte, native Masken noch Denoise-Blending. Dies ist eine geprüfte Algorithmusabweichung und zunächst eine Qualitätshypothese, kein Produkt-Go.
+V9 ergänzte eine getrennte **Maskenvariante**, die in V10 erhalten bleibt. Die [gehashte Diffusers-Referenz](provenance/reference-mask-semantics.json) verwendet gewöhnliches Nearest-Sampling für den UNet-Maskenkanal. Das bisherige SDK-`NearestMax` verliert in Pflichtfall 05 sämtliche geschützten Latentzellen; die neue, ausschließlich für `VERSION_SDXL_INPAINT` gewählte Interpolation erhält 141 von 16.384 Zellen. Der [Patch](sdk-sdxl-mask.patch) ändert weder Originalgewichte, native Masken noch Denoise-Blending. Dies ist eine geprüfte Algorithmusabweichung und zunächst eine Qualitätshypothese, kein Produkt-Go.
 
 **Die tatsächliche V9-Probe ist abgeschlossen und bleibt No-Go:** Nach 163,944 Sekunden sind weiterhin breite schwarze Konturen und helle Säume neben den feinen Erhaltlinien sichtbar. Zwei Sichtungen bestätigen den Pflichtfehler. Die separate Abbruchprobe bestätigt das Prozessende nach 4,067 Sekunden mit SIGKILL, jedoch ohne native kooperative Rückkehr. Entsprechend wird keine vollständige Wiederholungsserie oder Produktfreigabe behauptet; [neue Rohdaten und Entscheidung](../../reports/image-backend/sdxl-mask-qualification-2026-10-18/README.md) bleiben von V1–V8 getrennt.
 
@@ -79,7 +104,7 @@ Insbesondere initialisiert die tatsächliche gepinnte [SDK-Klasse `Conv2d`](http
 
 ## Eigene SDXL-Konfiguration und Messung
 
-Die Probe verwendet **1024×1024**, 20 Euler-Schritte, CFG 8, Seed 4281 und Stärke 0,99. Native Fixturepixel werden ohne Skalierung durch eine zentrierte ganzzahlige Translation eingebettet. Gerades RGB und die binäre Modellmaske verwenden denselben Clamp-Sampler einschließlich künstlichen Paddings. Quellalpha und native Softmaske bleiben separat für das finale Compositing.
+Die Probe verwendet **1024×1024**, 20 nominale Euler-Schritte, CFG 8, Seed 4281 und Stärke 0,99. V10 führt daraus nach Referenz-Stärkeauswahl tatsächlich 19 Schritte aus; ältere Varianten führten 20 aus. Native Fixturepixel werden ohne Skalierung durch eine zentrierte ganzzahlige Translation eingebettet. Gerades RGB und die binäre Modellmaske verwenden denselben Clamp-Sampler einschließlich künstlichen Paddings. Quellalpha und native Softmaske bleiben separat für das finale Compositing.
 
 Die ab V5 untersuchte Ausführungsvariante verwendet gebündelte CFG-Berechnung (`batchedCFG=true`) und ein angefordertes SDK-Limit von 5 GiB für verwalteten GPU-Speicher. Diffusion und VAE verwenden Metal, der Textencoder läuft auf der CPU mit Parametern vom Datenträger. Die Modellparameter, 20 Schritte und übergreifende Grenze von 6 GiB bleiben unverändert. Das SDK-Limit ersetzt keine Prozessspeicherprüfung und ist keine Betriebssystemquote.
 

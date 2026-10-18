@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "candidate": "V10 Euler leading model schedule",
+  "scope": "one mandatory quality case; no warm/preview/in-flight cancellation series",
+  "decision": "No-Go: mandatory fine-motif-edge quality fails in two independent reviews",
+  "productCapabilities": "unchanged-unavailable",
+  "inputAndModelIdentity": {
+    "modelGGUFSHA256": "2e0d24d76de6557144948429e7e86ca2d0a03aa920402529cef1df6665c72531",
+    "sameGGUFAsV9": true,
+    "fixture": "05-fine-motif-edges-hard",
+    "seed": 4281,
+    "configuredSteps": 20,
+    "effectiveSteps": 19,
+    "observed19StepProgress": [
+      0,
+      19,
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19
+    ]
+  },
+  "measurements": {
+    "loadSeconds": 0.283035709,
+    "predictionSeconds": 157.05464775,
+    "coldContextPlusPredictionSeconds": 157.3497196668759,
+    "totalDriverSeconds": 163.16190783306956,
+    "helperPeakRSSBytes": 3652370432,
+    "helperPeakFootprintBytes": 3726118536,
+    "driverPeakRSSBytes": 35815424,
+    "conservativeCombinedReportedPeakBytes": 3761933960,
+    "memoryLimitBytes": 6442450944,
+    "modelCanvas": [
+      1024,
+      1024
+    ],
+    "nativeOutput": [
+      512,
+      512
+    ]
+  },
+  "preservation": {
+    "outsidePixelsChecked": 9357,
+    "outsideRGBABytesChanged": 0,
+    "sourceAlphaBytesChanged": 0,
+    "pngRoundTripIdentical": true
+  },
+  "process": {
+    "allNativeProcessesConfirmedEnded": true,
+    "exitStatus": 0,
+    "leaseHeldUntilExit": true,
+    "cancellationProbeTriggered": false,
+    "normalIdleCloseIsNotAnInFlightCancelProof": true
+  },
+  "limits": "No repeated timing comparison, full GPU accounting, cold OS cache, full image-family quality, true RAW product preview or product adapter qualification."
+}

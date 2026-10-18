@@ -1,0 +1,350 @@
+{
+  "schemaVersion": 1,
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 7177,
+      "sha256": "b2a6e13cfabb4956259f6973b93144e7498303c0da2594597000d9b20c914ccf"
+    },
+    {
+      "path": "measurement-summary.json",
+      "bytes": 1871,
+      "sha256": "32859ff62693da3bad5d03710d25459ebdceef68ab29a1d8571550d1f5557b0f"
+    },
+    {
+      "path": "provenance/ImageGenerationEvaluation.swift",
+      "bytes": 54883,
+      "sha256": "1182a70ad6e3ae0ead615988045acc1fe2839bf5d5132a6a9074b7815c279b6e"
+    },
+    {
+      "path": "provenance/ImageGenerationPreviewProbe.swift",
+      "bytes": 7333,
+      "sha256": "64eb6cc4c0137b820f8943d3a0fa3a559a0537df3c9b2e6c602d021d85e9c904"
+    },
+    {
+      "path": "provenance/NativeProcessCancellation.swift",
+      "bytes": 9955,
+      "sha256": "6708c2c0f5f948ca023fd8d01a1ca2534c603bf94ed1d45b53273161dc6bcfd8"
+    },
+    {
+      "path": "provenance/REFERENCE-DIFFUSERS-LICENSE.txt",
+      "bytes": 11357,
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+    },
+    {
+      "path": "provenance/SDXLEvaluationRaster.swift",
+      "bytes": 4059,
+      "sha256": "db12ba3b88bfa6b75687639cc518eb51af737478163a39cf8bee9762502a14c3"
+    },
+    {
+      "path": "provenance/build_native.py",
+      "bytes": 17703,
+      "sha256": "a6417bc6f4ab8bf7459c665e85bb0b4ac1dd0718bb3e4a93dc1177f56101e4a2"
+    },
+    {
+      "path": "provenance/conversion-events.jsonl",
+      "bytes": 358,
+      "sha256": "6a93e74b6439649452219608e25f53add9572b521c12d5b8a627201e1b870266"
+    },
+    {
+      "path": "provenance/conversion-stderr.bin",
+      "bytes": 214471,
+      "sha256": "fa75db013d5b2247cef433d8888a01fc4cf5092c82b2a614e1051f8a81ec49a6"
+    },
+    {
+      "path": "provenance/conversion.json",
+      "bytes": 1191,
+      "sha256": "6f245231d47514bd0b8893259d784d015edf86253715658adeea81f046595537"
+    },
+    {
+      "path": "provenance/convert.py",
+      "bytes": 14201,
+      "sha256": "3e76303db56ed985e39854598bb46ee6725f865a81420d4b392223ba64fb3c2a"
+    },
+    {
+      "path": "provenance/criteria.json",
+      "bytes": 5149,
+      "sha256": "9de3146eaa1a9ed860243927ae79ef99879def988ac97907a8602c2405812924"
+    },
+    {
+      "path": "provenance/ggml-metal-group-norm.patch",
+      "bytes": 1151,
+      "sha256": "67dc4d0208f2bda10bac94008b0954584cc12b4592151b9834fc86158624ecf6"
+    },
+    {
+      "path": "provenance/ggml_group_norm_regression.cpp",
+      "bytes": 8793,
+      "sha256": "126a3824a02f79d2ec1ee4c18f62984ab5ad768936cc5690dfa7f260edb40c37"
+    },
+    {
+      "path": "provenance/helper.cpp",
+      "bytes": 34975,
+      "sha256": "5e048bb3d8d1ffb310551a0ecb82d460dea502b82f2492e92f4c03719b0f915b"
+    },
+    {
+      "path": "provenance/native-build.log",
+      "bytes": 104886,
+      "sha256": "8770277a954f207d69d00aa05544b0ec2021a74dd5cc93e11a02129257c30153"
+    },
+    {
+      "path": "provenance/native-installation.json",
+      "bytes": 2380,
+      "sha256": "122ccde675e525cba638fc804cbc5a9e149c2258a9de7759cc58362070c0569a"
+    },
+    {
+      "path": "provenance/native-regressions.json",
+      "bytes": 11145,
+      "sha256": "3d06d8f04ac2a30b66c25c01e32eaa898dad4530201f7ec02038d7ad1b00f283"
+    },
+    {
+      "path": "provenance/package.json",
+      "bytes": 10181,
+      "sha256": "d66209fbcb767950b36f815c6148c01193b3e297808d6bf56eadf0cb8a39e7ac"
+    },
+    {
+      "path": "provenance/prepare.py",
+      "bytes": 7872,
+      "sha256": "b3324713ca148ba4c40b08d801ccb6d0c405a4841d0765f7e7e6ab03e246ace0"
+    },
+    {
+      "path": "provenance/probe_denoise_mask.py",
+      "bytes": 6042,
+      "sha256": "eb5c8bf194f28a1f9b752d7341ab1d735f2aae52c45c0d85a966fb7a1365fa9f"
+    },
+    {
+      "path": "provenance/reference-mask-semantics.json",
+      "bytes": 7719,
+      "sha256": "357d87bcf3787f64e30e846e25a1754ad35eee35854090bf264706c118d97d7c"
+    },
+    {
+      "path": "provenance/reference-scheduler-numeric.json",
+      "bytes": 2228,
+      "sha256": "dea8cf92f6ac829d97b06abe8f664805655e9655fe8852143b81f52af26d92d1"
+    },
+    {
+      "path": "provenance/reference-scheduler-semantics.json",
+      "bytes": 13520,
+      "sha256": "c0ead986788d96ba7113b62d5563a116cd8dd58213eaf6ca90984d0e1cab995e"
+    },
+    {
+      "path": "provenance/sdk-sdxl-inpaint.patch",
+      "bytes": 851,
+      "sha256": "bb91dc6b5868b9c9db264c416a5695973280b4e29c7667f123819295788fe4ce"
+    },
+    {
+      "path": "provenance/sdk-sdxl-mask.patch",
+      "bytes": 2622,
+      "sha256": "5d27dedd45ee225f4d421f75baddc968a81146c0482e880ca59a1dabf4df3d52"
+    },
+    {
+      "path": "provenance/sdk_name_regression.cpp",
+      "bytes": 4436,
+      "sha256": "36114f0c140ab91f88cd088445c236f3b4cc7091ef8d829210cceccc77ab078c"
+    },
+    {
+      "path": "provenance/sdxl_denoise_mask_probe.cpp",
+      "bytes": 4187,
+      "sha256": "5cbb807ab06ab6d015842e8bb96470fea2c14d5f6ad1b00cdb44181c0f0fa62a"
+    },
+    {
+      "path": "provenance/sdxl_mask_regression.cpp",
+      "bytes": 6093,
+      "sha256": "1554922df6f89bba5ac47a4ff22357528c01fd2ba4212501d0621f2c1defa322"
+    },
+    {
+      "path": "provenance/sdxl_reference_schedule.h",
+      "bytes": 1826,
+      "sha256": "e112124d80e1aa80350088c93b7b88b8051c62734d3ef62b093145c771eb60b2"
+    },
+    {
+      "path": "provenance/sdxl_schedule_regression.cpp",
+      "bytes": 7226,
+      "sha256": "ed51c4aa4beadf862812b3e9fe6cdfc12e5c2761f4d335bcef10badce4f92bbc"
+    },
+    {
+      "path": "provenance/source-identity.json",
+      "bytes": 6415,
+      "sha256": "bdf8806841b500bdba725d1acfb54e8c17ff1b2e495814688f07a2731db679b9"
+    },
+    {
+      "path": "provenance/test_build_native.py",
+      "bytes": 12469,
+      "sha256": "40f09c0c4302ec6ddb95a91a5091d9af5d8f8c419b4840c2ac53eef0e07aea17"
+    },
+    {
+      "path": "provenance/test_convert.py",
+      "bytes": 22333,
+      "sha256": "89813a3fcede09815d3ade0fc89f51b0241f0f66d7669a5ef4386915f0385134"
+    },
+    {
+      "path": "provenance/test_probe_denoise_mask.py",
+      "bytes": 2169,
+      "sha256": "341cd252e39dbd48a27c7892057065a1d5c1726983638a038752ff5ecac78077"
+    },
+    {
+      "path": "quality/artifacts/05-fine-motif-edges-hard/raw-model-1024.png",
+      "bytes": 1567739,
+      "sha256": "fdcf86ebcb1ec1ece240744d94e1c87d9c134413f6e63300877bf30cc33a483e"
+    },
+    {
+      "path": "quality/artifacts/05-fine-motif-edges-hard/raw.png",
+      "bytes": 603627,
+      "sha256": "59bf6224800bee2ff8f7ce07b4dcd072762433c9e649afe9d67cdea448361381"
+    },
+    {
+      "path": "quality/artifacts/05-fine-motif-edges-hard/replace-mask.png",
+      "bytes": 2959,
+      "sha256": "26a0c86703ceff7901679361426ac3620c1d0eee2bc43037b783c0ef17eb4d2c"
+    },
+    {
+      "path": "quality/artifacts/05-fine-motif-edges-hard/source.png",
+      "bytes": 10886,
+      "sha256": "dbe6a67f1fb95efad1be090cea085d9f9ca8f2afb47f5c6473671694d91208a7"
+    },
+    {
+      "path": "quality/criteria.json",
+      "bytes": 5149,
+      "sha256": "9de3146eaa1a9ed860243927ae79ef99879def988ac97907a8602c2405812924"
+    },
+    {
+      "path": "quality/fixtures/06-canvas-original.png",
+      "bytes": 2104,
+      "sha256": "1ad2c9e1bfc37f7dfa83cd66a975eb8fb347d4933ea78e2f8d4f1e6c3170dc08"
+    },
+    {
+      "path": "quality/sdxl-report.json",
+      "bytes": 21891,
+      "sha256": "22a1de9e005ca67bd822185d0fe01db2abdb8dfa1ea4997d33bebd654fed56f8"
+    },
+    {
+      "path": "quality/series-context/native-events.jsonl",
+      "bytes": 20899,
+      "sha256": "5f437d8c4a68aad94a7189d89d952d23ab6d85da70b2da4d990996d9bec305db"
+    },
+    {
+      "path": "quality/series-context/native-stderr.bin",
+      "bytes": 27730,
+      "sha256": "40ca9480bed2c1c5efa39121b975d10362da37e447f8cbc307b0679efeafebba"
+    },
+    {
+      "path": "quality/series-context/request-05-fine-motif-edges-hard.json",
+      "bytes": 548,
+      "sha256": "f13a44370a69d40d5d30f48edafc3655106bce87ccf75c01559446672e71e7a7"
+    },
+    {
+      "path": "quality/series-context/request-load.json",
+      "bytes": 43,
+      "sha256": "86c914fc4c16c957e93f6b33a43188d5315ae146ab9ab8b4bfc889fe7d6aeb98"
+    },
+    {
+      "path": "quality-compositor/05-fine-motif-edges-hard/current-comparison.png",
+      "bytes": 783758,
+      "sha256": "bab1fc3f0155d1be329b6d5c965f7687a7505565375ad880d95fbff3f5df436c"
+    },
+    {
+      "path": "quality-compositor/05-fine-motif-edges-hard/current-final.png",
+      "bytes": 594222,
+      "sha256": "2b8932f59a4fa0186ab56cb23a0a239e7d2fb6bef38cfb37e57ce6cff0ed2826"
+    },
+    {
+      "path": "quality-compositor/05-fine-motif-edges-hard/raw.png",
+      "bytes": 603627,
+      "sha256": "59bf6224800bee2ff8f7ce07b4dcd072762433c9e649afe9d67cdea448361381"
+    },
+    {
+      "path": "quality-compositor/05-fine-motif-edges-hard/replace-mask.png",
+      "bytes": 2959,
+      "sha256": "26a0c86703ceff7901679361426ac3620c1d0eee2bc43037b783c0ef17eb4d2c"
+    },
+    {
+      "path": "quality-compositor/05-fine-motif-edges-hard/source.png",
+      "bytes": 10886,
+      "sha256": "dbe6a67f1fb95efad1be090cea085d9f9ca8f2afb47f5c6473671694d91208a7"
+    },
+    {
+      "path": "quality-compositor/current-compositor-report.json",
+      "bytes": 2688,
+      "sha256": "2e180dc155ed141a1210c998911c2816d7a5c8270d301c7cf57292f9ba29f82b"
+    },
+    {
+      "path": "verification/clean-application-build.json",
+      "bytes": 443,
+      "sha256": "7991b16610ac3ae051500d00748a3feb0e23b7798069e68d985d1ae84a25e3ca"
+    },
+    {
+      "path": "verification/clean-application-build.log",
+      "bytes": 17411,
+      "sha256": "d58caf37b6bec0866a6f4034a0bf459660eeba265c1c2695c602ff73c86e656b"
+    },
+    {
+      "path": "verification/denoise-mask-probe/build.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "verification/denoise-mask-probe/probe-stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "verification/denoise-mask-probe/probe.json",
+      "bytes": 395,
+      "sha256": "6043f0d895d249ed77ae86dd42f0ece834b6547683380fc7c3efa54076d11e85"
+    },
+    {
+      "path": "verification/denoise-mask-probe/receipt.json",
+      "bytes": 2314,
+      "sha256": "4c3493a1fc475842af950dedee7c9294a4bd52562664ac576d9073095e706074"
+    },
+    {
+      "path": "verification/harness-build.log",
+      "bytes": 11213,
+      "sha256": "4da0409ace8da01dca9cca2d4eff7d38b5ebb68a74ddcedc11a50719a0456e3a"
+    },
+    {
+      "path": "verification/initial-native-build/build_native.py",
+      "bytes": 17520,
+      "sha256": "5eac8952496be88d5dfc6b02122a1d3b5d1a6afddc782a74cd018b8dfe6f06ac"
+    },
+    {
+      "path": "verification/initial-native-build/command.log",
+      "bytes": 78,
+      "sha256": "12c85bba51348b77528da17e56030fe56b955485ca20db137c42efd23fcb984a"
+    },
+    {
+      "path": "verification/initial-native-build/native-build.log",
+      "bytes": 73609,
+      "sha256": "0a1ec7a99c479a2497609622516b73f434d45ac18036d9cd1a885c33f7530eca"
+    },
+    {
+      "path": "verification/initial-native-build/test_build_native.py",
+      "bytes": 12326,
+      "sha256": "f2984551429344a651b8cd790097b03e9de0568f725b24aaf0055e70d7f7d95f"
+    },
+    {
+      "path": "verification/python-tests.log",
+      "bytes": 142,
+      "sha256": "d53b39fa7458a17e12c1ab9a101811de6bdeb5d8ed8f01ebd3e290998cde6b13"
+    },
+    {
+      "path": "verification/shell-tests.log",
+      "bytes": 162,
+      "sha256": "977a80bb37f959e1cad6fb4b97441efda80e4dc2752effc4a8fdf0b3234552a2"
+    },
+    {
+      "path": "verification/software-checks.json",
+      "bytes": 2248,
+      "sha256": "082806fed199bad7caf35fe61d0c7c7443ba3eb6ef88dda7c8a45a89e754d1b4"
+    },
+    {
+      "path": "verification/swift-tests.log",
+      "bytes": 283631,
+      "sha256": "a71ed83046044dfbeedf715921061758b246e38f6dd4c4e4ff186f22feb71faa"
+    },
+    {
+      "path": "visual-review.json",
+      "bytes": 2242,
+      "sha256": "6fcb4eb7824a27af572f3565650c91f34f546c2952bfbef06be19d79344580c4"
+    }
+  ]
+}

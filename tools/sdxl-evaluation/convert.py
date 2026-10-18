@@ -105,6 +105,12 @@ def verify_native(root, package):
             native.get("sdkMaskRegressionPassed") is not True or
             native.get("sdxlMaskInterpolation") != "nearest-v1"):
         raise PreparationError("Native SDXL mask patch or CPU regression provenance mismatch")
+    if (native.get("sdkScheduleSourceSHA256") != digest_file(TOOLS / "sdxl_reference_schedule.h")[1] or
+            native.get("sdkScheduleRegressionSourceSHA256") != digest_file(TOOLS / "sdxl_schedule_regression.cpp")[1] or
+            native.get("sdkScheduleBaselineReproduced") is not True or
+            native.get("sdkScheduleRegressionPassed") is not True or
+            native.get("sdxlSchedule") != "euler-leading-strength099-v1"):
+        raise PreparationError("Native SDXL reference schedule or CPU regression provenance mismatch")
     ggml_patch_hash = digest_file(TOOLS / "ggml-metal-group-norm.patch")[1]
     group_norm_regression_hash = digest_file(TOOLS / "ggml_group_norm_regression.cpp")[1]
     # Current preparations require the real baseline reproduction and corrected

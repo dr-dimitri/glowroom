@@ -1,0 +1,29 @@
+--- a/src/ggml-metal/ggml-metal-ops.cpp
++++ b/src/ggml-metal/ggml-metal-ops.cpp
+@@ -4116,7 +4116,7 @@ int ggml_metal_op_group_norm(ggml_metal_op_t ctx, int idx) {
+ 
+     ggml_metal_encoder_set_threadgroup_memory_size(enc, smem, 0);
+ 
+-    ggml_metal_encoder_dispatch_threadgroups(enc, ngrp, 1, 1, nth, 1, 1);
++    ggml_metal_encoder_dispatch_threadgroups(enc, int64_t(ngrp)*ne03, 1, 1, nth, 1, 1);
+ 
+     return 1;
+ }
+--- a/src/ggml-metal/kernels/norm.metal
++++ b/src/ggml-metal/kernels/norm.metal
+@@ -248,8 +248,14 @@ kernel void kernel_group_norm_f32(
+         uint   ntg[[threads_per_threadgroup]]) {
+     const int64_t ne = args.ne00*args.ne01*args.ne02;
+     const int64_t gs = args.ne00*args.ne01*((args.ne02 + args.ngrp - 1) / args.ngrp);
+ 
+-    int start = tgpig * gs;
++    // Each image has its own groups; a CFG batch must not leave later images
++    // untouched. Keep the existing dense three-dimensional kernel layout.
++    const int64_t batch = tgpig / args.ngrp;
++    const int group = tgpig % args.ngrp;
++    src0 += batch * ne;
++    dst  += batch * ne;
++    int start = group * gs;
+     int end   = start + gs;
+ 
+     start += tpitg;

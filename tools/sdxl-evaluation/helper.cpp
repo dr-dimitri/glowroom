@@ -23,6 +23,7 @@
 #include "ggml-alloc.h"
 #include "ggml-cpu.h"
 #include "json.hpp"
+#include "sdxl_reference_schedule.h"
 #define STBI_ONLY_PNG
 #define STBI_MAX_DIMENSIONS 1024
 #define STB_IMAGE_IMPLEMENTATION
@@ -378,8 +379,11 @@ static json requested_configuration() {
             {"paramsBackend", "diffusion=metal,te=disk,vae=metal"}, {"maxManagedVRAMGiB", 5},
             {"autoFit", false}, {"eagerLoad", false}, {"mmap", false}, {"batchedCFG", true}, {"latentMaskInterpolation", "nearest-v1"},
             {"flashAttention", "auto"}, {"linearScale", 0}, {"attentionScale", 0}, {"hostThreads", 4},
-            {"modelCanvas", {edge, edge}}, {"steps", 20}, {"strength", 0.99}, {"cfg", 8},
-            {"sampler", "euler"}, {"scheduler", "discrete"}, {"rng", "cpu"},
+            {"modelCanvas", {edge, edge}}, {"steps", picedit_sdxl::configured_steps},
+            {"effectiveSteps", picedit_sdxl::actual_steps}, {"strength", 0.99}, {"cfg", 8},
+            {"sampler", "euler"}, {"scheduler", picedit_sdxl::schedule_variant},
+            {"customSigmas", picedit_sdxl::reference_sigmas()},
+            {"referenceTimesteps", picedit_sdxl::reference_timesteps()}, {"rng", "cpu"},
             {"vaeTiling", {{"enabled", true}, {"tilePixels", {640, 640}}, {"overlap", 0.5}}},
             {"inspectionScope", "configuration describes requested public API parameters; optional diagnostic is reported separately; no private runner access"}};
 }
@@ -441,6 +445,13 @@ static void perform(const json& command) {
             params.init_image = {edge, edge, 3, rgb.data()}; params.mask_image = {edge, edge, 1, mask.data()};
             params.sample_params.sample_steps = 20; params.sample_params.guidance.txt_cfg = 8.0f;
             params.sample_params.sample_method = EULER_SAMPLE_METHOD; params.sample_params.scheduler = DISCRETE_SCHEDULER;
+            // The pinned model declares leading spacing and offset 1. The
+            // public custom schedule already selects strength 0.99's 19 steps;
+            // the SDK's subsequent strength selection leaves this array intact.
+            // Keep this small local array alive until synchronous generation ends.
+            auto sigmas = picedit_sdxl::reference_sigmas();
+            params.sample_params.custom_sigmas = sigmas.data();
+            params.sample_params.custom_sigmas_count = static_cast<int>(sigmas.size());
             params.vae_tiling_params.enabled = true;
             params.vae_tiling_params.tile_size_w = 640; params.vae_tiling_params.tile_size_h = 640;
             params.vae_tiling_params.target_overlap = 0.5f;
