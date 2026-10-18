@@ -2,6 +2,15 @@ import PicEditCore
 import Testing
 
 struct JPEGExportOptionsTests {
+    @Test func outputFormatDefaultsToJPEGAndHDRHasItsOwnExtensions() throws {
+        #expect(JPEGExportOptions().format == .jpeg)
+        #expect(JPEGExportFormat.jpeg.acceptedExtensions == ["jpg", "jpeg"])
+        #expect(JPEGExportFormat.heif10HDR.acceptedExtensions == ["heic", "heif"])
+        let hdr = JPEGExportOptions(format: .heif10HDR, sizeMode: .longEdge, longEdge: 800)
+        try hdr.validate()
+        #expect(try hdr.outputSize(sourceWidth: 1200, sourceHeight: 800) == .init(width: 800, height: 533))
+    }
+
     @Test func originalRetainsFullResolutionAndPrintDensityDoesNotResize() throws {
         var options = JPEGExportOptions()
         #expect(try options.outputSize(sourceWidth: 6_000, sourceHeight: 4_000) == JPEGPixelSize(width: 6_000, height: 4_000))

@@ -109,17 +109,17 @@ struct MaskCanvasView: View {
             }.pickerStyle(.segmented).frame(width: 245).accessibilityLabel("Maskenwerkzeug")
             VStack(alignment: .leading, spacing: 3) {
                 Text("Radius: \(Int(mask.radius)) Bildpixel").font(.caption)
-                Slider(value: $mask.radius, in: 1...500, step: 1).accessibilityLabel("Pinselradius in Bildpixeln")
+                ResettableSlider(value: $mask.radius, in: 1...500, step: 1, neutralValue: 30).accessibilityLabel("Pinselradius in Bildpixeln")
                     .accessibilityValue("\(Int(mask.radius)) Pixel")
             }.frame(width: 145).disabled(tool == .pan)
             VStack(alignment: .leading, spacing: 3) {
                 Text("Härte: \(Int(mask.hardness * 100)) %").font(.caption)
-                Slider(value: $mask.hardness, in: 0...1).accessibilityLabel("Pinselhärte")
+                ResettableSlider(value: $mask.hardness, in: 0...1, neutralValue: 0.8).accessibilityLabel("Pinselhärte")
                     .accessibilityValue("\(Int(mask.hardness * 100)) Prozent")
             }.frame(width: 120).disabled(tool == .pan)
             VStack(alignment: .leading, spacing: 3) {
                 Text("Overlay: \(Int(mask.overlayOpacity * 100)) %").font(.caption)
-                Slider(value: $mask.overlayOpacity, in: 0...1).accessibilityLabel("Deckkraft des Maskenoverlays")
+                ResettableSlider(value: $mask.overlayOpacity, in: 0...1, neutralValue: 0.55).accessibilityLabel("Deckkraft des Maskenoverlays")
                     .help("Ändert nur die Anzeige, nicht die Maskengewichte.")
             }.frame(width: 120)
             Spacer(minLength: 0)

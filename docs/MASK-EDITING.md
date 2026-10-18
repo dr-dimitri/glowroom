@@ -2,12 +2,12 @@
 
 ## Lokale Korrekturen
 
-**Masken** oberhalb des Einzelbilds oder im Entwickeln-Werkzeugbereich öffnet gespeicherte lokale Korrekturen. **Neue Maske** bietet Pinsel, linearen Verlauf, radialen Verlauf, Motiv und Himmel. Mehrere benannte Masken wirken in Listenreihenfolge aufeinander aufbauend. Das rote **Overlay** zeigt die Auswahl; **Vorher** zeigt den Stand vor dem Öffnen des Dialogs.
+**Masken** oberhalb des Einzelbilds oder **Maskieren** in der Entwickeln-Werkzeugleiste zeigt gespeicherte lokale Korrekturen als rechte Palette auf der gemeinsamen Bildfläche. Es öffnet sich kein zusätzliches Fenster. **Neue Maske** bietet Pinsel, linearen Verlauf, radialen Verlauf, Motiv und Himmel. Mehrere benannte Masken wirken in Listenreihenfolge aufeinander aufbauend. Das rote **Overlay** zeigt die Auswahl; **Vorher** zeigt den Stand vor dem Öffnen der Palette.
 
 1. Eine Maske hinzufügen. Den Pinsel über das Bild ziehen. Einen linearen Verlauf vom gewählten zum ungewählten Bereich ziehen; einen radialen Verlauf von seiner Mitte nach außen aufspannen.
 2. Stärke, weiche Kante und Invertierung anpassen. Mit Pinsel ergänzen oder mit Radierer abziehen; bei Verläufen vorher **Mit Pinsel verfeinern** aktivieren. Zoom, Hand und **Einpassen** helfen beim Zeichnen.
 3. Belichtung, Kontrast, Lichter, Tiefen, Weiß, Schwarz, Struktur, Klarheit, Dunst entfernen, Dynamik und Sättigung für diese Maske einstellen. Globale Regler bleiben erhalten. Benennen, Duplizieren, Deaktivieren und Löschen stehen pro Maske bereit.
-4. **Übernehmen** speichert den gesamten Dialog als einen normalen Rückgängig-Schritt. Lokale Pfeile widerrufen Maskenaktionen und zusammenhängende Reglerbewegungen im Entwurf. **Abbrechen** sowie Bild-/Quellenwechsel verwerfen den Entwurf. Ein bereits angenommener Write bleibt unabhängig vom Abbruch einer Vorschau zuverlässig bestehen.
+4. **Fertig** speichert den gesamten Maskenentwurf als einen normalen Rückgängig-Schritt. Lokale Pfeile widerrufen Maskenaktionen und zusammenhängende Reglerbewegungen im Entwurf. **Abbrechen**, Rückkehr zum Raster sowie Bild-/Quellenwechsel verwerfen den Entwurf. Das Ein-/Ausblenden der Seitenbereiche erhält ihn. Ein bereits angenommener Write bleibt unabhängig vom Abbruch einer Vorschau zuverlässig bestehen.
 
 Lokale Regler zurücksetzen behält die Auswahl; das vollständige **Zurücksetzen** des Fotos entfernt auch seine Masken. Übernommene Masken überstehen Neustart, Backup und Restore. Der JPEG-Export von Originalquellen enthält sie; aktive Rastervarianten behalten die separate Exportsperre aus #16.
 
@@ -19,7 +19,7 @@ Masken sind Teil der vorhandenen Settings-/Snapshot-Identität für Speicherung,
 
 Bei vielen aktiven Korrekturen verringert die Vorschau ihre tatsächliche Renderauflösung unterhalb der angeforderten Obergrenze. Pro Worker gilt für zusätzliche Maskenarbeit ein konservatives Planungsbudget von höchstens 512 MiB beziehungsweise einem Sechzehntel des physischen Speichers. Bei Artefaktquellen gehen zusätzlich Basisbild, bestehende Speicherreservierung und Ausgabe in deren gemeinsames Budget ein. Gespeicherte Geometrie und entwickelte Quelle bleiben erhalten; weitere Reglerbewegungen lösen kein neues Decode aus. Der Vollauflösungsexport verwendet seine eigene Speicherzulassung und verkleinert einen zu großen Auftrag nicht still. Diese Zulassungsschätzungen sind keine Messung oder harte Grenze für den gesamten Prozess-/GPU-Speicher.
 
-### Prüfung der lokalen Korrekturen vom 18. Oktober 2026
+### Historische Erstprüfung der lokalen Korrekturen vom 18. Oktober 2026
 
 Der vollständige Lauf mit `PICEDIT_TEST_BUILD_PATH=/private/tmp/picedit-local-masks-tests ./scripts/test.sh --jobs 5` prüfte 739 App-Tests und 341 Core-Tests. Alle Core-Tests und alle Maskenfälle bestanden. Ein unabhängiger semantischer Suchtest schlug wegen einer zu frühen Statusabfrage fehl; seine isolierte Wiederholung bestand. Dieser unveränderte Testpfad ist separat in [#83](https://github.com/dr-dimitri/picedit/issues/83) erfasst. Der gezielte Abschlusslauf der betroffenen Masken-, Vorschau-, Export-, Snapshot- und Editorfälle bestand mit 91 App-Tests und 16 Core-Tests.
 
@@ -31,7 +31,7 @@ Die manuelle UI-Prüfung verwendete ausschließlich synthetische JPEGs im separa
 
 ## Grundlage für generative Operationen
 
-Issue [#11](https://github.com/dr-dimitri/picedit/issues/11) stellt außerdem einen separaten vorübergehenden Maskenentwurf und nicht-destruktives Compositing für spätere generative Operationen bereit. Die folgenden Abschnitte dokumentieren diesen internen Vertrag und seine historische Prüfung. Er ist nicht der oben beschriebene gespeicherte lokale Korrekturdialog. Crop, Ebenen mit eigenen Bildquellen und generative Bildoperationen bleiben außerhalb der lokalen Korrekturen.
+Issue [#11](https://github.com/dr-dimitri/picedit/issues/11) stellt außerdem einen separaten vorübergehenden Maskenentwurf und nicht-destruktives Compositing für spätere generative Operationen bereit. Die folgenden Abschnitte dokumentieren diesen internen Vertrag und seine historische Prüfung. Er ist nicht die oben beschriebene gespeicherte lokale Korrekturpalette. Zuschnitt, Rotation und manuelle Retusche sind separate Werkzeuge der Entwickeln-Ansicht. Ebenen mit eigenen Bildquellen und generative Bildoperationen bleiben außerhalb der lokalen Korrekturen.
 
 ## Werkzeuge und Geometrie
 

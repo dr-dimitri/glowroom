@@ -9,7 +9,16 @@ struct DevelopInspector: View {
     @EnvironmentObject private var imageAnalysis: ImageAnalysisModel
     @EnvironmentObject private var photoMetadata: PhotoMetadataModel
     @EnvironmentObject private var layout: WorkspaceLayoutModel
-    @ViewState private var showsMasks = false
+    @EnvironmentObject private var maskWorkspace: InlineMaskWorkspace
+    @EnvironmentObject private var developWorkspace: DevelopWorkspace
+    @ViewState private var fulfilledReveal: UUID?
+
+    private struct RevealFocusIdentity: Hashable {
+        let request: UUID
+        let assetID: String
+        let canvasTool: DevelopCanvasTool
+        let hasMaskDraft: Bool
+    }
 
     private var panels: WorkspacePanels { layout.panels(developing: library.isDeveloping) }
     private var saveStatus: WorkspaceSaveStatus { WorkspaceSaveStatus(editor: editor) }
@@ -19,10 +28,17 @@ struct DevelopInspector: View {
             inspectorHeader
             Divider().overlay(Theme.line)
             if let asset = library.selectedAsset {
-                selectedPhotoHeader(asset)
                 ScrollViewReader { proxy in
                     ScrollView {
                         VStack(alignment: .leading, spacing: 0) {
+                            DevelopHistogram(workspace: developWorkspace, asset: asset, library: library, allowsComparison: !maskWorkspace.isPresented)
+                                .padding(.bottom, 8)
+                            developToolStrip(asset).padding(.bottom, 10)
+                            if developWorkspace.tool == .masks, maskWorkspace.isPresented {
+                                InlineMaskInspector(workspace: maskWorkspace)
+                            } else if developWorkspace.tool != .basic {
+                                DevelopGeometryInspector(asset: asset, workspace: developWorkspace).id(asset.id).id(developWorkspace.tool)
+                            } else {
                             Toggle("Nur eine Gruppe geöffnet", isOn: Binding(
                                 get: { panels.singleGroup },
                                 set: { enabled in
@@ -39,23 +55,35 @@ struct DevelopInspector: View {
                             ForEach(WorkspaceTool.allCases, id: \.self) { tool in
                                 toolGroup(tool, asset: asset)
                             }
-                        }.padding(16)
+                            }
+                        }.padding(12)
                     }
-                    .onChange(of: layout.revealRequest) { _, _ in
-                        guard let tool = layout.revealedTool else { return }
-                        // All headers are eager children; a dock jump can reach a
-                        // closed group below a long, already open tool section.
+                    .task(id: RevealFocusIdentity(request: layout.revealRequest, assetID: asset.id,
+                        canvasTool: developWorkspace.tool, hasMaskDraft: maskWorkspace.isPresented)) {
+                        let request = layout.revealRequest
+                        guard developWorkspace.tool == .basic, !maskWorkspace.isPresented,
+                              fulfilledReveal != request, let tool = layout.revealedTool,
+                              panels.openGroups.contains(tool) else { return }
+                        // A reveal may first replace a mask/crop palette. Wait
+                        // until the ordinary group IDs exist before scrolling
+                        // or asking AppKit to focus their native controls.
+                        await Task.yield()
+                        guard !Task.isCancelled, request == layout.revealRequest,
+                              developWorkspace.tool == .basic, !maskWorkspace.isPresented,
+                              library.selectedID == asset.id else { return }
                         withAnimation(.easeInOut(duration: 0.18)) { proxy.scrollTo(tool, anchor: .top) }
                         focusedControl.wrappedValue = .group(tool)
-                    }
-                    .onAppear {
-                        if let tool = layout.revealedTool, panels.openGroups.contains(tool) {
-                            proxy.scrollTo(tool, anchor: .top)
-                            focusedControl.wrappedValue = .group(tool)
-                        }
+                        fulfilledReveal = request
                     }
                 }
                 Divider().overlay(Theme.line)
+                HStack {
+                    if saveStatus.hasError {
+                        Button { reveal(.versions) } label: { Label("Speicherfehler · Prüfen", systemImage: "exclamationmark.triangle") }
+                            .buttonStyle(.plain).foregroundStyle(.orange)
+                    } else { Text(saveStatus.text).foregroundStyle(Theme.muted) }
+                    Spacer()
+                }.font(.system(size: 10)).padding(.horizontal, 14).padding(.top, 7)
                 editingHistory(assetID: asset.id)
             } else {
                 Text("Wähle ein Foto zum Bearbeiten.").font(.callout).foregroundStyle(Theme.muted).padding(24)
@@ -64,24 +92,129 @@ struct DevelopInspector: View {
             Text("Nicht destruktiv · Original unverändert").font(.system(size: 10)).foregroundStyle(Theme.muted)
                 .padding(.bottom, 14)
         }.background(Theme.sidebar)
-            .sheet(isPresented: $showsMasks) {
-                if let asset = library.selectedAsset, let source = try? editor.resolvedSource(for: asset) {
-                    LocalAdjustmentMaskEditor(asset: asset, source: source.identity, settings: source.settings, library: library,
-                        isPresented: $showsMasks)
-                        .id(source.identity)
-                }
+
+    }
+
+    private func developToolStrip(_ asset: PhotoAsset) -> some View {
+        HStack(spacing: 0) {
+            ForEach(DevelopCanvasTool.allCases) { tool in
+                Button {
+                    finishInput(assetID: asset.id)
+                    developWorkspace.tool = tool
+                } label: {
+                    Image(systemName: tool.symbol).font(.system(size: 18))
+                        .frame(maxWidth: .infinity).frame(height: 39)
+                        .foregroundStyle(developWorkspace.tool == tool ? Theme.accent : Theme.muted)
+                        .background(developWorkspace.tool == tool ? Theme.accent.opacity(0.1) : .clear,
+                                    in: RoundedRectangle(cornerRadius: 5))
+                }.buttonStyle(.plain).help(tool.title).accessibilityLabel(tool.title)
+                    .accessibilityIdentifier("develop.tool.\(tool.rawValue)")
+                    .disabled(!editor.canEdit || !library.canModify || library.comparesOriginal || library.comparesCurrentSourceWithoutSettings
+                              || (maskWorkspace.model?.isGenerating ?? false))
             }
-            .onChange(of: library.selectedID) { _, _ in showsMasks = false }
+        }.padding(3).background(Theme.panel, in: RoundedRectangle(cornerRadius: 6))
+    }
+
+    private func colorBasics(assetID: String) -> some View {
+        let settings = editor.settings(for: assetID)
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 7) {
+                Button("Autom.") {
+                    finishInput(assetID: assetID)
+                    var value = editor.settings(for: assetID)
+                    value.naturalBalanceAmount = 70; value.autoToneAmount = 0
+                    editor.setSettings(value, for: assetID)
+                }.help("Natürlichen Bildausgleich anwenden")
+                Toggle("S/W", isOn: colorBinding(assetID: assetID, keyPath: \.isMonochrome))
+                    .toggleStyle(.button).help("Schwarzweiß ohne die vorherigen Farbregler zu verlieren")
+                Toggle("HDR", isOn: colorBinding(assetID: assetID, keyPath: \.hdrEnabled))
+                    .toggleStyle(.button).help("Erweiterten Dynamikumfang bearbeiten und auf HDR-fähigen Displays anzeigen")
+            }.buttonStyle(.bordered).controlSize(.small)
+            Picker("Profil", selection: Binding(get: { editor.settings(for: assetID).developColor.profile }, set: { profile in
+                finishInput(assetID: assetID)
+                var value = editor.settings(for: assetID); value.developColor.profile = profile
+                editor.setSettings(value, for: assetID)
+            })) {
+                ForEach(DevelopColorProfile.allCases, id: \.self) { Text($0.title).tag($0) }
+            }.font(.system(size: 11))
+            Divider()
+            HStack {
+                Button { developWorkspace.picksWhiteBalance.toggle() } label: {
+                    Image(systemName: "eyedropper").font(.system(size: 19)).frame(width: 34, height: 31)
+                }.buttonStyle(.plain).foregroundStyle(developWorkspace.picksWhiteBalance ? Theme.accent : Theme.muted)
+                    .help("Weißabgleich: eine neutrale graue Fläche auf dem Bild anklicken")
+                    .accessibilityIdentifier("develop.white-balance-picker")
+                    .disabled(developWorkspace.sourceAnalysis == nil)
+                Text("Weißabgleich").font(.system(size: 11))
+                Spacer()
+                Menu {
+                    Button("Wie Aufnahme") { setWhiteBalance(6_500, assetID: assetID) }
+                    Divider()
+                    Button("Tageslicht") { setWhiteBalance(5_500, assetID: assetID) }
+                    Button("Bewölkt") { setWhiteBalance(7_000, assetID: assetID) }
+                    Button("Schatten") { setWhiteBalance(8_000, assetID: assetID) }
+                    Button("Glühlampe") { setWhiteBalance(2_850, assetID: assetID) }
+                    Button("Leuchtstoff") { setWhiteBalance(4_000, tint: 15, assetID: assetID) }
+                } label: {
+                    Text(settings.developColor.temperature == 6_500 && settings.developColor.tint == 0 ? "Wie Aufnahme" : "Benutzerdefiniert")
+                }.menuStyle(.borderlessButton).fixedSize().font(.system(size: 10)).foregroundStyle(Theme.muted)
+            }
+            colorSlider("Temperatur", assetID: assetID, keyPath: \.temperature,
+                        range: DevelopColorSettings.temperatureRange, neutral: 6_500, step: 50)
+                .help("Relativer Weißabgleich auf entwickelten Pixeln. 6500 erhält den Kamera-/ImageIO-Weißabgleich unverändert.")
+            colorSlider("Tönung", assetID: assetID, keyPath: \.tint,
+                        range: DevelopColorSettings.tintRange, neutral: 0, step: 1)
+            if developWorkspace.picksWhiteBalance {
+                Text("Klicke eine neutrale graue Fläche an. Die Pipette verwendet die entwickelte Quelle vor den Farbkorrekturen.")
+                    .font(.system(size: 10)).foregroundStyle(Theme.accent)
+            }
+            if settings.developColor.hdrEnabled {
+                Text("HDR-Vorschau mit erweitertem Dynamikumfang. JPEG wird als SDR ausgegeben; HDR-Ausgabe über HEIF 10 Bit.")
+                    .font(.system(size: 10)).foregroundStyle(Theme.muted)
+            }
+            if let error = developWorkspace.errorMessage {
+                Text(error).font(.system(size: 10)).foregroundStyle(.orange)
+            }
+        }.disabled(!editor.canEdit || !library.canModify || library.comparesOriginal || library.comparesCurrentSourceWithoutSettings)
+    }
+
+    private func setWhiteBalance(_ temperature: Double, tint: Double = 0, assetID: String) {
+        finishInput(assetID: assetID)
+        var value = editor.settings(for: assetID)
+        value.developColor.temperature = temperature; value.developColor.tint = tint
+        editor.setSettings(value, for: assetID)
+    }
+
+    private func colorBinding(assetID: String, keyPath: WritableKeyPath<DevelopColorSettings, Bool>) -> Binding<Bool> {
+        Binding(get: { editor.settings(for: assetID).developColor[keyPath: keyPath] }, set: { enabled in
+            finishInput(assetID: assetID)
+            var value = editor.settings(for: assetID); value.developColor[keyPath: keyPath] = enabled
+            editor.setSettings(value, for: assetID)
+        })
+    }
+    private func colorSlider(_ title: String, assetID: String, keyPath: WritableKeyPath<DevelopColorSettings, Double>,
+                             range: ClosedRange<Double>, neutral: Double, step: Double) -> some View {
+        HStack(spacing: 7) {
+            Text(title).font(.system(size: 10)).foregroundStyle(Theme.muted).frame(width: 68, alignment: .trailing)
+            ResettableSlider(value: Binding(get: { editor.settings(for: assetID).developColor[keyPath: keyPath] }, set: { amount in
+                var value = editor.settings(for: assetID); value.developColor[keyPath: keyPath] = amount
+                editor.setSettings(value, for: assetID)
+            }), in: range, step: step, neutralValue: neutral, onEditingChanged: { editing in
+                if editing { editor.beginEditing(assetID: assetID) } else { editor.endEditing(assetID: assetID) }
+            }).accessibilityLabel(title)
+            Text("\(Int(editor.settings(for: assetID).developColor[keyPath: keyPath]))")
+                .monospacedDigit().font(.system(size: 10)).frame(width: 43, alignment: .trailing)
+        }
     }
 
     private var inspectorHeader: some View {
         HStack(spacing: 12) {
-            Label("Werkzeuge", systemImage: "slider.horizontal.3")
+            Label("Entwickeln", systemImage: "slider.horizontal.3")
                 .font(.system(size: 13, weight: .semibold))
             Spacer(minLength: 0)
             Menu {
                 ForEach(WorkspaceTool.allCases, id: \.self) { tool in
-                    Button { reveal(tool) } label: { Label(tool.title, systemImage: tool.symbol) }
+                    Button { reveal(tool) } label: { Label(tool == .edit ? "Grundeinstellungen" : tool.title, systemImage: tool.symbol) }
                 }
             } label: { Image(systemName: "ellipsis").frame(width: 24, height: 28) }
                 .menuStyle(.borderlessButton).fixedSize()
@@ -93,31 +226,7 @@ struct DevelopInspector: View {
             } label: { Image(systemName: "xmark").frame(width: 24, height: 28) }
                 .buttonStyle(.plain).foregroundStyle(Theme.muted)
                 .accessibilityLabel("Werkzeugbereich schließen").help("Werkzeugbereich schließen")
-        }.padding(.horizontal, 16).frame(height: 50)
-    }
-
-    private func selectedPhotoHeader(_ asset: PhotoAsset) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(asset.fileName).font(.system(size: 12, weight: .medium)).lineLimit(1).truncationMode(.middle)
-            Text("Quelle: \(editor.snapshot(for: asset.id).source == .original ? "Importiertes Original" : "Generierter Bildstand")")
-                .font(.system(size: 10)).foregroundStyle(Theme.muted)
-            Button { finishInput(assetID: asset.id); showsMasks = true } label: {
-                Label("Masken (\(editor.settings(for: asset.id).localAdjustments.count))", systemImage: "circle.dashed.inset.filled")
-                    .font(.system(size: 11))
-            }.disabled(!editor.canEdit || !library.canModify)
-                .accessibilityIdentifier("workspace.local-masks")
-            if saveStatus.hasError {
-                Button { reveal(.versions) } label: {
-                    Label("Speicherfehler · Prüfen", systemImage: "exclamationmark.triangle")
-                        .font(.system(size: 11, weight: .medium)).foregroundStyle(.orange)
-                }.buttonStyle(.plain)
-            } else {
-                HStack(spacing: 6) {
-                    Circle().fill(editor.isReadOnly ? Color.orange : Theme.accent).frame(width: 5, height: 5)
-                    Text(saveStatus.text).font(.system(size: 10)).foregroundStyle(Theme.muted)
-                }
-            }
-        }.frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 16).padding(.vertical, 12)
+        }.padding(.horizontal, 16).frame(height: 40)
     }
 
     private func toolGroup(_ tool: WorkspaceTool, asset: PhotoAsset) -> some View {
@@ -130,7 +239,7 @@ struct DevelopInspector: View {
                 HStack(spacing: 8) {
                     Image(systemName: expanded ? "chevron.down" : "chevron.right")
                         .font(.system(size: 10, weight: .semibold)).frame(width: 10)
-                    Label(tool.title, systemImage: tool.symbol)
+                    Label(tool == .edit ? "Grundeinstellungen" : tool.title, systemImage: tool.symbol)
                         .font(.system(size: 12, weight: .semibold))
                     Spacer(minLength: 3)
                     if let status = groupStatus {
@@ -143,6 +252,7 @@ struct DevelopInspector: View {
                     toggleGroup(tool, assetID: asset.id)
                 }
                 .accessibilityLabel(tool.title)
+                .accessibilityIdentifier("workspace.group.\(tool.rawValue)")
                 .accessibilityValue([expanded ? "Geöffnet" : "Geschlossen", groupStatus?.text].compactMap { $0 }.joined(separator: ", "))
                 .accessibilityHint(expanded ? "Werkzeuggruppe zuklappen" : "Werkzeuggruppe aufklappen")
             if expanded {
@@ -160,7 +270,10 @@ struct DevelopInspector: View {
         switch tool {
         case .edit:
             VStack(alignment: .leading, spacing: 14) {
-                naturalBalanceSection(assetID: asset.id)
+                colorBasics(assetID: asset.id)
+                DisclosureGroup("Automatischer Bildausgleich") {
+                    naturalBalanceSection(assetID: asset.id).padding(.top, 8)
+                }.font(.system(size: 11))
                 adjustmentSection("Tonwert", key: "tone", controls: Array(Adjustment.allCases.prefix(6)), assetID: asset.id)
                 adjustmentSection("Präsenz", key: "presence", controls: Array(Adjustment.allCases.dropFirst(6).prefix(5)), assetID: asset.id)
                 adjustmentSection("Entrauschen", key: "noise", controls: Array(Adjustment.allCases.suffix(2)), assetID: asset.id)
@@ -230,7 +343,6 @@ struct DevelopInspector: View {
     private func reveal(_ tool: WorkspaceTool) {
         if let assetID = library.selectedID { finishInput(assetID: assetID) }
         layout.reveal(tool, developing: library.isDeveloping)
-        focusedControl.wrappedValue = .group(tool)
     }
 
     private func toggleGroup(_ tool: WorkspaceTool, assetID: String) {
@@ -343,7 +455,7 @@ struct DevelopInspector: View {
                 .help("Analysiert dieses Foto lokal und gleicht Helligkeit, Lichter, Schatten und Farben zurückhaltend aus. Manuelle Regler bleiben zusätzlich wirksam.")
 
             if settings.naturalBalanceAmount > 0 {
-                naturalBalanceSlider("Stärke", keyPath: \.naturalBalanceAmount, range: 1...100, assetID: assetID)
+                naturalBalanceSlider("Stärke", keyPath: \.naturalBalanceAmount, range: 0...100, assetID: assetID)
                 naturalBalanceSlider("Farbe", keyPath: \.naturalBalanceColorAmount, range: 0...100, assetID: assetID)
                 Text("Farbe 0: nur Tonwerte. Höhere Werte beleben zurückhaltend die Farben.")
                     .font(.system(size: 10)).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
@@ -374,14 +486,14 @@ struct DevelopInspector: View {
                 Text("\(Int(editor.settings(for: assetID)[keyPath: keyPath])) %")
                     .monospacedDigit().foregroundStyle(Theme.accent)
             }.font(.system(size: 10)).foregroundStyle(Theme.muted)
-            Slider(value: Binding(
+            ResettableSlider(value: Binding(
                 get: { editor.settings(for: assetID)[keyPath: keyPath] },
                 set: { newValue in
                     var settings = editor.settings(for: assetID)
                     settings[keyPath: keyPath] = newValue
                     editor.setSettings(settings, for: assetID)
                 }
-            ), in: range, step: 1, onEditingChanged: { editing in
+            ), in: range, step: 1, neutralValue: keyPath == \EditSettings.naturalBalanceColorAmount ? 50 : 0, onEditingChanged: { editing in
                 if editing { editor.beginEditing(assetID: assetID) }
                 else { editor.endEditing(assetID: assetID) }
             }).controlSize(.mini).accessibilityLabel("Bildausgleich · \(title)")
@@ -459,28 +571,28 @@ private struct AdjustmentSlider: View {
     }
 
     var body: some View {
-        VStack(spacing: 3) {
-            HStack {
-                Text(control.label).font(.system(size: 11)).foregroundStyle(.white.opacity(0.78))
-                    .onTapGesture(count: 2) { value = 0 }.help("Doppelklick setzt den Wert zurück")
-                Spacer()
-                TextField(control.label, value: numericValue,
-                          format: .number.precision(.fractionLength(control == .exposure ? 2 : 0)))
-                    .textFieldStyle(.plain).multilineTextAlignment(.trailing)
-                    .font(.system(size: 10, design: .monospaced))
-                    .foregroundStyle(value == 0 ? Theme.muted : Theme.accent)
-                    .frame(width: 47).accessibilityLabel("\(control.label) Wert")
-                    .focused($valueFocused)
-                    .onSubmit { onEditingChanged(false) }
-                    .onChange(of: valueFocused) { _, focused in if !focused { onEditingChanged(false) } }
-                    .onDisappear { onEditingChanged(false) }
-                if control == .exposure { Text("EV").font(.system(size: 8)).foregroundStyle(Theme.muted) }
-            }
-            Slider(value: $value, in: control.range, step: control == .exposure ? 0.05 : 1,
-                   onEditingChanged: onEditingChanged)
+        HStack(spacing: 7) {
+            Text(control.label).font(.system(size: 10)).foregroundStyle(.white.opacity(0.7))
+                .frame(width: 76, alignment: .trailing)
+                .onTapGesture(count: 2) {
+                    onEditingChanged(false); onEditingChanged(true); value = 0; onEditingChanged(false)
+                }.help("Doppelklick setzt den Wert zurück")
+            ResettableSlider(value: $value, in: control.range, step: control == .exposure ? 0.05 : 1,
+                             onEditingChanged: onEditingChanged)
                 .controlSize(.mini).accessibilityLabel(control.label)
-        }
+            TextField(control.label, value: numericValue,
+                      format: .number.precision(.fractionLength(control == .exposure ? 2 : 0)))
+                .textFieldStyle(.plain).multilineTextAlignment(.trailing)
+                .font(.system(size: 10, design: .monospaced))
+                .foregroundStyle(value == 0 ? Theme.muted : Theme.accent)
+                .frame(width: 38).accessibilityLabel("\(control.label) Wert")
+                .focused($valueFocused)
+                .onSubmit { onEditingChanged(false) }
+                .onChange(of: valueFocused) { _, focused in if !focused { onEditingChanged(false) } }
+                .onDisappear { onEditingChanged(false) }
+        }.frame(minHeight: 20)
     }
+
 }
 
 private enum Adjustment: String, CaseIterable, Identifiable {

@@ -16,8 +16,10 @@ struct LibraryView: View {
     @ViewState<LibraryFolder?> private var folderToRemove: LibraryFolder?
     @ViewState<Bool> private var dropTargeted = false
     @ViewState<Bool> private var showsWorkspaceErrors = false
-    @ViewState<Bool> private var showsMaskEditor = false
+    @StateObject private var maskWorkspace = InlineMaskWorkspace()
+    @StateObject private var developWorkspace = DevelopWorkspace()
     @ViewState private var focusReturnRequest: FocusReturnRequest?
+    @ViewState private var pendingToolReveal: UUID?
 
     private struct FocusReturnRequest: Equatable {
         let target: WorkspaceControlFocus
@@ -71,6 +73,15 @@ struct LibraryView: View {
         }
         .background(Theme.background)
         .tint(Theme.accent)
+        .environmentObject(maskWorkspace)
+        .environmentObject(developWorkspace)
+        .environment(\.developPreviewSink, { request, settings, bitmap, sourceBitmap in
+            guard let asset = model.selectedAsset,
+                  (try? editor.resolvedSource(for: asset, intent: model.editingRenderIntent).identity) == request.source else { return }
+            developWorkspace.bind(source: request.source)
+            developWorkspace.markDisplayed(source: request.source, settings: settings)
+            developWorkspace.receive(bitmap, sourceBitmap: sourceBitmap)
+        })
         .overlay { if dropTargeted { RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.accent, style: StrokeStyle(lineWidth: 3, dash: [8])).padding(6).allowsHitTesting(false) } }
         .onDrop(of: [.fileURL], isTargeted: $dropTargeted, perform: acceptDrop)
         .background(KeyboardHandler { event in handleKey(event) })
@@ -101,11 +112,21 @@ struct LibraryView: View {
             model.comparesOriginal = false; model.comparesCurrentSourceWithoutSettings = false
         } }
         .onChange(of: model.selectedID) { old, _ in
+            pendingToolReveal = nil
             if let old { editor.endEditing(assetID: old) }
-            showsMaskEditor = false
+            maskWorkspace.cancel()
+            developWorkspace.clear()
             model.comparesOriginal = false
             model.comparesCurrentSourceWithoutSettings = false
             if layout.isFocused, model.selectedAsset != nil { model.showsDetail = true; model.isDeveloping = true }
+        }
+        .onChange(of: previewSourceIdentity) { _, source in
+            maskWorkspace.reconcile()
+            developWorkspace.bind(source: source)
+        }
+        .onChange(of: model.editingRenderIntent) { _, _ in
+            developWorkspace.picksWhiteBalance = false
+            if model.editingRenderIntent != .currentEditing { maskWorkspace.cancel(); developWorkspace.tool = .basic }
         }
         .onChange(of: model.selection) { _, _ in model.reconcileSelection() }
         .onChange(of: model.search) { _, _ in model.reconcileSelection() }
@@ -113,17 +134,32 @@ struct LibraryView: View {
         .sheet(isPresented: Binding(get: { exporter.isPresented }, set: { if !$0 { exporter.cancel() } })) {
             JPEGExportView(model: exporter)
         }
-        .sheet(isPresented: $showsMaskEditor) {
-            if let asset = model.selectedAsset, let source = try? editor.resolvedSource(for: asset) {
-                LocalAdjustmentMaskEditor(asset: asset, source: source.identity, settings: source.settings, library: model,
-                    isPresented: $showsMaskEditor, model: localMaskModel)
-                    .id(source.identity)
-            } else {
-                VStack(spacing: 14) {
-                    Text("Die aktuelle Bildquelle ist für den Maskeneditor nicht verfügbar.")
-                    Button("Schließen") { showsMaskEditor = false }.keyboardShortcut(.cancelAction)
-                }.padding(24)
+        .onChange(of: layout.revealRequest) { _, request in
+            pendingToolReveal = request
+            finishToolReveal()
+        }
+        .onChange(of: maskWorkspace.model?.isGenerating) { _, generating in
+            if generating != true { finishToolReveal(resuming: true) }
+        }
+        .onChange(of: maskWorkspace.model?.isLoading) { _, loading in
+            if loading != true { finishToolReveal(resuming: true) }
+        }
+        .onChange(of: developWorkspace.tool) { previous, current in
+            if let id = model.selectedID { editor.endEditing(assetID: id) }
+            developWorkspace.picksWhiteBalance = false
+            developWorkspace.repairSource = nil
+            if previous == .masks, current != .masks, maskWorkspace.isPresented {
+                if maskWorkspace.canApply {
+                    if !maskWorkspace.apply() { developWorkspace.tool = .masks; return }
+                } else { maskWorkspace.cancel() }
             }
+            if current == .masks { openMasks() }
+        }
+        .onChange(of: maskWorkspace.isPresented) { _, visible in
+            if !visible, developWorkspace.tool == .masks { developWorkspace.tool = .basic }
+        }
+        .onChange(of: model.showsDetail) { _, visible in
+            if !visible { maskWorkspace.cancel(); developWorkspace.tool = .basic }
         }
         .alert("PicEdit", isPresented: Binding(get: { model.errorMessage != nil || editor.errorMessage != nil }, set: { if !$0 { model.errorMessage = nil; editor.errorMessage = nil } })) {
             Button("OK") { model.errorMessage = nil; editor.errorMessage = nil }
@@ -132,6 +168,59 @@ struct LibraryView: View {
             Button("Aus Bibliothek entfernen", role: .destructive) { if let folder = folderToRemove { model.removeFolder(folder.id) }; folderToRemove = nil }
             Button("Abbrechen", role: .cancel) { folderToRemove = nil }
         } message: { Text("Die Originalbilder bleiben auf deinem Mac. Für vollständig entfernte Bilder werden Bearbeitungen, Bildinformationen und Suchindexeinträge gelöscht. Erneutes Hinzufügen erfasst sie neu. Bilder in anderen eingebundenen Ordnern bleiben erhalten.") }
+    }
+
+    private func openMasks() {
+        guard let asset = model.selectedAsset, editor.canEdit, model.canModify,
+              let source = try? editor.resolvedSource(for: asset) else { return }
+        NSApp.keyWindow?.makeFirstResponder(nil)
+        editor.endEditing(assetID: asset.id)
+        model.comparesOriginal = false; model.comparesCurrentSourceWithoutSettings = false
+        model.showsDetail = true; model.isDeveloping = true
+        // Opening a canvas palette is not navigation to the ordinary edit
+        // group. Keep reveal requests reserved for dock/menu destinations.
+        pendingToolReveal = nil
+        layout.update(developing: true) { panels in
+            panels.showsTools = true
+            if panels.singleGroup { panels.openGroups = [.edit] }
+            else { panels.openGroups.insert(.edit) }
+        }
+        developWorkspace.tool = .masks
+        if !maskWorkspace.isPresented {
+            _ = maskWorkspace.open(asset: asset, source: source.identity, settings: source.settings,
+                                   editor: editor, library: model, model: localMaskModel)
+        }
+    }
+
+    private func finishToolReveal(resuming: Bool = false) {
+        guard let request = pendingToolReveal, request == layout.revealRequest,
+              layout.revealedTool != nil else { return }
+        if maskWorkspace.isPresented {
+            // Inference owns its native resources until it returns. Keep both
+            // the draft and requested destination until selection is complete.
+            guard maskWorkspace.model?.isGenerating != true, maskWorkspace.model?.isLoading != true else { return }
+            // A failed asynchronous selection must remain visible. A later
+            // explicit destination is a new decision to accept the valid draft.
+            if resuming, maskWorkspace.model?.errorMessage != nil {
+                pendingToolReveal = nil
+                return
+            }
+            // Admission may fail during maintenance even with enabled UI. Keep
+            // the palette and draft so the destination can be requested again.
+            guard maskWorkspace.canApply, maskWorkspace.apply() else {
+                pendingToolReveal = nil
+                return
+            }
+        }
+        developWorkspace.picksWhiteBalance = false
+        developWorkspace.repairSource = nil
+        developWorkspace.tool = .basic
+        pendingToolReveal = nil
+    }
+
+    private var previewSourceIdentity: AISourceIdentity? {
+        guard let asset = model.selectedAsset else { return nil }
+        return try? editor.resolvedSource(for: asset, intent: model.editingRenderIntent).identity
     }
 
     private var panels: WorkspacePanels { layout.panels(developing: model.isDeveloping) }
@@ -191,7 +280,7 @@ struct LibraryView: View {
             } label: { Label("Exportieren", systemImage: "square.and.arrow.up") }
                 .foregroundStyle(Theme.accent)
                 .disabled(model.selectedIDs.isEmpty || !model.canExportJPEG || model.isProjecting || editor.isLoading || editor.isRestoring || editor.isClosing || exporter.isPresented)
-                .help("Ausgewählte Fotos als JPEG exportieren · ⇧⌘E")
+                .help("Ausgewählte Fotos als JPEG oder HDR-HEIF exportieren · ⇧⌘E")
         }.buttonStyle(.plain).font(.system(size: 12, weight: .medium))
             .padding(.leading, 82).padding(.trailing, 20).frame(height: 54).background(Theme.sidebar)
     }
@@ -279,7 +368,7 @@ struct LibraryView: View {
             } else if model.visibleAssets.isEmpty {
                 emptyState.frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if model.showsDetail {
-                DetailView(model: model, showsMaskEditor: $showsMaskEditor)
+                DetailView(model: model, openMasks: openMasks)
             } else {
                 PhotoGridView(model: model)
             }
@@ -453,7 +542,7 @@ struct LibraryView: View {
             }
             if !model.showsDetail {
                 Image(systemName: "square.grid.3x3").font(.system(size: 10))
-                Slider(value: $model.gridSize, in: 150...320).controlSize(.mini).frame(width: 90).help("Vorschaugröße")
+                ResettableSlider(value: $model.gridSize, in: 150...320, neutralValue: 210).controlSize(.mini).frame(width: 90).help("Vorschaugröße")
                 Image(systemName: "square.grid.2x2").font(.system(size: 11))
             }
             workspaceNotices

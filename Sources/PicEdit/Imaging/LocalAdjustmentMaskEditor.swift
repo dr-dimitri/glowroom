@@ -3,380 +3,383 @@ import CoreImage
 import SwiftUI
 import PicEditCore
 
+/// Transparent interaction layer for the existing main image viewport. The
+/// caller gives this exactly the same fitted bounds as the photo below it.
 @MainActor
-struct LocalAdjustmentMaskEditor: View {
-    let asset: PhotoAsset
-    let source: AISourceIdentity
-    @ObservedObject var library: LibraryModel
-    @Binding private var isPresented: Bool
-    @EnvironmentObject private var editor: EditingModel
-    @Environment(\.dismiss) private var dismiss
-    @StateObject private var model: LocalAdjustmentEditorModel
-    @StateObject private var brush = MaskEditingModel(rendersOverlay: false)
-    private let baseSettings: EditSettings
+struct InlineMaskCanvas: View {
+    @ObservedObject var workspace: InlineMaskWorkspace
     @ViewState private var overlay: CGImage?
-    @ViewState private var showsOverlay = true
-    @ViewState private var comparesBefore = false
-    @ViewState private var showsSkySetup = false
-    @ViewState private var erases = false
-    @ViewState private var refines = false
-    @ViewState private var pans = false
-    @ViewState private var zoom: Double = 1
-    @ViewState private var pan = CGSize.zero
-    @ViewState private var panStart: CGSize?
-    @ViewState private var gradientStart: LocalMaskPoint?
     @ViewState private var cursor: CGPoint?
-    @ViewState private var anchor: LocalMaskEditingAnchor?
+    @ViewState private var gesture: GradientGesture?
+    @ViewState private var inputIdentity: InputIdentity?
+    @ViewState private var interruptsUntilMouseUp = false
+    @GestureState private var pointerIsDown = false
+    private struct InputIdentity { let source: AISourceIdentity; let layerID: UUID }
     private struct OverlayIdentity: Hashable {
-        let source: AISourceIdentity
+        let source: AISourceIdentity?
         let canvas: ArtifactPixelSize?
         let mask: LocalAdjustmentMask?
     }
-
-    init(asset: PhotoAsset, source: AISourceIdentity, settings: EditSettings, library: LibraryModel,
-         isPresented: Binding<Bool> = .constant(true), model: LocalAdjustmentEditorModel? = nil) {
-        self.asset = asset; self.source = source; self.library = library; self.baseSettings = settings
-        _isPresented = isPresented
-        _model = StateObject(wrappedValue: model ?? LocalAdjustmentEditorModel(settings: settings))
-    }
-
-    private var isCurrent: Bool {
-        guard let anchor else { return false }
-        return library.selectedID == asset.id && editor.canEdit && editor.settings(for: asset.id) == baseSettings
-            && (try? editor.resolvedSource(for: asset).identity) == source
-            && anchor.isCurrent(editor: editor, library: library)
-    }
-    private var selected: LocalAdjustment? { model.selected }
-    private var usesBrush: Bool {
-        guard let selected else { return false }
-        switch selected.mask.shape {
-        case .brush, .subject, .sky: return true
-        case .linear, .radial: return refines
-        }
-    }
-    private var displayMask: LocalAdjustmentMask? {
-        guard var mask = selected?.mask else { return nil }
-        if let document = brush.previewDocument, brush.source == source {
-            if case .brush = mask.shape { mask.shape = .brush(document) }
-            else if !document.strokes.isEmpty { mask.refinement = document }
-        }
-        return mask
-    }
-    private var canvas: ArtifactPixelSize? {
-        if let selected, case .brush(let document) = selected.mask.shape { return document.canvasSize }
-        return model.canvasSize
+    private enum Handle { case start, end, center, radiusX, radiusY, new }
+    private struct GradientGesture {
+        let handle: Handle
+        let initial: LocalMaskShape
+        let start: LocalMaskPoint
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 14) {
-                Label("Masken", systemImage: "circle.dashed.inset.filled").font(.headline)
-                Text(asset.fileName).font(.callout).foregroundStyle(.secondary).lineLimit(1)
-                Spacer()
-                Button("Abbrechen") { dismiss() }.keyboardShortcut(.cancelAction)
-                Button("Übernehmen") { apply() }.keyboardShortcut(.defaultAction)
-                    .disabled(!isCurrent || model.isLoading || model.isGenerating)
-            }.padding(16)
-            Divider()
-            HStack(spacing: 0) {
-                VStack(spacing: 0) {
-                    canvasToolbar.padding(12)
-                    GeometryReader { viewport in
-                        ZStack(alignment: .topLeading) {
-                            Color.black.opacity(0.4)
-                            if let canvas, let geometry = try? CanvasGeometry(canvasSize: canvas,
-                                viewportWidth: viewport.size.width, viewportHeight: viewport.size.height,
-                                zoom: zoom, panX: pan.width, panY: pan.height) {
-                                picture(geometry: geometry)
-                                brushCursor(geometry: geometry)
-                                Color.clear.contentShape(Rectangle()).gesture(drag(geometry))
-                                    .onContinuousHover { phase in
-                                        switch phase { case .active(let point): cursor = point; case .ended: cursor = nil }
-                                    }
-                                    .accessibilityLabel("Lokale Maske auf dem Bild zeichnen")
-                                    .accessibilityIdentifier("local-mask.canvas")
-                            } else if model.isLoading {
-                                ProgressView("Bild wird geladen").frame(maxWidth: .infinity, maxHeight: .infinity)
-                            } else {
-                                ContentUnavailableView("Bild nicht verfügbar", systemImage: "photo",
-                                    description: Text(model.errorMessage ?? "Die Bildquelle konnte nicht geladen werden."))
-                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            }
-                        }.clipped().onChange(of: viewport.size) { _, _ in brush.cancelStroke(); gradientStart = nil; model.endChange() }
-                    }
-                    HStack {
-                        Text(instruction).font(.caption).foregroundStyle(.secondary)
-                        Spacer()
-                        Text("Original unverändert").font(.caption).foregroundStyle(.secondary)
-                    }.padding(12)
-                }.frame(minWidth: 530, maxWidth: .infinity, maxHeight: .infinity)
-                Divider()
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 16) {
-                        maskList
-                        if let selected { maskControls(selected) }
-                        else {
-                            Text("Füge eine Maske hinzu. Die lokalen Regler verändern nur den ausgewählten Bereich.")
-                                .font(.callout).foregroundStyle(.secondary)
+        GeometryReader { viewport in
+            if workspace.isPresented, let canvas = workspace.canvasSize,
+               let geometry = try? CanvasGeometry(canvasSize: canvas, viewportWidth: viewport.size.width,
+                    viewportHeight: viewport.size.height) {
+                ZStack(alignment: .topLeading) {
+                    if !workspace.comparesBefore { maskImage(geometry: geometry) }
+                    brushCursor(geometry: geometry)
+                    Color.clear.contentShape(Rectangle())
+                        .gesture(drag(geometry))
+                        .onContinuousHover { phase in
+                            switch phase { case .active(let point): cursor = point; case .ended: cursor = nil }
                         }
-                        if model.isGenerating {
-                            HStack { ProgressView().controlSize(.small); Text("Auswahl wird berechnet").font(.caption); Spacer(); Button("Abbrechen") { model.cancelInference() } }
-                        }
-                        if let message = model.errorMessage ?? brush.errorMessage {
-                            Text(message).font(.caption).foregroundStyle(.orange).textSelection(.enabled)
-                        }
-                        if !isCurrent { Text("Die Bearbeitung oder Bildquelle wurde inzwischen geändert. Öffne die Masken erneut, um den aktuellen Stand zu bearbeiten.").font(.caption).foregroundStyle(.orange) }
-                    }.padding(16)
-                }.frame(width: 310)
-            }
-        }.frame(minWidth: 900, idealWidth: 1180, minHeight: 620, idealHeight: 800)
-            .task(id: source) {
-                guard isPresented, !Task.isCancelled else { return }
-                anchor = LocalMaskEditingAnchor(editor: editor, library: library)
-                await model.load(source: source)
-                guard isPresented, !Task.isCancelled else { model.close(); return }
-                syncBrush()
-            }
-            .onChange(of: isPresented) { _, presented in if !presented { brush.discard(); model.close() } }
-            .task(id: OverlayIdentity(source: source, canvas: model.canvasSize, mask: displayMask)) { await updateOverlay() }
-            .onChange(of: model.selectedID) { _, _ in model.endChange(); brush.cancelStroke(); syncBrush() }
-            .onChange(of: selected?.mask) { _, _ in syncBrush() }
-            .onChange(of: brush.document) { _, document in
-                guard let document, let selected else { return }
-                if case .brush = selected.mask.shape { model.updateSelected { $0.mask.shape = .brush(document) } }
-                else if !document.strokes.isEmpty || selected.mask.refinement != nil { model.updateSelected { $0.mask.refinement = document } }
-                syncBrush()
-            }
-            .sheet(isPresented: $showsSkySetup) { SkyMaskModelSetupView() }
-            .onDisappear { brush.discard(); model.close() }
-    }
-
-    private var canvasToolbar: some View {
-        HStack(spacing: 12) {
-            Button { brush.cancelStroke(); model.undo() } label: { Image(systemName: "arrow.uturn.backward") }
-                .disabled(!model.canUndo).help("Maskenänderung rückgängig").accessibilityLabel("Maskenänderung rückgängig")
-                .accessibilityIdentifier("local-mask.undo")
-            Button { brush.cancelStroke(); model.redo() } label: { Image(systemName: "arrow.uturn.forward") }
-                .disabled(!model.canRedo).help("Maskenänderung wiederholen").accessibilityLabel("Maskenänderung wiederholen")
-            Divider().frame(height: 18)
-            Toggle("Overlay", isOn: $showsOverlay).toggleStyle(.checkbox)
-            Toggle("Vorher", isOn: $comparesBefore).toggleStyle(.checkbox).help("Stand vor dem Öffnen der Masken anzeigen")
-            Spacer(minLength: 0)
-            Toggle(isOn: $pans) { Image(systemName: "hand.draw") }.toggleStyle(.button).help("Bild verschieben")
-            Button("Einpassen") { brush.cancelStroke(); zoom = 1; pan = .zero }
-            Button { brush.cancelStroke(); zoom = max(1, zoom / 1.5) } label: { Image(systemName: "minus.magnifyingglass") }.accessibilityLabel("Verkleinern")
-            Button { brush.cancelStroke(); zoom = min(16, zoom * 1.5) } label: { Image(systemName: "plus.magnifyingglass") }.accessibilityLabel("Vergrößern")
-        }.controlSize(.small)
-    }
-
-    private var maskList: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Menu {
-                ForEach(LocalMaskCreation.allCases) { kind in
-                    Button { model.add(kind) } label: { Label(kind.title, systemImage: kind.symbol) }
-                }
-            } label: { Label("Neue Maske", systemImage: "plus.circle.fill").frame(maxWidth: .infinity) }
-                .menuStyle(.borderlessButton).padding(10).background(.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
-                .disabled(model.canvasSize == nil || model.isGenerating || model.settings.localAdjustments.count >= 16)
-                .accessibilityIdentifier("local-mask.add")
-            ForEach(model.settings.localAdjustments, id: \.id) { layer in
-                Button { model.selectedID = layer.id } label: {
-                    HStack {
-                        Image(systemName: layer.isEnabled ? "circle.dashed.inset.filled" : "eye.slash")
-                        Text(layer.name).lineLimit(1)
-                        Spacer()
-                        if layer.id == model.selectedID { Image(systemName: "checkmark").foregroundStyle(.orange) }
-                    }.padding(10).contentShape(Rectangle())
-                }.buttonStyle(.plain).background(layer.id == model.selectedID ? .white.opacity(0.1) : .clear, in: RoundedRectangle(cornerRadius: 6))
-                    .accessibilityLabel(layer.name + (layer.isEnabled ? "" : ", ausgeblendet"))
-            }
-            Button("Himmelsmodell einrichten …") { showsSkySetup = true }.font(.caption)
-        }
-    }
-
-    private func maskControls(_ layer: LocalAdjustment) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Divider()
-            TextField("Maskenname", text: Binding(get: { selected?.name ?? "" }, set: { name in
-                if !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    model.updateSelected { $0.name = String(name.prefix(64)) }
-                }
-            })).textFieldStyle(.roundedBorder).accessibilityLabel("Maskenname")
-            HStack {
-                Toggle("Aktiv", isOn: Binding(get: { selected?.isEnabled ?? false }, set: { value in model.updateSelected { $0.isEnabled = value } })).toggleStyle(.checkbox)
-                Spacer()
-                Button { model.duplicateSelected() } label: { Image(systemName: "plus.square.on.square") }.help("Maske duplizieren").accessibilityLabel("Maske duplizieren")
-                Button(role: .destructive) { model.deleteSelected() } label: { Image(systemName: "trash") }.help("Maske löschen").accessibilityLabel("Maske löschen")
-            }
-            Toggle("Maske invertieren", isOn: Binding(get: { selected?.mask.isInverted ?? false }, set: { value in model.updateSelected { $0.mask.isInverted = value } })).toggleStyle(.checkbox)
-            valueSlider("Maskenstärke", value: Binding(get: { selected?.mask.opacity ?? 1 }, set: { value in model.updateSelected { $0.mask.opacity = value } }), range: 0...1)
-            valueSlider("Weiche Kante", value: Binding(get: { selected?.mask.feather ?? 0 }, set: { value in model.updateSelected { $0.mask.feather = value } }), range: 0...1)
-            if case .linear = layer.mask.shape {
-                Toggle("Mit Pinsel verfeinern", isOn: $refines).toggleStyle(.checkbox)
-            } else if case .radial = layer.mask.shape {
-                Toggle("Mit Pinsel verfeinern", isOn: $refines).toggleStyle(.checkbox)
-            }
-            if usesBrush {
-                Divider()
-                Toggle("Radierer", isOn: $erases).toggleStyle(.checkbox).onChange(of: erases) { _, value in brush.cancelStroke(); brush.mode = value ? .erase : .brush }
-                valueSlider("Pinselradius", value: $brush.radius, range: 1...250)
-                valueSlider("Pinselhärte", value: $brush.hardness, range: 0...1)
-            }
-            Divider()
-            HStack {
-                Text("Lokale Korrekturen").font(.headline)
-                Spacer()
-                Button { model.updateSelected { $0.settings = .neutral } } label: { Image(systemName: "arrow.counterclockwise") }
-                    .help("Lokale Regler zurücksetzen").accessibilityLabel("Lokale Regler zurücksetzen")
-            }
-            ForEach(LocalMaskControl.allCases) { control in
-                valueSlider(control.title, value: Binding(get: { selected?.settings[keyPath: control.keyPath] ?? 0 },
-                    set: { value in model.updateSelected { $0.settings[keyPath: control.keyPath] = value } }), range: control.range)
+                        .accessibilityLabel("Lokale Maske auf dem Bild zeichnen")
+                        .accessibilityIdentifier("local-mask.canvas")
+                        .allowsHitTesting(workspace.isCurrent && !workspace.comparesBefore && workspace.model?.isGenerating != true)
+                }.clipped()
+                    .onChange(of: viewport.size) { _, _ in cancelGesture() }
             }
         }
-    }
-
-    private func valueSlider(_ title: String, value: Binding<Double>, range: ClosedRange<Double>) -> some View {
-        VStack(spacing: 4) {
-            HStack {
-                Text(title).font(.caption)
-                Spacer()
-                Text(value.wrappedValue, format: .number.precision(.fractionLength(range.upperBound <= 5 ? 2 : 0)))
-                    .font(.caption.monospacedDigit()).foregroundStyle(.secondary)
-            }
-            Slider(value: value, in: range, onEditingChanged: { editing in if editing { model.beginChange() } else { model.endChange() } })
-                .controlSize(.small).accessibilityLabel(title)
+        .task(id: OverlayIdentity(source: workspace.source, canvas: workspace.canvasSize, mask: workspace.displayMask)) {
+            await updateOverlay()
         }
+        .onChange(of: workspace.model?.selectedID) { _, _ in cancelGesture() }
+        .onChange(of: workspace.refines) { _, _ in cancelGesture() }
+        .onChange(of: workspace.comparesBefore) { _, _ in cancelGesture() }
+        .onChange(of: workspace.model?.isGenerating) { _, generating in if generating == true { cancelGesture() } }
+        .onChange(of: pointerIsDown) { _, down in
+            // GestureState also resets when SwiftUI cancels hit testing during
+            // inference; the next real pointer down must remain usable.
+            if !down { cancelGesture(); interruptsUntilMouseUp = false }
+        }
+        .onDisappear { cancelGesture() }
     }
 
-    private func picture(geometry: CanvasGeometry) -> some View {
+    private func maskImage(geometry: CanvasGeometry) -> some View {
         let width = Double(geometry.canvasSize.width) * geometry.scale
         let height = Double(geometry.canvasSize.height) * geometry.scale
         return ZStack {
-            PhotoPreview(url: asset.fileURL, modifiedAt: asset.modifiedAt, fileSize: asset.fileSize,
-                settings: comparesBefore ? baseSettings : model.settings, source: source, developing: true)
-            if showsOverlay, !comparesBefore {
-                if let overlay {
-                    Color.red.mask { Image(decorative: overlay, scale: 1).resizable() }.opacity(0.45)
-                }
-                gradientHandles
-            }
+            if workspace.showsOverlay, let overlay { Color.red.mask { Image(decorative: overlay, scale: 1).resizable() }.opacity(0.45) }
+            if !workspace.usesBrush { gradientHandles }
         }.frame(width: width, height: height)
-            .position(x: geometry.originX + width / 2, y: geometry.originY + height / 2).allowsHitTesting(false)
+            .position(x: geometry.originX + width / 2, y: geometry.originY + height / 2)
+            .allowsHitTesting(false)
     }
 
     @ViewBuilder private func brushCursor(geometry: CanvasGeometry) -> some View {
-        if usesBrush, !pans, !comparesBefore, let cursor, let document = brush.document,
+        if workspace.usesBrush, !workspace.comparesBefore, let cursor, let document = workspace.brush.document,
            let point = try? MaskPoint(x: cursor.x, y: cursor.y), geometry.viewToCanvas(point) != nil {
-            let diameter = brush.radius * 2 * geometry.scale * Double(geometry.canvasSize.width) / Double(document.canvasSize.width)
+            let diameter = workspace.brush.radius * 2 * geometry.scale * Double(geometry.canvasSize.width) / Double(document.canvasSize.width)
             ZStack {
                 Circle().strokeBorder(.white, lineWidth: 1)
                 Circle().strokeBorder(.black.opacity(0.7), lineWidth: 1).padding(1)
                 Circle().strokeBorder(.white.opacity(0.7), style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
-                    .padding(diameter * (1 - brush.hardness) / 2)
+                    .padding(diameter * (1 - workspace.brush.hardness) / 2)
             }.frame(width: diameter, height: diameter).position(cursor).allowsHitTesting(false).accessibilityHidden(true)
         }
     }
 
-    @ViewBuilder private var gradientHandles: some View {
+    private var gradientHandles: some View {
         Canvas { context, size in
-            guard let selected else { return }
-            switch selected.mask.shape {
+            guard let shape = workspace.selected?.mask.shape else { return }
+            func pixel(_ point: LocalMaskPoint) -> CGPoint { CGPoint(x: point.x * size.width, y: point.y * size.height) }
+            func dot(_ point: CGPoint, radius: Double = 4) {
+                let path = Path(ellipseIn: CGRect(x: point.x - radius, y: point.y - radius, width: radius * 2, height: radius * 2))
+                context.fill(path, with: .color(.white)); context.stroke(path, with: .color(.black.opacity(0.7)), lineWidth: 1)
+            }
+            switch shape {
             case .linear(let start, let end):
-                let a = CGPoint(x: start.x * size.width, y: start.y * size.height)
-                let b = CGPoint(x: end.x * size.width, y: end.y * size.height)
+                let a = pixel(start), b = pixel(end)
                 var path = Path(); path.move(to: a); path.addLine(to: b)
                 context.stroke(path, with: .color(.white), style: StrokeStyle(lineWidth: 2, dash: [5, 3]))
-                for point in [a, b] { context.fill(Path(ellipseIn: CGRect(x: point.x - 4, y: point.y - 4, width: 8, height: 8)), with: .color(.white)) }
-            case .radial(let center, let rx, let ry, _):
-                let rect = CGRect(x: (center.x - rx) * size.width, y: (center.y - ry) * size.height, width: 2 * rx * size.width, height: 2 * ry * size.height)
-                context.stroke(Path(ellipseIn: rect), with: .color(.white), style: StrokeStyle(lineWidth: 1, dash: [5, 3]))
+                dot(a); dot(b); dot(CGPoint(x: (a.x + b.x) / 2, y: (a.y + b.y) / 2), radius: 3)
+            case .radial(let center, let rx, let ry, let rotation):
+                // Rotate in image pixels, matching the renderer for both
+                // landscape and portrait aspect ratios.
+                var path = Path()
+                for index in 0...96 {
+                    let angle = Double(index) / 96 * Double.pi * 2
+                    let x = rx * size.width * cos(angle), y = ry * size.height * sin(angle)
+                    let point = CGPoint(x: center.x * size.width + cos(rotation) * x - sin(rotation) * y,
+                        y: center.y * size.height + sin(rotation) * x + cos(rotation) * y)
+                    if index == 0 { path.move(to: point) } else { path.addLine(to: point) }
+                }
+                context.stroke(path, with: .color(.white), style: StrokeStyle(lineWidth: 1, dash: [5, 3]))
+                dot(pixel(center))
+                dot(CGPoint(x: center.x * size.width + cos(rotation) * rx * size.width, y: center.y * size.height + sin(rotation) * rx * size.width))
+                dot(CGPoint(x: center.x * size.width - sin(rotation) * ry * size.height, y: center.y * size.height + cos(rotation) * ry * size.height))
             default: break
             }
         }.accessibilityHidden(true)
     }
 
     private func drag(_ geometry: CanvasGeometry) -> some Gesture {
-        DragGesture(minimumDistance: 0).onChanged { value in
-            guard !comparesBefore else { return }
-            if pans {
-                if panStart == nil { brush.cancelStroke(); panStart = pan }
-                if let start = panStart { pan = CGSize(width: start.width + value.translation.width, height: start.height + value.translation.height) }
-                return
-            }
+        DragGesture(minimumDistance: 0).updating($pointerIsDown) { _, down, _ in down = true }.onChanged { value in
+            guard !interruptsUntilMouseUp, workspace.isCurrent, !workspace.comparesBefore,
+                  let model = workspace.model, !model.isGenerating,
+                  let source = workspace.source, let selected = workspace.selected else { return }
+            if let inputIdentity {
+                guard workspace.acceptsCanvasInput(source: inputIdentity.source, layerID: inputIdentity.layerID) else { cancelGesture(); return }
+            } else { inputIdentity = InputIdentity(source: source, layerID: selected.id) }
             guard let point = try? MaskPoint(x: value.location.x, y: value.location.y),
-                  let native = geometry.viewToCanvas(point), let selected else { brush.breakStrokeSegment(); return }
-            if usesBrush {
-                if let document = brush.document {
-                    let x = native.x * Double(document.canvasSize.width) / Double(geometry.canvasSize.width)
-                    let y = native.y * Double(document.canvasSize.height) / Double(geometry.canvasSize.height)
-                    if let point = try? MaskPoint(x: x, y: y) { brush.appendPoint(point) }
+                  let native = geometry.viewToCanvas(point) else {
+                workspace.brush.breakStrokeSegment(); return
+            }
+            if workspace.usesBrush {
+                if let document = workspace.brush.document,
+                   let point = try? MaskPoint(x: native.x * Double(document.canvasSize.width) / Double(geometry.canvasSize.width),
+                    y: native.y * Double(document.canvasSize.height) / Double(geometry.canvasSize.height)) {
+                    workspace.brush.appendPoint(point)
                 }
                 return
             }
-            switch selected.mask.shape {
-            case .brush: brush.appendPoint(native)
-            case .linear, .radial:
-                guard let normalized = try? LocalMaskPoint(x: native.x / Double(geometry.canvasSize.width), y: native.y / Double(geometry.canvasSize.height)) else { return }
-                if gradientStart == nil { gradientStart = normalized; model.beginChange() }
-                guard let start = gradientStart else { return }
-                if case .linear = selected.mask.shape {
-                    if start != normalized { model.updateSelected { $0.mask.shape = .linear(start: start, end: normalized) } }
-                } else {
-                    model.updateSelected { $0.mask.shape = .radial(center: start,
-                        radiusX: max(0.002, abs(normalized.x - start.x)), radiusY: max(0.002, abs(normalized.y - start.y)), rotation: 0) }
+            guard let normalized = try? LocalMaskPoint(x: native.x / Double(geometry.canvasSize.width), y: native.y / Double(geometry.canvasSize.height)) else { return }
+            if gesture == nil {
+                gesture = GradientGesture(handle: nearestHandle(to: normalized, shape: selected.mask.shape, geometry: geometry),
+                    initial: selected.mask.shape, start: normalized)
+                model.beginChange()
+            }
+            guard let gesture else { return }
+            switch gesture.initial {
+            case .linear(let start, let end):
+                switch gesture.handle {
+                case .start: if normalized != end { model.updateSelected { $0.mask.shape = .linear(start: normalized, end: end) } }
+                case .end: if normalized != start { model.updateSelected { $0.mask.shape = .linear(start: start, end: normalized) } }
+                case .center:
+                    let dx = min(1 - max(start.x, end.x), max(-min(start.x, end.x), normalized.x - gesture.start.x))
+                    let dy = min(1 - max(start.y, end.y), max(-min(start.y, end.y), normalized.y - gesture.start.y))
+                    let a = clampedPoint(x: start.x + dx, y: start.y + dy), b = clampedPoint(x: end.x + dx, y: end.y + dy)
+                    if a != b { model.updateSelected { $0.mask.shape = .linear(start: a, end: b) } }
+                default: if gesture.start != normalized { model.updateSelected { $0.mask.shape = .linear(start: gesture.start, end: normalized) } }
+                }
+            case .radial(let center, let rx, let ry, let rotation):
+                switch gesture.handle {
+                case .center:
+                    let moved = clampedPoint(x: center.x + normalized.x - gesture.start.x, y: center.y + normalized.y - gesture.start.y)
+                    model.updateSelected { $0.mask.shape = .radial(center: moved, radiusX: rx, radiusY: ry, rotation: rotation) }
+                case .radiusX:
+                    let aspect = Double(geometry.canvasSize.height) / Double(geometry.canvasSize.width)
+                    let radius = max(0.002, abs((normalized.x - center.x) * cos(rotation) + (normalized.y - center.y) * aspect * sin(rotation)))
+                    model.updateSelected { $0.mask.shape = .radial(center: center, radiusX: radius, radiusY: ry, rotation: rotation) }
+                case .radiusY:
+                    let aspect = Double(geometry.canvasSize.width) / Double(geometry.canvasSize.height)
+                    let radius = max(0.002, abs(-(normalized.x - center.x) * aspect * sin(rotation) + (normalized.y - center.y) * cos(rotation)))
+                    model.updateSelected { $0.mask.shape = .radial(center: center, radiusX: rx, radiusY: radius, rotation: rotation) }
+                default:
+                    model.updateSelected { $0.mask.shape = .radial(center: gesture.start,
+                        radiusX: max(0.002, abs(normalized.x - gesture.start.x)), radiusY: max(0.002, abs(normalized.y - gesture.start.y)), rotation: 0) }
                 }
             default: break
             }
         }.onEnded { _ in
-            brush.endStroke(); model.endChange(); gradientStart = nil; panStart = nil
+            workspace.finishGesture(); gesture = nil; inputIdentity = nil; interruptsUntilMouseUp = false
         }
     }
-
-    private var instruction: String {
-        if pans { return "Ziehen verschiebt das Bild." }
-        guard let selected else { return "Neue Maske hinzufügen, anschließend den Bereich wählen." }
-        switch selected.mask.shape {
-        case .brush: return erases ? "Ziehen entfernt Bereiche aus der Pinselmaske." : "Ziehen malt die Pinselmaske."
-        case .linear: return refines ? "Mit Pinsel ergänzen oder mit Radierer abziehen." : "Verlauf vom vollständig gewählten zum ungewählten Bereich ziehen."
-        case .radial: return refines ? "Mit Pinsel ergänzen oder mit Radierer abziehen." : "Von der Mitte nach außen ziehen, um die Ellipse aufzuspannen."
-        case .subject, .sky: return "Automatische Auswahl prüfen; mit Pinsel ergänzen oder mit Radierer abziehen."
+    private func nearestHandle(to point: LocalMaskPoint, shape: LocalMaskShape, geometry: CanvasGeometry) -> Handle {
+        let w = Double(geometry.canvasSize.width) * geometry.scale, h = Double(geometry.canvasSize.height) * geometry.scale
+        func near(_ x: Double, _ y: Double) -> Bool { hypot((point.x - x) * w, (point.y - y) * h) <= 12 }
+        switch shape {
+        case .linear(let start, let end):
+            if near(start.x, start.y) { return .start }
+            if near(end.x, end.y) { return .end }
+            if near((start.x + end.x) / 2, (start.y + end.y) / 2) { return .center }
+        case .radial(let center, let rx, let ry, let angle):
+            if near(center.x, center.y) { return .center }
+            if near(center.x + cos(angle) * rx, center.y + sin(angle) * rx * w / h) { return .radiusX }
+            if near(center.x - sin(angle) * ry * h / w, center.y + cos(angle) * ry) { return .radiusY }
+        default: break
         }
+        return .new
     }
-    private func syncBrush() {
-        guard let selected, let canvas = model.canvasSize else { brush.discard(); return }
-        let document: MaskDocument
-        if case .brush(let saved) = selected.mask.shape { document = saved }
-        else if let saved = selected.mask.refinement { document = saved }
-        else { guard let empty = try? MaskDocument(canvasSize: canvas) else { return }; document = empty }
-        if brush.document != document || brush.source != source { try? brush.load(source: source, document: document) }
-        brush.mode = erases ? .erase : .brush
+    private func clampedPoint(x: Double, y: Double) -> LocalMaskPoint {
+        try! LocalMaskPoint(x: min(1, max(0, x)), y: min(1, max(0, y)))
+    }
+    private func cancelGesture() {
+        if inputIdentity != nil { interruptsUntilMouseUp = true }
+        workspace.brush.cancelStroke(); workspace.model?.endChange()
+        gesture = nil; inputIdentity = nil; cursor = nil
     }
     private func updateOverlay() async {
         overlay = nil
-        guard let mask = displayMask, let canvas = model.canvasSize else { return }
+        guard let mask = workspace.displayMask, let canvas = workspace.canvasSize else { return }
         do {
             let image = try await LocalMaskOverlayWorker.shared.image(mask, size: canvas)
             try Task.checkCancellation(); overlay = image
         } catch is CancellationError { }
-        catch { model.errorMessage = error.localizedDescription }
+        catch { workspace.errorMessage = error.localizedDescription }
     }
-    private func apply() {
-        brush.endStroke()
-        if let document = brush.document, let selected {
-            if case .brush = selected.mask.shape { model.updateSelected { $0.mask.shape = .brush(document) } }
-            else if !document.strokes.isEmpty || selected.mask.refinement != nil { model.updateSelected { $0.mask.refinement = document } }
-            let accepted = model.selected.flatMap { layer -> MaskDocument? in
-                if case .brush(let saved) = layer.mask.shape { return saved }
-                return layer.mask.refinement
+}
+
+/// Compact mask palette in the ordinary develop inspector. Only model setup
+/// opens a separate settings sheet; all photo editing stays on the main canvas.
+@MainActor
+struct InlineMaskInspector: View {
+    @ObservedObject var workspace: InlineMaskWorkspace
+    @ViewState private var showsSkySetup = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Text("Maskieren").font(.headline)
+                Spacer()
+                Button("Abbrechen") { workspace.cancel() }.controlSize(.small)
+                    .accessibilityIdentifier("local-mask.cancel")
+                Button("Fertig") { workspace.apply() }.controlSize(.small).disabled(!workspace.canApply)
+                    .accessibilityIdentifier("local-mask.apply")
             }
-            if !document.strokes.isEmpty, accepted != document { syncBrush(); return }
+            HStack(spacing: 12) {
+                Button { workspace.undo() } label: { Image(systemName: "arrow.uturn.backward") }
+                    .disabled(workspace.model?.canUndo != true).help("Maskenänderung rückgängig")
+                    .accessibilityLabel("Maskenänderung rückgängig").accessibilityIdentifier("local-mask.undo")
+                Button { workspace.redo() } label: { Image(systemName: "arrow.uturn.forward") }
+                    .disabled(workspace.model?.canRedo != true).help("Maskenänderung wiederholen").accessibilityLabel("Maskenänderung wiederholen")
+                Spacer()
+                Toggle("Overlay", isOn: $workspace.showsOverlay).toggleStyle(.checkbox)
+                Toggle("Vorher", isOn: $workspace.comparesBefore).toggleStyle(.checkbox)
+            }.controlSize(.small).font(.caption)
+            maskList
+            if let model = workspace.model {
+                if let selected = workspace.selected { maskControls(selected, model: model).id(selected.id) }
+                else { Text("Erstelle eine Maske und korrigiere damit einzelne Bildbereiche.").font(.caption).foregroundStyle(Theme.muted) }
+                Text(workspace.instruction).font(.caption).foregroundStyle(Theme.muted)
+                if model.isLoading { ProgressView("Bild wird geladen").controlSize(.small) }
+                if model.isGenerating {
+                    HStack { ProgressView().controlSize(.small); Text("Auswahl wird berechnet").font(.caption); Spacer(); Button("Abbrechen") { model.cancelInference() } }
+                }
+                if let message = workspace.errorMessage ?? model.errorMessage ?? workspace.brush.errorMessage {
+                    Text(message).font(.caption).foregroundStyle(.orange).textSelection(.enabled)
+                }
+            }
+        }.padding(.vertical, 12)
+            .sheet(isPresented: $showsSkySetup) { SkyMaskModelSetupView() }
+
+    }
+
+    private var maskList: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Menu {
+                ForEach(LocalMaskCreation.allCases) { kind in Button { workspace.model?.add(kind) } label: { Label(kind.title, systemImage: kind.symbol) } }
+            } label: { Label("Neue Maske", systemImage: "plus.circle.fill").frame(maxWidth: .infinity) }
+                .menuStyle(.borderlessButton).padding(10).background(Theme.elevated, in: RoundedRectangle(cornerRadius: 6))
+                .disabled(workspace.canvasSize == nil || workspace.model?.isGenerating == true || (workspace.model?.settings.localAdjustments.count ?? 0) >= 16)
+                .accessibilityIdentifier("local-mask.add")
+            ForEach(workspace.model?.settings.localAdjustments ?? [], id: \.id) { layer in
+                HStack(spacing: 7) {
+                    Button { workspace.select(layer.id) } label: {
+                        HStack {
+                            Image(systemName: symbol(for: layer.mask.shape)).frame(width: 20)
+                            Text(layer.name).font(.system(size: 12)).lineLimit(1)
+                            Spacer()
+                            if layer.id == workspace.model?.selectedID { Image(systemName: "checkmark").foregroundStyle(Theme.accent) }
+                        }.contentShape(Rectangle())
+                    }.buttonStyle(.plain)
+                    Button {
+                        workspace.select(layer.id); workspace.model?.updateSelected { $0.isEnabled.toggle() }
+                    } label: { Image(systemName: layer.isEnabled ? "eye" : "eye.slash").foregroundStyle(Theme.muted) }
+                        .buttonStyle(.plain).help(layer.isEnabled ? "Maske ausblenden" : "Maske einblenden")
+                        .accessibilityLabel(layer.name + (layer.isEnabled ? " ausblenden" : " einblenden"))
+                }.padding(9).background(layer.id == workspace.model?.selectedID ? Theme.elevated : .clear, in: RoundedRectangle(cornerRadius: 5))
+            }
+            Button("Himmelsmodell einrichten …") { showsSkySetup = true }.font(.caption).buttonStyle(.plain).foregroundStyle(Theme.muted)
         }
-        model.endChange()
-        guard isCurrent else { return }
-        editor.endEditing(assetID: asset.id)
-        editor.setSettings(model.settings, for: asset.id)
-        if editor.settings(for: asset.id) == model.settings { dismiss() }
+    }
+    private func symbol(for shape: LocalMaskShape) -> String {
+        switch shape { case .brush: "paintbrush.pointed"; case .linear: "rectangle.lefthalf.filled"; case .radial: "circle.lefthalf.filled"; case .subject: "person.crop.rectangle"; case .sky: "cloud.sun" }
+    }
+
+    private func maskControls(_ layer: LocalAdjustment, model: LocalAdjustmentEditorModel) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Divider()
+            TextField("Maskenname", text: Binding(get: { workspace.selected?.name ?? "" }, set: { name in
+                if !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { model.updateSelected { $0.name = String(name.prefix(64)) } }
+            })).textFieldStyle(.roundedBorder).accessibilityLabel("Maskenname")
+            HStack {
+                Toggle("Invertieren", isOn: Binding(get: { workspace.selected?.mask.isInverted ?? false }, set: { value in model.updateSelected { $0.mask.isInverted = value } })).toggleStyle(.checkbox)
+                Spacer()
+                Button { model.moveSelected(by: -1) } label: { Image(systemName: "arrow.up") }.help("Maske nach oben").accessibilityLabel("Maske nach oben")
+                    .disabled(model.settings.localAdjustments.first?.id == layer.id)
+                Button { model.moveSelected(by: 1) } label: { Image(systemName: "arrow.down") }.help("Maske nach unten").accessibilityLabel("Maske nach unten")
+                    .disabled(model.settings.localAdjustments.last?.id == layer.id)
+                Button { model.duplicateSelected() } label: { Image(systemName: "plus.square.on.square") }.help("Maske duplizieren").accessibilityLabel("Maske duplizieren")
+                Button(role: .destructive) { model.deleteSelected() } label: { Image(systemName: "trash") }.help("Maske löschen").accessibilityLabel("Maske löschen")
+            }.font(.caption).buttonStyle(.plain)
+            valueSlider("Maskenstärke", value: Binding(get: { workspace.selected?.mask.opacity ?? 1 }, set: { value in model.updateSelected { $0.mask.opacity = value } }), range: 0...1, neutral: 1, model: model)
+            valueSlider("Weiche Kante", value: Binding(get: { workspace.selected?.mask.feather ?? 0 }, set: { value in model.updateSelected { $0.mask.feather = value } }), range: 0...1, neutral: 0.5, model: model)
+            if case .radial = layer.mask.shape {
+                valueSlider("Drehung", value: Binding(get: {
+                    if case .radial(_, _, _, let angle)? = workspace.selected?.mask.shape { return angle * 180 / .pi }; return 0
+                }, set: { value in
+                    model.updateSelected { if case .radial(let center, let rx, let ry, _) = $0.mask.shape { $0.mask.shape = .radial(center: center, radiusX: rx, radiusY: ry, rotation: value * .pi / 180) } }
+                }), range: -180...180, model: model)
+            }
+            if case .linear = layer.mask.shape { Toggle("Mit Pinsel verfeinern", isOn: $workspace.refines).toggleStyle(.checkbox).font(.caption) }
+            else if case .radial = layer.mask.shape { Toggle("Mit Pinsel verfeinern", isOn: $workspace.refines).toggleStyle(.checkbox).font(.caption) }
+            if workspace.usesBrush {
+                Divider()
+                HStack {
+                    Text("Pinsel").font(.caption.weight(.semibold))
+                    Spacer()
+                    Toggle("Radierer", isOn: $workspace.erases).toggleStyle(.checkbox).font(.caption)
+                    Button { workspace.brush.clear() } label: { Image(systemName: "trash.slash") }
+                        .buttonStyle(.plain).help("Pinselstriche löschen").accessibilityLabel("Pinselstriche löschen")
+                }
+                valueSlider("Radius", value: Binding(get: { workspace.brush.radius }, set: { workspace.brush.radius = $0 }), range: 1...250, neutral: 30, model: model)
+                valueSlider("Härte", value: Binding(get: { workspace.brush.hardness }, set: { workspace.brush.hardness = $0 }), range: 0...1, neutral: 0.8, model: model)
+            }
+            Divider()
+            HStack {
+                Text("Lokale Korrekturen").font(.caption.weight(.semibold))
+                Spacer()
+                Button { model.updateSelected { $0.settings = .neutral } } label: { Image(systemName: "arrow.counterclockwise") }
+                    .buttonStyle(.plain).help("Lokale Regler zurücksetzen").accessibilityLabel("Lokale Regler zurücksetzen")
+            }
+            ForEach(LocalMaskControl.allCases) { control in
+                valueSlider(control.title, value: Binding(get: { workspace.selected?.settings[keyPath: control.keyPath] ?? 0 },
+                    set: { value in model.updateSelected { $0.settings[keyPath: control.keyPath] = value } }), range: control.range, model: model)
+            }
+        }
+    }
+    private func valueSlider(_ title: String, value: Binding<Double>, range: ClosedRange<Double>, neutral: Double = 0, model: LocalAdjustmentEditorModel) -> some View {
+        let input = LocalMaskSliderInput(value: value, model: model)
+        return VStack(spacing: 3) {
+            HStack {
+                Text(title).font(.system(size: 11)); Spacer()
+                Text(value.wrappedValue, format: .number.precision(.fractionLength(range.upperBound <= 5 ? 2 : 0)))
+                    .font(.system(size: 10, design: .monospaced)).foregroundStyle(Theme.muted)
+            }
+            ResettableSlider(value: input.value, in: range, neutralValue: neutral,
+                onEditingChanged: input.onEditingChanged)
+                .controlSize(.small).accessibilityLabel(title)
+        }
+    }
+}
+
+/// A native click may finish before SwiftUI dismantles controls after selection
+/// changes. Bind the action itself to its selected layer as well as the view ID.
+@MainActor
+struct LocalMaskSliderInput {
+    let value: Binding<Double>
+    let onEditingChanged: (Bool) -> Void
+
+    init(value: Binding<Double>, model: LocalAdjustmentEditorModel) {
+        let selectedID = model.selectedID
+        self.value = Binding(get: { value.wrappedValue }, set: { newValue in
+            guard model.selectedID == selectedID else { return }
+            value.wrappedValue = newValue
+        })
+        onEditingChanged = { editing in
+            if editing {
+                guard model.selectedID == selectedID else { return }
+                model.beginChange()
+            } else { model.endChange() }
+        }
     }
 }
 
@@ -393,8 +396,8 @@ private actor LocalMaskOverlayWorker {
         try Task.checkCancellation()
         let extent = CGRect(x: 0, y: 0, width: size.width, height: size.height)
         let scalar = try LocalAdjustmentRenderer.maskImage(mask, extent: extent)
-        guard let image = alphaKernel?.apply(extent: extent, arguments: [scalar]) else { throw EditRenderError.unavailable }
-        guard let bitmap = context.createCGImage(image, from: extent) else { throw EditRenderError.unavailable }
+        guard let image = alphaKernel?.apply(extent: extent, arguments: [scalar]),
+              let bitmap = context.createCGImage(image, from: extent) else { throw EditRenderError.unavailable }
         return bitmap
     }
 }
@@ -404,33 +407,13 @@ private enum LocalMaskControl: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var title: String {
         switch self {
-        case .exposure: "Belichtung"
-        case .contrast: "Kontrast"
-        case .highlights: "Lichter"
-        case .shadows: "Tiefen"
-        case .whites: "Weiß"
-        case .blacks: "Schwarz"
-        case .texture: "Struktur"
-        case .clarity: "Klarheit"
-        case .dehaze: "Dunst entfernen"
-        case .vibrance: "Dynamik"
-        case .saturation: "Sättigung"
+        case .exposure: "Belichtung"; case .contrast: "Kontrast"; case .highlights: "Lichter"; case .shadows: "Tiefen"; case .whites: "Weiß"; case .blacks: "Schwarz"; case .texture: "Struktur"; case .clarity: "Klarheit"; case .dehaze: "Dunst entfernen"; case .vibrance: "Dynamik"; case .saturation: "Sättigung"
         }
     }
     var range: ClosedRange<Double> { self == .exposure ? -5...5 : -100...100 }
     var keyPath: WritableKeyPath<LocalAdjustmentSettings, Double> {
         switch self {
-        case .exposure: \.exposure
-        case .contrast: \.contrast
-        case .highlights: \.highlights
-        case .shadows: \.shadows
-        case .whites: \.whites
-        case .blacks: \.blacks
-        case .texture: \.texture
-        case .clarity: \.clarity
-        case .dehaze: \.dehaze
-        case .vibrance: \.vibrance
-        case .saturation: \.saturation
+        case .exposure: \.exposure; case .contrast: \.contrast; case .highlights: \.highlights; case .shadows: \.shadows; case .whites: \.whites; case .blacks: \.blacks; case .texture: \.texture; case .clarity: \.clarity; case .dehaze: \.dehaze; case .vibrance: \.vibrance; case .saturation: \.saturation
         }
     }
 }

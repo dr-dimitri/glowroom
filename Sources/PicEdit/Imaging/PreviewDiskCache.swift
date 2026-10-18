@@ -37,7 +37,7 @@ actor PreviewDiskCache {
     }
 
     func image(for request: PreviewRequest) -> PreviewBitmap? {
-        guard byteLimit > 0, !Task.isCancelled else { return nil }
+        guard byteLimit > 0, !request.allowsHDR, !Task.isCancelled else { return nil }
         loadIndexIfNeeded()
         let key = Self.key(for: request)
         guard var entry = entries[key] else { return nil }
@@ -72,7 +72,7 @@ actor PreviewDiskCache {
     }
 
     func store(_ bitmap: PreviewBitmap, for request: PreviewRequest) {
-        guard byteLimit > 0, !Task.isCancelled,
+        guard byteLimit > 0, !request.allowsHDR, !Task.isCancelled,
               bitmap.image.width > 0, bitmap.image.height > 0,
               max(bitmap.image.width, bitmap.image.height) <= request.pixelSize else { return }
         loadIndexIfNeeded()

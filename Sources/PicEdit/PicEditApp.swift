@@ -106,7 +106,7 @@ struct PicEditApp: App {
                     .keyboardShortcut("o", modifiers: .command)
                     .disabled(!library.canModify || library.isImporting)
                 Divider()
-                Button(library.selectedIDs.count > 1 ? "Ausgewählte Fotos als JPEG exportieren …" : "Foto als JPEG exportieren …") {
+                Button(library.selectedIDs.count > 1 ? "Ausgewählte Fotos exportieren …" : "Foto exportieren …") {
                     JPEGExportActions.present(using: exporter, library: library, editor: editor)
                 }
                 .keyboardShortcut("e", modifiers: [.command, .shift])
@@ -216,7 +216,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard let library else { return .terminateNow }
         if exporter?.isExporting == true {
             let alert = NSAlert()
-            alert.messageText = "Der JPEG-Export läuft noch."
+            alert.messageText = "Der Export läuft noch."
             alert.informativeText = "Warte bis zum Abschluss oder brich den Export im Exportdialog ab, bevor du PicEdit beendest."
             alert.addButton(withTitle: "Zurück zum Export")
             alert.runModal()

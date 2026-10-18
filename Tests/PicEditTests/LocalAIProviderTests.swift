@@ -86,7 +86,7 @@ struct LocalAIProviderTests {
         let object = try #require(JSONSerialization.jsonObject(with: Data(prompt.data.utf8)) as? [String: Any])
         #expect(Set(object.keys) == ["promptVersion", "schemaVersion", "responseType", "parameters", "userText"])
         #expect(object["userText"] as? String == request.prompt)
-        #expect(object["promptVersion"] as? Int == 2)
+        #expect(object["promptVersion"] as? Int == 3)
         let parameters = try #require(object["parameters"] as? [[String: Any]])
         #expect(parameters.count == EditParameter.allCases.count)
         #expect(parameters.allSatisfy { Set($0.keys) == ["name", "minimum", "maximum", "baseline"] })

@@ -125,7 +125,9 @@ struct DetailView: View {
     @ViewState<Bool> private var zoomed = false
     @ViewState private var canvasSize = CGSize.zero
     @ViewState private var zoomCanvasSize = CGSize.zero
-    @Binding var showsMaskEditor: Bool
+    var openMasks: () -> Void
+    @EnvironmentObject private var maskWorkspace: InlineMaskWorkspace
+    @EnvironmentObject private var developWorkspace: DevelopWorkspace
     var body: some View {
         GeometryReader { available in
         VStack(spacing: 0) {
@@ -137,7 +139,7 @@ struct DetailView: View {
                     Spacer()
                     Text(asset.fileName + previewLabel).font(.system(size: 11)).foregroundStyle(Theme.muted).lineLimit(1)
                     Spacer()
-                    Button { showsMaskEditor = true } label: {
+                    Button { openMasks() } label: {
                         Label("Masken", systemImage: "circle.dashed.inset.filled").font(.system(size: 10))
                     }.buttonStyle(.plain).help("Masken hinzufügen und Bildbereiche lokal korrigieren")
                         .accessibilityIdentifier("workspace.mask")
@@ -149,19 +151,19 @@ struct DetailView: View {
                         Button("Importiertes Original") { model.comparesOriginal = true; model.comparesCurrentSourceWithoutSettings = false }
                         Button("Aktuelle Quelle ohne Regler") { model.comparesOriginal = false; model.comparesCurrentSourceWithoutSettings = true }
                     } label: { Label("Vergleich", systemImage: "rectangle.lefthalf.inset.filled").font(.system(size: 11)) }
-                        .menuStyle(.borderlessButton).fixedSize()
+                        .menuStyle(.borderlessButton).fixedSize().disabled(maskWorkspace.isPresented)
                 }.padding(.horizontal, layout.isFocused ? 14 : 23).frame(height: layout.isFocused ? 34 : 46)
                 GeometryReader { geometry in
                     if zoomed {
                         ScrollView([.horizontal, .vertical]) {
-                            EditingPhotoPreview(asset: asset, intent: model.editingRenderIntent, settingsOverride: previewSettings(for: asset.id), developing: model.isDeveloping)
+                            developCanvas(asset: asset)
                                 // Capture magnification once; resizing panels only
                                 // changes the viewport around this scroll content.
                                 .frame(width: zoomCanvasSize.width, height: zoomCanvasSize.height)
                                 .onTapGesture(count: 2) { zoomed = false }
                         }
                     } else {
-                        EditingPhotoPreview(asset: asset, intent: model.editingRenderIntent, settingsOverride: previewSettings(for: asset.id), developing: model.isDeveloping)
+                        developCanvas(asset: asset)
                             .padding(.horizontal, 25).padding(.vertical, 10)
                             .frame(width: geometry.size.width, height: geometry.size.height)
                             .onTapGesture(count: 2) { toggleZoom(viewport: geometry.size) }
@@ -195,6 +197,25 @@ struct DetailView: View {
         }
     }
 
+    private func developCanvas(asset: PhotoAsset) -> some View {
+        ZStack {
+            EditingPhotoPreview(asset: asset, intent: model.editingRenderIntent,
+                settingsOverride: previewSettings(for: asset.id), developing: model.isDeveloping)
+            if maskWorkspace.isPresented {
+                InlineMaskCanvas(workspace: maskWorkspace).allowsHitTesting(developWorkspace.isOriginalCanvasReady)
+            } else if model.isDeveloping, model.editingRenderIntent == .currentEditing {
+                DevelopCanvasInteraction(asset: asset, workspace: developWorkspace)
+            }
+            if developWorkspace.tool == .basic, !developWorkspace.picksWhiteBalance,
+               let analysis = developWorkspace.analysis,
+               let overlay = analysis.clippingImage(shadows: developWorkspace.showsShadows, highlights: developWorkspace.showsHighlights),
+               developWorkspace.showsShadows || developWorkspace.showsHighlights {
+                Image(decorative: overlay, scale: 1).resizable().interpolation(.none)
+                    .aspectRatio(contentMode: .fit).allowsHitTesting(false)
+            }
+        }
+    }
+
     private func toggleZoom(viewport: CGSize) {
         if !zoomed {
             zoomCanvasSize = CGSize(width: max(1, viewport.width * 2), height: max(1, viewport.height * 2))
@@ -212,8 +233,15 @@ struct DetailView: View {
     }
 
     private func previewSettings(for assetID: String) -> EditSettings {
-        assistant.displaySettings(assetID: assetID, committed: editor.settings(for: assetID),
-                                  developing: model.isDeveloping, comparesOriginal: model.comparesOriginal)
+        var settings = maskWorkspace.previewSettings ?? assistant.displaySettings(assetID: assetID,
+            committed: editor.settings(for: assetID), developing: model.isDeveloping, comparesOriginal: model.comparesOriginal)
+        if developWorkspace.tool.usesOriginalCanvas || developWorkspace.picksWhiteBalance {
+            settings.developGeometry.crop = nil
+            settings.developGeometry.quarterTurns = 0
+            settings.developGeometry.flipHorizontal = false
+            settings.developGeometry.flipVertical = false
+        }
+        return settings
     }
 
     private func filmstrip(height: Double) -> some View {
