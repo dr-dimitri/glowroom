@@ -70,10 +70,19 @@ Bildjobs teilen die bestehende einzelne lokale Inferenzlease. Die deklarierte Su
 
 Die normalen Tests verwenden deterministische Fakeprovider und isolierte temporäre Kataloge/Stores. Gesteuerte Fortsetzungen statt zeitbasierter Vermutungen prüfen Queuegrenzen, Abbruchignorierung, schnelle Änderungen, ungültige Antworten und einmaliges Übernehmen. Es gibt keine realen Modellaufrufe, Netzwerkanfragen, Downloads oder API-Kosten im Testpfad.
 
+Die Produktionsdeadline für Bildgenerierung beginnt mit dem Eintritt in `generate`. Der Test für den abschließenden Beobachter-Lookup wartet deshalb erst nach dessen Gate und nach dem nachgewiesenen Ende der nativen Arbeit samt Freigabe der Inferenzlease weitere 1,1 Sekunden; die Produktionsfrist im Test bleibt bei einer Sekunde. Beide Testfälle starten den `generate`-Aufruf ohne beziehungsweise mit 250 Millisekunden Verzögerung. Diese Verzögerung übersteigt die frühere Reserve von 100 Millisekunden und prüft, dass die Wartefrist am erreichten Gate beginnt. Swift-Testing-Suites bleiben parallel ausführbar; ihre Serialisierung ersetzt diese Synchronisierung nicht.
+
 Für gezielte Prüfungen kann `scripts/test.sh` mit einem eigenen `PICEDIT_TEST_BUILD_PATH` und einem Swift-Testing-Filter verwendet werden. Unabhängige Test-/Buildläufe benötigen getrennte Buildverzeichnisse. Der verpflichtende abschließende saubere App-Build und das Diffreview folgen weiterhin `AGENTS.md` und dem Abschnitt „Entwickeln und prüfen“ im README.
 
 ```sh
 PICEDIT_TEST_BUILD_PATH=/tmp/picedit-ai-tests ./scripts/test.sh --jobs 4 --filter AI
+```
+
+Der Deadline-Test und anschließend die vollständige Suite mit der normalen parallelen Swift-Testing-Ausführung lassen sich so prüfen:
+
+```sh
+PICEDIT_TEST_BUILD_PATH=/tmp/picedit-image-generation-tests ./scripts/test.sh --jobs 4 --filter ImageGenerationServiceTests/expirationDuringFinalCurrentTokenLookupCannotPublishAfterTimerWasCancelled
+PICEDIT_TEST_BUILD_PATH=/tmp/picedit-image-generation-tests ./scripts/test.sh --jobs 4
 ```
 
 Der echte lokale Textprovider aus [Issue #3](https://github.com/dr-dimitri/picedit/issues/3) und die bewusste Vorschau-/Übernahmeoberfläche aus [Issue #4](https://github.com/dr-dimitri/picedit/issues/4) sind in der [Assistentendokumentation](LOCAL-AI-ASSISTANT.md) beschrieben. [Issue #5](https://github.com/dr-dimitri/picedit/issues/5) ergänzt [drei Lookvarianten](AI-LOOKS.md) als gemeinsamen Auftrag mit strikt validierter Gruppe. Diese Aufgaben verwenden denselben Speicherpfad und denselben begrenzten Coordinator; der Requestmodus unterscheidet die Antwortformen.

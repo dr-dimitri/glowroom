@@ -177,13 +177,17 @@ struct ImageGenerationServiceTests {
         #expect((0..<6).allSatisfy { bytes[$0 * 4..<$0 * 4 + 3] == original[$0 * 3..<$0 * 3 + 3] && bytes[$0 * 4 + 3] == 255 })
     }
 
-    @Test func expirationDuringFinalCurrentTokenLookupCannotPublishAfterTimerWasCancelled() async throws {
+    @Test(arguments: [Duration.zero, .milliseconds(250)])
+    func expirationDuringFinalCurrentTokenLookupCannotPublishAfterTimerWasCancelled(startDelay: Duration) async throws {
         let backend = GenerationGateBackend(), budget = AIResourceBudget(), job = try generationJob()
         let service = ImageGenerationService(backend: backend, budget: budget, resources: generationResources(), timeout: .seconds(1))
         let gate = GenerationObserverTokenGate(job.request.token)
-        let clock = ContinuousClock(), began = clock.now
+        let clock = ContinuousClock()
         let task = Task {
-            try await GenerationObserverContext.$isObserver.withValue(true) {
+            // Model a caller task that does not reach generate immediately.
+            // This delay exceeds the old test's 100 ms deadline margin.
+            try await Task.sleep(for: startDelay)
+            return try await GenerationObserverContext.$isObserver.withValue(true) {
                 try await service.generate(job, currentToken: {
                     await gate.token(isObserver: GenerationObserverContext.isObserver)
                 })
@@ -193,9 +197,19 @@ struct ImageGenerationServiceTests {
         // Only the observer's final lookup waits. Detached native work and the
         // actor's completion check have already finished and canceled the timer.
         await gate.waitForObserverLookup()
-        await waitGeneration(service) { $0.runningCount == 0 }
+        await waitGeneration(service) { $0.runningCount == 0 && $0.observerCount == 0 }
         #expect(await generationBudgetState(budget).activeInferences == 0)
-        try await clock.sleep(until: began.advanced(by: .milliseconds(1_100)))
+        // The service starts its deadline only when generate is entered. Anchor
+        // this wait after the final lookup was reached, never before task launch.
+        let finalLookupReached = clock.now
+        do {
+            try await clock.sleep(until: finalLookupReached.advanced(by: .milliseconds(1_100)))
+        } catch {
+            task.cancel()
+            await gate.releaseObserver()
+            _ = await task.result
+            throw error
+        }
         await gate.releaseObserver()
         await generationError(task, .timedOut)
     }
