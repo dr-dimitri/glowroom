@@ -10,6 +10,7 @@ import UniformTypeIdentifiers
 /// product compositor. This is a compositor regression/quality inspection;
 /// neither inference timing nor model support is inferred from a replay.
 enum ImageGenerationReplay {
+    enum CandidateAlphaPolicy: Equatable, Sendable { case historicalWhiteMatte, straightRGB }
     struct CaseReport: Codable, Sendable {
         let caseID: String
         let width: Int
@@ -61,7 +62,8 @@ enum ImageGenerationReplay {
         "03-mask-edge-soft", "04-partial-alpha-hard", "05-fine-motif-edges-hard", "06-nonsquare-canvas-hard"]
 
     @discardableResult
-    static func run(historicalRoot: URL, outputRoot: URL, caseIDs: [String] = distinctCaseIDs) async throws -> Report {
+    static func run(historicalRoot: URL, outputRoot: URL, caseIDs: [String] = distinctCaseIDs,
+                    candidateAlphaPolicy: CandidateAlphaPolicy = .historicalWhiteMatte) async throws -> Report {
         let historical = historicalRoot.standardizedFileURL, output = outputRoot.standardizedFileURL
         guard historical.isFileURL, output.isFileURL, historical.path != output.path,
               !output.path.hasPrefix(historical.path + "/"), !historical.path.hasPrefix(output.path + "/") else {
@@ -96,9 +98,9 @@ enum ImageGenerationReplay {
                 throw Failure.invalidInput("\(id): source/raw/mask dimensions differ")
             }
             let original = try rgba8Bytes(source.image), rawPixels = try rgba8Bytes(raw.image)
-            // Historical fixture 04 explicitly declares preserve-source-alpha;
-            // inference receives white-matted RGB. Reconstruct that declared
-            // candidate alpha before using the unchanged current compositor.
+            // Fixture 04 preserves source alpha. The caller declares whether
+            // its raw RGB came from the historical white-matte route or the
+            // new straight-RGB route; retain that distinction in the report.
             let partialAlpha = id == "04-partial-alpha-hard"
             let candidate = partialAlpha ? try replacingAlpha(of: raw, from: source) : raw
             let candidatePixels = try rgba8Bytes(candidate.image)
@@ -155,7 +157,11 @@ enum ImageGenerationReplay {
                 outsidePixelsChecked: outsidePixels, outsideRGBABytesChanged: outsideBytesChanged,
                 sourceAlphaBytesChanged: alphaChanged, nativeROIPixelsChecked: roiPixels, nativeROIRGBABytesChanged: roiChanges,
                 outputProfile: "sRGB", outputAlpha: "straight RGBA8", pngRoundTripIdentical: true,
-                alphaPolicy: partialAlpha ? "Historical fixture policy: source alpha copied onto the white-matted RGB model candidate before composition" : "Model candidate alpha (opaque RGB input/output)",
+                alphaPolicy: partialAlpha
+                    ? (candidateAlphaPolicy == .straightRGB
+                        ? "Straight RGB model input/output, no pre-matting; original source alpha restored before composition"
+                        : "Historical fixture policy: source alpha copied onto the white-matted RGB model candidate before composition")
+                    : "Model candidate alpha (opaque RGB input/output)",
                 comparisonFile: comparisonName, qualitativeReview: "pending-manual-review-current-compositor"))
             withExtendedLifetime((rawPixels, final, candidate, source, raw)) {}
         }

@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "route": "mlboydaisuke/LaMa-CoreML@5ed76e3799ab4cad31381750d29880c267477e18",
+  "purpose": "Technical evaluation of text-free masked removal; no product capability or distribution approval",
+  "reference": "Apple Silicon, at least 16 GiB, macOS 14 or newer",
+  "maximumResidentBytes": 6442450944,
+  "maximumLoadSeconds": 45,
+  "maximumPredictionSeconds": 180,
+  "modelCanvas": [800, 800],
+  "inputMapping": "native pixels, centered integer translation, clamped RGB context padding; no scaling",
+  "modelAlpha": "explicit white matte; retain original source alpha in final compositor",
+  "modelMask": "Gray8 >=128 replaces; padding mask zero; original soft mask retained for final compositor",
+  "computeUnits": "all",
+  "lowPrecisionGPUAccumulation": false,
+  "minimumWarmRepeats": 3,
+  "requiredRemovalCases": ["01-structured-removal-hard", "02-edge-object-hard", "03-mask-edge-hard", "03-mask-edge-soft", "04-partial-alpha-hard", "05-fine-motif-edges-hard"],
+  "diagnosticOnlyCases": ["06-nonsquare-canvas-hard"],
+  "quality": "Object disappears without a new object, visible seam, texture discontinuity or halo; original zero-mask RGBA remains byte-identical after the current product compositor",
+  "releaseConditions": "A technical pass alone is insufficient: complete source/conversion/weight-license provenance, actual product-adapter tests, cancellation and interactive-preview measurements are required before a new capability Go. Background prompts and outpainting are not removal capabilities."
+}

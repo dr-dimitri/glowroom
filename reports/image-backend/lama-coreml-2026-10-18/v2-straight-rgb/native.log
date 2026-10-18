@@ -1,0 +1,10 @@
+LaMa 01-structured-removal-hard: 0.7401400001253933s
+LaMa warm-1: 0.40938687487505376s
+LaMa warm-2: 0.4087017080746591s
+LaMa warm-3: 0.40877354168333113s
+LaMa 02-edge-object-hard: 0.4083247499074787s
+LaMa 03-mask-edge-hard: 0.40868787514045835s
+LaMa 03-mask-edge-soft: 0.40861129155382514s
+LaMa 04-partial-alpha-hard: 0.40823554154485464s
+LaMa 05-fine-motif-edges-hard: 0.40877370815724134s
+LaMa 06-nonsquare-canvas-hard: 0.40798966656439006s

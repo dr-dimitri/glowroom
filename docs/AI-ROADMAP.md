@@ -1,0 +1,31 @@
+# KI-Roadmap: Stand und nächste Freigabe
+
+Stand: **18. Oktober 2026**. [Issue #1](https://github.com/dr-dimitri/picedit/issues/1) verfolgt die Gesamtarbeit; die Teilissues enthalten die verbindlichen Voraussetzungen. Ein geschlossenes Evaluationsissue kann eine negative Entscheidung belegen. Es bestätigt damit keine nutzbare Bildgenerierung.
+
+| Arbeitspaket | Geprüfter Stand | Weitere Voraussetzung |
+| --- | --- | --- |
+| [#2–9](https://github.com/dr-dimitri/picedit/issues/2) – Verträge, Assistent, Looks, Analyse, Metadaten, Suche und optionaler Text-Cloudprovider | Geschlossen | Die jeweils dokumentierte Modell-/Systemverfügbarkeit gilt weiterhin. |
+| [#10](https://github.com/dr-dimitri/picedit/issues/10) – dauerhafte Varianten und Bearbeitungspakete | Geschlossen | Die Speichergrundlage allein erzeugt keine neuen Bildpixel. |
+| [#11](https://github.com/dr-dimitri/picedit/issues/11) – Masken und Compositor | Geschlossen | Die Maskengrundlage erteilt keine Modellfreigabe. |
+| [#12](https://github.com/dr-dimitri/picedit/issues/12) – Bildbackend-Gate | Geschlossen mit **`fullNoGo`** | [Entscheidung und echte Nachweise](AI-IMAGE-BACKEND-DECISION.md); kein lokales oder Cloud-Go. |
+| [#74](https://github.com/dr-dimitri/picedit/issues/74) – separate lokale LaMa-Evaluation | Technisch geprüft; Produkt-No-Go bleibt | Echte Inferenz und aktueller Compositor belegt; Qualitäts- und weitere Produktnachweise reichen nicht für eine Freigabe. |
+| [#13](https://github.com/dr-dimitri/picedit/issues/13) – generativ entfernen | Offen und blockiert | Nachgewiesenes Inpainting-Go über die tatsächliche Produktroute. |
+| [#14](https://github.com/dr-dimitri/picedit/issues/14) – Hintergrund ersetzen | Offen und blockiert | #13 und eigener Fähigkeitsnachweis für Hintergrundbearbeitung. |
+| [#15](https://github.com/dr-dimitri/picedit/issues/15) – Arbeitsfläche erweitern | Offen und blockiert | #13 und eigener Fähigkeitsnachweis für Outpainting. |
+| [#16](https://github.com/dr-dimitri/picedit/issues/16) – Varianten als JPEG exportieren | Offen und blockiert | #13 muss abgeschlossen sein; anschließend den bestehenden Export integrieren. |
+
+Der reguläre JPEG-Exporter ist bereits eingecheckt und exportiert Originalquellen mit übernommenen Reglerwerten. Für aktive Rastervarianten ist der JPEG-Export ausdrücklich gesperrt; es gibt keinen stillen Originalfallback. Varianten, Masken und Provenienz sind über die [Speichergrundlage](ARTIFACT-STORAGE.md) verfügbar. Die gegenteiligen Aussagen im historischen Planungsstand vom 16. Oktober sind keine Beschreibung des aktuellen Codes.
+
+## Fortsetzung nach dem No-Go
+
+Die geprüfte SD-1.5-Route bleibt wegen ihrer Bildqualität abgelehnt. Ein weiterer Kandidat muss eigene Nachweise liefern; die vorhandenen Messwerte werden nicht umgedeutet. [Issue #74](https://github.com/dr-dimitri/picedit/issues/74) verfolgt die [getrennte LaMa-Evaluation](../tools/lama-evaluation/README.md) eines lokalen, textfreien Entferners anhand derselben eingefrorenen synthetischen Bilder und Masken. Die native Core-ML-Schnittstelle wurde mit 800×800-RGB-Buffern und Gray8-Maske geprüft. Installation, Schnittstellenprüfung und tatsächliche Inferenz bleiben getrennte ausdrückliche Schritte. Es werden keine Modellgewichte im Repository verteilt.
+
+Die erste echte Serie **V1** ist samt damaligem Quellstand unter [v1-white-matte](../reports/image-backend/lama-coreml-2026-10-18/v1-white-matte/) archiviert. Sie deckte zwei Fehler der Evaluationsvorbereitung auf: Weißes Vormatten vor späterer Wiederanwendung des Quellalpha erzeugte einen hellen Fleck; am Bildrand geklammerte RGB-Pixel konnten ein markiertes Objekt im künstlichen, unmaskierten Kontext erneut anbieten. Die korrigierte **V2** verwendet gerades, nicht mit Alpha multipliziertes RGB und denselben Clamp-Sampler für RGB und binäre Modellmaske, einschließlich des künstlichen Paddings. Quellalpha und native weiche Maske bleiben getrennt für das finale Compositing. Die fachlichen und zeitlichen Grenzen wurden nicht gelockert. V1 und die historische SD-1.5-Auswertung bleiben erhalten.
+
+**V2 wurde tatsächlich ausgeführt: Die technische Inferenz funktioniert, das Produkt-No-Go bleibt bestehen.** Der [LaMa-Bericht](../reports/image-backend/lama-coreml-2026-10-18/README.md) hält zehn Vorhersagen und den aktuellen Compositor-Replay fest. Das Modell lud in 2,160 Sekunden; die erste Vorhersage benötigte 0,740 Sekunden, die drei warmen Wiederholungen jeweils rund 0,409 Sekunden. Peak-RSS betrug 768.507.904 Byte, der maximale physische Footprint 1.460.978.984 Byte; diese Werte betreffen nur den eigenen Prozess, nicht vollständig ausgelagerte Core-ML-Dienste.
+
+Die durch V1 verursachten Rand- und Alphafehler sind mit der korrigierten Vorbereitung behoben. Kleine Objektentfernung ist auf den geprüften Bildern vielversprechend. Der erforderliche Fall `05-fine-motif-edges-hard` liefert jedoch einen großflächigen grünen Ersatz und verfehlt die fachlichen Anforderungen. Der diagnostische Canvasfall zeigt sichtbare Übergänge. Eine allgemeine Freigabe für alle Masken, Hintergrundersetzung oder Outpainting folgt daraus nicht. Die Evaluation bleibt textfrei; sie belegt keine Promptsteuerung.
+
+Vor einer neuen Freigabe fehlen vollständige Quell-/Konversions-/Gewichtsprovenienz und Verteilprüfung, fachlich ausreichende Bilder, die Integration über den echten Produktadapter sowie Nachweise zu Abbruch und gleichzeitig bedienbarer Vorschau. Das technische Werkzeug liefert für sich diese vollständigen Nachweise nicht. Bis zu einer entsprechend dokumentierten neuen Entscheidung bleiben alle produktiven Bildgenerierungsfähigkeiten unavailable und #13–16 offen.
+
+Die bestehende Reihenfolge bleibt verbindlich: erst ein tatsächliches Go für die benötigte Fähigkeit, dann #13; danach die jeweils freigegebenen Folgeoperationen und #16. Für die erste veröffentlichbare generative Bearbeitung müssen #13 und #16 abgeschlossen sein. Eine rein technische Evaluation wird nicht als Endnutzerfunktion angeboten.

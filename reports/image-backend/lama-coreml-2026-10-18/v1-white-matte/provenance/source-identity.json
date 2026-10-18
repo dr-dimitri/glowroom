@@ -1,0 +1,30 @@
+{
+  "baseCommit": "f65c433cc718680b746e6dd92768fb6326da58b9",
+  "purpose": "Unchanged v1 evaluation retained before correcting straight-RGB/source-alpha preprocessing",
+  "files": {
+    "Sources/PicEdit/DeveloperTools/LaMaEvaluation.swift": {
+      "bytes": 15536,
+      "sha256": "930d1c242f5d0ff7da100f328f51084aa300105db212aad965a7edf439edfc9c"
+    },
+    "Sources/PicEdit/DeveloperTools/LaMaEvaluationMapping.swift": {
+      "bytes": 1765,
+      "sha256": "092d98825587136c5d77736e7dbb387dfcb0d5af50c1b5de7a050693d452a087"
+    },
+    "Sources/PicEdit/DeveloperTools/ImageGenerationEvaluation.swift": {
+      "bytes": 31964,
+      "sha256": "fd8e5db8139a5457ba4d2e5d867ce4c84ec346bea79c2e0d1ecd922760efac00"
+    },
+    "Sources/PicEdit/DeveloperTools/ImageGenerationReplay.swift": {
+      "bytes": 24129,
+      "sha256": "29935ab29f1b121f8698a82c9f957318750cf85b11a231e593d7d268ac5a6832"
+    },
+    "tools/lama-evaluation/package.json": {
+      "bytes": 1062,
+      "sha256": "f0d76abd55c49ab77177491e1c3e6bafea0d346ef2adc512af7382d4e88e75ed"
+    },
+    "tools/lama-evaluation/criteria.json": {
+      "bytes": 1534,
+      "sha256": "8bc0fb5bfa928645afda573da51492d23d68dca979c977edadf8b622ca6dca74"
+    }
+  }
+}
