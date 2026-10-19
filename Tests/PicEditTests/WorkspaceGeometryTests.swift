@@ -29,7 +29,7 @@ struct WorkspaceGeometryTests {
             let context = try #require(NSGraphicsContext(bitmapImageRep: bitmap))
             NSGraphicsContext.saveGraphicsState()
             NSGraphicsContext.current = context
-            NSColor.systemPink.setFill()
+            NSColor(srgbRed: 1, green: 0.2, blue: 0.4, alpha: 1).setFill()
             NSBezierPath(rect: NSRect(x: 0, y: 0, width: CGFloat(width), height: CGFloat(height))).fill()
             NSGraphicsContext.restoreGraphicsState()
             let bytes = try #require(bitmap.representation(using: .png, properties: [:]))
@@ -92,11 +92,17 @@ struct WorkspaceGeometryTests {
                     // Let deferred SwiftUI layout and cached image publication settle.
                     try await Task.sleep(for: .milliseconds(80))
                     host.layout()
-                    let image = try #require(host.elements.filter { $0.accessibilityRole() == .image && $0.accessibilityLabel() == asset.fileName }
-                        .max { $0.accessibilityFrame().width * $0.accessibilityFrame().height < $1.accessibilityFrame().width * $1.accessibilityFrame().height })
                     // Accessibility groups use the union of their children, not
-                    // the empty canvas margins. Read the native GeometryReader.
-                    let viewport = host.canvasSize, rendered = image.accessibilityFrame().size
+                    // the empty canvas margins. NSImageView also fills its layout
+                    // box while proportionally drawing inside it. Measure the
+                    // synthetic pink pixels in its native snapshot separately.
+                    let viewport = host.canvasSize
+                    #if PICEDIT_WORKSPACE_BASELINE
+                    let rendered = try #require(host.elements.filter { $0.accessibilityRole() == .image && $0.accessibilityLabel() == asset.fileName }
+                        .max { $0.accessibilityFrame().width * $0.accessibilityFrame().height < $1.accessibilityFrame().width * $1.accessibilityFrame().height }).accessibilityFrame().size
+                    #else
+                    let rendered = try host.renderedImageSize()
+                    #endif
                     #expect(viewport.width > 0 && viewport.height > 0)
                     #expect(abs(rendered.width / rendered.height - Double(asset.pixelWidth) / Double(asset.pixelHeight)) < 0.01)
                     #expect(rendered.width <= viewport.width + 1 && rendered.height <= viewport.height + 1)
@@ -113,8 +119,7 @@ struct WorkspaceGeometryTests {
                     try await eventually { host.elements.contains { $0.accessibilityRole() == .image && $0.accessibilityLabel() == asset.fileName } }
                     try await Task.sleep(for: .milliseconds(80)); host.layout()
                     func imageSize() throws -> NSSize {
-                        try #require(host.elements.filter { $0.accessibilityRole() == .image && $0.accessibilityLabel() == asset.fileName }
-                            .max { $0.accessibilityFrame().width * $0.accessibilityFrame().height < $1.accessibilityFrame().width * $1.accessibilityFrame().height }).accessibilityFrame().size
+                        try host.renderedImageSize()
                     }
                     let magnified = try imageSize()
                     layout.update(developing: true) { $0.showsTools = true; $0.showsFilmstrip = true }
@@ -169,6 +174,45 @@ private final class GeometryHost {
     func mount(_ view: some View) { hosting.rootView = AnyView(view); layout() }
     func layout() { hosting.layoutSubtreeIfNeeded(); hosting.displayIfNeeded() }
     var elements: [WorkspaceAccessibilityElement] { WorkspaceAccessibilityElement.descendants(of: hosting) }
+    func renderedImageSize() throws -> NSSize {
+        var pending: [NSView] = [hosting]
+        var images: [NSImageView] = []
+        while let view = pending.popLast() {
+            pending.append(contentsOf: view.subviews)
+            if let image = view as? NSImageView, image.image != nil { images.append(image) }
+        }
+        let mainImage = try #require(images.max { $0.bounds.width * $0.bounds.height < $1.bounds.width * $1.bounds.height })
+        let snapshot = try #require(mainImage.bitmapImageRepForCachingDisplay(in: mainImage.bounds))
+        mainImage.cacheDisplay(in: mainImage.bounds, to: snapshot)
+        let image = try #require(snapshot.cgImage)
+        let width = image.width, height = image.height
+        var pixels = [UInt8](repeating: 0, count: width * height * 4)
+        let colorSpace = try #require(CGColorSpace(name: CGColorSpace.sRGB))
+        var minX = width, minY = height, maxX = -1, maxY = -1
+        try pixels.withUnsafeMutableBytes { bytes in
+            let context = try #require(CGContext(data: bytes.baseAddress, width: width, height: height,
+                bitsPerComponent: 8, bytesPerRow: width * 4, space: colorSpace,
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue | CGBitmapInfo.byteOrder32Big.rawValue))
+            context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+            let rgba = bytes.bindMemory(to: UInt8.self)
+            func isPink(x: Int, y: Int) -> Bool {
+                let index = (y * width + x) * 4
+                return rgba[index] > 220 && rgba[index + 1] < 100
+                    && rgba[index + 2] > 65 && rgba[index + 2] < 160
+            }
+            // The solid fixture is centered. Scan its two central axes rather
+            // than every pixel; independent view snapshots remain ordered.
+            for x in 0..<width where isPink(x: x, y: height / 2) {
+                minX = min(minX, x); maxX = max(maxX, x)
+            }
+            for y in 0..<height where isPink(x: width / 2, y: y) {
+                minY = min(minY, y); maxY = max(maxY, y)
+            }
+        }
+        try #require(maxX >= minX && maxY >= minY, "The native snapshot contains the synthetic pink photo")
+        return NSSize(width: Double(maxX - minX + 1) * mainImage.bounds.width / Double(width),
+                      height: Double(maxY - minY + 1) * mainImage.bounds.height / Double(height))
+    }
     func snapshot(to url: URL) throws {
         let bitmap = try #require(hosting.bitmapImageRepForCachingDisplay(in: hosting.bounds))
         hosting.cacheDisplay(in: hosting.bounds, to: bitmap)

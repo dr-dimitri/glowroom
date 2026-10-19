@@ -6,13 +6,16 @@ enum WorkspaceTool: String, CaseIterable, Codable, Identifiable {
 
     var id: String { rawValue }
 
+    /// Supporting information lives to the left of the image; adjustments live to its right.
+    var isNavigationTool: Bool { self != .edit }
+
     var title: String {
         switch self {
         case .edit: "Bearbeiten"
         case .assistant: "Assistent & Looks"
         case .analysis: "Bildanalyse"
         case .metadata: "Bildinformationen"
-        case .versions: "Bildstände & Vergleich"
+        case .versions: "Bildstände"
         }
     }
 
@@ -29,6 +32,9 @@ enum WorkspaceTool: String, CaseIterable, Codable, Identifiable {
 
 private enum WorkspaceLayoutMetrics {
     static let libraryRange = 180.0...360.0
+    // Develop navigation hosts the same forms as the adjustment inspector.
+    // Keep its native button rows usable instead of inheriting folder-tree widths.
+    static let navigationRange = 300.0...360.0
     static let toolsRange = 300.0...520.0
     static let filmstripRange = 80.0...220.0
     static let canvasWidth = 320.0
@@ -39,7 +45,7 @@ struct WorkspacePanels: Codable, Equatable {
     var showsLibrary = true
     var showsTools = true
     var showsFilmstrip = true
-    var libraryWidth = 218.0
+    var libraryWidth = 300.0
     var toolsWidth = 320.0
     var filmstripHeight = 98.0
     var openGroups: Set<WorkspaceTool> = [.edit]
@@ -48,6 +54,7 @@ struct WorkspacePanels: Codable, Equatable {
 
     static var libraryDefault: Self {
         var panels = Self()
+        panels.libraryWidth = 218
         panels.openGroups = [.metadata]
         return panels
     }
@@ -70,10 +77,10 @@ struct WorkspacePanels: Codable, Equatable {
     }
 
     init(from decoder: Decoder) throws {
-        try self.init(from: decoder, defaults: .developDefault)
+        try self.init(from: decoder, defaults: .developDefault, navigation: true)
     }
 
-    fileprivate init(from decoder: Decoder, defaults: Self) throws {
+    fileprivate init(from decoder: Decoder, defaults: Self, navigation: Bool) throws {
         self = defaults
         let values = try decoder.container(keyedBy: CodingKeys.self)
         showsLibrary = (try? values.decode(Bool.self, forKey: .showsLibrary)) ?? showsLibrary
@@ -90,16 +97,19 @@ struct WorkspacePanels: Codable, Equatable {
         if let names = try? values.decode(Set<String>.self, forKey: .openAdjustmentGroups) {
             openAdjustmentGroups = names
         }
-        normalize()
+        normalize(navigation: navigation)
     }
 
-    mutating func normalize() {
-        libraryWidth = Self.bounded(libraryWidth, fallback: 218, range: WorkspaceLayoutMetrics.libraryRange)
+    mutating func normalize(navigation: Bool = true) {
+        let leftRange = navigation ? WorkspaceLayoutMetrics.navigationRange : WorkspaceLayoutMetrics.libraryRange
+        libraryWidth = Self.bounded(libraryWidth, fallback: navigation ? 300 : 218, range: leftRange)
         toolsWidth = Self.bounded(toolsWidth, fallback: 320, range: WorkspaceLayoutMetrics.toolsRange)
         filmstripHeight = Self.bounded(filmstripHeight, fallback: 98, range: WorkspaceLayoutMetrics.filmstripRange)
         openAdjustmentGroups.formIntersection(["tone", "presence", "noise"])
-        if singleGroup, openGroups.count > 1 {
-            openGroups = Set(WorkspaceTool.allCases.first(where: openGroups.contains).map { [$0] } ?? [])
+        if singleGroup {
+            let firstNavigation = WorkspaceTool.allCases.first { $0.isNavigationTool && openGroups.contains($0) }
+            openGroups = Set(openGroups.filter { !$0.isNavigationTool })
+            if let firstNavigation { openGroups.insert(firstNavigation) }
         }
     }
 
@@ -124,7 +134,7 @@ final class WorkspaceLayoutModel: ObservableObject {
     @Published var library: WorkspacePanels {
         didSet {
             var normalized = library
-            normalized.normalize()
+            normalized.normalize(navigation: false)
             if normalized != library { library = normalized }
             persist()
         }
@@ -181,7 +191,7 @@ final class WorkspaceLayoutModel: ObservableObject {
         // Spawning parallel workers here would add synchronization without useful work.
         var panels = panels(developing: developing)
         mutate(&panels)
-        panels.normalize()
+        panels.normalize(navigation: isFocused || developing)
         if isFocused { focus = panels }
         else if developing { develop = panels }
         else { library = panels }
@@ -205,8 +215,10 @@ final class WorkspaceLayoutModel: ObservableObject {
             if panels.openGroups.contains(tool) {
                 panels.openGroups.remove(tool)
             } else {
-                if panels.singleGroup { panels.openGroups = [tool] }
-                else { panels.openGroups.insert(tool) }
+                if panels.singleGroup {
+                    panels.openGroups = panels.openGroups.filter { $0.isNavigationTool != tool.isNavigationTool }
+                }
+                panels.openGroups.insert(tool)
                 opened = true
             }
         }
@@ -215,9 +227,12 @@ final class WorkspaceLayoutModel: ObservableObject {
 
     func reveal(_ tool: WorkspaceTool, developing: Bool) {
         update(developing: developing) { panels in
-            panels.showsTools = true
-            if panels.singleGroup { panels.openGroups = [tool] }
-            else { panels.openGroups.insert(tool) }
+            if tool.isNavigationTool { panels.showsLibrary = true }
+            else { panels.showsTools = true }
+            if panels.singleGroup {
+                panels.openGroups = panels.openGroups.filter { $0.isNavigationTool != tool.isNavigationTool }
+            }
+            panels.openGroups.insert(tool)
         }
         requestReveal(tool)
     }
@@ -243,7 +258,8 @@ final class WorkspaceLayoutModel: ObservableObject {
         let desiredTotal = desiredLibrary + desiredTools
         guard desiredTotal > budget else { return (desiredLibrary, desiredTools) }
 
-        let minimumLibrary = panels.showsLibrary ? WorkspaceLayoutMetrics.libraryRange.lowerBound : 0
+        let leftRange = isFocused || developing ? WorkspaceLayoutMetrics.navigationRange : WorkspaceLayoutMetrics.libraryRange
+        let minimumLibrary = panels.showsLibrary ? leftRange.lowerBound : 0
         let minimumTools = panels.showsTools ? WorkspaceLayoutMetrics.toolsRange.lowerBound : 0
         let minimumTotal = minimumLibrary + minimumTools
         guard minimumTotal > 0 else { return (0, 0) }
@@ -303,13 +319,13 @@ final class WorkspaceLayoutModel: ObservableObject {
             let values = try decoder.container(keyedBy: CodingKeys.self)
             version = (try? values.decode(Int.self, forKey: .version)) ?? 1
             library = (try? values.superDecoder(forKey: .library)).flatMap {
-                try? WorkspacePanels(from: $0, defaults: .libraryDefault)
+                try? WorkspacePanels(from: $0, defaults: .libraryDefault, navigation: false)
             }
             develop = (try? values.superDecoder(forKey: .develop)).flatMap {
-                try? WorkspacePanels(from: $0, defaults: .developDefault)
+                try? WorkspacePanels(from: $0, defaults: .developDefault, navigation: true)
             }
             focus = (try? values.superDecoder(forKey: .focus)).flatMap {
-                try? WorkspacePanels(from: $0, defaults: .focusDefault)
+                try? WorkspacePanels(from: $0, defaults: .focusDefault, navigation: true)
             }
             isFocused = (try? values.decode(Bool.self, forKey: .isFocused)) ?? false
             focusOrigin = try? values.decode(WorkspaceFocusOrigin.self, forKey: .focusOrigin)

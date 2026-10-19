@@ -83,13 +83,16 @@ struct DevelopWorkspaceTests {
         let b = try bitmap(width: 40, height: 20) { _, _ in [40, 60, 80, 255] }
         workspace.bind(source: source("A"))
         workspace.receive(a, sourceBitmap: a)
+        #expect(workspace.navigatorImage === a.image)
         try await wait { await gate.pending(width: 20) == 1 }
         workspace.picksWhiteBalance = true
         workspace.repairSource = try LocalMaskPoint(x: 0.2, y: 0.4)
         workspace.bind(source: source("B"))
+        #expect(workspace.navigatorImage == nil)
         #expect(workspace.sourceAnalysis == nil && workspace.analysis == nil && workspace.sourceSize == nil)
         #expect(!workspace.picksWhiteBalance && workspace.repairSource == nil)
         workspace.receive(b, sourceBitmap: b)
+        #expect(workspace.navigatorImage === b.image)
         try await wait { await gate.pending(width: 40) == 1 }
         await gate.release(width: 40)
         try await wait { await gate.started(width: 40) == 2 }
@@ -113,12 +116,14 @@ struct DevelopWorkspaceTests {
         let second = try bitmap(width: 60, height: 30) { _, _ in [60, 80, 100, 255] }
         workspace.bind(source: source("A"))
         workspace.receive(first, sourceBitmap: sourceBitmap)
+        #expect(workspace.navigatorImage === first.image)
         try await wait { await gate.pending(width: 40) == 1 }
         await gate.release(width: 40)
         try await wait { await gate.pending(width: 20) == 1 }
         await gate.release(width: 20)
         try await wait { workspace.sourceAnalysis?.pixels.first == 20 && workspace.analysis?.pixels.first == 40 }
         workspace.receive(second, sourceBitmap: sourceBitmap)
+        #expect(workspace.navigatorImage === second.image)
         #expect(workspace.sourceAnalysis?.pixels.first == 20)
         try await wait { await gate.pending(width: 60) == 1 }
         await gate.release(width: 60)
@@ -127,6 +132,7 @@ struct DevelopWorkspaceTests {
         workspace.receive(first, sourceBitmap: sourceBitmap)
         try await wait { await gate.pending(width: 40) == 1 }
         workspace.clear()
+        #expect(workspace.navigatorImage == nil)
         await gate.release(width: 40)
         try await wait { await gate.returned(width: 40) == 2 }
         await Task.yield()

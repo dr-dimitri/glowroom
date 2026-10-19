@@ -6,7 +6,7 @@ struct WorkspaceFocusRoutingTests {
     @Test(arguments: [false, true])
     func closingNavigationOrFilmstripKeepsTheirReopenControlReachable(focused: Bool) {
         let visible = visibility(focused: focused)
-        #expect(target(from: visible, to: visibility(focused: focused, library: false)) == .library)
+        #expect(target(from: visible, to: visibility(focused: focused, library: false)) == (focused ? .tool(.assistant) : .library))
         #expect(target(from: visible, to: visibility(focused: focused, filmstrip: false)) == .filmstrip)
     }
 
@@ -17,9 +17,16 @@ struct WorkspaceFocusRoutingTests {
     }
 
     @Test(arguments: WorkspaceTool.allCases)
-    func closingFocusToolsReturnsToTheToolThatOpenedThem(_ tool: WorkspaceTool) {
+    func closingFocusAdjustmentsReturnsToTheirOwningTool(_ tool: WorkspaceTool) {
         #expect(target(from: visibility(focused: true),
-                       to: visibility(focused: true, tools: false), tool: tool) == .tool(tool))
+                       to: visibility(focused: true, tools: false), tool: tool) == .tool(.edit))
+    }
+
+    @Test(arguments: WorkspaceTool.allCases)
+    func closingFocusNavigationReturnsToItsLastGroupOrTheFirstNavigationTool(_ tool: WorkspaceTool) {
+        #expect(target(from: visibility(focused: true),
+                       to: visibility(focused: true, library: false), tool: tool)
+                == .tool(tool == .edit ? .assistant : tool))
     }
 
     @Test
@@ -28,6 +35,8 @@ struct WorkspaceFocusRoutingTests {
         let closed = visibility(focused: true, tools: false)
         #expect(target(from: visible, to: closed) == .tool(.edit))
         #expect(target(from: visible, to: closed, tool: .metadata, hasSelection: false) == .focus)
+        #expect(target(from: visible, to: visibility(focused: true, library: false),
+                       tool: .metadata, hasSelection: false) == .focus)
     }
 
     @Test

@@ -25,6 +25,8 @@ final class DevelopWorkspace: ObservableObject {
     @Published var repairFeather = 0.5
     @Published var redEyeStrength = 1.0
     @Published var repairSource: LocalMaskPoint?
+    /// Reuse the accepted preview frame; the navigator never requests another decode.
+    @Published private(set) var navigatorImage: CGImage?
     @Published private(set) var analysis: DevelopPreviewAnalysis?
     @Published private(set) var isAnalyzing = false
     @Published private(set) var sourceAnalysis: DevelopPreviewAnalysis?
@@ -50,6 +52,7 @@ final class DevelopWorkspace: ObservableObject {
         sourceIdentity = source
     }
     func receive(_ bitmap: PreviewBitmap, sourceBitmap: PreviewBitmap) {
+        navigatorImage = bitmap.image
         sourceSize = CGSize(width: sourceBitmap.image.width, height: sourceBitmap.image.height)
         let baseID = ObjectIdentifier(sourceBitmap.image)
         let needsBase = baseIdentity != baseID || sourceAnalysis == nil
@@ -82,6 +85,7 @@ final class DevelopWorkspace: ObservableObject {
     func clear() {
         identity = UUID(); analysisTask?.cancel(); analysisTask = nil
         displayedMapping = nil; hdrDisplayed = false
+        navigatorImage = nil
         analysis = nil; sourceAnalysis = nil; sourceSize = nil; baseIdentity = nil; sourceIdentity = nil; isAnalyzing = false; repairSource = nil
         picksWhiteBalance = false; tool = .basic; errorMessage = nil
     }
@@ -255,7 +259,6 @@ struct DevelopHistogram: View {
     @ObservedObject var workspace: DevelopWorkspace
     let asset: PhotoAsset
     @ObservedObject var library: LibraryModel
-    var allowsComparison = true
     var body: some View {
         VStack(spacing: 4) {
             HStack {
@@ -292,8 +295,6 @@ struct DevelopHistogram: View {
                 Spacer(minLength: 0); Text(asset.aperture ?? "ƒ —")
                 Spacer(minLength: 0); Text(asset.shutterSpeed ?? "— s")
             }.font(.system(size: 9)).foregroundStyle(Theme.muted).lineLimit(1).minimumScaleFactor(0.7)
-            Toggle("Originalfoto", isOn: $library.comparesOriginal).toggleStyle(.checkbox).disabled(!allowsComparison)
-                .font(.system(size: 10)).frame(maxWidth: .infinity, alignment: .leading)
         }.padding(8).background(Theme.panel)
     }
     private func clipButton(_ title: String, symbol: String, active: Binding<Bool>, count: Int, color: Color) -> some View {

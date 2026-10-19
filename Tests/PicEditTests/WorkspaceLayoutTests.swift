@@ -80,7 +80,7 @@ struct WorkspaceLayoutTests {
         #expect(layout.leaveFocus() == WorkspaceFocusOrigin(developing: false, showsDetail: false))
         #expect(layout.library == library && layout.develop == develop)
         layout.enterFocus()
-        #expect(layout.focus.showsLibrary && layout.focus.libraryWidth == 240)
+        #expect(layout.focus.showsLibrary && layout.focus.libraryWidth == 300)
         #expect(layout.focus.openGroups == [.assistant])
     }
 
@@ -145,19 +145,24 @@ struct WorkspaceLayoutTests {
         layout.toggleGroup(.assistant, developing: true)
         #expect(layout.develop.openGroups == [.edit, .assistant])
         layout.update(developing: true) { $0.singleGroup = true }
-        #expect(layout.develop.openGroups.count == 1)
+        #expect(layout.develop.openGroups == [.edit, .assistant], "Each column keeps its own open group")
         layout.toggleGroup(.analysis, developing: true)
-        #expect(layout.develop.openGroups == [.analysis])
+        #expect(layout.develop.openGroups == [.edit, .analysis])
         layout.toggleGroup(.analysis, developing: true)
-        #expect(layout.develop.openGroups.isEmpty)
-        layout.update(developing: true) { $0.showsTools = false }
+        #expect(layout.develop.openGroups == [.edit])
+        layout.update(developing: true) { $0.showsLibrary = false; $0.showsTools = false }
         let before = layout.revealRequest
         layout.reveal(.metadata, developing: true)
-        #expect(layout.develop.showsTools && layout.develop.openGroups == [.metadata])
+        #expect(layout.develop.showsLibrary && !layout.develop.showsTools)
+        #expect(layout.develop.openGroups == [.edit, .metadata])
         #expect(layout.revealedTool == .metadata && layout.revealRequest != before)
         let firstReveal = layout.revealRequest
         layout.reveal(.metadata, developing: true)
         #expect(layout.revealRequest != firstReveal, "The same group can be scrolled into view repeatedly")
+        layout.reveal(.edit, developing: true)
+        #expect(layout.develop.showsTools && layout.develop.openGroups == [.edit, .metadata])
+        layout.toggleGroup(.edit, developing: true)
+        #expect(layout.develop.openGroups == [.metadata])
         #expect(layout.library == library)
     }
 
@@ -176,6 +181,20 @@ struct WorkspaceLayoutTests {
         #expect(layout.develop.openAdjustmentGroups == ["presence"])
         #expect(layout.focus == .focusDefault)
         #expect(layout.isFocused)
+    }
+
+    @Test
+    func olderNarrowSidebarsKeepLibraryWidthAndReserveRoomForDevelopContent() throws {
+        let fixture = try Preferences()
+        defer { fixture.remove() }
+        let json = #"{"library":{"libraryWidth":218},"develop":{"libraryWidth":218},"focus":{"libraryWidth":218},"isFocused":true}"#
+        fixture.defaults.set(Data(json.utf8), forKey: WorkspaceLayoutModel.preferencesKey)
+        let layout = WorkspaceLayoutModel(defaults: fixture.defaults)
+        #expect(layout.library.libraryWidth == 218)
+        #expect(layout.develop.libraryWidth == 300 && layout.focus.libraryWidth == 300)
+        #expect(layout.boundedWidths(availableWidth: 1_000, developing: false).library == 0)
+        layout.update(developing: false) { $0.showsLibrary = true; $0.libraryWidth = 218 }
+        #expect(layout.focus.libraryWidth == 300, "Focus uses the develop navigation column even for a library origin")
     }
 
     @Test(arguments: ["not-json", "{\"version\":999,\"isFocused\":true}", "null", "[]"])
@@ -198,7 +217,7 @@ struct WorkspaceLayoutTests {
         layout.develop.filmstripHeight = -1
         layout.develop.singleGroup = true
         layout.develop.openGroups = [.versions, .assistant]
-        #expect(layout.develop.libraryWidth == 218 && layout.develop.toolsWidth == 320)
+        #expect(layout.develop.libraryWidth == 300 && layout.develop.toolsWidth == 320)
         #expect(layout.develop.filmstripHeight == 80)
         #expect(layout.develop.openGroups == [.assistant])
         #expect(WorkspaceLayoutModel(defaults: fixture.defaults).develop == layout.develop)

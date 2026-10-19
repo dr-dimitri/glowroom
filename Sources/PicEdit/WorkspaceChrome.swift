@@ -21,9 +21,14 @@ enum WorkspaceFocusRouting {
         if previous.isFocused != current.isFocused {
             return current.isFocused || hasSelection ? .focus : .library
         }
-        if previous.showsLibrary && !current.showsLibrary { return .library }
+        if previous.showsLibrary && !current.showsLibrary {
+            if !current.isFocused { return .library }
+            guard hasSelection else { return .focus }
+            let navigationTool = revealedTool.flatMap { $0.isNavigationTool ? $0 : nil } ?? .assistant
+            return .tool(navigationTool)
+        }
         if previous.showsTools && !current.showsTools {
-            return current.isFocused ? (hasSelection ? .tool(revealedTool ?? .edit) : .focus) : .tools
+            return current.isFocused ? (hasSelection ? .tool(.edit) : .focus) : .tools
         }
         if previous.showsFilmstrip && !current.showsFilmstrip { return .filmstrip }
         return nil
@@ -107,7 +112,7 @@ struct WorkspaceViewCommands: View {
         }.keyboardShortcut(shortcuts ? KeyboardShortcut("f", modifiers: [.command, .shift]) : nil)
             .disabled(!layout.isFocused && library.selectedAsset == nil)
         Divider()
-        Button(layout.panels(developing: library.isDeveloping).showsLibrary ? "Bibliothek ausblenden" : "Bibliothek einblenden") {
+        Button(leftPanelTitle + (layout.panels(developing: library.isDeveloping).showsLibrary ? " ausblenden" : " einblenden")) {
             WorkspaceActions.toggleLibrary(layout, library: library)
         }.keyboardShortcut(shortcuts ? KeyboardShortcut("l", modifiers: [.command, .option]) : nil)
         Button(layout.panels(developing: library.isDeveloping).showsTools ? "Werkzeuge ausblenden" : "Werkzeuge einblenden") {
@@ -116,10 +121,12 @@ struct WorkspaceViewCommands: View {
         Button(layout.panels(developing: library.isDeveloping).showsFilmstrip ? "Filmstreifen ausblenden" : "Filmstreifen einblenden") {
             WorkspaceActions.toggleFilmstrip(layout, library: library)
         }.keyboardShortcut(shortcuts ? KeyboardShortcut("s", modifiers: [.command, .option]) : nil)
-        Divider()
-        ForEach(WorkspaceTool.allCases) { tool in
-            Button(tool.title) { WorkspaceActions.reveal(tool, layout: layout, library: library) }
-                .disabled(library.selectedAsset == nil)
+        if shortcuts {
+            Divider()
+            ForEach(WorkspaceTool.allCases) { tool in
+                Button(tool.title) { WorkspaceActions.reveal(tool, layout: layout, library: library) }
+                    .disabled(library.selectedAsset == nil)
+            }
         }
         Divider()
         Button("Darstellung merken") { layout.remember() }
@@ -128,6 +135,8 @@ struct WorkspaceViewCommands: View {
             layout.reset(developing: library.isDeveloping)
         }
     }
+
+    private var leftPanelTitle: String { library.isDeveloping ? "Navigation" : "Bibliothek" }
 }
 
 struct WorkspaceDock: View {
@@ -138,7 +147,7 @@ struct WorkspaceDock: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            dockButton("Bibliothek", symbol: "sidebar.left", active: panels.showsLibrary) {
+            dockButton("Navigation", symbol: "sidebar.left", active: panels.showsLibrary) {
                 WorkspaceActions.toggleLibrary(layout, library: library)
             }.workspaceFocusTarget(focusedControl, equals: .library) {
                 WorkspaceActions.toggleLibrary(layout, library: library)
@@ -148,10 +157,9 @@ struct WorkspaceDock: View {
             }.workspaceFocusTarget(focusedControl, equals: .filmstrip) {
                 WorkspaceActions.toggleFilmstrip(layout, library: library)
             }
-            Divider().frame(height: 22)
-            ForEach(WorkspaceTool.allCases) { tool in
-                dockButton(tool.dockTitle, symbol: tool.symbol,
-                           active: panels.showsTools && panels.openGroups.contains(tool)) {
+            if !hiddenTools.isEmpty { Divider().frame(height: 22) }
+            ForEach(hiddenTools) { tool in
+                dockButton(tool.dockTitle, symbol: tool.symbol, active: false) {
                     WorkspaceActions.reveal(tool, layout: layout, library: library)
                 }.workspaceFocusTarget(focusedControl, equals: .tool(tool)) {
                     WorkspaceActions.reveal(tool, layout: layout, library: library)
@@ -166,8 +174,12 @@ struct WorkspaceDock: View {
             }
         }.font(.system(size: 11, weight: .medium)).buttonStyle(.plain)
             .padding(.horizontal, 16).frame(height: 50)
-            .background(Theme.sidebar)
+            .background(Theme.chrome)
             .overlay(alignment: .top) { Rectangle().fill(Theme.line).frame(height: 1) }
+    }
+
+    private var hiddenTools: [WorkspaceTool] {
+        WorkspaceTool.allCases.filter { $0.isNavigationTool ? !panels.showsLibrary : !panels.showsTools }
     }
 
     private func dockButton(_ title: String, symbol: String, active: Bool, action: @escaping () -> Void) -> some View {

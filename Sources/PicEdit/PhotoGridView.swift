@@ -125,34 +125,18 @@ struct DetailView: View {
     @ViewState<Bool> private var zoomed = false
     @ViewState private var canvasSize = CGSize.zero
     @ViewState private var zoomCanvasSize = CGSize.zero
-    var openMasks: () -> Void
     @EnvironmentObject private var maskWorkspace: InlineMaskWorkspace
     @EnvironmentObject private var developWorkspace: DevelopWorkspace
     var body: some View {
         GeometryReader { available in
         VStack(spacing: 0) {
             if let asset = model.selectedAsset {
-                HStack {
-                    if !layout.isFocused {
-                        Button { model.showsDetail = false } label: { Label("Übersicht", systemImage: "chevron.left").font(.system(size: 11)) }.buttonStyle(.plain)
-                    }
-                    Spacer()
-                    Text(asset.fileName + previewLabel).font(.system(size: 11)).foregroundStyle(Theme.muted).lineLimit(1)
-                    Spacer()
-                    Button { openMasks() } label: {
-                        Label("Masken", systemImage: "circle.dashed.inset.filled").font(.system(size: 10))
-                    }.buttonStyle(.plain).help("Masken hinzufügen und Bildbereiche lokal korrigieren")
-                        .accessibilityIdentifier("workspace.mask")
-                        .disabled(!model.canModify || model.editingRenderIntent != .currentEditing || editor.isLoading || editor.isRestoring || editor.isClosing)
-                    Button { toggleZoom(viewport: canvasSize) } label: { Label(zoomed ? "Einpassen" : "Vergrößern", systemImage: zoomed ? "minus.magnifyingglass" : "plus.magnifyingglass").font(.system(size: 10)) }.buttonStyle(.plain).foregroundStyle(Theme.muted)
-                        .accessibilityIdentifier("workspace.zoom")
-                    Menu {
-                        Button("Aktuelle Bearbeitung") { model.comparesOriginal = false; model.comparesCurrentSourceWithoutSettings = false }
-                        Button("Importiertes Original") { model.comparesOriginal = true; model.comparesCurrentSourceWithoutSettings = false }
-                        Button("Aktuelle Quelle ohne Regler") { model.comparesOriginal = false; model.comparesCurrentSourceWithoutSettings = true }
-                    } label: { Label("Vergleich", systemImage: "rectangle.lefthalf.inset.filled").font(.system(size: 11)) }
-                        .menuStyle(.borderlessButton).fixedSize().disabled(maskWorkspace.isPresented)
-                }.padding(.horizontal, layout.isFocused ? 14 : 23).frame(height: layout.isFocused ? 34 : 46)
+                HStack(spacing: 8) {
+                    Text(asset.fileName).fontWeight(.medium)
+                    Text(previewLabel).foregroundStyle(Theme.muted)
+                    Spacer(minLength: 0)
+                }.font(.system(size: 11)).lineLimit(1).truncationMode(.middle)
+                    .padding(.horizontal, 18).frame(height: 30).background(Theme.chrome)
                 GeometryReader { geometry in
                     if zoomed {
                         ScrollView([.horizontal, .vertical]) {
@@ -164,7 +148,7 @@ struct DetailView: View {
                         }
                     } else {
                         developCanvas(asset: asset)
-                            .padding(.horizontal, 25).padding(.vertical, 10)
+                            .padding(18)
                             .frame(width: geometry.size.width, height: geometry.size.height)
                             .onTapGesture(count: 2) { toggleZoom(viewport: geometry.size) }
                     }
@@ -184,23 +168,18 @@ struct DetailView: View {
                     .accessibilityElement(children: .contain)
                     .accessibilityLabel("Bildfläche")
                     .accessibilityIdentifier("workspace.canvas")
-                HStack(spacing: 18) {
-                    IconButton(symbol: "chevron.left", help: "Vorheriges Foto · ←") { model.navigate(-1) }
-                    RatingStars(rating: asset.rating, size: 13, onChange: { model.setRating($0) }).disabled(!model.canModify)
-                    IconButton(symbol: asset.isFavorite ? "heart.fill" : "heart", help: "Favorit · F", active: asset.isFavorite) { model.toggleFavorite() }.disabled(!model.canModify)
-                    IconButton(symbol: "chevron.right", help: "Nächstes Foto · →") { model.navigate(1) }
-                }.frame(height: 49)
-                if layout.panels(developing: model.isDeveloping).showsFilmstrip {
+                canvasControls(asset)
+                if !model.isDeveloping, layout.panels(developing: false).showsFilmstrip {
                     // The bound applies to the image canvas, after its controls and resize handle.
-                    let chromeHeight = (layout.isFocused ? 34.0 : 46.0) + 49 + 6
+                    let chromeHeight = 30.0 + 42 + 6
                     let height = layout.boundedFilmstripHeight(availableHeight: max(0, available.size.height - chromeHeight), developing: model.isDeveloping)
                     WorkspaceResizeHandle(horizontal: false, label: "Höhe des Filmstreifens", value: height, step: 1) { height in
                         layout.update(developing: model.isDeveloping) { $0.filmstripHeight = height }
                     }
-                    filmstrip(height: height)
+                    PhotoFilmstrip(model: model, height: height)
                 }
             }
-        }.frame(maxWidth: .infinity, maxHeight: .infinity).background(Color.black.opacity(0.14))
+        }.frame(maxWidth: .infinity, maxHeight: .infinity).background(model.isDeveloping ? Theme.canvas : Theme.background)
             .onChange(of: model.selectedID) { _, _ in zoomed = false }
         }
     }
@@ -252,24 +231,89 @@ struct DetailView: View {
         return settings
     }
 
-    private func filmstrip(height: Double) -> some View {
-        ScrollViewReader { reader in
-            ScrollView(.horizontal) {
-                LazyHStack(spacing: 8) {
-                    ForEach(model.visibleAssets) { asset in
-                        Button { model.select(asset) } label: {
-                            EditingThumbnail(asset: asset, size: max(110, height * 1.4))
-                                .padding(4).frame(width: max(32, (height - 26) * 1.3), height: max(16, height - 26))
-                                .background(Theme.panel, in: RoundedRectangle(cornerRadius: 4))
-                                .overlay { RoundedRectangle(cornerRadius: 4).strokeBorder(model.selectedIDs.contains(asset.id) ? Theme.accent : Theme.line, lineWidth: 1) }
-                        }.buttonStyle(.plain).id(asset.id).help(asset.fileName)
-                            .highPriorityGesture(photoSelectionGesture(asset: asset, model: model))
-                            .contextMenu { PhotoContextMenu(asset: asset, model: model) }
+    private func canvasControls(_ asset: PhotoAsset) -> some View {
+        HStack(spacing: 5) {
+            Button { toggleZoom(viewport: canvasSize) } label: {
+                Image(systemName: zoomed ? "minus.magnifyingglass" : "plus.magnifyingglass")
+                    .frame(width: 28, height: 30)
+            }.buttonStyle(.plain).help(zoomed ? "Einpassen" : "Vergrößern · Doppelklick auf das Bild")
+                .accessibilityLabel(zoomed ? "Einpassen" : "Vergrößern")
+                .accessibilityIdentifier("workspace.zoom")
+            Menu {
+                Button { model.comparesOriginal = false; model.comparesCurrentSourceWithoutSettings = false } label: {
+                    Label("Aktuelle Bearbeitung", systemImage: model.editingRenderIntent == .currentEditing ? "checkmark" : "circle")
+                }
+                Button { model.comparesOriginal = true; model.comparesCurrentSourceWithoutSettings = false } label: {
+                    Label("Importiertes Original", systemImage: model.comparesOriginal ? "checkmark" : "circle")
+                }
+                Button { model.comparesOriginal = false; model.comparesCurrentSourceWithoutSettings = true } label: {
+                    Label("Aktuelle Quelle ohne Regler", systemImage: model.comparesCurrentSourceWithoutSettings ? "checkmark" : "circle")
+                }
+            } label: {
+                Image(systemName: "rectangle.lefthalf.inset.filled").frame(width: 24, height: 30)
+            }.menuStyle(.borderlessButton).fixedSize().disabled(maskWorkspace.isPresented)
+                .accessibilityLabel("Vergleich").accessibilityValue(comparisonTitle)
+                .accessibilityIdentifier("workspace.compare").help("Vergleich: " + comparisonTitle)
+            Spacer(minLength: 0)
+            RatingStars(rating: asset.rating, size: 11, onChange: { model.setRating($0) }).disabled(!model.canModify)
+            IconButton(symbol: asset.isFavorite ? "heart.fill" : "heart", help: "Favorit · F", active: asset.isFavorite) { model.toggleFavorite() }.disabled(!model.canModify)
+            Spacer(minLength: 0)
+            IconButton(symbol: "chevron.left", help: "Vorheriges Foto · ←") { model.navigate(-1) }
+            IconButton(symbol: "chevron.right", help: "Nächstes Foto · →") { model.navigate(1) }
+        }.padding(.horizontal, 10).frame(height: 42).background(Theme.panel)
+            .overlay(alignment: .top) { Rectangle().fill(Theme.line).frame(height: 1) }
+    }
+
+    private var comparisonTitle: String {
+        if model.comparesOriginal { return "Importiertes Original" }
+        if model.comparesCurrentSourceWithoutSettings { return "Aktuelle Quelle ohne Regler" }
+        return "Aktuelle Bearbeitung"
+    }
+}
+
+/// Shared lazy strip spans the full developing workspace and reuses thumbnail caches.
+struct PhotoFilmstrip: View {
+    @ObservedObject var model: LibraryModel
+    let height: Double
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 8) {
+                Text(model.title).fontWeight(.medium).lineLimit(1)
+                Text("\(model.visibleAssets.count) Fotos").foregroundStyle(Theme.muted).fixedSize()
+                Spacer(minLength: 0)
+                Menu {
+                    Picker("Bewertung", selection: $model.minimumRating) {
+                        Text("Alle Bewertungen").tag(0)
+                        ForEach(1...5, id: \.self) { Text("Mindestens \($0) Sterne").tag($0) }
                     }
-                }.padding(.horizontal, 20).padding(.vertical, 13)
-            }.frame(height: height).clipped().background(Theme.sidebar)
-                .onAppear { if let id = model.selectedID { reader.scrollTo(id, anchor: .center) } }
-                .onChange(of: model.selectedID) { _, id in if let id { withAnimation(.easeOut(duration: 0.15)) { reader.scrollTo(id, anchor: .center) } } }
-        }
+                    Picker("Sortieren", selection: $model.sort) {
+                        ForEach(PhotoSort.allCases) { Text($0.rawValue).tag($0) }
+                    }
+                } label: { Label("Filter & Sortierung", systemImage: "line.3.horizontal.decrease") }
+                    .menuStyle(.borderlessButton).fixedSize()
+            }.font(.system(size: 10)).padding(.horizontal, 14).frame(height: 26).background(Theme.chrome)
+            ScrollViewReader { reader in
+                ScrollView(.horizontal) {
+                    LazyHStack(spacing: 2) {
+                        ForEach(model.visibleAssets) { asset in
+                            Button { model.select(asset) } label: {
+                                EditingThumbnail(asset: asset, size: max(110, height * 1.4))
+                                    .padding(6).frame(width: max(32, (height - 38) * 1.3), height: max(16, height - 38))
+                                    .background(model.selectedIDs.contains(asset.id) ? Theme.elevated : Theme.panel)
+                                    .overlay { Rectangle().strokeBorder(model.selectedIDs.contains(asset.id) ? Theme.accent : Theme.line, lineWidth: 1) }
+                            }.buttonStyle(.plain).id(asset.id).help(asset.fileName)
+                                .accessibilityLabel(asset.fileName)
+                                .accessibilityAddTraits(model.selectedIDs.contains(asset.id) ? .isSelected : [])
+                                .highPriorityGesture(photoSelectionGesture(asset: asset, model: model))
+                                .contextMenu { PhotoContextMenu(asset: asset, model: model) }
+                        }
+                    }.padding(.horizontal, 8).padding(.vertical, 6)
+                }.clipped()
+                    .onAppear { if let id = model.selectedID { reader.scrollTo(id, anchor: .center) } }
+                    .onChange(of: model.selectedID) { _, id in if let id { withAnimation(.easeOut(duration: 0.15)) { reader.scrollTo(id, anchor: .center) } } }
+            }
+        }.frame(height: height).background(Theme.sidebar)
+            .accessibilityIdentifier("workspace.filmstrip")
     }
 }

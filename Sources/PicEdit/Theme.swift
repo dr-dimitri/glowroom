@@ -3,13 +3,17 @@ import SwiftUI
 typealias ViewState<Value> = SwiftUI.State<Value>
 
 enum Theme {
-    static let background = Color(red: 0.087, green: 0.095, blue: 0.099)
-    static let sidebar = Color(red: 0.103, green: 0.111, blue: 0.115)
-    static let panel = Color(red: 0.121, green: 0.130, blue: 0.134)
-    static let elevated = Color(red: 0.160, green: 0.171, blue: 0.175)
-    static let line = Color.white.opacity(0.075)
-    static let muted = Color(red: 0.55, green: 0.59, blue: 0.59)
-    static let accent = Color(red: 0.82, green: 0.91, blue: 0.58)
+    // Neutral surfaces keep the surrounding UI from tinting the perceived image colors.
+    static let background = Color(white: 0.12)
+    static let chrome = Color(white: 0.145)
+    static let sidebar = Color(white: 0.19)
+    static let panel = Color(white: 0.215)
+    static let elevated = Color(white: 0.26)
+    static let canvas = Color(white: 0.52)
+    static let line = Color.black.opacity(0.45)
+    static let text = Color(white: 0.88)
+    static let muted = Color(white: 0.67)
+    static let accent = Color(white: 0.94)
 }
 
 struct IconButton: View {
