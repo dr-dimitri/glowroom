@@ -42,15 +42,42 @@ struct LocalAdjustmentTests {
         let center = try LocalMaskPoint(x: 0.5, y: 0.5)
         #expect(throws: ArtifactContractError.self) { try LocalAdjustmentMask(shape: .linear(start: center, end: center)) }
         #expect(throws: ArtifactContractError.self) { try LocalAdjustmentMask(shape: .radial(center: center, radiusX: 0, radiusY: 0.2, rotation: 0)) }
-        #expect(throws: ArtifactContractError.self) { try LocalMaskRaster(width: 513, height: 1, bytes: Data(count: 513)) }
+        #expect(throws: ArtifactContractError.self) { try LocalMaskRaster(width: 2_049, height: 1, bytes: Data(count: 2_049)) }
         #expect(throws: ArtifactContractError.self) { try LocalMaskRaster(width: 1, height: 2, bytes: Data([0])) }
-        let raster = try LocalMaskRaster(width: 512, height: 512, bytes: Data(repeating: 255, count: 512 * 512))
+        let raster = try LocalMaskRaster(width: 2_048, height: 2_048, bytes: Data(repeating: 255, count: 2_048 * 2_048))
         let layers = try (0..<5).map { try LocalAdjustment(name: "Mask \($0)", mask: .init(shape: .subject(raster))) }
+        _ = try EditingSnapshot(settings: .init(localAdjustments: Array(layers.prefix(4))))
         #expect(throws: ArtifactContractError.limitExceeded) { try EditingSnapshot(settings: .init(localAdjustments: layers)) }
         var duplicate = try fixtureSettings(); duplicate.localAdjustments.append(duplicate.localAdjustments[0])
         #expect(throws: ArtifactContractError.limitExceeded) { try EditingSnapshot(settings: duplicate) }
         var invalid = try fixtureSettings(); invalid.localAdjustments[0].mask.opacity = .infinity
         #expect(throws: ArtifactContractError.self) { try EditingSnapshot(settings: invalid) }
+    }
+
+    @Test func fullResolutionRasterRoundTripPreservesBytesAndSavedFeather() throws {
+        // One maximum-size matte covers the former JSON string and snapshot
+        // limits without retaining sixteen independent raster allocations.
+        let side = LocalMaskRaster.maximumDimension
+        let raster = try LocalMaskRaster(width: side, height: side,
+            bytes: Data(repeating: 173, count: side * side))
+        let layer = try LocalAdjustment(name: "Motiv", mask: .init(shape: .subject(raster), feather: 0.5))
+        let snapshot = try EditingSnapshot(settings: .init(localAdjustments: [layer]))
+        let encoded = try ArtifactJSONCodec.encode(snapshot)
+        #expect(encoded.count > 4_194_304 && encoded.count < EditSettings.maximumEncodedBytes)
+        let decoded = try ArtifactJSONCodec.decode(EditingSnapshot.self, from: encoded)
+        #expect(decoded == snapshot)
+        #expect(decoded.settings.localAdjustments[0].mask.feather == 0.5)
+        #expect(try ArtifactJSONCodec.encode(decoded) == encoded)
+
+        let legacy = try LocalMaskRaster(width: 512, height: 1, bytes: Data(repeating: 77, count: 512))
+        let legacyBytes = try ArtifactJSONCodec.encode(legacy)
+        #expect(try ArtifactJSONCodec.encode(ArtifactJSONCodec.decode(LocalMaskRaster.self, from: legacyBytes)) == legacyBytes)
+        // Non-raster text keeps the narrower preflight bound.
+        let oversizedText = Data(("{\"name\":\"" + String(repeating: "a", count: 2_097_153) + "\"}").utf8)
+        #expect(throws: (any Error).self) {
+            var scanner = ArtifactJSONScanner(oversizedText, maximum: EditSettings.maximumEncodedBytes)
+            try scanner.validate()
+        }
     }
 
     @Test func strictNestedFieldsAndInactiveShapePayloadsCannotEnterASnapshot() throws {
@@ -183,18 +210,16 @@ struct LocalAdjustmentTests {
         }
     }
 
-    @Test func maximumRasterAndVectorMasksKeepLargeGenerationReceiptsAndVariantsReadable() async throws {
+    @Test func highResolutionRasterAndVectorMasksKeepLargeGenerationReceiptsAndVariantsReadable() async throws {
         let point = try MaskPoint(x: 0.12345678901234568, y: 0.9876543210987654)
         let stroke = try MaskStroke(points: Array(repeating: point, count: MaskStroke.maximumPoints), radius: 0.1)
         let refinement = try MaskDocument(canvasSize: .init(width: 1, height: 1), strokes: [stroke, stroke])
-        let raster = try LocalMaskRaster(width: 512, height: 512, bytes: Data(repeating: 128, count: 512 * 512))
-        let layers = try (0..<4).map { index in
-            try LocalAdjustment(name: "Motiv \(index)", mask: .init(shape: .subject(raster),
-                refinement: index == 0 ? refinement : nil), settings: .init(exposure: 0.5))
-        }
-        let snapshot = try EditingSnapshot(settings: .init(localAdjustments: layers))
+        let raster = try LocalMaskRaster(width: 2_048, height: 2_048, bytes: Data(repeating: 128, count: 2_048 * 2_048))
+        let layer = try LocalAdjustment(name: "Motiv", mask: .init(shape: .subject(raster),
+            refinement: refinement), settings: .init(exposure: 0.5))
+        let snapshot = try EditingSnapshot(settings: .init(localAdjustments: [layer]))
         let encoded = try ArtifactJSONCodec.encode(snapshot)
-        #expect(encoded.count > 2_097_152)
+        #expect(encoded.count > 4_194_304)
         #expect(encoded.count < EditSettings.maximumEncodedBytes)
         #expect(try ArtifactJSONCodec.decode(EditingSnapshot.self, from: encoded) == snapshot)
         let f = try EditingFixture(), state = try await f.repository.loadState()
@@ -208,16 +233,17 @@ struct LocalAdjustmentTests {
         #expect(try await reopened.committed(request.commitID)?.previous.snapshot == snapshot)
         #expect(try await reopened.variants(for: f.id).contains { $0.snapshot == snapshot })
         let receiptBytes = try editingScalar(f.repository.fileURL, "SELECT length(receipt) FROM artifact_commits")
-        #expect(receiptBytes > 2_097_152 && receiptBytes < EditSettings.maximumEncodedBytes)
+        #expect(receiptBytes > 4_194_304 && receiptBytes < EditSettings.maximumEncodedBytes)
 
         // A remap journal deliberately includes both original expected state
         // and the complete resulting catalog state. Its separate 64 MiB budget
-        // must admit two large snapshots rather than inheriting the 4 MiB cap.
+        // must admit both large snapshots. Keep this fixture to one high-detail
+        // raster so repeated SQL/restart validation stays bounded in tests.
         let remap = try await EditingRemapFixture(settings: snapshot.settings)
         let prepared = try await remap.fixture.repository.prepareAssetRemap(remap.verified, preparingBy: remap.preparation)
         _ = try await remap.fixture.repository.remapAssets(prepared, armedBy: remap.armed())
         let journalBytes = try editingScalar(remap.fixture.repository.fileURL, "SELECT length(journal) FROM editing_remaps")
-        #expect(journalBytes > EditSettings.maximumEncodedBytes)
+        #expect(journalBytes > 2 * 4_194_304 && journalBytes < 67_108_864)
         let inspection = try #require(try await remap.fixture.reopen().inspectAssetRemap(prepared.operationID,
             expectedRequestSHA256: prepared.requestSHA256))
         #expect(inspection.prepared.proposal.expectedByAsset[remap.oldID]?.snapshot == snapshot)
@@ -229,8 +255,8 @@ struct LocalAdjustmentTests {
         let brush = try MaskDocument(canvasSize: .init(width: 100, height: 60), strokes: [
             .init(points: [.init(x: 20, y: 30), .init(x: 70, y: 48)], radius: 12, hardness: 0.3)
         ])
-        let size = largeRaster ? 256 : 2
-        let raster = try LocalMaskRaster(width: size, height: size, bytes: Data(repeating: 128, count: size * size))
+        let width = largeRaster ? 2_048 : 2, height = largeRaster ? 32 : 2
+        let raster = try LocalMaskRaster(width: width, height: height, bytes: Data(repeating: 128, count: width * height))
         let shapes: [LocalMaskShape] = [.brush(brush), .linear(start: start, end: end),
             .radial(center: start, radiusX: 0.3, radiusY: 0.2, rotation: 0.4), .subject(raster), .sky(raster)]
         return try EditSettings(exposure: 0.2, localAdjustments: shapes.enumerated().map { index, shape in

@@ -77,6 +77,42 @@ final class EditingModelTests {
     }
 
     @Test
+    func largeMaskHistorySharesOneBudgetAcrossPhotosAndKeepsGroupedUndo() async throws {
+        let model = EditingModel(database: LegacySnapshotTestAdapter(ControlledEditStore()))
+        try await waitLoaded(model)
+        for index in 1...20 {
+            let raster = try LocalMaskRaster(width: 2_048, height: 2_048,
+                bytes: Data(repeating: UInt8(index), count: 2_048 * 2_048))
+            let layer = try LocalAdjustment(name: "Motiv", mask: .init(shape: .subject(raster)))
+            let asset = index.isMultiple(of: 2) ? "B" : "A"
+            model.setSettings(.init(localAdjustments: [layer]), for: asset)
+            model.setSettings(.neutral, for: asset)
+            #expect(model.historyByteCount <= EditingHistoryLimits.maximumBytes)
+        }
+        #expect(model.historyStateCount < 40)
+        model.undo(assetID: "B")
+        guard case .subject(let raster)? = model.settings(for: "B").localAdjustments.first?.mask.shape
+        else { Issue.record("Missing most recent matte"); return }
+        #expect(raster.bytes.first == 20)
+        let before = model.settings(for: "B")
+        model.beginEditing(assetID: "B")
+        for index in 1...20 {
+            var changed = before; changed.exposure = Double(index) / 10
+            model.setSettings(changed, for: "B")
+        }
+        model.undo(assetID: "B")
+        #expect(model.settings(for: "B") == before)
+        #expect(!model.hasActiveEditing(assetID: "B"))
+        model.redo(assetID: "B")
+        #expect(model.settings(for: "B").exposure == 2)
+        #expect(model.historyByteCount <= EditingHistoryLimits.maximumBytes)
+        model.selectEditingFunction(.crop, assetID: "A")
+        model.selectEditingFunction(.crop, assetID: "B")
+        #expect(model.historyStateCount == 0 && model.historyByteCount == 0)
+        #expect(await model.flush())
+    }
+
+    @Test
     func dragUndoRedoAndResetRemainIndependentPerImage() async throws {
         let store = ControlledEditStore()
         let model = EditingModel(database: LegacySnapshotTestAdapter(store))

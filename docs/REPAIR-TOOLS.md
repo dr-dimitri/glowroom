@@ -75,9 +75,11 @@ Grenzen pro Bearbeitung:
 | Pfadpunkte pro Geste / insgesamt | 2.048 / 16.384 |
 | Automatische Masken insgesamt | 1 MiB unkomprimiert |
 | Eingefrorene Ersatzpixel insgesamt | 2.560.000 Byte RGBA |
-| Vollständiger kodierter Einstellungsblob | 4 MiB |
+| Vollständiger kodierter Einstellungsblob einschließlich lokaler Masken | 32 MiB |
 
 Vor der direkten Anwendung wird der gesamte resultierende Stand einschließlich Kodierungsgröße validiert. Wird eine Grenze erreicht, wird keine Teilmenge der neuen Reparatur stillschweigend gespeichert. Historische runde Heilen-/Kopierstempelwerte bleiben lesbar. Fehlende neue Pfad-/Masken-/Ersatzfelder behalten ihre alte Bedeutung; leere neue Felder ändern die kanonischen historischen Bytes nicht.
+
+Auch ein maximaler Ersatz von 800 × 800 RGBA-Pixeln bleibt nach Speichern, Neustart und Backup-Wiederherstellung lesbar. Die JSON-Vorprüfung berücksichtigt für das Ersatzpixel-Feld dessen Base64-Größe bis 3.413.336 Zeichen; normale Textfelder behalten ihre bisherige Grenze. Ungültiges Base64, unpassende Pixelmaße oder Bytezahlen und überschrittene Gesamtbudgets werden weiterhin abgewiesen. Ein synthetischer Regressionstest prüft den vollständigen Snapshot über die echte SQLite-Speicherung sowie Paketbackup und Wiederherstellung.
 
 ## Verarbeitung und Prüfung
 

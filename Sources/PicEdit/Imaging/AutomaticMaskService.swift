@@ -87,7 +87,7 @@ actor AutomaticMaskWorker {
         case .subject:
             let cancellation = AutomaticVisionCancellation()
             return try await withTaskCancellationHandler {
-                try subject(bitmap.image, cancellation: cancellation)
+                try autoreleasepool { try subject(bitmap.image, cancellation: cancellation) }
             } onCancel: { cancellation.cancel() }
         case .sky:
             // Always segment the immutable bitmap supplied by the editor. A
@@ -101,7 +101,7 @@ actor AutomaticMaskWorker {
 
     private func subject(_ image: CGImage, cancellation: AutomaticVisionCancellation) throws -> LocalMaskRaster {
         try Task.checkCancellation()
-        let proxy = try Self.proxy(image, maximumDimension: 1_024)
+        let proxy = try Self.proxy(image, maximumDimension: LocalMaskRaster.maximumDimension)
         let request = VNGenerateForegroundInstanceMaskRequest()
         request.revision = VNGenerateForegroundInstanceMaskRequestRevision1
         request.preferBackgroundProcessing = true
@@ -113,7 +113,8 @@ actor AutomaticMaskWorker {
             throw AutomaticMaskError.noSubject
         }
         let buffer = try observation.generateScaledMaskForImage(forInstances: observation.allInstances, from: handler)
-        return try AutomaticMaskRasterConverter.raster(buffer)
+        let raster = try AutomaticMaskRasterConverter.raster(buffer)
+        return try AutomaticMaskRefiner.refine(raster, guide: proxy)
     }
 
     private func sky(_ image: CGImage, installation: SkyMaskInstalledModel) throws -> LocalMaskRaster {
@@ -135,7 +136,7 @@ actor AutomaticMaskWorker {
             guard try SemanticInstallationIO.stamp(url) == expected else { throw AutomaticMaskError.invalidModel }
         }
         guard raster.bytes.contains(where: { $0 != 0 }) else { throw AutomaticMaskError.noSky }
-        return raster
+        return try AutomaticMaskRefiner.refine(raster, guide: image)
     }
 
     private func inferSky(_ input: CVPixelBuffer, installation: SkyMaskInstalledModel,
@@ -189,7 +190,7 @@ actor AutomaticMaskWorker {
 }
 
 enum AutomaticMaskRasterConverter {
-    static func outputSize(width: Int, height: Int, maximumDimension: Int = 512) -> (width: Int, height: Int) {
+    static func outputSize(width: Int, height: Int, maximumDimension: Int = LocalMaskRaster.maximumDimension) -> (width: Int, height: Int) {
         let scale = min(1, Double(maximumDimension) / Double(max(1, max(width, height))))
         return (max(1, Int((Double(width) * scale).rounded())), max(1, Int((Double(height) * scale).rounded())))
     }

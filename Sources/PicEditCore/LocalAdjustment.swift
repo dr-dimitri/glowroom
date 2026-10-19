@@ -20,7 +20,7 @@ public struct LocalMaskPoint: Codable, Hashable, Sendable {
 /// Frozen automatic selection, tightly packed Gray8 in top-left row order.
 /// Persisting the result makes subsequent edits independent of model versions.
 public struct LocalMaskRaster: Codable, Hashable, Sendable {
-    public static let maximumDimension = 512
+    public static let maximumDimension = 2_048
     public let width: Int
     public let height: Int
     public let bytes: Data
@@ -97,7 +97,9 @@ public struct LocalAdjustmentMask: Codable, Hashable, Sendable {
     public var isInverted: Bool
     public var opacity: Double
     /// Radial falloff spans the outer feather fraction of its radius. Brush and
-    /// automatic selections use a small resolution-independent soft edge.
+    /// automatic selections use a resolution-independent soft edge. The editor
+    /// starts new automatic mattes at zero because they already contain edge
+    /// coverage; this initializer and decoded values retain historic semantics.
     public var feather: Double
     public init(shape: LocalMaskShape, isInverted: Bool = false, opacity: Double = 1, feather: Double = 0.5,
                 refinement: MaskDocument? = nil) throws {
@@ -167,7 +169,9 @@ public struct LocalAdjustmentSettings: Codable, Hashable, Sendable {
 
 public struct LocalAdjustment: Codable, Hashable, Identifiable, Sendable {
     public static let maximumCount = 16
-    public static let maximumTotalRasterBytes = 1_048_576
+    /// Four maximum-size mattes fit without weakening the aggregate bound.
+    /// Smaller selections may still occupy all sixteen local layers.
+    public static let maximumTotalRasterBytes = 16 * 1_024 * 1_024
     public static let maximumTotalBrushPoints = MaskDocument.maximumTotalPoints
     public static let maximumTotalBrushStrokes = MaskDocument.maximumStrokes
     public var id: UUID

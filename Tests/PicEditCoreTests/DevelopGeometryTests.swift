@@ -95,6 +95,73 @@ struct DevelopGeometryTests {
             try DevelopGeometry(retouchStrokes: [largeStroke, stroke]).validate()
         }
     }
+
+    @Test func maximumFrozenReplacementSurvivesSnapshotSQLBackupAndRestore() async throws {
+        let fixture = try ArtifactTestFixture(); defer { fixture.remove() }
+        let artifacts = try await fixture.store()
+        let packages = EditingBackupPackageStore(resources: fixture.resources,
+            catalog: CatalogRepository(directory: fixture.directory))
+        let gate = CatalogLifecycleGate(requiresRecovery: false)
+        let repository = EditingRepository(directory: fixture.directory, artifacts: artifacts, packages: packages, gate: gate)
+        let replacement = try DevelopRetouchReplacement(bounds: .init(x: 0, y: 0, width: 1, height: 1),
+            width: 800, height: 800, rgba: Data(repeating: 173, count: 2_560_000))
+        let point = try LocalMaskPoint(x: 0.5, y: 0.5)
+        let stroke = try DevelopRetouchStroke(source: point, target: point, radius: 0.1, replacement: replacement)
+        let snapshot = try EditingSnapshot(settings: .init(developGeometry: .init(retouchStrokes: [stroke])))
+        let encoded = try ArtifactJSONCodec.encode(snapshot)
+        #expect(encoded.count > 2_097_152 && encoded.count < 4_194_304)
+        #expect(try ArtifactJSONCodec.decode(EditingSnapshot.self, from: encoded) == snapshot)
+        let empty = try await repository.loadState()
+        let first = try await repository.saveSnapshot(snapshot, for: "photo",
+            expected: .init(storeEpoch: empty.storeEpoch, revision: nil, snapshot: nil), revision: 1)
+        let reopened = EditingRepository(directory: fixture.directory, artifacts: artifacts, packages: packages, gate: gate)
+        #expect(try await reopened.loadState().byAsset["photo"]?.snapshot == snapshot)
+        let backup = try await repository.createBackup(automatic: false)
+        let updated = try await repository.saveSnapshot(.init(), for: "photo", expected: .init(first), revision: 2)
+        let restored = try await repository.restoreBackup(from: backup)
+        #expect(restored.byAsset["photo"]?.snapshot == snapshot)
+        #expect(restored.storeEpoch != first.version.storeEpoch)
+        let restoredPhoto = try #require(restored.byAsset["photo"])
+        #expect(restoredPhoto.version.revision > updated.version.revision)
+        let afterRestore = EditingRepository(directory: fixture.directory, artifacts: artifacts, packages: packages, gate: gate)
+        #expect(try await afterRestore.loadState().byAsset["photo"]?.snapshot == snapshot)
+        #expect(try ArtifactJSONCodec.encode(restoredPhoto.snapshot) == encoded)
+    }
+
+    @Test func replacementStringAllowanceRemainsBoundedAndRejectsInvalidPixels() throws {
+        let maximumBytes = DevelopRetouchReplacement.maximumDimension * DevelopRetouchReplacement.maximumDimension * 4
+        let bounds = try DevelopCropRect(x: 0, y: 0, width: 1, height: 1)
+        let replacement = try DevelopRetouchReplacement(bounds: bounds, width: 800, height: 800,
+            rgba: Data(repeating: 173, count: maximumBytes))
+        let canonical = try ArtifactJSONCodec.encode(replacement)
+        let original = try #require(JSONSerialization.jsonObject(with: canonical) as? [String: Any])
+        for failure in ["tooManyBytes", "tooFewBytes", "invalidBase64", "invalidDimensions"] {
+            var malformed = original
+            switch failure {
+            case "tooManyBytes": malformed["rgba"] = Data(count: maximumBytes + 4).base64EncodedString()
+            case "tooFewBytes": malformed["rgba"] = Data(count: maximumBytes - 4).base64EncodedString()
+            case "invalidBase64":
+                let base64 = try #require(original["rgba"] as? String)
+                malformed["rgba"] = "!" + String(base64.dropFirst())
+            default: malformed["width"] = 801
+            }
+            #expect(throws: (any Error).self) {
+                try ArtifactJSONCodec.decode(DevelopRetouchReplacement.self,
+                    from: JSONSerialization.data(withJSONObject: malformed), maximum: EditSettings.maximumEncodedBytes)
+            }
+        }
+        // The allowance is for a typed repair data field, not arbitrary text
+        // or unrelated objects that happen to use the same property name.
+        let oversized = String(repeating: "a", count: 2_097_153)
+        let objects: [[String: Any]] = [["name": oversized], ["unrelated": ["rgba": oversized]]]
+        for object in objects {
+            let bytes = try JSONSerialization.data(withJSONObject: object)
+            #expect(throws: (any Error).self) {
+                var scanner = ArtifactJSONScanner(bytes, maximum: EditSettings.maximumEncodedBytes)
+                try scanner.validate()
+            }
+        }
+    }
     @Test func straighteningDefaultsPreserveHistoricalCanonicalBytes() throws {
         let historical = Data("{\"flipHorizontal\":false,\"flipVertical\":false,\"quarterTurns\":1,\"redEyeCorrections\":[],\"retouchStrokes\":[]}".utf8)
         let decoded = try ArtifactJSONCodec.decode(DevelopGeometry.self, from: historical)

@@ -176,7 +176,7 @@ internal final class CatalogCoordinationFiles: @unchecked Sendable {
     func command(_ journal: ValidatedCatalogCoordinatorJournal, kind: CatalogParticipantKind) throws -> Data {
         let operation = try checkedOperation(journal)
         let name = kind == .editing ? "editing-command.json" : "metadata-command.json"
-        let maximum = kind == .editing ? 8_388_608 : 67_108_864
+        let maximum = kind == .editing ? EditSettings.maximumEncodedBytes : 67_108_864
         guard let expected = journal.value.body.requiredParticipants.first(where: { $0.store.kind == kind }) else {
             throw CatalogCoordinationError.requiredParticipantMissing(kind)
         }
@@ -343,7 +343,7 @@ internal final class CatalogCoordinationFiles: @unchecked Sendable {
               Set(participants.map { $0.store.kind }).count == participants.count,
               participants.map({ $0.store.kind.rawValue }) == participants.map({ $0.store.kind.rawValue }).sorted(),
               participants.allSatisfy({ $0.operationID == body.operationID && $0.requestSchemaVersion == 1 &&
-                  $0.canonicalByteCount > 0 && $0.canonicalByteCount <= ($0.store.kind == .editing ? 8_388_608 : 67_108_864) }),
+                  $0.canonicalByteCount > 0 && $0.canonicalByteCount <= Int64($0.store.kind == .editing ? EditSettings.maximumEncodedBytes : 67_108_864) }),
               CatalogFileIO.digest(try EditingContractJSON.encoder().encode(body)) == value.requestSHA256.sha256,
               value.disposition != .aborted || value.phase == .prepared || value.phase == .completed,
               value.disposition != .completed || value.phase == .completed,

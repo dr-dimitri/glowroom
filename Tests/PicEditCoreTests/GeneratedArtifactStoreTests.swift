@@ -34,14 +34,14 @@ struct ArtifactTestFixture: Sendable {
             bytesPerRow: width * count * bits / 8, space: space, bitmapInfo: bitmap,
             provider: CGDataProvider(data: data as CFData)!, decode: nil, shouldInterpolate: false, intent: .defaultIntent)!
     }
-    func provenance(_ image: CGImage, masks: [ArtifactResourceID] = []) throws -> GenerationProvenance {
+    func provenance(_ image: CGImage, masks: [ArtifactResourceID] = [], parentSnapshot: EditingSnapshot? = nil) throws -> GenerationProvenance {
         let shape = try ArtifactPNGCodec.shape(image)
         let format = try ArtifactRasterFormat(size: shape.size, bitDepth: ArtifactBitDepth(rawValue: shape.bits)!, channels: shape.channels,
             profile: shape.profile!, iccSHA256: ArtifactFileIO.digest(shape.icc!))
         let source = try OriginalSourceFingerprint(standardizedPath: directory.appendingPathComponent("original.bin").path,
             fileSize: 3, modifiedAt: Date(timeIntervalSinceReferenceDate: 42),
             nativeRevision: .init(device: 1, inode: 2, fileSize: 3, modifiedSeconds: 17, modifiedNanoseconds: 0, changedSeconds: 18, changedNanoseconds: 0))
-        return try GenerationProvenance(parentSource: .original(source), parentSnapshot: .init(),
+        return try GenerationProvenance(parentSource: .original(source), parentSnapshot: parentSnapshot ?? .init(),
             renderedInput: .init(format: format, canonicalPixelSHA256: ArtifactPNGCodec.pixelHash(image, shape: shape), pipelineVersion: 1),
             placement: .init(inputSize: shape.size, outputSize: shape.size, inputOriginX: 0, inputOriginY: 0),
             pipelineVersion: 1, parameterVersion: 1, parameters: .init(values: []),

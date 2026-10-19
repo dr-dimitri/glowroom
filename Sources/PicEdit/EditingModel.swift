@@ -56,7 +56,6 @@ final class EditingModel: ObservableObject, GeneratedArtifactAccepting {
         let revision: Int64
         let admission: CatalogAcceptedWriteAdmission?
     }
-    private struct History { var undo: [EditingSnapshot] = []; var redo: [EditingSnapshot] = [] }
     private final class Commit {
         let id: EditingCommitID
         let draft: ArtifactDraft
@@ -85,8 +84,9 @@ final class EditingModel: ObservableObject, GeneratedArtifactAccepting {
     private var startupAllowsOriginalPreview = false
     private var revisionsByAsset: [String: Int64] = [:]
     private var pending: [String: PendingEdit] = [:]
-    private var histories: [String: History] = [:]
-    private var gestureStarts: [String: EditingSnapshot] = [:]
+    private var histories = BoundedEditingHistory<EditingSnapshot>(footprint: EditingHistoryFootprint.snapshot)
+    var historyStateCount: Int { histories.count }
+    var historyByteCount: Int { histories.byteCount }
     private var leases: [GeneratedArtifactID: ArtifactLease] = [:]
     private var commits: [EditingCommitID: Commit] = [:]
     private var activeCommitID: EditingCommitID?
@@ -179,7 +179,7 @@ final class EditingModel: ObservableObject, GeneratedArtifactAccepting {
         do {
             let state = try await database.loadState()
             install(state); try await loadArtifactMetadata(state)
-            histories.removeAll(); gestureStarts.removeAll(); sourceStateIsCoherent = true; isReadOnly = false
+            histories.removeAll(); sourceStateIsCoherent = true; isReadOnly = false
         } catch { isReadOnly = true; errorMessage = error.localizedDescription; throw error }
     }
     func retryLoading() {
@@ -267,16 +267,16 @@ final class EditingModel: ObservableObject, GeneratedArtifactAccepting {
         guard canEdit, !assetID.isEmpty, value != snapshot(for: assetID), nextRevisionAvailable(for: assetID) else { return }
         do {
             let admission = try registerWrite()
-            if gestureStarts[assetID] == nil { appendUndo(snapshot(for: assetID), for: assetID) }
-            histories[assetID, default: History()].redo.removeAll()
+            histories.clearRedo(assetID)
+            if histories.group(assetID) == nil { appendUndo(snapshot(for: assetID), for: assetID) }
             apply(value, for: assetID, admission: admission)
         } catch { errorMessage = "Die Bearbeitung ist während einer laufenden Speicheroperation gesperrt.\n\n" + error.localizedDescription }
     }
     func beginEditing(assetID: String) {
-        guard canEdit, !assetID.isEmpty, gestureStarts[assetID] == nil else { return }
-        advanceAIEditGeneration(); gestureStarts[assetID] = snapshot(for: assetID)
+        guard canEdit, !assetID.isEmpty, histories.group(assetID) == nil else { return }
+        advanceAIEditGeneration(); histories.beginGroup(snapshot(for: assetID), for: assetID)
     }
-    func hasActiveEditing(assetID: String) -> Bool { gestureStarts[assetID] != nil }
+    func hasActiveEditing(assetID: String) -> Bool { histories.group(assetID) != nil }
     func editingFunction(assetID: String) -> EditingFunction { editingFunctions[assetID, default: .adjustments] }
 
     func selectEditingFunction(_ function: EditingFunction, assetID: String, cancelsActiveInput: Bool = true) {
@@ -286,12 +286,12 @@ final class EditingModel: ObservableObject, GeneratedArtifactAccepting {
         // Background work here would allow an old gesture to enter a new function.
         endEditing(assetID: assetID)
         objectWillChange.send()
-        histories[assetID] = nil
+        histories.clear(assetID)
         editingFunctions[assetID] = function
         advanceAIEditGeneration()
     }
     func endEditing(assetID: String) {
-        guard let start = gestureStarts.removeValue(forKey: assetID), start != snapshot(for: assetID) else { return }
+        guard let start = histories.endGroup(assetID), start != snapshot(for: assetID) else { return }
         appendUndo(start, for: assetID)
     }
     func reset(assetID: String) {
@@ -303,21 +303,21 @@ final class EditingModel: ObservableObject, GeneratedArtifactAccepting {
         endEditing(assetID: assetID)
         if let value = try? EditingSnapshot(source: .original, settings: .neutral) { setSnapshot(value, for: assetID) }
     }
-    func canUndo(assetID: String) -> Bool { canEdit && (!(histories[assetID]?.undo.isEmpty ?? true) || gestureStarts[assetID].map { $0 != snapshot(for: assetID) } == true) }
-    func canRedo(assetID: String) -> Bool { canEdit && !(histories[assetID]?.redo.isEmpty ?? true) }
+    func canUndo(assetID: String) -> Bool { canEdit && (histories.canUndo(assetID) || histories.group(assetID).map { $0 != snapshot(for: assetID) } == true) }
+    func canRedo(assetID: String) -> Bool { canEdit && histories.canRedo(assetID) }
     func undo(assetID: String) {
         guard canUndo(assetID: assetID), nextRevisionAvailable(for: assetID) else { return }
         do {
             let admission = try registerWrite(); endEditing(assetID: assetID)
-            guard let previous = histories[assetID]?.undo.popLast() else { return }
-            histories[assetID, default: History()].redo.append(snapshot(for: assetID)); apply(previous, for: assetID, admission: admission)
+            guard let previous = histories.popUndo(assetID) else { return }
+            histories.appendRedo(snapshot(for: assetID), for: assetID); apply(previous, for: assetID, admission: admission)
         } catch { errorMessage = error.localizedDescription }
     }
     func redo(assetID: String) {
         guard canRedo(assetID: assetID), nextRevisionAvailable(for: assetID) else { return }
         do {
             let admission = try registerWrite()
-            guard let next = histories[assetID]?.redo.popLast() else { return }
+            guard let next = histories.popRedo(assetID) else { return }
             appendUndo(snapshot(for: assetID), for: assetID); apply(next, for: assetID, admission: admission)
         } catch { errorMessage = error.localizedDescription }
     }
@@ -456,7 +456,7 @@ final class EditingModel: ObservableObject, GeneratedArtifactAccepting {
         }; return true
     }
     private func appendUndo(_ value: EditingSnapshot, for assetID: String) {
-        histories[assetID, default: History()].undo.append(value)
+        histories.appendUndo(value, for: assetID)
     }
     private func advanceAIEditGeneration() {
         objectWillChange.send()
@@ -626,8 +626,8 @@ extension EditingModel {
             manifestSHA256: commit.draft.artifact.manifestSHA256, raster: commit.draft.artifact.raster)
         artifactFingerprints[receipt.artifactID] = fingerprint
         endEditing(assetID: assetID)
+        histories.clearRedo(assetID)
         appendUndo(commit.token.snapshot, for: assetID)
-        histories[assetID, default: History()].redo.removeAll()
         snapshotsByAsset[assetID] = receipt.stored.snapshot
         revisionsByAsset[assetID] = receipt.stored.version.revision
         baselines[assetID] = EditingExpectedState(receipt.stored)
@@ -690,7 +690,7 @@ extension EditingModel {
             install(restored)
             try await loadArtifactMetadata(restored)
             pending.removeAll(); hasPendingChanges = false
-            histories.removeAll(); gestureStarts.removeAll(); commits.removeAll()
+            histories.removeAll(); commits.removeAll()
             // Ordinary restore uses the already-open catalog admission. Damaged
             // database recovery must first reopen the library below; startup
             // may have failed before it could obtain that admission. Its normal

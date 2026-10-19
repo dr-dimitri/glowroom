@@ -11,11 +11,11 @@ public struct EditingPackageLimits: Hashable, Sendable {
     public let maximumArtifactManifestBytes: Int
     public init(maximumArtifacts: Int = 4_096, maximumFiles: Int = 16_384,
                 maximumTotalBytes: Int64 = 21_474_836_480, maximumPayloadBytes: Int64 = 536_870_912,
-                maximumManifestBytes: Int = 8_388_608, maximumArtifactManifestBytes: Int = EditSettings.maximumEncodedBytes) throws {
+                maximumManifestBytes: Int = EditSettings.maximumEncodedBytes, maximumArtifactManifestBytes: Int = EditSettings.maximumEncodedBytes) throws {
         guard (1...4_096).contains(maximumArtifacts), (1...16_384).contains(maximumFiles),
               maximumTotalBytes > 0, maximumTotalBytes <= 21_474_836_480,
               maximumPayloadBytes > 0, maximumPayloadBytes <= 536_870_912,
-              (1...8_388_608).contains(maximumManifestBytes), (1...EditSettings.maximumEncodedBytes).contains(maximumArtifactManifestBytes) else {
+              (1...EditSettings.maximumEncodedBytes).contains(maximumManifestBytes), (1...EditSettings.maximumEncodedBytes).contains(maximumArtifactManifestBytes) else {
             throw ArtifactContractError.limitExceeded
         }
         self.maximumArtifacts = maximumArtifacts; self.maximumFiles = maximumFiles
@@ -470,7 +470,7 @@ Exact retained ownership:
   into itself. Participant own original command hash uses its OWN canonical codec
   (existing metadata catalogChange digest), not a newly invented re-encoding.
 - Small coordinator envelope <=64KiB; catalog payload keeps existing
-  <=512MiB bound; editing remap command <=8MiB; metadata command retains #7 <=64MiB
+  <=512MiB bound; editing remap command <=32MiB; metadata command retains #7 <=64MiB
   bound. Streamhash files in64KiB reads; read/decode only bounded participant
   command being inspected. No claim of a new RSS cap or extra parallel worker.
 - Metadata needs a durable store UUID (not current actor session). Add it through

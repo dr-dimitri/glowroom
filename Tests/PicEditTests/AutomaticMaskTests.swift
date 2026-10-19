@@ -25,8 +25,8 @@ struct AutomaticMaskTests {
         base.assumingMemoryBound(to: Float.self)[0] = .nan
         CVPixelBufferUnlockBaseAddress(buffer, [])
         #expect(throws: AutomaticMaskError.invalidMask) { try AutomaticMaskRasterConverter.raster(buffer) }
-        #expect(AutomaticMaskRasterConverter.outputSize(width: 6_000, height: 4_000).width == 512)
-        #expect(AutomaticMaskRasterConverter.outputSize(width: 6_000, height: 4_000).height == 341)
+        #expect(AutomaticMaskRasterConverter.outputSize(width: 6_000, height: 4_000).width == 2_048)
+        #expect(AutomaticMaskRasterConverter.outputSize(width: 6_000, height: 4_000).height == 1_365)
     }
 
     @Test func semanticClassMapUsesOnlyRequestedClassAndRetainsFullNonSquareCanvas() throws {
@@ -111,8 +111,9 @@ struct AutomaticMaskTests {
             pixelFormatType: kCVPixelFormatType_32ARGB, options: [.cropAndScale: VNImageCropAndScaleOption.scaleFill.rawValue])
         let cpuPrediction = try await cpuModel.prediction(from: MLDictionaryFeatureProvider(dictionary: ["image": cpuInput]))
         let cpuMap = try #require(cpuPrediction.featureValue(for: "semanticPredictions")?.multiArrayValue)
-        let cpuRaster = try AutomaticMaskRasterConverter.skyRaster(cpuMap,
+        let cpuRawRaster = try AutomaticMaskRasterConverter.skyRaster(cpuMap,
             skyClass: AutomaticMaskRasterConverter.skyClass(in: cpuModel), outputSize: (raster.width, raster.height))
+        let cpuRaster = try AutomaticMaskRefiner.refine(cpuRawRaster, guide: bitmap.image, softwareRenderer: true)
         let intersection = zip(raster.bytes, cpuRaster.bytes).filter { $0.0 > 127 && $0.1 > 127 }.count
         let union = zip(raster.bytes, cpuRaster.bytes).filter { $0.0 > 127 || $0.1 > 127 }.count
         let overlap = Double(intersection) / Double(max(1, union))
