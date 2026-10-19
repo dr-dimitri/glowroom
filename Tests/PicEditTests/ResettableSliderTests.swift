@@ -5,6 +5,39 @@ import Testing
 @Suite("Resettable native sliders")
 struct ResettableSliderTests {
     @Test @MainActor
+    func bindingRefreshCannotReplaceTheNativeValueBeforeTheDragThreshold() {
+        let probe = SliderEditProbe(value: 6_500)
+        let slider = nativeSlider(probe)
+        slider.beginPointerTracking(at: NSPoint(x: 40, y: 10))
+        slider.doubleValue = 8_000
+        slider.continuedTracking(at: NSPoint(x: 41, y: 10))
+        slider.synchronizeValueFromBinding()
+        #expect(slider.doubleValue == 8_000,
+                "A view refresh must preserve AppKit's position while the pointer is held")
+        #expect(probe.value == 6_500 && probe.history.isEmpty)
+
+        slider.continuedTracking(at: NSPoint(x: 50, y: 10))
+        slider.endPointerTracking()
+        slider.synchronizeValueFromBinding()
+        #expect(slider.doubleValue == 8_000 && probe.value == 8_000)
+        #expect(probe.history == [6_500])
+    }
+
+    @Test @MainActor
+    func firstDragPublishesTheCurrentCellPositionWithoutRestoringTheBufferedMouseDownValue() {
+        let probe = SliderEditProbe(value: 6_500)
+        let slider = nativeSlider(probe)
+        slider.beginPointerTracking(at: NSPoint(x: 40, y: 10))
+        slider.doubleValue = 8_000
+        slider.continuedTracking(at: NSPoint(x: 41, y: 10))
+        slider.doubleValue = 9_000
+        slider.continuedTracking(at: NSPoint(x: 60, y: 10))
+        slider.endPointerTracking()
+        #expect(probe.events == ["begin", "value:9000.0", "end"])
+        #expect(probe.value == 9_000 && probe.history == [6_500])
+    }
+
+    @Test @MainActor
     func nativeTrackClickWithoutTargetActionCapturesAndQuantizesItsFinalValue() {
         let probe = SliderEditProbe(value: 6_500)
         let slider = nativeSlider(probe)

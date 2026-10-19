@@ -36,7 +36,7 @@ struct CompactMaskLayoutTests {
         // AppKit static text can expose its spoken text as AXValue rather
         // than AXLabel; both represent the user-visible status string.
         let spokenStatus = status.accessibilityLabel() ?? (status.accessibilityValue() as? String)
-        #expect(spokenStatus == "Maske wird berechnet …")
+        #expect(spokenStatus == "Bild wird bearbeitet …")
         #expect(host.screenFrame.insetBy(dx: -1, dy: -1).contains(status.accessibilityFrame()))
         let cancel = try host.element("local-mask.calculation-cancel")
         #expect(cancel.accessibilityLabel() == "Maskenberechnung abbrechen")
@@ -60,7 +60,7 @@ struct CompactMaskLayoutTests {
     }
 
     @Test(arguments: [400.0, 550.0, 900.0])
-    func calculationStatusAndFloatingPaletteStayVisibleWithoutOverlappingInAMinimumHeightViewport(width: Double) async throws {
+    func calculationStatusStaysCenteredAboveTheFloatingPaletteInAMinimumHeightViewport(width: Double) async throws {
         let pending = TestAsyncLatch(), started = TestStateSignal(false)
         defer { pending.releaseAll() }
         let raster = try LocalMaskRaster(width: 2, height: 2, bytes: Data([0, 255, 255, 0]))
@@ -90,12 +90,34 @@ struct CompactMaskLayoutTests {
         #expect(paletteFrame.width > 0 && paletteFrame.height > 0)
         #expect(host.screenFrame.insetBy(dx: -1, dy: -1).contains(statusFrame))
         #expect(host.screenFrame.insetBy(dx: -1, dy: -1).contains(paletteFrame))
-        #expect(!statusFrame.intersects(paletteFrame), "Calculation status and existing masks must never overlap")
+        #expect(abs(statusFrame.midX - host.screenFrame.midX) <= 1)
+        #expect(abs(statusFrame.midY - host.screenFrame.midY) <= 1,
+            "The common editing hint stays in the photograph's center while the palette is independently movable")
         #expect(host.fittingHeight == idleHeight)
         #expect(try host.element("local-mask.calculation-cancel").isAccessibilityEnabled())
         try host.snapshotIfRequested("mask-calculation-viewport-\(Int(width))")
         fixture.model.cancelInference()
         pending.releaseAll()
+        #expect(await fixture.library.finishSaving())
+    }
+
+    @Test func floatingMaskPaletteKeepsItsDragHandleAndControlsInsideASmallViewport() async throws {
+        let fixture = try await CompactMaskFixture.make()
+        let host = CompactMaskHost(width: 220, height: 140)
+        defer { host.close(); fixture.close() }
+        for _ in 0..<16 { fixture.model.add(.linear) }
+        try await host.mount(Color.gray.frame(height: 140)
+            .overlay { InlineMaskViewportOverlays(workspace: fixture.workspace) })
+
+        for identifier in ["local-mask.list", "local-mask.drag-handle", "local-mask.add", "local-mask.overlay"] {
+            let element = try host.element(identifier)
+            #expect(host.screenFrame.insetBy(dx: -1, dy: -1).contains(element.accessibilityFrame()),
+                "The compact viewport must keep \(identifier) reachable")
+        }
+        let selected = try #require(fixture.model.selected)
+        let row = try host.element("local-mask.select.\(selected.id.uuidString)")
+        #expect(host.screenFrame.insetBy(dx: -1, dy: -1).contains(row.accessibilityFrame()),
+            "Reducing palette height must still scroll its selected row into view")
         #expect(await fixture.library.finishSaving())
     }
 

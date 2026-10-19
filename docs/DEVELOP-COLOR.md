@@ -21,6 +21,10 @@ an D65 verankerten Planck-Weißpunkt mit Tönungsversatz im CIE-1960-uv-Raum und
 eine Bradford-Anpassung im linearen RGB-Arbeitsraum. Bei Neutralstellung wird
 die Anpassung vollständig übersprungen.
 
+Die aktive Neutralpipette zeigt innerhalb des tatsächlich dargestellten Bildes
+dasselbe Pipettensymbol wie ihre Schaltfläche. Außerhalb des Bildrechtecks gilt
+der normale Zeiger; ein Klick im Randbereich nimmt keine Probe. Ausschalten,
+Bildwechsel oder eine noch nicht bereite Bildquelle beenden die aktive Eingabe.
 Die Neutralpipette benötigt eine im Motiv tatsächlich neutrale graue oder weiße
 Fläche. Sie berechnet Temperatur und Tönung gemeinsam aus der unkorrektierten,
 entwickelten Quelle in sRGB; wiederholtes Anklicken addiert die vorherige

@@ -41,12 +41,15 @@ struct PhotoPreview: View {
     var source: AISourceIdentity? = nil
     var developing = false
     var sourceRevision: String? = nil
+    var imageScale: CGFloat = 1
+    var imageRotation: Double = 0
 
     var body: some View {
         AsyncPhotoView(
             request: PreviewRequest(source: source ?? .original(.init(fileURL: url, modifiedAt: modifiedAt, fileSize: fileSize)), pixelSize: 2_400,
                                     allowsEmbeddedPreview: !developing && settings.isNeutral, sourceRevision: sourceRevision, allowsHDR: settings.developColor.hdrEnabled),
-            priority: .selected, settings: settings, showsFailureDescription: true, progressive: true
+            priority: .selected, settings: settings, showsFailureDescription: true, progressive: true,
+            imageScale: imageScale, imageRotation: imageRotation
         )
     }
 }
@@ -54,11 +57,14 @@ struct PhotoPreview: View {
 @MainActor
 private struct AsyncPhotoView: View {
     @Environment(\.developPreviewSink) private var previewSink
+    @Environment(\.editingProgressIsCovered) private var progressIsCovered
     let request: PreviewRequest
     let priority: PreviewPriority
     let settings: EditSettings
     let showsFailureDescription: Bool
     var progressive = false
+    var imageScale: CGFloat = 1
+    var imageRotation: Double = 0
 
     private struct RenderIdentity: Hashable {
         let request: PreviewRequest
@@ -96,6 +102,7 @@ private struct AsyncPhotoView: View {
         ZStack {
             if sameDisplayedPhoto, let displayed {
                 DevelopImageView(image: displayed.image, hdr: displayed.identity.settings.developColor.hdrEnabled)
+                    .scaleEffect(imageScale).rotationEffect(.degrees(imageRotation))
                     .accessibilityLabel(request.displayName)
             } else if let error = sourceError ?? renderError {
                 failure(error)
@@ -111,10 +118,11 @@ private struct AsyncPhotoView: View {
                         Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange).padding(10)
                     }.buttonStyle(.plain).help("Vorschau erneut laden: " + error)
                         .accessibilityLabel("Vorschau erneut laden: " + error)
-                } else if busy {
-                    loadingIndicator.padding(12).help("Vorschau wird aktualisiert")
                 }
             }
+        }
+        .overlay {
+            if sameDisplayedPhoto, busy { loadingIndicator }
         }
         // Decoding is keyed only by the original, independently of the slider
         // values. Moving a slider never repeatedly cancels a slow RAW decode.
@@ -200,7 +208,16 @@ private struct AsyncPhotoView: View {
     }
 
     private var loadingIndicator: some View {
-        ProgressView().controlSize(.small).accessibilityLabel("Bildvorschau wird aktualisiert")
+        Group {
+            if showsFailureDescription {
+                if !progressIsCovered {
+                    EditingProgressIndicator().allowsHitTesting(false)
+                }
+            } else {
+                ProgressView().controlSize(.small).accessibilityLabel("Bildvorschau wird aktualisiert")
+                    .allowsHitTesting(false)
+            }
+        }
     }
 }
 

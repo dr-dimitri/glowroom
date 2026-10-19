@@ -55,6 +55,37 @@ struct DevelopCropMoveRoutingTests {
 @Suite("Native crop input")
 @MainActor
 struct DevelopCropNativeInputTests {
+    @Test func stationaryCursorRefreshHitTestsOffsetFlippedContentWithoutStealingAPanelsCursor() throws {
+        _ = NSApplication.shared
+        let window = CropCursorTestWindow(contentRect: NSRect(x: -10_000, y: -10_000, width: 300, height: 300),
+            styleMask: .borderless, backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.ignoresMouseEvents = true
+        let content = CropCursorFlippedContent(frame: NSRect(x: 0, y: 0, width: 300, height: 300))
+        window.contentView = content
+        content.frame = NSRect(x: 37, y: 41, width: 220, height: 180)
+        let view = DevelopCropNativeInputView(frame: NSRect(x: 20, y: 30, width: 50, height: 40))
+        content.addSubview(view)
+        defer { view.invalidate(); window.close() }
+        _ = try #require(content.superview)
+        #expect(content.frame.origin == CGPoint(x: 37, y: 41))
+        let localPoint = CGPoint(x: 25, y: 20)
+        window.testMouseLocation = view.convert(localPoint, to: nil)
+        var refreshedPoints: [CGPoint] = []
+
+        // The production configure path reads a stationary synthetic window
+        // position, then performs real NSView hit-testing through the flipped,
+        // offset content. No pointer movement or window focus is needed.
+        view.configure(onInput: { _ in }, onHover: { _ in }, isEnabled: true,
+            inputIdentity: "picker", cursor: { point in refreshedPoints.append(point); return .crosshair })
+        #expect(refreshedPoints == [localPoint])
+
+        content.addSubview(NSView(frame: view.frame))
+        view.configure(onInput: { _ in }, onHover: { _ in }, isEnabled: true,
+            inputIdentity: "picker", cursor: { point in refreshedPoints.append(point); return .crosshair })
+        #expect(refreshedPoints == [localPoint], "An overlapping panel must retain its own cursor")
+    }
+
     @Test func nativeCanvasExposesItsAccessibilityIdentityAndEnabledState() {
         let view = DevelopCropNativeInputView(frame: CGRect(x: 0, y: 0, width: 600, height: 400))
         defer { view.invalidate() }
@@ -208,6 +239,18 @@ struct DevelopCropNativeInputTests {
 private final class CropScrollTestParent: NSView {
     var scrollCount = 0
     override func scrollWheel(with event: NSEvent) { scrollCount += 1 }
+}
+
+@MainActor
+private final class CropCursorTestWindow: NSWindow {
+    var testMouseLocation = NSPoint.zero
+    override var mouseLocationOutsideOfEventStream: NSPoint { testMouseLocation }
+    override var isKeyWindow: Bool { true }
+}
+
+@MainActor
+private final class CropCursorFlippedContent: NSView {
+    override var isFlipped: Bool { true }
 }
 
 @Suite("Three-finger crop touch tracking")

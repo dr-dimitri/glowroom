@@ -32,6 +32,7 @@ final class InlineMaskWorkspace: ObservableObject {
     private var reconciliation: Task<Void, Never>?
     private var session = UUID()
     private var syncingBrush = false
+    private var sliderAdjustmentContext: UUID?
 
     init() {
         brush.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &brushSubscriptions)
@@ -117,6 +118,7 @@ final class InlineMaskWorkspace: ObservableObject {
         model.$selectedID.dropFirst().sink { [weak self] selectedID in
             guard let self else { return }
             self.brush.cancelStroke(); self.model?.endChange(); self.refines = false
+            self.sliderAdjustmentContext = nil
             self.showsOverlay = true
             self.syncBrush(selectedID: selectedID)
         }.store(in: &subscriptions)
@@ -143,6 +145,7 @@ final class InlineMaskWorkspace: ObservableObject {
         subscriptions.removeAll(); syncingBrush = true; brush.discard(); syncingBrush = false
         model?.close(); model = nil; asset = nil; source = nil; anchor = nil
         editor = nil; library = nil; isPresented = false; errorMessage = nil
+        sliderAdjustmentContext = nil
     }
     func close() { cancel() }
     func reconcile() {
@@ -175,7 +178,15 @@ final class InlineMaskWorkspace: ObservableObject {
         anchor = refreshedAnchor
         return true
     }
-    func finishGesture() { brush.endStroke(); model?.endChange() }
+    func finishGesture() { brush.endStroke(); model?.endChange(); sliderAdjustmentContext = nil }
+    func beginSliderAdjustment(contextID: UUID) {
+        guard isCurrent, model?.inputContextID == contextID else { return }
+        sliderAdjustmentContext = contextID
+        showsOverlay = false
+    }
+    func endSliderAdjustment(contextID: UUID) {
+        if sliderAdjustmentContext == contextID { sliderAdjustmentContext = nil }
+    }
     func undo() { brush.cancelStroke(); model?.undo(); syncBrush() }
     func redo() { brush.cancelStroke(); model?.redo(); syncBrush() }
     func select(_ id: UUID) {
@@ -187,6 +198,13 @@ final class InlineMaskWorkspace: ObservableObject {
         // The comparison toggle lives in the floating list. Once that list
         // disappears, show current edits rather than an unreachable before state.
         if settings.localAdjustments.isEmpty { comparesBefore = false }
+        // Native slider input begins before its first value publication. Keep
+        // geometry sliders hidden too, until the user explicitly shows the area
+        // again or resumes drawing/selecting a mask.
+        if sliderAdjustmentContext == model?.inputContextID {
+            showsOverlay = false
+            return
+        }
         // Published settings arrive before mutation. Compare the same selected
         // layer so names, ordering and edits to other masks do not hide its area.
         guard let selected = model?.selected,

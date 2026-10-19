@@ -223,30 +223,50 @@ struct InlineMaskCanvas: View {
 @MainActor
 struct InlineMaskList: View {
     @ObservedObject var workspace: InlineMaskWorkspace
+    var maximumHeight: CGFloat = .infinity
+    var onDragChanged: ((CGSize) -> Void)?
+    var onDragEnded: (() -> Void)?
     @ViewState private var showsSkySetup = false
     @ViewState private var showsSubjectSetup = false
 
     private var layers: [LocalAdjustment] { workspace.model?.settings.localAdjustments ?? [] }
 
     var body: some View {
-        if workspace.showsMaskList { palette }
+        if workspace.showsMaskList {
+            if maximumHeight < InlineMaskPaletteLayout.chromeHeight + 28 {
+                // Below one row plus the controls, scrolling the entire palette
+                // keeps every action reachable instead of clipping its footer.
+                ScrollView { palette }.frame(height: maximumHeight)
+            } else { palette }
+        }
     }
 
     private var palette: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 6) {
-                Text("Masken").font(.system(size: 12, weight: .semibold))
-                Text("\(layers.count)").font(.system(size: 10)).foregroundStyle(Theme.muted)
-                Spacer(minLength: 4)
+                HStack(spacing: 5) {
+                    Image(systemName: "line.3.horizontal").font(.system(size: 9)).foregroundStyle(Theme.muted)
+                    Text("Masken").font(.system(size: 12, weight: .semibold))
+                    Text("\(layers.count)").font(.system(size: 10)).foregroundStyle(Theme.muted)
+                    Spacer(minLength: 0)
+                }.frame(maxWidth: .infinity, minHeight: 18)
+                    .contentShape(Rectangle())
+                    .gesture(DragGesture(minimumDistance: 1, coordinateSpace: .named("local-mask.viewport"))
+                        .onChanged { onDragChanged?($0.translation) }
+                        .onEnded { _ in onDragEnded?() })
+                    .help("An der Titelleiste ziehen, um das Maskenfenster zu verschieben")
+                    .accessibilityLabel("Maskenfenster verschieben")
+                    .accessibilityIdentifier("local-mask.drag-handle")
                 Menu {
                     ForEach(LocalMaskCreation.allCases) { kind in
                         Button { workspace.finishGesture(); workspace.model?.add(kind) } label: {
                             Label(kind.title, systemImage: kind.symbol)
                         }
                     }
-                } label: { Label("Neue Maske", systemImage: "plus") }
+                } label: { Image(systemName: "plus") }
                     .menuStyle(.borderlessButton).fixedSize()
                     .disabled(workspace.canvasSize == nil || workspace.model?.isGenerating == true || layers.count >= 16)
+                    .help("Neue Maske hinzufügen").accessibilityLabel("Neue Maske")
                     .accessibilityIdentifier("local-mask.add")
                 Menu {
                     Button("Himmelsmodell einrichten …") { showsSkySetup = true }
@@ -254,7 +274,7 @@ struct InlineMaskList: View {
                 } label: { Image(systemName: "ellipsis") }
                     .menuStyle(.borderlessButton).frame(width: 16)
                     .accessibilityLabel("Maskeneinstellungen")
-            }.controlSize(.mini).font(.system(size: 11))
+            }.controlSize(.mini).font(.system(size: 11)).frame(height: 18)
             // Only the list scrolls when many masks exist. Rendering remains
             // lazy; no extra image decoding is needed for mask-type icons.
             ScrollViewReader { proxy in
@@ -268,8 +288,8 @@ struct InlineMaskList: View {
                         // the four visible slots. Keep that row reachable.
                         if let selectedID = workspace.model?.selectedID { proxy.scrollTo(selectedID, anchor: .center) }
                     }
-            }.frame(height: CGFloat(min(layers.count, 4) * 31 - 3))
-            Divider()
+            }.frame(height: InlineMaskPaletteLayout.listHeight(layerCount: layers.count, maximumHeight: maximumHeight))
+            Divider().frame(height: 1)
             HStack(spacing: 9) {
                 Button { workspace.undo() } label: { Image(systemName: "arrow.uturn.backward") }
                     .disabled(workspace.model?.canUndo != true).help("Maskenänderung rückgängig")
@@ -281,7 +301,7 @@ struct InlineMaskList: View {
                 Toggle("Überlagerung", isOn: $workspace.showsOverlay).toggleStyle(.checkbox)
                     .accessibilityIdentifier("local-mask.overlay")
                 Toggle("Vorher", isOn: $workspace.comparesBefore).toggleStyle(.checkbox)
-            }.controlSize(.mini).font(.system(size: 10))
+            }.controlSize(.mini).font(.system(size: 10)).frame(height: 16)
         }.padding(8)
             .background(Theme.panel, in: RoundedRectangle(cornerRadius: 7))
             .overlay { RoundedRectangle(cornerRadius: 7).strokeBorder(Theme.line) }
@@ -471,7 +491,7 @@ struct InlineMaskInspector: View {
 
     private func valueSlider(_ title: String, value: Binding<Double>, range: ClosedRange<Double>, neutral: Double = 0,
                              model: LocalAdjustmentEditorModel, accessibilityID: String? = nil) -> some View {
-        let input = LocalMaskSliderInput(value: value, model: model)
+        let input = LocalMaskSliderInput(value: value, model: model, workspace: workspace)
         return HStack(spacing: 7) {
             Text(title).font(.system(size: 10)).foregroundStyle(Theme.muted)
                 .frame(width: 77, alignment: .trailing).lineLimit(1).minimumScaleFactor(0.8)
@@ -494,7 +514,7 @@ struct LocalMaskSliderInput {
     let value: Binding<Double>
     let onEditingChanged: (Bool) -> Void
 
-    init(value: Binding<Double>, model: LocalAdjustmentEditorModel) {
+    init(value: Binding<Double>, model: LocalAdjustmentEditorModel, workspace: InlineMaskWorkspace? = nil) {
         let inputContextID = model.inputContextID
         self.value = Binding(get: { value.wrappedValue }, set: { newValue in
             guard model.inputContextID == inputContextID else { return }
@@ -503,8 +523,12 @@ struct LocalMaskSliderInput {
         onEditingChanged = { editing in
             guard model.inputContextID == inputContextID else { return }
             if editing {
+                workspace?.beginSliderAdjustment(contextID: inputContextID)
                 model.beginChange()
-            } else { model.endChange() }
+            } else {
+                model.endChange()
+                workspace?.endSliderAdjustment(contextID: inputContextID)
+            }
         }
     }
 }
