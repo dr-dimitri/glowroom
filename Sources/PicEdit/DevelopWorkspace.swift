@@ -11,6 +11,10 @@ final class DevelopWorkspace: ObservableObject {
     @Published var showsShadows = false
     @Published var showsHighlights = false
     @Published var cropAspect = "free"
+    @Published var cropOverlay: DevelopCropOverlay = .always
+    @Published var cropAspectLocked = false
+    var lockedCropRatio: Double?
+    @Published private(set) var isAutoStraightening = false
     @Published private(set) var sourceSize: CGSize?
     @Published private(set) var displayedMapping: DevelopCanvasMapping?
     @Published private(set) var hdrDisplayed = false
@@ -34,11 +38,17 @@ final class DevelopWorkspace: ObservableObject {
     private(set) var sourceIdentity: AISourceIdentity?
     @Published var errorMessage: String?
     private var analysisTask: Task<Void, Never>?
+    private var autoStraightenTask: Task<Double?, Error>?
+    private var autoStraightenIdentity = UUID()
+    private var originalBitmap: PreviewBitmap?
     private var identity = UUID()
     typealias Analyze = @Sendable (PreviewBitmap) async throws -> DevelopPreviewAnalysis
+    typealias EstimateHorizon = @Sendable (PreviewBitmap) async throws -> Double?
     private let analyze: Analyze
+    private let estimateHorizon: EstimateHorizon
 
-    init(analyze: Analyze? = nil) {
+    init(analyze: Analyze? = nil, estimateHorizon: EstimateHorizon? = nil) {
+        self.estimateHorizon = estimateHorizon ?? { try await DevelopHorizonEstimator.shared.estimate($0) }
         if let analyze { self.analyze = analyze }
         else {
             let worker = DevelopPreviewAnalyzer()
@@ -55,6 +65,10 @@ final class DevelopWorkspace: ObservableObject {
         navigatorImage = bitmap.image
         sourceSize = CGSize(width: sourceBitmap.image.width, height: sourceBitmap.image.height)
         let baseID = ObjectIdentifier(sourceBitmap.image)
+        if originalBitmap.map({ ObjectIdentifier($0.image) }) != baseID {
+            cancelAutoStraighten()
+        }
+        originalBitmap = sourceBitmap
         let needsBase = baseIdentity != baseID || sourceAnalysis == nil
         if needsBase { sourceAnalysis = nil }
         analysisTask?.cancel()
@@ -82,12 +96,48 @@ final class DevelopWorkspace: ObservableObject {
         default: source.width / max(1, source.height)
         }
     }
+    /// Uses the decoded original already held by the preview pipeline. The
+    /// shared actor bounds native analysis; source/base guards reject a late
+    /// result after a photo or decoded source changes.
+    func autoStraighten() async -> Double? {
+        guard !isAutoStraightening, let bitmap = originalBitmap, let source = sourceIdentity else { return nil }
+        let baseID = ObjectIdentifier(bitmap.image), token = UUID()
+        autoStraightenIdentity = token; isAutoStraightening = true; errorMessage = nil
+        let task = Task { [estimateHorizon] in try await estimateHorizon(bitmap) }
+        autoStraightenTask = task
+        defer {
+            if autoStraightenIdentity == token { isAutoStraightening = false; autoStraightenTask = nil }
+        }
+        do {
+            let angle = try await withTaskCancellationHandler { try await task.value } onCancel: { task.cancel() }
+            try Task.checkCancellation()
+            guard autoStraightenIdentity == token, sourceIdentity == source,
+                  originalBitmap.map({ ObjectIdentifier($0.image) }) == baseID else { return nil }
+            guard let angle else {
+                errorMessage = "Es wurde kein verlässlicher Horizont erkannt. Stelle den Winkel manuell ein."
+                return nil
+            }
+            return angle
+        } catch is CancellationError { return nil }
+        catch {
+            if autoStraightenIdentity == token, !Task.isCancelled, !task.isCancelled {
+                errorMessage = "Der Horizont konnte nicht automatisch ausgerichtet werden. Stelle den Winkel manuell ein."
+            }
+            return nil
+        }
+    }
+    private func cancelAutoStraighten() {
+        autoStraightenIdentity = UUID(); autoStraightenTask?.cancel(); autoStraightenTask = nil
+        isAutoStraightening = false
+    }
     func clear() {
         identity = UUID(); analysisTask?.cancel(); analysisTask = nil
+        cancelAutoStraighten(); originalBitmap = nil
         displayedMapping = nil; hdrDisplayed = false
         navigatorImage = nil
         analysis = nil; sourceAnalysis = nil; sourceSize = nil; baseIdentity = nil; sourceIdentity = nil; isAnalyzing = false; repairSource = nil
         picksWhiteBalance = false; tool = .basic; errorMessage = nil
+        cropAspect = "free"; cropAspectLocked = false; lockedCropRatio = nil
     }
 }
 
@@ -98,11 +148,26 @@ struct DevelopCanvasMapping: Equatable {
     let turns: Int
     let flipsX: Bool
     let flipsY: Bool
+    let angle: Double
+    let constrainsToImage: Bool
     init(_ geometry: DevelopGeometry) {
         crop = geometry.crop; turns = geometry.quarterTurns
         flipsX = geometry.flipHorizontal; flipsY = geometry.flipVertical
+        angle = geometry.straightenAngle; constrainsToImage = geometry.constrainToImage
     }
     static let original = Self(.neutral)
+}
+
+enum DevelopCropOverlay: String, CaseIterable, Identifiable {
+    case always, automatic, never
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .always: "Immer"
+        case .automatic: "Automatisch"
+        case .never: "Nie"
+        }
+    }
 }
 
 enum DevelopCanvasTool: String, CaseIterable, Identifiable {

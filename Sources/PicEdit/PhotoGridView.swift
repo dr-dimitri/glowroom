@@ -225,6 +225,8 @@ struct DetailView: View {
         if developWorkspace.tool.usesOriginalCanvas || developWorkspace.picksWhiteBalance {
             settings.developGeometry.crop = nil
             settings.developGeometry.quarterTurns = 0
+            settings.developGeometry.straightenAngle = 0
+            settings.developGeometry.constrainToImage = true
             settings.developGeometry.flipHorizontal = false
             settings.developGeometry.flipVertical = false
         }

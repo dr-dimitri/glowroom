@@ -4,6 +4,30 @@ import Testing
 
 @Suite("Persistent develop geometry")
 struct DevelopGeometryTests {
+    @Test func straighteningDefaultsPreserveHistoricalCanonicalBytes() throws {
+        let historical = Data("{\"flipHorizontal\":false,\"flipVertical\":false,\"quarterTurns\":1,\"redEyeCorrections\":[],\"retouchStrokes\":[]}".utf8)
+        let decoded = try ArtifactJSONCodec.decode(DevelopGeometry.self, from: historical)
+        #expect(decoded.straightenAngle == 0 && decoded.constrainToImage)
+        #expect(try ArtifactJSONCodec.encode(decoded) == historical)
+        #expect(try ArtifactJSONCodec.encode(DevelopGeometry(quarterTurns: 1)) == historical)
+        for angle in [-45.0, -12.5, 0, 19.25, 45] {
+            for constrained in [false, true] {
+                let geometry = DevelopGeometry(straightenAngle: angle, constrainToImage: constrained)
+                #expect(try ArtifactJSONCodec.decode(DevelopGeometry.self, from: ArtifactJSONCodec.encode(geometry)) == geometry)
+                let snapshot = try EditingSnapshot(settings: .init(developGeometry: geometry))
+                #expect(try ArtifactJSONCodec.decode(EditingSnapshot.self, from: ArtifactJSONCodec.encode(snapshot)) == snapshot)
+            }
+        }
+    }
+
+    @Test func straighteningRejectsInvalidAngles() throws {
+        for angle in [-45.01, 45.01, Double.nan, .infinity, -.infinity] {
+            #expect(throws: (any Error).self) { try DevelopGeometry(straightenAngle: angle).validate() }
+        }
+        let malformed = Data("{\"flipHorizontal\":false,\"flipVertical\":false,\"quarterTurns\":0,\"redEyeCorrections\":[],\"retouchStrokes\":[],\"straightenAngle\":46}".utf8)
+        #expect(throws: (any Error).self) { try ArtifactJSONCodec.decode(DevelopGeometry.self, from: malformed) }
+    }
+
     @Test func geometryRoundTripKeepsPatchOrderAndDoesNotChangeOldSettings() throws {
         let geometry = try fixture()
         let bytes = try ArtifactJSONCodec.encode(geometry)
