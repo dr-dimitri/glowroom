@@ -10,6 +10,9 @@ struct DevelopRepairServices: Sendable {
     var replacement: @Sendable (PreviewBitmap, LocalMaskRaster, [DevelopRetouchStroke]) async throws -> DevelopRetouchReplacement = {
         try await DevelopRepairAIService.shared.replace($0, mask: $1, priorRepairs: $2)
     }
+    var nextSource: @Sendable (PreviewBitmap, [LocalMaskPoint], Double, LocalMaskRaster?, [LocalMaskPoint]) async throws -> LocalMaskPoint = {
+        try await DevelopRepairAnalyzer.shared.source(for: $0, path: $1, radius: $2, mask: $3, excluding: $4)
+    }
 
     static let live = Self(
         source: { try await DevelopRepairAnalyzer.shared.source(for: $0, path: $1, radius: $2, mask: $3) },
@@ -46,6 +49,7 @@ extension DevelopWorkspace {
               editor.aiEditSessionID == expectedSession,
               let bitmap = originalBitmap, let sourceIdentity else { return }
         cancelRepairWork(clearCandidates: false)
+        discardRepairPreview()
         let request = repairRequest, services = repairServices
         let baseline = editor.settings(for: asset.id)
         let mode = repairMode, radius = repairRadius, feather = repairFeather
@@ -56,7 +60,7 @@ extension DevelopWorkspace {
         }
         let sourceSize = self.sourceSize ?? CGSize(width: bitmap.image.width, height: bitmap.image.height)
         let detectsObject = selection == nil && repairObjectDetection && mode == .remove
-        let manualSource = mode == .remove ? nil : repairSource
+        let manualSource = usesAI ? nil : repairSource
         if mode == .clone && manualSource == nil {
             errorMessage = "Wähle zuerst mit ⌥-Klick einen sauberen Quellbereich für den Kopierstempel."
             return
@@ -73,7 +77,7 @@ extension DevelopWorkspace {
                     do {
                         let object = try await services.object(bitmap, target, path)
                         mask = object.mask; target = object.center; savedPath = [target]
-                        status = "Erkanntes Objekt lokal entfernt."
+                        status = "Objektauswahl erkannt."
                     } catch DevelopRepairAnalysisError.noObject {
                         status = "Kein Objekt erkannt; der gemalte Pinselbereich wurde verwendet."
                     }
@@ -102,10 +106,12 @@ extension DevelopWorkspace {
                       self.tool == .repair, editor.canEdit,
                       editor.localRevision(for: asset.id) == expectedRevision,
                       editor.aiEditSessionID == expectedSession else { return }
-                if usesAI {
+                if mode == .remove {
                     self.repairPreviewAssetID = asset.id; self.repairPreviewRevision = expectedRevision
                     self.repairPreviewSession = expectedSession; self.repairPreviewStroke = stroke
-                    self.repairStatus = "Lokale KI-Vorschau. Prüfe das Ergebnis und wähle Übernehmen oder Verwerfen."
+                    self.repairTriedSources = usesAI ? [] : [source]
+                    self.repairStatus = (status.map { $0 + " " } ?? "")
+                        + "Prüfe die Vorschau und wähle Übernehmen oder Verwerfen."
                 } else {
                     try self.appendRepairs([stroke], asset: asset, editor: editor)
                     self.repairStatus = status
@@ -217,16 +223,55 @@ extension DevelopWorkspace {
 
     func discardRepairPreview() {
         repairPreviewStroke = nil; repairPreviewAssetID = nil; repairPreviewRevision = nil; repairPreviewSession = nil
+        repairTriedSources = []
+    }
+
+    /// Reuse the frozen selection and decoded source. Each attempt replaces
+    /// only a proposal; revision/session guards also protect delayed retries.
+    func tryAnotherRepairSource(asset: PhotoAsset, editor: EditingModel) {
+        guard !repairBusy, repairPreviewIsCurrent(asset: asset, editor: editor), editor.canEdit,
+              let stroke = repairPreviewStroke, stroke.replacement == nil,
+              let bitmap = originalBitmap, let sourceIdentity else { return }
+        guard repairTriedSources.count < 16 else {
+            errorMessage = "Bereits 16 Quellen geprüft. Verwirf die Vorschau und wähle mit ⌥-Klick eine eigene Quelle."
+            return
+        }
+        cancelRepairWork(clearCandidates: false)
+        let request = repairRequest, revision = editor.localRevision(for: asset.id), session = editor.aiEditSessionID
+        let services = repairServices, excluded = repairTriedSources
+        let baseline = editor.settings(for: asset.id)
+        let path = stroke.path.isEmpty ? [stroke.target] : stroke.path
+        repairBusy = true; errorMessage = nil
+        repairTask = Task { [weak self, weak editor] in
+            defer { if let self, self.repairRequest == request { self.repairBusy = false; self.repairTask = nil } }
+            do {
+                let source = try await services.nextSource(bitmap, path, stroke.radius, stroke.mask, excluded)
+                try Task.checkCancellation()
+                let next = try DevelopRetouchStroke(id: stroke.id, mode: stroke.mode, source: source,
+                    target: stroke.target, radius: stroke.radius, feather: stroke.feather, opacity: stroke.opacity,
+                    path: stroke.path, mask: stroke.mask)
+                try await Self.validateRepairs([next], baseline: baseline)
+                try Task.checkCancellation()
+                guard let self, let editor, self.repairRequest == request, self.sourceIdentity == sourceIdentity,
+                      self.repairPreviewStroke == stroke, self.tool == .repair, editor.canEdit,
+                      editor.localRevision(for: asset.id) == revision, editor.aiEditSessionID == session else { return }
+                self.repairPreviewStroke = next
+                self.repairTriedSources.append(source)
+                self.repairStatus = "Andere Quelle in der Vorschau. Erst Übernehmen speichert die Reparatur."
+            } catch is CancellationError { }
+            catch { if let self, self.repairRequest == request { self.errorMessage = error.localizedDescription } }
+        }
     }
 
     func acceptRepairPreview(asset: PhotoAsset, editor: EditingModel) {
+        guard !repairBusy else { return }
         guard repairPreviewIsCurrent(asset: asset, editor: editor), editor.canEdit, let stroke = repairPreviewStroke else {
             discardRepairPreview(); return
         }
         do {
             try appendRepairs([stroke], asset: asset, editor: editor); discardRepairPreview()
             repairCandidates = []; repairSelectedCandidateIDs = []
-            repairStatus = "Lokale KI-Reparatur übernommen."
+            repairStatus = stroke.replacement == nil ? "Entfernen-Reparatur übernommen." : "Lokale KI-Reparatur übernommen."
         }
         catch { errorMessage = error.localizedDescription }
     }

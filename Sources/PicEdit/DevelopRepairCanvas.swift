@@ -75,9 +75,11 @@ struct DevelopRepairCanvas: View {
                         let circle = Path(ellipseIn: CGRect(x: hover.x - radius, y: hover.y - radius, width: 2 * radius, height: 2 * radius))
                         context.stroke(circle, with: .color(.black.opacity(0.9)), lineWidth: 2.5)
                         context.stroke(circle, with: .color(.white), lineWidth: 1)
-                        let inner = radius * (1 - workspace.repairFeather)
-                        context.stroke(Path(ellipseIn: CGRect(x: hover.x - inner, y: hover.y - inner, width: 2 * inner, height: 2 * inner)),
-                            with: .color(.white.opacity(0.65)), style: StrokeStyle(lineWidth: 0.7, dash: [2, 3]))
+                        if workspace.repairMode != .remove || (!workspace.repairUsesAI && !workspace.repairObjectDetection) {
+                            let inner = radius * (1 - workspace.repairFeather)
+                            context.stroke(Path(ellipseIn: CGRect(x: hover.x - inner, y: hover.y - inner, width: 2 * inner, height: 2 * inner)),
+                                with: .color(.white.opacity(0.65)), style: StrokeStyle(lineWidth: 0.7, dash: [2, 3]))
+                        }
                     }
                 }.allowsHitTesting(false)
                 DevelopCropInputSurface(onInput: { input($0, in: rect) }, onHover: { hover = $0 },
@@ -109,7 +111,8 @@ struct DevelopRepairCanvas: View {
             finish()
             revision = editor.localRevision(for: asset.id); session = editor.aiEditSessionID
             gestureRequest = workspace.repairRequest
-            picksSource = NSEvent.modifierFlags.contains(.option) || (workspace.repairMode == .clone && workspace.repairSource == nil)
+            let usesAI = workspace.repairMode == .remove && workspace.repairUsesAI
+            picksSource = (!usesAI && NSEvent.modifierFlags.contains(.option)) || (workspace.repairMode == .clone && workspace.repairSource == nil)
             path = [point]
         }
         guard let revision, let session, let gestureRequest, gestureRequest == workspace.repairRequest,

@@ -8,3 +8,4 @@ __pycache__/
 *.pyc
 # Local, user-supplied RAW validation image; never distribute with the sources.
 /IMG_8362.CR3
+/IMG_8724.CR3
