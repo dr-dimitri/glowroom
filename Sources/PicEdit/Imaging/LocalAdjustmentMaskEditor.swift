@@ -384,6 +384,13 @@ struct InlineMaskInspector: View {
             }
     }
 
+    private var featherResetValue: Double {
+        switch workspace.selected?.mask.shape {
+        case .subject, .sky: 0
+        default: 0.5
+        }
+    }
+
     private func maskControls(_ layer: LocalAdjustment, model: LocalAdjustmentEditorModel) -> some View {
         VStack(alignment: .leading, spacing: 1) {
             Divider()
@@ -417,7 +424,7 @@ struct InlineMaskInspector: View {
                     .menuStyle(.borderlessButton).frame(width: 16).accessibilityLabel("Aktionen für diese Maske")
             }.font(.system(size: 10)).controlSize(.mini).frame(height: 23)
             valueSlider("Maskenstärke", value: Binding(get: { workspace.selected?.mask.opacity ?? 1 }, set: { value in model.updateSelected { $0.mask.opacity = value } }), range: 0...1, neutral: 1, model: model)
-            valueSlider("Weiche Kante", value: Binding(get: { workspace.selected?.mask.feather ?? 0 }, set: { value in model.updateSelected { $0.mask.feather = value } }), range: 0...1, neutral: 0.5, model: model)
+            valueSlider("Weiche Kante", value: Binding(get: { workspace.selected?.mask.feather ?? 0 }, set: { value in model.updateSelected { $0.mask.feather = value } }), range: 0...1, neutral: featherResetValue, model: model)
             if case .radial = layer.mask.shape {
                 valueSlider("Drehung", value: Binding(get: {
                     if case .radial(_, _, _, let angle)? = workspace.selected?.mask.shape { return angle * 180 / .pi }; return 0

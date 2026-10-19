@@ -69,7 +69,7 @@ public actor JointCatalogCoordinator: CatalogMutationCoordinating {
             let store = try await editing.participantStoreIdentity()
             guard store.kind == .editing else { throw CatalogCoordinationError.participantIdentityMismatch(.editing) }
             let bytes = try EditingContractJSON.encoder().encode(plan.proposal)
-            guard bytes.count <= 8_388_608 else { throw ArtifactContractError.limitExceeded }
+            guard bytes.count <= EditSettings.maximumEncodedBytes else { throw ArtifactContractError.limitExceeded }
             editingBytes = bytes
             descriptors.append(.init(store: store, operationID: id, requestSchemaVersion: 1,
                 requestSHA256: try digest(bytes), canonicalByteCount: Int64(bytes.count)))

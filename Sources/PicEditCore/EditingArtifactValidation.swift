@@ -180,8 +180,16 @@ struct ArtifactJSONScanner {
     private(set) var rootMembers: [String:Range<Int>] = [:]
     private(set) var entryRanges: [Range<Int>] = []
     private var offset = 0, values = 0
-    private let depthLimit: Int, valueLimit: Int
-    init(_ data:Data,maximum:Int) { bytes = data; depthLimit = 64; valueLimit = 2_000_000 }
+    private let depthLimit: Int, valueLimit: Int, rasterStringLimit: Int, replacementStringLimit: Int
+    init(_ data:Data,maximum:Int) {
+        bytes = data; depthLimit = 64; valueLimit = 2_000_000
+        // A canonical Gray8 raster is Base64 in one JSON string. Keep ordinary
+        // strings at their historical cap and admit only the bounded data field.
+        let rasterBytes = LocalMaskRaster.maximumDimension * LocalMaskRaster.maximumDimension
+        rasterStringLimit = min(maximum, ((rasterBytes + 2) / 3) * 4 + 2)
+        let replacementBytes = DevelopRetouchReplacement.maximumDimension * DevelopRetouchReplacement.maximumDimension * 4
+        replacementStringLimit = min(maximum, ((replacementBytes + 2) / 3) * 4 + 2)
+    }
     mutating func validate() throws {
         try value(depth:0,path:[]); whitespace()
         guard offset == bytes.count else { throw PhotoMetadataError.validation(.malformedJSON) }
@@ -223,26 +231,36 @@ struct ArtifactJSONScanner {
                 }
                 if take(93) { break }; guard take(44) else { throw PhotoMetadataError.validation(.malformedJSON) }
             }
-        case 34: _ = try string()
+        case 34: _ = try string(maximum: stringLimit(at: path))
         case 110: try literal("null")
         case 116: try literal("true")
         case 102: try literal("false")
         default: try number(key:path.last)
         }
     }
+    private func stringLimit(at path: [String]) -> Int {
+        if path.last == "bytes" { return rasterStringLimit }
+        // Only the frozen repair payload receives the larger RGBA allowance.
+        // Codable still validates Base64, dimensions and exact byte count;
+        // the enclosing snapshot separately enforces aggregate repair limits.
+        if path.last == "rgba", path.count == 1 || path.dropLast().last == "replacement" {
+            return replacementStringLimit
+        }
+        return 2_097_152
+    }
     private mutating func literal(_ text: String) throws {
         let wanted = Array(text.utf8)
         guard bytes.count-offset >= wanted.count, Array(bytes[offset..<(offset+wanted.count)]) == wanted else { throw PhotoMetadataError.validation(.malformedJSON) }
         offset += wanted.count
     }
-    private mutating func string() throws -> String {
+    private mutating func string(maximum: Int = 2_097_152) throws -> String {
         whitespace(); let start = offset
         guard offset < bytes.count, bytes[offset] == 34 else { throw PhotoMetadataError.validation(.malformedJSON) }
         offset += 1
         while offset < bytes.count {
             let byte = bytes[offset]; offset += 1
             if byte == 34 {
-                guard offset-start <= 2_097_152,
+                guard offset-start <= maximum,
                       let result = try? JSONDecoder().decode(String.self,from:Data(bytes[start..<offset])) else { throw PhotoMetadataError.validation(.malformedJSON) }
                 return result
             }
@@ -255,7 +273,7 @@ struct ArtifactJSONScanner {
                     offset += 4
                 } else { guard [34,47,92,98,102,110,114,116].contains(escaped) else { throw PhotoMetadataError.validation(.malformedJSON) } }
             }
-            guard offset-start <= 2_097_152 else { throw PhotoMetadataError.limitExceeded(.jsonEntry) }
+            guard offset-start <= maximum else { throw PhotoMetadataError.limitExceeded(.jsonEntry) }
         }
         throw PhotoMetadataError.validation(.malformedJSON)
     }

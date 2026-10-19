@@ -6,11 +6,12 @@ struct EditingBackupPackageTests {
     struct Source: Sendable { let source: EditingBackupSource; let package: EditingBackupPackageStore; let artifact: GeneratedArtifact }
     // B unit tests inject the A boundary, so these tests do not claim to parse a
     // real Editing schema. A's repository/integration suite owns that proof.
-    func source(_ fixture: ArtifactTestFixture, mask: Bool = false) async throws -> Source {
+    func source(_ fixture: ArtifactTestFixture, mask: Bool = false, parentSnapshot: EditingSnapshot? = nil,
+                kind: EditingBackupKind = .manual) async throws -> Source {
         let store = try await fixture.store(); let image = fixture.image(bits: 16, p3: true)
         let resource = ArtifactResourceID()
         let masks: [ArtifactMaskInput] = mask ? [.init(id: resource, coordinateSpace: .inputCanvas, immutableImage: fixture.image(alpha: false, gray: true))] : []
-        let draft = try await store.stageRaster(.init(immutableImage: image), provenance: fixture.provenance(image, masks: masks.map(\.id)), masks: masks)
+        let draft = try await store.stageRaster(.init(immutableImage: image), provenance: fixture.provenance(image, masks: masks.map(\.id), parentSnapshot: parentSnapshot), masks: masks)
         let publication = try await store.publish(draft, commitID: .init())
         let ownership = try await store.acquireLease(ids: [publication.artifact.id], purpose: .backup)
         let directory = try ArtifactFileIO.root(fixture.directory, create: false)
@@ -19,11 +20,33 @@ struct EditingBackupPackageTests {
         let handle = try file.handle(ownership: ownership)
         let epoch = UUID(); let artifacts = [publication.artifact]
         let snapshot = ClosedEditingSQLSnapshot(sourceStoreEpoch: epoch, database: handle, referencedArtifacts: artifacts, snapshotID: UUID())
-        let source = EditingBackupSource(snapshot: snapshot, kind: .manual, lease: ownership, artifactStore: store)
+        let source = EditingBackupSource(snapshot: snapshot, kind: kind, lease: ownership, artifactStore: store)
         let package = EditingBackupPackageStore(resources: fixture.resources, validateClosedSQL: { _, input in
             ClosedEditingSQLSnapshot(sourceStoreEpoch: epoch, database: input, referencedArtifacts: artifacts, snapshotID: UUID())
         }, catalog: CatalogRepository(directory: fixture.directory))
         return Source(source: source, package: package, artifact: publication.artifact)
+    }
+    @Test func automaticBackupRetainsLargeParentMattesAndRemainsReusable() async throws {
+        let fixture = try ArtifactTestFixture(); defer { fixture.remove() }
+        let raster = try LocalMaskRaster(width: 2_048, height: 1_536,
+            bytes: Data(repeating: 173, count: 2_048 * 1_536))
+        let layers = try (0..<2).map {
+            try LocalAdjustment(name: "Maske \($0)", mask: .init(shape: .subject(raster), feather: 0))
+        }
+        let parent = try EditingSnapshot(settings: .init(localAdjustments: layers))
+        let prepared = try await source(fixture, parentSnapshot: parent, kind: .automatic)
+        let destination = fixture.directory.appendingPathComponent("large-parent.piceditbackup", isDirectory: true)
+        let published = try await prepared.package.write(prepared.source, toNew: destination, limits: .init())
+        let manifestBytes = try Data(contentsOf: destination.appendingPathComponent("manifest.json"))
+        #expect(manifestBytes.count > 8_388_608 && manifestBytes.count < EditSettings.maximumEncodedBytes)
+        let validated = try await prepared.package.validate(from: destination, limits: .init())
+        #expect(validated.manifest.artifacts.first?.provenance.parentSnapshot == parent)
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = .current
+        formatter.dateFormat = "yyyy-MM-dd"
+        let day = formatter.string(from: published.manifest.createdAt)
+        #expect(try await prepared.package.reusableAutomaticBackup(in: fixture.directory, day: day) == destination)
     }
     @Test func packageRoundtripMaterializesAllPixelsAndMaskWithoutOriginals() async throws {
         let fixture = try ArtifactTestFixture(); defer { fixture.remove() }

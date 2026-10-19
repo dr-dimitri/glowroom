@@ -370,9 +370,9 @@ private extension EditingBackupPackageStore {
         try receipt.inventory.validate()
         let directory = try ArtifactFileIO.child(parent, receipt.destination)
         try receipt.inventory.preflight(stage: directory)
-        let bytes = try ArtifactFileIO.readSmall(directory, "manifest.json", limit: 8_388_608)
+        let bytes = try ArtifactFileIO.readSmall(directory, "manifest.json", limit: EditSettings.maximumEncodedBytes)
         guard try ArtifactFileIO.digest(bytes) == receipt.manifestSHA256 else { throw ArtifactContractError.corruptArtifact }
-        let manifest = try ArtifactJSONCodec.decode(EditingBackupManifest.self, from: bytes, maximum: 8_388_608)
+        let manifest = try ArtifactJSONCodec.decode(EditingBackupManifest.self, from: bytes, maximum: EditSettings.maximumEncodedBytes)
         try Self.checkLimits(manifest, encodedCount: bytes.count, limits: EditingPackageLimits())
         guard manifest.kind == .automatic else { throw ArtifactContractError.invalidCapability }
         let ownerBytes = try ArtifactFileIO.readSmall(directory, ".package-owner.json", limit: 4_096)

@@ -67,9 +67,10 @@ final class LocalAdjustmentEditorModel: ObservableObject {
     @Published private(set) var canRedo = false
     private let loader: Loader
     private let generator: Generator
-    private var history: [[LocalAdjustment]] = []
-    private var future: [[LocalAdjustment]] = []
-    private var groupStart: [LocalAdjustment]?
+    private var history = BoundedEditingHistory<[LocalAdjustment]>(footprint: EditingHistoryFootprint.layers)
+    private var groupStart: [LocalAdjustment]? { history.group() }
+    var historyStateCount: Int { history.count }
+    var historyByteCount: Int { history.byteCount }
     private var session = UUID()
     private var operation: UUID?
     private var inference: Task<Void, Never>?
@@ -143,9 +144,9 @@ final class LocalAdjustmentEditorModel: ObservableObject {
         } catch { errorMessage = error.localizedDescription }
     }
 
-    private func append(_ name: String, shape: LocalMaskShape) throws {
+    private func append(_ name: String, shape: LocalMaskShape, feather: Double = 0.5) throws {
         endChange()
-        let layer = try LocalAdjustment(name: name, mask: LocalAdjustmentMask(shape: shape))
+        let layer = try LocalAdjustment(name: name, mask: LocalAdjustmentMask(shape: shape, feather: feather))
         guard try install(settings.localAdjustments + [layer]) else { return }
         selectedID = layer.id
     }
@@ -196,31 +197,30 @@ final class LocalAdjustmentEditorModel: ObservableObject {
         } catch { errorMessage = error.localizedDescription }
     }
 
-    func beginChange() { if groupStart == nil { groupStart = settings.localAdjustments } }
+    func beginChange() { history.beginGroup(settings.localAdjustments) }
     func endChange() {
-        guard let previous = groupStart else { return }
-        groupStart = nil
+        guard let previous = history.endGroup() else { return }
         if previous != settings.localAdjustments { remember(previous) }
     }
     func undo() {
         cancelInference()
         endChange()
-        guard let previous = history.last else { return }
+        guard let previous = history.lastUndo() else { return }
         var candidate = settings; candidate.localAdjustments = previous
         guard acceptSettings?(candidate) != false else { return }
-        history.removeLast()
+        history.popUndo()
         inputContextID = UUID()
-        future.append(settings.localAdjustments); settings = candidate; reconcileSelection(); updateHistory()
+        history.appendRedo(settings.localAdjustments); settings = candidate; reconcileSelection(); updateHistory()
     }
     func redo() {
         cancelInference()
         endChange()
-        guard let next = future.last else { return }
+        guard let next = history.lastRedo() else { return }
         var candidate = settings; candidate.localAdjustments = next
         guard acceptSettings?(candidate) != false else { return }
-        future.removeLast()
+        history.popRedo()
         inputContextID = UUID()
-        history.append(settings.localAdjustments); settings = candidate; reconcileSelection(); updateHistory()
+        history.appendUndo(settings.localAdjustments); settings = candidate; reconcileSelection(); updateHistory()
     }
     private func reconcileSelection() {
         if selected == nil { selectedID = settings.localAdjustments.first?.id }
@@ -231,17 +231,18 @@ final class LocalAdjustmentEditorModel: ObservableObject {
         _ = try EditingSnapshot(settings: candidate)
         guard acceptSettings?(candidate) != false else { return false }
         if groupStart == nil { remember(settings.localAdjustments) }
-        else { future = [] }
+        else { history.clearRedo() }
         settings = candidate; errorMessage = nil; updateHistory()
         return true
     }
     private func remember(_ previous: [LocalAdjustment]) {
-        history.append(previous)
-        future = []; updateHistory()
+        history.clearRedo()
+        history.appendUndo(previous)
+        updateHistory()
     }
     private func updateHistory() {
-        canUndo = !history.isEmpty || groupStart.map { $0 != settings.localAdjustments } == true
-        canRedo = !future.isEmpty
+        canUndo = history.canUndo() || groupStart.map { $0 != settings.localAdjustments } == true
+        canRedo = history.canRedo()
     }
 
     private func generate(_ kind: AutomaticMaskKind, isBackground: Bool = false) {
@@ -258,7 +259,10 @@ final class LocalAdjustmentEditorModel: ObservableObject {
                 try Task.checkCancellation()
                 guard let self, self.session == currentSession, self.operation == token else { return }
                 let name = isBackground ? "Hintergrund" : kind == .subject ? "Motiv" : "Himmel"
-                try self.append(name, shape: kind == .subject ? .subject(raster) : .sky(raster))
+                // The inferred matte already carries edge coverage. A broad
+                // default blur would close small background gaps and produce
+                // halos; explicit feather edits and saved masks stay unchanged.
+                try self.append(name, shape: kind == .subject ? .subject(raster) : .sky(raster), feather: 0)
             } catch is CancellationError { }
             catch {
                 if let self, self.session == currentSession, self.operation == token { self.errorMessage = error.localizedDescription }
@@ -268,7 +272,8 @@ final class LocalAdjustmentEditorModel: ObservableObject {
     }
     /// Complement the bounded Gray8 raster off MainActor so later brush/erase
     /// refinements operate directly on the visible background selection. At
-    /// most 512² bytes need one pass; an additional worker pool costs more.
+    /// most LocalMaskRaster.maximumDimension² bytes need one pass; an
+    /// additional worker pool would compete with the admitted inference worker.
     nonisolated private static func backgroundRaster(from raster: LocalMaskRaster) async throws -> LocalMaskRaster {
         try Task.checkCancellation()
         let bytes = Data(raster.bytes.map { 255 - $0 })
@@ -283,7 +288,7 @@ final class LocalAdjustmentEditorModel: ObservableObject {
         inputContextID = UUID()
         session = UUID(); cancelInference(); source = nil; bitmap = nil; canvasSize = nil
         selectedID = settings.localAdjustments.first?.id
-        history = []; future = []; groupStart = nil; errorMessage = nil; updateHistory()
+        history.removeAll(); errorMessage = nil; updateHistory()
     }
     func waitForInference() async { if let inference { await inference.value } }
 }

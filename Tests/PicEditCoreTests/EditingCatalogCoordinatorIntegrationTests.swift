@@ -4,6 +4,27 @@ import Testing
 
 @Suite("Real SQL and catalog coordinator crash recovery")
 struct EditingCatalogCoordinatorIntegrationTests {
+    @Test func highResolutionMasksKeepImmutableRemapCommandsReadableAfterRestart() async throws {
+        // Two 2048x1536 mattes cross the former 8 MiB command cap while
+        // sharing their immutable byte allocation in this test fixture.
+        let raster = try LocalMaskRaster(width: 2_048, height: 1_536,
+            bytes: Data(repeating: 173, count: 2_048 * 1_536))
+        let layers = try (0..<2).map {
+            try LocalAdjustment(name: "Maske \($0)", mask: .init(shape: .subject(raster), feather: 0))
+        }
+        let settings = EditSettings(localAdjustments: layers)
+        let f = try await EditingCoordinatorFixture.make(settings: settings)
+        defer { try? FileManager.default.removeItem(at: f.root) }
+        try await f.execute()
+        let operation = f.directory.appendingPathComponent("CatalogCoordination").appendingPathComponent(f.plan.proposal.operationID.canonicalString)
+        let command = try Data(contentsOf: operation.appendingPathComponent("editing-command.json"))
+        #expect(command.count > 8_388_608 && command.count < EditSettings.maximumEncodedBytes)
+        let fresh = try await f.restart()
+        _ = try await fresh.coordinator.recoverAndOpen()
+        #expect(try await fresh.editing.loadState().byAsset[f.newID]?.snapshot.settings == settings)
+        #expect(try Data(contentsOf: operation.appendingPathComponent("editing-command.json")) == command)
+    }
+
     @Test func eachDurableCrashPhaseRecoversWithoutRebasingOriginalCommands() async throws {
         let phases:[CatalogCoordinationCheckpoint] = [.preparedJournal,.editingPrepared,.armedJournal,.editingCommitted,.catalogPublished,.completedJournal]
         for phase in phases {
@@ -136,7 +157,8 @@ private struct EditingCoordinatorFixture:Sendable {
     let resources:ArtifactResourceOwner,gate:CatalogLifecycleGate,artifacts:GeneratedArtifactStore,editing:EditingRepository
     let metadata:PhotoMetadataRepository?,coordinator:JointCatalogCoordinator
     let stored:StoredEditingState,plan:VerifiedAssetRemap,change:MetadataCatalogChange?
-    static func make(metadata includeMetadata:Bool = false,crashAt:CatalogCoordinationCheckpoint? = nil) async throws -> Self {
+    static func make(metadata includeMetadata:Bool = false,crashAt:CatalogCoordinationCheckpoint? = nil,
+                     settings: EditSettings = EditSettings(exposure: 1.25)) async throws -> Self {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("PicEdit-Real-Joint-\(UUID())",isDirectory:true)
         let directory = root.appendingPathComponent("Store",isDirectory:true),oldRoot = root.appendingPathComponent("Before",isDirectory:true),newRoot = root.appendingPathComponent("After",isDirectory:true)
         try FileManager.default.createDirectory(at:oldRoot,withIntermediateDirectories:true)
@@ -155,7 +177,7 @@ private struct EditingCoordinatorFixture:Sendable {
         })
         _ = try await coordinator.recoverAndOpen()
         let empty = try await editing.loadState()
-        let stored = try await editing.saveSnapshot(EditingSnapshot(settings:EditSettings(exposure:1.25)),for:asset.id,expected:.init(storeEpoch:empty.storeEpoch,revision:nil,snapshot:nil),revision:7)
+        let stored = try await editing.saveSnapshot(EditingSnapshot(settings:settings),for:asset.id,expected:.init(storeEpoch:empty.storeEpoch,revision:nil,snapshot:nil),revision:7)
         let oldMetadataSource = MetadataCatalogSourceReader.source(asset)
         if let metadata {
             _ = try await metadata.reconcile(.init(catalogSessionID:UUID(),catalogGeneration:1,persistedReference:before.reference,assets:[.init(assetID:asset.id,source:oldMetadataSource)]))

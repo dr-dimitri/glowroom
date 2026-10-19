@@ -7,6 +7,33 @@ import Testing
 @Suite("Local adjustment editor")
 @MainActor
 struct LocalAdjustmentEditorModelTests {
+    @Test func repeatedLargeMaskCreationAndDeletionBoundsHistoryAndKeepsRecentUndoRedo() async throws {
+        let bitmap = try bitmap(), count = TestStateSignal(0)
+        let model = LocalAdjustmentEditorModel(settings: .neutral, loader: { _ in bitmap }, generator: { _, _, _ in
+            count.update { $0 += 1 }
+            return try LocalMaskRaster(width: 2_048, height: 2_048,
+                bytes: Data(repeating: UInt8(count.value), count: 2_048 * 2_048))
+        })
+        await model.load(source: source("bounded-history"))
+        for _ in 0..<20 {
+            model.add(.subject); await model.waitForInference()
+            #expect(model.settings.localAdjustments.count == 1)
+            model.deleteSelected()
+            #expect(model.historyByteCount <= EditingHistoryLimits.maximumBytes)
+        }
+        #expect(model.settings.localAdjustments.isEmpty && model.historyStateCount < 40)
+        model.undo()
+        guard case .subject(let raster)? = model.selected?.mask.shape else { Issue.record("Missing latest matte"); return }
+        #expect(raster.bytes.first == 20)
+        model.undo()
+        #expect(model.settings.localAdjustments.isEmpty)
+        model.redo(); model.redo()
+        #expect(model.settings.localAdjustments.isEmpty)
+        #expect(model.historyByteCount <= EditingHistoryLimits.maximumBytes)
+        model.close()
+        #expect(model.historyStateCount == 0 && model.historyByteCount == 0)
+    }
+
     @Test func masksGroupSlidersUndoAndKeepGlobalSettings() async throws {
         let bitmap = try bitmap()
         let model = LocalAdjustmentEditorModel(settings: EditSettings(exposure: 0.5), loader: { _ in bitmap })
@@ -181,6 +208,7 @@ struct LocalAdjustmentEditorModelTests {
         #expect(requests.value == [kind == .sky ? .sky : .subject])
         #expect(layer.name == (kind == .background ? "Hintergrund" : kind == .sky ? "Himmel" : "Motiv"))
         #expect(!layer.mask.isInverted)
+        #expect(layer.mask.feather == 0, "Automatic mattes retain their inferred edge coverage by default")
         #expect(layer.mask.shape == (kind == .sky ? .sky(raster) : .subject(kind == .background ? backgroundRaster : raster)))
         #expect(!model.isGenerating)
         #expect(model.canUndo)

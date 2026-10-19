@@ -3,7 +3,9 @@ import Foundation
 /// Rendering instructions only. Original pixels are never stored or replaced.
 public struct EditSettings: Codable, Hashable, Sendable {
     /// An edit including bounded vector/raster selections remains a small blob.
-    public static let maximumEncodedBytes = 4_194_304
+    /// Allows 16 MiB of frozen Gray8 masks after Base64 expansion, plus bounded
+    /// vector masks, settings and the surrounding persisted editing envelopes.
+    public static let maximumEncodedBytes = 32 * 1_024 * 1_024
     public var exposure: Double
     public var contrast: Double
     public var highlights: Double
