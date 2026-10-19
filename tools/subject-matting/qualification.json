@@ -1,0 +1,270 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-19",
+  "status": "2048-qualified-first-and-warm-native-with-fallback",
+  "hardware": {
+    "chip": "Apple M2 Pro",
+    "activeCPUCount": 12,
+    "physicalMemoryBytes": 17179869184,
+    "modelIdentifier": "Mac14,10"
+  },
+  "workload": {
+    "kind": "Single locally developed user-provided RAW preview",
+    "previewWidth": 2048,
+    "previewHeight": 1365,
+    "modelInputWidth": 2048,
+    "modelInputHeight": 2048,
+    "privacy": "No photograph, derivative, filename or image hash is included in this report"
+  },
+  "model": {
+    "contract": "birefnet-hr-matting-v1",
+    "repository": "ZhengPeng7/BiRefNet_HR-matting",
+    "revision": "5d6b6f8adcb5b417c871b1d84ceaae9871355b7f",
+    "sourceFiles": {
+      "birefnet.py": "2a45b4e0ece72d7c4212bca1a988e7d7e52bfe9f98ec59c58b8809c8a8b7a831",
+      "BiRefNet_config.py": "e7b8c2a74f6cea6a59553d517f71d47f2c1d90e670a13416af17c25fe2f3dc52",
+      "model.safetensors": "a5a4de698739ea5e0e8bbab28e1b293dde95092b87a442d566cbc585c53cef55"
+    },
+    "files": [
+      {
+        "path": "Data/com.apple.CoreML/model.mlmodel",
+        "byteCount": 3698610,
+        "sha256": "66aecf1cd70112e62571969149afea8cd28406e37302dfebe5936f559be848fc"
+      },
+      {
+        "path": "Data/com.apple.CoreML/weights/weight.bin",
+        "byteCount": 474375072,
+        "sha256": "c9b42efdc976692e45fea0b3969c8bb2f1479fb558296e153ab502ef29c34737"
+      },
+      {
+        "path": "Manifest.json",
+        "byteCount": 617,
+        "sha256": "c4e54cefe20d52bd0c1bdce615dbbb48337960c4c69acd3bcd16acd490c629d1"
+      }
+    ],
+    "inputSide": 2048
+  },
+  "versions": {
+    "python": "3.11",
+    "torch": "2.5.0",
+    "torchvision": "0.20.0",
+    "coremltools": "8.3.0",
+    "numpy": "1.26.4",
+    "transformers": "4.51.3",
+    "safetensors": "0.5.3",
+    "timm": "1.0.15"
+  },
+  "deformConvolution": {
+    "maximumAbsoluteError": 3.2186508178710938e-06,
+    "cases": [
+      "nonzero offsets and modulation",
+      "zero offsets",
+      "offsets only",
+      "modulation only"
+    ],
+    "learnedOffsetsPreserved": true
+  },
+  "conversion": {
+    "independentExports": 3,
+    "reproducibility": "Weight bytes identical; deterministic protobuf bytes identical after only the intended resample-parameter and provenance-metadata corrections. Manifest uses deterministic UUIDs and Apple four-space serialization.",
+    "finalSecureConverterReexportMatchesApprovedBytes": true,
+    "finalSecureConverterSeconds": 105.5
+  },
+  "reference": {
+    "loadAndInferenceSeconds": 77.6642968748929,
+    "processPeakResidentBytes": 8132870144,
+    "dtype": "float32",
+    "finite": true
+  },
+  "nativeCompiler": {
+    "compileSeconds": 1.3037749528884888,
+    "processPeakResidentBytes": 227131392
+  },
+  "nativeGPU": {
+    "alphaMaximum": 0.9999973773956299,
+    "alphaMinimum": 1.8548726643530244e-07,
+    "compileSeconds": 6.29425048828125e-05,
+    "computeUnits": "cpuAndGPU",
+    "inferenceSeconds": [
+      40.96148896217346,
+      33.50852704048157
+    ],
+    "limitations": "Single local image; process RSS includes compiler if .mlpackage is passed; excludes some system GPU/driver allocations. CoreGraphics high-quality resize.",
+    "loadSeconds": 6.662806987762451,
+    "processPeakResidentBytes": 1237745664,
+    "side": 2048
+  },
+  "nativeCPU": {
+    "alphaMaximum": 1,
+    "alphaMinimum": 1.7881393432617188e-07,
+    "compileSeconds": 3.600120544433594e-05,
+    "computeUnits": "cpuOnly",
+    "inferenceSeconds": [
+      8.655249953269958
+    ],
+    "limitations": "Single local image; process RSS includes compiler if .mlpackage is passed; excludes some system GPU/driver allocations. CoreGraphics high-quality resize.",
+    "loadSeconds": 6.323184967041016,
+    "processPeakResidentBytes": 4891279360,
+    "side": 2048
+  },
+  "parity": {
+    "cpuVersusReference": {
+      "meanAbsoluteError": 0.0013757945271208882,
+      "maximumAbsoluteError": 0.28495609760284424,
+      "p99AbsoluteError": 0.03484215095639205,
+      "finite": true
+    },
+    "gpuVersusReference": {
+      "meanAbsoluteError": 0.00020207180932629853,
+      "maximumAbsoluteError": 0.07553690671920776,
+      "p99AbsoluteError": 0.005245387554168701,
+      "finite": true
+    },
+    "cpuVersusGPU": {
+      "meanAbsoluteError": 0.0013638873351737857,
+      "maximumAbsoluteError": 0.28264039754867554,
+      "p99AbsoluteError": 0.03457435697317121,
+      "finite": true
+    }
+  },
+  "parityGate": {
+    "meanAbsoluteErrorMaximum": 0.01,
+    "p99AbsoluteErrorMaximum": 0.1,
+    "requiresFiniteCoverageAndShape": true
+  },
+  "parityScope": "First and warmed GPU predictions, first CPU prediction against the same finite float32 reference; first and warmed 1024 exploratory predictions also gated independently. The repeated app masks are bit-identical after byte quantization.",
+  "limitations": [
+    "Single photograph, no ground-truth alpha and no Lightroom-equivalence claim.",
+    "Peak process RSS excludes some GPU and driver allocations. CPU and GPU timings are configuration measurements, not speed claims across hardware.",
+    "CPU inference was faster on this host but differed more from float32 reference; GPU remains the quality default.",
+    "Reference and native must run in separate processes; the initial combined Python process exceeded the available memory and exited 137.",
+    "Some mixed foreground/background colors remain at natural image edges; matting alone does not recover unmixed foreground colors.",
+    "First prediction means after loading a new MLModel in that process; OS, Core ML and GPU caches were not flushed. Warm prediction retains the same model weights."
+  ],
+  "nativeAppIntegration": {
+    "generationSeconds": 41.207810791,
+    "repeatGenerationSeconds": 38.795061084000004,
+    "repeatMaximumGray8Delta": 0,
+    "repeatMeanGray8Delta": 0,
+    "preCancelledRequestRejected": true,
+    "processPeakResidentBytes": 1454440448,
+    "scope": "Actual RAW development and mask generation through PicEdit worker; model reloaded each request; validation already loaded model, OS/GPU caches not flushed."
+  },
+  "exploratory1024": {
+    "approvedByApp": false,
+    "sameHRTrainedWeights": true,
+    "model": {
+      "contract": "birefnet-hr-matting-v1",
+      "repository": "ZhengPeng7/BiRefNet_HR-matting",
+      "revision": "5d6b6f8adcb5b417c871b1d84ceaae9871355b7f",
+      "inputSide": 1024,
+      "sourceFiles": {
+        "birefnet.py": "2a45b4e0ece72d7c4212bca1a988e7d7e52bfe9f98ec59c58b8809c8a8b7a831",
+        "BiRefNet_config.py": "e7b8c2a74f6cea6a59553d517f71d47f2c1d90e670a13416af17c25fe2f3dc52",
+        "model.safetensors": "a5a4de698739ea5e0e8bbab28e1b293dde95092b87a442d566cbc585c53cef55"
+      },
+      "files": [
+        {
+          "path": "Data/com.apple.CoreML/model.mlmodel",
+          "byteCount": 3679610,
+          "sha256": "eb1a40aeac9c82166b26bf86bbdc21c6516fae65feef909d853ae4ba8eeae44c"
+        },
+        {
+          "path": "Data/com.apple.CoreML/weights/weight.bin",
+          "byteCount": 465999840,
+          "sha256": "4f678d80bab227c16a514bd7ca9911147d0188987ecde108549467bc7b9e014c"
+        },
+        {
+          "path": "Manifest.json",
+          "byteCount": 617,
+          "sha256": "c4e54cefe20d52bd0c1bdce615dbbb48337960c4c69acd3bcd16acd490c629d1"
+        }
+      ]
+    },
+    "reference": {
+      "loadAndInferenceSeconds": 12.958696832996793,
+      "processPeakResidentBytes": 6159826944
+    },
+    "nativeCompiler": {
+      "compileSeconds": 1.2706849575042725,
+      "processPeakResidentBytes": 215695360
+    },
+    "nativeGPU": {
+      "alphaMaximum": 0.9999914169311523,
+      "alphaMinimum": 6.064552859896821e-09,
+      "compileSeconds": 3.3974647521972656e-05,
+      "computeUnits": "cpuAndGPU",
+      "inferenceSeconds": [
+        3.207038998603821,
+        0.6857140064239502
+      ],
+      "limitations": "Single local image; process RSS includes compiler if .mlpackage is passed; excludes some system GPU/driver allocations. CoreGraphics high-quality resize.",
+      "loadSeconds": 6.350691080093384,
+      "processPeakResidentBytes": 1188216832,
+      "side": 1024
+    },
+    "nativeCPU": {
+      "alphaMaximum": 1,
+      "alphaMinimum": 0,
+      "compileSeconds": 4.601478576660156e-05,
+      "computeUnits": "cpuOnly",
+      "inferenceSeconds": [
+        2.141180992126465
+      ],
+      "limitations": "Single local image; process RSS includes compiler if .mlpackage is passed; excludes some system GPU/driver allocations. CoreGraphics high-quality resize.",
+      "loadSeconds": 5.285896062850952,
+      "processPeakResidentBytes": 1693597696,
+      "side": 1024
+    },
+    "gpuPerPredictionParity": {
+      "alpha-1.f32": {
+        "meanAbsoluteError": 0.0002783792851737387,
+        "maximumAbsoluteError": 0.04156845808029175,
+        "p99AbsoluteError": 0.006570935249328613
+      },
+      "alpha-2.f32": {
+        "meanAbsoluteError": 0.0002783792851737387,
+        "maximumAbsoluteError": 0.04156845808029175,
+        "p99AbsoluteError": 0.006570935249328613
+      }
+    },
+    "cpuPerPredictionParity": {
+      "alpha-1.f32": {
+        "meanAbsoluteError": 0.001150029869155338,
+        "maximumAbsoluteError": 0.19178985059261322,
+        "p99AbsoluteError": 0.024251848459243774
+      }
+    },
+    "resolutionDifference": {
+      "meanAbsoluteAlphaDifference": 0.012183469720184803,
+      "p99AbsoluteAlphaDifference": 0.28914140194654475,
+      "maximumAbsoluteAlphaDifference": 0.9855464696884155,
+      "limitations": "Model-resolution difference, not a ground-truth quality score"
+    },
+    "visualObservation": "On the inspected fine-needle and interior-gap crops, 1024 has wider soft bright edge remnants and loses some thin needle tips versus 2048. Keep 2048 as the quality default; no ground-truth accuracy score is available."
+  },
+  "nativeGPUFirstPrediction": {
+    "benchmark": {
+      "alphaMaximum": 0.9999973773956299,
+      "alphaMinimum": 1.8548726643530244e-07,
+      "compileSeconds": 2.9921531677246094e-05,
+      "computeUnits": "cpuAndGPU",
+      "inferenceSeconds": [
+        32.14008295536041
+      ],
+      "limitations": "Single local image; process RSS includes compiler if .mlpackage is passed; excludes some system GPU/driver allocations. CoreGraphics high-quality resize.",
+      "loadSeconds": 0.73847496509552,
+      "processPeakResidentBytes": 977518592,
+      "side": 2048
+    },
+    "referenceParity": {
+      "alpha-1.f32": {
+        "meanAbsoluteError": 0.00020207185977397734,
+        "maximumAbsoluteError": 0.07553690671920776,
+        "p99AbsoluteError": 0.005245387554168701
+      }
+    },
+    "exactlyEqualsPreviouslySavedWarmPrediction": true,
+    "timingScope": "Fresh MLModel, but OS/Core ML/GPU caches warmed by previous qualification and compiler/app work can be running; this run closes first-prediction numerical gate, not a new cold-cache speed claim."
+  }
+}

@@ -44,7 +44,10 @@ actor AutomaticMaskService {
 
     func generate(_ bitmap: PreviewBitmap, kind: AutomaticMaskKind, sourceURL: URL? = nil) async throws -> LocalMaskRaster {
         try Task.checkCancellation()
-        let lease = try await budget.acquireLocalInference(priority: .interactive, residentBytes: 384 * 1_024 * 1_024)
+        // Reserve the largest eligible subject path before admission: setup can
+        // publish a matting model while this request waits in the shared queue.
+        let residentBytes = kind == .subject ? SubjectMattingModelInterface.residentBytes : 384 * 1_024 * 1_024
+        let lease = try await budget.acquireLocalInference(priority: .interactive, residentBytes: residentBytes)
         do {
             let result = try await generator(bitmap, kind, sourceURL)
             try Task.checkCancellation()
@@ -53,6 +56,7 @@ actor AutomaticMaskService {
         } catch {
             await budget.release(lease)
             if error is CancellationError || Task.isCancelled { throw CancellationError() }
+            if let error = error as? SubjectMattingError { throw error }
             throw (error as? AutomaticMaskError) ?? .unavailable
         }
     }
@@ -77,14 +81,40 @@ private final class AutomaticVisionCancellation: @unchecked Sendable {
 /// memory and competes with the interactive renderer.
 actor AutomaticMaskWorker {
     static let shared = AutomaticMaskWorker()
+    typealias SubjectGenerator = @Sendable (CGImage, SubjectMattingInstalledModel) throws -> LocalMaskRaster
     private let skyModelStore: SkyMaskModelStore
+    private let subjectModelStore: SubjectMattingModelStore
+    private let cachesSubjectResults: Bool
+    private var subjectCache = SubjectMattingResultCache()
+    private let subjectGenerator: SubjectGenerator
 
-    init(skyModelStore: SkyMaskModelStore = .shared) { self.skyModelStore = skyModelStore }
+    init(skyModelStore: SkyMaskModelStore = .shared, subjectModelStore: SubjectMattingModelStore = .shared,
+         cachesSubjectResults: Bool = true,
+         subjectGenerator: @escaping SubjectGenerator = { try SubjectMattingInference.generate($0, installation: $1) }) {
+        self.skyModelStore = skyModelStore
+        self.subjectModelStore = subjectModelStore
+        self.cachesSubjectResults = cachesSubjectResults
+        self.subjectGenerator = subjectGenerator
+    }
 
     func generate(_ bitmap: PreviewBitmap, kind: AutomaticMaskKind, sourceURL: URL?) async throws -> LocalMaskRaster {
         try Task.checkCancellation()
         switch kind {
         case .subject:
+            if let installation = try await subjectModelStore.installedModel() {
+                if cachesSubjectResults, let cached = subjectCache.value(for: bitmap.image, modelID: installation.receiptSHA256) {
+                    // A cached matte must not hide a changed installation. This
+                    // bounded hash check is much cheaper than another inference.
+                    _ = try SubjectMattingModelStore.verifyInstallation(installation)
+                    return cached
+                }
+                subjectCache.clear()
+                let raster = try autoreleasepool { try subjectGenerator(bitmap.image, installation) }
+                try Task.checkCancellation()
+                if cachesSubjectResults { subjectCache.store(raster, for: bitmap, modelID: installation.receiptSHA256) }
+                return raster
+            }
+            subjectCache.clear()
             let cancellation = AutomaticVisionCancellation()
             return try await withTaskCancellationHandler {
                 try autoreleasepool { try subject(bitmap.image, cancellation: cancellation) }
