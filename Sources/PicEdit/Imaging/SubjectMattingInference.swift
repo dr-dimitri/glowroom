@@ -29,13 +29,13 @@ struct SubjectMattingResultCache {
 /// The imported model owns normalization and sigmoid. Image coverage is scalar
 /// data, not display gray; retain its fractional edges without gamma or erosion.
 enum SubjectMattingModelInterface {
-    static let side = 2_048
+    static let side = 1_920
     static let residentBytes: Int64 = 6 * 1_024 * 1_024 * 1_024
     static let contract = "birefnet-hr-matting-v1"
     static let sourceRevision = "5d6b6f8adcb5b417c871b1d84ceaae9871355b7f"
     static let weightsSHA256 = "a5a4de698739ea5e0e8bbab28e1b293dde95092b87a442d566cbc585c53cef55"
 
-    private struct ApprovedPackage: Decodable {
+    private struct PinnedPackage: Decodable {
         let schemaVersion: Int
         let contract: String
         let sourceRevision: String
@@ -44,16 +44,26 @@ enum SubjectMattingModelInterface {
     }
 
     static func approvedFiles(mainBundle: Bundle = .main) throws -> [SemanticManifestFile] {
+        try pinnedFiles(resourceName: "SubjectMattingApprovedPackage", mainBundle: mainBundle)
+    }
+
+    /// This historical identity only permits recognizing an existing install
+    /// for controlled replacement/removal. Runtime and imports use approvedFiles.
+    static func legacyFiles(mainBundle: Bundle = .main) throws -> [SemanticManifestFile] {
+        try pinnedFiles(resourceName: "SubjectMattingLegacyPackage", mainBundle: mainBundle)
+    }
+
+    private static func pinnedFiles(resourceName: String, mainBundle: Bundle) throws -> [SemanticManifestFile] {
         let resources: Bundle
         if mainBundle.bundleURL.pathExtension.lowercased() == "app" {
             guard let root = mainBundle.resourceURL?.appendingPathComponent("PicEdit_PicEdit.bundle"),
                   let packaged = Bundle(url: root) else { throw SubjectMattingError.invalidModel }
             resources = packaged
         } else { resources = .module }
-        guard let url = resources.url(forResource: "SubjectMattingApprovedPackage", withExtension: "json") else {
+        guard let url = resources.url(forResource: resourceName, withExtension: "json") else {
             throw SubjectMattingError.invalidModel
         }
-        let package = try SemanticInstallationIO.decode(ApprovedPackage.self, at: url, limit: 16_384)
+        let package = try SemanticInstallationIO.decode(PinnedPackage.self, at: url, limit: 16_384)
         guard package.schemaVersion == 1, package.contract == contract, package.sourceRevision == sourceRevision,
               package.weightsSHA256 == weightsSHA256, package.files.count == 3,
               Set(package.files.map(\.path)) == Set(["Manifest.json", "Data/com.apple.CoreML/model.mlmodel",

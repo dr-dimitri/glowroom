@@ -12,6 +12,18 @@ import prepare
 
 
 class SourceTests(unittest.TestCase):
+    def test_cli_defaults_to1920_without_restricting_2048_experiments(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            source = directory / "source"
+            output = directory / "model.mlpackage"
+            with patch.object(sys, "argv", ["prepare.py", "--source", str(source), "--output", str(output)]), \
+                 patch.object(prepare, "sources"), patch.object(prepare, "convert") as conversion, \
+                 patch("builtins.print"):
+                prepare.main()
+            conversion.assert_called_once_with(source, output, 1920)
+            self.assertEqual(prepare.model_side("2048"), 2048)
+
     def test_invalid_resolution_fails_before_model_loading_or_publication(self):
         with tempfile.TemporaryDirectory() as temporary:
             directory = Path(temporary)

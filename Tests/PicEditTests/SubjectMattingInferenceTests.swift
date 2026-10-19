@@ -32,7 +32,7 @@ struct SubjectMattingInferenceTests {
     @Test func approvedPackagePinsGraphWeightsAndManifestBeforeCompilation() throws {
         let files = try SubjectMattingModelInterface.approvedFiles()
         #expect(files.count == 3)
-        #expect(files.reduce(Int64(0)) { $0 + $1.bytes } == 478_074_299)
+        #expect(files.reduce(Int64(0)) { $0 + $1.bytes } == 477_196_412)
         try SubjectMattingModelInterface.validateApprovedFiles(files)
         #expect(throws: SubjectMattingError.invalidModel) {
             try SubjectMattingModelInterface.validateApprovedFiles(Array(files.dropLast()))
@@ -42,6 +42,37 @@ struct SubjectMattingInferenceTests {
         #expect(throws: SubjectMattingError.invalidModel) {
             try SubjectMattingModelInterface.validateApprovedFiles(forged)
         }
+        let legacy = try SubjectMattingModelInterface.legacyFiles()
+        #expect(Set(files) != Set(legacy))
+        #expect(throws: SubjectMattingError.invalidModel) {
+            try SubjectMattingModelInterface.validateApprovedFiles(legacy)
+        }
+    }
+
+    @Test func productionInputUses1920PixelsAndRejectsLegacy2048Output() throws {
+        let image = try #require(CGImage(width: 1, height: 1, bitsPerComponent: 8, bitsPerPixel: 32,
+            bytesPerRow: 4, space: CGColorSpace(name: CGColorSpace.sRGB)!,
+            bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
+            provider: CGDataProvider(data: Data([255, 0, 0, 255]) as CFData)!,
+            decode: nil, shouldInterpolate: false, intent: .defaultIntent))
+        let input = try SubjectMattingInference.inputBuffer(image)
+        #expect(CVPixelBufferGetWidth(input) == 1_920)
+        #expect(CVPixelBufferGetHeight(input) == 1_920)
+        let legacy = try MLMultiArray(shape: [1, 1, 2_048, 2_048], dataType: .float32)
+        #expect(throws: SubjectMattingError.invalidModel) {
+            try SubjectMattingInference.raster(legacy, outputSize: (1, 1))
+        }
+    }
+
+    @Test func native1920CoverageRetainsThe2048SavedRasterBudget() throws {
+        let side = SubjectMattingModelInterface.side
+        let values = try MLMultiArray(shape: [1, 1, NSNumber(value: side), NSNumber(value: side)], dataType: .float32)
+        values.dataPointer.assumingMemoryBound(to: Float.self).initialize(repeating: 0.5, count: side * side)
+        let output = AutomaticMaskRasterConverter.outputSize(width: 6_000, height: 4_000)
+        let raster = try SubjectMattingInference.raster(values, outputSize: output)
+        #expect(raster.width == 2_048 && raster.height == 1_365)
+        #expect(raster.bytes.count == 2_048 * 1_365)
+        #expect(raster.bytes.allSatisfy { $0 == 128 })
     }
 
     @Test func fractionalCoverageRetainsRowsAndRestoresNonSquareAspect() throws {

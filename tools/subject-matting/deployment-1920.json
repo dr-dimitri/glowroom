@@ -1,0 +1,109 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-19",
+  "status": "approved-1920-native-app-and-fallback-verified",
+  "hardware": {
+    "chip": "Apple M2 Pro",
+    "activeCPUCount": 12,
+    "physicalMemoryBytes": 17179869184,
+    "modelIdentifier": "Mac14,10"
+  },
+  "model": {
+    "schemaVersion": 1,
+    "contract": "birefnet-hr-matting-v1",
+    "sourceRevision": "5d6b6f8adcb5b417c871b1d84ceaae9871355b7f",
+    "weightsSHA256": "a5a4de698739ea5e0e8bbab28e1b293dde95092b87a442d566cbc585c53cef55",
+    "files": [
+      {
+        "path": "Data/com.apple.CoreML/model.mlmodel",
+        "bytes": 4211315,
+        "sha256": "68e652515e34d2cb26e19f8194a35fdb4ce3442eeabbe9ec617e70ff5a08526d"
+      },
+      {
+        "path": "Data/com.apple.CoreML/weights/weight.bin",
+        "bytes": 472984480,
+        "sha256": "b7a129ce6d27738235b6677007aaedd084d52c8b4fbbffbeb765aa0be9dd79b6"
+      },
+      {
+        "path": "Manifest.json",
+        "bytes": 617,
+        "sha256": "c4e54cefe20d52bd0c1bdce615dbbb48337960c4c69acd3bcd16acd490c629d1"
+      }
+    ]
+  },
+  "inputSide": 1920,
+  "savedRasterMaximumDimension": 2048,
+  "computeUnits": "cpuAndGPU",
+  "nativeGPUReferenceParity": {
+    "meanAbsoluteError": 0.0019902598536690698,
+    "maximumAbsoluteError": 0.5025513768196106,
+    "p99AbsoluteError": 0.053886482715606476
+  },
+  "nativeCPUFallback": {
+    "loadSeconds": 4.867880458361469,
+    "inferenceSeconds": 5.8193044166546315,
+    "requestSecondsToFirstValidatedAlpha": 11.22267087502405,
+    "processPeakResidentBytes": 4202676224,
+    "referenceParity": {
+      "meanAbsoluteError": 0.0022389797848485085,
+      "maximumAbsoluteError": 0.44827204942703247,
+      "p99AbsoluteError": 0.058036924004554735
+    },
+    "scope": "One fresh native CPU process with exact saved reference input, no cache purge; functional fallback check, not full app latency."
+  },
+  "referenceParityGate": {
+    "meanAbsoluteErrorMaximum": 0.01,
+    "p99AbsoluteErrorMaximum": 0.1,
+    "requiresFiniteCoverageAndShape": true,
+    "maximumErrorReportedWithoutHiding": true,
+    "notGroundTruthAccuracy": true
+  },
+  "applicationProbe": {
+    "workload": "Single user-provided RAW developed locally to a 2048 by 1365 sRGB preview",
+    "inputSide": 1920,
+    "savedRasterWidth": 2048,
+    "savedRasterHeight": 1365,
+    "firstNewMaskSeconds": 11.623278041999999,
+    "secondNewMaskSeconds": 5.8907095,
+    "repeatMaximumGray8Delta": 0,
+    "preCancelledRequestRejected": true,
+    "processPeakResidentBytes": 1465139200,
+    "originalUnchanged": true,
+    "installed1920ReceiptMatchesApprovedPins": true,
+    "verifiedLegacyGenerationRemovedAfterCommit": true,
+    "scope": "Actual PicEdit worker including installation checks and final raster. Result cache disabled; new model object per request. Installation validated the model before these requests. RAW decode and diagnostic PNG writes are excluded. OS/Core ML/GPU caches not flushed; process RSS includes setup and excludes some driver memory."
+  },
+  "userInterface": {
+    "placement": "Bottom leading corner of the fixed photo viewport",
+    "text": "Maske wird berechnet \u2026",
+    "appearance": "Compact material capsule with native activity spinner and accessible cancel button; static hourglass when system requests reduced motion.",
+    "lifecycle": "Visible only for the current source-bound mask request; hides after success, failure, cancellation or source/session change. Native work may retain its admission after UI cancellation; late results cannot publish.",
+    "layoutVerifiedViewportWidths": [
+      400,
+      550,
+      900
+    ],
+    "layoutVerifiedViewportHeight": 240,
+    "visualAndNativeAccessibilityChecksPassed": true,
+    "reduceMotionVerification": "Production environment read reviewed; no global accessibility setting or unsupported environment override used by tests."
+  },
+  "verification": {
+    "targetedAppTests": 76,
+    "targetedCoreTests": 11,
+    "toolTests": 14,
+    "nativeRAWTests": 1,
+    "cleanLocalAppBuild": "passed",
+    "cleanBuildSeconds": 229.43,
+    "bundleSignature": "verified",
+    "bundledCurrentAndLegacyResources": "byte-identical to source",
+    "finalDiffReview": "passed without findings",
+    "testHarnessCorrections": "macOS SDK exposes reduced-motion environment as read-only; static accessibility text can expose AXValue instead of AXLabel. Test assumptions corrected, final test runs pass."
+  },
+  "limitations": [
+    "One photograph and one host; no general six-second guarantee. Initial request remains slower than subsequent requests.",
+    "1920 and CPU fallback pass the existing numeric gates but are not pixel-identical to Float32; maxima remain explicitly reported.",
+    "No ground-truth alpha or Lightroom-equivalence claim; thin mixed foreground/background edge colors can remain under strong darkening.",
+    "Historical qualification.json and resolution-experiments.json remain unchanged as records preceding 1920 promotion."
+  ],
+  "privacy": "No photograph, derivative, filename, local path, image hash or alpha hash included."
+}

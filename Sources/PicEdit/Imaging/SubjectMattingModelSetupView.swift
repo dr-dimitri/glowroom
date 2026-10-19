@@ -4,6 +4,7 @@ import UniformTypeIdentifiers
 @MainActor
 private final class SubjectMattingModelSetupState: ObservableObject {
     @Published var installed = false
+    @Published var requiresUpdate = false
     @Published var isBusy = false
     @Published var progress: SubjectMattingSetupProgress?
     @Published var errorMessage: String?
@@ -11,8 +12,12 @@ private final class SubjectMattingModelSetupState: ObservableObject {
     private var operation = UUID()
 
     func refresh() async {
-        do { installed = try await SubjectMattingModelStore.shared.installedModel() != nil }
-        catch { errorMessage = error.localizedDescription }
+        do {
+            installed = try await SubjectMattingModelStore.shared.installedModel() != nil
+            requiresUpdate = false; errorMessage = nil
+        } catch SubjectMattingError.updateRequired {
+            installed = true; requiresUpdate = true; errorMessage = nil
+        } catch { installed = false; requiresUpdate = false; errorMessage = error.localizedDescription }
     }
 
     func install(from url: URL) {
@@ -34,7 +39,7 @@ private final class SubjectMattingModelSetupState: ObservableObject {
                         self.progress = value
                     }
                 }
-                installed = true
+                installed = true; requiresUpdate = false
                 progress = .init(text: "Lokales Motivmodell ist bereit.", fraction: 1)
             } catch is CancellationError { progress = nil }
             catch { errorMessage = error.localizedDescription; progress = nil }
@@ -48,7 +53,7 @@ private final class SubjectMattingModelSetupState: ObservableObject {
         task = Task { [weak self] in
             guard let self else { return }
             defer { isBusy = false; task = nil; operation = UUID() }
-            do { try await SubjectMattingModelStore.shared.remove(); installed = false; progress = nil }
+            do { try await SubjectMattingModelStore.shared.remove(); installed = false; requiresUpdate = false; progress = nil }
             catch is CancellationError { progress = nil }
             catch { errorMessage = error.localizedDescription }
         }
@@ -68,12 +73,17 @@ struct SubjectMattingModelSetupView: View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Lokales Motivmodell").font(.title2.bold())
             Text("BiRefNet HR Matting berechnet Motiv- und Hintergrundmasken direkt auf deinem Mac. Es berücksichtigt feine Strukturen und weiche Übergänge. Deine Fotos bleiben auf dem Gerät.")
-            Text("Importiere das für PicEdit vorbereitete Core-ML-Modell (.mlpackage). Der Import benötigt vorübergehend mindestens 3 GB freien Speicher. Danach funktioniert das Modell offline.")
+            Text("Importiere die für PicEdit vorbereitete 1920-Pixel-Variante des Core-ML-Modells (.mlpackage). Der Import benötigt vorübergehend mindestens 3 GB freien Speicher. Danach funktioniert das Modell offline.")
                 .foregroundStyle(.secondary)
             Link("BiRefNet HR Matting · MIT-Lizenz", destination: URL(string: "https://huggingface.co/ZhengPeng7/BiRefNet_HR-matting")!)
             Text("Ohne importiertes Modell verwendet PicEdit weiterhin Apples lokale Motiverkennung. Vorhandene Masken bleiben erhalten; erst eine neue Motivauswahl verwendet das importierte Modell.")
                 .font(.callout).foregroundStyle(.secondary)
-            if state.installed {
+            if state.requiresUpdate {
+                Label("2048-Pixel-Modell vorhanden · Aktualisierung erforderlich", systemImage: "arrow.triangle.2.circlepath")
+                    .foregroundStyle(.orange)
+                Text("Ersetze das bisherige Modell durch die 1920-Pixel-Variante. Bis dahin wird es für neue Auswahlen nicht verwendet. Bereits gespeicherte Masken bleiben erhalten.")
+                    .font(.callout).foregroundStyle(.secondary)
+            } else if state.installed {
                 Label("Motivmodell eingerichtet", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
             }
             if let progress = state.progress {

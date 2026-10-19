@@ -10,6 +10,158 @@ import Testing
 @Suite("Compact mask palettes", .serialized)
 @MainActor
 struct CompactMaskLayoutTests {
+    @Test func canvasCalculationStatusIsAccessibleWithoutMovingThePhotoAndCancelsImmediately() async throws {
+        let pending = TestAsyncLatch(), started = TestStateSignal(false), returned = TestStateSignal(false)
+        defer { pending.releaseAll() }
+        let raster = try LocalMaskRaster(width: 2, height: 2, bytes: Data([0, 255, 255, 0]))
+        let fixture = try await CompactMaskFixture.make(generator: { _, _, _ in
+            started.update { $0 = true }
+            await pending.wait() // Models native work which cannot return on cancellation yet.
+            returned.update { $0 = true }
+            return raster
+        })
+        let host = CompactMaskHost(width: 420, height: 240)
+        defer { host.close(); fixture.close() }
+        try await host.mount(Color.gray.frame(height: 240)
+            .overlay { InlineMaskViewportOverlays(workspace: fixture.workspace, showsMaskList: false) })
+        let idleHeight = host.fittingHeight
+        #expect(!fixture.workspace.showsCalculationStatus)
+        #expect(!host.elements.contains { $0.accessibilityIdentifier() == "local-mask.calculation-status" })
+
+        fixture.model.add(.background)
+        try await started.wait("mask status inference started", until: { $0 })
+        try await host.settle()
+        #expect(fixture.workspace.showsCalculationStatus)
+        let status = try host.element("local-mask.calculation-status")
+        // AppKit static text can expose its spoken text as AXValue rather
+        // than AXLabel; both represent the user-visible status string.
+        let spokenStatus = status.accessibilityLabel() ?? (status.accessibilityValue() as? String)
+        #expect(spokenStatus == "Maske wird berechnet …")
+        #expect(host.screenFrame.insetBy(dx: -1, dy: -1).contains(status.accessibilityFrame()))
+        let cancel = try host.element("local-mask.calculation-cancel")
+        #expect(cancel.accessibilityLabel() == "Maskenberechnung abbrechen")
+        #expect(cancel.isAccessibilityEnabled())
+        #expect(host.screenFrame.insetBy(dx: -1, dy: -1).contains(cancel.accessibilityFrame()))
+        #expect(host.fittingHeight == idleHeight, "The status is an overlay, so the photograph must not move")
+        try host.snapshotIfRequested("mask-calculation-status")
+
+        #expect(cancel.accessibilityPerformPress())
+        #expect(!fixture.model.isGenerating && !fixture.workspace.showsCalculationStatus)
+        #expect(pending.waitingCount == 1, "The canceled native request may still own its worker")
+        try await host.settle()
+        #expect(!host.elements.contains { $0.accessibilityIdentifier() == "local-mask.calculation-status" })
+        #expect(host.fittingHeight == idleHeight)
+        pending.releaseAll()
+        try await returned.wait("canceled mask worker returned", until: { $0 })
+        try await host.settle()
+        #expect(fixture.model.settings.localAdjustments.isEmpty, "A late canceled result must not restore the status or selection")
+        #expect(!fixture.workspace.showsCalculationStatus)
+        #expect(await fixture.library.finishSaving())
+    }
+
+    @Test(arguments: [400.0, 550.0, 900.0])
+    func calculationStatusAndFloatingPaletteStayVisibleWithoutOverlappingInAMinimumHeightViewport(width: Double) async throws {
+        let pending = TestAsyncLatch(), started = TestStateSignal(false)
+        defer { pending.releaseAll() }
+        let raster = try LocalMaskRaster(width: 2, height: 2, bytes: Data([0, 255, 255, 0]))
+        let fixture = try await CompactMaskFixture.make(generator: { _, _, _ in
+            started.update { $0 = true }
+            await pending.wait()
+            return raster
+        })
+        let host = CompactMaskHost(width: width, height: 240)
+        defer { host.close(); fixture.close() }
+        // Fifteen accepted masks exercise the palette's maximum four visible
+        // rows while one final automatic selection is still pending.
+        for _ in 0..<15 { fixture.model.add(.linear) }
+        let source = try #require(fixture.model.bitmap?.image)
+        try await host.mount(ZStack {
+            Theme.canvas
+            Image(decorative: source, scale: 1).resizable().aspectRatio(contentMode: .fit).padding(18)
+        }.frame(height: 240).overlay { InlineMaskViewportOverlays(workspace: fixture.workspace) })
+        let idleHeight = host.fittingHeight
+        fixture.model.add(.subject)
+        try await started.wait("viewport status inference started", until: { $0 })
+        try await host.settle()
+        let status = try host.element("local-mask.calculation-indicator")
+        let palette = try host.element("local-mask.list")
+        let statusFrame = status.accessibilityFrame(), paletteFrame = palette.accessibilityFrame()
+        #expect(statusFrame.width > 0 && statusFrame.height > 0)
+        #expect(paletteFrame.width > 0 && paletteFrame.height > 0)
+        #expect(host.screenFrame.insetBy(dx: -1, dy: -1).contains(statusFrame))
+        #expect(host.screenFrame.insetBy(dx: -1, dy: -1).contains(paletteFrame))
+        #expect(!statusFrame.intersects(paletteFrame), "Calculation status and existing masks must never overlap")
+        #expect(host.fittingHeight == idleHeight)
+        #expect(try host.element("local-mask.calculation-cancel").isAccessibilityEnabled())
+        try host.snapshotIfRequested("mask-calculation-viewport-\(Int(width))")
+        fixture.model.cancelInference()
+        pending.releaseAll()
+        #expect(await fixture.library.finishSaving())
+    }
+
+    @Test(arguments: [false, true])
+    func canvasCalculationStatusDisappearsOnSuccessOrError(fails: Bool) async throws {
+        let pending = TestAsyncLatch(), started = TestStateSignal(false)
+        defer { pending.releaseAll() }
+        let raster = try LocalMaskRaster(width: 2, height: 2, bytes: Data([0, 255, 255, 0]))
+        let fixture = try await CompactMaskFixture.make(generator: { _, _, _ in
+            started.update { $0 = true }
+            await pending.wait()
+            if fails { throw AutomaticMaskError.noSubject }
+            return raster
+        })
+        let host = CompactMaskHost(width: 420, height: 240)
+        defer { host.close(); fixture.close() }
+        try await host.mount(InlineMaskCalculationStatus(workspace: fixture.workspace))
+        fixture.model.add(.subject)
+        try await started.wait("finishing mask inference started", until: { $0 })
+        try await host.settle()
+        _ = try host.element("local-mask.calculation-status")
+        pending.releaseAll()
+        await fixture.model.waitForInference()
+        try await host.settle()
+        #expect(!fixture.workspace.showsCalculationStatus)
+        #expect(!host.elements.contains { $0.accessibilityIdentifier() == "local-mask.calculation-status" })
+        #expect(fixture.model.settings.localAdjustments.count == (fails ? 0 : 1))
+        #expect((fixture.model.errorMessage != nil) == fails)
+        #expect(await fixture.library.finishSaving())
+    }
+
+    @Test func canvasCalculationStatusCannotFollowALateResultToAnotherPhoto() async throws {
+        let pending = TestAsyncLatch(), started = TestStateSignal(false), returned = TestStateSignal(false)
+        defer { pending.releaseAll() }
+        let raster = try LocalMaskRaster(width: 2, height: 2, bytes: Data([0, 255, 255, 0]))
+        let fixture = try await CompactMaskFixture.make(includesSecondPhoto: true, generator: { _, _, _ in
+            started.update { $0 = true }
+            await pending.wait()
+            returned.update { $0 = true }
+            return raster
+        })
+        let host = CompactMaskHost(width: 420, height: 240)
+        defer { host.close(); fixture.close() }
+        try await host.mount(InlineMaskCalculationStatus(workspace: fixture.workspace))
+        fixture.model.add(.subject)
+        try await started.wait("old photo mask inference started", until: { $0 })
+        try await host.settle()
+        _ = try host.element("local-mask.calculation-status")
+        let replacement = try #require(fixture.library.assets.first { $0.id != fixture.workspace.asset?.id })
+        fixture.library.selectedID = replacement.id
+        #expect(!fixture.workspace.showsCalculationStatus, "A changed source hides its status before reconciliation closes the old session")
+        try await host.settle()
+        #expect(!fixture.workspace.isPresented)
+        #expect(fixture.workspace.open(asset: replacement, source: try fixture.editor.resolvedSource(for: replacement).identity,
+            settings: .neutral, editor: fixture.editor, library: fixture.library, model: fixture.model))
+        try await compactMaskWait { fixture.workspace.canvasSize != nil }
+        pending.releaseAll()
+        try await returned.wait("old photo mask worker returned", until: { $0 })
+        try await host.settle()
+        #expect(fixture.workspace.isCurrent)
+        #expect(!fixture.workspace.showsCalculationStatus)
+        #expect(!host.elements.contains { $0.accessibilityIdentifier() == "local-mask.calculation-status" })
+        #expect(fixture.model.settings.localAdjustments.isEmpty)
+        #expect(await fixture.library.finishSaving())
+    }
+
     @Test func newMaskCreatorFitsAndExposesItsToolsBeforeTheFirstMask() async throws {
         let fixture = try await CompactMaskFixture.make()
         let host = CompactMaskHost(width: 300, height: 460)
@@ -236,13 +388,15 @@ private struct CompactMaskFixture {
     let model: LocalAdjustmentEditorModel
     let workspace: InlineMaskWorkspace
 
-    static func make() async throws -> Self {
+    static func make(includesSecondPhoto: Bool = false, generator: LocalAdjustmentEditorModel.Generator? = nil) async throws -> Self {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("PicEdit-CompactMasks-\(UUID())")
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let folder = LibraryFolder(url: directory)
         let asset = PhotoAsset(folderID: folder.id, fileURL: directory.appendingPathComponent("synthetic.jpg"))
         let repository = CatalogRepository(directory: directory.appendingPathComponent("Catalog"))
-        try repository.save(LibraryCatalog(folders: [folder], assets: [asset]))
+        let assets = [asset] + (includesSecondPhoto
+            ? [PhotoAsset(folderID: folder.id, fileURL: directory.appendingPathComponent("second.jpg"))] : [])
+        try repository.save(LibraryCatalog(folders: [folder], assets: assets))
         let library = LibraryModel(repository: repository)
         let editor = EditingModel(database: LegacySnapshotTestAdapter(CompactMaskSnapshotStore()))
         try await compactMaskWait { !library.isLoading && !library.isProjecting && !editor.isLoading }
@@ -253,7 +407,11 @@ private struct CompactMaskFixture {
             space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
             provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent))
         let bitmap = PreviewBitmap(image: image)
-        let model = LocalAdjustmentEditorModel(settings: .neutral, loader: { _ in bitmap })
+        let model = if let generator {
+            LocalAdjustmentEditorModel(settings: .neutral, loader: { _ in bitmap }, generator: generator)
+        } else {
+            LocalAdjustmentEditorModel(settings: .neutral, loader: { _ in bitmap })
+        }
         let workspace = InlineMaskWorkspace()
         #expect(workspace.open(asset: asset, source: try editor.resolvedSource(for: asset).identity,
             settings: .neutral, editor: editor, library: library, model: model))

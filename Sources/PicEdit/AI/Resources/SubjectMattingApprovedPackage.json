@@ -6,13 +6,13 @@
   "files": [
     {
       "path": "Data/com.apple.CoreML/model.mlmodel",
-      "bytes": 3698610,
-      "sha256": "66aecf1cd70112e62571969149afea8cd28406e37302dfebe5936f559be848fc"
+      "bytes": 4211315,
+      "sha256": "68e652515e34d2cb26e19f8194a35fdb4ce3442eeabbe9ec617e70ff5a08526d"
     },
     {
       "path": "Data/com.apple.CoreML/weights/weight.bin",
-      "bytes": 474375072,
-      "sha256": "c9b42efdc976692e45fea0b3969c8bb2f1479fb558296e153ab502ef29c34737"
+      "bytes": 472984480,
+      "sha256": "b7a129ce6d27738235b6677007aaedd084d52c8b4fbbffbeb765aa0be9dd79b6"
     },
     {
       "path": "Manifest.json",
