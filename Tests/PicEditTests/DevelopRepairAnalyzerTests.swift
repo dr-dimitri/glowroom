@@ -57,12 +57,104 @@ struct DevelopRepairAnalyzerTests {
         #expect(hypot((source.x - target.x) * 160, (source.y - target.y) * 100) > 7)
     }
 
+    @Test func sourceRejectsRedReplacementWithTheSameLuminanceAsGreenSurroundings() async throws {
+        let mask = try rectangularSelection()
+        let bitmap = try image(width: 192, height: 96) { x, y in
+            if (80..<112).contains(x) && (20..<76).contains(y) { return [200, 60, 50, 255] }
+            // This complete competing donor has an exact green boundary but
+            // repeats red pixels with almost the same luminance as the green.
+            if (44..<76).contains(x) && (20..<76).contains(y) { return [200, 60, 50, 255] }
+            if x >= 112 { return [43, 110, 43, 255] }
+            return [40, 108, 40, 255]
+        }
+        let target = try point(0.5, 0.5)
+        let source = try await DevelopRepairAnalyzer().source(for: bitmap, path: [target], radius: 0.04, mask: mask)
+        #expect(source.x > target.x, "Choose clean green texture instead of copying another iso-luminant red object")
+    }
+
+    @Test func sourcePreservesNeedleTextureInsteadOfChoosingItsFlatAverageColor() async throws {
+        let mask = try rectangularSelection()
+        let bitmap = try image(width: 192, height: 96) { x, y in
+            if (80..<112).contains(x) && (20..<76).contains(y) { return [160, 20, 20, 255] }
+            // The left donor's boundary matches the stripes perfectly, but its
+            // interior is flat. The right donor retains the surrounding detail.
+            if (44..<76).contains(x) && (20..<76).contains(y) { return [80, 120, 60, 255] }
+            return x % 4 < 2 ? [30, 70, 20, 255] : [130, 170, 100, 255]
+        }
+        let target = try point(0.5, 0.5)
+        let source = try await DevelopRepairAnalyzer().source(for: bitmap, path: [target], radius: 0.04, mask: mask)
+        #expect(source.x > target.x, "Removing an object from foliage must retain the surrounding texture")
+    }
+
+    @Test func localRefinementFindsNearbySourcesBetweenTheCoarseSearchDirections() async throws {
+        let bitmap = try image(width: 160, height: 100) { _, _ in [160, 170, 180, 255] }
+        let target = try point(0.5, 0.5)
+        let source = try await DevelopRepairAnalyzer().source(for: bitmap, path: [target], radius: 0.04)
+        let dx = (source.x - target.x) * 160, dy = (source.y - target.y) * 100
+        #expect(hypot(dx, dy) < 8, "Refine the coarse candidates instead of needlessly copying more distant texture")
+        // The locally refined donor must still avoid every painted pixel.
+        for y in 46..<54 { for x in 76..<84 where hypot(Double(x) + 0.5 - 80, Double(y) + 0.5 - 50) <= 4 {
+            #expect(hypot(Double(x) + dx + 0.5 - 80, Double(y) + dy + 0.5 - 50) > 4)
+        } }
+    }
+
+    @Test func longThinDiagonalStrokeUsesNearbySideTextureWithoutCopyingItself() async throws {
+        let width = 200, height = 160, radius = 0.0125
+        let bitmap = try image(width: width, height: height) { x, y in
+            [UInt8(50 + x / 4), UInt8(90 + y / 4), 60, 255]
+        }
+        let path = try [point(0.25, 0.3), point(0.65, 0.8)]
+        let source = try await DevelopRepairAnalyzer().source(for: bitmap, path: path, radius: radius)
+        let dx = (source.x - path[0].x) * Double(width), dy = (source.y - path[0].y) * Double(height)
+        #expect(hypot(dx, dy) < 9, "Find a lateral donor near the thin brush instead of using the length of the entire branch")
+        let alternative = try await DevelopRepairAnalyzer().source(for: bitmap, path: path, radius: radius, excluding: [source])
+        let otherDX = (alternative.x - path[0].x) * Double(width), otherDY = (alternative.y - path[0].y) * Double(height)
+        #expect(hypot(otherDX - dx, otherDY - dy) >= radius * Double(min(width, height)) - 0.000_001)
+        #expect(hypot(otherDX, otherDY) < 15, "Trying another source should retain nearby lateral options for a thin diagonal")
+        let ax = path[0].x * Double(width), ay = path[0].y * Double(height)
+        let vx = (path[1].x - path[0].x) * Double(width), vy = (path[1].y - path[0].y) * Double(height)
+        let lengthSquared = vx * vx + vy * vy
+        func isPainted(_ x: Double, _ y: Double) -> Bool {
+            let t = min(1, max(0, ((x - ax) * vx + (y - ay) * vy) / lengthSquared))
+            return hypot(x - ax - t * vx, y - ay - t * vy) <= radius * Double(min(width, height))
+        }
+        var selected = 0
+        for y in 0..<height { for x in 0..<width where isPainted(Double(x) + 0.5, Double(y) + 0.5) {
+            selected += 1
+            #expect(!isPainted(Double(x) + dx + 0.5, Double(y) + dy + 0.5), "Every translated pixel must avoid the complete original stroke")
+            #expect(!isPainted(Double(x) + otherDX + 0.5, Double(y) + otherDY + 0.5), "The alternative source must also avoid the complete original stroke")
+        } }
+        #expect(selected > 100)
+    }
+
+    @Test func otherSourcesExcludePreviouslyTriedPatchesAndRemainDeterministic() async throws {
+        let bitmap = try image(width: 160, height: 100) { _, _ in [160, 170, 180, 255] }
+        let analyzer = DevelopRepairAnalyzer(), target = try point(0.5, 0.5)
+        let first = try await analyzer.source(for: bitmap, path: [target], radius: 0.04)
+        let second = try await analyzer.source(for: bitmap, path: [target], radius: 0.04, excluding: [first])
+        let repeated = try await analyzer.source(for: bitmap, path: [target], radius: 0.04, excluding: [first])
+        #expect(second == repeated)
+        #expect(hypot((second.x - first.x) * 160, (second.y - first.y) * 100) >= 4 - 0.000_001)
+        let third = try await analyzer.source(for: bitmap, path: [target], radius: 0.04, excluding: [first, second])
+        for previous in [first, second] {
+            #expect(hypot((third.x - previous.x) * 160, (third.y - previous.y) * 100) >= 4 - 0.000_001)
+        }
+    }
+
     @Test func selectionAtImageCornerStillChoosesAnInBoundsSource() async throws {
         let bitmap = try image(width: 100, height: 100) { _, _ in [180, 180, 180, 255] }
         let target = try point(0.02, 0.02)
         let source = try await DevelopRepairAnalyzer().source(for: bitmap, path: [target], radius: 0.035)
         #expect(source.x >= target.x && source.y >= target.y)
         #expect(hypot(source.x - target.x, source.y - target.y) > 0.04)
+    }
+
+    @Test func finestBrushAtExactCornerCanUseItsTwoAvailableRingSamples() async throws {
+        let bitmap = try image(width: 100, height: 100) { _, _ in [180, 180, 180, 255] }
+        let target = try point(0, 0)
+        let source = try await DevelopRepairAnalyzer().source(for: bitmap, path: [target], radius: 0.0005)
+        #expect((0...1).contains(source.x) && (0...1).contains(source.y))
+        #expect(source != target, "A one-pixel corner selection still has valid neighboring donors")
     }
 
     @Test func fullSelectionAndTransparentSourcesProduceExplicitFailure() async throws {
@@ -166,6 +258,12 @@ struct DevelopRepairAnalyzerTests {
     }
 
     private func point(_ x: Double, _ y: Double) throws -> LocalMaskPoint { try LocalMaskPoint(x: x, y: y) }
+
+    private func rectangularSelection() throws -> LocalMaskRaster {
+        var bytes = Data(count: 192 * 96)
+        for y in 20..<76 { for x in 80..<112 { bytes[y * 192 + x] = 255 } }
+        return try LocalMaskRaster(width: 192, height: 96, bytes: bytes)
+    }
 
     private func image(width: Int, height: Int, pixel: (Int, Int) -> [UInt8]) throws -> PreviewBitmap {
         var bytes = [UInt8](); bytes.reserveCapacity(width * height * 4)

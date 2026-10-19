@@ -17,11 +17,14 @@ struct DevelopRepairWorkspaceTests {
         fixture.workspace.repairFeather = 0.7
         try await fixture.paint(path)
 
-        let stroke = try #require(fixture.editor.settings(for: fixture.asset.id).developGeometry.retouchStrokes.first)
+        let stroke = try #require(fixture.workspace.repairPreviewStroke)
         #expect(stroke.path == path)
         #expect(stroke.target == path[0])
         #expect(stroke.source == probe.sourcePoint)
         #expect(stroke.radius == 0.06 && stroke.feather == 0.7)
+        #expect(fixture.editor.settings(for: fixture.asset.id) == .neutral)
+        #expect(!fixture.editor.canUndo(assetID: fixture.asset.id))
+        fixture.workspace.acceptRepairPreview(asset: fixture.asset, editor: fixture.editor)
         #expect(fixture.editor.settings(for: fixture.asset.id).developGeometry.retouchStrokes.count == 1)
         #expect(await probe.state().sourceCalls == 1)
         #expect(!fixture.workspace.repairBusy)
@@ -72,9 +75,10 @@ struct DevelopRepairWorkspaceTests {
         let absent = try RepairWorkspaceProbe(objectReply: .missing)
         let fixture = try await RepairWorkspaceFixture.make(services: absent.services)
         defer { fixture.workspace.clear() }
+        fixture.workspace.repairObjectDetection = true
         let path = try [repairWorkspacePoint(0.5, 0.5), repairWorkspacePoint(0.6, 0.6)]
         try await fixture.paint(path)
-        let stroke = try #require(fixture.editor.settings(for: fixture.asset.id).developGeometry.retouchStrokes.first)
+        let stroke = try #require(fixture.workspace.repairPreviewStroke)
         #expect(stroke.path == path && stroke.mask == nil)
         #expect(fixture.workspace.repairStatus?.contains("Pinselbereich") == true)
         #expect(await absent.state().sourceCalls == 1)
@@ -82,6 +86,7 @@ struct DevelopRepairWorkspaceTests {
         let failed = try RepairWorkspaceProbe(objectReply: .failed)
         let unavailable = try await RepairWorkspaceFixture.make(services: failed.services)
         defer { unavailable.workspace.clear() }
+        unavailable.workspace.repairObjectDetection = true
         try await unavailable.paint(path)
         #expect(unavailable.editor.settings(for: unavailable.asset.id) == .neutral)
         #expect(unavailable.workspace.errorMessage == DevelopRepairAnalysisError.unavailable.localizedDescription)
@@ -96,8 +101,9 @@ struct DevelopRepairWorkspaceTests {
         let probe = try RepairWorkspaceProbe(objectReply: .candidate(candidate))
         let fixture = try await RepairWorkspaceFixture.make(services: probe.services)
         defer { fixture.workspace.clear() }
+        fixture.workspace.repairObjectDetection = true
         try await fixture.paint([repairWorkspacePoint(0.45, 0.45), repairWorkspacePoint(0.55, 0.55)])
-        let stroke = try #require(fixture.editor.settings(for: fixture.asset.id).developGeometry.retouchStrokes.first)
+        let stroke = try #require(fixture.workspace.repairPreviewStroke)
         #expect(stroke.mask == candidate.mask)
         #expect(stroke.target == candidate.center && stroke.path == [candidate.center])
         #expect(await probe.state().lastSourceMask == candidate.mask)
@@ -281,6 +287,98 @@ struct DevelopRepairWorkspaceTests {
         #expect(other.editor.settings(for: other.asset.id) == .neutral)
         #expect(await fixture.editor.flush())
         #expect(await other.editor.flush())
+    }
+
+
+    @Test func removeUsesManualSourceAndOnlyCommitsAcceptedPreview() async throws {
+        let probe = try RepairWorkspaceProbe()
+        let fixture = try await RepairWorkspaceFixture.make(services: probe.services)
+        defer { fixture.workspace.clear() }
+        let manual = try repairWorkspacePoint(0.2, 0.25)
+        fixture.workspace.repairSource = manual
+        try await fixture.paint([repairWorkspacePoint(0.5, 0.5)])
+        let stroke = try #require(fixture.workspace.repairPreviewStroke)
+        #expect(stroke.source == manual && stroke.replacement == nil)
+        #expect(await probe.state().sourceCalls == 0)
+        #expect(fixture.editor.settings(for: fixture.asset.id) == .neutral)
+        fixture.workspace.discardRepairPreview()
+        #expect(fixture.workspace.repairTriedSources.isEmpty)
+        #expect(!fixture.editor.canUndo(assetID: fixture.asset.id))
+        #expect(await fixture.editor.flush())
+    }
+
+    @Test func alternativeSourceReusesFrozenSelectionAndPreservesHistoryUntilAccept() async throws {
+        let probe = try RepairWorkspaceProbe()
+        var services = probe.services
+        let next = try repairWorkspacePoint(0.8, 0.75)
+        services.nextSource = { _, path, radius, mask, excluded in
+            #expect(path.count == 2 && radius == 0.035 && mask == nil)
+            #expect(excluded == [probe.sourcePoint])
+            return next
+        }
+        let fixture = try await RepairWorkspaceFixture.make(services: services)
+        defer { fixture.workspace.clear() }
+        try await fixture.paint([repairWorkspacePoint(0.5, 0.5), repairWorkspacePoint(0.55, 0.5)])
+        let original = try #require(fixture.workspace.repairPreviewStroke)
+        fixture.workspace.tryAnotherRepairSource(asset: fixture.asset, editor: fixture.editor)
+        await fixture.workspace.repairTask?.value
+        let alternative = try #require(fixture.workspace.repairPreviewStroke)
+        #expect(alternative.id == original.id && alternative.path == original.path)
+        #expect(alternative.source == next)
+        #expect(fixture.workspace.repairTriedSources == [probe.sourcePoint, next])
+        #expect(fixture.editor.settings(for: fixture.asset.id) == .neutral)
+        #expect(!fixture.editor.canUndo(assetID: fixture.asset.id))
+        fixture.workspace.acceptRepairPreview(asset: fixture.asset, editor: fixture.editor)
+        #expect(fixture.editor.settings(for: fixture.asset.id).developGeometry.retouchStrokes == [alternative])
+        fixture.editor.undo(assetID: fixture.asset.id)
+        #expect(fixture.editor.settings(for: fixture.asset.id) == .neutral)
+        #expect(!fixture.editor.canUndo(assetID: fixture.asset.id))
+        #expect(await fixture.editor.flush())
+    }
+
+    @Test(arguments: [false, true])
+    func delayedAlternativeCannotRestoreDiscardedOrStalePreview(undo: Bool) async throws {
+        let probe = try RepairWorkspaceProbe()
+        let latch = TestAsyncLatch()
+        var services = probe.services
+        services.nextSource = { _, _, _, _, _ in
+            await latch.wait()
+            return try repairWorkspacePoint(0.8, 0.75)
+        }
+        let fixture = try await RepairWorkspaceFixture.make(services: services)
+        defer { latch.releaseAll(); fixture.workspace.clear() }
+        fixture.editor.setSettings(EditSettings(exposure: 1), for: fixture.asset.id)
+        try await fixture.paint([repairWorkspacePoint(0.5, 0.5)])
+        fixture.workspace.tryAnotherRepairSource(asset: fixture.asset, editor: fixture.editor)
+        let pending = try #require(fixture.workspace.repairTask)
+        if undo {
+            fixture.editor.undo(assetID: fixture.asset.id)
+            fixture.workspace.discardStaleRepairPreview(asset: fixture.asset, editor: fixture.editor)
+        } else {
+            fixture.workspace.cancelRepairWork(clearCandidates: false)
+            fixture.workspace.discardRepairPreview()
+        }
+        latch.releaseAll(); await pending.value
+        #expect(fixture.workspace.repairPreviewStroke == nil)
+        #expect(!fixture.workspace.repairBusy)
+        #expect(fixture.editor.settings(for: fixture.asset.id) == (undo ? .neutral : EditSettings(exposure: 1)))
+        #expect(await fixture.editor.flush())
+    }
+
+    @Test func exhaustedAlternativePreservesPreviousProposal() async throws {
+        let probe = try RepairWorkspaceProbe()
+        var services = probe.services
+        services.nextSource = { _, _, _, _, _ in throw DevelopRepairAnalysisError.noSafeSource }
+        let fixture = try await RepairWorkspaceFixture.make(services: services)
+        defer { fixture.workspace.clear() }
+        try await fixture.paint([repairWorkspacePoint(0.5, 0.5)])
+        let original = fixture.workspace.repairPreviewStroke
+        fixture.workspace.tryAnotherRepairSource(asset: fixture.asset, editor: fixture.editor)
+        await fixture.workspace.repairTask?.value
+        #expect(fixture.workspace.repairPreviewStroke == original)
+        #expect(fixture.workspace.errorMessage == DevelopRepairAnalysisError.noSafeSource.localizedDescription)
+        #expect(fixture.editor.settings(for: fixture.asset.id) == .neutral)
+        #expect(await fixture.editor.flush())
     }
 
     @Test func acceptedReplacementSurvivesSerializationAndRedoWithoutInference() async throws {

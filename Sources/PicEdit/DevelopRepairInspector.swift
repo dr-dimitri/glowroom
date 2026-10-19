@@ -38,6 +38,14 @@ struct DevelopRepairInspector: View {
 
     private var ready: Bool { editor.canEdit && workspace.isOriginalCanvasReady && !workspace.repairBusy && workspace.repairPreviewStroke == nil }
     private var strokes: [DevelopRetouchStroke] { editor.settings(for: asset.id).developGeometry.retouchStrokes }
+    private var usesFrozenSelection: Bool {
+        workspace.repairMode == .remove && (workspace.repairUsesAI || workspace.repairObjectDetection)
+    }
+    private var brushDiameterText: String {
+        let size = workspace.sourceSize ?? CGSize(width: max(1, asset.pixelWidth), height: max(1, asset.pixelHeight))
+        let diameter = 2 * workspace.repairRadius * min(size.width, size.height)
+        return diameter < 10 ? String(format: "%.1f px", diameter) : "\(Int(diameter.rounded())) px"
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -46,22 +54,26 @@ struct DevelopRepairInspector: View {
                 Spacer(minLength: 0)
                 if workspace.repairBusy {
                     ProgressView().controlSize(.mini).accessibilityLabel("Reparatur wird verarbeitet")
-                    Button("Abbrechen") { actionTask?.cancel(); workspace.cancelRepairWork(clearCandidates: false) }
+                    Button("Abbrechen") { discardPreview() }
                         .controlSize(.mini).accessibilityIdentifier("develop.repair.cancel")
                 }
             }.padding(.vertical, 10)
             Divider()
             mainControls
-            if workspace.repairPreviewStroke != nil {
+            if let preview = workspace.repairPreviewStroke {
                 VStack(alignment: .leading, spacing: 7) {
-                    Text("Lokale KI-Vorschau").fontWeight(.semibold)
+                    Text(preview.replacement == nil ? "Entfernen-Vorschau" : "Lokale KI-Vorschau").fontWeight(.semibold)
                     Text("Ergebnis im Bild prüfen. Erst Übernehmen speichert die Reparatur.")
                         .font(.system(size: 10)).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
+                    Button("Andere Quelle") { workspace.tryAnotherRepairSource(asset: asset, editor: editor) }
+                        .controlSize(.small)
+                        .disabled(!editor.canEdit || workspace.repairBusy || preview.replacement != nil)
+                        .accessibilityIdentifier("develop.repair.next-source")
                     HStack {
-                        Button("Verwerfen") { workspace.discardRepairPreview() }.accessibilityIdentifier("develop.repair.ai.discard")
+                        Button("Verwerfen") { discardPreview() }.accessibilityIdentifier("develop.repair.ai.discard")
                         Spacer(minLength: 0)
                         Button("Übernehmen") { workspace.acceptRepairPreview(asset: asset, editor: editor) }
-                            .disabled(!editor.canEdit).accessibilityIdentifier("develop.repair.ai.accept")
+                            .disabled(!editor.canEdit || workspace.repairBusy).accessibilityIdentifier("develop.repair.ai.accept")
                     }.controlSize(.small)
                 }.padding(.vertical, 10)
             }
@@ -122,9 +134,10 @@ struct DevelopRepairInspector: View {
             Text(modeHelp).font(.system(size: 10)).foregroundStyle(Theme.muted)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("develop.repair.instructions")
-            sliderRow("Größe", value: $workspace.repairRadius, range: 0.005...0.15,
-                valueText: "\(Int((workspace.repairRadius * 1000).rounded()))", identifier: "size", neutral: 0.035)
-            if workspace.repairMode != .remove {
+            sliderRow("Größe", value: $workspace.repairRadius, range: 0.0005...0.15,
+                valueText: brushDiameterText, identifier: "size", neutral: 0.035)
+                .help("Pinseldurchmesser in Pixeln der aktuellen Quellvorschau. Für Spinnfäden und feine Äste einen kleinen Pinsel wählen.")
+            if !usesFrozenSelection {
                 sliderRow("Weiche Kante", value: $workspace.repairFeather, range: 0...1,
                     valueText: "\(Int((workspace.repairFeather * 100).rounded()))", identifier: "feather", neutral: 0.5)
             }
@@ -143,12 +156,15 @@ struct DevelopRepairInspector: View {
                 .disabled(!ready || workspace.repairMode != .remove)
                 .help("Das markierte Vordergrundobjekt erkennen und dessen Auswahl verwenden")
                 .accessibilityIdentifier("develop.repair.objects")
-            if workspace.repairMode != .remove {
-                Button("Neue Quelle wählen") {
+            if workspace.repairMode != .remove || !workspace.repairUsesAI {
+                Button(workspace.repairMode == .clone ? "Neue Quelle wählen" : "Quelle automatisch nutzen") {
                     editor.endEditing(assetID: asset.id)
                     workspace.cancelRepairWork(clearCandidates: false)
                     workspace.repairSource = nil
                 }.controlSize(.small).disabled(!ready)
+                    .help(workspace.repairMode == .clone
+                        ? "⌥-Klick im Bild setzt einen sauberen Quellbereich."
+                        : "⌥-Klick im Bild setzt einen sauberen Quellbereich. Die automatische Quelle wird für jede Reparatur neu gesucht.")
                     .accessibilityIdentifier("develop.repair.choose-source")
             }
             if !strokes.isEmpty {
@@ -225,7 +241,9 @@ struct DevelopRepairInspector: View {
         switch workspace.repairMode {
         case .remove: workspace.repairUsesAI
             ? "Über einen kleinen störenden Bereich malen. Die lokale KI erstellt eine Vorschau zum Prüfen."
-            : "Über den störenden Bereich malen. Eine passende Quelle wird automatisch gewählt."
+            : workspace.repairSource == nil
+                ? "Störende Stelle übermalen und die Vorschau prüfen. ⌥-Klick setzt eine eigene Quelle; Andere Quelle sucht eine Alternative."
+                : "Störende Stelle übermalen und die Vorschau prüfen. Die eigene Quelle wird verwendet; ⌥-Klick wählt sie neu."
         case .heal: workspace.repairSource == nil
             ? "Zu heilende Stelle übermalen. Die Quelle wird automatisch gewählt; ⌥-Klick setzt eine eigene Quelle."
             : "Zu heilende Stelle übermalen. ⌥-Klick wählt eine neue Quelle; Farbe und Helligkeit werden angepasst."
@@ -249,13 +267,19 @@ struct DevelopRepairInspector: View {
             Text(title).frame(width: 82, alignment: .leading)
             ResettableSlider(value: value, in: range, neutralValue: neutral).accessibilityLabel(title)
                 .accessibilityIdentifier("develop.repair." + identifier)
-            Text(valueText).monospacedDigit().frame(width: 24, alignment: .trailing)
+            Text(valueText).monospacedDigit().frame(width: identifier == "size" ? 46 : 24, alignment: .trailing)
         }.disabled(!ready || !enabled)
     }
 
     private func detect(_ kind: DevelopRepairDetectionKind) {
         actionTask?.cancel()
         actionTask = Task { @MainActor in await workspace.detectRepairCandidates(kind) }
+    }
+
+    private func discardPreview() {
+        actionTask?.cancel()
+        workspace.cancelRepairWork(clearCandidates: false)
+        workspace.discardRepairPreview()
     }
 
     private func removeLastStroke() {

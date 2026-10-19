@@ -47,8 +47,8 @@ actor DevelopRepairAnalyzer {
     /// Returns an absolute source point for the first point in `path`. The
     /// complete translated selection must fit and avoid every selected pixel.
     func source(for bitmap: PreviewBitmap, path: [LocalMaskPoint], radius: Double,
-                mask: LocalMaskRaster? = nil) throws -> LocalMaskPoint {
-        try pixels(bitmap).source(path: path, radius: radius, mask: mask)
+                mask: LocalMaskRaster? = nil, excluding: [LocalMaskPoint] = []) throws -> LocalMaskPoint {
+        try pixels(bitmap).source(path: path, radius: radius, mask: mask, excluding: excluding)
     }
 
     func object(in bitmap: PreviewBitmap, at target: LocalMaskPoint,
@@ -213,9 +213,11 @@ struct DevelopRepairPixels {
         }
     }
 
-    func source(path: [LocalMaskPoint], radius: Double, mask: LocalMaskRaster?) throws -> LocalMaskPoint {
+    func source(path: [LocalMaskPoint], radius: Double, mask: LocalMaskRaster?,
+                excluding: [LocalMaskPoint] = []) throws -> LocalMaskPoint {
         try Task.checkCancellation()
-        guard let first = path.first, path.count <= 4_096, radius.isFinite, (0.000_001...0.5).contains(radius) else {
+        guard let first = path.first, path.count <= 4_096, excluding.count <= 4_096,
+              radius.isFinite, (0.000_001...0.5).contains(radius) else {
             throw DevelopRepairAnalysisError.invalidSelection
         }
         let selected = try selection(path: path, radius: radius, mask: mask)
@@ -236,15 +238,16 @@ struct DevelopRepairPixels {
                 if xx >= 0, xx < width, yy >= 0, yy < height, !selected[yy * width + xx] { ring.append(yy * width + xx) }
             }
         }
-        ring = Array(Set(ring)).sorted()
+        ring = Array(Set(ring)).filter { rgba[$0 * 4 + 3] >= 250 }.sorted()
         if ring.count > 256 { ring = stride(from: 0, to: ring.count, by: (ring.count + 255) / 256).map { ring[$0] } }
         guard !ring.isEmpty else { throw DevelopRepairAnalysisError.noSafeSource }
-        let referenceLuma = ring.reduce(0.0) { $0 + sqrt(max(0, luma[$1])) } / Double(ring.count)
         let sourceSamples = stride(from: 0, to: footprint.count, by: max(1, (footprint.count + 127) / 128)).map { footprint[$0] }
+        let reference = statistics(ring, offset: PixelOffset(x: 0, y: 0), selected: selected)
         let halfSpan = Double(max(maxX - minX + 1, maxY - minY + 1)) * 0.5
         // A mask candidate's overlay radius may enclose its diagonal; search
         // from its actual footprint rather than overshooting nearby sources.
-        let extent = mask == nil ? max(halfSpan, radius * Double(min(width, height))) : halfSpan
+        let brushRadius = max(1, radius * Double(min(width, height)))
+        let extent = mask == nil ? max(halfSpan, brushRadius) : halfSpan
         var offsets = Set<PixelOffset>()
         // Elongated masks can have a safe source beside their narrow side even
         // when circular rings around the longer side overshoot the image.
@@ -254,25 +257,40 @@ struct DevelopRepairPixels {
         for shift in [maxY - minY + 1 + 2 * margin, maxY - minY + 1 + margin] {
             offsets.insert(PixelOffset(x: 0, y: shift)); offsets.insert(PixelOffset(x: 0, y: -shift))
         }
-        for distance in [2.2, 3.0, 4.2] {
+        // A long thin branch/web stroke can use clean pixels immediately beside
+        // its narrow side, including diagonals. Keep two of the same 24-way
+        // rings local to the brush rather than its much longer bounding box.
+        let distances = mask == nil && halfSpan > brushRadius * 2
+            ? [brushRadius * 2.2, brushRadius * 3.5, extent * 2.2]
+            : [extent * 2.2, extent * 3.0, extent * 4.2]
+        for distance in distances {
             for direction in 0..<24 {
                 let a = Double(direction) * .pi / 12
-                offsets.insert(PixelOffset(x: Int((cos(a) * extent * distance).rounded()), y: Int((sin(a) * extent * distance).rounded())))
+                offsets.insert(PixelOffset(x: Int((cos(a) * distance).rounded()), y: Int((sin(a) * distance).rounded())))
             }
         }
-        var best: (cost: Double, offset: PixelOffset)?
-        // Sorted offsets and strict comparison give stable ties across runs.
-        for offset in offsets.sorted(by: { ($0.y, $0.x) < ($1.y, $1.x) }) {
+        // Retrying a source must move its patch visibly. Brush paths use at
+        // most their radius: even the narrow bounding-box side grows for a
+        // diagonal branch and must not exclude all nearby lateral donors.
+        let halfNarrowFootprint = Double(min(maxX - minX + 1, maxY - minY + 1)) * 0.5
+        let exclusionDistance = max(1, mask == nil ? min(halfNarrowFootprint, brushRadius) : halfNarrowFootprint)
+        let excluded = excluding.map { SIMD2(($0.x - first.x) * Double(width), ($0.y - first.y) * Double(height)) }
+        var evaluated = Set<PixelOffset>()
+        var finalists: [(cost: Double, offset: PixelOffset)] = []
+        func evaluate(_ offset: PixelOffset) throws {
+            guard evaluated.insert(offset).inserted else { return }
             try Task.checkCancellation()
-            guard minX + offset.x >= 0, maxX + offset.x < width, minY + offset.y >= 0, maxY + offset.y < height else { continue }
+            guard minX + offset.x >= 0, maxX + offset.x < width, minY + offset.y >= 0, maxY + offset.y < height else { return }
             let sourceX = first.x + Double(offset.x) / Double(width), sourceY = first.y + Double(offset.y) / Double(height)
-            guard (0...1).contains(sourceX), (0...1).contains(sourceY) else { continue }
+            guard (0...1).contains(sourceX), (0...1).contains(sourceY),
+                  excluded.allSatisfy({ hypot(Double(offset.x) - $0.x, Double(offset.y) - $0.y) >= exclusionDistance }) else { return }
             let delta = offset.y * width + offset.x
-            guard footprint.allSatisfy({ !selected[$0 + delta] && rgba[($0 + delta) * 4 + 3] >= 250 }) else { continue }
+            guard footprint.allSatisfy({ !selected[$0 + delta] && rgba[($0 + delta) * 4 + 3] >= 250 }) else { return }
             var cost = 0.0, samples = 0
             for i in ring {
                 let x = i % width + offset.x, y = i / width + offset.y
-                guard x >= 0, x < width, y >= 0, y < height, !selected[y * width + x] else { continue }
+                guard x >= 0, x < width, y >= 0, y < height,
+                      !selected[y * width + x], rgba[(y * width + x) * 4 + 3] >= 250 else { continue }
                 let j = y * width + x
                 for channel in 0..<3 {
                     let a = sqrt(Double(rgba[i * 4 + channel]) / 255), b = sqrt(Double(rgba[j * 4 + channel]) / 255)
@@ -280,21 +298,81 @@ struct DevelopRepairPixels {
                 }
                 samples += 1
             }
-            guard samples >= max(4, ring.count * 3 / 4) else { continue }
+            // A one-pixel corner dab may have only two exterior samples.
+            // Require all of a tiny ring rather than an impossible four.
+            guard samples >= max(min(4, ring.count), ring.count * 3 / 4) else { return }
             cost /= Double(samples)
-            // A matching boundary alone could copy another blemish into the
-            // hole. Penalize incompatible detail inside the proposed source.
-            cost += sourceSamples.reduce(0.0) { total, i in
-                let difference = sqrt(max(0, luma[i + delta])) - referenceLuma
-                return total + difference * difference
-            } / Double(sourceSamples.count) * 0.5
-            if cost < (best?.cost ?? .infinity) { best = (cost, offset) }
+            // A red berry or brown twig may have the same luminance as green
+            // needles. Match RGB distributions, not only luminance. Comparing
+            // spread and directional detail also preserves textured foliage
+            // instead of rewarding a flat patch with the average ring color.
+            let donor = statistics(sourceSamples, offset: offset, selected: selected)
+            let meanDifference = donor.mean - reference.mean
+            let spreadDifference = donor.spread - reference.spread
+            let detailDifference = donor.detail - reference.detail
+            cost += (meanDifference * meanDifference).sum() * 0.75
+                + (spreadDifference * spreadDifference).sum() * 0.35
+                + (detailDifference * detailDifference).sum() * 0.25
+            // A weak continuous preference keeps equally suitable texture
+            // local; color/structure differences remain the deciding signal.
+            cost += hypot(Double(offset.x), Double(offset.y)) / hypot(Double(width), Double(height)) * 0.001
+            finalists.append((cost, offset))
+            finalists.sort { a, b in
+                a.cost == b.cost ? (a.offset.y, a.offset.x) < (b.offset.y, b.offset.x) : a.cost < b.cost
+            }
+            if finalists.count > 4 { finalists.removeLast() }
         }
-        guard let best else { throw DevelopRepairAnalysisError.noSafeSource }
+        for offset in offsets.sorted(by: { ($0.y, $0.x) < ($1.y, $1.x) }) { try evaluate(offset) }
+        // Four independent basins, <=4 levels and <=9 neighbors per level keep
+        // the search bounded (<224 candidates including the coarse pass).
+        // Serial scoring reuses one cached proxy and deterministic reductions;
+        // another worker pool would compete with preview/export admission.
+        var refinementStep = max(1, min(8, Int(ceil(extent * 0.25))))
+        while !finalists.isEmpty {
+            let seeds = finalists.map(\.offset)
+            for seed in seeds {
+                for dy in [-refinementStep, 0, refinementStep] {
+                    for dx in [-refinementStep, 0, refinementStep] {
+                        try evaluate(PixelOffset(x: seed.x + dx, y: seed.y + dy))
+                    }
+                }
+            }
+            if refinementStep == 1 { break }
+            refinementStep = max(1, refinementStep / 2)
+        }
+        guard let best = finalists.first else { throw DevelopRepairAnalysisError.noSafeSource }
         return try LocalMaskPoint(x: first.x + Double(best.offset.x) / Double(width), y: first.y + Double(best.offset.y) / Double(height))
     }
 
     private struct PixelOffset: Hashable { let x: Int; let y: Int }
+
+    private struct PatchStatistics {
+        let mean: SIMD3<Double>
+        let spread: SIMD3<Double>
+        let detail: SIMD2<Double>
+    }
+
+    private func statistics(_ indices: [Int], offset: PixelOffset, selected: [Bool]) -> PatchStatistics {
+        var sum = SIMD3<Double>(repeating: 0), squares = sum
+        var detail = SIMD2<Double>(repeating: 0), detailCount = detail
+        let delta = offset.y * width + offset.x
+        for index in indices {
+            let i = index + delta
+            let color = SIMD3(sqrt(Double(rgba[i * 4]) / 255), sqrt(Double(rgba[i * 4 + 1]) / 255),
+                              sqrt(Double(rgba[i * 4 + 2]) / 255))
+            sum += color; squares += color * color
+            let x = i % width, y = i / width
+            for (axis, neighbor) in [(0, x + 1 < width ? i + 1 : -1), (1, y + 1 < height ? i + width : -1)] {
+                if neighbor >= 0, !selected[neighbor], rgba[neighbor * 4 + 3] >= 250 {
+                    detail[axis] += abs(sqrt(max(0, luma[i])) - sqrt(max(0, luma[neighbor])))
+                    detailCount[axis] += 1
+                }
+            }
+        }
+        let mean = sum / Double(indices.count), variance = squares / Double(indices.count) - mean * mean
+        return PatchStatistics(mean: mean, spread: SIMD3(sqrt(max(0, variance.x)), sqrt(max(0, variance.y)),
+            sqrt(max(0, variance.z))), detail: SIMD2(detail.x / max(1, detailCount.x), detail.y / max(1, detailCount.y)))
+    }
 
     private func selection(path: [LocalMaskPoint], radius: Double, mask: LocalMaskRaster?) throws -> [Bool] {
         if let mask {

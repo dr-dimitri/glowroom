@@ -31,7 +31,9 @@ final class DevelopWorkspace: ObservableObject {
     @Published var repairFeather = 0.5
     @Published var redEyeStrength = 1.0
     @Published var repairSource: LocalMaskPoint?
-    @Published var repairObjectDetection = true
+    // Small details often belong to a much larger foreground instance (a berry
+    // to a whole tree). Keep the painted footprint unless explicitly requested.
+    @Published var repairObjectDetection = false
     @Published var repairOverlay: DevelopRepairOverlay = .always
     @Published var repairVisualizesSpots = false { didSet { refreshRepairVisualization() } }
     @Published var repairSpotThreshold = 0.5 { didSet { refreshRepairVisualization() } }
@@ -47,6 +49,7 @@ final class DevelopWorkspace: ObservableObject {
     var repairPreviewAssetID: String?
     var repairPreviewRevision: Int64?
     var repairPreviewSession: UUID?
+    var repairTriedSources: [LocalMaskPoint] = []
     var repairTask: Task<Void, Never>?
     var repairSpotTask: Task<Void, Never>?
     var repairRequest = UUID()
