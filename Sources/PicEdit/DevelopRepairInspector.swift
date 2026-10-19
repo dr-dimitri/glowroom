@@ -36,7 +36,7 @@ struct DevelopRepairInspector: View {
     @ViewState private var actionTask: Task<Void, Never>?
     @ViewState private var importsModel = false
 
-    private var ready: Bool { editor.canEdit && workspace.isOriginalCanvasReady && !workspace.repairBusy && workspace.repairPreviewStroke == nil }
+    private var ready: Bool { editor.canEdit && workspace.isOriginalCanvasReady && !workspace.repairBusy }
     private var strokes: [DevelopRetouchStroke] { editor.settings(for: asset.id).developGeometry.retouchStrokes }
     private var usesFrozenSelection: Bool {
         workspace.repairMode == .remove && (workspace.repairUsesAI || workspace.repairObjectDetection)
@@ -54,28 +54,16 @@ struct DevelopRepairInspector: View {
                 Spacer(minLength: 0)
                 if workspace.repairBusy {
                     ProgressView().controlSize(.mini).accessibilityLabel("Reparatur wird verarbeitet")
-                    Button("Abbrechen") { discardPreview() }
+                    Button("Abbrechen") { cancelWork() }
                         .controlSize(.mini).accessibilityIdentifier("develop.repair.cancel")
                 }
             }.padding(.vertical, 10)
             Divider()
             mainControls
-            if let preview = workspace.repairPreviewStroke {
-                VStack(alignment: .leading, spacing: 7) {
-                    Text(preview.replacement == nil ? "Entfernen-Vorschau" : "Lokale KI-Vorschau").fontWeight(.semibold)
-                    Text("Ergebnis im Bild prüfen. Erst Übernehmen speichert die Reparatur.")
-                        .font(.system(size: 10)).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
-                    Button("Andere Quelle") { workspace.tryAnotherRepairSource(asset: asset, editor: editor) }
-                        .controlSize(.small)
-                        .disabled(!editor.canEdit || workspace.repairBusy || preview.replacement != nil)
-                        .accessibilityIdentifier("develop.repair.next-source")
-                    HStack {
-                        Button("Verwerfen") { discardPreview() }.accessibilityIdentifier("develop.repair.ai.discard")
-                        Spacer(minLength: 0)
-                        Button("Übernehmen") { workspace.acceptRepairPreview(asset: asset, editor: editor) }
-                            .disabled(!editor.canEdit || workspace.repairBusy).accessibilityIdentifier("develop.repair.ai.accept")
-                    }.controlSize(.small)
-                }.padding(.vertical, 10)
+            if workspace.canTryAnotherRepairSource(asset: asset, editor: editor) {
+                Button("Andere Quelle") { workspace.tryAnotherRepairSource(asset: asset, editor: editor) }
+                    .controlSize(.small).padding(.vertical, 10)
+                    .accessibilityIdentifier("develop.repair.next-source")
             }
             Divider()
             HStack(spacing: 10) {
@@ -145,7 +133,7 @@ struct DevelopRepairInspector: View {
                 Toggle("Lokale KI", isOn: $workspace.repairUsesAI)
                     .disabled(!ready || !workspace.repairAIReady || workspace.repairMode != .remove)
                     .accessibilityIdentifier("develop.repair.generative")
-                Text(workspace.repairAIModelName.map { "\($0) · lokal · Ergebnis vor dem Speichern prüfen" }
+                Text(workspace.repairAIModelName.map { "\($0) · lokal · Änderungen werden direkt aktiv" }
                      ?? "Kompatibles LaMa-Modell importieren, um kleine Bereiche lokal zu ergänzen.")
                     .font(.system(size: 10)).foregroundStyle(Theme.muted)
                     .fixedSize(horizontal: false, vertical: true)
@@ -240,10 +228,10 @@ struct DevelopRepairInspector: View {
     private var modeHelp: String {
         switch workspace.repairMode {
         case .remove: workspace.repairUsesAI
-            ? "Über einen kleinen störenden Bereich malen. Die lokale KI erstellt eine Vorschau zum Prüfen."
+            ? "Über einen kleinen störenden Bereich malen. Die lokale KI setzt die Reparatur direkt um. Mit ⌘Z rückgängig machen."
             : workspace.repairSource == nil
-                ? "Störende Stelle übermalen und die Vorschau prüfen. ⌥-Klick setzt eine eigene Quelle; Andere Quelle sucht eine Alternative."
-                : "Störende Stelle übermalen und die Vorschau prüfen. Die eigene Quelle wird verwendet; ⌥-Klick wählt sie neu."
+                ? "Störende Stelle übermalen. Änderungen werden direkt aktiv. ⌥-Klick setzt eine eigene Quelle; Andere Quelle sucht eine Alternative."
+                : "Störende Stelle übermalen. Änderungen werden direkt aktiv. Die eigene Quelle wird verwendet; ⌥-Klick wählt sie neu."
         case .heal: workspace.repairSource == nil
             ? "Zu heilende Stelle übermalen. Die Quelle wird automatisch gewählt; ⌥-Klick setzt eine eigene Quelle."
             : "Zu heilende Stelle übermalen. ⌥-Klick wählt eine neue Quelle; Farbe und Helligkeit werden angepasst."
@@ -276,10 +264,9 @@ struct DevelopRepairInspector: View {
         actionTask = Task { @MainActor in await workspace.detectRepairCandidates(kind) }
     }
 
-    private func discardPreview() {
+    private func cancelWork() {
         actionTask?.cancel()
         workspace.cancelRepairWork(clearCandidates: false)
-        workspace.discardRepairPreview()
     }
 
     private func removeLastStroke() {

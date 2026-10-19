@@ -162,9 +162,9 @@ final class WorkspaceProposalLifecycleTests {
         #expect(f.analysis.result == nil)
         #expect(await f.provider.requests.count == 1)
         #expect(await f.service.requests.count == 1)
-        #expect(f.editor.settings(for: baseline.assetID) == baseline.settings)
+        #expect(f.editor.settings(for: baseline.assetID) == (whilePending ? baseline.settings : EditSettings(exposure: 1)))
         #expect(await f.editor.flush())
-        #expect(await f.store.saveCount == 0)
+        #expect(await f.store.saveCount == (whilePending ? 0 : 1))
         #expect(await f.library.finishSaving())
     }
 
@@ -214,7 +214,94 @@ final class WorkspaceProposalLifecycleTests {
     }
 
     @Test
-    func paintedInlineMaskSurvivesPanelChangesAndDiscardsOnGridOrSourceChange() async throws {
+    func nativeCommandZRoutesFromControlsThroughRepeatedAdjustmentAndMaskHistory() async throws {
+        let f = try await fixture()
+        let host = WorkspaceSectionTestHost(size: NSSize(width: 1_440, height: 900))
+        defer { host.close() }
+        let suite = "PicEdit-NativeHistory-\(UUID())"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let layout = WorkspaceLayoutModel(defaults: defaults)
+        let mask = LocalAdjustmentEditorModel(settings: .neutral)
+        let metadata = try await mountLibrary(f, mask: mask, layout: layout, host: host)
+        let assetID = try #require(f.library.selectedID)
+        try await host.settle()
+        let exposure = try #require(host.sliders.first { $0.minValue == -5 && $0.maxValue == 5 },
+            "The real exposure control must be mounted")
+        for _ in 0..<3 {
+            #expect(exposure.accessibilityPerformIncrement())
+            try await host.settle()
+        }
+        #expect(abs(f.editor.settings(for: assetID).exposure - 0.15) < 0.000_001)
+        #expect(host.focus(exposure))
+        #expect(host.firstResponder === exposure, "Command-Z must work while an NSControl owns focus")
+        try host.sendHistoryKey()
+        try await host.settle()
+        #expect(abs(f.editor.settings(for: assetID).exposure - 0.10) < 0.000_001)
+        try host.sendHistoryKey()
+        try await host.settle()
+        #expect(abs(f.editor.settings(for: assetID).exposure - 0.05) < 0.000_001)
+        try host.sendHistoryKey(redo: true)
+        try await host.settle()
+        #expect(abs(f.editor.settings(for: assetID).exposure - 0.10) < 0.000_001)
+
+        let basic = try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == "develop.tool.basic" })
+        #expect(basic.accessibilityPerformPress())
+        try await host.settle()
+        #expect(f.editor.canUndo(assetID: assetID), "Selecting the current function preserves history")
+        try host.sendHistoryKey()
+        try await host.settle()
+        #expect(abs(f.editor.settings(for: assetID).exposure - 0.05) < 0.000_001)
+        let beforeMasks = f.editor.settings(for: assetID)
+
+        let masks = try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == "develop.tool.masks" })
+        #expect(masks.accessibilityPerformPress())
+        try await wait("native history mask canvas") { mask.canvasSize != nil && mask.source != nil }
+        #expect(!f.editor.canUndo(assetID: assetID), "A different function starts a fresh history")
+        mask.add(.linear)
+        mask.updateSelected { $0.settings.exposure = 1 }
+        let firstMaskEdit = mask.settings
+        mask.updateSelected { $0.settings.contrast = 20 }
+        let lastMaskEdit = mask.settings
+        #expect(f.editor.settings(for: assetID) == lastMaskEdit)
+        let sameMasks = try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == "develop.tool.masks" })
+        #expect(sameMasks.accessibilityPerformPress())
+        try await host.settle()
+        #expect(mask.canUndo && mask.settings == lastMaskEdit)
+        #expect(host.focus(nil))
+        try host.sendHistoryKey()
+        try await host.settle()
+        #expect(mask.settings == firstMaskEdit && f.editor.settings(for: assetID) == firstMaskEdit)
+        try host.sendHistoryKey()
+        try await host.settle()
+        #expect(mask.selected?.settings.exposure == 0)
+        #expect(mask.settings.localAdjustments.count == 1)
+        try host.sendHistoryKey()
+        try await host.settle()
+        #expect(mask.settings == beforeMasks && f.editor.settings(for: assetID) == beforeMasks)
+        #expect(!mask.canUndo)
+        try host.sendHistoryKey(redo: true)
+        try await host.settle()
+        #expect(mask.settings.localAdjustments.count == 1)
+        let activeMasks = mask.settings
+
+        let crop = try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == "develop.tool.crop" })
+        #expect(crop.accessibilityPerformPress())
+        try await wait("native history different tool") { mask.source == nil && f.editor.editingFunction(assetID: assetID) == .crop }
+        #expect(f.editor.settings(for: assetID) == activeMasks)
+        #expect(!f.editor.canUndo(assetID: assetID) && !f.editor.canRedo(assetID: assetID))
+        try host.sendHistoryKey()
+        try await host.settle()
+        #expect(f.editor.settings(for: assetID) == activeMasks)
+        #expect(await f.provider.requests.isEmpty)
+        #expect(await f.service.requests.isEmpty)
+        #expect(await f.editor.flush())
+        #expect(await metadata.finishSaving())
+        #expect(await f.library.finishSaving())
+    }
+
+    @Test
+    func paintedInlineMaskSurvivesPanelGridSourceChangesAndClosingWithoutApply() async throws {
         let f = try await fixture()
         let host = WorkspaceSectionTestHost(size: NSSize(width: 1_440, height: 900))
         defer { host.close() }
@@ -272,26 +359,28 @@ final class WorkspaceProposalLifecycleTests {
         try await host.settle()
         #expect(host.sheet == nil)
         #expect(mask.settings == paintedSettings && mask.canUndo)
-        // Showing a hidden panel preserves its draft. A dock/menu reveal is
-        // navigation and is covered separately with acceptance semantics.
+        // Showing a hidden panel preserves its history. A dock/menu reveal is
+        // navigation and starts the destination's editing history.
         layout.update(developing: true) { $0.showsTools = true }
         try await host.settle()
         #expect(mask.settings == paintedSettings && mask.canUndo)
         #expect(host.accessibilityElements.contains { $0.accessibilityIdentifier() == "local-mask.canvas" })
-        #expect(f.editor.settings(for: assetID) == baselineSettings)
+        #expect(f.editor.settings(for: assetID) == paintedSettings)
         #expect(try Data(contentsOf: original) == originalBytes)
 
         WorkspaceActions.showGrid(layout, library: f.library)
-        try await wait("leaving the canvas discards the unaccepted draft") { !f.library.showsDetail && mask.source == nil && mask.bitmap == nil }
+        try await wait("leaving the canvas closes its session") { !f.library.showsDetail && mask.source == nil && mask.bitmap == nil }
+        #expect(f.editor.settings(for: assetID) == paintedSettings)
         WorkspaceActions.reveal(.edit, layout: layout, library: f.library)
         try await host.settle()
         let reopen = try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == "develop.tool.masks" })
         #expect(reopen.accessibilityPerformPress())
-        try await wait("reopening starts a clean draft") { mask.source == baselineSource && mask.canvasSize != nil && mask.settings == baselineSettings && !mask.canUndo }
+        try await wait("reopening starts from accepted settings") { mask.source == baselineSource && mask.canvasSize != nil && mask.settings == paintedSettings && !mask.canUndo }
         mask.add(.linear)
+        let beforeReplacement = mask.settings
         try (originalBytes + Data([0])).write(to: original)
         f.library.refreshCurrentFolder()
-        try await wait("replaced source discards its old draft") {
+        try await wait("replaced source closes its old session") {
             !f.library.isImporting && !f.library.isProjecting
                 && f.editor.aiSnapshot(in: f.library)?.source != baselineSource && mask.source == nil && mask.bitmap == nil
         }
@@ -299,19 +388,67 @@ final class WorkspaceProposalLifecycleTests {
         let replacedSource = try #require(f.editor.aiSnapshot(in: f.library)).source
         let reopenAfterReplacement = try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == "develop.tool.masks" })
         #expect(reopenAfterReplacement.accessibilityPerformPress())
-        try await wait("replacement gets a new inline canvas") { mask.source == replacedSource && mask.canvasSize != nil && mask.settings == baselineSettings }
+        try await wait("replacement gets a new inline canvas") { mask.source == replacedSource && mask.canvasSize != nil && mask.settings == beforeReplacement }
         mask.add(.radial)
-        let discard = try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == "local-mask.cancel" })
-        #expect(discard.accessibilityPerformPress())
-        try await wait("explicit discard closes the inline palette") { mask.source == nil && mask.bitmap == nil }
-        #expect(f.editor.settings(for: assetID) == baselineSettings)
-        #expect(await f.store.saveCount == 0)
+        let accepted = mask.settings
+        let close = try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == "local-mask.close" })
+        #expect(close.accessibilityPerformPress())
+        try await wait("close preserves edits and dismisses the inline palette") { mask.source == nil && mask.bitmap == nil }
+        #expect(f.editor.settings(for: assetID) == accepted)
+        #expect(await f.editor.flush())
+        #expect(await f.store.saveCount > 0)
+        #expect(await metadata.finishSaving())
+        #expect(await f.library.finishSaving())
+    }
+
+    @Test
+    func returningToAPhotoStartsBasicHistoryWithoutReplayingMaskUpdates() async throws {
+        let f = try await fixture()
+        let host = WorkspaceSectionTestHost(size: NSSize(width: 1_440, height: 900))
+        defer { host.close() }
+        let suite = "PicEdit-PhotoReturnMaskHistory-\(UUID())"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let layout = WorkspaceLayoutModel(defaults: defaults)
+        let mask = LocalAdjustmentEditorModel(settings: .neutral)
+        let metadata = try await mountLibrary(f, mask: mask, layout: layout, host: host)
+        let first = try #require(f.library.selectedAsset)
+        let second = try #require(f.library.assets.first { $0.id != first.id })
+        let open = try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == "develop.tool.masks" })
+        #expect(open.accessibilityPerformPress())
+        try await wait("photo-return mask canvas") { mask.source != nil && mask.canvasSize != nil }
+        mask.add(.linear)
+        mask.beginChange()
+        for value in [0.2, 0.4, 0.6] { mask.updateSelected { $0.settings.exposure = value } }
+        mask.endChange()
+        let edited = mask.settings
+        #expect(f.editor.settings(for: first.id) == edited)
+        #expect(f.editor.editingFunction(assetID: first.id) == .masks && mask.canUndo)
+        f.library.select(second)
+        try await wait("switching away closes the mask workspace") {
+            mask.source == nil && f.editor.editingFunction(assetID: second.id) == .adjustments
+        }
+        f.library.select(first)
+        try await wait("returning uses the displayed basic function") {
+            f.library.selectedID == first.id && f.editor.editingFunction(assetID: first.id) == .adjustments
+                && host.accessibilityElements.contains { $0.accessibilityIdentifier() == "develop.tool.basic" }
+        }
+        try await host.settle()
+        #expect(mask.source == nil)
+        #expect(!host.accessibilityElements.contains { $0.accessibilityIdentifier() == "local-mask.canvas" })
+        #expect(f.editor.settings(for: first.id) == edited)
+        #expect(!f.editor.canUndo(assetID: first.id) && !f.editor.canRedo(assetID: first.id))
+        let undo = try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == "workspace.undo" })
+        #expect(!undo.isAccessibilityEnabled(), "Global mask update snapshots cannot leak into the basic function")
+        f.editor.undo(assetID: first.id)
+        #expect(f.editor.settings(for: first.id) == edited)
+        #expect(await f.editor.flush())
         #expect(await metadata.finishSaving())
         #expect(await f.library.finishSaving())
     }
 
     @Test(arguments: [WorkspaceTool.edit, .assistant])
-    func toolRevealAcceptsTheMaskDraftAndMountsItsDestination(tool: WorkspaceTool) async throws {
+    func toolRevealPreservesLiveMasksAndMountsItsDestination(tool: WorkspaceTool) async throws {
         let f = try await fixture()
         let host = WorkspaceSectionTestHost(size: NSSize(width: 1_440, height: 900))
         defer { host.close() }
@@ -329,34 +466,35 @@ final class WorkspaceProposalLifecycleTests {
             try await wait("assistant action is enabled before mask editing") {
                 host.accessibilityElements.first { $0.accessibilityRole() == .button && $0.accessibilityLabel() == "Vorschlag erstellen" }?.isAccessibilityEnabled() == true
             }
-            #expect(host.accessibilityElements.first { $0.accessibilityIdentifier() == "workspace.undo" }?.isAccessibilityEnabled() == true)
+            #expect(host.accessibilityElements.first { $0.accessibilityIdentifier() == "workspace.undo" }?.isAccessibilityEnabled() == false)
             #expect(host.accessibilityElements.first { $0.accessibilityIdentifier() == "workspace.reset" }?.isAccessibilityEnabled() == true)
         }
         let previousRequest = layout.revealRequest
         let open = try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == "develop.tool.masks" })
         #expect(open.accessibilityPerformPress())
-        try await wait("mask draft before dock reveal") { mask.canvasSize != nil && mask.source != nil }
+        try await wait("mask session before dock reveal") { mask.canvasSize != nil && mask.source != nil }
         #expect(layout.revealRequest == previousRequest, "Opening masks must not emit navigation to a hidden edit group")
         mask.add(.radial); mask.updateSelected { $0.settings.exposure = 1 }
         let expected = mask.settings
-        #expect(f.editor.settings(for: assetID).localAdjustments.isEmpty)
+        #expect(f.editor.settings(for: assetID) == expected)
         if tool == .assistant {
             try await host.settle()
             #expect(host.accessibilityElements.first { $0.accessibilityRole() == .button && $0.accessibilityLabel() == "Vorschlag erstellen" }?.isAccessibilityEnabled() == false)
-            for identifier in ["workspace.undo", "workspace.redo", "workspace.reset"] {
+            #expect(host.accessibilityElements.first { $0.accessibilityIdentifier() == "workspace.undo" }?.isAccessibilityEnabled() == true)
+            for identifier in ["workspace.redo", "workspace.reset"] {
                 #expect(host.accessibilityElements.first { $0.accessibilityIdentifier() == identifier }?.isAccessibilityEnabled() == false)
             }
             let group = try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == "workspace.group.assistant" })
-            #expect(group.accessibilityPerformPress(), "The already open navigation header accepts the draft before returning to its controls")
+            #expect(group.accessibilityPerformPress(), "The already open navigation header returns to its controls")
         } else {
             WorkspaceActions.reveal(tool, layout: layout, library: f.library)
         }
-        try await wait("dock target replaces the palette after draft acceptance") {
+        try await wait("dock target replaces the palette while keeping live edits") {
             mask.source == nil && f.editor.settings(for: assetID) == expected
                 && host.accessibilityElements.contains { $0.accessibilityIdentifier() == "workspace.group.\(tool.rawValue)" }
         }
         #expect(host.sheet == nil)
-        #expect(!host.accessibilityElements.contains { $0.accessibilityIdentifier() == "local-mask.cancel" })
+        #expect(!host.accessibilityElements.contains { $0.accessibilityIdentifier() == "local-mask.close" })
         #expect(layout.develop.openGroups.contains(tool))
         if tool == .assistant {
             #expect(host.accessibilityElements.first { $0.accessibilityRole() == .button && $0.accessibilityLabel() == "Vorschlag erstellen" }?.isAccessibilityEnabled() == true)
@@ -373,14 +511,13 @@ final class WorkspaceProposalLifecycleTests {
             }
         }
         #expect(f.editor.settings(for: assetID) == expected)
-        f.editor.undo(assetID: assetID)
-        #expect(f.editor.settings(for: assetID).localAdjustments.isEmpty)
+        #expect(!f.editor.canUndo(assetID: assetID), "Choosing another function starts a new history without discarding its predecessor's edits")
         #expect(await f.editor.flush())
         #expect(await metadata.finishSaving())
         #expect(await f.library.finishSaving())
     }
 
-    @Test func revealDuringAutomaticSelectionWaitsWithoutDiscardingTheDraft() async throws {
+    @Test func revealDuringAutomaticSelectionWaitsAndKeepsAlreadyLiveEdits() async throws {
         let f = try await fixture()
         let host = WorkspaceSectionTestHost(size: NSSize(width: 1_440, height: 900))
         defer { host.close() }
@@ -400,8 +537,8 @@ final class WorkspaceProposalLifecycleTests {
         WorkspaceActions.reveal(.assistant, layout: layout, library: f.library)
         try await host.settle()
         #expect(mask.source != nil && mask.isGenerating && mask.settings.localAdjustments.count == 1)
-        #expect(f.editor.settings(for: assetID).localAdjustments.isEmpty)
-        #expect(host.accessibilityElements.contains { $0.accessibilityIdentifier() == "local-mask.cancel" })
+        #expect(f.editor.settings(for: assetID) == mask.settings)
+        #expect(host.accessibilityElements.contains { $0.accessibilityIdentifier() == "local-mask.close" })
         await gate.complete()
         try await wait("completed selection is accepted before assistant navigation") {
             mask.source == nil && f.editor.settings(for: assetID).localAdjustments.count == 2
@@ -414,7 +551,7 @@ final class WorkspaceProposalLifecycleTests {
     }
 
     @Test(arguments: [false, true])
-    func failedAutomaticSelectionKeepsItsDraftUntilANewExplicitReveal(retrySelection: Bool) async throws {
+    func failedAutomaticSelectionKeepsLiveEditsUntilANewExplicitReveal(retrySelection: Bool) async throws {
         let f = try await fixture()
         let host = WorkspaceSectionTestHost(size: NSSize(width: 1_440, height: 900))
         defer { host.close() }
@@ -439,8 +576,8 @@ final class WorkspaceProposalLifecycleTests {
         try await wait("selection error is visible") { mask.errorMessage != nil && !mask.isGenerating }
         try await host.settle()
         #expect(mask.source != nil && mask.settings == originalDraft)
-        #expect(f.editor.settings(for: assetID).localAdjustments.isEmpty)
-        #expect(host.accessibilityElements.contains { $0.accessibilityIdentifier() == "local-mask.cancel" })
+        #expect(f.editor.settings(for: assetID) == originalDraft)
+        #expect(host.accessibilityElements.contains { $0.accessibilityIdentifier() == "local-mask.close" })
 
         if retrySelection {
             // A later successful selection must not resurrect the destination
@@ -453,8 +590,8 @@ final class WorkspaceProposalLifecycleTests {
             }
             try await host.settle()
             #expect(mask.source != nil && mask.errorMessage == nil)
-            #expect(f.editor.settings(for: assetID).localAdjustments.isEmpty)
-            #expect(host.accessibilityElements.contains { $0.accessibilityIdentifier() == "local-mask.cancel" })
+            #expect(f.editor.settings(for: assetID) == mask.settings)
+            #expect(host.accessibilityElements.contains { $0.accessibilityIdentifier() == "local-mask.close" })
         }
 
         let accepted = mask.settings
@@ -487,10 +624,9 @@ final class WorkspaceProposalLifecycleTests {
         f.assistant.prompt = "Aufhellen"
         f.assistant.generate()
         try await wait { await f.provider.requests.count == 1 }
-        await f.provider.complete()
-        try await wait { f.assistant.canAccept }
         await f.store.blockWrites()
-        #expect(f.assistant.acceptProposal())
+        await f.provider.complete()
+        try await wait { f.assistant.hasAppliedChanges }
         let saving = Task { await f.editor.flush() }
         try await wait { await f.store.hasBlockedWrite }
         try await host.unmount()
@@ -506,7 +642,7 @@ final class WorkspaceProposalLifecycleTests {
         #expect(!f.editor.hasPendingChanges)
         #expect(f.editor.settings(for: assetID).exposure == 1)
         #expect(f.editor.canUndo(assetID: assetID))
-        #expect(f.assistant.result == nil)
+        #expect(f.assistant.result != nil)
         #expect(await f.store.saveCount == 1)
         #expect(await f.provider.requests.count == 1)
         #expect(try Data(contentsOf: try #require(f.library.selectedAsset).fileURL) == originalBytes)
@@ -539,6 +675,7 @@ final class WorkspaceProposalLifecycleTests {
         let selectedIDs = f.library.selectedIDs
         let selectedID = try #require(f.library.selectedID)
         #expect(selectedIDs.count == 2)
+        f.editor.selectEditingFunction(.assistant, assetID: selectedID)
         f.editor.setSettings(EditSettings(exposure: 0.4), for: selectedID)
         f.editor.setSettings(EditSettings(exposure: 0.8), for: selectedID)
         f.editor.undo(assetID: selectedID)
@@ -555,6 +692,7 @@ final class WorkspaceProposalLifecycleTests {
         await f.provider.complete()
         try await wait { f.assistant.state == .previewing }
         let proposal = try #require(f.assistant.result)
+        #expect(await f.editor.flush())
         let snapshot = try #require(f.editor.aiSnapshot(in: f.library))
 
         WorkspaceActions.toggleFocus(layout, library: f.library)
@@ -574,11 +712,11 @@ final class WorkspaceProposalLifecycleTests {
         #expect(f.library.selection == .favorites && f.library.search == ".png")
         #expect(f.library.minimumRating == 2 && f.library.sort == .name)
         #expect(f.editor.aiSnapshot(in: f.library) == snapshot)
-        #expect(f.editor.canUndo(assetID: selectedID) && f.editor.canRedo(assetID: selectedID))
-        #expect(f.assistant.result == proposal && f.assistant.canAccept)
+        #expect(f.editor.canUndo(assetID: selectedID) && !f.editor.canRedo(assetID: selectedID))
+        #expect(f.assistant.result == proposal && f.assistant.hasAppliedChanges)
         #expect(await f.provider.requests.count == 1)
         #expect(await f.service.requests.count == 0)
-        #expect(await f.store.saveCount == saves)
+        #expect(await f.store.saveCount == saves + 1)
 
         // The explicit grid command overrides either remembered focus origin.
         WorkspaceActions.toggleFocus(layout, library: f.library)
@@ -589,8 +727,8 @@ final class WorkspaceProposalLifecycleTests {
         #expect(f.library.selectedID == selectedID && f.library.selectedIDs == selectedIDs)
         #expect(f.library.selection == .favorites && f.library.search == ".png")
         #expect(f.editor.aiSnapshot(in: f.library) == snapshot)
-        #expect(f.editor.canUndo(assetID: selectedID) && f.editor.canRedo(assetID: selectedID))
-        #expect(f.assistant.result == proposal && f.assistant.canAccept)
+        #expect(f.editor.canUndo(assetID: selectedID) && !f.editor.canRedo(assetID: selectedID))
+        #expect(f.assistant.result == proposal && f.assistant.hasAppliedChanges)
 
         // The same command also leaves an ordinary, non-focus tool/detail view.
         WorkspaceActions.reveal(.analysis, layout: layout, library: f.library)
@@ -601,13 +739,11 @@ final class WorkspaceProposalLifecycleTests {
         #expect(layout.library == libraryPanels && layout.develop == revealedPanels)
         #expect(f.library.selectedID == selectedID && f.library.selectedIDs == selectedIDs)
         #expect(f.editor.aiSnapshot(in: f.library) == snapshot)
-        #expect(f.assistant.result == proposal && f.assistant.canAccept)
+        #expect(f.assistant.result == proposal && f.assistant.hasAppliedChanges)
         #expect(await f.provider.requests.count == 1)
         #expect(await f.service.requests.count == 0)
-        #expect(await f.store.saveCount == saves)
+        #expect(await f.store.saveCount == saves + 1)
         // Check the actual retained history, beyond the menu's enabled state.
-        f.editor.redo(assetID: selectedID)
-        #expect(f.editor.settings(for: selectedID).exposure == 0.8)
         f.editor.undo(assetID: selectedID)
         #expect(f.editor.settings(for: selectedID).exposure == 0.4)
         f.editor.undo(assetID: selectedID)
@@ -659,7 +795,7 @@ final class WorkspaceProposalLifecycleTests {
             f.library.isDeveloping = true
             try await host.mount(sections(f))
             #expect(f.assistant.result == proposal)
-            #expect(f.assistant.canAccept)
+            #expect(f.assistant.hasAppliedChanges)
             #expect(f.assistant.comparison == .current)
             #expect(f.assistant.prompt == "Tiefen aufhellen, warme Farben erhalten")
             #expect(f.analysis.result == analysis)
@@ -671,13 +807,13 @@ final class WorkspaceProposalLifecycleTests {
         #expect(await f.service.requests.count == 1)
         #expect(await f.provider.availabilityChecks == providerAvailabilityChecks)
         #expect(await f.service.availabilityChecks == analysisAvailabilityChecks)
-        #expect(f.editor.aiSnapshot(in: f.library) == baseline)
+        #expect(f.editor.aiSnapshot(in: f.library)?.source == baseline.source)
+        #expect(f.editor.settings(for: baseline.assetID).exposure == 1)
         #expect(f.library.assets == assets)
         #expect(try assets.map { try Data(contentsOf: $0.fileURL) } == bytes)
-        #expect(!f.editor.canUndo(assetID: baseline.assetID))
-        #expect(!f.editor.hasPendingChanges)
+        #expect(f.editor.canUndo(assetID: baseline.assetID))
         #expect(await f.editor.flush())
-        #expect(await f.store.saveCount == 0)
+        #expect(await f.store.saveCount == 1)
         #expect(await f.library.finishSaving())
     }
 
@@ -711,7 +847,9 @@ final class WorkspaceProposalLifecycleTests {
         #expect(f.assistant.activeProposalResult == nil)
         #expect(f.assistant.cards.groupID == nil)
         #expect(await f.provider.requests.count == 1)
-        #expect(await f.store.saveCount == 0)
+        #expect(f.editor.settings(for: try #require(f.library.selectedID)).contrast == 35)
+        #expect(await f.editor.flush())
+        #expect(await f.store.saveCount == 1)
         #expect(await f.library.finishSaving())
     }
 
@@ -726,14 +864,13 @@ final class WorkspaceProposalLifecycleTests {
         for event in 0..<2 {
             f.assistant.prompt = "Aufhellen"
             f.assistant.generate()
+            try await wait { await f.provider.requests.count == event + 1 }
+            await f.provider.complete()
+            try await wait { f.assistant.state == .previewing }
+            #expect(await f.editor.flush())
             f.analysis.inputKind = .editedPreview
             f.analysis.analyze()
-            try await wait {
-                let proposals = await f.provider.requests.count
-                let analyses = await f.service.requests.count
-                return proposals == event + 1 && analyses == event + 1
-            }
-            await f.provider.complete()
+            try await wait { await f.service.requests.count == event + 1 }
             await f.service.complete()
             try await wait { f.assistant.state == .previewing && f.analysis.state == .ready }
             try await host.unmount()
@@ -825,6 +962,39 @@ final class WorkspaceSectionTestHost {
         window.ignoresMouseEvents = true
         window.contentView = hosting
         window.orderBack(nil)
+    }
+
+    var firstResponder: NSResponder? { window.firstResponder }
+    var sliders: [NSSlider] {
+        var pending: [NSView] = [hosting]
+        var sliders: [NSSlider] = []
+        while let view = pending.popLast() {
+            if let slider = view as? NSSlider { sliders.append(slider) }
+            pending.append(contentsOf: view.subviews)
+        }
+        return sliders
+    }
+
+    @discardableResult func focus(_ responder: NSResponder?) -> Bool { window.makeFirstResponder(responder) }
+
+    func sendHistoryKey(redo: Bool = false) throws {
+        let event = try #require(NSEvent.keyEvent(with: .keyDown, location: .zero,
+            modifierFlags: redo ? [.command, .shift] : [.command], timestamp: ProcessInfo.processInfo.systemUptime,
+            windowNumber: window.windowNumber, context: nil, characters: redo ? "Z" : "z",
+            charactersIgnoringModifiers: "z", isARepeat: false, keyCode: 6))
+        try #require(event.window === window, "The keyboard event must identify the mounted workspace window")
+        var pending: [NSView] = [hosting]
+        var input: WorkspaceKeyboardInputView?
+        while let view = pending.popLast() {
+            if let candidate = view as? WorkspaceKeyboardInputView { input = candidate; break }
+            pending.append(contentsOf: view.subviews)
+        }
+        // Call the mounted native surface's exact production processing path,
+        // which the real local monitor also delegates to. Synthetic sendEvent
+        // bypasses local monitors; pumping NSApplication's global queue is not
+        // supported by the SwiftPM test runner's application lifecycle.
+        let surface = try #require(input, "The mounted workspace must own its native keyboard input surface")
+        try #require(surface.process(event) == nil, "The workspace must consume its history shortcut")
     }
 
     var contentSize: NSSize { hosting.bounds.size }

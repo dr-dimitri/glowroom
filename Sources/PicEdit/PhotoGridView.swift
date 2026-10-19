@@ -231,8 +231,8 @@ struct DetailView: View {
     private var previewLabel: String {
         if model.comparesOriginal { return " · Importiertes Original" }
         if model.comparesCurrentSourceWithoutSettings { return " · Aktuelle Quelle ohne Regler" }
-        if model.isDeveloping, assistant.canAccept {
-            return assistant.comparison == .proposal ? " · KI-Vorschau · noch nicht übernommen" : " · Aktuelle Bearbeitung"
+        if model.isDeveloping, assistant.hasAppliedChanges {
+            return assistant.comparison == .proposal ? " · KI-Bearbeitung" : " · Ausgangsstand vor KI"
         }
         return ""
     }
@@ -240,12 +240,6 @@ struct DetailView: View {
     private func previewSettings(for assetID: String) -> EditSettings {
         var settings = maskWorkspace.previewSettings ?? assistant.displaySettings(assetID: assetID,
             committed: editor.settings(for: assetID), developing: model.isDeveloping, comparesOriginal: model.comparesOriginal)
-        if model.isDeveloping, model.editingRenderIntent == .currentEditing, !maskWorkspace.isPresented,
-           developWorkspace.tool == .repair, developWorkspace.repairPreviewAssetID == assetID,
-           developWorkspace.repairPreviewRevision == editor.localRevision(for: assetID),
-           developWorkspace.repairPreviewSession == editor.aiEditSessionID, let stroke = developWorkspace.repairPreviewStroke {
-            settings.developGeometry.retouchStrokes.append(stroke)
-        }
         if developWorkspace.tool.usesOriginalCanvas || developWorkspace.picksWhiteBalance {
             settings.developGeometry.crop = nil
             settings.developGeometry.quarterTurns = 0

@@ -2,8 +2,8 @@ import AppKit
 import Foundation
 import PicEditCore
 
-/// Finishing an already accepted save of the opening settings is allowed;
-/// a new local edit, selection round trip or store epoch invalidates the draft.
+/// Finishing an already accepted save is allowed; an edit from outside this
+/// workspace, a selection round trip or a store epoch change invalidates it.
 struct LocalMaskEditingAnchor {
     let snapshot: AIEditingSnapshot
     let localRevision: Int64
@@ -44,8 +44,9 @@ enum LocalMaskCreation: String, CaseIterable, Identifiable {
     }
 }
 
-/// A source-bound draft. Accepting it creates one ordinary, durable editor edit;
-/// cancellation of its preview or inference never cancels an accepted store write.
+/// Source-bound mask controls with one undo entry per gesture. The workspace
+/// accepts each valid state immediately; ending preview or inference work never
+/// cancels an already accepted store write.
 @MainActor
 final class LocalAdjustmentEditorModel: ObservableObject {
     typealias Loader = @Sendable (PreviewRequest) async throws -> PreviewBitmap
@@ -66,7 +67,6 @@ final class LocalAdjustmentEditorModel: ObservableObject {
     @Published private(set) var canRedo = false
     private let loader: Loader
     private let generator: Generator
-    private var openingSettings: EditSettings
     private var history: [[LocalAdjustment]] = []
     private var future: [[LocalAdjustment]] = []
     private var groupStart: [LocalAdjustment]?
@@ -74,6 +74,9 @@ final class LocalAdjustmentEditorModel: ObservableObject {
     private var operation: UUID?
     private var inference: Task<Void, Never>?
     private(set) var source: AISourceIdentity?
+    /// Accept before changing local state, so stale controls and late inference
+    /// cannot replace a newer editor state. Standalone models need no receiver.
+    var acceptSettings: ((EditSettings) -> Bool)?
     /// Native controls can finish after SwiftUI replaces a selected mask view.
     /// A context remains invalid even when selection returns to the same UUID.
     private(set) var inputContextID = UUID()
@@ -84,18 +87,17 @@ final class LocalAdjustmentEditorModel: ObservableObject {
         try await AutomaticMaskService.shared.generate($0, kind: $1, sourceURL: $2)
     }) {
         self.settings = settings
-        openingSettings = settings
         self.loader = loader
         self.generator = generator
         selectedID = settings.localAdjustments.first?.id
     }
 
     var selected: LocalAdjustment? { settings.localAdjustments.first { $0.id == selectedID } }
+    var hasActiveChange: Bool { groupStart != nil }
 
     /// Reopening the inline inspector starts from the current accepted edit.
     func reset(settings: EditSettings) {
         close()
-        openingSettings = settings
         self.settings = settings
         selectedID = settings.localAdjustments.first?.id
     }
@@ -144,7 +146,7 @@ final class LocalAdjustmentEditorModel: ObservableObject {
     private func append(_ name: String, shape: LocalMaskShape) throws {
         endChange()
         let layer = try LocalAdjustment(name: name, mask: LocalAdjustmentMask(shape: shape))
-        try install(settings.localAdjustments + [layer])
+        guard try install(settings.localAdjustments + [layer]) else { return }
         selectedID = layer.id
     }
 
@@ -167,7 +169,7 @@ final class LocalAdjustmentEditorModel: ObservableObject {
         var layers = settings.localAdjustments
         layers.remove(at: index)
         do {
-            try install(layers)
+            guard try install(layers) else { return }
             if selectedID == id { selectedID = layers.isEmpty ? nil : layers[min(index, layers.count - 1)].id }
         }
         catch { errorMessage = error.localizedDescription }
@@ -189,7 +191,8 @@ final class LocalAdjustmentEditorModel: ObservableObject {
         do {
             let duplicate = try LocalAdjustment(name: String((selected.name + " Kopie").prefix(64)),
                 mask: selected.mask, settings: selected.settings, isEnabled: selected.isEnabled)
-            try install(settings.localAdjustments + [duplicate]); selectedID = duplicate.id
+            guard try install(settings.localAdjustments + [duplicate]) else { return }
+            selectedID = duplicate.id
         } catch { errorMessage = error.localizedDescription }
     }
 
@@ -200,34 +203,46 @@ final class LocalAdjustmentEditorModel: ObservableObject {
         if previous != settings.localAdjustments { remember(previous) }
     }
     func undo() {
+        cancelInference()
         endChange()
-        guard let previous = history.popLast() else { return }
+        guard let previous = history.last else { return }
+        var candidate = settings; candidate.localAdjustments = previous
+        guard acceptSettings?(candidate) != false else { return }
+        history.removeLast()
         inputContextID = UUID()
-        future.append(settings.localAdjustments); settings.localAdjustments = previous; reconcileSelection(); updateHistory()
+        future.append(settings.localAdjustments); settings = candidate; reconcileSelection(); updateHistory()
     }
     func redo() {
+        cancelInference()
         endChange()
-        guard let next = future.popLast() else { return }
+        guard let next = future.last else { return }
+        var candidate = settings; candidate.localAdjustments = next
+        guard acceptSettings?(candidate) != false else { return }
+        future.removeLast()
         inputContextID = UUID()
-        history.append(settings.localAdjustments); settings.localAdjustments = next; reconcileSelection(); updateHistory()
+        history.append(settings.localAdjustments); settings = candidate; reconcileSelection(); updateHistory()
     }
     private func reconcileSelection() {
         if selected == nil { selectedID = settings.localAdjustments.first?.id }
     }
-    private func install(_ layers: [LocalAdjustment]) throws {
-        guard settings.localAdjustments != layers else { return }
+    @discardableResult private func install(_ layers: [LocalAdjustment]) throws -> Bool {
+        guard settings.localAdjustments != layers else { return true }
         var candidate = settings; candidate.localAdjustments = layers
         _ = try EditingSnapshot(settings: candidate)
+        guard acceptSettings?(candidate) != false else { return false }
         if groupStart == nil { remember(settings.localAdjustments) }
         else { future = [] }
         settings = candidate; errorMessage = nil; updateHistory()
+        return true
     }
     private func remember(_ previous: [LocalAdjustment]) {
         history.append(previous)
-        if history.count > 32 { history.removeFirst() }
         future = []; updateHistory()
     }
-    private func updateHistory() { canUndo = !history.isEmpty; canRedo = !future.isEmpty }
+    private func updateHistory() {
+        canUndo = !history.isEmpty || groupStart.map { $0 != settings.localAdjustments } == true
+        canRedo = !future.isEmpty
+    }
 
     private func generate(_ kind: AutomaticMaskKind, isBackground: Bool = false) {
         guard !isGenerating, let bitmap, let source else { return }
@@ -264,9 +279,10 @@ final class LocalAdjustmentEditorModel: ObservableObject {
         operation = nil; inference?.cancel(); inference = nil; isGenerating = false
     }
     func close() {
+        acceptSettings = nil
         inputContextID = UUID()
         session = UUID(); cancelInference(); source = nil; bitmap = nil; canvasSize = nil
-        settings = openingSettings; selectedID = openingSettings.localAdjustments.first?.id
+        selectedID = settings.localAdjustments.first?.id
         history = []; future = []; groupStart = nil; errorMessage = nil; updateHistory()
     }
     func waitForInference() async { if let inference { await inference.value } }

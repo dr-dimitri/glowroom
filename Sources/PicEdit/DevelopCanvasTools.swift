@@ -16,7 +16,7 @@ struct DevelopGeometryInspector: View {
                 HStack {
                     Text(workspace.tool.title).font(.system(size: 13, weight: .semibold))
                     Spacer()
-                    Button("Fertig") { workspace.tool = .basic }.buttonStyle(.borderedProminent).controlSize(.small)
+                    Button("Schließen") { workspace.tool = .basic }.buttonStyle(.bordered).controlSize(.small)
                 }
                 Text("Unbeschnittene Quelle · Änderungen werden nicht destruktiv gespeichert.")
                     .font(.system(size: 10)).foregroundStyle(Theme.muted)
@@ -260,6 +260,7 @@ struct DevelopCanvasInteraction: View {
             workspace.errorMessage = "Wähle eine mittlere, deckende graue Fläche ohne ausgefressene Lichter oder tiefes Schwarz."
             return
         }
+        editor.selectEditingFunction(.adjustments, assetID: asset.id)
         var settings = editor.settings(for: asset.id)
         settings.developColor.temperature = correction.temperature; settings.developColor.tint = correction.tint
         editor.setSettings(settings, for: asset.id)

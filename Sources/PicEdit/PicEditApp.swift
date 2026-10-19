@@ -15,6 +15,7 @@ struct PicEditApp: App {
     @StateObject private var photoMetadata: PhotoMetadataModel
     @StateObject private var exporter = JPEGExportModel()
     @StateObject private var layout = WorkspaceLayoutModel()
+    @FocusedValue(\.editingHistory) private var editingHistory
     private let dataDirectory: URL
     private let artifactBootstrap: ArtifactAppBootstrap
 
@@ -141,14 +142,16 @@ struct PicEditApp: App {
                     layout.reveal(.edit, developing: true)
                 }.keyboardShortcut("d", modifiers: .command).disabled(library.selectedAsset == nil || editor.isLoading)
                 Button(library.comparesOriginal ? "Bearbeitung anzeigen" : "Importiertes Original anzeigen") { library.comparesOriginal.toggle() }
-                    .disabled(!library.isDeveloping || library.selectedAsset == nil)
+                    .disabled(!library.isDeveloping || library.selectedAsset == nil || editingHistory?.allowsComparison == false)
                 Divider()
-                Button("Bearbeitung rückgängig") { if let id = library.selectedID { editor.undo(assetID: id) } }
-                    .disabled(library.selectedID.map { !editor.canUndo(assetID: $0) } ?? true)
-                Button("Bearbeitung wiederholen") { if let id = library.selectedID { editor.redo(assetID: id) } }
-                    .disabled(library.selectedID.map { !editor.canRedo(assetID: $0) } ?? true)
-                Button("Alle Regler zurücksetzen") { if let id = library.selectedID { editor.reset(assetID: id) } }
-                    .disabled(!editor.canEdit || library.selectedID == nil)
+                Button("Bearbeitung rückgängig") { editingHistory?.undo() }
+                    .keyboardShortcut("z", modifiers: .command)
+                    .disabled(editingHistory?.canUndo != true)
+                Button("Bearbeitung wiederholen") { editingHistory?.redo() }
+                    .keyboardShortcut("z", modifiers: [.command, .shift])
+                    .disabled(editingHistory?.canRedo != true)
+                Button("Alle Regler zurücksetzen") { editingHistory?.reset() }
+                    .disabled(editingHistory?.canReset != true)
                 Divider()
                 Button("Änderungen erneut speichern") { Task { _ = await editor.flush() } }
                     .disabled(!editor.hasPendingChanges || editor.isSaving || editor.isLoading || editor.isRestoring)

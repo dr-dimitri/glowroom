@@ -9,7 +9,7 @@ import Testing
 @Suite("Repair canvas native gestures", .serialized)
 @MainActor
 struct DevelopRepairCanvasInputTests {
-    @Test func nativeDragPreviewsTheWholeGestureAndAcceptanceCreatesOneUndo() async throws {
+    @Test func nativeDragActivatesTheWholeGestureAsOneUndoStep() async throws {
         let fixture = try await RepairCanvasFixture.make()
         let host = RepairCanvasHost()
         defer { host.close(); fixture.workspace.clear() }
@@ -21,16 +21,14 @@ struct DevelopRepairCanvasInputTests {
         let operation = try #require(fixture.workspace.repairTask)
         await operation.value
 
-        #expect(fixture.editor.settings(for: fixture.asset.id) == .neutral)
-        #expect(!fixture.editor.canUndo(assetID: fixture.asset.id))
-        let stroke = try #require(fixture.workspace.repairPreviewStroke)
+        #expect(fixture.editor.canUndo(assetID: fixture.asset.id))
+        let stroke = try #require(fixture.editor.settings(for: fixture.asset.id).developGeometry.retouchStrokes.last)
         let last = try #require(stroke.path.last)
         #expect(stroke.path.count >= 3)
         #expect(abs(stroke.target.x - 0.4) < 0.000_001)
         #expect(abs(last.x - 0.6) < 0.000_001)
         #expect(abs(last.y - 0.5) < 0.000_001)
         #expect(host.doubleClicks == 0)
-        fixture.workspace.acceptRepairPreview(asset: fixture.asset, editor: fixture.editor)
         #expect(fixture.editor.settings(for: fixture.asset.id).developGeometry.retouchStrokes == [stroke])
         fixture.editor.undo(assetID: fixture.asset.id)
         #expect(fixture.editor.settings(for: fixture.asset.id) == .neutral)
@@ -56,7 +54,7 @@ struct DevelopRepairCanvasInputTests {
         #expect(await fixture.editor.flush())
     }
 
-    @Test func closingAPaintedLoopIsStillADragAndPreviewsWithoutTheClickTimer() async throws {
+    @Test func closingAPaintedLoopIsStillADragAndActivatesWithoutTheClickTimer() async throws {
         let fixture = try await RepairCanvasFixture.make()
         let host = RepairCanvasHost()
         defer { host.close(); fixture.workspace.clear() }
@@ -69,14 +67,14 @@ struct DevelopRepairCanvasInputTests {
         try host.send(.leftMouseUp, at: start)
         let operation = try #require(fixture.workspace.repairTask, "A real painted loop must bypass the pending point-click timer")
         await operation.value
-        let stroke = try #require(fixture.workspace.repairPreviewStroke)
+        let stroke = try #require(fixture.editor.settings(for: fixture.asset.id).developGeometry.retouchStrokes.last)
         #expect(stroke.path.count >= 4 && stroke.path.first == stroke.path.last)
-        #expect(fixture.editor.settings(for: fixture.asset.id) == .neutral)
+        #expect(fixture.editor.canUndo(assetID: fixture.asset.id))
         #expect(host.doubleClicks == 0)
         #expect(await fixture.editor.flush())
     }
 
-    @Test func escapeDiscardsAnUnacceptedRemovalWithoutCreatingUndo() async throws {
+    @Test func escapeKeepsAnAlreadyActiveRemovalUndoable() async throws {
         let fixture = try await RepairCanvasFixture.make()
         let host = RepairCanvasHost()
         defer { host.close(); fixture.workspace.clear() }
@@ -85,11 +83,13 @@ struct DevelopRepairCanvasInputTests {
         try host.send(.leftMouseDragged, at: CGPoint(x: 0.6, y: 0.5))
         try host.send(.leftMouseUp, at: CGPoint(x: 0.6, y: 0.5))
         await (try #require(fixture.workspace.repairTask)).value
-        #expect(fixture.workspace.repairPreviewStroke != nil)
+        let accepted = fixture.editor.settings(for: fixture.asset.id)
+        #expect(accepted.developGeometry.retouchStrokes.count == 1)
         try host.cancel("cancel")
-        #expect(fixture.workspace.repairPreviewStroke == nil)
+        #expect(fixture.editor.settings(for: fixture.asset.id) == accepted)
+        #expect(fixture.editor.canUndo(assetID: fixture.asset.id))
+        fixture.editor.undo(assetID: fixture.asset.id)
         #expect(fixture.editor.settings(for: fixture.asset.id) == .neutral)
-        #expect(!fixture.editor.canUndo(assetID: fixture.asset.id))
         #expect(await fixture.editor.flush())
     }
 

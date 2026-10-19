@@ -45,10 +45,7 @@ final class DevelopWorkspace: ObservableObject {
     @Published var repairUsesAI = false
     @Published var repairAIReady = false
     @Published var repairAIModelName: String?
-    @Published var repairPreviewStroke: DevelopRetouchStroke?
-    var repairPreviewAssetID: String?
-    var repairPreviewRevision: Int64?
-    var repairPreviewSession: UUID?
+    var repairTriedSourceStrokeID: UUID?
     var repairTriedSources: [LocalMaskPoint] = []
     var repairTask: Task<Void, Never>?
     var repairSpotTask: Task<Void, Never>?

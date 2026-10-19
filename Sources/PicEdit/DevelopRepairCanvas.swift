@@ -24,7 +24,7 @@ struct DevelopRepairCanvas: View {
     private var sourceSize: CGSize { workspace.sourceSize ?? CGSize(width: max(1, asset.pixelWidth), height: max(1, asset.pixelHeight)) }
     private var strokes: [DevelopRetouchStroke] { editor.settings(for: asset.id).developGeometry.retouchStrokes }
     private var overlaysVisible: Bool {
-        workspace.repairPreviewStroke == nil && (workspace.repairOverlay == .always || (workspace.repairOverlay == .automatic && (hover != nil || !path.isEmpty)))
+        workspace.repairOverlay == .always || (workspace.repairOverlay == .automatic && (hover != nil || !path.isEmpty))
     }
 
     var body: some View {
@@ -89,23 +89,21 @@ struct DevelopRepairCanvas: View {
                         finish(); onDoubleClick?()
                     },
                     canvasLabel: "Reparieren auf dem Bild", onCancel: {
-                        finish(); workspace.cancelRepairWork(clearCandidates: false); workspace.discardRepairPreview()
+                        finish(); workspace.cancelRepairWork(clearCandidates: false)
                     }, onDoubleClickBegan: { finish() })
             }.onChange(of: viewport.size) { _, _ in finish() }
         }.opacity(workspace.isOriginalCanvasReady ? 1 : 0)
             .onChange(of: asset.id) { _, _ in finish() }
             .onChange(of: workspace.sourceIdentity) { _, _ in finish() }
             .onChange(of: workspace.repairMode) { _, _ in finish() }
-            .onChange(of: editor.localRevision(for: asset.id)) { _, _ in
-                finish(); workspace.discardStaleRepairPreview(asset: asset, editor: editor)
-            }
+            .onChange(of: editor.localRevision(for: asset.id)) { _, _ in finish() }
             .onDisappear { finish() }
     }
 
     private func input(_ event: DevelopCropInputEvent, in rect: CGRect) {
         if event.phase == .cancelled { finish(); return }
         guard event.kind == .pointer, editor.canEdit, workspace.isOriginalCanvasReady,
-              !workspace.repairBusy, workspace.repairPreviewStroke == nil else { return }
+              !workspace.repairBusy else { return }
         if event.phase == .began {
             guard rect.contains(event.startLocation), let point = normalized(event.startLocation, in: rect) else { return }
             finish()

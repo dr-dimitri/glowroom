@@ -44,6 +44,39 @@ final class EditingModelTests {
     }
 
     @Test
+    func functionHistoryKeepsEveryStepAndOnlyChangesFunctionClearIt() async throws {
+        let model = EditingModel(database: LegacySnapshotTestAdapter(ControlledEditStore()))
+        try await waitLoaded(model)
+        // More than the former 100-state limit, within the current function.
+        for index in 1...125 { model.setSettings(exposure(Double(index) / 100), for: "A") }
+        #expect(await model.flush())
+        model.selectEditingFunction(.adjustments, assetID: "A")
+        for index in (0..<125).reversed() {
+            model.undo(assetID: "A")
+            #expect(model.settings(for: "A").exposure == Double(index) / 100)
+        }
+        #expect(!model.canUndo(assetID: "A"))
+        model.redo(assetID: "A")
+        model.selectEditingFunction(.crop, assetID: "A")
+        #expect(!model.canUndo(assetID: "A"))
+        #expect(!model.canRedo(assetID: "A"))
+        #expect(model.settings(for: "A").exposure == 0.01)
+        model.beginEditing(assetID: "A")
+        model.setSettings(exposure(1), for: "A")
+        model.selectEditingFunction(.crop, assetID: "A")
+        #expect(model.hasActiveEditing(assetID: "A"))
+        model.setSettings(exposure(2), for: "A")
+        model.endEditing(assetID: "A")
+        model.undo(assetID: "A")
+        #expect(model.settings(for: "A").exposure == 0.01)
+        model.setSettings(exposure(-1), for: "B")
+        model.selectEditingFunction(.masks, assetID: "A")
+        #expect(!model.canUndo(assetID: "A"))
+        #expect(model.canUndo(assetID: "B"))
+        #expect(await model.flush())
+    }
+
+    @Test
     func dragUndoRedoAndResetRemainIndependentPerImage() async throws {
         let store = ControlledEditStore()
         let model = EditingModel(database: LegacySnapshotTestAdapter(store))

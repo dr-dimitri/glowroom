@@ -89,6 +89,7 @@ struct LibraryView: View {
         .tint(Theme.accent)
         .environmentObject(maskWorkspace)
         .environmentObject(developWorkspace)
+        .focusedSceneValue(\.editingHistory, editingHistory)
         .environment(\.developPreviewSink, { request, settings, bitmap, sourceBitmap in
             guard let asset = model.selectedAsset,
                   (try? editor.resolvedSource(for: asset, intent: model.editingRenderIntent).identity) == request.source else { return }
@@ -98,7 +99,10 @@ struct LibraryView: View {
         })
         .overlay { if dropTargeted { RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.accent, style: StrokeStyle(lineWidth: 3, dash: [8])).padding(6).allowsHitTesting(false) } }
         .onDrop(of: [.fileURL], isTargeted: $dropTargeted, perform: acceptDrop)
-        .background(KeyboardHandler { event in handleKey(event) })
+        .background(KeyboardHandler(handlesTextUndo: {
+            guard let id = model.selectedID else { return false }
+            return editor.hasActiveEditing(assetID: id) || maskWorkspace.model?.hasActiveChange == true
+        }, action: { event in handleKey(event) }))
         .onAppear {
             if layout.isFocused, model.selectedAsset != nil { model.showsDetail = true; model.isDeveloping = true }
         }
@@ -125,11 +129,12 @@ struct LibraryView: View {
             if !layout.isFocused { model.isDeveloping = false }
             model.comparesOriginal = false; model.comparesCurrentSourceWithoutSettings = false
         } }
-        .onChange(of: model.selectedID) { old, _ in
+        .onChange(of: model.selectedID) { old, current in
             pendingToolReveal = nil
             if let old { editor.endEditing(assetID: old) }
             maskWorkspace.cancel()
             developWorkspace.clear()
+            if let current { editor.selectEditingFunction(.adjustments, assetID: current) }
             model.comparesOriginal = false
             model.comparesCurrentSourceWithoutSettings = false
             if layout.isFocused, model.selectedAsset != nil { model.showsDetail = true; model.isDeveloping = true }
@@ -168,6 +173,10 @@ struct LibraryView: View {
                 } else { maskWorkspace.cancel() }
             }
             if current == .masks { openMasks() }
+            if let id = model.selectedID, model.editingRenderIntent == .currentEditing,
+               editor.editingFunction(assetID: id) == EditingFunction(previous) {
+                editor.selectEditingFunction(EditingFunction(current), assetID: id)
+            }
         }
         .onChange(of: maskWorkspace.isPresented) { _, visible in
             if !visible, developWorkspace.tool == .masks { developWorkspace.tool = .basic }
@@ -189,6 +198,7 @@ struct LibraryView: View {
               let source = try? editor.resolvedSource(for: asset) else { return }
         NSApp.keyWindow?.makeFirstResponder(nil)
         editor.endEditing(assetID: asset.id)
+        editor.selectEditingFunction(.masks, assetID: asset.id)
         model.comparesOriginal = false; model.comparesCurrentSourceWithoutSettings = false
         model.showsDetail = true; model.isDeveloping = true
         // Opening a canvas palette is not navigation to the ordinary edit
@@ -207,7 +217,7 @@ struct LibraryView: View {
 
     private func finishToolReveal(resuming: Bool = false) {
         guard let request = pendingToolReveal, request == layout.revealRequest,
-              layout.revealedTool != nil else { return }
+              let tool = layout.revealedTool else { return }
         if maskWorkspace.isPresented {
             // Inference owns its native resources until it returns. Keep both
             // the draft and requested destination until selection is complete.
@@ -228,7 +238,39 @@ struct LibraryView: View {
         developWorkspace.picksWhiteBalance = false
         developWorkspace.repairSource = nil
         developWorkspace.tool = .basic
+        if let id = model.selectedID { editor.selectEditingFunction(EditingFunction(tool), assetID: id) }
         pendingToolReveal = nil
+    }
+
+    private var editingHistory: WorkspaceEditingHistory {
+        let id = model.selectedID
+        let masks = maskWorkspace.isPresented
+        return WorkspaceEditingHistory(
+            canUndo: editor.canEdit && (masks ? maskWorkspace.model?.canUndo == true : id.map { editor.canUndo(assetID: $0) } == true),
+            canRedo: editor.canEdit && (masks ? maskWorkspace.model?.canRedo == true : id.map { editor.canRedo(assetID: $0) } == true),
+            undo: { performHistory(redo: false) }, redo: { performHistory(redo: true) },
+            canReset: editor.canEdit && !masks && id != nil,
+            reset: {
+                guard let id = model.selectedID, !maskWorkspace.isPresented else { return }
+                NSApp.keyWindow?.makeFirstResponder(nil)
+                ResettableNativeSlider.cancelInputs(in: NSApp.keyWindow?.contentView)
+                developWorkspace.cancelRepairWork()
+                editor.reset(assetID: id)
+            }, allowsComparison: !masks)
+    }
+
+    private func performHistory(redo: Bool) {
+        guard let id = model.selectedID else { return }
+        // Commit a numeric field and cancel native tracking before restoring a
+        // snapshot. A later native callback must not overwrite the restored edit.
+        NSApp.keyWindow?.makeFirstResponder(nil)
+        ResettableNativeSlider.cancelInputs(in: NSApp.keyWindow?.contentView)
+        if maskWorkspace.isPresented {
+            if redo { maskWorkspace.redo() } else { maskWorkspace.undo() }
+        } else {
+            developWorkspace.cancelRepairWork()
+            if redo { editor.redo(assetID: id) } else { editor.undo(assetID: id) }
+        }
     }
 
     private var previewSourceIdentity: AISourceIdentity? {
@@ -583,7 +625,7 @@ struct LibraryView: View {
         Group {
             switch assistant.state {
             case .generating: Button("Assistent läuft") { revealNoticeTool(.assistant) }
-            case .previewing: Button("Assistent: Vorschlag prüfen") { revealNoticeTool(.assistant) }
+            case .previewing: Button("Assistent: Ergebnis anzeigen") { revealNoticeTool(.assistant) }
             case .failed: Button("Assistent: Fehler prüfen") { revealNoticeTool(.assistant) }
             default: EmptyView()
             }
@@ -661,7 +703,7 @@ struct LibraryView: View {
         if case .failed = imageAnalysis.state { return "Analyse: Fehler" }
         if case .generating = assistant.state { return "Assistent läuft" }
         if imageAnalysis.state == .analyzing || photoMetadata.isAnalyzing { return "Analyse läuft" }
-        if assistant.state == .previewing { return "Vorschlag unbestätigt" }
+        if assistant.state == .previewing { return assistant.hasAppliedChanges ? "KI-Bearbeitung aktiv" : "Look auswählen" }
         if photoMetadata.hasManualDraft || photoMetadata.record?.draft != nil { return "Entwurf vorhanden" }
         if imageAnalysis.result != nil { return "Analyseergebnis" }
         return "Hinweise"
@@ -698,6 +740,10 @@ struct LibraryView: View {
         // ratings and favorites immediately after a panel or focus transition.
         if focusedWorkspaceControl != nil && [49, 36, 76].contains(event.keyCode) { return false }
         if event.modifierFlags.contains(.command) {
+            if event.charactersIgnoringModifiers?.lowercased() == "z" {
+                performHistory(redo: event.modifierFlags.contains(.shift))
+                return true
+            }
             guard event.charactersIgnoringModifiers?.lowercased() == "a",
                   event.modifierFlags.intersection([.control, .option, .shift]).isEmpty else { return false }
             model.selectAll()
@@ -726,25 +772,63 @@ struct LibraryView: View {
     }
 }
 
+/// The mounted native input surface owns the same event path used by the
+/// local AppKit monitor. Keeping dispatch here also permits non-key test
+/// windows to exercise routing without running an application event loop.
+@MainActor
+final class WorkspaceKeyboardInputView: NSView {
+    fileprivate var processEvent: ((NSEvent) -> NSEvent?)?
+
+    func process(_ event: NSEvent) -> NSEvent? {
+        guard let processEvent else { return event }
+        return processEvent(event)
+    }
+}
+
 private struct KeyboardHandler: NSViewRepresentable {
+    let handlesTextUndo: () -> Bool
     let action: (NSEvent) -> Bool
-    func makeNSView(context: Context) -> NSView { let view = NSView(); context.coordinator.view = view; return view }
-    func updateNSView(_ nsView: NSView, context: Context) { context.coordinator.action = action }
-    func makeCoordinator() -> Coordinator { Coordinator(action: action) }
-    static func dismantleNSView(_ nsView: NSView, coordinator: Coordinator) { coordinator.stop() }
+    func makeNSView(context: Context) -> WorkspaceKeyboardInputView {
+        let view = WorkspaceKeyboardInputView()
+        context.coordinator.view = view
+        view.processEvent = { [weak coordinator = context.coordinator] event in
+            guard let coordinator else { return event }
+            return coordinator.process(event)
+        }
+        return view
+    }
+    func updateNSView(_ nsView: WorkspaceKeyboardInputView, context: Context) {
+        context.coordinator.action = action
+        context.coordinator.handlesTextUndo = handlesTextUndo
+    }
+    func makeCoordinator() -> Coordinator { Coordinator(handlesTextUndo: handlesTextUndo, action: action) }
+    static func dismantleNSView(_ nsView: WorkspaceKeyboardInputView, coordinator: Coordinator) {
+        nsView.processEvent = nil
+        coordinator.stop()
+    }
     final class Coordinator {
         weak var view: NSView?
         var action: (NSEvent) -> Bool
+        var handlesTextUndo: () -> Bool
         var monitor: Any?
-        init(action: @escaping (NSEvent) -> Bool) {
+        init(handlesTextUndo: @escaping () -> Bool, action: @escaping (NSEvent) -> Bool) {
             self.action = action
+            self.handlesTextUndo = handlesTextUndo
             monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-                guard let self, let window = self.view?.window, event.window === window,
-                      window.attachedSheet == nil, NSApp.modalWindow == nil,
-                      !(window.firstResponder is NSTextView), !(window.firstResponder is NSControl),
-                      event.modifierFlags.intersection([.control, .option]).isEmpty else { return event }
-                return self.action(event) ? nil : event
+                guard let self else { return event }
+                return self.process(event)
             }
+        }
+        func process(_ event: NSEvent) -> NSEvent? {
+            guard let window = view?.window, event.window === window,
+                  window.attachedSheet == nil, NSApp.modalWindow == nil,
+                  event.modifierFlags.intersection([.control, .option]).isEmpty else { return event }
+            let historyKey = event.modifierFlags.contains(.command)
+                && event.charactersIgnoringModifiers?.lowercased() == "z"
+            if window.firstResponder is NSTextView {
+                guard historyKey, handlesTextUndo() else { return event }
+            } else if window.firstResponder is NSControl, !historyKey { return event }
+            return action(event) ? nil : event
         }
         func stop() { if let monitor { NSEvent.removeMonitor(monitor); self.monitor = nil } }
         deinit { stop() }

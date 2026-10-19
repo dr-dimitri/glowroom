@@ -35,6 +35,67 @@ struct LocalAdjustmentEditorModelTests {
         model.close()
     }
 
+    @Test func pendingGestureIsUndoableAndHistoryRemainsAvailableBeyondThirtyTwoChanges() async throws {
+        let bitmap = try bitmap()
+        let layer = try LocalAdjustment(name: "Verlauf", mask: .init(shape: .linear(
+            start: .init(x: 0.5, y: 0.2), end: .init(x: 0.5, y: 0.8))))
+        let initial = EditSettings(localAdjustments: [layer])
+        let model = LocalAdjustmentEditorModel(settings: initial, loader: { _ in bitmap })
+        await model.load(source: source("A"))
+        #expect(!model.canUndo)
+        model.beginChange()
+        #expect(model.hasActiveChange)
+        model.updateSelected { $0.settings.exposure = 1 }
+        #expect(model.canUndo, "Command-Z must work before the active gesture ends")
+        model.undo()
+        #expect(model.settings == initial)
+        #expect(!model.hasActiveChange && !model.canUndo)
+        for value in 1...80 { model.updateSelected { $0.settings.exposure = Double(value) / 100 } }
+        for _ in 1...80 { model.undo() }
+        #expect(model.settings == initial)
+        #expect(!model.canUndo && model.canRedo)
+        model.close()
+    }
+
+    @Test func rejectedLiveEditsKeepSelectionSettingsAndUndoHistoryUnchanged() async throws {
+        let bitmap = try bitmap()
+        let model = LocalAdjustmentEditorModel(settings: .neutral, loader: { _ in bitmap })
+        await model.load(source: source("A"))
+        model.add(.linear)
+        let accepted = model.settings, selectedID = model.selectedID
+        model.acceptSettings = { _ in false }
+        model.add(.radial)
+        model.updateSelected { $0.settings.exposure = 1 }
+        model.deleteSelected()
+        model.undo()
+        #expect(model.settings == accepted && model.selectedID == selectedID)
+        #expect(model.canUndo && !model.canRedo)
+        model.acceptSettings = { _ in true }
+        model.undo()
+        #expect(model.settings.localAdjustments.isEmpty)
+        model.acceptSettings = { _ in false }
+        model.redo()
+        #expect(model.settings.localAdjustments.isEmpty)
+        #expect(!model.canUndo && model.canRedo)
+        model.close()
+    }
+
+    @Test func undoCancelsAutomaticSelectionBeforeItsLateResultCanAddANewMask() async throws {
+        let gate = LocalMaskInferenceGate(), bitmap = try bitmap()
+        let model = LocalAdjustmentEditorModel(settings: .neutral, loader: { _ in bitmap }, generator: { _, _, _ in await gate.generate() })
+        await model.load(source: source("A"))
+        model.add(.linear)
+        model.add(.sky)
+        await gate.waitForStart()
+        model.undo()
+        #expect(!model.isGenerating && model.settings.localAdjustments.isEmpty)
+        await gate.release(); await gate.waitForReturn()
+        await Task.yield()
+        #expect(model.settings.localAdjustments.isEmpty)
+        #expect(!model.canUndo && model.canRedo)
+        model.close()
+    }
+
     @Test func switchingMasksEndsThePreviousCorrectionGroup() async throws {
         let bitmap = try bitmap()
         let model = LocalAdjustmentEditorModel(settings: .neutral, loader: { _ in bitmap })
