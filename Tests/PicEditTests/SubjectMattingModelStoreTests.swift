@@ -30,21 +30,136 @@ private struct SubjectMattingStoreFixture: Sendable {
     func store(budget: AIResourceBudget = AIResourceBudget(),
                sourceValidator: SubjectMattingModelStore.SourceValidator? = nil,
                compiler: SubjectMattingModelStore.Compiler? = nil,
-               validator: @escaping SubjectMattingModelStore.Validator = { _ in }) -> SubjectMattingModelStore {
+               validator: @escaping SubjectMattingModelStore.Validator = { _ in },
+               sourceClassifier: @escaping SubjectMattingModelStore.SourceClassifier = { _ in .current }) -> SubjectMattingModelStore {
         SubjectMattingModelStore(directory: directory, budget: budget, sourceValidator: sourceValidator ?? { _ in files },
             compiler: compiler ?? { _ in
                 let out = root.appendingPathComponent("compiled-" + UUID().uuidString)
                 try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
                 try Data("synthetic compiled matting weights".utf8).write(to: out.appendingPathComponent("model.bin"))
                 return out
-            }, validator: validator)
+            }, validator: validator, sourceClassifier: sourceClassifier)
     }
 
     func clean() { try? FileManager.default.removeItem(at: root) }
 }
 
+private struct SubjectMattingUpgradeFixture: Sendable {
+    let previous: SubjectMattingStoreFixture
+    let source: URL
+    let files: [SemanticManifestFile]
+
+    init() throws {
+        previous = try SubjectMattingStoreFixture()
+        source = previous.root.appendingPathComponent("Current.mlpackage")
+        try FileManager.default.copyItem(at: previous.source, to: source)
+        try Data("updated synthetic matting graph".utf8).write(
+            to: source.appendingPathComponent("Data/com.apple.CoreML/model.mlmodel"))
+        files = try SemanticInstallationIO.inventory(source, maximumBytes: SubjectMattingModelStore.maximumInstalledBytes)
+    }
+
+    func store(compiler: SubjectMattingModelStore.Compiler? = nil,
+               validator: @escaping SubjectMattingModelStore.Validator = { _ in },
+               recognizesLegacy: Bool = true) -> SubjectMattingModelStore {
+        previous.store(sourceValidator: { _ in files }, compiler: compiler, validator: validator,
+            sourceClassifier: { candidate in
+                if Set(candidate) == Set(files) { return .current }
+                if recognizesLegacy, Set(candidate) == Set(previous.files) { return .legacy }
+                throw SubjectMattingError.invalidModel
+            })
+    }
+}
+
 @Suite("Subject matting model lifecycle", .timeLimit(.minutes(1)))
 struct SubjectMattingModelStoreTests {
+    @Test func knownLegacyInstallationRequiresUpdateAndRemainsRemovable() async throws {
+        let fixture = try SubjectMattingUpgradeFixture(); defer { fixture.previous.clean() }
+        let previous = try await fixture.previous.store().install(from: fixture.previous.source)
+        let store = fixture.store()
+        let pointer = fixture.previous.directory.appendingPathComponent("current.json")
+        let originalPointer = try Data(contentsOf: pointer)
+        await #expect(throws: SubjectMattingError.updateRequired) { try await store.installedModel() }
+        #expect(try Data(contentsOf: pointer) == originalPointer)
+        #expect(try SubjectMattingModelStore.verifyInstallation(previous).count == 2)
+        try await store.remove()
+        #expect(try await store.installedModel() == nil)
+        #expect(!FileManager.default.fileExists(atPath: previous.directory.path))
+        #expect(FileManager.default.fileExists(atPath: fixture.previous.source.path))
+    }
+
+    @Test func successfulUpgradePublishesCurrentBeforeRemovingVerifiedLegacy() async throws {
+        let fixture = try SubjectMattingUpgradeFixture(); defer { fixture.previous.clean() }
+        let previous = try await fixture.previous.store().install(from: fixture.previous.source)
+        let store = fixture.store()
+        let installed = try await store.install(from: fixture.source)
+        #expect(try await store.installedModel() == installed)
+        #expect(installed.directory != previous.directory)
+        #expect(!FileManager.default.fileExists(atPath: previous.directory.path))
+        #expect(try SubjectMattingModelStore.verifyInstallation(installed).count == 2)
+    }
+
+    @Test func failedUpgradeKeepsLegacyPointerAndPrivateFiles() async throws {
+        let fixture = try SubjectMattingUpgradeFixture(); defer { fixture.previous.clean() }
+        let previous = try await fixture.previous.store().install(from: fixture.previous.source)
+        let pointer = fixture.previous.directory.appendingPathComponent("current.json")
+        let originalPointer = try Data(contentsOf: pointer)
+        let store = fixture.store(validator: { _ in throw SubjectMattingError.invalidModel })
+        await #expect(throws: SubjectMattingError.invalidModel) { try await store.install(from: fixture.source) }
+        #expect(try Data(contentsOf: pointer) == originalPointer)
+        #expect(try SubjectMattingModelStore.verifyInstallation(previous).count == 2)
+        await #expect(throws: SubjectMattingError.updateRequired) { try await store.installedModel() }
+    }
+
+    @Test func canceledUpgradeCannotPublishOrDeleteLegacy() async throws {
+        let fixture = try SubjectMattingUpgradeFixture(); defer { fixture.previous.clean() }
+        let previous = try await fixture.previous.store().install(from: fixture.previous.source)
+        let pointer = fixture.previous.directory.appendingPathComponent("current.json")
+        let originalPointer = try Data(contentsOf: pointer)
+        let entered = TestStateSignal(false)
+        let release = DispatchSemaphore(value: 0)
+        defer { release.signal() }
+        let store = fixture.store(compiler: { _ in
+            entered.update { $0 = true }
+            release.wait()
+            let output = fixture.previous.root.appendingPathComponent("cancelled-upgrade")
+            try FileManager.default.createDirectory(at: output, withIntermediateDirectories: false)
+            try Data("compiled replacement".utf8).write(to: output.appendingPathComponent("model.bin"))
+            return output
+        })
+        let pending = Task { try await store.install(from: fixture.source) }
+        try await entered.wait("legacy replacement compiler", until: { $0 })
+        pending.cancel(); release.signal()
+        do { _ = try await pending.value; Issue.record("Canceled upgrade was published") }
+        catch { #expect(error is CancellationError) }
+        #expect(try Data(contentsOf: pointer) == originalPointer)
+        #expect(try SubjectMattingModelStore.verifyInstallation(previous).count == 2)
+        await #expect(throws: SubjectMattingError.updateRequired) { try await store.installedModel() }
+        #expect(try !FileManager.default.contentsOfDirectory(atPath: fixture.previous.directory.path).contains { $0.hasPrefix(".staging-") })
+    }
+
+    @Test func unknownAndMutatedLegacyGenerationsAreNeverRemovedDuringUpgrade() async throws {
+        for mutated in [false, true] {
+            let fixture = try SubjectMattingUpgradeFixture(); defer { fixture.previous.clean() }
+            let previous = try await fixture.previous.store().install(from: fixture.previous.source)
+            let model = previous.directory.appendingPathComponent("model.mlmodelc/model.bin")
+            if mutated {
+                let size = try Data(contentsOf: model).count
+                try Data(repeating: 0, count: size).write(to: model)
+            }
+            let preservedBytes = try Data(contentsOf: model)
+            let pointer = fixture.previous.directory.appendingPathComponent("current.json")
+            let originalPointer = try Data(contentsOf: pointer)
+            let store = fixture.store(recognizesLegacy: mutated)
+            await #expect(throws: SubjectMattingError.invalidModel) { try await store.installedModel() }
+            await #expect(throws: SubjectMattingError.invalidModel) { try await store.remove() }
+            #expect(try Data(contentsOf: pointer) == originalPointer)
+            let installed = try await store.install(from: fixture.source)
+            #expect(try await store.installedModel() == installed)
+            #expect(try Data(contentsOf: model) == preservedBytes)
+            #expect(FileManager.default.fileExists(atPath: previous.directory.path))
+        }
+    }
+
     @Test func workerReusesPredictionAndStillRejectsTamperingOnACacheHit() async throws {
         let fixture = try SubjectMattingStoreFixture(); defer { fixture.clean() }
         let store = fixture.store()

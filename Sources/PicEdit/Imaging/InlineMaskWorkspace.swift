@@ -48,6 +48,9 @@ final class InlineMaskWorkspace: ObservableObject {
 
     var selected: LocalAdjustment? { model?.selected }
     var showsMaskList: Bool { isPresented && model?.settings.localAdjustments.isEmpty == false }
+    /// Follows the visible request, not a canceled native operation's lifetime.
+    /// Source changes hide its status before asynchronous reconciliation closes it.
+    var showsCalculationStatus: Bool { isCurrent && model?.isGenerating == true }
     var canvasSize: ArtifactPixelSize? { model?.canvasSize }
     var previewSettings: EditSettings? {
         guard isPresented else { return nil }

@@ -375,7 +375,13 @@ struct InlineMaskInspector: View {
                 }
                 if model.isLoading { ProgressView("Bild wird geladen").controlSize(.small) }
                 if model.isGenerating {
-                    HStack { ProgressView().controlSize(.small); Text("Auswahl wird berechnet").font(.caption); Spacer(); Button("Abbrechen") { model.cancelInference() } }
+                    HStack {
+                        Text("Maskenberechnung läuft").font(.caption).foregroundStyle(Theme.muted)
+                        Spacer()
+                        Button("Abbrechen") { model.cancelInference() }
+                            .accessibilityLabel("Maskenberechnung abbrechen")
+                            .accessibilityIdentifier("local-mask.inspector-calculation-cancel")
+                    }
                 }
                 if let message = workspace.errorMessage ?? model.errorMessage ?? workspace.brush.errorMessage {
                     Text(message).font(.caption).foregroundStyle(.orange).textSelection(.enabled)

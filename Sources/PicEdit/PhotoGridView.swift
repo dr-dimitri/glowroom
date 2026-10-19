@@ -164,13 +164,10 @@ struct DetailView: View {
                     canvasSize = $0
                     measureCanvas?($0)
                 }
-                    .overlay(alignment: .topTrailing) {
-                        if layout.panels(developing: model.isDeveloping).showsTools,
-                           developWorkspace.tool == .masks, maskWorkspace.showsMaskList {
-                            InlineMaskList(workspace: maskWorkspace)
-                                .frame(width: 250)
-                                .padding(10)
-                        }
+                    .overlay {
+                        InlineMaskViewportOverlays(workspace: maskWorkspace,
+                            showsMaskList: layout.panels(developing: model.isDeveloping).showsTools
+                                && developWorkspace.tool == .masks)
                     }
                     .contextMenu { PhotoContextMenu(asset: asset, model: model) }
                     .accessibilityElement(children: .contain)

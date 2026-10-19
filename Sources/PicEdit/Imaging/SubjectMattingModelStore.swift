@@ -12,11 +12,13 @@ struct SubjectMattingSetupProgress: Sendable {
 }
 
 enum SubjectMattingError: Error, LocalizedError, Equatable, Sendable {
-    case invalidModel, setupInProgress, insufficientDiskSpace, unavailable
+    case invalidModel, updateRequired, setupInProgress, insufficientDiskSpace, unavailable
     var errorDescription: String? {
         switch self {
         case .invalidModel:
-            "Das lokale Motivmodell ist unvollständig, verändert oder nicht kompatibel. Importiere das von PicEdit vorbereitete BiRefNet-HR-Matting-Modell erneut."
+            "Das lokale Motivmodell ist unvollständig, verändert oder nicht kompatibel. Importiere das für PicEdit vorbereitete BiRefNet-HR-Matting-Modell mit 1920 × 1920 Pixeln erneut."
+        case .updateRequired:
+            "Das installierte Motivmodell verwendet noch 2048 Pixel. Ersetze es unter „Motivmodell einrichten …“ durch die aktuelle 1920-Pixel-Variante. Gespeicherte Masken bleiben erhalten."
         case .setupInProgress:
             "Das lokale Motivmodell wird bereits eingerichtet oder entfernt."
         case .unavailable:
@@ -25,6 +27,10 @@ enum SubjectMattingError: Error, LocalizedError, Equatable, Sendable {
             "Für den Import des Motivmodells werden mindestens 3 GB freier Speicher benötigt."
         }
     }
+}
+
+enum SubjectMattingModelVersion: Equatable, Sendable {
+    case current, legacy
 }
 
 private struct SubjectMattingModelReceipt: Codable {
@@ -48,12 +54,13 @@ actor SubjectMattingModelStore {
     static let maximumInstalledBytes: Int64 = 1_024 * 1_024 * 1_024 - 256 * 1_024
     static let residentMemoryEstimate = SubjectMattingModelInterface.residentBytes
     typealias SourceValidator = @Sendable (URL) throws -> [SemanticManifestFile]
+    typealias SourceClassifier = @Sendable ([SemanticManifestFile]) throws -> SubjectMattingModelVersion
     typealias Compiler = @Sendable (URL) throws -> URL
     typealias Validator = @Sendable (URL) throws -> Void
     private let directory: URL
     private let budget: AIResourceBudget
     private let sourceValidator: SourceValidator
-    private let sourceIdentityValidator: @Sendable ([SemanticManifestFile]) throws -> Void
+    private let sourceClassifier: SourceClassifier
     private let compiler: Compiler
     private let validator: Validator
     private var changing = false
@@ -63,7 +70,12 @@ actor SubjectMattingModelStore {
             in: .userDomainMask)[0].appendingPathComponent("PicEdit/Models/SubjectMatting", isDirectory: true)
         self.budget = budget
         sourceValidator = { try SubjectMattingModelInterface.validateSourcePackage($0) }
-        sourceIdentityValidator = { try SubjectMattingModelInterface.validateApprovedFiles($0) }
+        sourceClassifier = { files in
+            guard files.count == 3 else { throw SubjectMattingError.invalidModel }
+            if Set(files) == Set(try SubjectMattingModelInterface.approvedFiles()) { return .current }
+            if Set(files) == Set(try SubjectMattingModelInterface.legacyFiles()) { return .legacy }
+            throw SubjectMattingError.invalidModel
+        }
         compiler = { try MLModel.compileModel(at: $0) }
         validator = { try SubjectMattingModelInterface.validateModel($0) }
     }
@@ -71,13 +83,28 @@ actor SubjectMattingModelStore {
     /// Synthetic packages exercise ownership, cancellation and publication
     /// without downloading weights or invoking the native compiler in tests.
     init(directory: URL, budget: AIResourceBudget, sourceValidator: @escaping SourceValidator,
-         compiler: @escaping Compiler, validator: @escaping Validator) {
+         compiler: @escaping Compiler, validator: @escaping Validator,
+         sourceClassifier: @escaping SourceClassifier = { _ in .current }) {
         self.directory = directory; self.budget = budget; self.sourceValidator = sourceValidator
         self.compiler = compiler; self.validator = validator
-        sourceIdentityValidator = { _ in }
+        self.sourceClassifier = sourceClassifier
     }
 
     func installedModel() throws -> SubjectMattingInstalledModel? {
+        guard let installation = try managedInstallation() else { return nil }
+        if installation.version == .legacy {
+            // An upgrade hint identifies the known, intact previous package;
+            // changed or foreign bytes still report an invalid installation.
+            _ = try Self.verifyInstallation(installation.model)
+            throw SubjectMattingError.updateRequired
+        }
+        return installation.model
+    }
+
+    /// Management may replace/remove the pinned previous version, but runtime
+    /// inference may use only the current version. Unknown sources never gain
+    /// ownership merely because they resemble an app-generated receipt.
+    private func managedInstallation() throws -> (model: SubjectMattingInstalledModel, version: SubjectMattingModelVersion)? {
         let pointerURL = directory.appendingPathComponent("current.json")
         guard FileManager.default.fileExists(atPath: pointerURL.path) else { return nil }
         do {
@@ -90,9 +117,9 @@ actor SubjectMattingModelStore {
                 directory: directory.appendingPathComponent("generations/" + pointer.generation, isDirectory: true),
                 receiptSHA256: pointer.receiptSHA256)
             let receipt = try Self.receipt(installed)
-            try sourceIdentityValidator(receipt.sourceFiles)
-            return installed
+            return (installed, try sourceClassifier(receipt.sourceFiles))
         } catch is CancellationError { throw CancellationError() }
+        catch let error as SubjectMattingError { throw error }
         catch { throw SubjectMattingError.invalidModel }
     }
 
@@ -129,7 +156,7 @@ actor SubjectMattingModelStore {
         try SemanticInstallationIO.requireDirectory(generations)
         let capacity = try directory.resourceValues(forKeys: [.volumeAvailableCapacityKey]).volumeAvailableCapacity ?? 0
         guard capacity >= 3 * 1_024 * 1_024 * 1_024 else { throw SubjectMattingError.insufficientDiskSpace }
-        let previous = try? installedModel()
+        let previous = try? managedInstallation()?.model
         let generation = UUID().uuidString.lowercased()
         let stage = directory.appendingPathComponent(".staging-" + generation, isDirectory: true)
         try FileManager.default.createDirectory(at: stage, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
@@ -196,7 +223,7 @@ actor SubjectMattingModelStore {
         defer { changing = false }
         let lease = try await budget.acquireLocalInference(priority: .interactive)
         do {
-            if let installed = try installedModel() {
+            if let installed = try managedInstallation()?.model {
                 _ = try Self.verifyInstallation(installed)
                 try Task.checkCancellation()
                 try SemanticInstallationIO.removePointer(in: directory)

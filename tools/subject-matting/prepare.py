@@ -27,7 +27,8 @@ FILES = {
     "BiRefNet_config.py": "e7b8c2a74f6cea6a59553d517f71d47f2c1d90e670a13416af17c25fe2f3dc52",
     "model.safetensors": "a5a4de698739ea5e0e8bbab28e1b293dde95092b87a442d566cbc585c53cef55",
 }
-SIZE = 2048
+SIZE = 1920
+MAX_SIDE = 2048
 
 
 def model_side(value) -> int:
@@ -35,7 +36,7 @@ def model_side(value) -> int:
     # The full-resolution Swin encoder has stride 32. The decoder folds the
     # input into 32x32 channel patches, so arbitrary padded sizes would change
     # its learned input-channel contract. Window attention pads independently.
-    if not 256 <= side <= SIZE or side % 32:
+    if not 256 <= side <= MAX_SIDE or side % 32:
         raise argparse.ArgumentTypeError("side must be a multiple of 32 between 256 and 2048")
     return side
 
@@ -235,7 +236,7 @@ def main() -> None:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--download", action="store_true")
     parser.add_argument("--side", type=model_side, default=SIZE,
-                        help="multiple of 32 from 256 to 2048; non-2048 sizes are exploratory candidates")
+                        help="multiple of 32 from 256 to 2048; defaults to the approved 1920-pixel app interface")
     args = parser.parse_args()
     start = time.monotonic()
     sources(args.source, args.download)
