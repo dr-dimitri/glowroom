@@ -131,6 +131,10 @@ struct DetailView: View {
         model.isDeveloping && developWorkspace.tool == .crop && model.editingRenderIntent == .currentEditing
             && !maskWorkspace.isPresented
     }
+    private var usesNativeDevelopInput: Bool {
+        model.isDeveloping && [.crop, .repair].contains(developWorkspace.tool)
+            && model.editingRenderIntent == .currentEditing && !maskWorkspace.isPresented && !developWorkspace.picksWhiteBalance
+    }
     var body: some View {
         GeometryReader { available in
         VStack(spacing: 0) {
@@ -148,13 +152,13 @@ struct DetailView: View {
                                 // Capture magnification once; resizing panels only
                                 // changes the viewport around this scroll content.
                                 .frame(width: zoomCanvasSize.width, height: zoomCanvasSize.height)
-                                .onTapGesture(count: 2) { if !usesNativeCropInput { zoomed = false } }
+                                .onTapGesture(count: 2) { if !usesNativeDevelopInput { zoomed = false } }
                         }
                     } else {
                         developCanvas(asset: asset)
                             .padding(18)
                             .frame(width: geometry.size.width, height: geometry.size.height)
-                            .onTapGesture(count: 2) { if !usesNativeCropInput { toggleZoom(viewport: geometry.size) } }
+                            .onTapGesture(count: 2) { if !usesNativeDevelopInput { toggleZoom(viewport: geometry.size) } }
                     }
                 }.onGeometryChange(for: CGSize.self) { $0.size } action: {
                     canvasSize = $0
@@ -236,6 +240,12 @@ struct DetailView: View {
     private func previewSettings(for assetID: String) -> EditSettings {
         var settings = maskWorkspace.previewSettings ?? assistant.displaySettings(assetID: assetID,
             committed: editor.settings(for: assetID), developing: model.isDeveloping, comparesOriginal: model.comparesOriginal)
+        if model.isDeveloping, model.editingRenderIntent == .currentEditing, !maskWorkspace.isPresented,
+           developWorkspace.tool == .repair, developWorkspace.repairPreviewAssetID == assetID,
+           developWorkspace.repairPreviewRevision == editor.localRevision(for: assetID),
+           developWorkspace.repairPreviewSession == editor.aiEditSessionID, let stroke = developWorkspace.repairPreviewStroke {
+            settings.developGeometry.retouchStrokes.append(stroke)
+        }
         if developWorkspace.tool.usesOriginalCanvas || developWorkspace.picksWhiteBalance {
             settings.developGeometry.crop = nil
             settings.developGeometry.quarterTurns = 0

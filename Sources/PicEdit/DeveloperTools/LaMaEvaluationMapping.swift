@@ -1,4 +1,5 @@
-/// Integer-only geometry for the separate 800px LaMa evaluation canvas.
+/// Shared integer-only geometry for the fixed 800px local repair interface
+/// and its independent LaMa evaluation.
 /// Coordinates refer to top-left pixel rows. No scaling, rotation or color
 /// conversion occurs here; this type does not load or enable a model.
 struct LaMaEvaluationMapping: Sendable {

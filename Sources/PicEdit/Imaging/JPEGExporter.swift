@@ -63,7 +63,7 @@ enum JPEGExportError: LocalizedError, Equatable {
         case .catalogChanged: "Die Bibliothek wurde während der Exportprüfung geändert. Die Zieldatei bleibt erhalten. Versuche den Export erneut."
         case .catalogUnavailable: "Der Originalschutz ist derzeit nicht verfügbar. Behebe zuerst den Bibliotheksfehler und versuche den Export erneut."
         case .invalidDestination: "Das Exportziel muss eine reguläre Datei in einem vorhandenen Ordner sein. Symbolische Verknüpfungen sind nicht zulässig."
-        case .insufficientMemory: "Für diese Original- und Ausgabeauflösung reicht das sichere Export-Speicherbudget nicht aus. Wähle kleinere Ausgabemaße oder einen Rechner mit mehr Arbeitsspeicher."
+        case .insufficientMemory: "Original, Korrekturen und Ausgabe überschreiten das sichere Export-Speicherbudget. Reduziere Korrekturen oder verwende eine kleinere Bildquelle. Kleinere Ausgabemaße helfen nur, wenn Original und Korrekturen bereits in das Budget passen."
         case .renderingFailed: "Die Bildausgabe konnte nicht gerendert werden."
         case .encodingFailed: "Die Exportdatei konnte nicht vollständig geschrieben werden."
         case let .fileSystem(code): "Die Exportdatei konnte nicht gespeichert werden: \(String(cString: strerror(code)))"
@@ -341,9 +341,11 @@ actor JPEGExporter {
         let rendered = target.partialValue.multipliedReportingOverflow(by: format == .jpeg ? 12 : 32)
         let base = decoded.partialValue.addingReportingOverflow(rendered.partialValue)
         guard let local = LocalAdjustmentRenderer.estimatedAdditionalBytes(adjustments: settings.localAdjustments,
-            width: sourceWidth, height: sourceHeight) else { throw JPEGExportError.insufficientMemory }
+            width: sourceWidth, height: sourceHeight,
+            additionalRenderCount: DevelopGeometryRenderer.replacementCount(in: settings.developGeometry)) else { throw JPEGExportError.insufficientMemory }
         guard let geometry = DevelopGeometryRenderer.estimatedAdditionalBytes(geometry: settings.developGeometry,
-            width: sourceWidth, height: sourceHeight) else { throw JPEGExportError.insufficientMemory }
+            width: sourceWidth, height: sourceHeight,
+            replacementColorBytesPerPixel: EditRenderer.replacementColorBytesPerPixel(settings: settings)) else { throw JPEGExportError.insufficientMemory }
         let additional = local.addingReportingOverflow(geometry)
         let total = base.partialValue.addingReportingOverflow(additional.partialValue)
         guard !source.overflow, !target.overflow, !decoded.overflow, !rendered.overflow,

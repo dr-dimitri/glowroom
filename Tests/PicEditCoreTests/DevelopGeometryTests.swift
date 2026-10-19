@@ -4,6 +4,97 @@ import Testing
 
 @Suite("Persistent develop geometry")
 struct DevelopGeometryTests {
+    @Test func historicalRetouchBytesRemainUnchangedAndNewSelectionsRoundTrip() throws {
+        let historical = Data("{\"feather\":0.5,\"id\":\"00000000-0000-0000-0000-000000000001\",\"mode\":\"heal\",\"opacity\":1,\"radius\":0.04,\"source\":{\"x\":0.2,\"y\":0.3},\"target\":{\"x\":0.6,\"y\":0.5}}".utf8)
+        let decoded = try ArtifactJSONCodec.decode(DevelopRetouchStroke.self, from: historical)
+        #expect(decoded.path.isEmpty && decoded.mask == nil)
+        #expect(try ArtifactJSONCodec.encode(decoded) == historical)
+        let path = try [LocalMaskPoint(x: 0.6, y: 0.5), .init(x: 0.7, y: 0.8)]
+        let mask = try LocalMaskRaster(width: 2, height: 2, bytes: Data([0, 128, 255, 0]))
+        for selection in [(path, Optional<LocalMaskRaster>.none), ([], Optional(mask)), (path, Optional(mask))] {
+            let stroke = try DevelopRetouchStroke(source: decoded.source, target: decoded.target,
+                radius: decoded.radius, path: selection.0, mask: selection.1)
+            let snapshot = try EditingSnapshot(settings: .init(developGeometry: .init(retouchStrokes: [stroke])))
+            #expect(try ArtifactJSONCodec.decode(EditingSnapshot.self, from: ArtifactJSONCodec.encode(snapshot)) == snapshot)
+        }
+    }
+
+    @Test func retouchSelectionsEnforceIndividualAndAggregateBounds() throws {
+        let point = try LocalMaskPoint(x: 0.4, y: 0.4)
+        let maximumPath = [LocalMaskPoint](repeating: point, count: DevelopRetouchStroke.maximumPathPoints)
+        let largeMask = try LocalMaskRaster(width: 257, height: 2, bytes: Data(count: 514))
+        #expect(throws: (any Error).self) {
+            try DevelopRetouchStroke(source: point, target: point, radius: 0.1, path: maximumPath + [point])
+        }
+        #expect(throws: (any Error).self) {
+            try DevelopRetouchStroke(source: point, target: point, radius: 0.1, mask: largeMask)
+        }
+        let paths = try (0..<8).map { _ in try DevelopRetouchStroke(source: point, target: point, radius: 0.1, path: maximumPath) }
+        try DevelopGeometry(retouchStrokes: paths).validate()
+        let extraPath = try DevelopRetouchStroke(source: point, target: point, radius: 0.1, path: maximumPath)
+        #expect(throws: (any Error).self) { try DevelopGeometry(retouchStrokes: paths + [extraPath]).validate() }
+        let mask = try LocalMaskRaster(width: 256, height: 256, bytes: Data(count: 65_536))
+        let masked = try (0..<16).map { _ in try DevelopRetouchStroke(source: point, target: point, radius: 0.1, mask: mask) }
+        try DevelopGeometry(retouchStrokes: masked).validate()
+        let extraMask = try DevelopRetouchStroke(source: point, target: point, radius: 0.1, mask: mask)
+        #expect(throws: (any Error).self) { try DevelopGeometry(retouchStrokes: masked + [extraMask]).validate() }
+    }
+
+    @Test func strictSnapshotsRejectUnknownPathPointAndMaskFields() throws {
+        let point = try LocalMaskPoint(x: 0.2, y: 0.3)
+        let mask = try LocalMaskRaster(width: 2, height: 2, bytes: Data([0, 0, 255, 0]))
+        let replacement = try DevelopRetouchReplacement(bounds: .init(x: 0.1, y: 0.2, width: 0.3, height: 0.4),
+            width: 1, height: 1, rgba: Data([20, 30, 40, 255]))
+        let stroke = try DevelopRetouchStroke(source: point, target: point, radius: 0.1, path: [point], mask: mask,
+            replacement: replacement)
+        let bytes = try ArtifactJSONCodec.encode(EditingSnapshot(settings: .init(developGeometry: .init(retouchStrokes: [stroke]))))
+        let original = try #require(JSONSerialization.jsonObject(with: bytes) as? [String: Any])
+        for target in ["path", "mask", "replacement"] {
+            var object = original
+            var settings = try #require(object["settings"] as? [String: Any])
+            var geometry = try #require(settings["developGeometry"] as? [String: Any])
+            var strokes = try #require(geometry["retouchStrokes"] as? [[String: Any]])
+            if target == "path" {
+                var path = try #require(strokes[0]["path"] as? [[String: Any]])
+                path[0]["unexpected"] = true; strokes[0]["path"] = path
+            } else {
+                var nested = try #require(strokes[0][target] as? [String: Any])
+                nested["unexpected"] = true; strokes[0][target] = nested
+            }
+            geometry["retouchStrokes"] = strokes; settings["developGeometry"] = geometry; object["settings"] = settings
+            #expect(throws: (any Error).self) {
+                try ArtifactJSONCodec.decode(EditingSnapshot.self, from: JSONSerialization.data(withJSONObject: object))
+            }
+        }
+    }
+
+    @Test func frozenReplacementRoundTripsAndRejectsMalformedDimensionsAndBytes() throws {
+        let bounds = try DevelopCropRect(x: 0.1, y: 0.2, width: 0.3, height: 0.4)
+        let replacement = try DevelopRetouchReplacement(bounds: bounds, width: 2, height: 1,
+            rgba: Data([20, 30, 40, 255, 60, 70, 80, 128]))
+        let point = try LocalMaskPoint(x: 0.2, y: 0.3)
+        let stroke = try DevelopRetouchStroke(source: point, target: point, radius: 0.1,
+            path: [point], replacement: replacement)
+        let snapshot = try EditingSnapshot(settings: .init(developGeometry: .init(retouchStrokes: [stroke])))
+        #expect(try ArtifactJSONCodec.decode(EditingSnapshot.self, from: ArtifactJSONCodec.encode(snapshot)) == snapshot)
+        for (width, height, bytes) in [(0, 1, 0), (1, 0, 0), (801, 1, 3204), (1, 801, 3204), (2, 1, 7)] {
+            #expect(throws: (any Error).self) {
+                try DevelopRetouchReplacement(bounds: bounds, width: width, height: height, rgba: Data(count: bytes))
+            }
+        }
+        let encoded = try ArtifactJSONCodec.encode(replacement)
+        var malformed = try #require(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+        malformed["rgba"] = Data([1, 2]).base64EncodedString()
+        #expect(throws: (any Error).self) {
+            try ArtifactJSONCodec.decode(DevelopRetouchReplacement.self, from: JSONSerialization.data(withJSONObject: malformed))
+        }
+        let maximum = try DevelopRetouchReplacement(bounds: bounds, width: 800, height: 800, rgba: Data(count: 2_560_000))
+        let largeStroke = try DevelopRetouchStroke(source: point, target: point, radius: 0.1, replacement: maximum)
+        try DevelopGeometry(retouchStrokes: [largeStroke]).validate()
+        #expect(throws: (any Error).self) {
+            try DevelopGeometry(retouchStrokes: [largeStroke, stroke]).validate()
+        }
+    }
     @Test func straighteningDefaultsPreserveHistoricalCanonicalBytes() throws {
         let historical = Data("{\"flipHorizontal\":false,\"flipVertical\":false,\"quarterTurns\":1,\"redEyeCorrections\":[],\"retouchStrokes\":[]}".utf8)
         let decoded = try ArtifactJSONCodec.decode(DevelopGeometry.self, from: historical)
