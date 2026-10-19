@@ -1,0 +1,12 @@
+# Conversion only. Install in a dedicated Python 3.11 virtual environment.
+torch==2.5.0
+torchvision==0.20.0
+coremltools==8.3.0
+numpy==1.26.4
+transformers==4.51.3
+safetensors==0.5.3
+timm==1.0.15
+einops==0.8.1
+kornia==0.8.0
+kornia_rs==0.1.9
+Pillow==11.2.1

@@ -7,6 +7,7 @@ struct InlineMaskCreator: View {
     @ObservedObject var workspace: InlineMaskWorkspace
     @ViewState private var showsPeople = true
     @ViewState private var showsSkySetup = false
+    @ViewState private var showsSubjectSetup = false
 
     private var canCreate: Bool {
         workspace.isCurrent && workspace.canvasSize != nil && workspace.model?.isGenerating == false
@@ -42,6 +43,9 @@ struct InlineMaskCreator: View {
             Button("Himmelsmodell einrichten …") { showsSkySetup = true }
                 .buttonStyle(.plain).font(.system(size: 10)).foregroundStyle(Theme.muted)
                 .accessibilityIdentifier("local-mask.sky-setup")
+            Button("Motivmodell einrichten …") { showsSubjectSetup = true }
+                .buttonStyle(.plain).font(.system(size: 10)).foregroundStyle(Theme.muted)
+                .accessibilityIdentifier("local-mask.subject-setup")
             if (workspace.model?.settings.localAdjustments.count ?? 0) >= 16 {
                 Text("Maximal 16 Masken pro Bild.").font(.caption).foregroundStyle(Theme.muted)
             }
@@ -51,6 +55,7 @@ struct InlineMaskCreator: View {
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("local-mask.creator")
             .sheet(isPresented: $showsSkySetup) { SkyMaskModelSetupView() }
+            .sheet(isPresented: $showsSubjectSetup) { SubjectMattingModelSetupView() }
     }
 
     private func tile(_ kind: LocalMaskCreation, title: String) -> some View {

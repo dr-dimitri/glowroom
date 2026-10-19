@@ -224,6 +224,7 @@ struct InlineMaskCanvas: View {
 struct InlineMaskList: View {
     @ObservedObject var workspace: InlineMaskWorkspace
     @ViewState private var showsSkySetup = false
+    @ViewState private var showsSubjectSetup = false
 
     private var layers: [LocalAdjustment] { workspace.model?.settings.localAdjustments ?? [] }
 
@@ -249,6 +250,7 @@ struct InlineMaskList: View {
                     .accessibilityIdentifier("local-mask.add")
                 Menu {
                     Button("Himmelsmodell einrichten …") { showsSkySetup = true }
+                    Button("Motivmodell einrichten …") { showsSubjectSetup = true }
                 } label: { Image(systemName: "ellipsis") }
                     .menuStyle(.borderlessButton).frame(width: 16)
                     .accessibilityLabel("Maskeneinstellungen")
@@ -286,6 +288,7 @@ struct InlineMaskList: View {
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("local-mask.list")
             .sheet(isPresented: $showsSkySetup) { SkyMaskModelSetupView() }
+            .sheet(isPresented: $showsSubjectSetup) { SubjectMattingModelSetupView() }
     }
 
     private func maskRow(_ layer: LocalAdjustment) -> some View {
