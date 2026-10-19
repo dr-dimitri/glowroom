@@ -6,6 +6,8 @@ Der Grund ist nachgewiesene unzureichende Bildqualität: tatsächliches 9-Kanal-
 
 Maschinenlesbarer Entscheidungswert: **`fullNoGo`**. Die produktiven fünf Operationsstatus sind `unsupported`; die nicht ausgeführten Kandidatenfähigkeiten bleiben in der separaten Bewertung `unverified`.
 
+**Zusätzlicher Produktstand vom 19. Oktober:** Der ausdrücklich beauftragte Import eines eigenen lokalen Reparaturmodells ist ein gesonderter, auf kleine Bereiche und eine vor Speicherung zu prüfende Vorschau begrenzter Pfad. Er ändert weder diese historischen Messergebnisse noch die fünf Status des allgemeinen Bildgenerierungsproviders. Es werden keine Gewichte ausgeliefert oder heruntergeladen und keine allgemeinen Qualitäts- oder Herkunftsfreigaben behauptet. Bedienung und tatsächliche Grenzen: [Reparaturwerkzeuge](REPAIR-TOOLS.md).
+
 ## Bewertete Route und Herkunft
 
 Die ausführbar geprüfte lokale Pipeline verwendet den nativen `leejet/stable-diffusion.cpp`-Helper mit **Stable Diffusion 1.5 Inpainting**, nicht die gewöhnliche Text-to-Image-Variante. Modellquelle ist der öffentliche Spiegel `stable-diffusion-v1-5/stable-diffusion-inpainting`, Revision `8a4288a76071f7280aedbdb3253bdb9e9d5d84bb`. Das Modell besitzt einen UNet-Eingang mit neun Kanälen: vier Rauschkanäle, vier kodierte Bildkanäle und eine Ersetzungsmaske. [Gepinnte Modellkarte](https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-inpainting/blob/8a4288a76071f7280aedbdb3253bdb9e9d5d84bb/README.md)

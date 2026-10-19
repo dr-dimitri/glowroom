@@ -1,0 +1,90 @@
+# Reparaturwerkzeuge
+
+Stand: 19. Oktober 2026.
+
+## Bedienung
+
+In **Entwickeln → Reparieren** bleibt die orientierte, unbeschnittene Quelle sichtbar. Die Palette übernimmt die Gruppenanordnung der bereitgestellten Bildschirmreferenz, verwendet eigene Vektoren und vorhandene SF Symbols. Es werden keine Adobe-Grafiken übernommen.
+
+| Einstellung | Wirkung |
+| --- | --- |
+| **Entfernen** | Über die störende Stelle malen; eine zur Umgebung passende Quelle wird automatisch gewählt. |
+| **Heilen** | Quelltextur mit lokaler Farb-/Helligkeitsanpassung einsetzen. Die Quelle wird automatisch gesucht oder mit ⌥-Klick festgelegt. |
+| **Kopierstempel** | Eine gewählte Quelle unverändert kopieren. Der erste Klick oder ⌥-Klick wählt die Quelle; anschließend über die Zielstelle malen. |
+| **Größe** | Radius für den nächsten Pinselzug; der äußere Cursorkreis zeigt den Bereich. |
+| **Weiche Kante** | Übergang beim manuellen Heilen und Kopierstempel. Für Entfernen mit eingefrorener Objekt-/KI-Maske wird dieser Regler nicht angeboten. |
+| **Objekte erkennen** | Im Modus Entfernen die passende Vordergrundinstanz als Auswahl verwenden. |
+| **Werkzeugüberlagerung** | Quell-/Zielmarkierungen und Vorschläge immer, automatisch über dem Foto oder nie anzeigen. |
+| **Bereiche anzeigen** | Schwarzweiß-Hochpass zur Fleckenprüfung; Empfindlichkeit verändert den Schwellwert. Keine gespeicherte Bildkorrektur. |
+| **Letzte Reparatur entfernen / Zurücksetzen** | Letzte beziehungsweise alle angenommenen Reparaturen entfernen, mit Undo. Andere Einstellungen bleiben erhalten. |
+| **Schließen** | Zur normalen Bearbeitung mit gespeichertem Zuschnitt und Ausrichtung zurückkehren. |
+
+Ein Pinselzug ist eine zusammenhängende Reparatur und ein Undo-Schritt. Doppelklick auf dem Foto zoomt ohne Reparatur und ohne neue Kopierquelle. Einzelne Punktklicks warten deshalb das systemweite Doppelklickfenster ab; echte Ziehgesten werden unmittelbar weitergegeben. Doppelklick auf einen Regler stellt dessen Neutralwert wieder her.
+
+Bei **Objekte erkennen** wird gezielt die angetippte Instanz ausgewählt, nicht der gesamte Vordergrund. Beginnt der Zug neben dem Objekt, können übermalte Pfadpunkte die Auswahl bestimmen. Wird kein Objekt erkannt, verwendet PicEdit den gemalten Pinselbereich und nennt diesen Rückfall. Ein anderer Erkennungsfehler übernimmt keine Reparatur. Ohne freie, ausreichend große Quelle erscheint ein Fehler; eine andere Quelle oder kleinere Auswahl kann helfen.
+
+## Personen und Staub
+
+Unter **Störende Elemente entfernen** liefert **Personen → Erkennen** lokale Vision-Personenmasken. **Staub → Erkennen** sucht kleine, dunkle, ungefähr runde Flecken vor glattem Hintergrund und unterdrückt stark strukturierte Bereiche. Das ist eine begrenzte klassische Erkennung, kein Nachweis für tatsächlichen Sensorstaub.
+
+Höchstens 16 Vorschläge erscheinen im Bild und als einzeln abwählbare Liste. Vor **Ausgewählte entfernen** bleibt die gespeicherte Bearbeitung unverändert. Eine gemeinsame Übernahme bildet einen Undo-Schritt. Die Empfindlichkeit dient auch als Suchparameter für Staub. Personen-/Objekterkennung kann auf ungeeigneten Bildern oder nicht verfügbaren Vision-Modellen fehlschlagen; die manuelle Retusche bleibt nutzbar.
+
+**Spiegelungen** ist deaktiviert. Die lokale Reparatur ergänzt ausgewählte Pixel und trennt keine durch Glas überlagerten Bildschichten. Für die untersuchten lokalen Trennmodelle waren die offiziellen trainierten Gewichte wegen Downloadquota beziehungsweise HTTP 403 nicht erreichbar. Die Modellqualifizierung mit Quellen, Downloadbelegen und weiteren Schritten bleibt in [Issue #93](https://github.com/dr-dimitri/picedit/issues/93) offen.
+
+## Optionale lokale KI
+
+**Lokales Modell importieren …** nimmt ein ausdrücklich ausgewähltes kompatibles LaMa-Core-ML-Paket (`.mlpackage`) entgegen. Es werden keine Gewichte gebündelt, keine Modelle heruntergeladen und keine Bilder an einen Cloudanbieter gesendet. Das Paket muss aus einer vom Anwender gewählten Quelle stammen; dessen Modelllizenz gilt weiterhin.
+
+Der Import kopiert und prüft das Paket, kompiliert es lokal und veröffentlicht erst eine vollständig geprüfte private Generation. Ein fehlgeschlagener Import ersetzt eine bisherige Installation nicht. Installationen liegen unter `~/Library/Application Support/PicEdit/Models/Repair/`. Eingangs- und kompilierte Modelldateien sind jeweils auf 512 MiB begrenzt; Kompilierung und Import benötigen zusätzlichen temporären Platz. Hashes und Inventare binden spätere Vorhersagen an die unveränderte Installation.
+
+Das feste Modellinterface verlangt:
+
+- genau zwei Bildeingaben `image` und `mask` mit 800 × 800 Pixeln;
+- eine Farbeingabe im 32-Bit-ARGB-/BGRA-Pixelformat und eine Gray8-Maske;
+- genau eine 800 × 800 Farbbildausgabe; kein trainierbares Modell.
+
+Nach erfolgreichem Import lässt sich **Lokale KI** im Modus Entfernen aktivieren. Sie ist eine gelernte lokale Ergänzung aus Bild und Maske, ohne Beschreibung oder Textprompt. Sie verspricht weder semantisch richtige neue Motive noch allgemeine Text-zu-Bild-Generierung. Die unabhängigen Fähigkeits- und Qualitätsgates für allgemeine Bildgenerierung, Hintergrundersatz, Erweiterung und generative Varianten bleiben unverändert; die getrennten LaMa-Evaluationsberichte behalten ihre ausgewiesenen Grenzen.
+
+### Kleine Bereiche und echte Vorschau
+
+Die Maske darf höchstens 25 % ihrer Zellen belegen. Aus ihrer nativen Ausdehnung wird ein Ausschnitt mit Umgebung gebildet: mindestens 32 Pixel, normalerweise die doppelte längste Auswahlkante, höchstens 800 × 800 Pixel. Eine größere Auswahl wird mit verständlichem Fehler abgewiesen. Der Ausschnitt wird für das Modell nicht auf 800 Pixel hoch- oder herunterskaliert; nötiger Randkontext wird durch gemeinsames Klemmen von Bild- und Maskenkoordinaten aufgefüllt.
+
+Das Ergebnis erscheint als **Lokale KI-Vorschau**. Bis **Übernehmen** ändern sich gespeicherte Einstellungen, Revision und Undo-Historie nicht. **Verwerfen**, Escape, Schließen, Fensterfokusverlust oder ein Quellenwechsel entfernt den Vorschlag. Undo oder zwischenzeitliche Bearbeitung machen eine ältere Vorschau ungültig; ihr verspätetes Ergebnis kann nichts überschreiben. **Übernehmen** fügt einen normalen Undo-Schritt hinzu.
+
+PicEdit speichert die erzeugten Ersatzpixel für diesen Ausschnitt mit normierten Grenzen und eingefrorener Maske. Wiederöffnen, Wiederholen und Export benötigen das Modell nicht erneut. Jeder eingefrorene RGB-Ausschnitt durchläuft denselben aktuellen Farb- und Tonwertgraphen wie die Originalquelle. Alle manuellen und KI-Reparaturen werden anschließend in ihrer gespeicherten Reihenfolge komponiert: Eine neue KI-Reparatur kann dadurch auch eine ältere manuelle Reparatur an derselben Stelle ersetzen. Der ursprüngliche Alphakanal bleibt erhalten; Originaldateien werden nicht verändert. Außerhalb der neuen Reparaturmaske bleibt der vorherige bearbeitete Stand erhalten, auch bei einer älteren Heilen-Korrektur.
+
+Die KI-Ausgabe ist auf **sRGB mit 8 Bit pro Kanal** und die zur Anfrage vorhandene Quellvorschau begrenzt. Bei aktiviertem HDR nimmt die KI keine Anfrage an; der Hinweis fordert den Wechsel zu SDR. Ein später größerer Export skaliert dieselben eingefrorenen Ausschnittpixel; er rekonstruiert keine zusätzlichen Details und führt keine neue Inferenz aus. In der reparierten Fläche werden keine ursprüngliche RAW-Präzision oder erweiterten Farbraumwerte versprochen. Ergebnisse deshalb vor Übernahme und bei der vorgesehenen Ausgabegröße prüfen.
+
+## Speicherung und Kompatibilität
+
+Quell-/Zielpunkte und Pfade verwenden normierte Koordinaten der orientierten Quelle vor Zuschnitt, Winkel, Spiegelung und Vierteldrehung. Radien beziehen sich auf deren kürzere Kante. Automatische Masken decken den vollständigen Quellraum ab und sind höchstens 256 × 256 Pixel groß. Die automatische Quellensuche verlangt, dass die übersetzte Auswahl nicht mit der ausgewählten Fläche überlappt und vollständig innerhalb des Bildes liegt; transparente Quellflächen werden dabei verworfen.
+
+Grenzen pro Bearbeitung:
+
+| Daten | Grenze |
+| --- | --- |
+| Reparaturgesten | 256 |
+| Pfadpunkte pro Geste / insgesamt | 2.048 / 16.384 |
+| Automatische Masken insgesamt | 1 MiB unkomprimiert |
+| Eingefrorene Ersatzpixel insgesamt | 2.560.000 Byte RGBA |
+| Vollständiger kodierter Einstellungsblob | 4 MiB |
+
+Die Übernahme validiert den gesamten resultierenden Stand einschließlich Kodierungsgröße. Wird eine Grenze erreicht, wird keine Teilmenge der neuen Reparatur stillschweigend gespeichert. Historische runde Heilen-/Kopierstempelwerte bleiben lesbar. Fehlende neue Pfad-/Masken-/Ersatzfelder behalten ihre alte Bedeutung; leere neue Felder ändern die kanonischen historischen Bytes nicht.
+
+## Verarbeitung und Prüfung
+
+`DevelopRepairAnalyzer` hält eine gecachte Analyse der vorhandenen decodierten Quelle bis 512 Pixel langer Kante. Automatische Quellen werden deterministisch anhand einer äußeren Vergleichszone und kompatibler Quelltextur gesucht. Die vollständige verschobene Auswahl wird auf Bildgrenzen, Überlappung und Alpha geprüft. Reglerbewegungen, Pfadpunkte und Kandidatensuche decodieren kein weiteres RAW.
+
+Vision und Core ML laufen auf begrenzten Hintergrund-Actors. Eine gemeinsame `AIResourceBudget`-Lease bleibt bis zur tatsächlichen Rückkehr nativer Inferenz beziehungsweise Modellkompilierung belegt. Abbrechen verwirft spätere Ergebnisse, gibt aber keinen zweiten nativen Worker neben einem noch laufenden ersten frei. Core ML wählt geeignete Geräte; bei einem beschleunigten Vorhersagefehler wird derselbe Vertrag einmal explizit auf der CPU versucht. Persistente Reparaturen werden geordnet komponiert; Core Image verarbeitet die Bildoperationen parallel. Die kleine begrenzte Quell-/Staubanalyse bleibt seriell, um verschachtelte Worker-Pools zu vermeiden.
+
+Neue Heilen-Pinselzüge vergleichen ausschließlich die saubere Umgebung außerhalb der Auswahl. Dilationsausgabe, Vergleichsring, gewichtete Quell-/Zielfarben und Mittelwertbildung werden auf die tatsächlichen aktiven Maskenzellen beziehungsweise Pfadgrenzen samt Pinselradius, Rasterinterpolation und Dilationrand begrenzt. Die Dilation liest die ursprüngliche Coverage-Domäne, damit ein vorzeitiger Ausschnitt die Rekonstruktion am Bildrand nicht verändert. Die abschließende Komposition und ihre Coverage behalten die volle Auflösung. Der Speicherplan verwendet dieselben Ausschnittgrenzen; er zählt vollständige Bildflächen weiterhin vollständig und jeden zusätzlichen Farb-/Maskengraphen eines KI-Ersatzes separat. Die Einsparung ist eine Begrenzung dieser Zwischenbilder, kein gemessener Leistungsgewinn oder System-Speicherlimit.
+
+Rechnerisches Beispiel für einen 16-GiB-Mac mit 4 GiB Exportbudget: Ein JPEG mit 6.000 × 4.000 Pixeln und einem neutralen Heilen-Punktzug mit Radius 5 % der kürzeren Kante benötigt im konservativen Plan rund **2,462 GiB** einschließlich Quelle, vollständiger Ausgabe und Reparaturgraph. Ein maximaler KI-Ausschnitt benötigt bei ansonsten neutralen Werten rund **2,786 GiB**, mit Belichtung und Weißabgleich rund **3,501 GiB**. Zusätzliche lokale Masken, weitere Reparaturen und aktive Farbfilter erhöhen den Plan. Sehr große Vergleichsbereiche oder aufwendige kombinierte KI-Farbgraphen können das Budget weiterhin überschreiten und werden vor dem Export abgewiesen. Kleinere Ausgabemaße helfen nur, wenn Quelle und Korrekturgraph bereits in das Budget passen.
+
+Für eine weitere KI-Anfrage gehören bereits angenommene Ersatzpixel und manuelle Reparaturen zum Modellkontext. PicEdit materialisiert daraus ausschließlich den kleinen nativen Ausschnitt. Bevor dieser Graph aufgebaut wird, darf seine konservative zusätzliche Speicherabschätzung **3 GiB** nicht überschreiten; andernfalls erscheint ein Fehler vor der Inferenz. Graph und Kontextcaches werden vor dem Laden der Modellgewichte freigegeben. Kontextaufbereitung und anschließende Vorhersage behalten dieselbe deklarierte 6-GiB-Inferenzreservierung; die Abschätzungen sind keine gemessene oder harte Obergrenze sämtlicher systeminterner Core-ML-/GPU-Allokationen.
+
+Die Tests verwenden synthetische Pixel, echte Editorhistorie, native Mausereignisse sowie suspendierende Fakes für verspätete native Rückgaben. Sie prüfen Quellen- und Maskengrenzen, Kandidatenfilter, vollständige Pinselgesten einschließlich geschlossener Schleifen, Undo, Doppelklick mit lange gehaltenem zweitem Tastendruck, Reset während eines verzögerten Punktklicks, Vorschauannahme/-verwerfung, unveränderliche Ersatzpixel, geordnete gemischte Reparaturen, Farbgraph, unveränderte Pixel außerhalb der neuen Maske, Ressourcenadmission und Modellpublikation. Der begrenzte Heilen-Graph wird gegen den vorherigen vollständigen Vergleichsring geprüft, einschließlich Bildrändern, Maskenzelleninterpolation, weichen Pfaden, verkleinertem Pfadraster und Alpha. Die explizite native Modellprobe prüft zusätzlich Vorschau und Exportgraph des echten `EditRenderer` mit denselben eingefrorenen Pixeln nach Weißabgleich und Belichtung. Native Interface- und Fake-Tests sind keine allgemeine Qualitätsfreigabe für beliebige importierte Gewichte.
+
+Zwei zusätzliche native Prüfungen sind ausdrücklich zuschaltbar. `PICEDIT_REPAIR_AI_MODEL=/absoluter/Pfad/LaMa.mlpackage ./scripts/test.sh --filter DevelopRepairAINativeTests` verwendet echte Modellgewichte und prüft Produktimport, Inferenz, Alpha, unmaskierte Pixel sowie denselben eingefrorenen Ersatz im Vorschau- und Exportgraphen nach Weißabgleich und Belichtung. `PICEDIT_REPAIR_LARGE_EXPORT_TEST=1 ./scripts/test.sh --filter DevelopRepairLargeExportTests` exportiert eine synthetische Reparatur tatsächlich mit 6.000 × 4.000 Pixeln und einem festen 4-GiB-Zulassungsbudget; geprüft werden Ausgabegröße, reparierte Pixel und unveränderte Originalbytes. Diese Lastprüfungen laufen einzeln, damit sich native Inferenz, große Bildallokationen und zeitabhängige UI-Tests keine Ressourcen streitig machen. Das Budget ist eine konservative Zulassungsrechnung und keine Messung des maximalen Prozessspeichers.
+
+Das benachbarte LightCraft wurde vor der Sichtung sicher auf `origin/main` (`d999e382`) aktualisiert und anschließend ausschließlich gelesen. Seine Quellpatch-Bewertung, Staubheuristik und Werkzeugüberlagerung dienten als Anregung (`crates/pipeline/src/spots.rs`, `dust.rs`, `visualize.rs`). LightCrafts eigener Status nennt generatives Entfernen, Reflexionstrennung und Entfernen-Objekterkennung als offen beziehungsweise außerhalb seines Umfangs. Daraus wird kein bestehendes Modell-Go abgeleitet; keine Adobe-Assets oder Gewichte wurden übernommen.

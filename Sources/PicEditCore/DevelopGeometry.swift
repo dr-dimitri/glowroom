@@ -27,10 +27,39 @@ public struct DevelopCropRect: Codable, Hashable, Sendable {
 
 public enum DevelopRetouchMode: String, Codable, Hashable, Sendable { case clone, heal }
 
-/// One circular sampled patch. Consecutive patches form a hand-painted stroke.
+/// Frozen local-model pixels for one source-canvas repair region. Keeping the
+/// result, rather than a model invocation, makes preview/export reproducible
+/// after a model is removed. Bytes are straight sRGB RGBA8, in top-left rows.
+public struct DevelopRetouchReplacement: Codable, Hashable, Sendable {
+    public static let maximumDimension = 800
+    public let bounds: DevelopCropRect
+    public let width: Int
+    public let height: Int
+    public let rgba: Data
+
+    public init(bounds: DevelopCropRect, width: Int, height: Int, rgba: Data) throws {
+        guard (1...Self.maximumDimension).contains(width), (1...Self.maximumDimension).contains(height),
+              rgba.count == width * height * 4 else {
+            throw ArtifactContractError.invalidValue("develop retouch replacement")
+        }
+        self.bounds = bounds; self.width = width; self.height = height; self.rgba = rgba
+    }
+    private enum CodingKeys: String, CodingKey { case bounds, width, height, rgba }
+    public init(from decoder: Decoder) throws {
+        let value = try decoder.container(keyedBy: CodingKeys.self)
+        try self.init(bounds: value.decode(DevelopCropRect.self, forKey: .bounds),
+                      width: value.decode(Int.self, forKey: .width), height: value.decode(Int.self, forKey: .height),
+                      rgba: value.decode(Data.self, forKey: .rgba))
+    }
+}
+
+/// One sampled repair. Historical values describe a single circular patch;
+/// new values keep a complete user gesture or a frozen automatic selection.
 /// Radius is a fraction of the oriented source's shorter edge, independent of
 /// zoom. Source and target positions always precede crop/rotation/mirroring.
 public struct DevelopRetouchStroke: Codable, Hashable, Identifiable, Sendable {
+    public static let maximumPathPoints = 2_048
+    public static let maximumMaskDimension = 256
     public let id: UUID
     public let mode: DevelopRetouchMode
     public let source: LocalMaskPoint
@@ -38,25 +67,51 @@ public struct DevelopRetouchStroke: Codable, Hashable, Identifiable, Sendable {
     public let radius: Double
     public let feather: Double
     public let opacity: Double
+    /// Top-left normalized path after its initial `target`; a repeated target
+    /// is harmless. An empty path with no mask keeps the historical circle.
+    public let path: [LocalMaskPoint]
+    /// Global source-canvas coverage, not a crop around the target. This takes
+    /// precedence over the path and freezes an automatic selection for export.
+    public let mask: LocalMaskRaster?
+    public let replacement: DevelopRetouchReplacement?
 
     public init(id: UUID = UUID(), mode: DevelopRetouchMode = .heal,
                 source: LocalMaskPoint, target: LocalMaskPoint, radius: Double,
-                feather: Double = 0.5, opacity: Double = 1) throws {
+                feather: Double = 0.5, opacity: Double = 1,
+                path: [LocalMaskPoint] = [], mask: LocalMaskRaster? = nil,
+                replacement: DevelopRetouchReplacement? = nil) throws {
         guard radius.isFinite, feather.isFinite, opacity.isFinite,
-              (0.000_001...0.5).contains(radius), (0...1).contains(feather), (0...1).contains(opacity) else {
+              (0.000_001...0.5).contains(radius), (0...1).contains(feather), (0...1).contains(opacity),
+              path.count <= Self.maximumPathPoints,
+              mask.map({ $0.width <= Self.maximumMaskDimension && $0.height <= Self.maximumMaskDimension }) ?? true else {
             throw ArtifactContractError.invalidValue("develop retouch patch")
         }
         self.id = id; self.mode = mode; self.source = source; self.target = target
         self.radius = radius; self.feather = feather; self.opacity = opacity
+        self.path = path; self.mask = mask; self.replacement = replacement
     }
 
-    private enum CodingKeys: String, CodingKey { case id, mode, source, target, radius, feather, opacity }
+    private enum CodingKeys: String, CodingKey { case id, mode, source, target, radius, feather, opacity, path, mask, replacement }
     public init(from decoder: Decoder) throws {
         let value = try decoder.container(keyedBy: CodingKeys.self)
         try self.init(id: value.decode(UUID.self, forKey: .id), mode: value.decode(DevelopRetouchMode.self, forKey: .mode),
                       source: value.decode(LocalMaskPoint.self, forKey: .source), target: value.decode(LocalMaskPoint.self, forKey: .target),
                       radius: value.decode(Double.self, forKey: .radius), feather: value.decode(Double.self, forKey: .feather),
-                      opacity: value.decode(Double.self, forKey: .opacity))
+                      opacity: value.decode(Double.self, forKey: .opacity),
+                      path: value.decodeIfPresent([LocalMaskPoint].self, forKey: .path) ?? [],
+                      mask: value.decodeIfPresent(LocalMaskRaster.self, forKey: .mask),
+                      replacement: value.decodeIfPresent(DevelopRetouchReplacement.self, forKey: .replacement))
+    }
+    public func encode(to encoder: Encoder) throws {
+        var value = encoder.container(keyedBy: CodingKeys.self)
+        try value.encode(id, forKey: .id); try value.encode(mode, forKey: .mode)
+        try value.encode(source, forKey: .source); try value.encode(target, forKey: .target)
+        try value.encode(radius, forKey: .radius); try value.encode(feather, forKey: .feather)
+        try value.encode(opacity, forKey: .opacity)
+        // Keep existing snapshots and artifact digests byte-compatible.
+        if !path.isEmpty { try value.encode(path, forKey: .path) }
+        try value.encodeIfPresent(mask, forKey: .mask)
+        try value.encodeIfPresent(replacement, forKey: .replacement)
     }
 }
 
@@ -90,6 +145,9 @@ public struct DevelopRedEyeCorrection: Codable, Hashable, Identifiable, Sendable
 /// then clockwise quarter turns. Positive straightening angles turn clockwise.
 public struct DevelopGeometry: Codable, Hashable, Sendable {
     public static let maximumRetouchStrokes = 256
+    public static let maximumRetouchPathPoints = 16_384
+    public static let maximumRetouchMaskBytes = 1_048_576
+    public static let maximumRetouchReplacementBytes = 2_560_000
     public static let maximumRedEyeCorrections = 128
     public var crop: DevelopCropRect?
     public var quarterTurns: Int
@@ -126,6 +184,11 @@ public struct DevelopGeometry: Codable, Hashable, Sendable {
               Set(retouchStrokes.map(\.id)).count == retouchStrokes.count,
               Set(redEyeCorrections.map(\.id)).count == redEyeCorrections.count else {
             throw ArtifactContractError.invalidValue("develop geometry")
+        }
+        guard retouchStrokes.reduce(0, { $0 + $1.path.count }) <= Self.maximumRetouchPathPoints,
+              retouchStrokes.reduce(0, { $0 + ($1.mask?.bytes.count ?? 0) }) <= Self.maximumRetouchMaskBytes,
+              retouchStrokes.reduce(0, { $0 + ($1.replacement?.rgba.count ?? 0) }) <= Self.maximumRetouchReplacementBytes else {
+            throw ArtifactContractError.limitExceeded
         }
     }
 

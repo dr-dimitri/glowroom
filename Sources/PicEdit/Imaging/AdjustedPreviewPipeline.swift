@@ -120,7 +120,8 @@ actor AdjustedPreviewPipeline {
         }
         let size = try LocalAdjustmentRenderer.previewSize(width: requestedSize.width, height: requestedSize.height,
             adjustments: normalized.localAdjustments, geometry: normalized.developGeometry, fixedBytes: fixedBytes,
-            outputBytesPerPixel: outputBytesPerPixel, totalMemoryBudget: totalMemoryBudget)
+            outputBytesPerPixel: outputBytesPerPixel, totalMemoryBudget: totalMemoryBudget,
+            replacementColorBytesPerPixel: EditRenderer.replacementColorBytesPerPixel(settings: normalized))
         guard !normalized.isNeutral || size.width != source.image.width || size.height != source.image.height else { return source }
         let key = Key(request: request, settings: normalized, width: source.image.width, height: source.image.height,
                       outputWidth: size.width, outputHeight: size.height)
@@ -222,9 +223,11 @@ actor AdjustedPreviewPipeline {
                         let baseBytes = sourceBytes.partialValue.addingReportingOverflow(outputBytes.partialValue)
                         guard !sourceBytes.overflow, !outputPixels.overflow, !outputBytes.overflow, !baseBytes.overflow,
                               let local = LocalAdjustmentRenderer.estimatedAdditionalBytes(adjustments: settings.localAdjustments,
-                                width: outputWidth, height: outputHeight),
+                                width: outputWidth, height: outputHeight,
+                                additionalRenderCount: DevelopGeometryRenderer.replacementCount(in: settings.developGeometry)),
                               let geometryBytes = DevelopGeometryRenderer.estimatedAdditionalBytes(geometry: settings.developGeometry,
-                                width: outputWidth, height: outputHeight) else {
+                                width: outputWidth, height: outputHeight,
+                                replacementColorBytesPerPixel: EditRenderer.replacementColorBytesPerPixel(settings: settings)) else {
                             throw ArtifactResourceError.capacityExceeded
                         }
                         let additionalBytes = local.addingReportingOverflow(geometryBytes)

@@ -9,6 +9,8 @@ struct DevelopGeometryInspector: View {
     var body: some View {
         if workspace.tool == .crop {
             DevelopCropInspector(asset: asset, workspace: workspace)
+        } else if workspace.tool == .repair {
+            DevelopRepairInspector(asset: asset, workspace: workspace)
         } else {
             VStack(alignment: .leading, spacing: 14) {
                 HStack {
@@ -19,31 +21,11 @@ struct DevelopGeometryInspector: View {
                 Text("Unbeschnittene Quelle · Änderungen werden nicht destruktiv gespeichert.")
                     .font(.system(size: 10)).foregroundStyle(Theme.muted)
                 switch workspace.tool {
-                case .repair: repairControls
                 case .redEye: redEyeControls
                 default: EmptyView()
                 }
                 if let error = workspace.errorMessage { Text(error).font(.caption).foregroundStyle(.orange) }
             }.padding(.vertical, 8)
-        }
-    }
-    private var repairControls: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Picker("Modus", selection: $workspace.repairMode) {
-                Text("Reparieren").tag(DevelopRetouchMode.heal)
-                Text("Kopierstempel").tag(DevelopRetouchMode.clone)
-            }.pickerStyle(.segmented)
-            Text(workspace.repairSource == nil ? "Klicke zuerst auf einen sauberen Quellbereich." : "Klicke oder male über den zu korrigierenden Bereich. ⌥-Klick wählt eine neue Quelle.")
-                .font(.system(size: 11)).foregroundStyle(Theme.muted)
-            toolSlider("Radius", value: $workspace.repairRadius, range: 0.005...0.15, neutral: 0.035)
-            toolSlider("Weiche Kante", value: $workspace.repairFeather, range: 0...1, neutral: 0.5)
-            Button("Neue Quelle wählen") { workspace.repairSource = nil }.controlSize(.small)
-            Text("\(geometry.retouchStrokes.count) Korrekturstellen · Reparieren passt die Quellfarbe an die Umgebung an.")
-                .font(.system(size: 10)).foregroundStyle(Theme.muted)
-            HStack {
-                Button("Letzte entfernen") { update { if !$0.retouchStrokes.isEmpty { $0.retouchStrokes.removeLast() } } }
-                Button("Alle löschen") { update { $0.retouchStrokes = [] } }
-            }.controlSize(.small).disabled(geometry.retouchStrokes.isEmpty)
         }
     }
     private var redEyeControls: some View {
@@ -86,8 +68,6 @@ struct DevelopCanvasInteraction: View {
     @ViewState private var straighteningGesture = false
     @ViewState private var expectedCropRevision: Int64?
     @ViewState private var expectedCropSession: UUID?
-    @ViewState private var lastRepairPoint: CGPoint?
-    @ViewState private var repairTargetStart: CGPoint?
     private var sourceSize: CGSize { workspace.sourceSize ?? CGSize(width: max(1, asset.pixelWidth), height: max(1, asset.pixelHeight)) }
     private var geometry: DevelopGeometry { editor.settings(for: asset.id).developGeometry }
 
@@ -121,14 +101,10 @@ struct DevelopCanvasInteraction: View {
                         onDoubleClick: onDoubleClick)
                         .accessibilityLabel(workspace.isStraightening ? "Bezugslinie zum Ausrichten auf dem Bild ziehen" : workspace.tool.title + " auf dem Bild")
                         .accessibilityIdentifier("develop.interactive-canvas")
+                } else if workspace.tool == .repair && !workspace.picksWhiteBalance {
+                    DevelopRepairCanvas(asset: asset, workspace: workspace, onDoubleClick: onDoubleClick)
                 } else {
-                    if workspace.tool == .repair, let source = workspace.repairSource {
-                        let point = CGPoint(x: rect.minX + source.x * rect.width, y: rect.minY + source.y * rect.height)
-                        Circle().stroke(Theme.accent, lineWidth: 1.5)
-                            .frame(width: radius(rect) * 2, height: radius(rect) * 2)
-                            .position(point).allowsHitTesting(false)
-                        Image(systemName: "plus").font(.system(size: 11)).foregroundStyle(Theme.accent).position(point).allowsHitTesting(false)
-                    } else if workspace.tool == .redEye, let start, let current {
+                    if workspace.tool == .redEye, let start, let current {
                         Ellipse().stroke(.white, style: StrokeStyle(lineWidth: 1, dash: [4]))
                             .frame(width: abs(current.x - start.x) * rect.width, height: abs(current.y - start.y) * rect.height)
                             .position(x: rect.minX + (current.x + start.x) / 2 * rect.width, y: rect.minY + (current.y + start.y) / 2 * rect.height)
@@ -152,7 +128,6 @@ struct DevelopCanvasInteraction: View {
             .onChange(of: editor.canEdit) { _, canEdit in if !canEdit { finishGesture() } }
             .onDisappear { finishGesture() }
     }
-    private func radius(_ rect: CGRect) -> Double { workspace.repairRadius * min(rect.width, rect.height) }
     private func normalized(_ point: CGPoint, rect: CGRect, clamp: Bool = false) -> CGPoint? {
         guard rect.width > 0, rect.height > 0, clamp || rect.contains(point) else { return nil }
         return CGPoint(x: min(1, max(0, (point.x - rect.minX) / rect.width)), y: min(1, max(0, (point.y - rect.minY) / rect.height)))
@@ -260,19 +235,11 @@ struct DevelopCanvasInteraction: View {
                 guard let initial = normalized(value.startLocation, rect: rect) else { return }
                 start = initial; current = initial
                 editor.endEditing(assetID: asset.id); editor.beginEditing(assetID: asset.id)
-                if workspace.tool == .repair {
-                    if workspace.repairSource == nil || NSEvent.modifierFlags.contains(.option) {
-                        workspace.repairSource = try? LocalMaskPoint(x: initial.x, y: initial.y)
-                        repairTargetStart = nil
-                    } else { repairTargetStart = initial; addRepair(initial) }
-                }
+
             }
             current = point
             if workspace.picksWhiteBalance { return }
-            if workspace.tool == .repair, repairTargetStart != nil {
-                let distance = lastRepairPoint.map { hypot(($0.x - point.x) * rect.width, ($0.y - point.y) * rect.height) } ?? .infinity
-                if distance > radius(rect) * 0.6 { addRepair(point) }
-            }
+
         }.onEnded { value in
             defer { finishGesture() }
             guard let start, let end = normalized(value.location, rect: rect, clamp: true) else { return }
@@ -287,29 +254,6 @@ struct DevelopCanvasInteraction: View {
             }
         }
     }
-    private func addRepair(_ point: CGPoint) {
-        guard let source = workspace.repairSource, let targetStart = repairTargetStart else { return }
-        let previous = lastRepairPoint ?? point
-        let distance = hypot((point.x - previous.x) * sourceSize.width, (point.y - previous.y) * sourceSize.height)
-        let spacing = max(1, workspace.repairRadius * min(sourceSize.width, sourceSize.height) * 0.6)
-        let available = DevelopGeometry.maximumRetouchStrokes - geometry.retouchStrokes.count
-        guard available > 0 else { workspace.errorMessage = "Die Grenze von 256 Korrekturstellen ist erreicht."; return }
-        let steps = min(available, max(1, Int(ceil(distance / spacing))))
-        do {
-            var patches: [DevelopRetouchStroke] = []
-            for index in 1...steps {
-                let amount = Double(index) / Double(steps)
-                let target = CGPoint(x: previous.x + (point.x - previous.x) * amount, y: previous.y + (point.y - previous.y) * amount)
-                let sourceX = min(1, max(0, source.x + target.x - targetStart.x))
-                let sourceY = min(1, max(0, source.y + target.y - targetStart.y))
-                patches.append(try DevelopRetouchStroke(mode: workspace.repairMode,
-                    source: LocalMaskPoint(x: sourceX, y: sourceY), target: LocalMaskPoint(x: target.x, y: target.y),
-                    radius: workspace.repairRadius, feather: workspace.repairFeather))
-            }
-            update { $0.retouchStrokes.append(contentsOf: patches) }; lastRepairPoint = point
-        } catch { workspace.errorMessage = error.localizedDescription }
-    }
-
     private func pickWhiteBalance(_ point: CGPoint) {
         guard let rgb = workspace.sourceAnalysis?.rgb(at: point),
               let correction = DevelopWhiteBalance.neutralizing(sRGBRed: rgb.0, green: rgb.1, blue: rgb.2, alpha: rgb.3) else {
@@ -331,7 +275,6 @@ struct DevelopCanvasInteraction: View {
     private func finishGesture() {
         if start != nil { editor.endEditing(assetID: asset.id) }
         start = nil; current = nil; originalCrop = nil; cropAction = nil; straighteningGesture = false
-        lastRepairPoint = nil; repairTargetStart = nil
         expectedCropRevision = nil; expectedCropSession = nil
         NSCursor.arrow.set()
     }

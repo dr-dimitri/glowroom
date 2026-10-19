@@ -193,9 +193,11 @@ enum EditRenderer {
         // Direct callers must honor the same local-work limit as the adaptive
         // preview pipeline. The export graph has its separate full-size budget.
         guard let localBytes = LocalAdjustmentRenderer.estimatedAdditionalBytes(adjustments: settings.localAdjustments,
-            width: original.width, height: original.height),
+            width: original.width, height: original.height,
+            additionalRenderCount: DevelopGeometryRenderer.replacementCount(in: settings.developGeometry)),
               let geometryBytes = DevelopGeometryRenderer.estimatedAdditionalBytes(geometry: settings.developGeometry,
-                width: original.width, height: original.height),
+                width: original.width, height: original.height,
+                replacementColorBytesPerPixel: replacementColorBytesPerPixel(settings: settings)),
               geometryBytes <= LocalAdjustmentRenderer.previewWorkingMemoryBudget,
               localBytes <= LocalAdjustmentRenderer.previewWorkingMemoryBudget - geometryBytes else {
             throw EditRenderError.insufficientMaskMemory
@@ -213,7 +215,10 @@ enum EditRenderer {
             let image = try LocalAdjustmentRenderer.apply(to: global, adjustments: settings.localAdjustments,
                                                           extent: extent, scale: scale, cache: maskCache,
                                                           preservesExtendedRange: settings.developColor.hdrEnabled)
-            let developed = try DevelopGeometryRenderer.apply(to: image, geometry: settings.developGeometry, extent: extent)
+            let replacements = try replacementImages(original, settings: settings, extent: extent,
+                scale: scale, maskCache: maskCache)
+            let developed = try DevelopGeometryRenderer.apply(to: image,
+                geometry: settings.developGeometry, extent: extent, replacementImages: replacements)
 
             let colorSpace = settings.developColor.hdrEnabled
                 ? CGColorSpace(name: CGColorSpace.extendedLinearSRGB)!
@@ -247,7 +252,9 @@ enum EditRenderer {
         let global = try manualAdjustments(prefix, settings: settings, extent: extent, scale: scale)
         let local = try LocalAdjustmentRenderer.apply(to: global, adjustments: settings.localAdjustments,
             extent: extent, scale: scale, preservesExtendedRange: settings.developColor.hdrEnabled)
-        return try DevelopGeometryRenderer.apply(to: local, geometry: settings.developGeometry, extent: extent)
+        let replacements = try replacementImages(original, settings: settings, extent: extent, scale: scale, maskCache: nil)
+        return try DevelopGeometryRenderer.apply(to: local, geometry: settings.developGeometry, extent: extent,
+                                                 replacementImages: replacements)
     }
 
     static func manualAdjustments(_ input: CIImage, settings: EditSettings,
@@ -283,6 +290,51 @@ enum EditRenderer {
         let denoised = try denoise(image, settings: settings, extent: extent, scale: scale)
         try Task.checkCancellation()
         return try balance(denoised, original: original, settings: settings, extent: extent)
+    }
+
+    private static func replacementImages(_ original: CGImage, settings: EditSettings, extent: CGRect,
+                                          scale: Double, maskCache: LocalMaskImageCache?) throws -> [UUID: CIImage] {
+        var result: [UUID: CIImage] = [:]
+        let input = CIImage(cgImage: original)
+        // Each frozen ROI gets the identical source color pipeline. The actual
+        // retouch pass keeps stored order and applies its mask/opacity once;
+        // neither future repairs nor changed color filters alter old donors.
+        for stroke in settings.developGeometry.retouchStrokes where stroke.opacity > 0 {
+            guard let replacement = stroke.replacement else { continue }
+            try Task.checkCancellation()
+            let candidate = try DevelopGeometryRenderer.replacementInput(replacement, original: input, extent: extent)
+            let base = try prefix(candidate, original: original, settings: settings, extent: extent, scale: scale)
+            let global = try manualAdjustments(base, settings: settings, extent: extent, scale: scale)
+            result[stroke.id] = try LocalAdjustmentRenderer.apply(to: global, adjustments: settings.localAdjustments,
+                extent: extent, scale: scale, cache: maskCache, preservesExtendedRange: settings.developColor.hdrEnabled)
+        }
+        return result
+    }
+
+    /// Extra global candidate planes per frozen ROI, shared by preview and
+    /// export admission. Local-adjustment planes are counted separately for
+    /// every candidate. These are conservative working buffers, not measured
+    /// GPU residency or a performance claim.
+    static func replacementColorBytesPerPixel(settings: EditSettings) -> UInt64 {
+        guard DevelopGeometryRenderer.replacementCount(in: settings.developGeometry) > 0 else { return 0 }
+        var bytes: UInt64 = 16 // Raw ROI/source composition.
+        if settings.luminanceNoiseReduction > 0 || settings.colorNoiseReduction > 0 {
+            bytes += 16
+            if settings.luminanceNoiseReduction > 0 { bytes += 16 }
+            if settings.colorNoiseReduction > 0 { bytes += 16 }
+        }
+        if settings.naturalBalanceAmount > 0 || settings.autoToneAmount > 0 { bytes += 16 }
+        let color = settings.developColor
+        if color.temperature != 6_500 || color.tint != 0 || color.profile != .neutral { bytes += 16 }
+        if settings.exposure != 0 || settings.contrast != 0 || settings.highlights != 0 || settings.shadows != 0 ||
+            settings.whites != 0 || settings.blacks != 0 || settings.dehaze != 0 || settings.vibrance != 0 || settings.saturation != 0 { bytes += 16 }
+        if settings.texture != 0 || settings.clarity != 0 {
+            bytes += 16
+            if settings.texture != 0 { bytes += 16 }
+            if settings.clarity != 0 { bytes += 16 }
+        }
+        if color.isMonochrome { bytes += 16 }
+        return bytes
     }
 
     private static func balance(_ image: CIImage, original: CGImage, settings: EditSettings, extent: CGRect) throws -> CIImage {

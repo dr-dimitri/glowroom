@@ -24,17 +24,24 @@ struct DevelopCropInputSurface: NSViewRepresentable {
     let inputIdentity: AnyHashable
     let cursor: (CGPoint) -> NSCursor
     let onDoubleClick: (() -> Void)?
+    let canvasLabel: String
+    let onCancel: (() -> Void)?
+    let onDoubleClickBegan: (() -> Void)?
 
     init(onInput: @escaping (DevelopCropInputEvent) -> Void,
          onHover: @escaping (CGPoint?) -> Void, isEnabled: Bool,
          inputIdentity: AnyHashable, cursor: @escaping (CGPoint) -> NSCursor,
-         onDoubleClick: (() -> Void)? = nil) {
+         onDoubleClick: (() -> Void)? = nil, canvasLabel: String = "Zuschneiden und Drehen auf dem Bild",
+         onCancel: (() -> Void)? = nil, onDoubleClickBegan: (() -> Void)? = nil) {
         self.onInput = onInput
         self.onHover = onHover
         self.isEnabled = isEnabled
         self.inputIdentity = inputIdentity
         self.cursor = cursor
         self.onDoubleClick = onDoubleClick
+        self.canvasLabel = canvasLabel
+        self.onCancel = onCancel
+        self.onDoubleClickBegan = onDoubleClickBegan
     }
 
     func makeNSView(context: Context) -> DevelopCropNativeInputView {
@@ -45,7 +52,9 @@ struct DevelopCropInputSurface: NSViewRepresentable {
 
     func updateNSView(_ view: DevelopCropNativeInputView, context: Context) {
         view.configure(onInput: onInput, onHover: onHover, isEnabled: isEnabled,
-                       inputIdentity: inputIdentity, cursor: cursor, onDoubleClick: onDoubleClick)
+                       inputIdentity: inputIdentity, cursor: cursor, onDoubleClick: onDoubleClick, onCancel: onCancel,
+                       onDoubleClickBegan: onDoubleClickBegan)
+        view.setAccessibilityLabel(canvasLabel)
     }
 
     static func dismantleNSView(_ view: DevelopCropNativeInputView, coordinator: ()) {
@@ -146,11 +155,13 @@ final class DevelopCropNativeInputView: NSView {
     var onHover: (CGPoint?) -> Void = { _ in }
     var cursor: (CGPoint) -> NSCursor = { _ in .arrow }
     var onDoubleClick: (() -> Void)?
+    var onCancel: (() -> Void)?
+    var onDoubleClickBegan: (() -> Void)?
     var inputIdentity: AnyHashable?
     var inputEnabled = true {
         didSet {
             setAccessibilityEnabled(inputEnabled)
-            if !inputEnabled { cancelInput() }
+            if oldValue && !inputEnabled { cancelInput() }
         }
     }
     private var pointerStart: CGPoint?
@@ -185,7 +196,8 @@ final class DevelopCropNativeInputView: NSView {
     func configure(onInput: @escaping (DevelopCropInputEvent) -> Void,
                    onHover: @escaping (CGPoint?) -> Void, isEnabled: Bool,
                    inputIdentity: AnyHashable, cursor: @escaping (CGPoint) -> NSCursor,
-                   onDoubleClick: (() -> Void)? = nil) {
+                   onDoubleClick: (() -> Void)? = nil, onCancel: (() -> Void)? = nil,
+                   onDoubleClickBegan: (() -> Void)? = nil) {
         // End an old asset/tool transaction using its old callback before a new
         // identity's closures replace it.
         if self.inputIdentity != inputIdentity || (!isEnabled && inputEnabled) { cancelInput() }
@@ -193,6 +205,8 @@ final class DevelopCropNativeInputView: NSView {
         self.onHover = onHover
         self.cursor = cursor
         self.onDoubleClick = onDoubleClick
+        self.onCancel = onCancel
+        self.onDoubleClickBegan = onDoubleClickBegan
         self.inputIdentity = inputIdentity
         inputEnabled = isEnabled
     }
@@ -212,7 +226,7 @@ final class DevelopCropNativeInputView: NSView {
             }
         cancellationMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self, event.window === self.window, event.keyCode == 53,
-                  self.pointerStart != nil || self.touchStart != nil || self.pendingDoubleClick != nil else { return event }
+                  self.onCancel != nil || self.pointerStart != nil || self.touchStart != nil || self.pendingDoubleClick != nil else { return event }
             self.cancelInput()
             return nil
         }
@@ -239,6 +253,7 @@ final class DevelopCropNativeInputView: NSView {
         if event.clickCount == 2, onDoubleClick != nil {
             // The first click has already ended with zero translation. Reserve
             // the second click for the parent canvas's established zoom action.
+            onDoubleClickBegan?()
             pendingDoubleClick = point
             return
         }
@@ -285,6 +300,7 @@ final class DevelopCropNativeInputView: NSView {
     override func touchesCancelled(with event: NSEvent) { receiveTouches(event, cancelled: true) }
 
     func cancelInput() {
+        onCancel?()
         if pointerStart != nil || pendingDoubleClick != nil { suppressesPointerUntilMouseUp = true }
         pendingDoubleClick = nil
         cancelPointer()

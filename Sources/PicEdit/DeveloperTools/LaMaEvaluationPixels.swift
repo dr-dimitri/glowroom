@@ -1,7 +1,8 @@
 import CoreVideo
 import Foundation
 
-/// Pixel transport for the separate LaMa evaluation. RGB stays unassociated;
+/// Shared pixel transport for fixed 800px local repairs and LaMa evaluation.
+/// RGB stays unassociated;
 /// source alpha belongs to the final compositor and is never baked into RGB.
 /// This bridge has no model-loading or product-capability hook.
 enum LaMaEvaluationPixels {

@@ -6,7 +6,9 @@ import PicEditCore
 /// the normal preview pipeline, so histogram and picker never decode a RAW.
 @MainActor
 final class DevelopWorkspace: ObservableObject {
-    @Published var tool: DevelopCanvasTool = .basic
+    @Published var tool: DevelopCanvasTool = .basic {
+        didSet { if oldValue == .repair && tool != .repair { cancelRepairWork(); repairSpotImage = nil } }
+    }
     @Published var picksWhiteBalance = false
     @Published var showsShadows = false
     @Published var showsHighlights = false
@@ -24,11 +26,33 @@ final class DevelopWorkspace: ObservableObject {
         displayedMapping = DevelopCanvasMapping(settings.developGeometry)
         hdrDisplayed = settings.developColor.hdrEnabled
     }
-    @Published var repairMode: DevelopRetouchMode = .heal
+    @Published var repairMode: DevelopRepairMode = .remove
     @Published var repairRadius = 0.035
     @Published var repairFeather = 0.5
     @Published var redEyeStrength = 1.0
     @Published var repairSource: LocalMaskPoint?
+    @Published var repairObjectDetection = true
+    @Published var repairOverlay: DevelopRepairOverlay = .always
+    @Published var repairVisualizesSpots = false { didSet { refreshRepairVisualization() } }
+    @Published var repairSpotThreshold = 0.5 { didSet { refreshRepairVisualization() } }
+    @Published var repairCandidates: [DevelopRepairCandidate] = []
+    @Published var repairSelectedCandidateIDs: Set<UUID> = []
+    @Published var repairBusy = false
+    @Published var repairStatus: String?
+    @Published var repairSpotImage: CGImage?
+    @Published var repairUsesAI = false
+    @Published var repairAIReady = false
+    @Published var repairAIModelName: String?
+    @Published var repairPreviewStroke: DevelopRetouchStroke?
+    var repairPreviewAssetID: String?
+    var repairPreviewRevision: Int64?
+    var repairPreviewSession: UUID?
+    var repairTask: Task<Void, Never>?
+    var repairSpotTask: Task<Void, Never>?
+    var repairRequest = UUID()
+    var repairDisplayBitmap: PreviewBitmap?
+    let repairServices: DevelopRepairServices
+    let repairAIStore: DevelopRepairAIModelStore
     /// Reuse the accepted preview frame; the navigator never requests another decode.
     @Published private(set) var navigatorImage: CGImage?
     @Published private(set) var analysis: DevelopPreviewAnalysis?
@@ -40,14 +64,17 @@ final class DevelopWorkspace: ObservableObject {
     private var analysisTask: Task<Void, Never>?
     private var autoStraightenTask: Task<Double?, Error>?
     private var autoStraightenIdentity = UUID()
-    private var originalBitmap: PreviewBitmap?
+    private(set) var originalBitmap: PreviewBitmap?
     private var identity = UUID()
     typealias Analyze = @Sendable (PreviewBitmap) async throws -> DevelopPreviewAnalysis
     typealias EstimateHorizon = @Sendable (PreviewBitmap) async throws -> Double?
     private let analyze: Analyze
     private let estimateHorizon: EstimateHorizon
 
-    init(analyze: Analyze? = nil, estimateHorizon: EstimateHorizon? = nil) {
+    init(analyze: Analyze? = nil, estimateHorizon: EstimateHorizon? = nil,
+         repairServices: DevelopRepairServices = .live, repairAIStore: DevelopRepairAIModelStore = .shared) {
+        self.repairServices = repairServices
+        self.repairAIStore = repairAIStore
         self.estimateHorizon = estimateHorizon ?? { try await DevelopHorizonEstimator.shared.estimate($0) }
         if let analyze { self.analyze = analyze }
         else {
@@ -63,6 +90,8 @@ final class DevelopWorkspace: ObservableObject {
     }
     func receive(_ bitmap: PreviewBitmap, sourceBitmap: PreviewBitmap) {
         navigatorImage = bitmap.image
+        repairDisplayBitmap = bitmap
+        if tool == .repair && repairVisualizesSpots { refreshRepairVisualization() }
         sourceSize = CGSize(width: sourceBitmap.image.width, height: sourceBitmap.image.height)
         let baseID = ObjectIdentifier(sourceBitmap.image)
         if originalBitmap.map({ ObjectIdentifier($0.image) }) != baseID {
@@ -131,6 +160,8 @@ final class DevelopWorkspace: ObservableObject {
         isAutoStraightening = false
     }
     func clear() {
+        cancelRepairWork(); repairSpotTask?.cancel(); repairSpotTask = nil
+        repairDisplayBitmap = nil; repairSpotImage = nil; repairStatus = nil
         identity = UUID(); analysisTask?.cancel(); analysisTask = nil
         cancelAutoStraighten(); originalBitmap = nil
         displayedMapping = nil; hdrDisplayed = false

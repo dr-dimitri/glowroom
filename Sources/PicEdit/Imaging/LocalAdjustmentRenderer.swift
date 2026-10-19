@@ -15,11 +15,14 @@ enum LocalAdjustmentRenderer {
     /// and geometry/spot-correction plan. The original decoded base is reused.
     static func previewSize(width: Int, height: Int, adjustments: [LocalAdjustment],
                             geometry: DevelopGeometry = .neutral, fixedBytes: UInt64 = 0, outputBytesPerPixel: UInt64 = 0,
-                            totalMemoryBudget: UInt64 = .max) throws -> (width: Int, height: Int) {
+                            totalMemoryBudget: UInt64 = .max,
+                            replacementColorBytesPerPixel: UInt64 = 0) throws -> (width: Int, height: Int) {
         guard width > 0, height > 0 else { throw EditRenderError.unavailable }
         func additionalBytes(_ width: Int, _ height: Int) -> UInt64? {
-            guard let local = estimatedAdditionalBytes(adjustments: adjustments, width: width, height: height),
-                  let geometryBytes = DevelopGeometryRenderer.estimatedAdditionalBytes(geometry: geometry, width: width, height: height) else { return nil }
+            guard let local = estimatedAdditionalBytes(adjustments: adjustments, width: width, height: height,
+                additionalRenderCount: DevelopGeometryRenderer.replacementCount(in: geometry)),
+                  let geometryBytes = DevelopGeometryRenderer.estimatedAdditionalBytes(geometry: geometry, width: width, height: height,
+                    replacementColorBytesPerPixel: replacementColorBytesPerPixel) else { return nil }
             let sum = local.addingReportingOverflow(geometryBytes)
             return sum.overflow ? nil : sum.partialValue
         }
@@ -59,8 +62,9 @@ enum LocalAdjustmentRenderer {
     /// memory limit. Native backends may tile/reuse these buffers. Count every
     /// saved effective layer so large exports and artifact previews are admitted
     /// before any mask raster or spatial intermediate is allocated.
-    static func estimatedAdditionalBytes(adjustments: [LocalAdjustment], width: Int, height: Int) -> UInt64? {
-        guard width > 0, height > 0 else { return nil }
+    static func estimatedAdditionalBytes(adjustments: [LocalAdjustment], width: Int, height: Int,
+                                         additionalRenderCount: Int = 0) -> UInt64? {
+        guard width > 0, height > 0, (0...DevelopGeometry.maximumRetouchStrokes).contains(additionalRenderCount) else { return nil }
         let pixels = UInt64(width).multipliedReportingOverflow(by: UInt64(height))
         guard !pixels.overflow else { return nil }
         var total: UInt64 = 0
@@ -99,7 +103,10 @@ enum LocalAdjustmentRenderer {
                 guard !rasters.overflow, add(rasters.partialValue) else { return nil }
             }
         }
-        return total
+        // Frozen model ROIs run through the same local layers before ordered
+        // repair composition. Their immutable filter graphs remain live too.
+        let repeated = total.multipliedReportingOverflow(by: UInt64(additionalRenderCount + 1))
+        return repeated.overflow ? nil : repeated.partialValue
     }
 
     static func apply(to input: CIImage, adjustments: [LocalAdjustment], extent: CGRect,
