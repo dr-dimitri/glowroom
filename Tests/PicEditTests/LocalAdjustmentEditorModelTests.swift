@@ -84,12 +84,13 @@ struct LocalAdjustmentEditorModelTests {
         model.close()
     }
 
-    @Test func automaticMasksCannotPublishAfterSameSourceSessionWasReopened() async throws {
+    @Test(arguments: [LocalMaskCreation.subject, .sky, .background])
+    func automaticMasksCannotPublishAfterSameSourceSessionWasReopened(_ kind: LocalMaskCreation) async throws {
         let gate = LocalMaskInferenceGate()
         let bitmap = try bitmap()
         let model = LocalAdjustmentEditorModel(settings: .neutral, loader: { _ in bitmap }, generator: { _, _, _ in await gate.generate() })
         await model.load(source: source("A"))
-        model.add(.subject)
+        model.add(kind)
         await gate.waitForStart()
         await model.load(source: source("B"))
         await model.load(source: source("A"))
@@ -97,6 +98,38 @@ struct LocalAdjustmentEditorModelTests {
         await gate.waitForReturn()
         #expect(model.settings.localAdjustments.isEmpty)
         #expect(!model.isGenerating)
+        model.close()
+    }
+
+    @Test(arguments: [LocalMaskCreation.subject, .sky, .background])
+    func automaticSelectionUsesExpectedRasterAndSingleUndoStep(_ kind: LocalMaskCreation) async throws {
+        let bitmap = try bitmap()
+        let raster = try LocalMaskRaster(width: 2, height: 2, bytes: Data([0, 64, 128, 255]))
+        let backgroundRaster = try LocalMaskRaster(width: 2, height: 2, bytes: Data([255, 191, 127, 0]))
+        let requests = TestStateSignal<[AutomaticMaskKind]>([])
+        let sourceURL = URL(fileURLWithPath: "/tmp/A.jpg")
+        let model = LocalAdjustmentEditorModel(settings: .neutral, loader: { _ in bitmap }, generator: { _, requestedKind, url in
+            requests.update { $0.append(requestedKind) }
+            #expect(url == sourceURL)
+            return raster
+        })
+        await model.load(source: source("A"))
+        model.add(kind)
+        await model.waitForInference()
+        let layer = try #require(model.selected)
+        #expect(requests.value == [kind == .sky ? .sky : .subject])
+        #expect(layer.name == (kind == .background ? "Hintergrund" : kind == .sky ? "Himmel" : "Motiv"))
+        #expect(!layer.mask.isInverted)
+        #expect(layer.mask.shape == (kind == .sky ? .sky(raster) : .subject(kind == .background ? backgroundRaster : raster)))
+        #expect(!model.isGenerating)
+        #expect(model.canUndo)
+        model.undo()
+        #expect(model.settings.localAdjustments.isEmpty)
+        #expect(!model.canUndo)
+        #expect(model.canRedo)
+        model.redo()
+        #expect(model.settings.localAdjustments == [layer])
+        #expect(!model.canRedo)
         model.close()
     }
 

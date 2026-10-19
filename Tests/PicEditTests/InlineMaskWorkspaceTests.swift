@@ -71,6 +71,87 @@ struct InlineMaskWorkspaceTests {
         #expect(await f.library.finishSaving())
     }
 
+    @Test(arguments: [LocalMaskCreation.brush, .linear, .radial, .subject, .sky])
+    func visibleBrushAndEraserModesFollowInversionWithoutRewritingOldStrokes(_ kind: LocalMaskCreation) async throws {
+        let f = try await fixture(nativeStore: false)
+        defer { try? FileManager.default.removeItem(at: f.directory) }
+        var settings = EditSettings.neutral
+        settings.localAdjustments = [try LocalAdjustment(name: "Auswahl", mask: .init(shape: shape(kind), feather: 0))]
+        f.editor.setSettings(settings, for: f.asset.id)
+        let workspace = InlineMaskWorkspace(), model = try model(settings: settings)
+        #expect(workspace.open(asset: f.asset, source: f.source, settings: settings,
+            editor: f.editor, library: f.library, model: model))
+        try await wait { workspace.canvasSize != nil }
+        workspace.refines = true
+        workspace.brush.radius = 2
+        workspace.brush.appendPoint(try .init(x: 4.5, y: 5.5))
+        workspace.finishGesture()
+        let beforeInversion = try #require(workspace.brush.document)
+        #expect(beforeInversion.strokes.map(\.mode) == [.brush])
+
+        model.updateSelected { $0.mask.isInverted = true }
+        #expect(workspace.brush.document == beforeInversion, "Inverting must keep historic canonical strokes unchanged")
+        #expect(workspace.brush.mode == .erase, "Visible paint must reduce canonical coverage before final inversion")
+        workspace.brush.appendPoint(try .init(x: 15.5, y: 5.5))
+        workspace.finishGesture()
+        workspace.erases = true
+        #expect(workspace.brush.mode == .brush)
+        workspace.brush.appendPoint(try .init(x: 32.5, y: 5.5))
+        workspace.finishGesture()
+        #expect(workspace.brush.document?.strokes.map(\.mode) == [.brush, .erase, .brush])
+
+        workspace.undo(); workspace.undo()
+        #expect(workspace.brush.document == beforeInversion)
+        #expect(workspace.selected?.mask.isInverted == true)
+        workspace.undo()
+        #expect(workspace.selected?.mask.isInverted == false)
+        #expect(workspace.brush.mode == .erase, "Undo inversion must refresh input mode even with identical document contents")
+        workspace.redo()
+        #expect(workspace.brush.document == beforeInversion)
+        #expect(workspace.brush.mode == .brush)
+        let invertedID = try #require(model.selectedID)
+        model.add(.radial)
+        #expect(workspace.brush.mode == .erase, "A new non-inverted mask keeps the visible eraser selected")
+        workspace.select(invertedID)
+        #expect(workspace.brush.mode == .brush)
+        #expect(workspace.brush.document == beforeInversion)
+        workspace.cancel()
+        #expect(await f.editor.flush())
+        #expect(await f.library.finishSaving())
+    }
+
+    @Test func changingInversionCancelsTheActiveStrokeAndKeepsInitialCanvasCoverageSeparate() async throws {
+        let f = try await fixture(nativeStore: false)
+        defer { try? FileManager.default.removeItem(at: f.directory) }
+        let document = try MaskDocument(canvasSize: .init(width: 40, height: 20), isInverted: true)
+        let mask = try LocalAdjustmentMask(shape: .brush(document), feather: 0)
+        let settings = EditSettings(localAdjustments: [try LocalAdjustment(name: "Vollfläche", mask: mask)])
+        f.editor.setSettings(settings, for: f.asset.id)
+        let workspace = InlineMaskWorkspace(), model = try model(settings: settings)
+        #expect(workspace.open(asset: f.asset, source: f.source, settings: settings,
+            editor: f.editor, library: f.library, model: model))
+        try await wait { workspace.canvasSize != nil }
+        #expect(workspace.brush.mode == .brush, "An initially full MaskDocument still applies ordinary paint/erase operations")
+        workspace.brush.appendPoint(try .init(x: 4.5, y: 5.5))
+        #expect(workspace.brush.previewDocument?.strokes.count == 1)
+        model.updateSelected { $0.mask.isInverted = true }
+        #expect(workspace.brush.previewDocument == document, "An inversion change must discard the old in-flight stroke")
+        #expect(workspace.brush.mode == .erase)
+        workspace.finishGesture()
+        #expect(workspace.brush.document == document)
+        workspace.undo()
+        #expect(workspace.selected?.mask.isInverted == false)
+        #expect(!model.canUndo, "The canceled stroke must not leave an extra undo step")
+        #expect(workspace.brush.mode == .brush)
+        workspace.erases = true
+        #expect(workspace.brush.mode == .erase)
+        model.updateSelected { $0.mask.isInverted = true }
+        #expect(workspace.brush.mode == .brush)
+        workspace.cancel()
+        #expect(await f.editor.flush())
+        #expect(await f.library.finishSaving())
+    }
+
     @Test func localCorrectionsHideTheOverlayAndSelectingOrReshapingAMaskRestoresIt() async throws {
         let f = try await fixture(nativeStore: false)
         defer { try? FileManager.default.removeItem(at: f.directory) }
@@ -342,6 +423,16 @@ struct InlineMaskWorkspaceTests {
         workspace.cancel()
         #expect(!workspace.acceptsCanvasInput(source: f.source, layerID: secondID))
         #expect(await f.library.finishSaving())
+    }
+
+    private func shape(_ kind: LocalMaskCreation) throws -> LocalMaskShape {
+        switch kind {
+        case .brush: return .brush(try MaskDocument(canvasSize: .init(width: 40, height: 20)))
+        case .linear: return .linear(start: try .init(x: 0.2, y: 0.5), end: try .init(x: 0.8, y: 0.5))
+        case .radial: return .radial(center: try .init(x: 0.25, y: 0.5), radiusX: 0.2, radiusY: 0.3, rotation: 0)
+        case .subject, .background: return .subject(try LocalMaskRaster(width: 2, height: 1, bytes: Data([0, 255])))
+        case .sky: return .sky(try LocalMaskRaster(width: 2, height: 1, bytes: Data([0, 255])))
+        }
     }
 
     private func model(settings: EditSettings = .neutral) throws -> LocalAdjustmentEditorModel {

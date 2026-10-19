@@ -166,7 +166,7 @@ struct DetailView: View {
                 }
                     .overlay(alignment: .topTrailing) {
                         if layout.panels(developing: model.isDeveloping).showsTools,
-                           developWorkspace.tool == .masks, maskWorkspace.isPresented {
+                           developWorkspace.tool == .masks, maskWorkspace.showsMaskList {
                             InlineMaskList(workspace: maskWorkspace)
                                 .frame(width: 250)
                                 .padding(10)

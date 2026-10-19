@@ -20,7 +20,7 @@ struct LocalMaskEditingAnchor {
 }
 
 enum LocalMaskCreation: String, CaseIterable, Identifiable {
-    case brush, linear, radial, subject, sky
+    case brush, linear, radial, subject, sky, background
     var id: String { rawValue }
     var title: String {
         switch self {
@@ -29,6 +29,7 @@ enum LocalMaskCreation: String, CaseIterable, Identifiable {
         case .radial: "Radialer Verlauf"
         case .subject: "Motiv auswählen"
         case .sky: "Himmel auswählen"
+        case .background: "Hintergrund auswählen"
         }
     }
     var symbol: String {
@@ -38,6 +39,7 @@ enum LocalMaskCreation: String, CaseIterable, Identifiable {
         case .radial: "circle.lefthalf.filled"
         case .subject: "person.crop.rectangle"
         case .sky: "cloud.sun"
+        case .background: "rectangle.inset.filled.and.person.filled"
         }
     }
 }
@@ -133,6 +135,8 @@ final class LocalAdjustmentEditorModel: ObservableObject {
                     radiusX: 0.3, radiusY: 0.3, rotation: 0))
             case .subject, .sky:
                 generate(kind == .subject ? .subject : .sky)
+            case .background:
+                generate(.subject, isBackground: true)
             }
         } catch { errorMessage = error.localizedDescription }
     }
@@ -225,7 +229,7 @@ final class LocalAdjustmentEditorModel: ObservableObject {
     }
     private func updateHistory() { canUndo = !history.isEmpty; canRedo = !future.isEmpty }
 
-    private func generate(_ kind: AutomaticMaskKind) {
+    private func generate(_ kind: AutomaticMaskKind, isBackground: Bool = false) {
         guard !isGenerating, let bitmap, let source else { return }
         let token = UUID(), currentSession = session
         operation = token; isGenerating = true; errorMessage = nil
@@ -234,16 +238,27 @@ final class LocalAdjustmentEditorModel: ObservableObject {
         else { sourceURL = nil }
         inference = Task { [weak self, generator] in
             do {
-                let raster = try await generator(bitmap, kind, sourceURL)
+                var raster = try await generator(bitmap, kind, sourceURL)
+                if isBackground { raster = try await Self.backgroundRaster(from: raster) }
                 try Task.checkCancellation()
                 guard let self, self.session == currentSession, self.operation == token else { return }
-                try self.append(kind == .subject ? "Motiv" : "Himmel", shape: kind == .subject ? .subject(raster) : .sky(raster))
+                let name = isBackground ? "Hintergrund" : kind == .subject ? "Motiv" : "Himmel"
+                try self.append(name, shape: kind == .subject ? .subject(raster) : .sky(raster))
             } catch is CancellationError { }
             catch {
                 if let self, self.session == currentSession, self.operation == token { self.errorMessage = error.localizedDescription }
             }
             if let self, self.operation == token { self.operation = nil; self.isGenerating = false; self.inference = nil }
         }
+    }
+    /// Complement the bounded Gray8 raster off MainActor so later brush/erase
+    /// refinements operate directly on the visible background selection. At
+    /// most 512² bytes need one pass; an additional worker pool costs more.
+    nonisolated private static func backgroundRaster(from raster: LocalMaskRaster) async throws -> LocalMaskRaster {
+        try Task.checkCancellation()
+        let bytes = Data(raster.bytes.map { 255 - $0 })
+        try Task.checkCancellation()
+        return try LocalMaskRaster(width: raster.width, height: raster.height, bytes: bytes)
     }
     func cancelInference() {
         operation = nil; inference?.cancel(); inference = nil; isGenerating = false
