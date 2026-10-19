@@ -10,6 +10,174 @@ import Testing
 @Suite("Compact mask palettes", .serialized)
 @MainActor
 struct CompactMaskLayoutTests {
+    @Test func newMaskCreatorFitsAndExposesItsToolsBeforeTheFirstMask() async throws {
+        let fixture = try await CompactMaskFixture.make()
+        let host = CompactMaskHost(width: 300, height: 460)
+        defer { host.close(); fixture.close() }
+        try await host.mount(InlineMaskInspector(workspace: fixture.workspace).padding(.horizontal, 12))
+
+        #expect(fixture.model.settings.localAdjustments.isEmpty)
+        #expect(host.fittingHeight <= 460, "The complete mask creator must fit below the histogram and toolbar")
+        _ = try host.element("local-mask.creator")
+        let choices = [
+            ("subject", "Motiv auswählen"), ("sky", "Himmel auswählen"), ("background", "Hintergrund auswählen"),
+            ("brush", "Pinsel"), ("linear", "Linearer Verlauf"), ("radial", "Radialverlauf")
+        ]
+        for (kind, title) in choices {
+            let button = try host.element("local-mask.create.\(kind)")
+            #expect(button.accessibilityRole() == .button)
+            #expect(button.accessibilityLabel() == title)
+            #expect(button.isAccessibilityEnabled(), "\(title) must be usable before creating a mask")
+            let frame = button.accessibilityFrame()
+            #expect(frame.width > 0 && frame.height > 0)
+            #expect(host.screenFrame.insetBy(dx: -1, dy: -1).contains(frame), "\(title) must be visible without scrolling")
+        }
+        for kind in ["landscape", "object"] {
+            let unavailable = try host.element("local-mask.unavailable.\(kind)")
+            #expect(!unavailable.isAccessibilityEnabled(), "Unimplemented selections must not promise an action")
+        }
+        let skySetup = try host.element("local-mask.sky-setup")
+        #expect(skySetup.isAccessibilityEnabled(), "Sky model setup must remain reachable without an existing mask")
+        #expect(!host.elements.contains { $0.accessibilityLabel() == "Bereich" })
+        #expect(!host.elements.contains { $0.accessibilityIdentifier() == "local-mask.show-creator" })
+        try host.snapshotIfRequested("mask-creator-empty")
+        #expect(await fixture.library.finishSaving())
+    }
+
+    @Test func selectedMaskCanToggleTheCreatorAndAddingAMaskRestoresCorrections() async throws {
+        let fixture = try await CompactMaskFixture.make()
+        let host = CompactMaskHost(width: 300, height: 900)
+        defer { host.close(); fixture.close() }
+        fixture.model.add(.linear)
+        let selectedID = try #require(fixture.model.selectedID)
+        try await host.mount(InlineMaskInspector(workspace: fixture.workspace).padding(.horizontal, 12))
+
+        #expect(!host.elements.contains { $0.accessibilityIdentifier() == "local-mask.creator" })
+        let showCreator = try host.element("local-mask.show-creator")
+        #expect(showCreator.accessibilityPerformPress())
+        try await host.settle()
+        _ = try host.element("local-mask.creator")
+        _ = try host.element("local-mask.create.linear")
+        #expect(fixture.model.selectedID == selectedID)
+        #expect(fixture.model.settings.localAdjustments.count == 1)
+        try host.snapshotIfRequested("mask-creator-expanded")
+
+        #expect(try host.element("local-mask.show-creator").accessibilityPerformPress())
+        try await host.settle()
+        #expect(!host.elements.contains { $0.accessibilityIdentifier() == "local-mask.creator" })
+        _ = try host.element("local-mask.correction.dehaze")
+        #expect(fixture.model.selectedID == selectedID)
+
+        #expect(try host.element("local-mask.show-creator").accessibilityPerformPress())
+        try await host.settle()
+        #expect(try host.element("local-mask.create.radial").accessibilityPerformPress())
+        try await host.settle()
+        #expect(fixture.model.settings.localAdjustments.count == 2)
+        let created = try #require(fixture.model.selected)
+        #expect(created.id != selectedID)
+        switch created.mask.shape {
+        case .radial: break
+        default: Issue.record("The radial creator action must select the new radial mask")
+        }
+        #expect(!host.elements.contains { $0.accessibilityIdentifier() == "local-mask.creator" },
+            "Creating a new selected mask must close the creator and expose its corrections")
+        _ = try host.element("local-mask.correction.dehaze")
+        #expect(await fixture.library.finishSaving())
+    }
+
+    @Test func nativeInversionAndEraserControlsUpdateTheBrushModeWithoutChangingItsDocument() async throws {
+        let fixture = try await CompactMaskFixture.make()
+        let host = CompactMaskHost(width: 300, height: 460)
+        defer { host.close(); fixture.close() }
+        fixture.model.add(.brush)
+        try await host.mount(InlineMaskInspector(workspace: fixture.workspace).padding(.horizontal, 12))
+        let document = try #require(fixture.workspace.brush.document)
+
+        #expect(try host.element("local-mask.invert").accessibilityPerformPress())
+        try await host.settle()
+        #expect(fixture.model.selected?.mask.isInverted == true)
+        #expect(!fixture.workspace.erases)
+        #expect(fixture.workspace.brush.mode == .erase, "Painting an inverted mask must expand its visible selection")
+
+        #expect(try host.element("local-mask.erase").accessibilityPerformPress())
+        try await host.settle()
+        #expect(fixture.workspace.erases)
+        #expect(fixture.workspace.brush.mode == .brush, "Erasing an inverted mask must reduce its visible selection")
+
+        #expect(try host.element("local-mask.invert").accessibilityPerformPress())
+        try await host.settle()
+        #expect(fixture.model.selected?.mask.isInverted == false)
+        #expect(fixture.workspace.erases)
+        #expect(fixture.workspace.brush.mode == .erase)
+        #expect(fixture.workspace.brush.document == document, "Changing tool semantics must preserve the accepted mask strokes")
+        for identifier in ["local-mask.invert", "local-mask.erase", "local-mask.correction.dehaze"] {
+            let control = try host.element(identifier)
+            #expect(control.isAccessibilityEnabled())
+            let frame = control.accessibilityFrame()
+            #expect(frame.width > 0 && frame.height > 0)
+            #expect(host.screenFrame.insetBy(dx: -1, dy: -1).contains(frame))
+        }
+        #expect(await fixture.library.finishSaving())
+    }
+
+    @Test func floatingMaskListAppearsForCreationAndDisappearsAfterDeletingTheLastMask() async throws {
+        let fixture = try await CompactMaskFixture.make()
+        let inspector = CompactMaskHost(width: 300, height: 460)
+        let list = CompactMaskHost(width: 250, height: 260)
+        defer { inspector.close(); list.close(); fixture.close() }
+        try await inspector.mount(InlineMaskInspector(workspace: fixture.workspace).padding(.horizontal, 12))
+        try await list.mount(InlineMaskList(workspace: fixture.workspace))
+
+        #expect(!fixture.workspace.showsMaskList)
+        #expect(!list.elements.contains { $0.accessibilityIdentifier() == "local-mask.list" })
+        #expect(try inspector.element("local-mask.create.linear").accessibilityPerformPress())
+        try await inspector.settle()
+        try await list.settle()
+
+        #expect(fixture.model.settings.localAdjustments.count == 1)
+        #expect(fixture.workspace.showsMaskList)
+        _ = try list.element("local-mask.list")
+        let selected = try #require(fixture.model.selected)
+        fixture.workspace.comparesBefore = true
+        #expect(try list.element("local-mask.delete.\(selected.id.uuidString)").accessibilityPerformPress())
+        try await inspector.settle()
+        try await list.settle()
+
+        #expect(fixture.model.settings.localAdjustments.isEmpty)
+        #expect(!fixture.workspace.comparesBefore, "Hiding the list must not strand the canvas in its before state")
+        #expect(!fixture.workspace.showsMaskList)
+        #expect(!list.elements.contains { $0.accessibilityIdentifier() == "local-mask.list" })
+        _ = try inspector.element("local-mask.creator")
+
+        let emptyUndo = try inspector.element("local-mask.undo")
+        #expect(emptyUndo.isAccessibilityEnabled(), "Deleting the final mask must leave an accessible undo action")
+        #expect(emptyUndo.accessibilityPerformPress())
+        try await inspector.settle()
+        try await list.settle()
+        #expect(fixture.model.selectedID == selected.id)
+        #expect(fixture.workspace.showsMaskList)
+        _ = try list.element("local-mask.select.\(selected.id.uuidString)")
+
+        // Undo creation as well, then restore it through the inspector's redo
+        // action while the empty floating list remains hidden.
+        fixture.workspace.comparesBefore = true
+        #expect(try list.element("local-mask.undo").accessibilityPerformPress())
+        try await inspector.settle()
+        try await list.settle()
+        #expect(!fixture.workspace.showsMaskList)
+        #expect(!fixture.workspace.comparesBefore)
+        #expect(!list.elements.contains { $0.accessibilityIdentifier() == "local-mask.list" })
+        let emptyRedo = try inspector.element("local-mask.redo")
+        #expect(emptyRedo.isAccessibilityEnabled())
+        #expect(emptyRedo.accessibilityPerformPress())
+        try await inspector.settle()
+        try await list.settle()
+        #expect(fixture.model.selectedID == selected.id)
+        #expect(fixture.workspace.showsMaskList)
+        _ = try list.element("local-mask.select.\(selected.id.uuidString)")
+        #expect(await fixture.library.finishSaving())
+    }
+
     @Test(arguments: [LocalMaskCreation.brush, .linear, .radial])
     func localCorrectionsFitBelowTheHistogramInANarrowInspector(_ kind: LocalMaskCreation) async throws {
         let fixture = try await CompactMaskFixture.make()
@@ -117,6 +285,10 @@ private final class CompactMaskHost {
     var fittingHeight: CGFloat { hosting.fittingSize.height }
     var elements: [WorkspaceAccessibilityElement] { WorkspaceAccessibilityElement.descendants(of: hosting) }
     var screenFrame: NSRect { window.convertToScreen(hosting.convert(hosting.bounds, to: nil)) }
+
+    func element(_ identifier: String) throws -> WorkspaceAccessibilityElement {
+        try #require(elements.first { $0.accessibilityIdentifier() == identifier }, "Missing native control: \(identifier)")
+    }
 
     func mount(_ content: some View) async throws {
         hosting.rootView = AnyView(content.frame(width: width).fixedSize(horizontal: false, vertical: true)

@@ -79,6 +79,63 @@ struct LocalAdjustmentRendererTests {
         }
     }
 
+    @Test func finalInversionKeepsHistoricStrokesAndMappedNewPaintEraseRemainOrdered() throws {
+        let source = try fixture()
+        let canvas = try ArtifactPixelSize(width: 128, height: 96)
+        let brush = try MaskDocument(canvasSize: canvas, strokes: [
+            .init(points: [.init(x: 24, y: 12), .init(x: 24, y: 84)], radius: 28)
+        ])
+        // Different lower-quadrant values make the automatic raster asymmetric.
+        let raster = try LocalMaskRaster(width: 2, height: 2, bytes: Data([255, 0, 200, 48]))
+        let shapes: [LocalMaskShape] = [
+            .brush(brush), .brush(brush.inverted()),
+            .linear(start: try .init(x: 0.2, y: 0.5), end: try .init(x: 0.8, y: 0.5)),
+            .radial(center: try .init(x: 0.2, y: 0.5), radiusX: 0.22, radiusY: 0.7, rotation: 0),
+            .subject(raster), .sky(raster)
+        ]
+        let historic: [MaskStroke] = try [
+            .init(points: [.init(x: 24, y: 24)], radius: 12, mode: .erase),
+            .init(points: [.init(x: 100, y: 24)], radius: 12)
+        ]
+        // Workspace maps new visible paint/erase through the outer inversion.
+        // Preserve these canonical operations in the renderer and in snapshots.
+        let afterInversion: [MaskStroke] = try [
+            .init(points: [.init(x: 24, y: 72)], radius: 12, mode: .erase),
+            .init(points: [.init(x: 24, y: 72)], radius: 4),
+            .init(points: [.init(x: 100, y: 72)], radius: 12),
+            .init(points: [.init(x: 100, y: 72)], radius: 4, mode: .erase)
+        ]
+        for shape in shapes {
+            func mask(strokes: [MaskStroke], inverted: Bool) throws -> LocalAdjustmentMask {
+                if case .brush(let document) = shape {
+                    let combined = try MaskDocument(canvasSize: canvas, strokes: document.strokes + strokes,
+                        isInverted: document.isInverted)
+                    return try .init(shape: .brush(combined), isInverted: inverted, feather: 0)
+                }
+                return try .init(shape: shape, isInverted: inverted, feather: 0,
+                    refinement: MaskDocument(canvasSize: canvas, strokes: strokes))
+            }
+            var edits = try settings(shape)
+            edits.localAdjustments[0].mask = try mask(strokes: historic, inverted: false)
+            let before = try pixels(EditRenderer.render(source, settings: edits).image)
+            #expect(abs(sample(before, x: 24, y: 24) - 80) <= 1)
+            #expect(sample(before, x: 100, y: 24) > 105)
+            edits.localAdjustments[0].mask.isInverted = true
+            let inverted = try pixels(EditRenderer.render(source, settings: edits).image)
+            #expect(sample(inverted, x: 24, y: 24) > 105, "Toggle must invert an existing erased area")
+            #expect(abs(sample(inverted, x: 100, y: 24) - 80) <= 1, "Toggle must invert an existing painted area")
+
+            edits.localAdjustments[0].mask = try mask(strokes: historic + afterInversion, inverted: true)
+            let refined = try pixels(EditRenderer.render(source, settings: edits).image)
+            #expect(sample(refined, x: 24, y: 24) > 105)
+            #expect(abs(sample(refined, x: 100, y: 24) - 80) <= 1)
+            #expect(abs(sample(refined, x: 24, y: 72) - 80) <= 1, "Visible erase after paint removes the center")
+            #expect(sample(refined, x: 30, y: 72) > 105, "Visible paint adds a ring to the inverted selection")
+            #expect(sample(refined, x: 100, y: 72) > 105, "Visible paint after erase restores the center")
+            #expect(abs(sample(refined, x: 106, y: 72) - 80) <= 1, "Visible erase removes the surrounding area")
+        }
+    }
+
     @Test func overlappingLayersApplyInSavedOrderAfterGlobalAdjustments() throws {
         let source = try fixture { _, _ in (95, 70, 45, 255) }
         let raster = try LocalMaskRaster(width: 1, height: 1, bytes: Data([255]))

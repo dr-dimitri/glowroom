@@ -12,7 +12,12 @@ final class InlineMaskWorkspace: ObservableObject {
     @Published private(set) var source: AISourceIdentity?
     @Published var showsOverlay = true
     @Published var comparesBefore = false
-    @Published var erases = false { didSet { brush.cancelStroke(); brush.mode = erases ? .erase : .brush } }
+    @Published var erases = false {
+        didSet {
+            brush.cancelStroke()
+            brush.mode = brushMode(isInverted: selected?.mask.isInverted ?? false)
+        }
+    }
     @Published var refines = false { didSet { finishGesture() } }
     @Published var errorMessage: String?
     let brush = MaskEditingModel(rendersOverlay: false)
@@ -41,6 +46,7 @@ final class InlineMaskWorkspace: ObservableObject {
     }
 
     var selected: LocalAdjustment? { model?.selected }
+    var showsMaskList: Bool { isPresented && model?.settings.localAdjustments.isEmpty == false }
     var canvasSize: ArtifactPixelSize? { model?.canvasSize }
     var previewSettings: EditSettings? {
         guard isPresented else { return nil }
@@ -157,6 +163,9 @@ final class InlineMaskWorkspace: ObservableObject {
     }
     func delete(_ id: UUID) { finishGesture(); model?.delete(id) }
     private func updateOverlayVisibility(settings: EditSettings) {
+        // The comparison toggle lives in the floating list. Once that list
+        // disappears, show the draft rather than an unreachable before state.
+        if settings.localAdjustments.isEmpty { comparesBefore = false }
         // Published settings arrive before mutation. Compare the same selected
         // layer so names, ordering and edits to other masks do not hide its area.
         guard let selected = model?.selected,
@@ -179,12 +188,21 @@ final class InlineMaskWorkspace: ObservableObject {
         if case .brush(let saved) = selected.mask.shape { document = saved }
         else if let saved = selected.mask.refinement { document = saved }
         else { guard let empty = try? MaskDocument(canvasSize: canvas) else { return }; document = empty }
+        let mode = brushMode(isInverted: selected.mask.isInverted)
+        if brush.mode != mode { brush.cancelStroke(); brush.mode = mode }
         guard brush.document != document || brush.source != source else { return }
         syncingBrush = true
         do { try brush.load(source: source, document: document) }
         catch { errorMessage = error.localizedDescription }
         syncingBrush = false
-        brush.mode = erases ? .erase : .brush
+        brush.mode = mode
+    }
+    private func brushMode(isInverted: Bool) -> MaskStrokeMode {
+        // The renderer inverts the whole composed selection, including historic
+        // strokes. Reverse only newly captured operations so their visible
+        // paint/erase effect stays unchanged; no persisted mask is rewritten.
+        // MaskDocument.isInverted sets its initial coverage, not stroke meaning.
+        erases != isInverted ? .erase : .brush
     }
     private func installBrush(_ document: MaskDocument) {
         guard let model, let selected else { return }

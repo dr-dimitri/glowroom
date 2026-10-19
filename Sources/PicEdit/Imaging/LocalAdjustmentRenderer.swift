@@ -173,7 +173,9 @@ enum LocalAdjustmentRenderer {
         var coverage = image
         if let refinement = mask.refinement, !refinement.strokes.isEmpty {
             // Max/min brush composition is a monotone clamp. Rasterize the same
-            // ordered operations from zero and one; never invert stroke modes.
+            // ordered canonical operations from zero and one; never rewrite
+            // their modes here. The editor maps new visible paint/erase input
+            // through mask.isInverted; final inversion still flips old strokes.
             // This applies paint/erase exactly to an arbitrary automatic/gradient
             // base without retaining one graph node for every pointer segment.
             let lowerDocument = try MaskDocument(canvasSize: refinement.canvasSize, strokes: refinement.strokes)

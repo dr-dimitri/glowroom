@@ -51,6 +51,7 @@ struct InlineMaskCanvas: View {
             await updateOverlay()
         }
         .onChange(of: workspace.model?.selectedID) { _, _ in cancelGesture() }
+        .onChange(of: workspace.selected?.mask.isInverted) { _, _ in cancelGesture() }
         .onChange(of: workspace.refines) { _, _ in cancelGesture() }
         .onChange(of: workspace.comparesBefore) { _, _ in cancelGesture() }
         .onChange(of: workspace.model?.isGenerating) { _, generating in if generating == true { cancelGesture() } }
@@ -227,6 +228,10 @@ struct InlineMaskList: View {
     private var layers: [LocalAdjustment] { workspace.model?.settings.localAdjustments ?? [] }
 
     var body: some View {
+        if workspace.showsMaskList { palette }
+    }
+
+    private var palette: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 6) {
                 Text("Masken").font(.system(size: 12, weight: .semibold))
@@ -248,26 +253,20 @@ struct InlineMaskList: View {
                     .menuStyle(.borderlessButton).frame(width: 16)
                     .accessibilityLabel("Maskeneinstellungen")
             }.controlSize(.mini).font(.system(size: 11))
-            if layers.isEmpty {
-                Text("Neue Maske erstellen und einen Bildbereich auswählen.")
-                    .font(.system(size: 11)).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
-                    .padding(.vertical, 4)
-            } else {
-                // Only the list scrolls when many masks exist. Rendering remains
-                // lazy; no extra image decoding is needed for mask-type icons.
-                ScrollViewReader { proxy in
-                    ScrollView {
-                        LazyVStack(spacing: 3) {
-                            ForEach(layers, id: \.id) { layer in maskRow(layer).id(layer.id) }
-                        }
-                    }.accessibilityIdentifier("local-mask.list-scroll")
-                        .task(id: workspace.model?.selectedID) {
-                            // New masks, undo and redo can select a row beyond
-                            // the four visible slots. Keep that row reachable.
-                            if let selectedID = workspace.model?.selectedID { proxy.scrollTo(selectedID, anchor: .center) }
-                        }
-                }.frame(height: CGFloat(min(layers.count, 4) * 31 - 3))
-            }
+            // Only the list scrolls when many masks exist. Rendering remains
+            // lazy; no extra image decoding is needed for mask-type icons.
+            ScrollViewReader { proxy in
+                ScrollView {
+                    LazyVStack(spacing: 3) {
+                        ForEach(layers, id: \.id) { layer in maskRow(layer).id(layer.id) }
+                    }
+                }.accessibilityIdentifier("local-mask.list-scroll")
+                    .task(id: workspace.model?.selectedID) {
+                        // New masks, undo and redo can select a row beyond
+                        // the four visible slots. Keep that row reachable.
+                        if let selectedID = workspace.model?.selectedID { proxy.scrollTo(selectedID, anchor: .center) }
+                    }
+            }.frame(height: CGFloat(min(layers.count, 4) * 31 - 3))
             Divider()
             HStack(spacing: 9) {
                 Button { workspace.undo() } label: { Image(systemName: "arrow.uturn.backward") }
@@ -275,6 +274,7 @@ struct InlineMaskList: View {
                     .accessibilityLabel("Maskenänderung rückgängig").accessibilityIdentifier("local-mask.undo")
                 Button { workspace.redo() } label: { Image(systemName: "arrow.uturn.forward") }
                     .disabled(workspace.model?.canRedo != true).help("Maskenänderung wiederholen").accessibilityLabel("Maskenänderung wiederholen")
+                    .accessibilityIdentifier("local-mask.redo")
                 Spacer(minLength: 0)
                 Toggle("Überlagerung", isOn: $workspace.showsOverlay).toggleStyle(.checkbox)
                     .accessibilityIdentifier("local-mask.overlay")
@@ -332,22 +332,46 @@ struct InlineMaskList: View {
 @MainActor
 struct InlineMaskInspector: View {
     @ObservedObject var workspace: InlineMaskWorkspace
+    @ViewState private var showsCreator = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            HStack {
+            HStack(spacing: 6) {
                 Text("Maskieren").font(.headline)
                 Spacer()
+                if workspace.selected != nil {
+                    Button {
+                        workspace.finishGesture()
+                        showsCreator.toggle()
+                    } label: { Image(systemName: showsCreator ? "minus" : "plus") }
+                        .buttonStyle(.plain).help(showsCreator ? "Maskenauswahl schließen" : "Neue Maske hinzufügen")
+                        .accessibilityLabel(showsCreator ? "Maskenauswahl schließen" : "Neue Maske hinzufügen")
+                        .accessibilityIdentifier("local-mask.show-creator")
+                }
+                if !workspace.showsMaskList {
+                    Button { workspace.undo() } label: { Image(systemName: "arrow.uturn.backward") }
+                        .buttonStyle(.plain).disabled(workspace.model?.canUndo != true)
+                        .help("Maskenänderung rückgängig").accessibilityLabel("Maskenänderung rückgängig")
+                        .accessibilityIdentifier("local-mask.undo")
+                    Button { workspace.redo() } label: { Image(systemName: "arrow.uturn.forward") }
+                        .buttonStyle(.plain).disabled(workspace.model?.canRedo != true)
+                        .help("Maskenänderung wiederholen").accessibilityLabel("Maskenänderung wiederholen")
+                        .accessibilityIdentifier("local-mask.redo")
+                }
                 Button("Abbrechen") { workspace.cancel() }.controlSize(.small)
                     .accessibilityIdentifier("local-mask.cancel")
                 Button("Fertig") { workspace.apply() }.controlSize(.small).disabled(!workspace.canApply)
                     .accessibilityIdentifier("local-mask.apply")
             }
             if let model = workspace.model {
+                if workspace.selected == nil || showsCreator {
+                    InlineMaskCreator(workspace: workspace)
+                }
                 if let selected = workspace.selected { maskControls(selected, model: model).id(model.inputContextID) }
-                else { Text("Erstelle eine Maske und korrigiere damit einzelne Bildbereiche.").font(.caption).foregroundStyle(Theme.muted) }
-                Text(workspace.instruction).font(.system(size: 10)).foregroundStyle(Theme.muted)
-                    .fixedSize(horizontal: false, vertical: true)
+                if workspace.selected != nil {
+                    Text(workspace.instruction).font(.system(size: 10)).foregroundStyle(Theme.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 if model.isLoading { ProgressView("Bild wird geladen").controlSize(.small) }
                 if model.isGenerating {
                     HStack { ProgressView().controlSize(.small); Text("Auswahl wird berechnet").font(.caption); Spacer(); Button("Abbrechen") { model.cancelInference() } }
@@ -357,6 +381,9 @@ struct InlineMaskInspector: View {
                 }
             }
         }.padding(.vertical, 4)
+            .onChange(of: workspace.model?.selectedID) { _, selectedID in
+                if selectedID != nil { showsCreator = false }
+            }
     }
 
     private func maskControls(_ layer: LocalAdjustment, model: LocalAdjustmentEditorModel) -> some View {
@@ -367,6 +394,7 @@ struct InlineMaskInspector: View {
                     Text("Pinsel").font(.system(size: 11, weight: .semibold))
                     Spacer()
                     Toggle("Radierer", isOn: $workspace.erases).toggleStyle(.checkbox).font(.system(size: 10))
+                        .accessibilityIdentifier("local-mask.erase")
                     Button { workspace.brush.clear() } label: { Image(systemName: "trash.slash") }
                         .buttonStyle(.plain).help("Pinselstriche löschen").accessibilityLabel("Pinselstriche löschen")
                 }.controlSize(.mini).frame(height: 18)
@@ -379,6 +407,7 @@ struct InlineMaskInspector: View {
                     if !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { model.updateSelected { $0.name = String(name.prefix(64)) } }
                 })).textFieldStyle(.roundedBorder).accessibilityLabel("Maskenname")
                 Toggle("Umkehren", isOn: Binding(get: { workspace.selected?.mask.isInverted ?? false }, set: { value in model.updateSelected { $0.mask.isInverted = value } })).toggleStyle(.checkbox).fixedSize()
+                    .accessibilityIdentifier("local-mask.invert")
                 Menu {
                     Button("Maske duplizieren", systemImage: "plus.square.on.square") { workspace.finishGesture(); model.duplicateSelected() }
                         .disabled(model.settings.localAdjustments.count >= 16)
