@@ -30,8 +30,8 @@ struct ResettableSlider: NSViewRepresentable {
     }
 
     func updateNSView(_ slider: ResettableNativeSlider, context: Context) {
-        slider.minValue = range.lowerBound
-        slider.maxValue = range.upperBound
+        if slider.minValue != range.lowerBound { slider.minValue = range.lowerBound }
+        if slider.maxValue != range.upperBound { slider.maxValue = range.upperBound }
         slider.resetNeutralValue = min(range.upperBound, max(range.lowerBound, neutralValue))
         slider.valueStep = step
         slider.isEnabled = isEnabled
@@ -45,9 +45,7 @@ struct ResettableSlider: NSViewRepresentable {
         slider.interaction.readValue = { value }
         slider.interaction.writeValue = { value = $0 }
         slider.interaction.onEditingChanged = onEditingChanged
-        if !slider.interaction.hasUncommittedClick && !slider.interaction.isTracking {
-            slider.doubleValue = value
-        }
+        slider.synchronizeValueFromBinding()
     }
 
     static func dismantleNSView(_ slider: ResettableNativeSlider, coordinator: ()) {
@@ -69,7 +67,7 @@ final class ResettableSliderInteraction {
     private var pointerValue: Double?
     private var pendingClick: Double?
     private var pendingBaseline: Double?
-    private var pointerDown = false
+    private(set) var pointerDown = false
     private(set) var isTracking = false
     var hasUncommittedClick: Bool { pendingClick != nil }
 
@@ -270,13 +268,22 @@ final class ResettableNativeSlider: NSSlider {
 
     func continuedTracking(at point: NSPoint) {
         guard let initialPoint else { return }
+        // NSSliderCell can move without a target/action. Capture its current
+        // position before beginning the drag; publishing the buffered mouse-down
+        // position first would restore an old value and trigger a stale preview.
+        captureNativeValue()
         if hypot(point.x - initialPoint.x, point.y - initialPoint.y) > 2 {
             interaction.beginDragging()
         }
-        // NSSliderCell can update its native value without dispatching our
-        // target/action during AppKit's nested mouse tracking. Capture after
-        // its implementation, so live drags update the binding and respect step.
-        captureNativeValue()
+    }
+
+    func synchronizeValueFromBinding() {
+        // AppKit owns the knob from mouse-down, including the small movement
+        // before it qualifies as a drag. SwiftUI can update for unrelated image
+        // work during that interval, while the binding still has the old value.
+        guard !interaction.pointerDown, !interaction.isTracking,
+              !interaction.hasUncommittedClick else { return }
+        doubleValue = interaction.readValue()
     }
 
     func endPointerTracking() {

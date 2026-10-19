@@ -234,6 +234,38 @@ struct InlineMaskWorkspaceTests {
         #expect(await f.library.finishSaving())
     }
 
+    @Test func sliderStartHidesTheOverlayBeforePublishingAndMaskShapeChangesDoNotRestoreIt() async throws {
+        let f = try await fixture(nativeStore: false)
+        defer { try? FileManager.default.removeItem(at: f.directory) }
+        let workspace = InlineMaskWorkspace(), model = try model()
+        #expect(workspace.open(asset: f.asset, source: f.source, settings: .neutral,
+            editor: f.editor, library: f.library, model: model))
+        try await wait { workspace.canvasSize != nil }
+        model.add(.linear)
+        let initial = model.settings
+        let input = LocalMaskSliderInput(value: Binding(get: { model.selected?.mask.feather ?? 0 },
+            set: { value in model.updateSelected { $0.mask.feather = value } }), model: model, workspace: workspace)
+        let slider = ResettableSliderInteraction()
+        slider.readValue = { input.value.wrappedValue }
+        slider.writeValue = { input.value.wrappedValue = $0 }
+        slider.onEditingChanged = input.onEditingChanged
+        slider.beginPointer()
+        #expect(workspace.showsOverlay)
+        slider.beginDragging()
+        #expect(!workspace.showsOverlay, "Beginning native slider movement hides the overlay before any numeric change")
+        #expect(model.settings == initial)
+        slider.nativeValueChanged(0.2)
+        #expect(!workspace.showsOverlay, "Feather changes from a slider must preserve the photo preview")
+        slider.endPointer()
+        #expect(!workspace.showsOverlay)
+        workspace.showsOverlay = true
+        #expect(workspace.showsOverlay, "The overlay checkbox can still inspect the accepted mask")
+        workspace.undo()
+        #expect(model.settings == initial, "The slider gesture remains one shared undo step")
+        workspace.cancel()
+        #expect(await f.library.finishSaving())
+    }
+
     @Test func deletingListRowsKeepsOtherSelectionAndSynchronizesRestoredBrushes() async throws {
         let f = try await fixture(nativeStore: false)
         defer { try? FileManager.default.removeItem(at: f.directory) }

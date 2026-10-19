@@ -30,12 +30,14 @@ struct EditingPhotoPreview: View {
     let intent: EditingRenderIntent
     var settingsOverride: EditSettings?
     var developing = false
+    var imageScale: CGFloat = 1
+    var imageRotation: Double = 0
     @EnvironmentObject private var editor: EditingModel
     var body: some View {
         if let source = try? editor.resolvedSource(for: asset, intent: intent) {
             PhotoPreview(url: asset.fileURL, modifiedAt: asset.modifiedAt, fileSize: asset.fileSize,
                 settings: editor.showsImportedOriginalFallback ? .neutral : intent == .currentEditing ? settingsOverride ?? source.settings : .neutral,
-                source: source.identity, developing: developing)
+                source: source.identity, developing: developing, imageScale: imageScale, imageRotation: imageRotation)
                 .overlay(alignment: .top) {
                     if editor.showsImportedOriginalFallback, intent != .importedOriginal {
                         Text("Original ohne Bearbeitungen · Bearbeitungsdatenbank nicht verfügbar")

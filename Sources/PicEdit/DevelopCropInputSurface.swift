@@ -209,6 +209,7 @@ final class DevelopCropNativeInputView: NSView {
         self.onDoubleClickBegan = onDoubleClickBegan
         self.inputIdentity = inputIdentity
         inputEnabled = isEnabled
+        refreshCursorAtCurrentPointer()
     }
 
     override func viewWillMove(toWindow newWindow: NSWindow?) {
@@ -230,6 +231,7 @@ final class DevelopCropNativeInputView: NSView {
             self.cancelInput()
             return nil
         }
+        refreshCursorAtCurrentPointer()
     }
 
     override func updateTrackingAreas() {
@@ -239,6 +241,7 @@ final class DevelopCropNativeInputView: NSView {
         addTrackingArea(area)
         hoverTrackingArea = area
         super.updateTrackingAreas()
+        refreshCursorAtCurrentPointer()
     }
 
     override func mouseEntered(with event: NSEvent) { publishHover(event) }
@@ -332,6 +335,16 @@ final class DevelopCropNativeInputView: NSView {
         guard inputEnabled, !isInvalidated else { return }
         let point = convert(event.locationInWindow, from: nil)
         onHover(point)
+        cursor(point).set()
+    }
+
+    private func refreshCursorAtCurrentPointer() {
+        guard inputEnabled, !isInvalidated, let window, window.isKeyWindow,
+              let content = window.contentView else { return }
+        let point = convert(window.mouseLocationOutsideOfEventStream, from: nil)
+        // Configuration also changes while the pointer is stationary. Refresh
+        // only when this surface is the actual target, preserving panel cursors.
+        guard visibleRect.contains(point), content.hitTest(convert(point, to: content.superview)) === self else { return }
         cursor(point).set()
     }
 

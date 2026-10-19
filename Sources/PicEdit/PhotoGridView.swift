@@ -129,7 +129,7 @@ struct DetailView: View {
     @EnvironmentObject private var developWorkspace: DevelopWorkspace
     private var usesNativeCropInput: Bool {
         model.isDeveloping && developWorkspace.tool == .crop && model.editingRenderIntent == .currentEditing
-            && !maskWorkspace.isPresented
+            && !maskWorkspace.isPresented && !developWorkspace.picksWhiteBalance
     }
     private var usesNativeDevelopInput: Bool {
         model.isDeveloping && [.crop, .repair].contains(developWorkspace.tool)
@@ -168,7 +168,20 @@ struct DetailView: View {
                         InlineMaskViewportOverlays(workspace: maskWorkspace,
                             showsMaskList: layout.panels(developing: model.isDeveloping).showsTools
                                 && developWorkspace.tool == .masks)
+                        if !maskWorkspace.showsCalculationStatus {
+                            if developWorkspace.repairBusy {
+                                EditingProgressIndicator(cancelLabel: "Reparatur abbrechen") {
+                                    developWorkspace.cancelRepairWork(clearCandidates: false)
+                                }
+                            } else if developWorkspace.isAutoStraightening {
+                                EditingProgressIndicator().allowsHitTesting(false)
+                            } else if assistant.state == .generating {
+                                EditingProgressIndicator(cancelLabel: "Assistent abbrechen") { assistant.discard() }
+                            }
+                        }
                     }
+                    .environment(\.editingProgressIsCovered, maskWorkspace.showsCalculationStatus
+                        || developWorkspace.repairBusy || developWorkspace.isAutoStraightening || assistant.state == .generating)
                     .contextMenu { PhotoContextMenu(asset: asset, model: model) }
                     .accessibilityElement(children: .contain)
                     .accessibilityLabel("Bildfläche")
@@ -197,10 +210,10 @@ struct DetailView: View {
             let fit = DevelopCropCanvasPresentation.fittingScale(sourceSize: source, viewport: viewport.size, angle: angle)
             ZStack {
                 EditingPhotoPreview(asset: asset, intent: model.editingRenderIntent,
-                    settingsOverride: previewSettings(for: asset.id), developing: model.isDeveloping)
+                    settingsOverride: previewSettings(for: asset.id), developing: model.isDeveloping,
+                    imageScale: fit, imageRotation: angle)
                     // Composite the cached source immediately while the crop tool is
-                    // open; angle changes require neither decode nor pixel readback.
-                    .scaleEffect(fit).rotationEffect(.degrees(angle))
+                    // open. Only the photo rotates; the shared status stays upright.
                 if maskWorkspace.isPresented {
                     InlineMaskCanvas(workspace: maskWorkspace).allowsHitTesting(developWorkspace.isOriginalCanvasReady)
                 } else if model.isDeveloping, model.editingRenderIntent == .currentEditing {
