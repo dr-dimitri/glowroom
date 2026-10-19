@@ -8,6 +8,14 @@ Gruppen öffnen über ihre Überschrift. Das Kontextmenü einer Überschrift bie
 
 Regler stehen platzsparend in einer Zeile: Beschriftung links, kleiner Regler in der Mitte und Wert rechts. Kürzere Gruppenabstände sowie das kompakte Histogramm lassen mehr Einstellungen gleichzeitig sichtbar. Bei kleinen Fenstern oder zusätzlich geöffneten Gruppen bleibt die Seitenleiste scrollbar.
 
+## Zoom und Bildnavigation
+
+Ein **Doppelklick auf das Bild** vergrößert die Ansicht; der nächste Doppelklick passt sie wieder vollständig ein. Die Lupenschaltfläche bietet dieselbe Umschaltung. Beim Einblenden von Seitenbereichen bleibt die bereits gewählte Vergrößerung erhalten; ein Bildwechsel beginnt wieder eingepasst.
+
+In der Einzelbildansicht und den Grundeinstellungen lässt sich das vergrößerte Foto mit **Drei-Finger-Ziehen auf dem Trackpad** oder mit der Maus verschieben. Unterstützt werden sowohl direkt gelieferte Dreifingerkontakte als auch das von macOS als Mausbewegung übermittelte Drei-Finger-Ziehen. Falls macOS die Geste für eine Systemaktion verwendet, muss dort Drei-Finger-Ziehen aktiviert beziehungsweise die konkurrierende Geste angepasst werden. Zwei-Finger-Scrollen und die Scrollleisten bleiben verfügbar. Die Bewegung endet an den Rändern der Bildfläche. Beim erneuten Einpassen wird die Verschiebung zurückgesetzt.
+
+Bei aktivem Zuschnitt, Reparaturwerkzeug oder Weißabgleich verschieben direkt gelieferte Dreifingerkontakte ebenfalls die vergrößerte Ansicht. Gewöhnliches Mausziehen bedient dort weiterhin das Werkzeug. macOS übermittelt sein systemweites Drei-Finger-Ziehen als gewöhnliches Mausziehen; bei aktiven Werkzeugen folgt es deshalb deren Mausbedienung. In der eingepassten Zuschnittansicht verschieben drei Finger weiterhin den Zuschnittrahmen. Navigation ändert weder Bildkorrekturen noch deren Rückgängig-Verlauf. Escape, ein Fenster-/Quellenwechsel oder das Ende der Eingabe beendet eine laufende Verschiebung.
+
 ## Direkte Bearbeitung und Rückgängig
 
 Bildanpassungen wirken unmittelbar und werden automatisch gespeichert. Das gilt für globale Regler, Zuschnitt, rote Augen, Masken, abgeschlossene Reparaturen und lokale KI-Reparaturen. Der Textassistent aktiviert gültige Regleränderungen nach der Antwort direkt; bei drei Looks aktiviert ein Klick auf eine Karte die gewählte Variante. Ein zusätzlicher Übernehmen-Knopf entfällt. Noch laufende Erkennung oder Berechnung kann abgebrochen werden; bereits aktive Änderungen bleiben erhalten.

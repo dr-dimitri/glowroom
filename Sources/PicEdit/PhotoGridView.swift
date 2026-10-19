@@ -135,6 +135,16 @@ struct DetailView: View {
         model.isDeveloping && [.crop, .repair].contains(developWorkspace.tool)
             && model.editingRenderIntent == .currentEditing && !maskWorkspace.isPresented && !developWorkspace.picksWhiteBalance
     }
+    private var usesPhotoNavigationInput: Bool {
+        !maskWorkspace.isPresented && (!model.isDeveloping || model.editingRenderIntent != .currentEditing
+            || (developWorkspace.tool == .basic && !developWorkspace.picksWhiteBalance))
+    }
+    private struct NavigationIdentity: Hashable {
+        let asset: String
+        let source: AISourceIdentity?
+        let comparesOriginal: Bool
+        let comparesSource: Bool
+    }
     var body: some View {
         GeometryReader { available in
         VStack(spacing: 0) {
@@ -152,13 +162,14 @@ struct DetailView: View {
                                 // Capture magnification once; resizing panels only
                                 // changes the viewport around this scroll content.
                                 .frame(width: zoomCanvasSize.width, height: zoomCanvasSize.height)
-                                .onTapGesture(count: 2) { if !usesNativeDevelopInput { zoomed = false } }
+                                .environment(\.photoCanvasPanning, true)
+                                .onTapGesture(count: 2) { if !usesNativeDevelopInput && !usesPhotoNavigationInput { zoomed = false } }
                         }
                     } else {
                         developCanvas(asset: asset)
                             .padding(18)
                             .frame(width: geometry.size.width, height: geometry.size.height)
-                            .onTapGesture(count: 2) { if !usesNativeDevelopInput { toggleZoom(viewport: geometry.size) } }
+                            .onTapGesture(count: 2) { if !usesNativeDevelopInput && !usesPhotoNavigationInput { toggleZoom(viewport: geometry.size) } }
                     }
                 }.onGeometryChange(for: CGSize.self) { $0.size } action: {
                     canvasSize = $0
@@ -227,6 +238,16 @@ struct DetailView: View {
                     Image(decorative: overlay, scale: 1).resizable().interpolation(.none)
                         .aspectRatio(contentMode: .fit).allowsHitTesting(false)
                 }
+                if usesPhotoNavigationInput {
+                    DevelopCropInputSurface(onInput: { _ in }, onHover: { _ in }, isEnabled: true,
+                        inputIdentity: AnyHashable(NavigationIdentity(asset: asset.id,
+                            source: developWorkspace.sourceIdentity, comparesOriginal: model.comparesOriginal,
+                            comparesSource: model.comparesCurrentSourceWithoutSettings)),
+                        cursor: { _ in zoomed ? .openHand : .arrow },
+                        onDoubleClick: { toggleZoom(viewport: canvasSize) },
+                        canvasLabel: zoomed ? "Vergrößertes Bild verschieben · Doppelklick zum Einpassen" : "Bild · Doppelklick zum Vergrößern",
+                        pansWithPointer: true, canvasIdentifier: "workspace.photo-navigation")
+                }
             }
         }
     }
@@ -266,7 +287,7 @@ struct DetailView: View {
             Button { toggleZoom(viewport: canvasSize) } label: {
                 Image(systemName: zoomed ? "minus.magnifyingglass" : "plus.magnifyingglass")
                     .frame(width: 28, height: 30)
-            }.buttonStyle(.plain).help(zoomed ? "Einpassen" : "Vergrößern · Doppelklick auf das Bild")
+            }.buttonStyle(.plain).help(zoomed ? "Einpassen · Doppelklick auf das Bild · Drei-Finger-Ziehen zum Verschieben" : "Vergrößern · Doppelklick auf das Bild")
                 .accessibilityLabel(zoomed ? "Einpassen" : "Vergrößern")
                 .accessibilityIdentifier("workspace.zoom")
             Menu {
