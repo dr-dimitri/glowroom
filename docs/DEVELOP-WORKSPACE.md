@@ -2,6 +2,8 @@
 
 Die rechte Seitenleiste folgt der Reihenfolge Histogramm, Aufnahmedaten, Werkzeugleiste und aktive Werkzeuge. Die gemeinsame Bildfläche bleibt beim Wechsel zwischen globaler Bearbeitung, Masken, Zuschnitt und Retusche erhalten. Masken öffnen kein Sheet und kein zusätzliches Fenster.
 
+Regler stehen platzsparend in einer Zeile: Beschriftung links, kleiner Regler in der Mitte und Wert rechts. Kürzere Gruppenabstände sowie das kompakte Histogramm lassen mehr Einstellungen gleichzeitig sichtbar. Bei kleinen Fenstern oder zusätzlich geöffneten Gruppen bleibt die Seitenleiste scrollbar.
+
 ## Grundeinstellungen
 
 Das RGB-Histogramm folgt der tatsächlich dargestellten Vorschau. Es verwendet ein begrenztes sRGB-Raster bis 384 Pixel langer Kante; die logarithmische Höhe macht dünn besetzte Tonwerte sichtbar. Die Dreiecke schalten blaue Schatten- und rote Lichterwarnungen ein. Dies sind SDR-Vorschauwarnungen, kein RAW-Sensor-Clippingnachweis. ISO, Brennweite, Blende und Zeit stammen aus den bereits vorhandenen Metadaten. **Originalfoto** zeigt das importierte Original; die Bearbeitung bleibt gespeichert.
@@ -12,7 +14,11 @@ Ein Doppelklick auf die Reglerfläche oder den Reglerknopf stellt den Neutralwer
 
 ## Maskieren
 
-Die Maskenpalette enthält die Liste, **Neue Maske**, lokale Regler und **Fertig/Abbrechen**. Pinsel, lineare/radiale Verläufe, Motiv und Himmel werden direkt auf dem Bild bearbeitet. Verschiebbare Verlaufsgriffe, radiale Drehung, Pinsel-/Radiererverfeinerung, Reihenfolge, Sichtbarkeit, Duplizieren und Löschen sind verfügbar. **Fertig** übernimmt einen gesamten Maskenentwurf als einen normalen Rückgängig-Schritt. Internes Undo gilt nur für den Entwurf. Seitenbereiche dürfen verborgen werden, ohne ihn zu verlieren. **Abbrechen**, Wechsel zum Raster oder Wechsel von Foto/Quelle verwirft unbestätigte Änderungen. Bereits angenommene Speicheraufträge bleiben erhalten.
+Die **Maskenliste** liegt oben rechts auf der Bildfläche, direkt neben der Reglerpalette. **Neue Maske** ergänzt eine Auswahl; ein Klick auf eine Listenzeile wählt sie zur Bearbeitung. Die aktive Maske ist hervorgehoben. Auge und Papierkorb blenden die jeweilige Maske aus oder löschen sie; Löschen lässt sich über das lokale Rückgängig zurücknehmen. Bei mehr als vier Masken scrollt nur die Liste, die Regler behalten ihren Platz. Die Reglerpalette enthält zuerst den Pinsel, danach Maskeneigenschaften, Tonwert, Farbe, Effekte und **Fertig/Abbrechen**. Rückgängig/Wiederholen, **Überlagerung** und **Vorher** stehen am unteren Rand der Maskenliste.
+
+Die rote **Überlagerung** verschwindet automatisch, sobald lokale Korrekturen oder Maskenstärke geändert werden, damit die Bildwirkung sichtbar ist. Auswählen einer Maske oder erneutes Bearbeiten ihrer Form zeigt die Überlagerung wieder. **Überlagerung** schaltet sie auch manuell um.
+
+Pinsel, lineare/radiale Verläufe, Motiv und Himmel werden direkt auf dem Bild bearbeitet. Verschiebbare Verlaufsgriffe, radiale Drehung, Pinsel-/Radiererverfeinerung, Reihenfolge, Sichtbarkeit und Duplizieren sind verfügbar. **Fertig** übernimmt einen gesamten Maskenentwurf als einen normalen Rückgängig-Schritt. Internes Undo gilt nur für den Entwurf. Seitenbereiche dürfen verborgen werden, ohne ihn zu verlieren. **Abbrechen**, Wechsel zum Raster oder Wechsel von Foto/Quelle verwirft unbestätigte Änderungen. Bereits angenommene Speicheraufträge bleiben erhalten.
 
 Ein Sprung über Dock oder Werkzeugmenü zu Grundeinstellungen, Assistent, Bildanalyse, Bildinformationen oder Bildständen übernimmt einen gültigen Maskenentwurf und öffnet die gewählte Gruppe. Während einer automatischen Auswahl wartet der Sprung auf deren Abschluss. Wird die Speicherung abgewiesen, bleiben Palette und Entwurf erhalten; das Ziel kann nach Behebung erneut gewählt werden. Auch Zuschnitt- und Retuschepaletten geben beim Gruppensprung die normale Seitenleiste frei. Scrollposition und Tastaturfokus werden erst nach dem Einblenden der Zielgruppe gesetzt.
 

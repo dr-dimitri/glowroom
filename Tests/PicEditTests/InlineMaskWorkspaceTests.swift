@@ -71,6 +71,118 @@ struct InlineMaskWorkspaceTests {
         #expect(await f.library.finishSaving())
     }
 
+    @Test func localCorrectionsHideTheOverlayAndSelectingOrReshapingAMaskRestoresIt() async throws {
+        let f = try await fixture(nativeStore: false)
+        defer { try? FileManager.default.removeItem(at: f.directory) }
+        let workspace = InlineMaskWorkspace(), model = try model()
+        #expect(workspace.open(asset: f.asset, source: f.source, settings: .neutral,
+            editor: f.editor, library: f.library, model: model))
+        try await wait { workspace.canvasSize != nil }
+        model.add(.linear)
+        let firstID = try #require(model.selectedID)
+        #expect(workspace.showsOverlay)
+        model.beginChange()
+        model.updateSelected { $0.settings.exposure = 1.5 }
+        #expect(!workspace.showsOverlay)
+        model.updateSelected { $0.settings.contrast = 15 }
+        model.endChange()
+        #expect(!workspace.showsOverlay)
+        workspace.select(firstID)
+        #expect(workspace.showsOverlay, "Clicking the selected row inspects its area again")
+        model.updateSelected { $0.settings.saturation = 20 }
+        #expect(!workspace.showsOverlay)
+        model.updateSelected { $0.name = "Hintergrund" }
+        #expect(!workspace.showsOverlay, "Renaming must preserve the correction preview")
+        model.updateSelected { $0.mask.feather = 0.25 }
+        #expect(workspace.showsOverlay)
+        model.updateSelected { $0.mask.opacity = 0.5 }
+        #expect(!workspace.showsOverlay)
+        workspace.select(firstID)
+        model.updateSelected { $0.isEnabled = false }
+        #expect(!workspace.showsOverlay)
+        model.add(.radial)
+        #expect(workspace.showsOverlay)
+        workspace.select(firstID)
+        #expect(workspace.showsOverlay)
+        model.updateSelected { $0.settings = .neutral }
+        #expect(!workspace.showsOverlay, "Resetting corrections must show the resulting photo")
+        workspace.cancel()
+        #expect(await f.library.finishSaving())
+    }
+
+    @Test func paintingShowsTheMaskAgainWithoutChangingCorrectionUndoGrouping() async throws {
+        let f = try await fixture(nativeStore: false)
+        defer { try? FileManager.default.removeItem(at: f.directory) }
+        let workspace = InlineMaskWorkspace(), model = try model()
+        #expect(workspace.open(asset: f.asset, source: f.source, settings: .neutral,
+            editor: f.editor, library: f.library, model: model))
+        try await wait { workspace.canvasSize != nil }
+        model.add(.brush)
+        model.beginChange()
+        model.updateSelected { $0.settings.exposure = 1 }
+        model.updateSelected { $0.settings.exposure = 2 }
+        model.endChange()
+        #expect(!workspace.showsOverlay)
+        workspace.brush.appendPoint(try MaskPoint(x: 4, y: 5))
+        #expect(workspace.showsOverlay, "The area must be visible while the first stroke is still active")
+        workspace.finishGesture()
+        workspace.undo()
+        #expect(workspace.selected?.settings.exposure == 2)
+        #expect(workspace.brush.document?.strokes.isEmpty == true)
+        workspace.undo()
+        #expect(workspace.selected?.settings.exposure == 0)
+        #expect(!workspace.showsOverlay)
+        workspace.redo()
+        #expect(workspace.selected?.settings.exposure == 2)
+        #expect(!workspace.showsOverlay)
+        workspace.cancel()
+        #expect(await f.library.finishSaving())
+    }
+
+    @Test func deletingListRowsKeepsOtherSelectionAndSynchronizesRestoredBrushes() async throws {
+        let f = try await fixture(nativeStore: false)
+        defer { try? FileManager.default.removeItem(at: f.directory) }
+        let workspace = InlineMaskWorkspace(), model = try model()
+        #expect(workspace.open(asset: f.asset, source: f.source, settings: .neutral,
+            editor: f.editor, library: f.library, model: model))
+        try await wait { workspace.canvasSize != nil }
+        model.add(.brush)
+        let firstID = try #require(model.selectedID)
+        workspace.brush.appendPoint(try MaskPoint(x: 4, y: 5))
+        workspace.finishGesture()
+        let painted = try #require(workspace.brush.document)
+        model.add(.radial)
+        let secondID = try #require(model.selectedID)
+        model.add(.linear)
+        let thirdID = try #require(model.selectedID)
+        workspace.select(secondID)
+        workspace.delete(thirdID)
+        #expect(model.selectedID == secondID)
+        #expect(model.settings.localAdjustments.map(\.id) == [firstID, secondID])
+        workspace.undo()
+        #expect(model.selectedID == secondID)
+        #expect(model.settings.localAdjustments.map(\.id) == [firstID, secondID, thirdID])
+        workspace.delete(secondID)
+        #expect(model.selectedID == thirdID, "Removing the selected row picks its next neighbor")
+        #expect(workspace.brush.document?.strokes.isEmpty == true)
+        workspace.select(firstID)
+        #expect(workspace.brush.document == painted)
+        workspace.delete(firstID)
+        #expect(model.selectedID == thirdID)
+        #expect(workspace.brush.document?.strokes.isEmpty == true)
+        workspace.undo()
+        workspace.select(firstID)
+        #expect(workspace.brush.document == painted)
+        workspace.delete(firstID)
+        workspace.delete(thirdID)
+        #expect(workspace.selected == nil && workspace.brush.document == nil)
+        workspace.undo()
+        #expect(model.selectedID == thirdID)
+        #expect(workspace.brush.document?.strokes.isEmpty == true)
+        workspace.cancel()
+        #expect(await f.library.finishSaving())
+    }
+
     @Test func equalSettingsAfterUndoAndSelectionRoundTripCannotReviveDraft() async throws {
         let f = try await fixture()
         defer { try? FileManager.default.removeItem(at: f.directory) }
@@ -157,6 +269,54 @@ struct InlineMaskWorkspaceTests {
         #expect(model.selected?.settings.exposure == 0)
         model.undo()
         #expect(model.settings.localAdjustments.map(\.id) == [firstID], "A discarded stale click must not add an undo step")
+        model.close()
+    }
+
+    @Test func bufferedSliderInputStaysStaleAfterReturningToTheSameMask() async throws {
+        let model = try model()
+        await model.load(source: source())
+        model.add(.linear)
+        let firstID = try #require(model.selectedID)
+        let input = LocalMaskSliderInput(value: Binding(get: { model.selected?.settings.exposure ?? 0 },
+            set: { value in model.updateSelected { $0.settings.exposure = value } }), model: model)
+        let slider = ResettableSliderInteraction()
+        slider.readValue = { input.value.wrappedValue }
+        slider.writeValue = { input.value.wrappedValue = $0 }
+        slider.onEditingChanged = input.onEditingChanged
+        slider.beginPointer(); slider.nativeValueChanged(2); slider.endPointer()
+        model.add(.radial)
+        model.selectedID = firstID
+        slider.commitClick()
+        #expect(model.selected?.settings.exposure == 0)
+
+        // A stale control's end event must not close the newly selected group's
+        // undo boundary, even if SwiftUI has not dismantled the old native view.
+        model.beginChange()
+        model.updateSelected { $0.settings.exposure = 0.5 }
+        input.onEditingChanged(false)
+        model.updateSelected { $0.settings.exposure = 1 }
+        model.endChange()
+        model.undo()
+        #expect(model.selected?.settings.exposure == 0)
+        model.close()
+    }
+
+    @Test func deletedAndRestoredMaskCannotAcceptItsOldBufferedSliderClick() async throws {
+        let model = try model()
+        await model.load(source: source())
+        model.add(.linear)
+        let firstID = try #require(model.selectedID)
+        let input = LocalMaskSliderInput(value: Binding(get: { model.selected?.settings.exposure ?? 0 },
+            set: { value in model.updateSelected { $0.settings.exposure = value } }), model: model)
+        model.delete(firstID)
+        model.undo()
+        #expect(model.selectedID == firstID)
+        input.onEditingChanged(true)
+        input.value.wrappedValue = 2
+        input.onEditingChanged(false)
+        #expect(model.selected?.settings.exposure == 0)
+        model.undo()
+        #expect(model.settings.localAdjustments.isEmpty)
         model.close()
     }
 

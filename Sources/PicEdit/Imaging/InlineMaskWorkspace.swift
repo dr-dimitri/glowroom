@@ -33,6 +33,11 @@ final class InlineMaskWorkspace: ObservableObject {
             guard let self, !self.syncingBrush, let document else { return }
             self.installBrush(document)
         }.store(in: &brushSubscriptions)
+        brush.$previewDocument.dropFirst().sink { [weak self] document in
+            guard let self, !self.syncingBrush, self.isPresented, self.usesBrush,
+                  let document, document != self.brush.document else { return }
+            self.showsOverlay = true
+        }.store(in: &brushSubscriptions)
     }
 
     var selected: LocalAdjustment? { model?.selected }
@@ -93,10 +98,15 @@ final class InlineMaskWorkspace: ObservableObject {
         showsOverlay = true; comparesBefore = false; erases = false; refines = false
         isPresented = true
         model.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &subscriptions)
-        model.$settings.dropFirst().sink { [weak self] settings in self?.syncBrush(settings: settings) }.store(in: &subscriptions)
+        model.$settings.dropFirst().sink { [weak self] settings in
+            guard let self else { return }
+            self.updateOverlayVisibility(settings: settings)
+            self.syncBrush(settings: settings)
+        }.store(in: &subscriptions)
         model.$selectedID.dropFirst().sink { [weak self] selectedID in
             guard let self else { return }
             self.brush.cancelStroke(); self.model?.endChange(); self.refines = false
+            self.showsOverlay = true
             self.syncBrush(selectedID: selectedID)
         }.store(in: &subscriptions)
         // These publishers announce before mutation. Reconcile on the next actor
@@ -141,7 +151,23 @@ final class InlineMaskWorkspace: ObservableObject {
     func finishGesture() { brush.endStroke(); model?.endChange() }
     func undo() { brush.cancelStroke(); model?.undo(); syncBrush() }
     func redo() { brush.cancelStroke(); model?.redo(); syncBrush() }
-    func select(_ id: UUID) { finishGesture(); model?.selectedID = id }
+    func select(_ id: UUID) {
+        guard model?.settings.localAdjustments.contains(where: { $0.id == id }) == true else { return }
+        finishGesture(); model?.selectedID = id; showsOverlay = true
+    }
+    func delete(_ id: UUID) { finishGesture(); model?.delete(id) }
+    private func updateOverlayVisibility(settings: EditSettings) {
+        // Published settings arrive before mutation. Compare the same selected
+        // layer so names, ordering and edits to other masks do not hide its area.
+        guard let selected = model?.selected,
+              let updated = settings.localAdjustments.first(where: { $0.id == selected.id }) else { return }
+        if selected.settings != updated.settings || selected.isEnabled != updated.isEnabled
+            || selected.mask.opacity != updated.mask.opacity {
+            showsOverlay = false
+        } else if selected.mask != updated.mask {
+            showsOverlay = true
+        }
+    }
     func syncBrush(settings suppliedSettings: EditSettings? = nil, selectedID suppliedID: UUID?? = nil) {
         guard !syncingBrush, let model, let source, let canvas = model.canvasSize else { return }
         let settings = suppliedSettings ?? model.settings

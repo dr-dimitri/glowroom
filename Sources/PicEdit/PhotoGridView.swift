@@ -172,6 +172,14 @@ struct DetailView: View {
                     canvasSize = $0
                     measureCanvas?($0)
                 }
+                    .overlay(alignment: .topTrailing) {
+                        if layout.panels(developing: model.isDeveloping).showsTools,
+                           developWorkspace.tool == .masks, maskWorkspace.isPresented {
+                            InlineMaskList(workspace: maskWorkspace)
+                                .frame(width: 250)
+                                .padding(10)
+                        }
+                    }
                     .contextMenu { PhotoContextMenu(asset: asset, model: model) }
                     .accessibilityElement(children: .contain)
                     .accessibilityLabel("Bildfläche")
