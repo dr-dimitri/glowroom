@@ -50,6 +50,8 @@ Die Entwickeln-Ansicht zeigt links den **Navigator**, darunter **Assistent & Loo
 
 Navigation, Sterne, Favorit, Zoom und **Vergleich** bleiben beim Bild erreichbar. Das einzige Menü **Vergleich** unterscheidet importiertes Original, aktuelle Quelle ohne Regler und aktuelle Bearbeitung. **Maskieren** startet in der rechten Werkzeugleiste. Rückgängig/Wiederholen stehen unten links, vollständiges Zurücksetzen unten rechts; der Speicherstatus erscheint einmal global. Die Hinweise in der Statusleiste öffnen auch bei verborgenen Werkzeugen laufende Aufgaben, KI-Ergebnisse und Fehler; Speicherfehler bieten einen Weg zur Prüfung bzw. Wiederholung. **Sicherungen** und **Exportieren** stehen weiterhin oben. Ein Klick auf eine Lookkarte aktiviert, speichert und exportiert die gewählte Variante direkt.
 
+**Doppelklick auf das Bild** schaltet zwischen Vergrößerung und Einpassen um. In der Einzelbildansicht und den Grundeinstellungen lässt sich das vergrößerte Bild mit **Drei-Finger-Ziehen auf dem Trackpad** oder mit der Maus verschieben. Hinweise zur macOS-Geste und zu aktiven Bildwerkzeugen stehen unter [Zoom und Bildnavigation](docs/DEVELOP-WORKSPACE.md#zoom-und-bildnavigation).
+
 1. Mit **Ordner hinzufügen** oder **⌘O** einen Bilderordner auswählen.
 2. Bilder in der Rasteransicht sichten und die Einzelansicht öffnen. Mit **⌘-Klick** einzelne Bilder zur Auswahl hinzufügen oder abwählen, mit **⇧-Klick** einen Bereich auswählen und mit **⌘⇧-Klick** einen Bereich hinzufügen. **⌘A** wählt alle sichtbaren Bilder; **⇧ + Pfeiltasten** erweitert die Auswahl. Die Statusleiste zeigt die Anzahl ausgewählter Bilder.
 3. Bilder als Favoriten markieren oder mit einem bis fünf Sternen bewerten.
