@@ -1,4 +1,5 @@
 """Source acquisition guards, exercised without network or model dependencies."""
+import argparse
 import hashlib
 import io
 from pathlib import Path
@@ -11,6 +12,17 @@ import prepare
 
 
 class SourceTests(unittest.TestCase):
+    def test_invalid_resolution_fails_before_model_loading_or_publication(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            output = directory / "must-not-be-created.mlpackage"
+            for side in (0, 224, 1000, 2080):
+                with self.subTest(side=side), patch.object(prepare, "load_model") as loading:
+                    with self.assertRaises(argparse.ArgumentTypeError):
+                        prepare.convert(directory / "absent-source", output, side=side)
+                    loading.assert_not_called()
+                    self.assertFalse(output.exists())
+
     def test_unpinned_dependency_shadow_is_not_executed(self):
         with tempfile.TemporaryDirectory() as temporary:
             directory = Path(temporary)

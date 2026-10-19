@@ -27,11 +27,11 @@ Qualify it against the original PyTorch graph using an already developed, local 
   --image /path/to/local-developed-photo.png --output /tmp/picedit-subject-qualification
 ```
 
-This saves native/reference alpha masks, diagnostic −5 EV background renders and numeric differences. It performs one cold and one warm native prediction. Reference and native process peaks are reported separately; native Python memory includes conversion libraries and the compiler, so it must not be presented as PicEdit's inference-only memory usage. The image does not leave the machine.
+This saves native/reference alpha masks, diagnostic −5 EV background renders and numeric differences. It performs a first prediction after loading a new model and a repeated prediction with that model retained. OS, Core ML and GPU caches are not flushed, so the first prediction is not a guaranteed cold-cache measurement. Reference and native process peaks are reported separately; native Python memory includes conversion libraries and the compiler, so it must not be presented as PicEdit's inference-only memory usage. The image does not leave the machine.
 
 Reference inference runs in a child process and exits before native model loading, so PyTorch's retained CPU allocator does not overlap with Core ML's model allocation. `--reference-only` can stop after saving the reference if the native measurement will use the standalone Swift tool.
 
-For a standalone native process measurement, compile `benchmark.swift` with `swiftc`. Pass the same developed image, `gpu` or `cpu`, and a new output directory. Prefer an already compiled `.mlmodelc` to keep compiler memory out of this process. Its input resize matches PicEdit's CoreGraphics high-quality resize, which can differ slightly from the PyTorch/Pillow bilinear resize. It saves native Float32 alpha plus timings and peak process RSS; system GPU/driver allocations are not fully represented by that RSS value.
+For a standalone native process measurement, compile `benchmark.swift` with `swiftc`. Pass the same developed image, `gpu` or `cpu`, and a new output directory. Prefer an already compiled `.mlmodelc` to keep compiler memory out of this process. Its input resize matches PicEdit's CoreGraphics high-quality resize, which can differ slightly from the PyTorch/Pillow bilinear resize. It saves native Float32 alpha plus timings and peak process RSS; system GPU/driver allocations are not fully represented by that RSS value. `requestSecondsToFirstValidatedAlpha` uses a monotonic clock and includes model loading, image decode/resize, the first prediction and validation/copying of its alpha. It excludes compilation, diagnostic file writes, RAW development, PicEdit's installation hashes and the final aspect-restored Gray8 raster. It therefore measures the native request, not complete app latency. An optional final argument `1` measures only the first prediction in a fresh process; omit it to also measure a repeated GPU prediction with the model retained.
 
 ```sh
 swiftc tools/subject-matting/benchmark.swift -o /tmp/picedit-subject-benchmark
@@ -40,14 +40,44 @@ swiftc tools/subject-matting/benchmark.swift -o /tmp/picedit-subject-benchmark
 /tmp/picedit-subject-benchmark /tmp/PicEditBiRefNetHR.mlmodelc /path/to/photo.png cpu /tmp/picedit-subject-cpu
 /tmp/picedit-subject-env/bin/python tools/subject-matting/compare_native.py \
   --reference /tmp/picedit-subject-qualification/reference-alpha.npy --native /tmp/picedit-subject-gpu
-python3 -m unittest discover -s tools/subject-matting -p 'test_*.py'
+/tmp/picedit-subject-env/bin/python -m unittest discover -s tools/subject-matting -p 'test_*.py'
 ```
 
 For exact graph parity, pass the `reference-input.png` saved by `--reference-only` to the Swift tool. This removes differences between Pillow and CoreGraphics resizing. The Swift tool saves `alpha-1.f32` and `alpha-2.f32` in row-major Float32 layout; the comparison gates every prediction, including the first. Non-finite values, invalid alpha ranges or shapes fail closed. Run CPU and GPU benchmarks sequentially because they share the machine's memory and compute budget.
 
-`--side 1024` on both preparation and reference qualification exports an exploratory speed/quality candidate using the identical HR-trained weights. It does not change the app's approved 2048 model contract; lower-resolution fine-edge quality must be judged separately before accepting it.
+`--side` on preparation and reference qualification accepts multiples of 32 from 256 to 2048. Non-2048 exports are exploratory speed/quality candidates using the identical HR-trained weights. The stride-32 encoder and decoder patch channels require this alignment; Swin attention windows still add padding, so speed need not scale smoothly with pixel count. This does not change the app's approved 2048 model contract; lower-resolution fine-edge quality must be judged separately before accepting it.
 
 Measured on one developed RAW preview on an M2 Pro with 16 GiB RAM, the approved 2048 model took about 6.7 s to load plus 41.0 s for its first GPU prediction and 33.5 s for a repeated prediction with weights retained. CPU inference took 8.7 s after a 6.3 s load but differed more from the Float32 reference. An exploratory 1024 export took 6.4 s to load, 3.2 s for the first GPU prediction and 0.7 s for the repeated prediction; its wider soft needle edges were visibly worse. These figures describe the inspected workload and do not establish a general speedup or Lightroom equivalence. See `qualification.json` for numerical differences and memory limits. In the app, retaining a finished mask avoids repeating inference without retaining model weights.
+
+## Resolution experiment
+
+The follow-up six-second experiment uses the same checkpoint, conversion precision, CPU/GPU policy and developed image for every size. Convert and compile each candidate once, then invoke the standalone benchmark serially in new processes with the final argument `1`. Reusing a completed mask or retaining an `MLModel` would measure a different task. Independent source review and lightweight diagnostic preparation can run concurrently; model conversion, native benchmarks and the subsequent app build stay ordered to avoid resource contention affecting the results.
+
+Report every native request, its separate loading/inference times, the median and the observed range. Three observations do not establish a percentile or a latency guarantee. The first process after conversion can pay a much larger initialization cost than later new processes; keep it visible rather than discarding it. System caches are not purged. Timings from this series cannot be mixed with earlier qualification runs as if cache state were controlled. Fine-edge comparisons use aspect-restored scalar alpha and the same linear-sRGB −5 EV diagnostic at native preview pixels. Photographs and derivatives remain in private temporary directories.
+
+On the same M2 Pro/16 GiB host, three new native processes per size produced these request times, including model loading:
+
+| Square input side | First / second / third request | Median |
+| --- | --- | ---: |
+| 1024 | 3.45 / 2.44 / 2.38 s | 2.44 s |
+| 1536 | 9.41 / 3.64 / 3.43 s | 3.64 s |
+| 1792 | 10.53 / 4.95 / 5.17 s | 5.17 s |
+| 1920 | 11.84 / 5.43 / 5.23 s | 5.43 s |
+
+1920 is a candidate for approximately six seconds on a subsequent request with populated system caches. Its first process in this series took 11.84 seconds, so it does not meet a six-second startup guarantee. The already qualified 1024 model had been used before this experiment, whereas the larger candidates were converted for this series. See [`resolution-experiments.json`](resolution-experiments.json) for all observations, controls and qualification limits. The app's installed model, approved package manifest and fixed 2048 interface are unchanged.
+
+A new 2048 control request with the same instrumentation took 33.24 seconds (one observation, not a median), including 0.72 seconds loading and 31.89 seconds prediction. A final 1024 control took 3.27 seconds, including 0.93 seconds loading and 2.09 seconds prediction: loading/cache variability remains visible even with stable prediction times. Do not extrapolate intermediate sizes from pixel count alone.
+
+On the two inspected native-pixel needle/interior-gap crops, 1920 preserved details very similarly to the 2048 comparison; no clear systematic detail loss was visible there. 1024 had softer, wider transitions. Pointwise differences and thin bright mixed-pixel remnants under −5 EV remain, including at 2048. This single-image diagnostic does not establish a ground-truth accuracy score or replace production-renderer validation.
+
+Separate native/Float32 comparisons use each size's exact saved reference input, excluding those extra runs from the performance series. Both 1792 and 1920 pass the existing finite/shape/range, MAE ≤ 0.01 and P99 ≤ 0.1 gates, but are not numerically identical:
+
+| Side | Mean absolute alpha difference | P99 difference | Maximum difference |
+| --- | ---: | ---: | ---: |
+| 1792 | 0.00093427 | 0.02449879 | 0.20852727 |
+| 1920 | 0.00199026 | 0.05388648 | 0.50255138 |
+
+1792 is therefore a conservative alternative for a subsequent app experiment: its 5.17-second median meets the time band and its native graph is closer to its own Float32 reference. This is a numerical comparison, not evidence of greater ground-truth accuracy. Neither candidate has been accepted into the app's approved package manifest, and the visual similarity does not remove these numerical limits.
 
 ## Contract
 

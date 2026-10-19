@@ -11,13 +11,14 @@ import ImageIO
 enum Failure: Error { case invalidArguments, invalidImage, invalidAlpha }
 
 let arguments = CommandLine.arguments
+func monotonicTime() -> Double { ProcessInfo.processInfo.systemUptime }
 if arguments.count == 4, arguments[2] == "compile" {
-    let start = Date()
+    let start = monotonicTime()
     let compiled = try MLModel.compileModel(at: URL(fileURLWithPath: arguments[1]))
     try FileManager.default.copyItem(at: compiled, to: URL(fileURLWithPath: arguments[3]))
     var usage = rusage()
     getrusage(RUSAGE_SELF, &usage)
-    print("{\"compileSeconds\":\(Date().timeIntervalSince(start)),\"processPeakResidentBytes\":\(usage.ru_maxrss)}")
+    print("{\"compileSeconds\":\(monotonicTime() - start),\"processPeakResidentBytes\":\(usage.ru_maxrss)}")
     exit(0)
 }
 guard [5, 6].contains(arguments.count), ["cpu", "gpu"].contains(arguments[3]) else { throw Failure.invalidArguments }
@@ -26,19 +27,21 @@ guard (1...2).contains(iterations) else { throw Failure.invalidArguments }
 let directory = URL(fileURLWithPath: arguments[4], isDirectory: true)
 try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: false)
 let source = URL(fileURLWithPath: arguments[1])
-let started = Date()
+let started = monotonicTime()
 let compiled = source.pathExtension == "mlmodelc" ? source : try MLModel.compileModel(at: source)
-let compileSeconds = Date().timeIntervalSince(started)
+let compileSeconds = monotonicTime() - started
 let configuration = MLModelConfiguration()
 configuration.computeUnits = arguments[3] == "cpu" ? .cpuOnly : .cpuAndGPU
 configuration.allowLowPrecisionAccumulationOnGPU = false
-let loading = Date()
+let requestStarted = monotonicTime()
+let loading = monotonicTime()
 let model = try MLModel(contentsOf: compiled, configuration: configuration)
-let loadSeconds = Date().timeIntervalSince(loading)
+let loadSeconds = monotonicTime() - loading
 guard let sourceImage = CGImageSourceCreateWithURL(URL(fileURLWithPath: arguments[2]) as CFURL, nil),
       let image = CGImageSourceCreateImageAtIndex(sourceImage, 0, nil) else { throw Failure.invalidImage }
 guard let constraint = model.modelDescription.inputDescriptionsByName["image"]?.imageConstraint,
-      constraint.pixelsWide == constraint.pixelsHigh, [1024, 2048].contains(constraint.pixelsWide) else { throw Failure.invalidImage }
+      constraint.pixelsWide == constraint.pixelsHigh,
+      (256...2048).contains(constraint.pixelsWide), constraint.pixelsWide.isMultiple(of: 32) else { throw Failure.invalidImage }
 let side = constraint.pixelsWide
 var optionalBuffer: CVPixelBuffer?
 guard CVPixelBufferCreate(kCFAllocatorDefault, side, side, kCVPixelFormatType_32BGRA,
@@ -56,10 +59,11 @@ CVPixelBufferUnlockBaseAddress(buffer, [])
 let features = try MLDictionaryFeatureProvider(dictionary: ["image": buffer])
 var seconds = [Double]()
 var output = [Float]()
+var requestSecondsToFirstValidatedAlpha = 0.0
 for iteration in 0..<iterations {
-    let predicting = Date()
+    let predicting = monotonicTime()
     let prediction = try model.prediction(from: features)
-    seconds.append(Date().timeIntervalSince(predicting))
+    seconds.append(monotonicTime() - predicting)
     guard let alpha = prediction.featureValue(for: "alpha")?.multiArrayValue,
         alpha.dataType == .float32, alpha.shape.map(\.intValue) == [1, 1, side, side] else { throw Failure.invalidAlpha }
     let sy = alpha.strides[2].intValue, sx = alpha.strides[3].intValue
@@ -72,6 +76,7 @@ for iteration in 0..<iterations {
             output[y * side + x] = value
         }
     }
+    if iteration == 0 { requestSecondsToFirstValidatedAlpha = monotonicTime() - requestStarted }
     try output.withUnsafeBytes { try Data($0).write(to: directory.appendingPathComponent("alpha-\(iteration + 1).f32")) }
 }
 var usage = rusage()
@@ -80,8 +85,9 @@ try output.withUnsafeBytes { try Data($0).write(to: directory.appendingPathCompo
 let report: [String: Any] = [
     "computeUnits": arguments[3] == "cpu" ? "cpuOnly" : "cpuAndGPU", "side": side,
     "compileSeconds": compileSeconds, "loadSeconds": loadSeconds, "inferenceSeconds": seconds,
+    "requestSecondsToFirstValidatedAlpha": requestSecondsToFirstValidatedAlpha,
     "processPeakResidentBytes": usage.ru_maxrss, "alphaMinimum": output.min()!, "alphaMaximum": output.max()!,
-    "limitations": "Single local image; process RSS includes compiler if .mlpackage is passed; excludes some system GPU/driver allocations. CoreGraphics high-quality resize."
+    "limitations": "Fresh native process; OS/Core ML/GPU caches not purged. Request uses monotonic time from MLModel load through image decode/resize, first prediction and validated alpha copy, excluding compilation and output writes. App installation integrity hashing, RAW development and final aspect-restoration raster are excluded. Process RSS excludes some GPU/driver allocations. CoreGraphics high-quality resize."
 ]
 let json = try JSONSerialization.data(withJSONObject: report, options: [.prettyPrinted, .sortedKeys])
 try json.write(to: directory.appendingPathComponent("benchmark.json"))
