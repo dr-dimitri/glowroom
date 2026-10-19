@@ -127,6 +127,10 @@ struct DetailView: View {
     @ViewState private var zoomCanvasSize = CGSize.zero
     @EnvironmentObject private var maskWorkspace: InlineMaskWorkspace
     @EnvironmentObject private var developWorkspace: DevelopWorkspace
+    private var usesNativeCropInput: Bool {
+        model.isDeveloping && developWorkspace.tool == .crop && model.editingRenderIntent == .currentEditing
+            && !maskWorkspace.isPresented
+    }
     var body: some View {
         GeometryReader { available in
         VStack(spacing: 0) {
@@ -144,13 +148,13 @@ struct DetailView: View {
                                 // Capture magnification once; resizing panels only
                                 // changes the viewport around this scroll content.
                                 .frame(width: zoomCanvasSize.width, height: zoomCanvasSize.height)
-                                .onTapGesture(count: 2) { zoomed = false }
+                                .onTapGesture(count: 2) { if !usesNativeCropInput { zoomed = false } }
                         }
                     } else {
                         developCanvas(asset: asset)
                             .padding(18)
                             .frame(width: geometry.size.width, height: geometry.size.height)
-                            .onTapGesture(count: 2) { toggleZoom(viewport: geometry.size) }
+                            .onTapGesture(count: 2) { if !usesNativeCropInput { toggleZoom(viewport: geometry.size) } }
                     }
                 }.onGeometryChange(for: CGSize.self) { $0.size } action: {
                     canvasSize = $0
@@ -185,20 +189,30 @@ struct DetailView: View {
     }
 
     private func developCanvas(asset: PhotoAsset) -> some View {
-        ZStack {
-            EditingPhotoPreview(asset: asset, intent: model.editingRenderIntent,
-                settingsOverride: previewSettings(for: asset.id), developing: model.isDeveloping)
-            if maskWorkspace.isPresented {
-                InlineMaskCanvas(workspace: maskWorkspace).allowsHitTesting(developWorkspace.isOriginalCanvasReady)
-            } else if model.isDeveloping, model.editingRenderIntent == .currentEditing {
-                DevelopCanvasInteraction(asset: asset, workspace: developWorkspace)
-            }
-            if developWorkspace.tool == .basic, !developWorkspace.picksWhiteBalance,
-               let analysis = developWorkspace.analysis,
-               let overlay = analysis.clippingImage(shadows: developWorkspace.showsShadows, highlights: developWorkspace.showsHighlights),
-               developWorkspace.showsShadows || developWorkspace.showsHighlights {
-                Image(decorative: overlay, scale: 1).resizable().interpolation(.none)
-                    .aspectRatio(contentMode: .fit).allowsHitTesting(false)
+        GeometryReader { viewport in
+            let source = developWorkspace.sourceSize ?? CGSize(width: max(1, asset.pixelWidth), height: max(1, asset.pixelHeight))
+            let angle = usesNativeCropInput && developWorkspace.isOriginalCanvasReady
+                ? editor.settings(for: asset.id).developGeometry.straightenAngle : 0
+            let fit = DevelopCropCanvasPresentation.fittingScale(sourceSize: source, viewport: viewport.size, angle: angle)
+            ZStack {
+                EditingPhotoPreview(asset: asset, intent: model.editingRenderIntent,
+                    settingsOverride: previewSettings(for: asset.id), developing: model.isDeveloping)
+                    // Composite the cached source immediately while the crop tool is
+                    // open; angle changes require neither decode nor pixel readback.
+                    .scaleEffect(fit).rotationEffect(.degrees(angle))
+                if maskWorkspace.isPresented {
+                    InlineMaskCanvas(workspace: maskWorkspace).allowsHitTesting(developWorkspace.isOriginalCanvasReady)
+                } else if model.isDeveloping, model.editingRenderIntent == .currentEditing {
+                    DevelopCanvasInteraction(asset: asset, workspace: developWorkspace,
+                        onDoubleClick: { toggleZoom(viewport: canvasSize) })
+                }
+                if developWorkspace.tool == .basic, !developWorkspace.picksWhiteBalance,
+                   let analysis = developWorkspace.analysis,
+                   let overlay = analysis.clippingImage(shadows: developWorkspace.showsShadows, highlights: developWorkspace.showsHighlights),
+                   developWorkspace.showsShadows || developWorkspace.showsHighlights {
+                    Image(decorative: overlay, scale: 1).resizable().interpolation(.none)
+                        .aspectRatio(contentMode: .fit).allowsHitTesting(false)
+                }
             }
         }
     }

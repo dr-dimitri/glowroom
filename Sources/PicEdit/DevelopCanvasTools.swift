@@ -77,101 +77,188 @@ struct DevelopGeometryInspector: View {
 struct DevelopCanvasInteraction: View {
     let asset: PhotoAsset
     @ObservedObject var workspace: DevelopWorkspace
+    var onDoubleClick: (() -> Void)? = nil
     @EnvironmentObject private var editor: EditingModel
     @ViewState private var start: CGPoint?
     @ViewState private var current: CGPoint?
     @ViewState private var originalCrop: DevelopCropRect?
-    @ViewState private var movingCrop = false
-    @ViewState private var cropHandle: DevelopCropHandle?
-    @ViewState private var hoveringCanvas = false
+    @ViewState private var cropAction: DevelopCropDragAction?
+    @ViewState private var straighteningGesture = false
+    @ViewState private var expectedCropRevision: Int64?
+    @ViewState private var expectedCropSession: UUID?
     @ViewState private var lastRepairPoint: CGPoint?
     @ViewState private var repairTargetStart: CGPoint?
     private var sourceSize: CGSize { workspace.sourceSize ?? CGSize(width: max(1, asset.pixelWidth), height: max(1, asset.pixelHeight)) }
     private var geometry: DevelopGeometry { editor.settings(for: asset.id).developGeometry }
+
+    private struct CropInputIdentity: Hashable {
+        let asset: String
+        let source: AISourceIdentity?
+        let angle: Double
+        let straightening: Bool
+    }
+
     var body: some View {
         GeometryReader { viewport in
-            let rect = imageRect(viewport.size)
+            let rect = DevelopCropCanvasPresentation.imageRect(sourceSize: sourceSize, viewport: viewport.size)
+            let angle = geometry.straightenAngle
+            let fit = DevelopCropCanvasPresentation.fittingScale(sourceSize: sourceSize, viewport: viewport.size, angle: angle)
             ZStack(alignment: .topLeading) {
                 if workspace.tool == .crop {
-                    cropOutline(rect)
-                } else if workspace.tool == .repair, let source = workspace.repairSource {
-                    let point = CGPoint(x: rect.minX + source.x * rect.width, y: rect.minY + source.y * rect.height)
-                    Circle().stroke(Theme.accent, lineWidth: 1.5)
-                        .frame(width: radius(rect) * 2, height: radius(rect) * 2)
-                        .position(point).allowsHitTesting(false)
-                    Image(systemName: "plus").font(.system(size: 11)).foregroundStyle(Theme.accent).position(point).allowsHitTesting(false)
-                } else if workspace.tool == .redEye, let start, let current {
-                    Ellipse().stroke(.white, style: StrokeStyle(lineWidth: 1, dash: [4]))
-                        .frame(width: abs(current.x - start.x) * rect.width, height: abs(current.y - start.y) * rect.height)
-                        .position(x: rect.minX + (current.x + start.x) / 2 * rect.width, y: rect.minY + (current.y + start.y) / 2 * rect.height)
-                        .allowsHitTesting(false)
-                }
-                if workspace.tool != .basic || workspace.picksWhiteBalance {
-                    Color.clear.contentShape(Rectangle()).gesture(drag(rect))
-                        .onContinuousHover { phase in
-                            switch phase {
-                            case .active(let point):
-                                hoveringCanvas = true
-                                updateCursor(at: point, rect: rect)
-                            case .ended:
-                                hoveringCanvas = false
-                                NSCursor.arrow.set()
-                            }
-                        }
-                        .accessibilityLabel(workspace.picksWhiteBalance ? "Neutrale Fläche für Weißabgleich wählen" : workspace.tool.title + " auf dem Bild")
+                    cropOutline(rect, displayScale: fit)
+                        .scaleEffect(fit).rotationEffect(.degrees(angle))
+                        .opacity(workspace.isOriginalCanvasReady ? 1 : 0)
+                    // Native input remains in viewport coordinates. Inverse-map
+                    // it once, rather than relying on AppKit layer transforms.
+                    DevelopCropInputSurface(onInput: { event in
+                        cropInput(event, rect: rect, viewport: viewport.size, angle: angle, scale: fit)
+                    }, onHover: { point in
+                        if point == nil { NSCursor.arrow.set() }
+                    }, isEnabled: editor.canEdit && workspace.isOriginalCanvasReady,
+                        inputIdentity: AnyHashable(CropInputIdentity(asset: asset.id, source: workspace.sourceIdentity,
+                            angle: angle, straightening: workspace.isStraightening)),
+                        cursor: { point in cropCursor(at: point, rect: rect, viewport: viewport.size, angle: angle, scale: fit) },
+                        onDoubleClick: onDoubleClick)
+                        .accessibilityLabel(workspace.isStraightening ? "Bezugslinie zum Ausrichten auf dem Bild ziehen" : workspace.tool.title + " auf dem Bild")
                         .accessibilityIdentifier("develop.interactive-canvas")
+                } else {
+                    if workspace.tool == .repair, let source = workspace.repairSource {
+                        let point = CGPoint(x: rect.minX + source.x * rect.width, y: rect.minY + source.y * rect.height)
+                        Circle().stroke(Theme.accent, lineWidth: 1.5)
+                            .frame(width: radius(rect) * 2, height: radius(rect) * 2)
+                            .position(point).allowsHitTesting(false)
+                        Image(systemName: "plus").font(.system(size: 11)).foregroundStyle(Theme.accent).position(point).allowsHitTesting(false)
+                    } else if workspace.tool == .redEye, let start, let current {
+                        Ellipse().stroke(.white, style: StrokeStyle(lineWidth: 1, dash: [4]))
+                            .frame(width: abs(current.x - start.x) * rect.width, height: abs(current.y - start.y) * rect.height)
+                            .position(x: rect.minX + (current.x + start.x) / 2 * rect.width, y: rect.minY + (current.y + start.y) / 2 * rect.height)
+                            .allowsHitTesting(false)
+                    }
+                    if workspace.tool != .basic || workspace.picksWhiteBalance {
+                        Color.clear.contentShape(Rectangle()).gesture(drag(rect))
+                            .accessibilityLabel(workspace.picksWhiteBalance ? "Neutrale Fläche für Weißabgleich wählen" : workspace.tool.title + " auf dem Bild")
+                            .accessibilityIdentifier("develop.interactive-canvas")
+                    }
                 }
             }
             .onChange(of: viewport.size) { _, _ in finishGesture() }
         }.allowsHitTesting(workspace.isOriginalCanvasReady && (workspace.tool != .basic || workspace.picksWhiteBalance))
             .onChange(of: workspace.tool) { _, _ in finishGesture() }
+            .onChange(of: workspace.isStraightening) { _, _ in finishGesture() }
             .onChange(of: asset.id) { _, _ in finishGesture() }
+            .onChange(of: sourceSize) { _, _ in finishGesture() }
             .onChange(of: workspace.sourceIdentity) { _, _ in finishGesture() }
             .onChange(of: workspace.isOriginalCanvasReady) { _, ready in if !ready { finishGesture() } }
             .onChange(of: editor.canEdit) { _, canEdit in if !canEdit { finishGesture() } }
-            .onDisappear { finishGesture(); NSCursor.arrow.set() }
-    }
-    private func imageRect(_ viewport: CGSize) -> CGRect {
-        let scale = min(viewport.width / sourceSize.width, viewport.height / sourceSize.height)
-        let size = CGSize(width: sourceSize.width * scale, height: sourceSize.height * scale)
-        return CGRect(x: (viewport.width - size.width) / 2, y: (viewport.height - size.height) / 2, width: size.width, height: size.height)
+            .onDisappear { finishGesture() }
     }
     private func radius(_ rect: CGRect) -> Double { workspace.repairRadius * min(rect.width, rect.height) }
     private func normalized(_ point: CGPoint, rect: CGRect, clamp: Bool = false) -> CGPoint? {
         guard rect.width > 0, rect.height > 0, clamp || rect.contains(point) else { return nil }
         return CGPoint(x: min(1, max(0, (point.x - rect.minX) / rect.width)), y: min(1, max(0, (point.y - rect.minY) / rect.height)))
     }
-    private func cropOutline(_ rect: CGRect) -> some View {
+    private func cropOutline(_ rect: CGRect, displayScale: CGFloat) -> some View {
         let box = DevelopCropInteraction.box(crop: geometry.crop, imageRect: rect)
-        let showsGrid = workspace.cropOverlay == .always || (workspace.cropOverlay == .automatic && (hoveringCanvas || start != nil))
         return Canvas { context, _ in
             var shade = Path(rect); shade.addRect(box)
             context.fill(shade, with: .color(.black.opacity(0.55)), style: FillStyle(eoFill: true))
-            context.stroke(Path(box), with: .color(.white), lineWidth: 1)
+            context.stroke(Path(box), with: .color(.white), lineWidth: 1 / displayScale)
             var grid = Path()
             for fraction in [1.0 / 3, 2.0 / 3] {
                 grid.move(to: CGPoint(x: box.minX + box.width * fraction, y: box.minY)); grid.addLine(to: CGPoint(x: box.minX + box.width * fraction, y: box.maxY))
                 grid.move(to: CGPoint(x: box.minX, y: box.minY + box.height * fraction)); grid.addLine(to: CGPoint(x: box.maxX, y: box.minY + box.height * fraction))
             }
-            if showsGrid { context.stroke(grid, with: .color(.white.opacity(0.5)), lineWidth: 0.5) }
+            context.stroke(grid, with: .color(.white.opacity(0.5)), lineWidth: 0.5 / displayScale)
             for handle in DevelopCropHandle.allCases {
-                let point = handle.position(in: box)
-                let dot = Path(ellipseIn: CGRect(x: point.x - 4, y: point.y - 4, width: 8, height: 8))
-                context.stroke(dot, with: .color(.black.opacity(0.8)), lineWidth: 2)
+                let point = handle.position(in: box), radius = 4 / displayScale
+                let dot = Path(ellipseIn: CGRect(x: point.x - radius, y: point.y - radius, width: radius * 2, height: radius * 2))
+                context.stroke(dot, with: .color(.black.opacity(0.8)), lineWidth: 2 / displayScale)
                 context.fill(dot, with: .color(.white))
+            }
+            if straighteningGesture, let start, let current {
+                var line = Path()
+                line.move(to: CGPoint(x: rect.minX + start.x * rect.width, y: rect.minY + start.y * rect.height))
+                line.addLine(to: CGPoint(x: rect.minX + current.x * rect.width, y: rect.minY + current.y * rect.height))
+                context.stroke(line, with: .color(.black), lineWidth: 4 / displayScale)
+                context.stroke(line, with: .color(.white), lineWidth: 2 / displayScale)
             }
         }.allowsHitTesting(false)
     }
+
+    private func cropInput(_ event: DevelopCropInputEvent, rect: CGRect, viewport: CGSize, angle: Double, scale: CGFloat) {
+        if event.phase == .cancelled { finishGesture(); return }
+        guard editor.canEdit, workspace.isOriginalCanvasReady,
+              let location = DevelopCropCanvasPresentation.canvasPoint(from: event.location, viewport: viewport, angle: angle, scale: scale),
+              let initial = DevelopCropCanvasPresentation.canvasPoint(from: event.startLocation, viewport: viewport, angle: angle, scale: scale) else { return }
+        if event.phase == .began {
+            let action = DevelopCropInteraction.dragAction(at: initial, crop: geometry.crop, imageRect: rect,
+                forceMove: event.kind == .threeFinger || NSEvent.modifierFlags.contains(.command), hitRadius: DevelopCropInteraction.hitRadius / scale)
+            let touchesHandle: Bool
+            if case .resize = action { touchesHandle = true } else { touchesHandle = false }
+            guard let point = normalized(initial, rect: rect, clamp: touchesHandle) else { return }
+            start = point; current = point; originalCrop = geometry.crop
+            straighteningGesture = workspace.isStraightening && event.kind == .pointer
+            cropAction = straighteningGesture ? nil : action
+            editor.endEditing(assetID: asset.id); editor.beginEditing(assetID: asset.id)
+            expectedCropRevision = editor.localRevision(for: asset.id)
+            expectedCropSession = editor.aiEditSessionID
+        }
+        guard expectedCropRevision == editor.localRevision(for: asset.id), expectedCropSession == editor.aiEditSessionID else {
+            finishGesture()
+            return
+        }
+        guard let start, let point = normalized(location, rect: rect, clamp: true) else { return }
+        current = point
+        if !straighteningGesture {
+            updateCrop(point, translation: CGSize(width: (location.x - initial.x) / rect.width,
+                                                  height: (location.y - initial.y) / rect.height))
+            expectedCropRevision = editor.localRevision(for: asset.id)
+        }
+        if event.phase == .ended {
+            if straighteningGesture,
+               hypot(event.translation.width, event.translation.height) >= 12,
+               let correction = DevelopCropCanvasPresentation.straighteningAngle(from: start, to: point, sourceSize: sourceSize) {
+                update { $0.straightenAngle = (correction * 100).rounded() / 100 }
+                workspace.isStraightening = false
+            }
+            finishGesture()
+        }
+    }
+
+    private func updateCrop(_ end: CGPoint, translation: CGSize) {
+        guard let start, let cropAction else { return }
+        let ratio = workspace.cropAspectLocked
+            ? (workspace.cropAspect == "free" ? workspace.lockedCropRatio : workspace.cropRatio(source: sourceSize)) : nil
+        let crop: DevelopCropRect?
+        switch cropAction {
+        case .move: crop = DevelopCropInteraction.moved(crop: originalCrop, translation: translation)
+        case .resize(let handle): crop = DevelopCropInteraction.resized(crop: originalCrop, handle: handle,
+            translation: translation, sourceSize: sourceSize, aspectRatio: ratio)
+        case .create: crop = DevelopCropInteraction.created(from: start, to: end, sourceSize: sourceSize, aspectRatio: ratio)
+        }
+        if let crop { update { $0.crop = crop } }
+    }
+
+    private func cropCursor(at point: CGPoint, rect: CGRect, viewport: CGSize, angle: Double, scale: CGFloat) -> NSCursor {
+        guard editor.canEdit, workspace.isOriginalCanvasReady,
+              let location = DevelopCropCanvasPresentation.canvasPoint(from: point, viewport: viewport, angle: angle, scale: scale) else { return .arrow }
+        if straighteningGesture || workspace.isStraightening { return .crosshair }
+        let action = cropAction ?? DevelopCropInteraction.dragAction(at: location, crop: geometry.crop, imageRect: rect,
+            forceMove: false, hitRadius: DevelopCropInteraction.hitRadius / scale)
+        switch action {
+        case .resize(let handle): return DevelopCropCursor.cursor(for: handle, angle: angle)
+        case .move: return start == nil ? .openHand : .closedHand
+        case .create: return rect.contains(location) ? .crosshair : .arrow
+        }
+    }
+
     private func drag(_ rect: CGRect) -> some Gesture {
         DragGesture(minimumDistance: 0).onChanged { value in
-            let hit = workspace.tool == .crop ? DevelopCropInteraction.handle(at: value.startLocation, crop: geometry.crop, imageRect: rect) : nil
             guard editor.canEdit, workspace.isOriginalCanvasReady,
-                  let point = normalized(value.location, rect: rect, clamp: start != nil || hit != nil) else { return }
+                  let point = normalized(value.location, rect: rect, clamp: start != nil) else { return }
             if start == nil {
-                guard let initial = normalized(value.startLocation, rect: rect, clamp: hit != nil) else { return }
-                start = initial; originalCrop = geometry.crop; current = initial
-                cropHandle = hit
-                movingCrop = hit == nil && NSEvent.modifierFlags.contains(.command)
+                guard let initial = normalized(value.startLocation, rect: rect) else { return }
+                start = initial; current = initial
                 editor.endEditing(assetID: asset.id); editor.beginEditing(assetID: asset.id)
                 if workspace.tool == .repair {
                     if workspace.repairSource == nil || NSEvent.modifierFlags.contains(.option) {
@@ -182,16 +269,12 @@ struct DevelopCanvasInteraction: View {
             }
             current = point
             if workspace.picksWhiteBalance { return }
-            if workspace.tool == .crop {
-                updateCrop(point, translation: CGSize(width: value.translation.width / rect.width, height: value.translation.height / rect.height))
-                if let cropHandle { DevelopCropCursor.cursor(for: cropHandle).set() }
-            }
             if workspace.tool == .repair, repairTargetStart != nil {
                 let distance = lastRepairPoint.map { hypot(($0.x - point.x) * rect.width, ($0.y - point.y) * rect.height) } ?? .infinity
                 if distance > radius(rect) * 0.6 { addRepair(point) }
             }
         }.onEnded { value in
-            defer { finishGesture(); updateCursor(at: value.location, rect: rect) }
+            defer { finishGesture() }
             guard let start, let end = normalized(value.location, rect: rect, clamp: true) else { return }
             if workspace.picksWhiteBalance { pickWhiteBalance(end); return }
             if workspace.tool == .redEye {
@@ -203,25 +286,6 @@ struct DevelopCanvasInteraction: View {
                 } catch { workspace.errorMessage = error.localizedDescription }
             }
         }
-    }
-    private func updateCrop(_ end: CGPoint, translation: CGSize) {
-        guard let start else { return }
-        if movingCrop, let crop = originalCrop {
-            let x = min(1 - crop.width, max(0, crop.x + end.x - start.x))
-            let y = min(1 - crop.height, max(0, crop.y + end.y - start.y))
-            update { $0.crop = try? DevelopCropRect(x: x, y: y, width: crop.width, height: crop.height) }
-            return
-        }
-        let ratio = workspace.cropAspectLocked
-            ? (workspace.cropAspect == "free" ? workspace.lockedCropRatio : workspace.cropRatio(source: sourceSize)) : nil
-        let crop: DevelopCropRect?
-        if let cropHandle {
-            crop = DevelopCropInteraction.resized(crop: originalCrop, handle: cropHandle,
-                translation: translation, sourceSize: sourceSize, aspectRatio: ratio)
-        } else {
-            crop = DevelopCropInteraction.created(from: start, to: end, sourceSize: sourceSize, aspectRatio: ratio)
-        }
-        if let crop { update { $0.crop = crop } }
     }
     private func addRepair(_ point: CGPoint) {
         guard let source = workspace.repairSource, let targetStart = repairTargetStart else { return }
@@ -265,17 +329,10 @@ struct DevelopCanvasInteraction: View {
         catch { workspace.errorMessage = error.localizedDescription }
     }
     private func finishGesture() {
-        editor.endEditing(assetID: asset.id)
-        start = nil; current = nil; originalCrop = nil; cropHandle = nil; movingCrop = false
+        if start != nil { editor.endEditing(assetID: asset.id) }
+        start = nil; current = nil; originalCrop = nil; cropAction = nil; straighteningGesture = false
         lastRepairPoint = nil; repairTargetStart = nil
+        expectedCropRevision = nil; expectedCropSession = nil
         NSCursor.arrow.set()
     }
-
-    private func updateCursor(at point: CGPoint, rect: CGRect) {
-        guard workspace.tool == .crop, workspace.isOriginalCanvasReady, editor.canEdit else { NSCursor.arrow.set(); return }
-        if let handle = cropHandle ?? DevelopCropInteraction.handle(at: point, crop: geometry.crop, imageRect: rect) {
-            DevelopCropCursor.cursor(for: handle).set()
-        } else { (rect.contains(point) ? NSCursor.crosshair : NSCursor.arrow).set() }
-    }
-
 }

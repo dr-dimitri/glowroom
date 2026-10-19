@@ -19,7 +19,7 @@ struct DevelopCropInspectorTests {
             .environmentObject(fixture.editor))
 
         #expect(host.fittingHeight <= 410, "All crop controls must fit below the histogram without scrolling")
-        for name in ["aspect", "lock", "angle", "auto", "constrain", "overlay", "reset", "close"] {
+        for name in ["aspect", "lock", "angle", "straighten", "auto", "reset", "close"] {
             let control = try #require(host.element(name), "Missing crop control: \(name)")
             let frame = control.accessibilityFrame()
             #expect(frame.width > 0 && frame.height > 0, "The \(name) control must have a visible native frame")
@@ -27,6 +27,13 @@ struct DevelopCropInspectorTests {
         }
         let angleSlider = try #require(host.sliders.first)
         #expect(angleSlider.bounds.width >= 70, "The angle control must retain enough track for pointer input")
+        #expect(host.element("constrain") == nil)
+        #expect(host.element("overlay") == nil)
+        let removedLabels = ["Auf Bild beschränken", "Werkzeugüberlagerung", "90° nach links drehen",
+            "90° nach rechts drehen", "Horizontal spiegeln", "Vertikal spiegeln"]
+        #expect(!host.elements.contains { element in
+            removedLabels.contains { $0 == element.accessibilityLabel() }
+        }, "The removed controls must not remain as invisible accessibility actions")
         try host.snapshotIfRequested("crop-inspector-\(Int(width))")
         #expect(await fixture.editor.flush())
     }
@@ -46,6 +53,7 @@ struct DevelopCropInspectorTests {
         edited.developGeometry.retouchStrokes = [try DevelopRetouchStroke(
             source: LocalMaskPoint(x: 0.1, y: 0.1), target: LocalMaskPoint(x: 0.4, y: 0.4), radius: 0.03)]
         fixture.editor.setSettings(edited, for: fixture.asset.id)
+        fixture.workspace.isStraightening = true
         try await host.mount(DevelopCropInspector(asset: fixture.asset, workspace: fixture.workspace)
             .environmentObject(fixture.editor))
 
@@ -61,12 +69,47 @@ struct DevelopCropInspectorTests {
         #expect(result.exposure == edited.exposure)
         #expect(result.developGeometry.retouchStrokes == edited.developGeometry.retouchStrokes)
         #expect(fixture.workspace.tool == .crop)
+        #expect(!fixture.workspace.isStraightening)
 
         fixture.editor.undo(assetID: fixture.asset.id)
         #expect(fixture.editor.settings(for: fixture.asset.id) == edited)
         try await host.settle()
         let close = try #require(host.element("close"))
         #expect(close.accessibilityPerformPress())
+        #expect(fixture.workspace.tool == .basic)
+        #expect(fixture.editor.settings(for: fixture.asset.id) == edited)
+        #expect(await fixture.editor.flush())
+    }
+
+    @Test
+    func levelButtonSelectsAndCancelsReferenceLineWithoutChangingEdits() async throws {
+        let fixture = try await CropInspectorFixture.make()
+        let host = CropInspectorHost(width: 280, height: 410)
+        defer { host.close() }
+        var edited = EditSettings(exposure: 0.75)
+        edited.developGeometry.crop = try DevelopCropRect(x: 0.2, y: 0.1, width: 0.6, height: 0.7)
+        edited.developGeometry.straightenAngle = 4.5
+        fixture.editor.setSettings(edited, for: fixture.asset.id)
+        try await host.mount(DevelopCropInspector(asset: fixture.asset, workspace: fixture.workspace)
+            .environmentObject(fixture.editor))
+
+        #expect(!fixture.workspace.isStraightening)
+        let level = try #require(host.element("straighten"))
+        #expect(level.accessibilityLabel() == "Gerade ausrichten")
+        #expect(level.accessibilityPerformPress())
+        try await host.settle()
+        #expect(fixture.workspace.isStraightening)
+        #expect(fixture.editor.settings(for: fixture.asset.id) == edited)
+        #expect(try #require(host.element("straighten")).accessibilityPerformPress())
+        try await host.settle()
+        #expect(!fixture.workspace.isStraightening)
+        #expect(fixture.editor.settings(for: fixture.asset.id) == edited)
+
+        #expect(try #require(host.element("straighten")).accessibilityPerformPress())
+        try await host.settle()
+        #expect(fixture.workspace.isStraightening)
+        #expect(try #require(host.element("close")).accessibilityPerformPress())
+        #expect(!fixture.workspace.isStraightening)
         #expect(fixture.workspace.tool == .basic)
         #expect(fixture.editor.settings(for: fixture.asset.id) == edited)
         #expect(await fixture.editor.flush())

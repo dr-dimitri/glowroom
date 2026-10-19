@@ -11,7 +11,7 @@ final class DevelopWorkspace: ObservableObject {
     @Published var showsShadows = false
     @Published var showsHighlights = false
     @Published var cropAspect = "free"
-    @Published var cropOverlay: DevelopCropOverlay = .always
+    @Published var isStraightening = false
     @Published var cropAspectLocked = false
     var lockedCropRatio: Double?
     @Published private(set) var isAutoStraightening = false
@@ -137,7 +137,7 @@ final class DevelopWorkspace: ObservableObject {
         navigatorImage = nil
         analysis = nil; sourceAnalysis = nil; sourceSize = nil; baseIdentity = nil; sourceIdentity = nil; isAnalyzing = false; repairSource = nil
         picksWhiteBalance = false; tool = .basic; errorMessage = nil
-        cropAspect = "free"; cropAspectLocked = false; lockedCropRatio = nil
+        cropAspect = "free"; cropAspectLocked = false; lockedCropRatio = nil; isStraightening = false
     }
 }
 
@@ -156,18 +156,6 @@ struct DevelopCanvasMapping: Equatable {
         angle = geometry.straightenAngle; constrainsToImage = geometry.constrainToImage
     }
     static let original = Self(.neutral)
-}
-
-enum DevelopCropOverlay: String, CaseIterable, Identifiable {
-    case always, automatic, never
-    var id: String { rawValue }
-    var title: String {
-        switch self {
-        case .always: "Immer"
-        case .automatic: "Automatisch"
-        case .never: "Nie"
-        }
-    }
 }
 
 enum DevelopCanvasTool: String, CaseIterable, Identifiable {

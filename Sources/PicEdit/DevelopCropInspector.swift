@@ -49,7 +49,19 @@ struct DevelopCropInspector: View {
                         .accessibilityIdentifier("develop.crop.auto")
                 }
                 HStack(spacing: 6) {
-                    Image(systemName: "level").font(.system(size: 18)).frame(width: 25)
+                    Button {
+                        autoTask?.cancel()
+                        editor.endEditing(assetID: asset.id)
+                        workspace.isStraightening.toggle()
+                    } label: {
+                        Image(systemName: "level").font(.system(size: 18)).frame(width: 25, height: 26)
+                            .foregroundStyle(workspace.isStraightening ? Theme.accent : Theme.muted)
+                            .background(workspace.isStraightening ? Theme.elevated : .clear, in: RoundedRectangle(cornerRadius: 4))
+                    }.buttonStyle(.plain)
+                        .help("Eine waagerechte oder senkrechte Bezugslinie im Bild ziehen")
+                        .accessibilityLabel("Gerade ausrichten")
+                        .accessibilityValue(workspace.isStraightening ? "Aktiv" : "Inaktiv")
+                        .accessibilityIdentifier("develop.crop.straighten")
                     Text("Winkel")
                     ResettableSlider(value: Binding(get: { geometry.straightenAngle }, set: { angle in
                         autoTask?.cancel()
@@ -63,27 +75,10 @@ struct DevelopCropInspector: View {
                 }
             }.padding(.vertical, 10).disabled(!editor.canEdit)
             Divider()
-            Toggle("Auf Bild beschränken", isOn: Binding(get: { geometry.constrainToImage }, set: { flag in
-                update { $0.constrainToImage = flag }
-            })).toggleStyle(.checkbox).padding(.vertical, 10)
-                .help("Beim Ausrichten leere Ränder durch einen mittigen Zuschnitt vermeiden")
-                .accessibilityIdentifier("develop.crop.constrain").disabled(!editor.canEdit)
-            Divider()
-            Picker("Werkzeugüberlagerung", selection: $workspace.cropOverlay) {
-                ForEach(DevelopCropOverlay.allCases, id: \.self) { mode in Text(mode.title).tag(mode) }
-            }.padding(.vertical, 10).accessibilityIdentifier("develop.crop.overlay")
-                .help("Drittelraster anzeigen; Rahmen und acht Griffe bleiben bedienbar")
-            Divider()
-            HStack(spacing: 8) {
-                orientationButton("rotate.left", title: "90° nach links drehen") { $0.quarterTurns = ($0.quarterTurns + 3) % 4 }
-                orientationButton("rotate.right", title: "90° nach rechts drehen") { $0.quarterTurns = ($0.quarterTurns + 1) % 4 }
-                orientationButton("arrow.left.and.right.righttriangle.left.righttriangle.right", title: "Horizontal spiegeln") { $0.flipHorizontal.toggle() }
-                orientationButton("arrow.up.and.down.righttriangle.up.righttriangle.down", title: "Vertikal spiegeln") { $0.flipVertical.toggle() }
-                Spacer(minLength: 0)
-            }.padding(.vertical, 8).disabled(!editor.canEdit)
-            Text("Eck- oder Seitengriff ziehen · ⌘-Ziehen verschiebt. Außerhalb der Griffe einen neuen Rahmen aufziehen.")
-                .font(.system(size: 10)).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
-            Text("Ausrichtung mit Schließen anzeigen.").font(.system(size: 10)).foregroundStyle(Theme.muted).padding(.top, 4)
+            Text(workspace.isStraightening
+                ? "Eine waagerechte oder senkrechte Bezugslinie im Bild ziehen. Der Winkel wird sofort angezeigt."
+                : "Eck- oder Seitengriff ziehen. Im Rahmen ziehen verschiebt die Auswahl, auch mit Drei-Finger-Ziehen. Außerhalb einen neuen Rahmen aufziehen.")
+                .font(.system(size: 10)).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true).padding(.top, 10)
             if let error = workspace.errorMessage {
                 Text(error).font(.caption).foregroundStyle(.orange).padding(.top, 6)
             }
@@ -92,6 +87,7 @@ struct DevelopCropInspector: View {
                 Spacer(minLength: 0)
                 Button("Zurücksetzen") {
                     workspace.cropAspect = "free"; workspace.cropAspectLocked = false; workspace.lockedCropRatio = nil
+                    workspace.isStraightening = false
                     update {
                         $0.crop = nil; $0.quarterTurns = 0; $0.straightenAngle = 0; $0.constrainToImage = true
                         $0.flipHorizontal = false; $0.flipVertical = false
@@ -99,20 +95,16 @@ struct DevelopCropInspector: View {
                 }.disabled(!editor.canEdit).accessibilityIdentifier("develop.crop.reset")
                 Divider().frame(height: 14)
                 Button("Schließen") {
-                    autoTask?.cancel(); editor.endEditing(assetID: asset.id); workspace.tool = .basic
+                    autoTask?.cancel(); editor.endEditing(assetID: asset.id)
+                    workspace.isStraightening = false; workspace.tool = .basic
                 }.accessibilityIdentifier("develop.crop.close")
             }.buttonStyle(.plain).padding(.vertical, 10)
         }.font(.system(size: 11)).foregroundStyle(Theme.text)
             .onAppear { reconcileAspect() }
-            .onDisappear { autoTask?.cancel(); editor.endEditing(assetID: asset.id) }
+            .onDisappear { autoTask?.cancel(); workspace.isStraightening = false; editor.endEditing(assetID: asset.id) }
             .onChange(of: workspace.sourceIdentity) { _, _ in autoTask?.cancel() }
             .onChange(of: geometry.crop) { _, _ in reconcileAspect() }
             .onChange(of: sourceSize) { _, _ in reconcileAspect() }
-    }
-
-    private func orientationButton(_ symbol: String, title: String, change: @escaping (inout DevelopGeometry) -> Void) -> some View {
-        Button { update(change: change) } label: { Image(systemName: symbol).frame(width: 25, height: 20) }
-            .buttonStyle(.plain).help(title).accessibilityLabel(title)
     }
 
     private func selectAspect(_ aspect: String) {

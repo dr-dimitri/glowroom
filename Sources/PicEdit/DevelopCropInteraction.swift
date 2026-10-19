@@ -39,8 +39,8 @@ enum DevelopCropInteraction {
                       width: crop.width * imageRect.width, height: crop.height * imageRect.height)
     }
 
-    static func handle(at point: CGPoint, crop: DevelopCropRect?, imageRect: CGRect) -> DevelopCropHandle? {
-        guard point.x.isFinite, point.y.isFinite, imageRect.width.isFinite, imageRect.height.isFinite,
+    static func handle(at point: CGPoint, crop: DevelopCropRect?, imageRect: CGRect, hitRadius: CGFloat = Self.hitRadius) -> DevelopCropHandle? {
+        guard hitRadius.isFinite, hitRadius > 0, point.x.isFinite, point.y.isFinite, imageRect.width.isFinite, imageRect.height.isFinite,
               imageRect.width > 0, imageRect.height > 0 else { return nil }
         let box = box(crop: crop, imageRect: imageRect)
         var closest: DevelopCropHandle?
