@@ -32,8 +32,8 @@ struct DevelopInspector: View {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 0) {
                             DevelopHistogram(workspace: developWorkspace, asset: asset, library: library, allowsComparison: !maskWorkspace.isPresented)
-                                .padding(.bottom, 8)
-                            developToolStrip(asset).padding(.bottom, 10)
+                                .padding(.bottom, 5)
+                            developToolStrip(asset).padding(.bottom, 5)
                             if developWorkspace.tool == .masks, maskWorkspace.isPresented {
                                 InlineMaskInspector(workspace: maskWorkspace)
                             } else if developWorkspace.tool != .basic {
@@ -51,12 +51,12 @@ struct DevelopInspector: View {
                                         }
                                     }
                                 }
-                            )).font(.system(size: 11)).toggleStyle(.checkbox).padding(.bottom, 14)
+                            )).font(.system(size: 10)).toggleStyle(.checkbox).padding(.bottom, 5)
                             ForEach(WorkspaceTool.allCases, id: \.self) { tool in
                                 toolGroup(tool, asset: asset)
                             }
                             }
-                        }.padding(12)
+                        }.padding(8)
                     }
                     .task(id: RevealFocusIdentity(request: layout.revealRequest, assetID: asset.id,
                         canvasTool: developWorkspace.tool, hasMaskDraft: maskWorkspace.isPresented)) {
@@ -90,7 +90,7 @@ struct DevelopInspector: View {
                 Spacer()
             }
             Text("Nicht destruktiv · Original unverändert").font(.system(size: 10)).foregroundStyle(Theme.muted)
-                .padding(.bottom, 14)
+                .padding(.bottom, 6)
         }.background(Theme.sidebar)
 
     }
@@ -102,8 +102,8 @@ struct DevelopInspector: View {
                     finishInput(assetID: asset.id)
                     developWorkspace.tool = tool
                 } label: {
-                    Image(systemName: tool.symbol).font(.system(size: 18))
-                        .frame(maxWidth: .infinity).frame(height: 39)
+                    Image(systemName: tool.symbol).font(.system(size: 16))
+                        .frame(maxWidth: .infinity).frame(height: 30)
                         .foregroundStyle(developWorkspace.tool == tool ? Theme.accent : Theme.muted)
                         .background(developWorkspace.tool == tool ? Theme.accent.opacity(0.1) : .clear,
                                     in: RoundedRectangle(cornerRadius: 5))
@@ -117,7 +117,7 @@ struct DevelopInspector: View {
 
     private func colorBasics(assetID: String) -> some View {
         let settings = editor.settings(for: assetID)
-        return VStack(alignment: .leading, spacing: 12) {
+        return VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 7) {
                 Button("Autom.") {
                     finishInput(assetID: assetID)
@@ -140,7 +140,7 @@ struct DevelopInspector: View {
             Divider()
             HStack {
                 Button { developWorkspace.picksWhiteBalance.toggle() } label: {
-                    Image(systemName: "eyedropper").font(.system(size: 19)).frame(width: 34, height: 31)
+                    Image(systemName: "eyedropper").font(.system(size: 16)).frame(width: 28, height: 24)
                 }.buttonStyle(.plain).foregroundStyle(developWorkspace.picksWhiteBalance ? Theme.accent : Theme.muted)
                     .help("Weißabgleich: eine neutrale graue Fläche auf dem Bild anklicken")
                     .accessibilityIdentifier("develop.white-balance-picker")
@@ -201,10 +201,10 @@ struct DevelopInspector: View {
                 editor.setSettings(value, for: assetID)
             }), in: range, step: step, neutralValue: neutral, onEditingChanged: { editing in
                 if editing { editor.beginEditing(assetID: assetID) } else { editor.endEditing(assetID: assetID) }
-            }).accessibilityLabel(title)
+            }).controlSize(.mini).accessibilityLabel(title)
             Text("\(Int(editor.settings(for: assetID).developColor[keyPath: keyPath]))")
                 .monospacedDigit().font(.system(size: 10)).frame(width: 43, alignment: .trailing)
-        }
+        }.frame(minHeight: 20)
     }
 
     private var inspectorHeader: some View {
@@ -226,7 +226,7 @@ struct DevelopInspector: View {
             } label: { Image(systemName: "xmark").frame(width: 24, height: 28) }
                 .buttonStyle(.plain).foregroundStyle(Theme.muted)
                 .accessibilityLabel("Werkzeugbereich schließen").help("Werkzeugbereich schließen")
-        }.padding(.horizontal, 16).frame(height: 40)
+        }.padding(.horizontal, 12).frame(height: 34)
     }
 
     private func toolGroup(_ tool: WorkspaceTool, asset: PhotoAsset) -> some View {
@@ -246,7 +246,7 @@ struct DevelopInspector: View {
                         Label(status.text, systemImage: status.symbol)
                             .font(.system(size: 10)).foregroundStyle(status.isError ? Color.orange : Theme.accent)
                     }
-                }.frame(maxWidth: .infinity, minHeight: 43, alignment: .leading).contentShape(Rectangle())
+                }.frame(maxWidth: .infinity, minHeight: 30, alignment: .leading).contentShape(Rectangle())
             }.buttonStyle(.plain)
                 .workspaceFocusTarget(focusedControl, equals: .group(tool)) {
                     toggleGroup(tool, assetID: asset.id)
@@ -260,7 +260,7 @@ struct DevelopInspector: View {
                     // Photo-bound controls reset on selection. Group preferences
                     // stay in the workspace model outside this identity boundary.
                     .id(asset.id)
-                    .padding(.bottom, 16)
+                    .padding(.bottom, 6)
             }
             Divider().overlay(Theme.line)
         }.id(tool)
@@ -269,10 +269,10 @@ struct DevelopInspector: View {
     @ViewBuilder private func toolContent(_ tool: WorkspaceTool, asset: PhotoAsset) -> some View {
         switch tool {
         case .edit:
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 5) {
                 colorBasics(assetID: asset.id)
                 DisclosureGroup("Automatischer Bildausgleich") {
-                    naturalBalanceSection(assetID: asset.id).padding(.top, 8)
+                    naturalBalanceSection(assetID: asset.id).padding(.top, 4)
                 }.font(.system(size: 11))
                 adjustmentSection("Tonwert", key: "tone", controls: Array(Adjustment.allCases.prefix(6)), assetID: asset.id)
                 adjustmentSection("Präsenz", key: "presence", controls: Array(Adjustment.allCases.dropFirst(6).prefix(5)), assetID: asset.id)
@@ -337,7 +337,7 @@ struct DevelopInspector: View {
                 editor.reset(assetID: assetID)
             }.buttonStyle(.plain).font(.system(size: 11)).foregroundStyle(Theme.muted)
                 .disabled(!editor.canEdit || editor.settings(for: assetID).isNeutral)
-        }.padding(.horizontal, 16).frame(height: 49)
+        }.padding(.horizontal, 12).frame(height: 36)
     }
 
     private func reveal(_ tool: WorkspaceTool) {
@@ -479,13 +479,9 @@ struct DevelopInspector: View {
 
     private func naturalBalanceSlider(_ title: String, keyPath: WritableKeyPath<EditSettings, Double>,
                                       range: ClosedRange<Double>, assetID: String) -> some View {
-        VStack(alignment: .leading, spacing: 5) {
-            HStack {
-                Text(title)
-                Spacer()
-                Text("\(Int(editor.settings(for: assetID)[keyPath: keyPath])) %")
-                    .monospacedDigit().foregroundStyle(Theme.accent)
-            }.font(.system(size: 10)).foregroundStyle(Theme.muted)
+        HStack(spacing: 7) {
+            Text(title).font(.system(size: 10)).foregroundStyle(Theme.muted)
+                .frame(width: 68, alignment: .trailing)
             ResettableSlider(value: Binding(
                 get: { editor.settings(for: assetID)[keyPath: keyPath] },
                 set: { newValue in
@@ -497,13 +493,16 @@ struct DevelopInspector: View {
                 if editing { editor.beginEditing(assetID: assetID) }
                 else { editor.endEditing(assetID: assetID) }
             }).controlSize(.mini).accessibilityLabel("Bildausgleich · \(title)")
-        }
+            Text("\(Int(editor.settings(for: assetID)[keyPath: keyPath])) %")
+                .monospacedDigit().font(.system(size: 10)).foregroundStyle(Theme.accent)
+                .frame(width: 43, alignment: .trailing)
+        }.frame(minHeight: 20)
     }
 
     private func adjustmentSection(_ title: String, key: String, controls: [Adjustment], assetID: String) -> some View {
         let expanded = panels.openAdjustmentGroups.contains(key)
         let readOnly = !editor.canEdit || !library.canModify || library.comparesOriginal || library.comparesCurrentSourceWithoutSettings
-        return VStack(alignment: .leading, spacing: 13) {
+        return VStack(alignment: .leading, spacing: 2) {
             HStack(spacing: 10) {
                 Button {
                     toggleAdjustmentGroup(key, assetID: assetID)
@@ -513,7 +512,7 @@ struct DevelopInspector: View {
                             .font(.system(size: 10, weight: .semibold)).frame(width: 10)
                         SectionLabel(text: title)
                         Spacer(minLength: 0)
-                    }.frame(minHeight: 30).contentShape(Rectangle())
+                    }.frame(minHeight: 24).contentShape(Rectangle())
                 }.buttonStyle(.plain)
                     .workspaceFocusTarget(focusedControl, equals: .adjustmentGroup(key)) {
                         toggleAdjustmentGroup(key, assetID: assetID)
@@ -525,12 +524,12 @@ struct DevelopInspector: View {
                     var settings = editor.settings(for: assetID)
                     for item in controls { settings[keyPath: item.keyPath] = 0 }
                     editor.setSettings(settings, for: assetID)
-                } label: { Image(systemName: "arrow.counterclockwise").font(.system(size: 11)).frame(width: 28, height: 30) }
+                } label: { Image(systemName: "arrow.counterclockwise").font(.system(size: 11)).frame(width: 24, height: 24) }
                     .buttonStyle(.plain).foregroundStyle(Theme.muted).help("\(title) zurücksetzen")
                     .accessibilityLabel("\(title) zurücksetzen").disabled(readOnly)
             }
             if expanded {
-                VStack(spacing: 13) {
+                VStack(spacing: 2) {
                     ForEach(controls) { control in
                         AdjustmentSlider(control: control, value: Binding(
                             get: { editor.settings(for: assetID)[keyPath: control.keyPath] },
@@ -550,7 +549,7 @@ struct DevelopInspector: View {
                     }
                 }.disabled(readOnly)
             }
-        }.padding(.top, 10)
+        }.padding(.top, 4)
             .overlay(alignment: .top) { Rectangle().fill(Theme.line).frame(height: 1) }
     }
 }

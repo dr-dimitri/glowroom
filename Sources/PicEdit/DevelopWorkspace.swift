@@ -257,7 +257,7 @@ struct DevelopHistogram: View {
     @ObservedObject var library: LibraryModel
     var allowsComparison = true
     var body: some View {
-        VStack(spacing: 7) {
+        VStack(spacing: 4) {
             HStack {
                 Text(workspace.hdrDisplayed ? "Histogramm · SDR-Vorschau" : "Histogramm").font(.system(size: 12, weight: .semibold))
                 Spacer()
@@ -278,7 +278,7 @@ struct DevelopHistogram: View {
                         context.blendMode = .plusLighter
                         context.fill(path, with: .color(colors[channel].opacity(0.45)))
                     }
-                }.frame(height: 115).background(Color.black.opacity(0.25))
+                }.frame(height: 80).background(Color.black.opacity(0.25))
                 HStack {
                     clipButton("Schattenwarnung", symbol: "triangle.fill", active: $workspace.showsShadows, count: workspace.analysis?.shadows ?? 0, color: .blue)
                     Spacer()
@@ -294,7 +294,7 @@ struct DevelopHistogram: View {
             }.font(.system(size: 9)).foregroundStyle(Theme.muted).lineLimit(1).minimumScaleFactor(0.7)
             Toggle("Originalfoto", isOn: $library.comparesOriginal).toggleStyle(.checkbox).disabled(!allowsComparison)
                 .font(.system(size: 10)).frame(maxWidth: .infinity, alignment: .leading)
-        }.padding(12).background(Theme.panel)
+        }.padding(8).background(Theme.panel)
     }
     private func clipButton(_ title: String, symbol: String, active: Binding<Bool>, count: Int, color: Color) -> some View {
         Button { active.wrappedValue.toggle() } label: {

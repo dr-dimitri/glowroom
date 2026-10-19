@@ -35,6 +35,55 @@ struct LocalAdjustmentEditorModelTests {
         model.close()
     }
 
+    @Test func switchingMasksEndsThePreviousCorrectionGroup() async throws {
+        let bitmap = try bitmap()
+        let model = LocalAdjustmentEditorModel(settings: .neutral, loader: { _ in bitmap })
+        await model.load(source: source("A"))
+        model.add(.linear)
+        let firstID = try #require(model.selectedID)
+        model.add(.radial)
+        let secondID = try #require(model.selectedID)
+        model.selectedID = firstID
+        model.beginChange()
+        model.updateSelected { $0.settings.exposure = 1 }
+        model.selectedID = secondID
+        model.beginChange()
+        model.updateSelected { $0.settings.contrast = 20 }
+        model.endChange()
+        model.undo()
+        #expect(model.selected?.settings.contrast == 0)
+        #expect(model.settings.localAdjustments.first?.settings.exposure == 1)
+        model.undo()
+        #expect(model.settings.localAdjustments.allSatisfy { $0.settings == .neutral })
+        model.close()
+    }
+
+    @Test func inputContextChangesAcrossReselectionUndoAndReopeningSavedMasks() async throws {
+        let bitmap = try bitmap()
+        let model = LocalAdjustmentEditorModel(settings: .neutral, loader: { _ in bitmap })
+        await model.load(source: source("A"))
+        model.add(.linear)
+        let saved = model.settings
+        let firstID = try #require(model.selectedID)
+        let beforeSwitch = model.inputContextID
+        model.add(.radial)
+        model.selectedID = firstID
+        #expect(model.inputContextID != beforeSwitch)
+        let beforeUndo = model.inputContextID
+        model.undo()
+        #expect(model.selectedID == firstID)
+        #expect(model.inputContextID != beforeUndo)
+        let beforeReset = model.inputContextID
+        model.reset(settings: saved)
+        #expect(model.selectedID == firstID)
+        #expect(model.inputContextID != beforeReset)
+        let beforeLoad = model.inputContextID
+        await model.load(source: source("A"))
+        #expect(model.selectedID == firstID)
+        #expect(model.inputContextID != beforeLoad)
+        model.close()
+    }
+
     @Test func automaticMasksCannotPublishAfterSameSourceSessionWasReopened() async throws {
         let gate = LocalMaskInferenceGate()
         let bitmap = try bitmap()

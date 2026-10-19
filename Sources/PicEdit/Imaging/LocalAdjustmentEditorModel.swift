@@ -49,7 +49,12 @@ final class LocalAdjustmentEditorModel: ObservableObject {
     typealias Loader = @Sendable (PreviewRequest) async throws -> PreviewBitmap
     typealias Generator = @Sendable (PreviewBitmap, AutomaticMaskKind, URL?) async throws -> LocalMaskRaster
     @Published private(set) var settings: EditSettings
-    @Published var selectedID: UUID?
+    @Published var selectedID: UUID? {
+        didSet {
+            guard oldValue != selectedID else { return }
+            endChange(); inputContextID = UUID()
+        }
+    }
     @Published private(set) var bitmap: PreviewBitmap?
     @Published private(set) var canvasSize: ArtifactPixelSize?
     @Published private(set) var isLoading = false
@@ -67,6 +72,9 @@ final class LocalAdjustmentEditorModel: ObservableObject {
     private var operation: UUID?
     private var inference: Task<Void, Never>?
     private(set) var source: AISourceIdentity?
+    /// Native controls can finish after SwiftUI replaces a selected mask view.
+    /// A context remains invalid even when selection returns to the same UUID.
+    private(set) var inputContextID = UUID()
 
     init(settings: EditSettings, loader: @escaping Loader = {
         try await ImagePreviewPipeline.shared.image(for: $0, priority: .selected)
@@ -93,6 +101,7 @@ final class LocalAdjustmentEditorModel: ObservableObject {
     func load(source: AISourceIdentity) async {
         guard !Task.isCancelled else { return }
         cancelInference()
+        inputContextID = UUID()
         let token = UUID(); session = token; self.source = source
         bitmap = nil; canvasSize = nil; isLoading = true; errorMessage = nil
         do {
@@ -145,8 +154,18 @@ final class LocalAdjustmentEditorModel: ObservableObject {
 
     func deleteSelected() {
         guard let selectedID else { return }
+        delete(selectedID)
+    }
+
+    func delete(_ id: UUID) {
+        guard let index = settings.localAdjustments.firstIndex(where: { $0.id == id }) else { return }
         endChange()
-        do { try install(settings.localAdjustments.filter { $0.id != selectedID }); self.selectedID = settings.localAdjustments.first?.id }
+        var layers = settings.localAdjustments
+        layers.remove(at: index)
+        do {
+            try install(layers)
+            if selectedID == id { selectedID = layers.isEmpty ? nil : layers[min(index, layers.count - 1)].id }
+        }
         catch { errorMessage = error.localizedDescription }
     }
 
@@ -179,11 +198,13 @@ final class LocalAdjustmentEditorModel: ObservableObject {
     func undo() {
         endChange()
         guard let previous = history.popLast() else { return }
+        inputContextID = UUID()
         future.append(settings.localAdjustments); settings.localAdjustments = previous; reconcileSelection(); updateHistory()
     }
     func redo() {
         endChange()
         guard let next = future.popLast() else { return }
+        inputContextID = UUID()
         history.append(settings.localAdjustments); settings.localAdjustments = next; reconcileSelection(); updateHistory()
     }
     private func reconcileSelection() {
@@ -228,6 +249,7 @@ final class LocalAdjustmentEditorModel: ObservableObject {
         operation = nil; inference?.cancel(); inference = nil; isGenerating = false
     }
     func close() {
+        inputContextID = UUID()
         session = UUID(); cancelInference(); source = nil; bitmap = nil; canvasSize = nil
         settings = openingSettings; selectedID = openingSettings.localAdjustments.first?.id
         history = []; future = []; groupStart = nil; errorMessage = nil; updateHistory()
