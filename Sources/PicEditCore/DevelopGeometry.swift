@@ -86,21 +86,26 @@ public struct DevelopRedEyeCorrection: Codable, Hashable, Identifiable, Sendable
 }
 
 /// Nondestructive geometry and manual spot corrections, in stored operation
-/// order. Spot corrections precede crop, then mirroring, then clockwise turns.
+/// order. Spot corrections precede crop, centered straightening, mirroring,
+/// then clockwise quarter turns. Positive straightening angles turn clockwise.
 public struct DevelopGeometry: Codable, Hashable, Sendable {
     public static let maximumRetouchStrokes = 256
     public static let maximumRedEyeCorrections = 128
     public var crop: DevelopCropRect?
     public var quarterTurns: Int
+    public var straightenAngle: Double
+    public var constrainToImage: Bool
     public var flipHorizontal: Bool
     public var flipVertical: Bool
     public var retouchStrokes: [DevelopRetouchStroke]
     public var redEyeCorrections: [DevelopRedEyeCorrection]
 
     public init(crop: DevelopCropRect? = nil, quarterTurns: Int = 0,
+                straightenAngle: Double = 0, constrainToImage: Bool = true,
                 flipHorizontal: Bool = false, flipVertical: Bool = false,
                 retouchStrokes: [DevelopRetouchStroke] = [], redEyeCorrections: [DevelopRedEyeCorrection] = []) {
         self.crop = crop; self.quarterTurns = quarterTurns
+        self.straightenAngle = straightenAngle; self.constrainToImage = constrainToImage
         self.flipHorizontal = flipHorizontal; self.flipVertical = flipVertical
         self.retouchStrokes = retouchStrokes; self.redEyeCorrections = redEyeCorrections
     }
@@ -115,7 +120,8 @@ public struct DevelopGeometry: Codable, Hashable, Sendable {
     }
 
     public func validate() throws {
-        guard (0...3).contains(quarterTurns), retouchStrokes.count <= Self.maximumRetouchStrokes,
+        guard (0...3).contains(quarterTurns), straightenAngle.isFinite, (-45...45).contains(straightenAngle),
+              retouchStrokes.count <= Self.maximumRetouchStrokes,
               redEyeCorrections.count <= Self.maximumRedEyeCorrections,
               Set(retouchStrokes.map(\.id)).count == retouchStrokes.count,
               Set(redEyeCorrections.map(\.id)).count == redEyeCorrections.count else {
@@ -123,15 +129,33 @@ public struct DevelopGeometry: Codable, Hashable, Sendable {
         }
     }
 
-    private enum CodingKeys: String, CodingKey { case crop, quarterTurns, flipHorizontal, flipVertical, retouchStrokes, redEyeCorrections }
+    private enum CodingKeys: String, CodingKey {
+        case crop, quarterTurns, straightenAngle, constrainToImage, flipHorizontal, flipVertical, retouchStrokes, redEyeCorrections
+    }
     public init(from decoder: Decoder) throws {
         let value = try decoder.container(keyedBy: CodingKeys.self)
         self.init(crop: try value.decodeIfPresent(DevelopCropRect.self, forKey: .crop),
                   quarterTurns: try value.decode(Int.self, forKey: .quarterTurns),
+                  straightenAngle: try value.decodeIfPresent(Double.self, forKey: .straightenAngle) ?? 0,
+                  constrainToImage: try value.decodeIfPresent(Bool.self, forKey: .constrainToImage) ?? true,
                   flipHorizontal: try value.decode(Bool.self, forKey: .flipHorizontal),
                   flipVertical: try value.decode(Bool.self, forKey: .flipVertical),
                   retouchStrokes: try value.decode([DevelopRetouchStroke].self, forKey: .retouchStrokes),
                   redEyeCorrections: try value.decode([DevelopRedEyeCorrection].self, forKey: .redEyeCorrections))
         try validate()
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var value = encoder.container(keyedBy: CodingKeys.self)
+        try value.encodeIfPresent(crop, forKey: .crop)
+        try value.encode(quarterTurns, forKey: .quarterTurns)
+        // Omit the new defaults so historical snapshots and their digests keep
+        // exactly the same canonical bytes when no straightening was selected.
+        if straightenAngle != 0 { try value.encode(straightenAngle, forKey: .straightenAngle) }
+        if !constrainToImage { try value.encode(constrainToImage, forKey: .constrainToImage) }
+        try value.encode(flipHorizontal, forKey: .flipHorizontal)
+        try value.encode(flipVertical, forKey: .flipVertical)
+        try value.encode(retouchStrokes, forKey: .retouchStrokes)
+        try value.encode(redEyeCorrections, forKey: .redEyeCorrections)
     }
 }

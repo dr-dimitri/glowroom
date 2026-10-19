@@ -7,6 +7,50 @@ import Testing
 
 @Suite("Develop crop and manual correction rendering")
 struct DevelopGeometryRendererTests {
+    @Test func straighteningUsesTheSameIntegerCanvasForRenderingAndExport() throws {
+        let source = try fixture(width: 100, height: 50) { _, _ in (140, 90, 40, 255) }
+        for angle in [-30.0, 30] {
+            for constrained in [true, false] {
+                for turns in 0...3 {
+                    let geometry = DevelopGeometry(quarterTurns: turns, straightenAngle: angle, constrainToImage: constrained)
+                    let size = try DevelopGeometryRenderer.outputSize(width: 100, height: 50, geometry: geometry)
+                    let expected = constrained ? (53, 26) : (112, 94)
+                    #expect(size.width == (turns.isMultiple(of: 2) ? expected.0 : expected.1))
+                    #expect(size.height == (turns.isMultiple(of: 2) ? expected.1 : expected.0))
+                    let image = try DevelopGeometryRenderer.apply(to: CIImage(cgImage: source), geometry: geometry,
+                        extent: CGRect(x: 0, y: 0, width: 100, height: 50))
+                    #expect(image.extent == CGRect(x: 0, y: 0, width: size.width, height: size.height))
+                    let output = try render(source, geometry: geometry)
+                    #expect(output.width == size.width && output.height == size.height)
+                    let bytes = try pixels(output)
+                    if constrained {
+                        #expect(stride(from: 3, to: bytes.count, by: 4).allSatisfy { bytes[$0] == 255 })
+                    } else {
+                        #expect(pixel(bytes, width: size.width, x: 0, y: 0)[3] == 0)
+                        #expect(pixel(bytes, width: size.width, x: size.width / 2, y: size.height / 2)[3] == 255)
+                    }
+                }
+            }
+        }
+    }
+
+    @Test func straighteningFollowsTheSelectedCropAndKeepsSourceAlpha() throws {
+        let source = try fixture(width: 120, height: 80) { x, _ in x < 60 ? (220, 40, 30, 160) : (20, 180, 80, 160) }
+        let crop = try DevelopCropRect(x: 0, y: 0.25, width: 0.5, height: 0.5)
+        for constrained in [true, false] {
+            let geometry = DevelopGeometry(crop: crop, straightenAngle: 30, constrainToImage: constrained)
+            let image = try render(source, geometry: geometry)
+            let bytes = try pixels(image)
+            let center = pixel(bytes, width: image.width, x: image.width / 2, y: image.height / 2)
+            #expect(abs(center[3] - 160) <= 1)
+            #expect(center[0] > center[1] * 3, "Straightening must rotate the crop, rather than sample its discarded neighbor")
+        }
+        let tiny = try fixture(width: 1, height: 20) { _, _ in (140, 90, 40, 255) }
+        let tinyResult = try render(tiny, geometry: .init(straightenAngle: 45))
+        #expect(tinyResult.width >= 1 && tinyResult.height >= 1)
+        #expect(try pixels(tinyResult)[3] == 255)
+    }
+
     @Test func cropAndClockwiseTurnsKeepSourceCoordinatesAndPixelEdges() throws {
         let source = try fixture(width: 12, height: 8) { x, y in (UInt8(x * 15), UInt8(y * 25), 40, 255) }
         let crop = try DevelopCropRect(x: 0.25, y: 0.25, width: 0.5, height: 0.5)
@@ -98,7 +142,22 @@ struct DevelopGeometryRendererTests {
         let patch = try DevelopRetouchStroke(source: .init(x: 0.25, y: 0.25), target: .init(x: 0.75, y: 0.75), radius: 0.02)
         #expect(DevelopGeometryRenderer.estimatedAdditionalBytes(geometry: .neutral, width: 128, height: 96) == 0)
         #expect(DevelopGeometryRenderer.estimatedAdditionalBytes(geometry: .init(retouchStrokes: [patch]), width: 128, height: 96) == 128 * 96 * 48)
+        #expect(DevelopGeometryRenderer.estimatedAdditionalBytes(geometry: .init(straightenAngle: 12), width: 128, height: 96) == 128 * 96 * 32)
         #expect(DevelopGeometryRenderer.estimatedAdditionalBytes(geometry: .init(retouchStrokes: [patch]), width: Int.max, height: Int.max) == nil)
+    }
+
+    @Test func panoramicRotationAdmissionUsesTheExpandedCanvasAndRejectsOverflow() throws {
+        let geometry = DevelopGeometry(straightenAngle: 45, constrainToImage: false)
+        let output = try DevelopGeometryRenderer.outputSize(width: 4_000, height: 40, geometry: geometry)
+        #expect(output.width == 2_857 && output.height == 2_857)
+        let bytes = try #require(DevelopGeometryRenderer.estimatedAdditionalBytes(geometry: geometry, width: 4_000, height: 40))
+        #expect(bytes == UInt64(output.width * output.height) * 32)
+        #expect(bytes > 4_000 * 40 * 32 * 50)
+        #expect(DevelopGeometryRenderer.estimatedAdditionalBytes(geometry: geometry, width: 1_000_000_000_000, height: 1) == nil)
+        #expect(DevelopGeometryRenderer.estimatedAdditionalBytes(geometry: geometry, width: Int.max, height: 1) == nil)
+        #expect(throws: (any Error).self) {
+            try DevelopGeometryRenderer.outputSize(width: Int.max, height: 1, geometry: geometry)
+        }
     }
 
     private func render(_ source: CGImage, geometry: DevelopGeometry) throws -> CGImage {
