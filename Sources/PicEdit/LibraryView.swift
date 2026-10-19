@@ -39,22 +39,35 @@ struct LibraryView: View {
             GeometryReader { geometry in
                 let handleSpace = (panels.showsLibrary ? 6.0 : 0) + (panels.showsTools ? 6.0 : 0)
                 let widths = layout.boundedWidths(availableWidth: geometry.size.width - handleSpace, developing: model.isDeveloping)
-                HStack(spacing: 0) {
-                    if panels.showsLibrary {
-                        sidebar.frame(width: widths.library)
-                        WorkspaceResizeHandle(horizontal: true, label: "Breite der Bibliothek", value: panels.libraryWidth, step: 1) { width in
-                            layout.update(developing: model.isDeveloping) { $0.libraryWidth = width }
+                VStack(spacing: 0) {
+                    HStack(spacing: 0) {
+                        if panels.showsLibrary {
+                            Group {
+                                if model.isDeveloping {
+                                    DevelopInspector(library: model, focusedControl: $focusedWorkspaceControl, column: .navigation)
+                                } else { sidebar }
+                            }.frame(width: widths.library)
+                            WorkspaceResizeHandle(horizontal: true, label: model.isDeveloping ? "Breite der Navigation" : "Breite der Bibliothek", value: panels.libraryWidth, step: 1) { width in
+                                layout.update(developing: model.isDeveloping) { $0.libraryWidth = width }
+                            }
+                        }
+                        workspace.frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity)
+                        if panels.showsTools {
+                            WorkspaceResizeHandle(horizontal: true, label: "Breite der Werkzeuge", value: panels.toolsWidth, step: -1) { width in
+                                layout.update(developing: model.isDeveloping) { $0.toolsWidth = width }
+                            }
+                            Group {
+                                if model.isDeveloping { DevelopInspector(library: model, focusedControl: $focusedWorkspaceControl) }
+                                else { InspectorView(model: model) }
+                            }.frame(width: widths.tools)
                         }
                     }
-                    workspace.frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity)
-                    if panels.showsTools {
-                        WorkspaceResizeHandle(horizontal: true, label: "Breite der Werkzeuge", value: panels.toolsWidth, step: -1) { width in
-                            layout.update(developing: model.isDeveloping) { $0.toolsWidth = width }
+                    if model.isDeveloping, model.showsDetail, model.selectedAsset != nil, panels.showsFilmstrip {
+                        let height = layout.boundedFilmstripHeight(availableHeight: max(0, geometry.size.height - 78), developing: true)
+                        WorkspaceResizeHandle(horizontal: false, label: "Höhe des Filmstreifens", value: height, step: 1) { height in
+                            layout.update(developing: true) { $0.filmstripHeight = height }
                         }
-                        Group {
-                            if model.isDeveloping { DevelopInspector(library: model, focusedControl: $focusedWorkspaceControl) }
-                            else { InspectorView(model: model) }
-                        }.frame(width: widths.tools)
+                        PhotoFilmstrip(model: model, height: height)
                     }
                 }
             }
@@ -72,6 +85,7 @@ struct LibraryView: View {
             statusBar
         }
         .background(Theme.background)
+        .foregroundStyle(Theme.text)
         .tint(Theme.accent)
         .environmentObject(maskWorkspace)
         .environmentObject(developWorkspace)
@@ -182,8 +196,7 @@ struct LibraryView: View {
         pendingToolReveal = nil
         layout.update(developing: true) { panels in
             panels.showsTools = true
-            if panels.singleGroup { panels.openGroups = [.edit] }
-            else { panels.openGroups.insert(.edit) }
+            panels.openGroups.insert(.edit)
         }
         developWorkspace.tool = .masks
         if !maskWorkspace.isPresented {
@@ -233,36 +246,33 @@ struct LibraryView: View {
 
     private var appHeader: some View {
         HStack(spacing: 12) {
-            Image(systemName: "camera.aperture").font(.system(size: 22, weight: .light)).foregroundStyle(Theme.accent)
-            Text("picedit").font(.system(size: 19, weight: .semibold, design: .rounded)).tracking(-0.5)
-            if layout.isFocused {
-                Text("Bildfokus").font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.accent)
-            } else {
-                Button {
-                    WorkspaceActions.finishField()
-                    model.isDeveloping = false
-                    model.comparesOriginal = false
-                    model.comparesCurrentSourceWithoutSettings = false
-                    model.showsDetail = false
-                } label: { Label("Bibliothek", systemImage: "square.grid.2x2.fill") }
-                    .foregroundStyle(!model.isDeveloping ? Theme.accent : Theme.muted)
-                Button {
-                    WorkspaceActions.reveal(.edit, layout: layout, library: model)
-                } label: { Label("Entwickeln", systemImage: "slider.horizontal.3") }
-                    .foregroundStyle(model.isDeveloping ? Theme.accent : Theme.muted)
-                    .disabled(model.selectedAsset == nil || editor.isLoading)
+            Image(systemName: "camera.aperture").font(.system(size: 22, weight: .light))
+            Text("PicEdit").font(.system(size: 17, weight: .semibold))
+            Spacer(minLength: 8)
+            if !layout.isFocused {
+                HStack(spacing: 18) {
+                    Button {
+                        WorkspaceActions.showGrid(layout, library: model)
+                        model.comparesOriginal = false
+                        model.comparesCurrentSourceWithoutSettings = false
+                    } label: { Text("Bibliothek") }
+                        .foregroundStyle(!model.isDeveloping ? Theme.text : Theme.muted)
+                    Button { WorkspaceActions.reveal(.edit, layout: layout, library: model) } label: { Text("Entwickeln") }
+                        .foregroundStyle(model.isDeveloping ? Theme.text : Theme.muted)
+                        .disabled(model.selectedAsset == nil || editor.isLoading)
+                }.font(.system(size: 14, weight: .medium))
+                Divider().frame(height: 20)
+                panelControls
             }
-            Spacer(minLength: 6)
             Button { WorkspaceActions.toggleFocus(layout, library: model) } label: {
-                Label(layout.isFocused ? "Zur vorherigen Ansicht" : "Bildfokus", systemImage: "viewfinder")
-                    .padding(.horizontal, 9).frame(height: 30)
-                    .background(Theme.accent.opacity(0.09), in: RoundedRectangle(cornerRadius: 6))
-            }.foregroundStyle(Theme.accent)
-                .workspaceFocusTarget($focusedWorkspaceControl, equals: .focus) {
-                    WorkspaceActions.toggleFocus(layout, library: model)
-                }
+                if layout.isFocused { Label("Zur vorherigen Ansicht", systemImage: "viewfinder") }
+                else { Image(systemName: "viewfinder").frame(width: 28, height: 30) }
+            }.workspaceFocusTarget($focusedWorkspaceControl, equals: .focus) {
+                WorkspaceActions.toggleFocus(layout, library: model)
+            }
                 .disabled(!layout.isFocused && model.selectedAsset == nil)
                 .help("Bildfokus umschalten · ⇧⌘F")
+                .accessibilityLabel(layout.isFocused ? "Zur vorherigen Ansicht" : "Bildfokus")
                 .accessibilityIdentifier("workspace.focus")
             Menu("Ansicht") { WorkspaceViewCommands(layout: layout, library: model) }
                 .menuStyle(.borderlessButton).fixedSize()
@@ -273,16 +283,16 @@ struct LibraryView: View {
                 Divider()
                 Text("Automatisch täglich · letzte 7 Sicherungen")
                 Text("Bearbeitungen und generierte Pixel · Originale separat sichern")
-            } label: { Label("Sicherungen", systemImage: "externaldrive.badge.timemachine") }
+            } label: { Image(systemName: "externaldrive.badge.timemachine") }
                 .menuStyle(.borderlessButton).fixedSize().help("Backups der Bearbeitungen")
+                .accessibilityLabel("Sicherungen")
             Button {
                 JPEGExportActions.present(using: exporter, library: model, editor: editor)
             } label: { Label("Exportieren", systemImage: "square.and.arrow.up") }
-                .foregroundStyle(Theme.accent)
                 .disabled(model.selectedIDs.isEmpty || !model.canExportJPEG || model.isProjecting || editor.isLoading || editor.isRestoring || editor.isClosing || exporter.isPresented)
                 .help("Ausgewählte Fotos als JPEG oder HDR-HEIF exportieren · ⇧⌘E")
         }.buttonStyle(.plain).font(.system(size: 12, weight: .medium))
-            .padding(.leading, 82).padding(.trailing, 20).frame(height: 54).background(Theme.sidebar)
+            .padding(.leading, 82).padding(.trailing, 16).frame(height: 48).background(Theme.chrome)
     }
 
     private var sidebar: some View {
@@ -341,7 +351,7 @@ struct LibraryView: View {
 
     private var workspace: some View {
         VStack(alignment: .leading, spacing: 0) {
-            if !layout.isFocused || panels.showsLibrary {
+            if !model.isDeveloping && (!layout.isFocused || panels.showsLibrary) {
                 if layout.isFocused {
                     compactLibraryBar
                 } else {
@@ -351,7 +361,6 @@ struct LibraryView: View {
                             controlBar
                             compactControlBar
                         }
-                        panelControls
                     }
                 }
             if model.searchMode == .semantic || model.semanticOperationLabel != nil || model.semanticState.isIndexing || model.semanticImportReview != nil {
@@ -368,7 +377,7 @@ struct LibraryView: View {
             } else if model.visibleAssets.isEmpty {
                 emptyState.frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if model.showsDetail {
-                DetailView(model: model, openMasks: openMasks)
+                DetailView(model: model)
             } else {
                 PhotoGridView(model: model)
             }
@@ -429,7 +438,7 @@ struct LibraryView: View {
 
     private var panelControls: some View {
         HStack(spacing: 8) {
-            IconButton(symbol: "sidebar.left", help: "Bibliothek · ⌥⌘L", active: panels.showsLibrary) {
+            IconButton(symbol: "sidebar.left", help: model.isDeveloping ? "Navigation · ⌥⌘L" : "Bibliothek · ⌥⌘L", active: panels.showsLibrary) {
                 WorkspaceActions.toggleLibrary(layout, library: model)
             }.workspaceFocusTarget($focusedWorkspaceControl, equals: .library) {
                 WorkspaceActions.toggleLibrary(layout, library: model)
@@ -447,7 +456,7 @@ struct LibraryView: View {
                 WorkspaceActions.toggleFilmstrip(layout, library: model)
             }
                 .accessibilityValue(panels.showsFilmstrip ? "Geöffnet" : "Geschlossen")
-        }.padding(.trailing, 14).fixedSize()
+        }.fixedSize()
     }
 
     private var libraryOptionsMenu: some View {

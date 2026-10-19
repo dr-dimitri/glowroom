@@ -51,6 +51,7 @@ final class WorkspaceProposalLifecycleTests {
         try await wait { layout.isFocused && f.library.isDeveloping && f.library.showsDetail }
         // Opt-in snapshots render this isolated native view, never the user's desktop.
         if let path = ProcessInfo.processInfo.environment["PICEDIT_WORKSPACE_SNAPSHOTS"] {
+            let savedFocus = layout.focus
             let output = URL(fileURLWithPath: path, isDirectory: true)
             try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
             try await host.settle()
@@ -61,8 +62,13 @@ final class WorkspaceProposalLifecycleTests {
             layout.update(developing: true) { $0.showsLibrary = true; $0.showsFilmstrip = true }
             try await host.settle()
             try host.snapshot(to: output.appendingPathComponent("focus-panels-\(Int(size.width)).png"))
-            layout.update(developing: true) { $0.showsLibrary = false; $0.showsFilmstrip = false }
-            layout.update(developing: true) { $0.showsTools = false }
+            layout.update(developing: true) { $0.singleGroup = true }
+            for tool in [WorkspaceTool.assistant, .metadata] {
+                layout.reveal(tool, developing: true)
+                try await host.settle()
+                try host.snapshot(to: output.appendingPathComponent("focus-\(tool.rawValue)-\(Int(size.width)).png"))
+            }
+            layout.focus = savedFocus
         }
         let origin = layout.focusOrigin
         #expect(origin == WorkspaceFocusOrigin(developing: false, showsDetail: false))
@@ -162,6 +168,51 @@ final class WorkspaceProposalLifecycleTests {
         #expect(await f.library.finishSaving())
     }
 
+    @Test(arguments: [false, true])
+    func developColumnsOwnTheirControlsAndRevealTheirGroups(focused: Bool) async throws {
+        let f = try await fixture()
+        let host = WorkspaceSectionTestHost(size: NSSize(width: 1_440, height: 900))
+        defer { host.close() }
+        let suite = "PicEdit-DevelopColumns-\(UUID())"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let layout = WorkspaceLayoutModel(defaults: defaults)
+        let mask = LocalAdjustmentEditorModel(settings: .neutral)
+        let metadata = try await mountLibrary(f, mask: mask, layout: layout, host: host)
+        if focused { WorkspaceActions.toggleFocus(layout, library: f.library) }
+        layout.update(developing: true) { $0.showsLibrary = true; $0.showsTools = true; $0.singleGroup = true }
+        try await host.settle()
+        let elements = host.accessibilityElements
+        for identifier in ["workspace.navigator", "workspace.undo", "workspace.redo", "workspace.reset",
+                           "workspace.saveStatus", "workspace.compare", "develop.tool.masks", "develop.naturalBalance"] {
+            #expect(elements.filter { $0.accessibilityIdentifier() == identifier }.count == 1,
+                    "\(identifier) has one visible owner")
+        }
+        #expect(!elements.contains { $0.accessibilityIdentifier() == "workspace.mask" })
+        #expect(!elements.contains { $0.accessibilityLabel() == "Originalfoto" || $0.accessibilityLabel() == "Autom." })
+        let navigator = try #require(elements.first { $0.accessibilityIdentifier() == "workspace.navigator" })
+        let masks = try #require(elements.first { $0.accessibilityIdentifier() == "develop.tool.masks" })
+        #expect(navigator.accessibilityFrame().maxX <= masks.accessibilityFrame().minX)
+        for tool in WorkspaceTool.allCases {
+            #expect(elements.filter { $0.accessibilityIdentifier() == "workspace.group.\(tool.rawValue)" }.count == 1)
+        }
+
+        layout.update(developing: true) { $0.showsLibrary = false; $0.showsTools = false }
+        WorkspaceActions.reveal(.assistant, layout: layout, library: f.library)
+        try await host.settle()
+        #expect(layout.panels(developing: true).showsLibrary && !layout.panels(developing: true).showsTools)
+        #expect(host.accessibilityElements.contains { $0.accessibilityIdentifier() == "workspace.group.assistant" })
+        #expect(!host.accessibilityElements.contains { $0.accessibilityIdentifier() == "develop.tool.masks" })
+        WorkspaceActions.reveal(.edit, layout: layout, library: f.library)
+        try await host.settle()
+        #expect(layout.panels(developing: true).openGroups == [.edit, .assistant])
+        #expect(host.accessibilityElements.contains { $0.accessibilityIdentifier() == "develop.tool.masks" })
+        #expect(await f.provider.requests.isEmpty)
+        #expect(await f.service.requests.isEmpty)
+        #expect(await metadata.finishSaving())
+        #expect(await f.library.finishSaving())
+    }
+
     @Test
     func paintedInlineMaskSurvivesPanelChangesAndDiscardsOnGridOrSourceChange() async throws {
         let f = try await fixture()
@@ -192,7 +243,7 @@ final class WorkspaceProposalLifecycleTests {
                 .environmentObject(f.analysis)
                 .environmentObject(metadata)
         )
-        let maskButton = try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == "workspace.mask" })
+        let maskButton = try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == "develop.tool.masks" })
         #expect(maskButton.accessibilityPerformPress())
         try await wait("inline mask canvas loads without a sheet") {
             mask.canvasSize != nil && host.sheet == nil && host.accessibilityElements.contains { $0.accessibilityIdentifier() == "local-mask.canvas" }
@@ -234,7 +285,7 @@ final class WorkspaceProposalLifecycleTests {
         try await wait("leaving the canvas discards the unaccepted draft") { !f.library.showsDetail && mask.source == nil && mask.bitmap == nil }
         WorkspaceActions.reveal(.edit, layout: layout, library: f.library)
         try await host.settle()
-        let reopen = try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == "workspace.mask" })
+        let reopen = try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == "develop.tool.masks" })
         #expect(reopen.accessibilityPerformPress())
         try await wait("reopening starts a clean draft") { mask.source == baselineSource && mask.canvasSize != nil && mask.settings == baselineSettings && !mask.canUndo }
         mask.add(.linear)
@@ -246,7 +297,7 @@ final class WorkspaceProposalLifecycleTests {
         }
         #expect(host.sheet == nil)
         let replacedSource = try #require(f.editor.aiSnapshot(in: f.library)).source
-        let reopenAfterReplacement = try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == "workspace.mask" })
+        let reopenAfterReplacement = try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == "develop.tool.masks" })
         #expect(reopenAfterReplacement.accessibilityPerformPress())
         try await wait("replacement gets a new inline canvas") { mask.source == replacedSource && mask.canvasSize != nil && mask.settings == baselineSettings }
         mask.add(.radial)
@@ -260,7 +311,7 @@ final class WorkspaceProposalLifecycleTests {
     }
 
     @Test(arguments: [WorkspaceTool.edit, .assistant])
-    func dockRevealAcceptsTheMaskDraftAndMountsItsDestination(tool: WorkspaceTool) async throws {
+    func toolRevealAcceptsTheMaskDraftAndMountsItsDestination(tool: WorkspaceTool) async throws {
         let f = try await fixture()
         let host = WorkspaceSectionTestHost(size: NSSize(width: 1_440, height: 900))
         defer { host.close() }
@@ -269,17 +320,37 @@ final class WorkspaceProposalLifecycleTests {
         defer { defaults.removePersistentDomain(forName: suite) }
         let layout = WorkspaceLayoutModel(defaults: defaults)
         let assetID = try #require(f.library.selectedID)
+        if tool == .assistant { f.editor.setSettings(EditSettings(exposure: 0.2), for: assetID) }
         let mask = LocalAdjustmentEditorModel(settings: f.editor.settings(for: assetID))
         let metadata = try await mountLibrary(f, mask: mask, layout: layout, host: host)
+        if tool == .assistant {
+            WorkspaceActions.reveal(.assistant, layout: layout, library: f.library)
+            f.assistant.prompt = "Tiefen aufhellen"
+            try await wait("assistant action is enabled before mask editing") {
+                host.accessibilityElements.first { $0.accessibilityRole() == .button && $0.accessibilityLabel() == "Vorschlag erstellen" }?.isAccessibilityEnabled() == true
+            }
+            #expect(host.accessibilityElements.first { $0.accessibilityIdentifier() == "workspace.undo" }?.isAccessibilityEnabled() == true)
+            #expect(host.accessibilityElements.first { $0.accessibilityIdentifier() == "workspace.reset" }?.isAccessibilityEnabled() == true)
+        }
         let previousRequest = layout.revealRequest
-        let open = try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == "workspace.mask" })
+        let open = try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == "develop.tool.masks" })
         #expect(open.accessibilityPerformPress())
         try await wait("mask draft before dock reveal") { mask.canvasSize != nil && mask.source != nil }
         #expect(layout.revealRequest == previousRequest, "Opening masks must not emit navigation to a hidden edit group")
         mask.add(.radial); mask.updateSelected { $0.settings.exposure = 1 }
         let expected = mask.settings
         #expect(f.editor.settings(for: assetID).localAdjustments.isEmpty)
-        WorkspaceActions.reveal(tool, layout: layout, library: f.library)
+        if tool == .assistant {
+            try await host.settle()
+            #expect(host.accessibilityElements.first { $0.accessibilityRole() == .button && $0.accessibilityLabel() == "Vorschlag erstellen" }?.isAccessibilityEnabled() == false)
+            for identifier in ["workspace.undo", "workspace.redo", "workspace.reset"] {
+                #expect(host.accessibilityElements.first { $0.accessibilityIdentifier() == identifier }?.isAccessibilityEnabled() == false)
+            }
+            let group = try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == "workspace.group.assistant" })
+            #expect(group.accessibilityPerformPress(), "The already open navigation header accepts the draft before returning to its controls")
+        } else {
+            WorkspaceActions.reveal(tool, layout: layout, library: f.library)
+        }
         try await wait("dock target replaces the palette after draft acceptance") {
             mask.source == nil && f.editor.settings(for: assetID) == expected
                 && host.accessibilityElements.contains { $0.accessibilityIdentifier() == "workspace.group.\(tool.rawValue)" }
@@ -288,6 +359,7 @@ final class WorkspaceProposalLifecycleTests {
         #expect(!host.accessibilityElements.contains { $0.accessibilityIdentifier() == "local-mask.cancel" })
         #expect(layout.develop.openGroups.contains(tool))
         if tool == .assistant {
+            #expect(host.accessibilityElements.first { $0.accessibilityRole() == .button && $0.accessibilityLabel() == "Vorschlag erstellen" }?.isAccessibilityEnabled() == true)
             // Direct inspector/menu reveals use the same path from geometry tools.
             let crop = try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == "develop.tool.crop" })
             #expect(crop.accessibilityPerformPress())
@@ -319,7 +391,7 @@ final class WorkspaceProposalLifecycleTests {
         let assetID = try #require(f.library.selectedID)
         let mask = LocalAdjustmentEditorModel(settings: .neutral, generator: { _, _, _ in try await gate.generate() })
         let metadata = try await mountLibrary(f, mask: mask, layout: layout, host: host)
-        let open = try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == "workspace.mask" })
+        let open = try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == "develop.tool.masks" })
         #expect(open.accessibilityPerformPress())
         try await wait("draft source for automatic selection") { mask.canvasSize != nil }
         mask.add(.linear); mask.updateSelected { $0.settings.exposure = 1 }
@@ -353,7 +425,7 @@ final class WorkspaceProposalLifecycleTests {
         let assetID = try #require(f.library.selectedID)
         let mask = LocalAdjustmentEditorModel(settings: .neutral, generator: { _, _, _ in try await gate.generate() })
         let metadata = try await mountLibrary(f, mask: mask, layout: layout, host: host)
-        let open = try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == "workspace.mask" })
+        let open = try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == "develop.tool.masks" })
         #expect(open.accessibilityPerformPress())
         try await wait("draft source before failed selection") { mask.canvasSize != nil }
         mask.add(.linear); mask.updateSelected { $0.settings.exposure = 1 }
@@ -488,7 +560,7 @@ final class WorkspaceProposalLifecycleTests {
         WorkspaceActions.toggleFocus(layout, library: f.library)
         #expect(layout.isFocused && f.library.isDeveloping && f.library.showsDetail)
         WorkspaceActions.reveal(.assistant, layout: layout, library: f.library)
-        #expect(layout.focus.showsTools && layout.focus.openGroups.contains(.assistant))
+        #expect(layout.focus.showsLibrary && !layout.focus.showsTools && layout.focus.openGroups.contains(.assistant))
         WorkspaceActions.reveal(.analysis, layout: layout, library: f.library)
         WorkspaceActions.toggleLibrary(layout, library: f.library)
         WorkspaceActions.toggleFilmstrip(layout, library: f.library)

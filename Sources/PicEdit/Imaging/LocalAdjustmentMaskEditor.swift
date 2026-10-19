@@ -283,6 +283,7 @@ struct InlineMaskList: View {
         }.padding(8)
             .background(Theme.panel, in: RoundedRectangle(cornerRadius: 7))
             .overlay { RoundedRectangle(cornerRadius: 7).strokeBorder(Theme.line) }
+            .accessibilityElement(children: .contain)
             .accessibilityIdentifier("local-mask.list")
             .sheet(isPresented: $showsSkySetup) { SkyMaskModelSetupView() }
     }
