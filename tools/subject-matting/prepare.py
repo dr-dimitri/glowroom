@@ -30,6 +30,16 @@ FILES = {
 SIZE = 2048
 
 
+def model_side(value) -> int:
+    side = int(value)
+    # The full-resolution Swin encoder has stride 32. The decoder folds the
+    # input into 32x32 channel patches, so arbitrary padded sizes would change
+    # its learned input-channel contract. Window attention pads independently.
+    if not 256 <= side <= SIZE or side % 32:
+        raise argparse.ArgumentTypeError("side must be a multiple of 32 between 256 and 2048")
+    return side
+
+
 def canonicalize_package(output: Path) -> None:
     """Replace packaging UUIDs and protobuf map order with reproducible bytes."""
     import coremltools as ct
@@ -157,6 +167,7 @@ def publish_directory(source: Path, destination: Path) -> None:
 
 
 def convert(directory: Path, output: Path, side: int = SIZE) -> None:
+    side = model_side(side)
     import coremltools as ct
     import numpy as np
     import torch
@@ -223,8 +234,8 @@ def main() -> None:
     parser.add_argument("--source", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--download", action="store_true")
-    parser.add_argument("--side", type=int, choices=(1024, 2048), default=SIZE,
-                        help="2048 is the app contract; 1024 is an exploratory speed/quality candidate")
+    parser.add_argument("--side", type=model_side, default=SIZE,
+                        help="multiple of 32 from 256 to 2048; non-2048 sizes are exploratory candidates")
     args = parser.parse_args()
     start = time.monotonic()
     sources(args.source, args.download)

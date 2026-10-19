@@ -20,7 +20,7 @@ import numpy as np
 from PIL import Image
 import torch
 
-from prepare import FILES, REVISION, SIZE, digest, load_model, sources
+from prepare import FILES, REVISION, SIZE, digest, load_model, model_side, sources
 from validation import compare, validate_array
 
 
@@ -31,7 +31,7 @@ def main():
     parser.add_argument("--image", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--reference-only", action="store_true", help="Save reference then exit before native compilation to bound peak memory")
-    parser.add_argument("--side", type=int, choices=(1024, 2048), default=SIZE)
+    parser.add_argument("--side", type=model_side, default=SIZE)
     args = parser.parse_args()
     if args.output.exists():
         raise SystemExit("Refusing to overwrite qualification output")

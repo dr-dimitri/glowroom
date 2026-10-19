@@ -1,0 +1,441 @@
+{
+  "schemaVersion": 1,
+  "status": "experimental-timing-and-reference-checks-complete-not-app-approved",
+  "date": "2026-10-19",
+  "targetSeconds": 6,
+  "approximateTargetBandSeconds": [
+    5,
+    7
+  ],
+  "selectedSide": 1920,
+  "computeUnits": "cpuAndGPU",
+  "hardware": {
+    "chip": "Apple M2 Pro",
+    "activeCPUCount": 12,
+    "physicalMemoryBytes": 17179869184,
+    "modelIdentifier": "Mac14,10"
+  },
+  "checkpoint": {
+    "repository": "ZhengPeng7/BiRefNet_HR-matting",
+    "revision": "5d6b6f8adcb5b417c871b1d84ceaae9871355b7f",
+    "weightsSHA256": "a5a4de698739ea5e0e8bbab28e1b293dde95092b87a442d566cbc585c53cef55"
+  },
+  "resolutionSupport": {
+    "minimum": 256,
+    "maximum": 2048,
+    "step": 32,
+    "reason": "Full Swin encoder stride32 and decoder image-to-channel patch folding; attention windows and half-scale branch can pad independently."
+  },
+  "input": {
+    "kind": "Local sRGB preview developed from user-provided RAW",
+    "width": 2048,
+    "height": 1365,
+    "sameSourceFileForAllRuns": true
+  },
+  "method": {
+    "processes": "Each timed run launches a new native process and loads MLModel, performs one prediction and exits. No resident-model inference reused for the target.",
+    "requestDefinition": "Monotonic time from MLModel load through PNG decode, CoreGraphics resize, prediction and validated Float32 alpha copy; output writes excluded.",
+    "notIncluded": [
+      "Model installation and compilation",
+      "App model-integrity hashing",
+      "RAW development",
+      "Final aspect-restoration Gray8 raster",
+      "Some system GPU/driver allocations in process RSS"
+    ],
+    "cachePolicy": "OS, CoreML and GPU caches not purged. First measurement after each new compiled model separated from subsequent fresh-process measurements.",
+    "concurrency": "All model conversions and native runs sequential; lightweight image diagnostics only during conversion/reference phases."
+  },
+  "resolutions": {
+    "1024": {
+      "freshProcessCount": 3,
+      "requestSeconds": [
+        3.4493727083317935,
+        2.4443475416628644,
+        2.3751392083941028
+      ],
+      "medianRequestSeconds": 2.4443475416628644,
+      "minimumRequestSeconds": 2.3751392083941028,
+      "maximumRequestSeconds": 3.4493727083317935,
+      "firstProcessRequestSeconds": 3.4493727083317935,
+      "subsequentProcessMedianSeconds": 2.4097433750284836,
+      "exactAlphaRepeatedAcrossProcesses": true,
+      "runs": [
+        {
+          "alphaMaximum": 0.9999953508377075,
+          "alphaMinimum": 4.48290826682296e-09,
+          "compileSeconds": 6.683333776891232e-05,
+          "computeUnits": "cpuAndGPU",
+          "inferenceSeconds": [
+            2.4607667500386015
+          ],
+          "limitations": "Fresh native process; OS/Core ML/GPU caches not purged. Request uses monotonic time from MLModel load through image decode/resize, first prediction and validated alpha copy, excluding compilation and output writes. App installation integrity hashing, RAW development and final aspect-restoration raster are excluded. Process RSS excludes some GPU/driver allocations. CoreGraphics high-quality resize.",
+          "loadSeconds": 0.7632297499803826,
+          "processPeakResidentBytes": 949764096,
+          "requestSecondsToFirstValidatedAlpha": 3.4493727083317935,
+          "side": 1024,
+          "run": "1024-gpu-run1"
+        },
+        {
+          "alphaMaximum": 0.9999953508377075,
+          "alphaMinimum": 4.48290826682296e-09,
+          "compileSeconds": 6.791669875383377e-05,
+          "computeUnits": "cpuAndGPU",
+          "inferenceSeconds": [
+            2.075240541715175
+          ],
+          "limitations": "Fresh native process; OS/Core ML/GPU caches not purged. Request uses monotonic time from MLModel load through image decode/resize, first prediction and validated alpha copy, excluding compilation and output writes. App installation integrity hashing, RAW development and final aspect-restoration raster are excluded. Process RSS excludes some GPU/driver allocations. CoreGraphics high-quality resize.",
+          "loadSeconds": 0.1569261666154489,
+          "processPeakResidentBytes": 949895168,
+          "requestSecondsToFirstValidatedAlpha": 2.4443475416628644,
+          "side": 1024,
+          "run": "1024-gpu-run2"
+        },
+        {
+          "alphaMaximum": 0.9999953508377075,
+          "alphaMinimum": 4.48290826682296e-09,
+          "compileSeconds": 2.420833334326744e-05,
+          "computeUnits": "cpuAndGPU",
+          "inferenceSeconds": [
+            2.0363671666709706
+          ],
+          "limitations": "Fresh native process; OS/Core ML/GPU caches not purged. Request uses monotonic time from MLModel load through image decode/resize, first prediction and validated alpha copy, excluding compilation and output writes. App installation integrity hashing, RAW development and final aspect-restoration raster are excluded. Process RSS excludes some GPU/driver allocations. CoreGraphics high-quality resize.",
+          "loadSeconds": 0.14004183339420706,
+          "processPeakResidentBytes": 949862400,
+          "requestSecondsToFirstValidatedAlpha": 2.3751392083941028,
+          "side": 1024,
+          "run": "1024-gpu-run3"
+        }
+      ]
+    },
+    "1536": {
+      "freshProcessCount": 3,
+      "requestSeconds": [
+        9.410271708271466,
+        3.640307291643694,
+        3.4298730415757746
+      ],
+      "medianRequestSeconds": 3.640307291643694,
+      "minimumRequestSeconds": 3.4298730415757746,
+      "maximumRequestSeconds": 9.410271708271466,
+      "firstProcessRequestSeconds": 9.410271708271466,
+      "subsequentProcessMedianSeconds": 3.5350901666097343,
+      "exactAlphaRepeatedAcrossProcesses": true,
+      "runs": [
+        {
+          "alphaMaximum": 0.9999967813491821,
+          "alphaMinimum": 4.547213805494721e-08,
+          "compileSeconds": 2.5708344765007496e-05,
+          "computeUnits": "cpuAndGPU",
+          "inferenceSeconds": [
+            3.8375297082820907
+          ],
+          "limitations": "Fresh native process; OS/Core ML/GPU caches not purged. Request uses monotonic time from MLModel load through image decode/resize, first prediction and validated alpha copy, excluding compilation and output writes. App installation integrity hashing, RAW development and final aspect-restoration raster are excluded. Process RSS excludes some GPU/driver allocations. CoreGraphics high-quality resize.",
+          "loadSeconds": 5.186647458351217,
+          "processPeakResidentBytes": 1207353344,
+          "requestSecondsToFirstValidatedAlpha": 9.410271708271466,
+          "side": 1536,
+          "run": "1536-gpu-run1"
+        },
+        {
+          "alphaMaximum": 0.9999967813491821,
+          "alphaMinimum": 4.547213805494721e-08,
+          "compileSeconds": 3.0374969355762005e-05,
+          "computeUnits": "cpuAndGPU",
+          "inferenceSeconds": [
+            2.907348250038922
+          ],
+          "limitations": "Fresh native process; OS/Core ML/GPU caches not purged. Request uses monotonic time from MLModel load through image decode/resize, first prediction and validated alpha copy, excluding compilation and output writes. App installation integrity hashing, RAW development and final aspect-restoration raster are excluded. Process RSS excludes some GPU/driver allocations. CoreGraphics high-quality resize.",
+          "loadSeconds": 0.33056333335116506,
+          "processPeakResidentBytes": 957792256,
+          "requestSecondsToFirstValidatedAlpha": 3.640307291643694,
+          "side": 1536,
+          "run": "1536-gpu-run2"
+        },
+        {
+          "alphaMaximum": 0.9999967813491821,
+          "alphaMinimum": 4.547213805494721e-08,
+          "compileSeconds": 3.166659735143185e-05,
+          "computeUnits": "cpuAndGPU",
+          "inferenceSeconds": [
+            2.8586219999706373
+          ],
+          "limitations": "Fresh native process; OS/Core ML/GPU caches not purged. Request uses monotonic time from MLModel load through image decode/resize, first prediction and validated alpha copy, excluding compilation and output writes. App installation integrity hashing, RAW development and final aspect-restoration raster are excluded. Process RSS excludes some GPU/driver allocations. CoreGraphics high-quality resize.",
+          "loadSeconds": 0.1697673334274441,
+          "processPeakResidentBytes": 957792256,
+          "requestSecondsToFirstValidatedAlpha": 3.4298730415757746,
+          "side": 1536,
+          "run": "1536-gpu-run3"
+        }
+      ]
+    },
+    "1792": {
+      "freshProcessCount": 3,
+      "requestSeconds": [
+        10.529419166734442,
+        4.9516000415897,
+        5.1681526666507125
+      ],
+      "medianRequestSeconds": 5.1681526666507125,
+      "minimumRequestSeconds": 4.9516000415897,
+      "maximumRequestSeconds": 10.529419166734442,
+      "firstProcessRequestSeconds": 10.529419166734442,
+      "subsequentProcessMedianSeconds": 5.059876354120206,
+      "exactAlphaRepeatedAcrossProcesses": true,
+      "runs": [
+        {
+          "alphaMaximum": 0.9999959468841553,
+          "alphaMinimum": 9.93195143905723e-08,
+          "compileSeconds": 3.4708296880126e-05,
+          "computeUnits": "cpuAndGPU",
+          "inferenceSeconds": [
+            4.9183355832938105
+          ],
+          "limitations": "Fresh native process; OS/Core ML/GPU caches not purged. Request uses monotonic time from MLModel load through image decode/resize, first prediction and validated alpha copy, excluding compilation and output writes. App installation integrity hashing, RAW development and final aspect-restoration raster are excluded. Process RSS excludes some GPU/driver allocations. CoreGraphics high-quality resize.",
+          "loadSeconds": 5.064575958298519,
+          "processPeakResidentBytes": 1212481536,
+          "requestSecondsToFirstValidatedAlpha": 10.529419166734442,
+          "side": 1792,
+          "run": "1792-gpu-run1"
+        },
+        {
+          "alphaMaximum": 0.9999959468841553,
+          "alphaMinimum": 9.93195143905723e-08,
+          "compileSeconds": 0.000542208319529891,
+          "computeUnits": "cpuAndGPU",
+          "inferenceSeconds": [
+            3.690070499898866
+          ],
+          "limitations": "Fresh native process; OS/Core ML/GPU caches not purged. Request uses monotonic time from MLModel load through image decode/resize, first prediction and validated alpha copy, excluding compilation and output writes. App installation integrity hashing, RAW development and final aspect-restoration raster are excluded. Process RSS excludes some GPU/driver allocations. CoreGraphics high-quality resize.",
+          "loadSeconds": 0.7193112917011604,
+          "processPeakResidentBytes": 962953216,
+          "requestSecondsToFirstValidatedAlpha": 4.9516000415897,
+          "side": 1792,
+          "run": "1792-gpu-run2"
+        },
+        {
+          "alphaMaximum": 0.9999959468841553,
+          "alphaMinimum": 9.93195143905723e-08,
+          "compileSeconds": 4.8458343371748924e-05,
+          "computeUnits": "cpuAndGPU",
+          "inferenceSeconds": [
+            3.867172749945894
+          ],
+          "limitations": "Fresh native process; OS/Core ML/GPU caches not purged. Request uses monotonic time from MLModel load through image decode/resize, first prediction and validated alpha copy, excluding compilation and output writes. App installation integrity hashing, RAW development and final aspect-restoration raster are excluded. Process RSS excludes some GPU/driver allocations. CoreGraphics high-quality resize.",
+          "loadSeconds": 0.6693295417353511,
+          "processPeakResidentBytes": 963018752,
+          "requestSecondsToFirstValidatedAlpha": 5.1681526666507125,
+          "side": 1792,
+          "run": "1792-gpu-run3"
+        }
+      ]
+    },
+    "1920": {
+      "freshProcessCount": 3,
+      "requestSeconds": [
+        11.84231341665145,
+        5.428814041661099,
+        5.2349907082971185
+      ],
+      "medianRequestSeconds": 5.428814041661099,
+      "minimumRequestSeconds": 5.2349907082971185,
+      "maximumRequestSeconds": 11.84231341665145,
+      "firstProcessRequestSeconds": 11.84231341665145,
+      "subsequentProcessMedianSeconds": 5.331902374979109,
+      "exactAlphaRepeatedAcrossProcesses": true,
+      "runs": [
+        {
+          "alphaMaximum": 0.999996542930603,
+          "alphaMinimum": 3.817721676568908e-07,
+          "compileSeconds": 2.2249994799494743e-05,
+          "computeUnits": "cpuAndGPU",
+          "inferenceSeconds": [
+            6.0392511249519885
+          ],
+          "limitations": "Fresh native process; OS/Core ML/GPU caches not purged. Request uses monotonic time from MLModel load through image decode/resize, first prediction and validated alpha copy, excluding compilation and output writes. App installation integrity hashing, RAW development and final aspect-restoration raster are excluded. Process RSS excludes some GPU/driver allocations. CoreGraphics high-quality resize.",
+          "loadSeconds": 5.246380166616291,
+          "processPeakResidentBytes": 1212940288,
+          "requestSecondsToFirstValidatedAlpha": 11.84231341665145,
+          "side": 1920,
+          "run": "1920-gpu-run1"
+        },
+        {
+          "alphaMaximum": 0.999996542930603,
+          "alphaMinimum": 3.817721676568908e-07,
+          "compileSeconds": 0.0001843334175646305,
+          "computeUnits": "cpuAndGPU",
+          "inferenceSeconds": [
+            3.9466090833302587
+          ],
+          "limitations": "Fresh native process; OS/Core ML/GPU caches not purged. Request uses monotonic time from MLModel load through image decode/resize, first prediction and validated alpha copy, excluding compilation and output writes. App installation integrity hashing, RAW development and final aspect-restoration raster are excluded. Process RSS excludes some GPU/driver allocations. CoreGraphics high-quality resize.",
+          "loadSeconds": 0.8613335832487792,
+          "processPeakResidentBytes": 965689344,
+          "requestSecondsToFirstValidatedAlpha": 5.428814041661099,
+          "side": 1920,
+          "run": "1920-gpu-run2"
+        },
+        {
+          "alphaMaximum": 0.999996542930603,
+          "alphaMinimum": 3.817721676568908e-07,
+          "compileSeconds": 4.225003067404032e-05,
+          "computeUnits": "cpuAndGPU",
+          "inferenceSeconds": [
+            3.8485684583429247
+          ],
+          "limitations": "Fresh native process; OS/Core ML/GPU caches not purged. Request uses monotonic time from MLModel load through image decode/resize, first prediction and validated alpha copy, excluding compilation and output writes. App installation integrity hashing, RAW development and final aspect-restoration raster are excluded. Process RSS excludes some GPU/driver allocations. CoreGraphics high-quality resize.",
+          "loadSeconds": 0.7595276667270809,
+          "processPeakResidentBytes": 965640192,
+          "requestSecondsToFirstValidatedAlpha": 5.2349907082971185,
+          "side": 1920,
+          "run": "1920-gpu-run3"
+        }
+      ]
+    }
+  },
+  "candidateSourcePackage": {
+    "contract": "birefnet-hr-matting-v1",
+    "repository": "ZhengPeng7/BiRefNet_HR-matting",
+    "revision": "5d6b6f8adcb5b417c871b1d84ceaae9871355b7f",
+    "inputSide": 1920,
+    "sourceFiles": {
+      "birefnet.py": "2a45b4e0ece72d7c4212bca1a988e7d7e52bfe9f98ec59c58b8809c8a8b7a831",
+      "BiRefNet_config.py": "e7b8c2a74f6cea6a59553d517f71d47f2c1d90e670a13416af17c25fe2f3dc52",
+      "model.safetensors": "a5a4de698739ea5e0e8bbab28e1b293dde95092b87a442d566cbc585c53cef55"
+    },
+    "files": [
+      {
+        "path": "Data/com.apple.CoreML/model.mlmodel",
+        "byteCount": 4211315,
+        "sha256": "68e652515e34d2cb26e19f8194a35fdb4ce3442eeabbe9ec617e70ff5a08526d"
+      },
+      {
+        "path": "Data/com.apple.CoreML/weights/weight.bin",
+        "byteCount": 472984480,
+        "sha256": "b7a129ce6d27738235b6677007aaedd084d52c8b4fbbffbeb765aa0be9dd79b6"
+      },
+      {
+        "path": "Manifest.json",
+        "byteCount": 617,
+        "sha256": "c4e54cefe20d52bd0c1bdce615dbbb48337960c4c69acd3bcd16acd490c629d1"
+      }
+    ]
+  },
+  "upperReference2048": {
+    "sameCheckpoint": true,
+    "previousFreshModelLoadSeconds": 0.73847496509552,
+    "previousFirstPredictionSeconds": 32.14008295536041,
+    "sumIsLowerBoundNotNewFullRequestSeconds": 32.87855792045593,
+    "scope": "Previously qualified source from the same host; not remeasured with the new full-request instrumentation. Already far outside the requested band."
+  },
+  "limitations": [
+    "One image and one host; no ground-truth alpha and no guarantee of Lightroom equivalence.",
+    "The initial new-model request is substantially slower than the cache-populated median. Six seconds is not an upper-bound guarantee.",
+    "Changing resolution can alter fine edges and interior background gaps; visual comparison and final candidate reference parity required.",
+    "1920 maximum native-versus-FP32 alpha difference is0.50255 and1792 maximum0.20853; passing the existing gate does not establish pixel equality.",
+    "No new CPU timing matrix was run because the qualified CPU+GPU path reaches the target band; earlier CPU alternatives remain separate historical measurements."
+  ],
+  "largestTimingCandidateSide": 1920,
+  "qualityTimeAlternativeSide": 1792,
+  "qualityReferenceParity": {
+    "1024": {
+      "exactReferenceInputUsed": true,
+      "scope": "Separate qualification process using the saved Pillow reference-input.png; these timings are excluded from the original-preview performance series.",
+      "nativeVersusFP32": {
+        "alpha-1.f32": {
+          "meanAbsoluteError": 0.0002783792851737387,
+          "maximumAbsoluteError": 0.04156845808029175,
+          "p99AbsoluteError": 0.006570935249328613
+        }
+      },
+      "passesExistingGate": true,
+      "referenceLoadAndInferenceSeconds": 12.958696832996793,
+      "referenceProcessPeakResidentBytes": 6159826944
+    },
+    "1792": {
+      "exactReferenceInputUsed": true,
+      "scope": "Separate qualification process using the saved Pillow reference-input.png; these timings are excluded from the original-preview performance series.",
+      "nativeVersusFP32": {
+        "alpha-1.f32": {
+          "meanAbsoluteError": 0.0009342697388467264,
+          "maximumAbsoluteError": 0.20852726697921753,
+          "p99AbsoluteError": 0.024498788714408914
+        }
+      },
+      "passesExistingGate": true,
+      "referenceLoadAndInferenceSeconds": 34.8618960409658,
+      "referenceProcessPeakResidentBytes": 7864664064
+    },
+    "1920": {
+      "exactReferenceInputUsed": true,
+      "scope": "Separate qualification process using the saved Pillow reference-input.png; these timings are excluded from the original-preview performance series.",
+      "nativeVersusFP32": {
+        "alpha-1.f32": {
+          "meanAbsoluteError": 0.0019902598536690698,
+          "maximumAbsoluteError": 0.5025513768196106,
+          "p99AbsoluteError": 0.053886482715606476
+        }
+      },
+      "passesExistingGate": true,
+      "referenceLoadAndInferenceSeconds": 30.96207820798736,
+      "referenceProcessPeakResidentBytes": 9838624768
+    }
+  },
+  "referenceParityGate": {
+    "meanAbsoluteErrorMaximum": 0.01,
+    "p99AbsoluteErrorMaximum": 0.1,
+    "requiresFiniteCoverageAndShape": true,
+    "maximumErrorReportedWithoutHiding": true,
+    "notGroundTruthAccuracy": true
+  },
+  "control2048": {
+    "alphaMaximum": 0.9999982118606567,
+    "alphaMinimum": 1.8004224955348036e-07,
+    "compileSeconds": 2.5249901227653027e-05,
+    "computeUnits": "cpuAndGPU",
+    "inferenceSeconds": [
+      31.89140191662591
+    ],
+    "limitations": "Fresh native process; OS/Core ML/GPU caches not purged. Request uses monotonic time from MLModel load through image decode/resize, first prediction and validated alpha copy, excluding compilation and output writes. App installation integrity hashing, RAW development and final aspect-restoration raster are excluded. Process RSS excludes some GPU/driver allocations. CoreGraphics high-quality resize.",
+    "loadSeconds": 0.7202320416690782,
+    "processPeakResidentBytes": 977567744,
+    "requestSecondsToFirstValidatedAlpha": 33.236919666756876,
+    "side": 2048,
+    "scope": "One fresh process with current instrumentation, identical original preview and CoreGraphics resize; reference upper bound, not three-run candidate series."
+  },
+  "driftControl1024": {
+    "alphaMaximum": 0.9999953508377075,
+    "alphaMinimum": 4.48290826682296e-09,
+    "compileSeconds": 0.0003927915822714567,
+    "computeUnits": "cpuAndGPU",
+    "inferenceSeconds": [
+      2.0901712499326095
+    ],
+    "limitations": "Fresh native process; OS/Core ML/GPU caches not purged. Request uses monotonic time from MLModel load through image decode/resize, first prediction and validated alpha copy, excluding compilation and output writes. App installation integrity hashing, RAW development and final aspect-restoration raster are excluded. Process RSS excludes some GPU/driver allocations. CoreGraphics high-quality resize.",
+    "loadSeconds": 0.9321352916304022,
+    "processPeakResidentBytes": 949895168,
+    "requestSecondsToFirstValidatedAlpha": 3.2696518333395943,
+    "side": 1024,
+    "relativeRequestChangeFromOriginalThreeRunMedian": 0.33763786761488257,
+    "relativeInferenceChangeFromOriginalThreeRunMedian": 0.007194687997514881,
+    "scope": "Final separate control, not inserted into the fixed initial N=3 median. Inference stable; model-load variation accounts for most request-time change.",
+    "alphaExactlyEqualsInitialThreeRunOutput": true
+  },
+  "decisionNotes": [
+    "1920 is the largest newly tested side with median request in the approximate 5\u20137s target band; the contemporary 2048 control is clearly above it.",
+    "1792 also meets the band and has lower native/FP32 differences on its own exact reference input than 1920. This supports considering it as a conservative quality/time alternative, not a ground-truth quality score.",
+    "1920 and 1792 are experimental artifacts only; the approved 2048 app installation and backend selection are unchanged.",
+    "All initial N=3 performance outputs are byte-reproducible within each resolution, despite model-loader/cache timing variation."
+  ],
+  "privacy": "No photograph, derivative, filename, local path or image/alpha hash is included.",
+  "approvedByApp": false,
+  "installedAppSideUnchanged": 2048,
+  "conservativeAlternativeSide": 1792,
+  "visualInspection": {
+    "method": "Two native-preview-pixel crops covering fine needles and interior gaps; all sizes use the same source preview and CoreGraphics input resizing, including the new 2048 control. Scalar alpha restored to original aspect, then linear-sRGB background exposure -5 EV, contrast 0.",
+    "observations": [
+      "1920 and 1792 preserve inspected needle tips and interior gaps very similarly to the current 2048 comparison; no clear systematic detail loss was visible in these crops.",
+      "1024 has softer and wider transitions.",
+      "Thin bright mixed-pixel edges remain under -5 EV at every inspected size, including 2048."
+    ],
+    "limitations": "Single photograph and two crops, no ground-truth alpha; does not cancel native/FP32 differences or replace production-renderer validation."
+  }
+}
