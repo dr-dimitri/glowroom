@@ -6,7 +6,7 @@ HEIF verwendet Core Images echten [10-Bit-HEIF-Encoder](https://developer.apple.
 
 Übernommene Freistellung, Spiegelung und Drehung sind Teil der Ausgabe. Lokale Korrekturen, manuelle Klon-/Reparaturstellen und Rote-Augen-Korrekturen verwenden Koordinaten der unbeschnittenen, orientierten Quelle; die Freistellung folgt am Ende des gemeinsamen Bildgraphen. Die Exportgrößen und die Vorschau im Dialog beziehen sich auf diese freigestellte und gedrehte Ausgabe. Lanczos skaliert deren tatsächliche Maße, damit ein Beschnitt nicht anschließend auf die ursprünglichen Proportionen gestreckt wird.
 
-Eine unverbindliche KI-Vorschau ist kein übernommener Bearbeitungsstand. Der Exportdialog erfasst weiterhin ausschließlich `EditingModel.settings(for:)`; erst nach „Übernehmen“ fließen die vorgeschlagenen Regler in einen neu geöffneten Export ein. Der Originalvergleich und der Vergleich mit dem KI-Ausgangsstand ändern die Exportquelle nicht.
+Gültige KI-Reglerantworten und angeklickte Lookkarten werden direkt aktiviert. Der Exportdialog erfasst ausschließlich `EditingModel.settings(for:)`; ein danach neu geöffneter Export enthält sofort diese aktiven Werte. Noch nicht ausgewählte Lookkarten verändern den Export nicht. Der Originalvergleich und der Vergleich mit dem KI-Ausgangsstand ändern die Exportquelle nicht.
 
 Seit der Einführung dauerhafter Rasterquellen wird der Dialog für eine Auswahl mit aktiver Artefaktquelle ausdrücklich gesperrt. Der bisherige Exportpfad gilt für Originalquellen; der Variantenexport wird separat integriert. Dadurch kann kein scheinbar erfolgreicher Export versehentlich das importierte Original anstelle des gewählten Rasterstands verwenden.
 
@@ -14,7 +14,7 @@ Der Dialog orientiert sich an den Bereichen Speicherort, Dateieinstellungen und 
 
 ## Verarbeitung
 
-Gespeicherte [Maskenkorrekturen](MASK-EDITING.md) sind Teil des beim Öffnen eingefrorenen Settings-Snapshots. Sie wirken nach den globalen Reglern in Listenreihenfolge mit demselben alphabewussten Graphen wie die Vorschau. Verläufe entstehen in voller Ausgabeauflösung; Pinsel-/Korrekturraster sind auf 2048 und automatische Masken auf 512 Pixel je Kante begrenzt. Der Inline-Maskenentwurf fließt nach **Fertig/Übernehmen** oder dem Übernehmen beim Werkzeugwechsel in einen danach geöffneten Export ein. Die automatische Erkennung läuft beim Export nicht erneut.
+Gespeicherte [Maskenkorrekturen](MASK-EDITING.md) sind Teil des beim Öffnen eingefrorenen Settings-Snapshots. Sie wirken nach den globalen Reglern in Listenreihenfolge mit demselben alphabewussten Graphen wie die Vorschau. Verläufe entstehen in voller Ausgabeauflösung; Pinsel-/Korrekturraster sind auf 2048 und automatische Masken auf 512 Pixel je Kante begrenzt. Gültige Inline-Maskenänderungen werden unmittelbar im Editor angenommen und fließen ohne zusätzlichen Bestätigungsschritt in einen danach geöffneten Export ein. Die automatische Erkennung läuft beim Export nicht erneut.
 
 `JPEGExportModel` hält Eingaben, Status, Abbruch und Bestätigung für vorhandene Zieldateien auf dem MainActor. Ein unveränderlicher `JPEGExportRequest` enthält Original, Bearbeitungen, Ausgabemaße, Qualität, Farbraum und Ziel. Bei einer Überschreibbestätigung wird genau dieser Auftrag erneut verwendet. Der Originalschutz bleibt dagegen aktuell: Jeder Auftrag behält den Zugriff auf die Schutzinstanz seiner Bibliothek, auch bei Stapelfortsetzung und erneutem Versuch.
 

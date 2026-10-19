@@ -4,9 +4,11 @@
 
 ## Bedienung
 
-**Drei Looks erstellen** fordert gemeinsam die Stile „Natürlich“, „Kontrastreich“ und „Entsättigt“ an. Ein zusätzlicher Wunsch ist optional und auf 2048 UTF-8-Bytes begrenzt. Die drei gleichartigen Karten bleiben in dieser Reihenfolge. Ihre Auswahl ändert ausschließlich die unverbindliche Hauptvorschau. Alle Reglerangaben und Deltas werden aus Ausgang und validiertem Ziel berechnet; Varianten bauen nicht aufeinander auf.
+**Drei Looks erstellen** fordert gemeinsam die Stile „Natürlich“, „Kontrastreich“ und „Entsättigt“ an. Ein zusätzlicher Wunsch ist optional und auf 2048 UTF-8-Bytes begrenzt. Die drei gleichartigen Karten bleiben in dieser Reihenfolge. Zunächst ist keine Variante ausgewählt. Ein Klick auf eine Karte aktiviert den Look sofort in der Bearbeitung; ein zusätzlicher Übernehmen-Button entfällt. Alle Reglerangaben und Deltas werden aus Ausgang und validiertem Ziel berechnet; Varianten bauen nicht aufeinander auf.
 
-Der Vergleich mit der aktuellen Bearbeitung sowie **Importiertes Original anzeigen** und **Aktuelle Quelle ohne Regler** bleiben erreichbar. Die beiden Quellenvergleiche zeigen das importierte Original beziehungsweise die aktive Bildbasis ohne zusätzliche Regler. Ein Auswahlwechsel ruft das Modell nicht erneut auf und speichert nichts. **Übernehmen** konsumiert die ganze Vorschlagsgruppe und übernimmt die ausgewählte Variante als einen Undo-Schritt. **Verwerfen**, Bild-/Reglerwechsel, Undo/Redo, Wartung/Restore und Schließen entwerten alle drei Varianten und geben die gruppeneigenen Bildreferenzen frei. Raster, Filmstreifen und JPEG-Export verwenden bis zur Übernahme weiterhin die übernommenen Werte.
+Der Vergleich **Ausgangsstand / Aktive Bearbeitung** sowie **Importiertes Original anzeigen** und **Aktuelle Quelle ohne Regler** bleiben erreichbar. Die beiden Quellenvergleiche zeigen das importierte Original beziehungsweise die aktive Bildbasis ohne zusätzliche Regler. Jeder Wechsel zu einer anderen Karte speichert deren vollständiges Ziel als einen Undo-Schritt und ruft das Modell nicht erneut auf. Dadurch werden Änderungen der vorigen Variante zurückgesetzt, statt die Looks aufeinander zu stapeln. Raster, Filmstreifen und JPEG-Export verwenden sofort die aktiven Werte, auch während der ausdrücklich gewählten Ausgangsstandansicht.
+
+**Command-Z** geht die Lookwechsel einzeln rückwärts durch; weitere Aufrufe erreichen alle vorherigen Schritte derselben Funktion. Die Auswahl einer anderen Bearbeitungsfunktion beginnt eine neue Historie. Undo/Redo, externe Bild-/Reglerwechsel, Wartung/Restore und Schließen entwerten die Gruppe und geben ihre Bildreferenzen frei. Das automatische Speichern eines aktiven Looks entwertet die übrigen Karten nicht. **Ergebnis schließen** entfernt die Kartenanzeige; die aktiven Anpassungen und ihre Historie bleiben erhalten.
 
 ## Gemeinsamer Vertrag und Grenzen
 
@@ -26,7 +28,7 @@ Der gruppeneigene Kartenstore hält höchstens drei Bitmaps und insgesamt höchs
 
 ## Prüfung
 
-Normale Tests verwenden Fakes und synthetische Raster. Sie prüfen vollständige Gruppenvalidierung, einen Aufruf für drei Looks, Abbruchignorierung, gemeinsame Arbeit, Modustrennung, Quellen-/Revisionswechsel, Auswahl ohne Writes, einmalige Übernahme und Byte-/Anzahlgrenzen. Der vorhandene Export- und Farb-/Transparenzvertrag gilt auch für Lookvorschläge.
+Normale Tests verwenden Fakes und synthetische Raster. Sie prüfen vollständige Gruppenvalidierung, einen Aufruf für drei Looks, Abbruchignorierung, gemeinsame Arbeit, Modustrennung, Quellen-/Revisionswechsel, direkte Aktivierung, Wechsel aus demselben Ausgang über eigene Speichervorgänge hinweg, schrittweises Undo und Byte-/Anzahlgrenzen. Der vorhandene Export- und Farb-/Transparenzvertrag gilt auch für Lookvorschläge.
 
 Ein ausdrücklich aktivierter Echtmodelltest prüft gültige Gruppen aus neutralem und verändertem Ausgang sowie die ehrliche Ablehnung nicht unterstützter Aufgaben. Er läuft getrennt von der Render-Messung:
 
@@ -47,6 +49,8 @@ PICEDIT_TEST_BUILD_PATH=/tmp/picedit-look-benchmark ./scripts/test.sh --jobs 4 \
 Die Arbeitslast umfasst eine synthetische 2400-Pixel-Basis, drei kleine Karten und mindestens zehn aktive Wechsel. Erste und warme Rendercaches, Decoder-/Renderaufrufe, Zeit bis zur aktiven Vorschau und Prozess-Spitzen-RSS werden getrennt ausgewiesen. Synthetische Daten belegen Cache-/Schedulingverhalten; große Kamera-RAWs werden nur mit ausdrücklich verfügbaren Testdateien gemessen.
 
 ## Prüfbericht vom 16. Oktober 2026
+
+Dieser historische Bericht beschreibt die damalige Vorschau mit gesonderter Übernahme. Die aktuelle direkte Aktivierung und Undo-Bedienung sind oben dokumentiert.
 
 Umgebung: MacBook Pro Mac14,10 mit M2 Pro (12 CPU-Kerne), 16 GiB RAM, macOS 27.0.1, Apple Command Line Tools / Swift 6.4 und SDK 27. Die allgemeinen Mindestanforderungen bleiben macOS 14 und Swift tools 5.9; die lokalen Modellfunktionen sind optional ab Swift 6.2 / geeignetem FoundationModels-SDK und macOS 26.
 

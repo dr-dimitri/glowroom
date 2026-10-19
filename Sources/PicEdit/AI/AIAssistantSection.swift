@@ -34,10 +34,10 @@ struct AIAssistantSection: View {
             if model.state != .generating {
                 Button("Vorschlag erstellen") { model.generate() }
                     .buttonStyle(AccentButton()).disabled(!model.canGenerate)
-                    .accessibilityHint("Erstellt eine unverbindliche Vorschau, ohne die Bearbeitung zu speichern")
+                    .accessibilityHint("Aktiviert die vorgeschlagenen Reglerwerte direkt als einen rückgängig machbaren Schritt")
                 Button("Drei Looks erstellen") { model.generateLooks() }
                     .disabled(!model.canGenerateLooks)
-                    .accessibilityHint("Erstellt drei unverbindliche Textrezepte aus demselben Ausgangsstand")
+                    .accessibilityHint("Erstellt drei Textrezepte; die Auswahl einer Karte aktiviert ihren Look direkt")
                 Text(model.supportsLooks ? "Natürlich · Kontrastreich · Entsättigt. Stilistische Textrezepte, keine Bildanalyse." : "Drei Looks sind bei diesem Cloud-Provider nicht verfügbar. Wähle dafür Lokal in den KI-Einstellungen.")
                     .font(.system(size: 10)).foregroundStyle(Theme.muted)
                     .fixedSize(horizontal: false, vertical: true)
@@ -85,32 +85,34 @@ struct AIAssistantSection: View {
 
     private var preview: some View {
         VStack(alignment: .leading, spacing: 10) {
-            if model.changes.isEmpty {
+            if let group = model.lookGroup {
+                Label(model.hasAppliedChanges ? "KI-Look aktiv" : "Look auswählen", systemImage: "sparkles")
+                    .font(.system(size: 11, weight: .medium))
+                Text("Ein Klick aktiviert den Look direkt. Alle drei Looks verwenden denselben Ausgangsstand.")
+                    .font(.system(size: 10)).foregroundStyle(Theme.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+                ForEach(group.validation.variants, id: \.proposal.id) { look in
+                    AILookRecipeCard(model: model, look: look)
+                }
+            } else if model.changes.isEmpty {
                 Text("Keine Änderung vorgeschlagen").font(.system(size: 11, weight: .medium))
             } else {
-                Label("KI-Vorschau · noch nicht übernommen", systemImage: "eye")
+                Label("KI-Anpassungen aktiv", systemImage: "checkmark.circle")
                     .font(.system(size: 11, weight: .medium)).fixedSize(horizontal: false, vertical: true)
-                Picker("Vorschauvergleich", selection: $model.comparison) {
+                AIAdjustmentChanges(changes: model.changes)
+            }
+            if model.hasAppliedChanges {
+                Picker("Bearbeitungsvergleich", selection: $model.comparison) {
                     ForEach(AIAssistantModel.Comparison.allCases) { comparison in
                         Text(comparison.rawValue).tag(comparison)
                     }
                 }.labelsHidden().pickerStyle(.menu).controlSize(.small)
-                    .accessibilityLabel("Vorschauvergleich: aktuelle Bearbeitung oder Vorschlag")
+                    .accessibilityLabel("Bearbeitungsvergleich: Ausgangsstand oder aktive Bearbeitung")
                 if comparesOriginal {
-                    Text("„Vorher anzeigen“ zeigt das Original. Übernehmen schließt diesen Originalvergleich.")
+                    Text("„Vorher anzeigen“ zeigt das Original.")
                         .font(.system(size: 10)).foregroundStyle(Theme.muted)
                 }
-                if let group = model.lookGroup {
-                    Text("Alle drei Looks verwenden dieselbe aktuelle Bearbeitung als Ausgang. Die Auswahl speichert nichts.")
-                        .font(.system(size: 10)).foregroundStyle(Theme.muted)
-                        .fixedSize(horizontal: false, vertical: true)
-                    ForEach(group.validation.variants, id: \.proposal.id) { look in
-                        AILookRecipeCard(model: model, look: look)
-                    }
-                } else {
-                    AIAdjustmentChanges(changes: model.changes)
-                }
-                Text("Der JPEG-Export verwendet bis zur Übernahme die gespeicherte Bearbeitung.")
+                Text("Command-Z macht die letzte Anpassung rückgängig. Der JPEG-Export verwendet die aktive Bearbeitung.")
                     .font(.system(size: 10)).foregroundStyle(Theme.muted)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -118,12 +120,9 @@ struct AIAssistantSection: View {
                 Text(explanation).font(.system(size: 10)).foregroundStyle(Theme.muted)
                     .fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
             }
-            HStack {
-                Button("Übernehmen") { _ = model.acceptProposal(); promptFocused = true }
-                    .disabled(!model.canAccept)
-                    .accessibilityHint("Übernimmt alle vorgeschlagenen Reglerwerte als einen rückgängig machbaren Schritt")
-                Button("Verwerfen") { model.discard(); promptFocused = true }
-            }.font(.system(size: 11))
+            Button("Ergebnis schließen") { model.discard(); promptFocused = true }
+                .font(.system(size: 11))
+                .accessibilityHint("Schließt die Rezeptanzeige; aktive Anpassungen bleiben erhalten")
         }
     }
 
@@ -163,8 +162,8 @@ private struct AILookRecipeCard: View {
                 }.contentShape(Rectangle())
             }.buttonStyle(.plain)
                 .accessibilityLabel("\(look.proposal.name), \(selected ? "ausgewählt" : "Look auswählen")")
-                .accessibilityHint("Zeigt dieses Textrezept in der Hauptvorschau, ohne es zu übernehmen")
-            Text("Gemeinsamer Ausgang: aktuelle Bearbeitung").font(.system(size: 9)).foregroundStyle(Theme.muted)
+                .accessibilityHint("Aktiviert diesen Look direkt als einen rückgängig machbaren Schritt")
+            Text("Gemeinsamer Ausgang: Bearbeitung vor den Looks").font(.system(size: 9)).foregroundStyle(Theme.muted)
             if let explanation = look.proposal.proposal.explanation, !explanation.isEmpty {
                 Text("Textrezept: \(explanation)").font(.system(size: 10)).foregroundStyle(Theme.muted)
                     .fixedSize(horizontal: false, vertical: true)

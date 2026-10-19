@@ -3,7 +3,7 @@ import PicEditCore
 import Testing
 @testable import PicEdit
 
-@Suite("AI assistant preview and acceptance", .serialized, .timeLimit(.minutes(2)))
+@Suite("AI assistant direct activation", .serialized, .timeLimit(.minutes(2)))
 @MainActor
 final class AIAssistantModelTests {
     private let directory: URL
@@ -16,32 +16,42 @@ final class AIAssistantModelTests {
     deinit { try? FileManager.default.removeItem(at: directory) }
 
     @Test
-    func previewComparisonsAndDiscardNeverEditOrSave() async throws {
+    func generationActivatesImmediatelyAndClosingDetailsKeepsSavedEdit() async throws {
         let (library, editor, store, provider, assistant) = try await fixture()
-        let initial = try #require(editor.aiSnapshot(in: library))
+        let assetID = try #require(library.selectedID)
+        let initial = editor.settings(for: assetID)
+        library.comparesOriginal = true
         await completeProposal(assistant, provider)
         try await wait { assistant.state == .previewing }
-        #expect(assistant.canAccept)
+        #expect(assistant.hasAppliedChanges)
+        #expect(!assistant.canAccept && !assistant.acceptProposal())
+        #expect(!library.comparesOriginal)
         #expect(assistant.changes.map(\.parameter) == [.exposure, .shadows])
         #expect(assistant.changes.map(\.delta) == [1, 30])
-        #expect(assistant.displaySettings(assetID: initial.assetID, committed: initial.settings,
-                                          developing: true, comparesOriginal: false).exposure == 1)
+        let active = EditSettings(exposure: 1, shadows: 30)
+        #expect(editor.settings(for: assetID) == active)
+        #expect(assistant.displaySettings(assetID: assetID, committed: active,
+                                          developing: true, comparesOriginal: false) == active)
         assistant.comparison = .current
-        #expect(assistant.displaySettings(assetID: initial.assetID, committed: initial.settings,
-                                          developing: true, comparesOriginal: false) == initial.settings)
-        assistant.comparison = .proposal
-        library.comparesOriginal = true
-        #expect(assistant.displaySettings(assetID: initial.assetID, committed: initial.settings,
+        #expect(assistant.displaySettings(assetID: assetID, committed: active,
+                                          developing: true, comparesOriginal: false) == initial)
+        #expect(assistant.displaySettings(assetID: assetID, committed: active,
                                           developing: true, comparesOriginal: true).isNeutral)
-        #expect(assistant.canAccept)
-        assistant.discard()
-        #expect(editor.aiSnapshot(in: library) == initial)
-        #expect(!editor.canUndo(assetID: initial.assetID))
-        #expect(!editor.canRedo(assetID: initial.assetID))
-        #expect(!editor.hasPendingChanges)
         #expect(await editor.flush())
-        #expect(await store.saveCount == 0)
-        #expect(await store.revision(for: initial.assetID) == 0)
+        // Persisting the assistant's own accepted edit keeps its details valid.
+        assistant.contextDidChange()
+        #expect(assistant.hasAppliedChanges)
+        #expect(assistant.result != nil)
+        assistant.discard()
+        #expect(editor.settings(for: assetID) == active)
+        #expect(editor.canUndo(assetID: assetID))
+        #expect(!editor.canRedo(assetID: assetID))
+        #expect(await store.saveCount == 1)
+        #expect(await store.revision(for: assetID) == 1)
+        editor.undo(assetID: assetID)
+        #expect(editor.settings(for: assetID) == initial)
+        #expect(!editor.canUndo(assetID: assetID))
+        #expect(await editor.flush())
         #expect(await library.finishSaving())
     }
 
@@ -49,14 +59,13 @@ final class AIAssistantModelTests {
     func acceptanceFinishesGestureCreatesExactlyOneStepAndSurvivesUICancellation() async throws {
         let (library, editor, store, provider, assistant) = try await fixture()
         let assetID = try #require(library.selectedID)
+        editor.selectEditingFunction(.assistant, assetID: assetID)
         editor.beginEditing(assetID: assetID)
         editor.setSettings(EditSettings(exposure: 0.25, saturation: 12), for: assetID)
         await completeProposal(assistant, provider)
         try await wait { assistant.state == .previewing }
         #expect(assistant.result?.request.snapshot.settings.exposure == 0.25)
-        #expect(editor.settings(for: assetID).exposure == 0.25)
-        library.comparesOriginal = true
-        #expect(assistant.acceptProposal())
+        #expect(assistant.hasAppliedChanges)
         #expect(!assistant.acceptProposal())
         #expect(!library.comparesOriginal)
         #expect(editor.settings(for: assetID) == EditSettings(exposure: 1, shadows: 30, saturation: 12))
@@ -115,32 +124,52 @@ final class AIAssistantModelTests {
     }
 
     @Test
-    func locksInvalidatePreviewWhileModeChangesPreserveCurrentProposal() async throws {
+    func rejectedGenerationKeepsTheCurrentFunctionAndItsHistory() async throws {
         let (library, editor, _, provider, assistant) = try await fixture()
-        await completeProposal(assistant, provider)
-        try await wait { assistant.state == .previewing }
+        let assetID = try #require(library.selectedID)
+        editor.setSettings(EditSettings(exposure: 0.3), for: assetID)
+        #expect(editor.editingFunction(assetID: assetID) == .adjustments)
+        #expect(editor.canUndo(assetID: assetID))
         editor.beginTermination()
-        // Recheck the gate immediately, before deferred observation can run.
-        #expect(!assistant.acceptProposal())
-        #expect(editor.settings(for: try #require(library.selectedID)).isNeutral)
-        try await wait { assistant.result == nil }
+        assistant.generate()
+        #expect(editor.editingFunction(assetID: assetID) == .adjustments)
+        #expect(assistant.requestID == nil)
+        #expect(await provider.startedCalls == 0)
+        editor.cancelTermination()
+        #expect(editor.canUndo(assetID: assetID))
+        editor.undo(assetID: assetID)
+        #expect(editor.settings(for: assetID).isNeutral)
+        #expect(await editor.flush())
+        #expect(await library.finishSaving())
+    }
+
+    @Test
+    func locksRejectDelayedActivationWhileModeChangesPreserveActiveDetails() async throws {
+        let (library, editor, _, provider, assistant) = try await fixture()
+        let assetID = try #require(library.selectedID)
+        assistant.generate()
+        try await wait { await provider.hasWaitingCall }
+        editor.beginTermination()
+        await provider.complete()
+        try await wait { assistant.state != .generating }
+        #expect(editor.settings(for: assetID).isNeutral)
+        #expect(assistant.result == nil)
         editor.cancelTermination()
         await completeProposal(assistant, provider)
         try await wait { assistant.state == .previewing }
-        library.beginTermination()
-        #expect(!assistant.acceptProposal())
-        library.cancelTermination()
-        await completeProposal(assistant, provider)
-        try await wait { assistant.state == .previewing }
         let current = try #require(assistant.result)
+        #expect(assistant.hasAppliedChanges)
         library.isDeveloping = false
         try await Task.sleep(for: .milliseconds(10))
         #expect(assistant.result == current)
-        #expect(assistant.canAccept)
+        #expect(assistant.hasAppliedChanges)
         library.isDeveloping = true
         #expect(assistant.result == current)
-        assistant.discard()
-        #expect(!editor.hasPendingChanges)
+        library.beginTermination()
+        assistant.contextDidChange()
+        #expect(assistant.result == nil)
+        #expect(editor.settings(for: assetID) == EditSettings(exposure: 1, shadows: 30))
+        library.cancelTermination()
         #expect(await editor.flush())
         #expect(await library.finishSaving())
     }
@@ -165,7 +194,8 @@ final class AIAssistantModelTests {
         try await wait { assistant.state == .previewing }
         #expect(assistant.result?.request.prompt == "Neue Anfrage")
         assistant.discard()
-        #expect(!editor.hasPendingChanges)
+        #expect(editor.settings(for: try #require(library.selectedID)).exposure == 1)
+        #expect(await editor.flush())
         #expect(await library.finishSaving())
     }
 

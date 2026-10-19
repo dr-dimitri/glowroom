@@ -3,8 +3,9 @@ import Combine
 import Foundation
 import PicEditCore
 
-/// Only owns an ephemeral proposal. The editor remains the sole owner of edits,
-/// history and saving; inference and source checks run outside MainActor.
+/// Owns generated recipes and immediately activates selected changes. The editor
+/// remains the sole owner of history and saving; inference and source checks
+/// run outside MainActor.
 @MainActor
 final class AIAssistantModel: ObservableObject {
     enum State: Equatable {
@@ -16,8 +17,8 @@ final class AIAssistantModel: ObservableObject {
     }
 
     enum Comparison: String, CaseIterable, Identifiable {
-        case current = "Aktuelle Bearbeitung"
-        case proposal = "Vorschlag"
+        case current = "Ausgangsstand"
+        case proposal = "Aktive Bearbeitung"
         var id: Self { self }
     }
 
@@ -54,6 +55,8 @@ final class AIAssistantModel: ObservableObject {
     private var requestTask: Task<Void, Never>?
     private(set) var requestID: UUID?
     private var requestSnapshot: AIEditingSnapshot?
+    private var appliedSnapshot: AIEditingSnapshot?
+    private var isApplying = false
     private var availabilityCheckID = UUID()
 
     init(provider: any AIEditingProvider, coordinator: AIRequestCoordinator,
@@ -84,14 +87,16 @@ final class AIAssistantModel: ObservableObject {
                       return editor.aiSnapshot(in: library)
                   }, accept: { [weak editor, weak library] result in
                       guard let editor, let library else { return false }
-                      // Close the original comparison before applying a clearly
-                      // labelled proposal; the proposal never changes this flag.
+                      // Applied recipes immediately become the visible editor state.
                       library.comparesOriginal = false
                       library.comparesCurrentSourceWithoutSettings = false
                       return editor.acceptAIProposal(result, in: library)
                   }, commitInput: { [weak editor, weak library] in
                       NSApp?.keyWindow?.makeFirstResponder(nil)
-                      if let assetID = library?.selectedID { editor?.endEditing(assetID: assetID) }
+                      if let assetID = library?.selectedID {
+                          editor?.endEditing(assetID: assetID)
+                          editor?.selectEditingFunction(.assistant, assetID: assetID)
+                      }
                   })
         // @Published emits before mutation. Defer the check one MainActor turn
         // so epochs and their complete catalog/settings snapshot are consistent.
@@ -139,10 +144,12 @@ final class AIAssistantModel: ObservableObject {
     }
 
     var canAccept: Bool {
-        guard state == .previewing, let result = activeProposalResult,
+        guard !isApplying, appliedSnapshot == nil, state == .previewing, let result = activeProposalResult,
               case .changes = result.validation else { return false }
         return snapshot() == result.request.snapshot
     }
+
+    var hasAppliedChanges: Bool { appliedSnapshot != nil && currentContextIsValid }
 
     var changes: [Change] {
         guard let result = activeProposalResult, case .changes(_, let target) = result.validation else { return [] }
@@ -171,15 +178,15 @@ final class AIAssistantModel: ObservableObject {
         }
     }
 
-    /// Used exclusively by the selected Develop preview. Export, thumbnails and
-    /// the ordinary inspector always read EditingModel.settings(for:) directly.
+    /// Explicit before/after comparison only; normal previews and exports read
+    /// the immediately activated EditingModel settings.
     func displaySettings(assetID: String, committed: EditSettings, developing: Bool,
                          comparesOriginal: Bool) -> EditSettings {
         if comparesOriginal { return .neutral }
-        guard developing, comparison == .proposal, canAccept, let result = activeProposalResult,
-              result.request.snapshot.assetID == assetID,
-              case .changes(_, let target) = result.validation else { return committed }
-        return target
+        guard developing, comparison == .current, hasAppliedChanges,
+              let baseline = activeProposalResult?.request.snapshot,
+              baseline.assetID == assetID else { return committed }
+        return baseline.settings
     }
 
     func suspendProvider() {
@@ -229,7 +236,6 @@ final class AIAssistantModel: ObservableObject {
 
     private func generate(mode: AIEditingMode) {
         guard state != .generating else { return }
-        commitInput()
         discard()
         self.mode = mode
         guard availability == .available else { return }
@@ -238,8 +244,20 @@ final class AIAssistantModel: ObservableObject {
             state = .failed(AIEditingError.unsupportedCapability.localizedDescription)
             return
         }
+        if let problem = mode == .single ? promptProblem : lookPromptProblem {
+            state = .failed(problem)
+            return
+        }
+        let contextUnavailable = "Die Bearbeitung ist zurzeit gesperrt. Warte, bis Laden, Sicherung oder Wiederherstellung abgeschlossen sind."
+        // Reject unavailable contexts before commitInput can select another
+        // function and clear its history. Recheck after finishing native input.
+        guard snapshot() != nil else {
+            state = .failed(contextUnavailable)
+            return
+        }
+        commitInput()
         guard let baseline = snapshot() else {
-            state = .failed("Die Bearbeitung ist zurzeit gesperrt. Warte, bis Laden, Sicherung oder Wiederherstellung abgeschlossen sind.")
+            state = .failed(contextUnavailable)
             return
         }
         let request = AIEditingRequest(prompt: prompt, snapshot: baseline, mode: mode)
@@ -278,11 +296,18 @@ final class AIAssistantModel: ObservableObject {
                 case .single(let result): self.result = result
                 case .looks(let group):
                     self.lookGroup = group
-                    self.selectedLookID = .natural
-                    self.cards.begin(group: group, selectedID: .natural)
+                    // Creating alternatives does not choose one for the user.
+                    // A card click activates its full target immediately.
+                    self.cards.begin(group: group, selectedID: nil)
                 }
                 self.comparison = .proposal
                 self.state = .previewing
+                if case .single(let result) = response, case .changes = result.validation {
+                    if !self.acceptProposal() {
+                        self.discard()
+                        self.state = .failed(AIEditingError.staleSnapshot.localizedDescription)
+                    }
+                }
             } catch {
                 guard let self, self.requestID == id else { return }
                 guard self.snapshot() == baseline else { self.discard(); return }
@@ -306,24 +331,65 @@ final class AIAssistantModel: ObservableObject {
     @discardableResult
     func acceptProposal() -> Bool {
         guard canAccept, let candidate = activeProposalResult else { contextDidChange(); return false }
-        // Consume first, so reentrancy or a second button action cannot apply it
-        // twice. The synchronous editor gate rechecks locks and the full token.
-        discard()
-        return accept(candidate)
+        // Admission is synchronous and rechecks the complete source/edit token.
+        // Keep recipe details after activation, but reject a second activation.
+        isApplying = true
+        defer { isApplying = false }
+        guard accept(candidate) else { return false }
+        appliedSnapshot = snapshot()
+        return true
     }
 
     func selectLook(_ id: AILookID) {
-        guard state == .previewing, let lookGroup,
-              snapshot() == lookGroup.request.snapshot,
-              lookGroup.validation.variants.contains(where: { $0.proposal.id == id }) else { contextDidChange(); return }
+        guard !isApplying, state == .previewing, let group = lookGroup,
+              currentContextIsValid, let current = snapshot(),
+              let look = group.validation.variants.first(where: { $0.proposal.id == id })
+        else { contextDidChange(); return }
+        guard selectedLookID != id else {
+            comparison = .proposal
+            cards.select(id: id)
+            return
+        }
+        // Targets share the original group baseline. Include every changed
+        // numeric control so switching back also removes the previous recipe's
+        // changes, while non-AI settings remain untouched.
+        let patch = EditProposal(changes: EditParameter.allCases.compactMap { parameter in
+            let target = parameter.value(in: look.target)
+            return target == parameter.value(in: current.settings) ? nil : EditParameterChange(parameter: parameter, value: target)
+        }, explanation: look.proposal.proposal.explanation)
+        let candidate = AIProposalResult(request: AIEditingRequest(id: group.request.id, prompt: group.request.prompt,
+            snapshot: current, mode: .lookGroup), validation: .changes(proposal: patch, settings: look.target))
+        isApplying = true
+        defer { isApplying = false }
+        guard accept(candidate) else {
+            discard()
+            state = .failed(AIEditingError.staleSnapshot.localizedDescription)
+            return
+        }
+        appliedSnapshot = snapshot()
         selectedLookID = id
         comparison = .proposal
         cards.select(id: id)
     }
 
+    private var currentContextIsValid: Bool {
+        guard let current = snapshot() else { return false }
+        guard let applied = appliedSnapshot else {
+            return current == (requestSnapshot ?? lookGroup?.request.snapshot ?? result?.request.snapshot)
+        }
+        // Accepted saves can advance persistedVersion without a new user edit.
+        // All edit/selection tokens, source identity, settings and store epoch
+        // must remain identical. Every subsequent card click still passes its
+        // fresh complete snapshot through the editor's authoritative gate.
+        return current.assetID == applied.assetID && current.source == applied.source
+            && current.settings == applied.settings && current.token == applied.token
+            && current.persistedVersion?.storeEpoch == applied.persistedVersion?.storeEpoch
+    }
+
     func discard() {
         requestID = nil
         requestSnapshot = nil
+        appliedSnapshot = nil
         requestTask?.cancel()
         requestTask = nil
         result = nil
@@ -335,8 +401,11 @@ final class AIAssistantModel: ObservableObject {
     }
 
     func contextDidChange() {
-        if let expected = requestSnapshot ?? activeProposalResult?.request.snapshot, snapshot() != expected { discard() }
-        else { objectWillChange.send() }
+        guard !isApplying else { return }
+        if requestSnapshot != nil || result != nil || lookGroup != nil {
+            if !currentContextIsValid { discard(); return }
+        }
+        objectWillChange.send()
     }
 
     private var restingState: State {

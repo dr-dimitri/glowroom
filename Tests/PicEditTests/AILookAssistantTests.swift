@@ -14,75 +14,88 @@ final class AILookAssistantTests {
     deinit { try? FileManager.default.removeItem(at: directory) }
 
     @Test
-    func tenSelectionsShareBaselineNeverInferOrSaveAndAcceptOneUndoStep() async throws {
+    func selectionsActivateBaselineTargetsImmediatelyAndUndoEveryStep() async throws {
         let (library, editor, store, provider, _, model) = try await fixture()
-        let baseline = try #require(editor.aiSnapshot(in: library))
+        let assetID = try #require(library.selectedID)
+        let initial = editor.settings(for: assetID)
         #expect(model.prompt.isEmpty)
         #expect(!model.canGenerate)
         #expect(model.canGenerateLooks)
         model.generateLooks()
         try await wait { await provider.isWaiting }
         let providerRequest = try #require(await provider.requests.first)
+        let baseline = providerRequest.snapshot
         #expect(providerRequest.mode == .lookGroup)
-        #expect(providerRequest.snapshot == baseline)
+        #expect(baseline.settings == initial)
         await provider.complete()
         try await wait { model.state == .previewing }
         let group = try #require(model.lookGroup)
         #expect(group.validation.variants.map(\.proposal.id) == AILookID.allCases)
         #expect(model.result == nil)
-        #expect(model.selectedLookID == .natural)
+        #expect(model.selectedLookID == nil)
+        #expect(!model.hasAppliedChanges)
         #expect(model.changes(for: .natural).map(\.delta) == [0.6])
         #expect(model.changes(for: .contrasty).map(\.delta) == [35])
         #expect(model.changes(for: .desaturated).map(\.delta) == [-45])
+        #expect(!editor.canUndo(assetID: assetID))
+        #expect(await store.saveCount == 0)
+        var activated: [EditSettings] = []
         for index in 0..<12 {
             let id = AILookID.allCases[index % 3]
             model.selectLook(id)
             let selected = try #require(group.validation.variants.first { $0.proposal.id == id })
-            let active = try #require(model.activeProposalResult)
-            #expect(active.request.snapshot == baseline)
-            #expect(model.displaySettings(assetID: baseline.assetID, committed: baseline.settings,
+            activated.append(selected.target)
+            #expect(model.activeProposalResult?.request.snapshot == baseline)
+            #expect(model.hasAppliedChanges)
+            #expect(editor.settings(for: assetID) == selected.target)
+            #expect(model.displaySettings(assetID: assetID, committed: selected.target,
                                             developing: true, comparesOriginal: false) == selected.target)
-            #expect(editor.settings(for: baseline.assetID) == baseline.settings)
+            // Re-selecting the active card returns to its active image without
+            // creating another Undo step, even from the baseline comparison.
+            model.comparison = .current
+            model.selectLook(id)
+            #expect(model.comparison == .proposal)
+            if index.isMultiple(of: 4) {
+                #expect(await editor.flush())
+                model.contextDidChange()
+                #expect(model.lookGroup == group && model.hasAppliedChanges)
+            }
         }
         #expect(await provider.requests.count == 1)
-        #expect(await store.saveCount == 0)
-        #expect(!editor.canUndo(assetID: baseline.assetID))
-        #expect(!editor.hasPendingChanges)
+        #expect(editor.canUndo(assetID: assetID))
         model.comparison = .current
-        #expect(model.displaySettings(assetID: baseline.assetID, committed: baseline.settings,
-                                        developing: true, comparesOriginal: false) == baseline.settings)
-        #expect(model.displaySettings(assetID: baseline.assetID, committed: baseline.settings,
+        let final = try #require(activated.last)
+        #expect(model.displaySettings(assetID: assetID, committed: final,
+                                        developing: true, comparesOriginal: false) == initial)
+        #expect(model.displaySettings(assetID: assetID, committed: final,
                                         developing: true, comparesOriginal: true).isNeutral)
-        // The existing export controller receives only accepted editor values.
+        // Exports use activated editor values even during the before comparison.
         let exports = LookExportProbe()
         let exporter = JPEGExportModel(preferences: nil, export: { await exports.export($0) })
         exporter.destinationDirectory = directory
-        exporter.present(asset: try #require(library.selectedAsset), settings: editor.settings(for: baseline.assetID))
+        exporter.present(asset: try #require(library.selectedAsset), settings: editor.settings(for: assetID))
         exporter.startExport()
         try await wait { !exporter.isExporting }
-        #expect(await exports.settings == [baseline.settings])
+        #expect(await exports.settings == [final])
         exporter.cancel()
-        model.selectLook(.contrasty)
-        let target = try #require(group.validation.variants.first { $0.proposal.id == .contrasty }).target
-        #expect(model.acceptProposal())
-        #expect(!model.acceptProposal())
-        #expect(model.lookGroup == nil)
-        #expect(model.selectedLookID == nil)
-        for id in AILookID.allCases { #expect(model.cards.bitmap(for: id) == nil) }
-        #expect(editor.settings(for: baseline.assetID) == target)
         #expect(await editor.flush())
-        #expect(await store.saveCount == 1)
-        #expect(await store.revision(for: baseline.assetID) == 1)
-        exporter.present(asset: try #require(library.selectedAsset), settings: editor.settings(for: baseline.assetID))
-        exporter.startExport()
-        try await wait { !exporter.isExporting }
-        #expect(await exports.settings == [baseline.settings, target])
-        exporter.cancel()
-        editor.undo(assetID: baseline.assetID)
-        #expect(editor.settings(for: baseline.assetID) == baseline.settings)
-        #expect(!editor.canUndo(assetID: baseline.assetID))
-        editor.redo(assetID: baseline.assetID)
-        #expect(editor.settings(for: baseline.assetID) == target)
+        #expect(await store.revision(for: assetID) == 12)
+        // Undo invalidates the recipe group, but retains all earlier changes.
+        for expected in activated.dropLast().reversed() {
+            editor.undo(assetID: assetID)
+            #expect(editor.settings(for: assetID) == expected)
+        }
+        editor.undo(assetID: assetID)
+        #expect(editor.settings(for: assetID) == initial)
+        #expect(!editor.canUndo(assetID: assetID))
+        model.contextDidChange()
+        #expect(model.lookGroup == nil && model.selectedLookID == nil)
+        for id in AILookID.allCases { #expect(model.cards.bitmap(for: id) == nil) }
+        // A stale card click cannot replace the undone settings.
+        model.selectLook(.natural)
+        #expect(editor.settings(for: assetID) == initial)
+        editor.redo(assetID: assetID)
+        #expect(editor.settings(for: assetID) == activated[0])
         #expect(await provider.requests.count == 1)
         #expect(await editor.flush())
         #expect(await library.finishSaving())
@@ -107,7 +120,9 @@ final class AILookAssistantTests {
                 library.selectedID = library.assets[1].id
                 library.selectedID = assetID
             case 1: editor.setSettings(EditSettings(exposure: 0.5), for: assetID)
-            case 2: editor.undo(assetID: assetID)
+            case 2:
+                model.selectLook(.natural)
+                editor.undo(assetID: assetID)
             case 3: editor.reset(assetID: assetID)
             case 4: #expect(await editor.restoreBackup(from: directory.appendingPathComponent("restore.sqlite")))
             case 5: editor.beginTermination()

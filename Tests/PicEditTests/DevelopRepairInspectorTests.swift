@@ -197,7 +197,7 @@ struct DevelopRepairInspectorTests {
     }
 
     @Test
-    func localAIPreviewCanBeDiscardedOrAcceptedAsOneUndoableEdit() async throws {
+    func activeLocalAIRepairNeedsNoAcceptanceAndKeepsEditingControlsAvailable() async throws {
         let fixture = try await RepairInspectorFixture.make()
         let host = RepairInspectorHost(width: 280, height: 900)
         defer { host.close(); fixture.workspace.clear() }
@@ -207,32 +207,18 @@ struct DevelopRepairInspectorTests {
             width: 2, height: 2, rgba: Data(repeating: 120, count: 16))
         let stroke = try DevelopRetouchStroke(source: LocalMaskPoint(x: 0.1, y: 0.1),
             target: LocalMaskPoint(x: 0.25, y: 0.35), radius: 0.03, replacement: replacement)
-        func publishPreview() {
-            fixture.workspace.repairPreviewAssetID = fixture.asset.id
-            fixture.workspace.repairPreviewRevision = fixture.editor.localRevision(for: fixture.asset.id)
-            fixture.workspace.repairPreviewSession = fixture.editor.aiEditSessionID
-            fixture.workspace.repairPreviewStroke = stroke
-        }
-        publishPreview()
+        var repaired = edited
+        repaired.developGeometry.retouchStrokes = [stroke]
+        fixture.editor.setSettings(repaired, for: fixture.asset.id)
         try await host.mount(DevelopRepairInspector(asset: fixture.asset, workspace: fixture.workspace)
             .environmentObject(fixture.editor))
 
-        #expect(fixture.editor.settings(for: fixture.asset.id) == edited)
-        #expect(try #require(host.element("ai.accept")).isAccessibilityEnabled())
-        #expect(try #require(host.element("next-source")).isAccessibilityEnabled() == false)
+        #expect(host.element("ai.accept") == nil)
+        #expect(host.element("ai.discard") == nil)
+        #expect(host.element("next-source") == nil)
         for name in ["mode.remove", "size", "ai.import", "reset", "detect-people"] {
-            #expect(try #require(host.element(name)).isAccessibilityEnabled() == false)
+            #expect(try #require(host.element(name)).isAccessibilityEnabled())
         }
-        #expect(try #require(host.element("ai.discard")).accessibilityPerformPress())
-        #expect(fixture.workspace.repairPreviewStroke == nil)
-        #expect(fixture.editor.settings(for: fixture.asset.id) == edited)
-        publishPreview()
-        try await host.settle()
-        #expect(try #require(host.element("ai.accept")).accessibilityPerformPress())
-        #expect(fixture.workspace.repairPreviewStroke == nil)
-        var repaired = edited
-        repaired.developGeometry.retouchStrokes = [stroke]
-        #expect(fixture.editor.settings(for: fixture.asset.id) == repaired)
         fixture.editor.undo(assetID: fixture.asset.id)
         #expect(fixture.editor.settings(for: fixture.asset.id) == edited)
         fixture.editor.redo(assetID: fixture.asset.id)
@@ -240,7 +226,7 @@ struct DevelopRepairInspectorTests {
         #expect(await fixture.editor.flush())
     }
 
-    @Test func ordinaryRemovalPreviewOffersAlternativeSourcesAndIsOnlySavedOnAcceptance() async throws {
+    @Test func ordinaryRemovalAndAlternativeSourcesAreActiveWithoutAnAcceptanceButton() async throws {
         let fixture = try await RepairInspectorFixture.make(repairServices: .init(
             source: { _, _, _, _ in try LocalMaskPoint(x: 0.15, y: 0.15) },
             object: { _, _, _ in throw DevelopRepairAnalysisError.noObject }, candidates: { _, _, _ in [] },
@@ -252,32 +238,21 @@ struct DevelopRepairInspectorTests {
         fixture.workspace.applyRepair(path: [point], asset: fixture.asset, editor: fixture.editor,
             expectedRevision: fixture.editor.localRevision(for: fixture.asset.id), expectedSession: fixture.editor.aiEditSessionID)
         await (try #require(fixture.workspace.repairTask)).value
-        let originalPreview = try #require(fixture.workspace.repairPreviewStroke)
+        let original = try #require(fixture.editor.settings(for: fixture.asset.id).developGeometry.retouchStrokes.last)
         try await host.mount(DevelopRepairInspector(asset: fixture.asset, workspace: fixture.workspace)
             .environmentObject(fixture.editor))
-        #expect(host.accessibleText.contains("Entfernen-Vorschau"))
+        #expect(host.element("ai.accept") == nil)
+        #expect(host.element("ai.discard") == nil)
         #expect(try #require(host.element("next-source")).isAccessibilityEnabled())
-        #expect(fixture.editor.settings(for: fixture.asset.id) == .neutral)
-        #expect(!fixture.editor.canUndo(assetID: fixture.asset.id))
+        #expect(fixture.editor.canUndo(assetID: fixture.asset.id))
         #expect(try #require(host.element("next-source")).accessibilityPerformPress())
         await (try #require(fixture.workspace.repairTask)).value
-        let nextPreview = try #require(fixture.workspace.repairPreviewStroke)
-        #expect(nextPreview.id == originalPreview.id)
-        #expect(nextPreview.source == (try LocalMaskPoint(x: 0.3, y: 0.2)))
-        #expect(nextPreview.path == originalPreview.path)
-        #expect(fixture.editor.settings(for: fixture.asset.id) == .neutral)
-        #expect(try #require(host.element("ai.discard")).accessibilityPerformPress())
-        #expect(fixture.workspace.repairPreviewStroke == nil)
-        #expect(fixture.editor.settings(for: fixture.asset.id) == .neutral)
-
-        fixture.workspace.repairPreviewAssetID = fixture.asset.id
-        fixture.workspace.repairPreviewRevision = fixture.editor.localRevision(for: fixture.asset.id)
-        fixture.workspace.repairPreviewSession = fixture.editor.aiEditSessionID
-        fixture.workspace.repairPreviewStroke = originalPreview
-        try await host.settle()
-        #expect(try #require(host.element("ai.accept")).accessibilityPerformPress())
-        #expect(fixture.workspace.repairPreviewStroke == nil)
-        #expect(fixture.editor.settings(for: fixture.asset.id).developGeometry.retouchStrokes == [originalPreview])
+        let alternative = try #require(fixture.editor.settings(for: fixture.asset.id).developGeometry.retouchStrokes.last)
+        #expect(alternative.id == original.id)
+        #expect(alternative.source == (try LocalMaskPoint(x: 0.3, y: 0.2)))
+        #expect(alternative.path == original.path)
+        fixture.editor.undo(assetID: fixture.asset.id)
+        #expect(fixture.editor.settings(for: fixture.asset.id).developGeometry.retouchStrokes == [original])
         fixture.editor.undo(assetID: fixture.asset.id)
         #expect(fixture.editor.settings(for: fixture.asset.id) == .neutral)
         #expect(!fixture.editor.canUndo(assetID: fixture.asset.id))

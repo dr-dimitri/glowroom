@@ -64,6 +64,42 @@ struct ResettableSliderTests {
     }
 
     @Test @MainActor
+    func undoDuringDragRejectsLateNativeActionsAndAllowsTheNextGesture() throws {
+        let probe = SliderEditProbe(value: 6_500)
+        let slider = nativeSlider(probe)
+        let cell = try #require(slider.cell as? NSSliderCell)
+        let content = NSView(), container = NSView()
+        content.addSubview(container); container.addSubview(slider)
+        slider.target = slider; slider.action = NSSelectorFromString("valueChanged")
+        slider.beginPointerTracking(at: NSPoint(x: 40, y: 10))
+        slider.doubleValue = 9_000
+        slider.continuedTracking(at: NSPoint(x: 90, y: 10))
+        #expect(probe.value == 9_000 && slider.interaction.isTracking)
+
+        ResettableNativeSlider.cancelInputs(in: content)
+        probe.undo()
+        #expect(probe.value == 6_500 && probe.history.isEmpty)
+        slider.doubleValue = 11_000
+        _ = slider.sendAction(try #require(slider.action), to: slider.target)
+        _ = cell.continueTracking(last: NSPoint(x: 90, y: 10), current: NSPoint(x: 120, y: 10), in: slider)
+        slider.endPointerTracking()
+        slider.interaction.commitClick()
+        #expect(probe.value == 6_500 && probe.history.isEmpty,
+                "A canceled drag cannot replace the value restored by Command-Z")
+        #expect(!slider.interaction.isTracking && !slider.interaction.hasUncommittedClick)
+
+        slider.beginPointerTracking(at: NSPoint(x: 40, y: 10))
+        slider.doubleValue = 8_000
+        slider.continuedTracking(at: NSPoint(x: 90, y: 10))
+        slider.endPointerTracking()
+        #expect(probe.value == 8_000 && probe.history == [6_500])
+        ResettableNativeSlider.cancelInputs(in: content)
+        #expect(slider.accessibilityPerformIncrement())
+        #expect(probe.value == 8_050 && probe.history == [6_500, 8_000],
+                "An explicit accessibility action starts fresh input after cancellation")
+    }
+
+    @Test @MainActor
     func dismantledSliderRejectsLateTargetActionAndAccessibilityWrites() throws {
         let probe = SliderEditProbe(value: 6_500)
         let slider = nativeSlider(probe)

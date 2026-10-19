@@ -358,10 +358,8 @@ struct InlineMaskInspector: View {
                         .help("Maskenänderung wiederholen").accessibilityLabel("Maskenänderung wiederholen")
                         .accessibilityIdentifier("local-mask.redo")
                 }
-                Button("Abbrechen") { workspace.cancel() }.controlSize(.small)
-                    .accessibilityIdentifier("local-mask.cancel")
-                Button("Fertig") { workspace.apply() }.controlSize(.small).disabled(!workspace.canApply)
-                    .accessibilityIdentifier("local-mask.apply")
+                Button("Schließen") { workspace.close() }.controlSize(.small)
+                    .accessibilityIdentifier("local-mask.close")
             }
             if let model = workspace.model {
                 if workspace.selected == nil || showsCreator {

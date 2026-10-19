@@ -1,3 +1,4 @@
+import AppKit
 import Combine
 import Darwin
 import Foundation
@@ -96,7 +97,8 @@ final class EditingModel: ObservableObject, GeneratedArtifactAccepting {
     private var automaticBackupDay: Date?
     private var automaticBackupWarning: String?
     private var maintenanceWaiters: [CheckedContinuation<Void, Never>] = []
-    private let historyLimit = 100
+    private let retainedCommitLimit = 100
+    private var editingFunctions: [String: EditingFunction] = [:]
     weak var library: LibraryModel?
     private(set) var aiEditSessionID = UUID()
     private(set) var aiEditGeneration: UInt64 = 0
@@ -239,7 +241,9 @@ final class EditingModel: ObservableObject, GeneratedArtifactAccepting {
     }
     func selectVariant(_ variant: EditingVariant) async {
         guard canEdit, variantsAssetID == variant.assetID, variants.contains(where: { $0.id == variant.id }),
-              let library, let expected = aiSnapshot(in: library), expected.assetID == variant.assetID else { return }
+              let library, library.selectedID == variant.assetID else { return }
+        selectEditingFunction(.versions, assetID: variant.assetID)
+        guard let expected = aiSnapshot(in: library), expected.assetID == variant.assetID else { return }
         do {
             if case .artifact(let id) = variant.snapshot.source {
                 guard let artifacts, let storeID = artifactStoreID else { throw ArtifactContractError.missingArtifact }
@@ -271,6 +275,20 @@ final class EditingModel: ObservableObject, GeneratedArtifactAccepting {
     func beginEditing(assetID: String) {
         guard canEdit, !assetID.isEmpty, gestureStarts[assetID] == nil else { return }
         advanceAIEditGeneration(); gestureStarts[assetID] = snapshot(for: assetID)
+    }
+    func hasActiveEditing(assetID: String) -> Bool { gestureStarts[assetID] != nil }
+    func editingFunction(assetID: String) -> EditingFunction { editingFunctions[assetID, default: .adjustments] }
+
+    func selectEditingFunction(_ function: EditingFunction, assetID: String, cancelsActiveInput: Bool = true) {
+        guard !assetID.isEmpty, function != editingFunctions[assetID, default: .adjustments] else { return }
+        if cancelsActiveInput { ResettableNativeSlider.cancelInputs(in: NSApp?.keyWindow?.contentView) }
+        // History and gesture boundaries must remain ordered with UI edits.
+        // Background work here would allow an old gesture to enter a new function.
+        endEditing(assetID: assetID)
+        objectWillChange.send()
+        histories[assetID] = nil
+        editingFunctions[assetID] = function
+        advanceAIEditGeneration()
     }
     func endEditing(assetID: String) {
         guard let start = gestureStarts.removeValue(forKey: assetID), start != snapshot(for: assetID) else { return }
@@ -439,7 +457,6 @@ final class EditingModel: ObservableObject, GeneratedArtifactAccepting {
     }
     private func appendUndo(_ value: EditingSnapshot, for assetID: String) {
         histories[assetID, default: History()].undo.append(value)
-        if histories[assetID, default: History()].undo.count > historyLimit { histories[assetID]?.undo.removeFirst() }
     }
     private func advanceAIEditGeneration() {
         objectWillChange.send()
@@ -616,7 +633,7 @@ extension EditingModel {
         baselines[assetID] = EditingExpectedState(receipt.stored)
         commit.published = true; commit.failed = false
         completedCommitIDs.append(commit.id)
-        while completedCommitIDs.count > historyLimit {
+        while completedCommitIDs.count > retainedCommitLimit {
             let old = completedCommitIDs.removeFirst()
             if old != commit.id, commits[old]?.published == true { commits.removeValue(forKey: old) }
         }

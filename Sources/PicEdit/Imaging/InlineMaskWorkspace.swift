@@ -2,8 +2,8 @@ import AppKit
 import Combine
 import PicEditCore
 
-/// Owns one source-bound mask draft in the main workspace. Canvas and inspector
-/// share this object, so hiding or moving a panel does not recreate the draft.
+/// Owns one source-bound mask editing session in the main workspace. Canvas and
+/// inspector share live accepted settings and the same gesture undo history.
 @MainActor
 final class InlineMaskWorkspace: ObservableObject {
     @Published private(set) var isPresented = false
@@ -22,6 +22,7 @@ final class InlineMaskWorkspace: ObservableObject {
     @Published var errorMessage: String?
     let brush = MaskEditingModel(rendersOverlay: false)
     private var openingSettings = EditSettings.neutral
+    private var acceptedSettings = EditSettings.neutral
     private var anchor: LocalMaskEditingAnchor?
     private weak var editor: EditingModel?
     private weak var library: LibraryModel?
@@ -54,7 +55,7 @@ final class InlineMaskWorkspace: ObservableObject {
     }
     var isCurrent: Bool {
         guard isPresented, let asset, let source, let editor, let library, let anchor else { return false }
-        return library.selectedID == asset.id && editor.canEdit && editor.settings(for: asset.id) == openingSettings
+        return library.selectedID == asset.id && editor.canEdit && editor.settings(for: asset.id) == acceptedSettings
             && (try? editor.resolvedSource(for: asset).identity) == source
             && anchor.isCurrent(editor: editor, library: library)
     }
@@ -100,9 +101,10 @@ final class InlineMaskWorkspace: ObservableObject {
         model.reset(settings: settings)
         self.model = model; self.asset = asset; self.source = source
         self.editor = editor; self.library = library; self.anchor = anchor
-        openingSettings = settings; errorMessage = nil
+        openingSettings = settings; acceptedSettings = settings; errorMessage = nil
         showsOverlay = true; comparesBefore = false; erases = false; refines = false
         isPresented = true
+        model.acceptSettings = { [weak self] settings in self?.accept(settings) == true }
         model.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &subscriptions)
         model.$settings.dropFirst().sink { [weak self] settings in
             guard let self else { return }
@@ -129,9 +131,10 @@ final class InlineMaskWorkspace: ObservableObject {
         return true
     }
 
-    /// Unaccepted work is disposable. Stored editor transactions are never
-    /// canceled here, including when selection, undo or source replacement wins.
+    /// Closing preserves all accepted edits. Finish an active gesture only while
+    /// its original source is current; stale work must never overwrite a winner.
     func cancel() {
+        if isCurrent { finishGesture() }
         session = UUID(); loadTask?.cancel(); loadTask = nil
         reconciliation?.cancel(); reconciliation = nil
         subscriptions.removeAll(); syncingBrush = true; brush.discard(); syncingBrush = false
@@ -141,17 +144,32 @@ final class InlineMaskWorkspace: ObservableObject {
     func close() { cancel() }
     func reconcile() {
         guard isPresented, let asset, let source, let editor, let library, let anchor else { return }
-        if library.selectedID != asset.id || editor.settings(for: asset.id) != openingSettings
+        if library.selectedID != asset.id || editor.settings(for: asset.id) != acceptedSettings
             || (try? editor.resolvedSource(for: asset).identity) != source
             || !anchor.isCurrent(editor: editor, library: library) { cancel() }
     }
     @discardableResult func apply() -> Bool {
         finishGesture()
-        guard canApply, let model, let asset, let editor else { return false }
+        guard canApply else { return false }
+        close()
+        return true
+    }
+    private func accept(_ settings: EditSettings) -> Bool {
+        guard isCurrent, let asset, let editor, let library else {
+            scheduleReconciliation()
+            return false
+        }
+        // Editor mutations and their source/revision anchor stay ordered on the
+        // main actor. Database persistence remains the editor's debounced task.
         editor.endEditing(assetID: asset.id)
-        editor.setSettings(model.settings, for: asset.id)
-        guard editor.settings(for: asset.id) == model.settings else { return false }
-        cancel()
+        editor.setSettings(settings, for: asset.id)
+        guard editor.settings(for: asset.id) == settings,
+              let refreshedAnchor = LocalMaskEditingAnchor(editor: editor, library: library) else {
+            errorMessage = editor.errorMessage ?? "Die Maskenänderung konnte nicht übernommen werden."
+            return false
+        }
+        acceptedSettings = settings
+        anchor = refreshedAnchor
         return true
     }
     func finishGesture() { brush.endStroke(); model?.endChange() }
@@ -164,7 +182,7 @@ final class InlineMaskWorkspace: ObservableObject {
     func delete(_ id: UUID) { finishGesture(); model?.delete(id) }
     private func updateOverlayVisibility(settings: EditSettings) {
         // The comparison toggle lives in the floating list. Once that list
-        // disappears, show the draft rather than an unreachable before state.
+        // disappears, show current edits rather than an unreachable before state.
         if settings.localAdjustments.isEmpty { comparesBefore = false }
         // Published settings arrive before mutation. Compare the same selected
         // layer so names, ordering and edits to other masks do not hide its area.

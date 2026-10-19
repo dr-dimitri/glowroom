@@ -59,7 +59,7 @@ final class AILookCardStore: ObservableObject {
     func bitmap(for id: AILookID) -> PreviewBitmap? { bitmaps[id] }
     func failure(for id: AILookID) -> String? { errors[id] }
 
-    func begin(group: AILookGroupResult, selectedID: AILookID) {
+    func begin(group: AILookGroupResult, selectedID: AILookID?) {
         clear()
         guard group.validation.variants.count == Self.maximumCardCount,
               Set(group.validation.variants.map { $0.proposal.id }) == Set(AILookID.allCases)

@@ -81,7 +81,7 @@ struct CloudSettingsIntegrationTests {
         let assistant = AIAssistantModel(provider: local, coordinator: AIRequestCoordinator(provider: local), snapshot: { f.request.snapshot }, accept: { _ in true }, sourceReadable: { _ in true })
         await assistant.refreshAvailability(); assistant.prompt = f.request.prompt; assistant.generate()
         try await waitCloud { await MainActor.run { assistant.state == .previewing } }
-        #expect(assistant.canAccept && assistant.canGenerateLooks)
+        #expect(assistant.hasAppliedChanges && assistant.canGenerateLooks)
         assistant.suspendProvider()
         await assistant.refreshAvailability()
         #expect(assistant.availability == nil && !assistant.canGenerate)
@@ -115,7 +115,7 @@ struct CloudSettingsIntegrationTests {
         try await waitCloud { await MainActor.run { settings.pendingConsent != nil } }
         settings.respondToConsent(true, for: try #require(settings.pendingConsent).id)
         try await waitCloud { await MainActor.run { assistant.state == .previewing } }
-        #expect(f.transport.requests.count == 1 && assistant.canAccept)
+        #expect(f.transport.requests.count == 1 && assistant.hasAppliedChanges)
         settings.select(.local)
         #expect(!assistant.canAccept && assistant.result == nil)
         try await waitCloud { await MainActor.run { assistant.supportsLooks && assistant.availability == .available } }

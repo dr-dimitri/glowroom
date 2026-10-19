@@ -114,6 +114,7 @@ struct DevelopInspector: View {
             ForEach(DevelopCanvasTool.allCases) { tool in
                 Button {
                     finishInput(assetID: asset.id)
+                    editor.selectEditingFunction(EditingFunction(tool), assetID: asset.id)
                     developWorkspace.tool = tool
                 } label: {
                     Image(systemName: tool.symbol).font(.system(size: 16))
@@ -142,7 +143,7 @@ struct DevelopInspector: View {
             Picker("Profil", selection: Binding(get: { editor.settings(for: assetID).developColor.profile }, set: { profile in
                 finishInput(assetID: assetID)
                 var value = editor.settings(for: assetID); value.developColor.profile = profile
-                editor.setSettings(value, for: assetID)
+                setAdjustmentSettings(value, for: assetID)
             })) {
                 ForEach(DevelopColorProfile.allCases, id: \.self) { Text($0.title).tag($0) }
             }.font(.system(size: 11))
@@ -191,14 +192,14 @@ struct DevelopInspector: View {
         finishInput(assetID: assetID)
         var value = editor.settings(for: assetID)
         value.developColor.temperature = temperature; value.developColor.tint = tint
-        editor.setSettings(value, for: assetID)
+        setAdjustmentSettings(value, for: assetID)
     }
 
     private func colorBinding(assetID: String, keyPath: WritableKeyPath<DevelopColorSettings, Bool>) -> Binding<Bool> {
         Binding(get: { editor.settings(for: assetID).developColor[keyPath: keyPath] }, set: { enabled in
             finishInput(assetID: assetID)
             var value = editor.settings(for: assetID); value.developColor[keyPath: keyPath] = enabled
-            editor.setSettings(value, for: assetID)
+            setAdjustmentSettings(value, for: assetID)
         })
     }
     private func colorSlider(_ title: String, assetID: String, keyPath: WritableKeyPath<DevelopColorSettings, Double>,
@@ -207,9 +208,9 @@ struct DevelopInspector: View {
             Text(title).font(.system(size: 10)).foregroundStyle(Theme.muted).frame(width: 68, alignment: .trailing)
             ResettableSlider(value: Binding(get: { editor.settings(for: assetID).developColor[keyPath: keyPath] }, set: { amount in
                 var value = editor.settings(for: assetID); value.developColor[keyPath: keyPath] = amount
-                editor.setSettings(value, for: assetID)
+                setAdjustmentSettings(value, for: assetID)
             }), in: range, step: step, neutralValue: neutral, onEditingChanged: { editing in
-                if editing { editor.beginEditing(assetID: assetID) } else { editor.endEditing(assetID: assetID) }
+                if editing { beginAdjustment(assetID: assetID) } else { editor.endEditing(assetID: assetID) }
             }).controlSize(.mini).accessibilityLabel(title)
             Text("\(Int(editor.settings(for: assetID).developColor[keyPath: keyPath]))")
                 .monospacedDigit().font(.system(size: 10)).frame(width: 43, alignment: .trailing)
@@ -324,15 +325,19 @@ struct DevelopInspector: View {
             if column == .navigation {
                 Button {
                     finishInput(assetID: assetID)
-                    editor.undo(assetID: assetID)
+                    ResettableNativeSlider.cancelInputs(in: NSApp.keyWindow?.contentView)
+                    if maskWorkspace.isPresented { maskWorkspace.undo() }
+                    else { developWorkspace.cancelRepairWork(); editor.undo(assetID: assetID) }
                 } label: { Label("Rückgängig", systemImage: "arrow.uturn.backward").frame(maxWidth: .infinity) }
-                    .disabled(maskWorkspace.isPresented || !editor.canUndo(assetID: assetID) || !editor.canEdit)
+                    .disabled(!editor.canEdit || (maskWorkspace.isPresented ? maskWorkspace.model?.canUndo != true : !editor.canUndo(assetID: assetID)))
                     .accessibilityIdentifier("workspace.undo")
                 Button {
                     finishInput(assetID: assetID)
-                    editor.redo(assetID: assetID)
+                    ResettableNativeSlider.cancelInputs(in: NSApp.keyWindow?.contentView)
+                    if maskWorkspace.isPresented { maskWorkspace.redo() }
+                    else { developWorkspace.cancelRepairWork(); editor.redo(assetID: assetID) }
                 } label: { Label("Wiederholen", systemImage: "arrow.uturn.forward").frame(maxWidth: .infinity) }
-                    .disabled(maskWorkspace.isPresented || !editor.canRedo(assetID: assetID) || !editor.canEdit)
+                    .disabled(!editor.canEdit || (maskWorkspace.isPresented ? maskWorkspace.model?.canRedo != true : !editor.canRedo(assetID: assetID)))
                     .accessibilityIdentifier("workspace.redo")
             } else {
                 Button("Zurücksetzen") {
@@ -361,6 +366,9 @@ struct DevelopInspector: View {
             // Use the same admission/acceptance path as an explicit group reveal.
             layout.reveal(tool, developing: library.isDeveloping)
         } else {
+            if !panels.openGroups.contains(tool) {
+                editor.selectEditingFunction(EditingFunction(tool), assetID: assetID)
+            }
             layout.toggleGroup(tool, developing: library.isDeveloping)
         }
         focusedControl.wrappedValue = .group(tool)
@@ -373,6 +381,16 @@ struct DevelopInspector: View {
             else { state.openAdjustmentGroups.insert(key) }
         }
         focusedControl.wrappedValue = .adjustmentGroup(key)
+    }
+
+    private func setAdjustmentSettings(_ settings: EditSettings, for assetID: String) {
+        editor.selectEditingFunction(.adjustments, assetID: assetID, cancelsActiveInput: false)
+        editor.setSettings(settings, for: assetID)
+    }
+
+    private func beginAdjustment(assetID: String) {
+        editor.selectEditingFunction(.adjustments, assetID: assetID, cancelsActiveInput: false)
+        editor.beginEditing(assetID: assetID)
     }
 
     private func finishInput(assetID: String) {
@@ -461,7 +479,7 @@ struct DevelopInspector: View {
                     var settings = editor.settings(for: assetID)
                     settings.naturalBalanceAmount = enabled ? 70 : 0
                     if enabled { settings.autoToneAmount = 0 }
-                    editor.setSettings(settings, for: assetID)
+                    setAdjustmentSettings(settings, for: assetID)
                 }
             )) {
                 Label("Natürlicher Bildausgleich", systemImage: "wand.and.stars")
@@ -482,7 +500,7 @@ struct DevelopInspector: View {
                     finishInput(assetID: assetID)
                     var settings = editor.settings(for: assetID)
                     settings.autoToneAmount = 0
-                    editor.setSettings(settings, for: assetID)
+                    setAdjustmentSettings(settings, for: assetID)
                 }.font(.system(size: 10))
             }
         }.disabled(!editor.canEdit || !library.canModify || library.comparesOriginal || library.comparesCurrentSourceWithoutSettings)
@@ -500,10 +518,10 @@ struct DevelopInspector: View {
                 set: { newValue in
                     var settings = editor.settings(for: assetID)
                     settings[keyPath: keyPath] = newValue
-                    editor.setSettings(settings, for: assetID)
+                    setAdjustmentSettings(settings, for: assetID)
                 }
             ), in: range, step: 1, neutralValue: keyPath == \EditSettings.naturalBalanceColorAmount ? 50 : 0, onEditingChanged: { editing in
-                if editing { editor.beginEditing(assetID: assetID) }
+                if editing { beginAdjustment(assetID: assetID) }
                 else { editor.endEditing(assetID: assetID) }
             }).controlSize(.mini).accessibilityLabel("Bildausgleich · \(title)")
             Text("\(Int(editor.settings(for: assetID)[keyPath: keyPath])) %")
@@ -536,7 +554,7 @@ struct DevelopInspector: View {
                     finishInput(assetID: assetID)
                     var settings = editor.settings(for: assetID)
                     for item in controls { settings[keyPath: item.keyPath] = 0 }
-                    editor.setSettings(settings, for: assetID)
+                    setAdjustmentSettings(settings, for: assetID)
                 } label: { Image(systemName: "arrow.counterclockwise").font(.system(size: 11)).frame(width: 24, height: 24) }
                     .buttonStyle(.plain).foregroundStyle(Theme.muted).help("\(title) zurücksetzen")
                     .accessibilityLabel("\(title) zurücksetzen").disabled(readOnly)
@@ -549,10 +567,10 @@ struct DevelopInspector: View {
                             set: { newValue in
                                 var settings = editor.settings(for: assetID)
                                 settings[keyPath: control.keyPath] = newValue
-                                editor.setSettings(settings, for: assetID)
+                                setAdjustmentSettings(settings, for: assetID)
                             }
                         ), onEditingChanged: { editing in
-                            if editing { editor.beginEditing(assetID: assetID) }
+                            if editing { beginAdjustment(assetID: assetID) }
                             else { editor.endEditing(assetID: assetID) }
                         })
                     }

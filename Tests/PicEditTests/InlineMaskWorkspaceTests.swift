@@ -8,7 +8,7 @@ import Testing
 @Suite("Inline mask workspace", .serialized)
 @MainActor
 struct InlineMaskWorkspaceTests {
-    @Test func draftAndCanvasShareOneSessionAndAcceptOneUndoStep() async throws {
+    @Test func liveSettingsAndCanvasShareOneSessionAndUndoEachGestureImmediately() async throws {
         let f = try await fixture()
         defer { try? FileManager.default.removeItem(at: f.directory) }
         f.editor.setSettings(EditSettings(exposure: 0.5), for: f.asset.id)
@@ -17,25 +17,36 @@ struct InlineMaskWorkspaceTests {
         #expect(workspace.open(asset: f.asset, source: f.source, settings: model.settings, editor: f.editor, library: f.library, model: model))
         try await wait { workspace.canvasSize != nil }
         model.add(.linear)
+        let added = model.settings
+        #expect(f.editor.settings(for: f.asset.id) == added)
         model.beginChange()
         model.updateSelected { $0.settings.exposure = 1.5 }
+        #expect(f.editor.settings(for: f.asset.id) == model.settings, "An active slider gesture is already an accepted edit")
         model.updateSelected { $0.mask.feather = 0.2 }
         model.endChange()
         #expect(workspace.previewSettings?.localAdjustments.count == 1)
-        #expect(f.editor.settings(for: f.asset.id).localAdjustments.isEmpty)
+        #expect(f.editor.settings(for: f.asset.id) == model.settings)
         #expect(workspace.isCurrent)
         let accepted = model.settings
         workspace.comparesBefore = true
         #expect(workspace.previewSettings == EditSettings(exposure: 0.5))
         workspace.comparesBefore = false
-        #expect(workspace.apply())
+        workspace.undo()
+        #expect(workspace.isPresented && workspace.isCurrent)
+        #expect(f.editor.settings(for: f.asset.id) == added)
+        workspace.undo()
+        #expect(f.editor.settings(for: f.asset.id) == EditSettings(exposure: 0.5))
+        #expect(!model.canUndo)
+        workspace.redo(); workspace.redo()
+        #expect(f.editor.settings(for: f.asset.id) == accepted)
+        workspace.close()
         #expect(!workspace.isPresented && workspace.model == nil)
         #expect(f.editor.settings(for: f.asset.id) == accepted)
-        f.editor.undo(assetID: f.asset.id)
-        #expect(f.editor.settings(for: f.asset.id) == EditSettings(exposure: 0.5))
-        f.editor.redo(assetID: f.asset.id)
-        #expect(f.editor.settings(for: f.asset.id) == accepted)
         #expect(await f.editor.flush())
+        let restarted = EditingModel(directory: f.directory.appendingPathComponent("Edits"))
+        try await wait { !restarted.isLoading }
+        #expect(restarted.settings(for: f.asset.id) == accepted)
+        #expect(await restarted.flush())
         #expect(await f.library.finishSaving())
     }
 
@@ -64,9 +75,12 @@ struct InlineMaskWorkspaceTests {
         workspace.undo()
         #expect(workspace.selected?.mask.refinement == nil)
         #expect(workspace.brush.document?.strokes.isEmpty == true)
-        workspace.cancel()
-        #expect(model.settings.isNeutral && model.source == nil)
+        let accepted = model.settings
+        workspace.close()
+        #expect(model.settings == accepted && model.source == nil)
+        #expect(f.editor.settings(for: f.asset.id) == accepted)
         #expect(workspace.brush.document == nil)
+        #expect(await f.editor.flush())
         #expect(!f.editor.hasPendingChanges)
         #expect(await f.library.finishSaving())
     }
@@ -264,26 +278,30 @@ struct InlineMaskWorkspaceTests {
         #expect(await f.library.finishSaving())
     }
 
-    @Test func equalSettingsAfterUndoAndSelectionRoundTripCannotReviveDraft() async throws {
+    @Test func externalUndoAndSelectionRoundTripCannotReviveAnOldSession() async throws {
         let f = try await fixture()
         defer { try? FileManager.default.removeItem(at: f.directory) }
         let workspace = InlineMaskWorkspace(), model = try model()
         #expect(workspace.open(asset: f.asset, source: f.source, settings: .neutral, editor: f.editor, library: f.library, model: model))
         try await wait { workspace.canvasSize != nil }
         model.add(.radial)
+        let radial = model.settings
         f.editor.setSettings(EditSettings(contrast: 10), for: f.asset.id)
         f.editor.undo(assetID: f.asset.id)
-        #expect(f.editor.settings(for: f.asset.id).isNeutral)
+        #expect(f.editor.settings(for: f.asset.id) == radial)
+        model.updateSelected { $0.settings.exposure = 2 }
+        #expect(f.editor.settings(for: f.asset.id) == radial, "A stale control cannot replace the newer revision even before reconciliation")
         try await wait { !workspace.isPresented }
-        #expect(model.settings.isNeutral)
+        #expect(model.settings == radial)
         #expect(!workspace.apply())
-        #expect(workspace.open(asset: f.asset, source: f.source, settings: .neutral, editor: f.editor, library: f.library, model: model))
+        #expect(workspace.open(asset: f.asset, source: f.source, settings: radial, editor: f.editor, library: f.library, model: model))
         try await wait { workspace.canvasSize != nil }
         model.add(.brush)
+        let withBrush = model.settings
         f.library.selectedID = f.library.assets[1].id
         f.library.selectedID = f.asset.id
         try await wait { !workspace.isPresented }
-        #expect(f.editor.settings(for: f.asset.id).localAdjustments.isEmpty)
+        #expect(f.editor.settings(for: f.asset.id) == withBrush, "Selection changes must preserve live accepted edits")
         #expect(await f.editor.flush())
         #expect(await f.library.finishSaving())
     }
@@ -301,7 +319,10 @@ struct InlineMaskWorkspaceTests {
         await Task.yield()
         #expect(workspace.isPresented && workspace.isCurrent)
         model.add(.radial)
-        #expect(workspace.apply())
+        #expect(await f.editor.flush())
+        await Task.yield()
+        #expect(workspace.isPresented && workspace.isCurrent, "Finishing the workspace's own live save must keep its input anchor current")
+        workspace.close()
         let accepted = f.editor.settings(for: f.asset.id)
         #expect(workspace.open(asset: f.asset, source: f.source, settings: accepted, editor: f.editor, library: f.library, model: model))
         try await wait { workspace.canvasSize != nil }
@@ -309,6 +330,25 @@ struct InlineMaskWorkspaceTests {
         #expect(!model.canUndo)
         workspace.cancel()
         #expect(f.editor.settings(for: f.asset.id) == accepted)
+        #expect(await f.editor.flush())
+        #expect(await f.library.finishSaving())
+    }
+
+    @Test func closingFinishesAnActiveBrushStrokeWithoutAnApplyAction() async throws {
+        let f = try await fixture(nativeStore: false)
+        defer { try? FileManager.default.removeItem(at: f.directory) }
+        let workspace = InlineMaskWorkspace(), model = try model()
+        #expect(workspace.open(asset: f.asset, source: f.source, settings: .neutral,
+            editor: f.editor, library: f.library, model: model))
+        try await wait { workspace.canvasSize != nil }
+        model.add(.brush)
+        workspace.brush.appendPoint(try MaskPoint(x: 4, y: 5))
+        workspace.close()
+        guard case .brush(let document)? = f.editor.settings(for: f.asset.id).localAdjustments.first?.mask.shape else {
+            Issue.record("Die live übernommene Pinselmaske fehlt"); return
+        }
+        #expect(document.strokes.count == 1)
+        #expect(!workspace.isPresented)
         #expect(await f.editor.flush())
         #expect(await f.library.finishSaving())
     }

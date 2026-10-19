@@ -170,6 +170,15 @@ final class ResettableNativeSlider: NSSlider {
     private var clickWork: DispatchWorkItem?
     private var initialPoint: NSPoint?
     private var isTornDown = false
+    private var ignoresNativeChangesUntilNewInput = false
+
+    /// End native input before an undo or function change. Views are a small,
+    /// main-actor-owned tree; parallel traversal would race native controls.
+    static func cancelInputs(in view: NSView?) {
+        guard let view else { return }
+        (view as? ResettableNativeSlider)?.cancelInput()
+        for child in view.subviews { cancelInputs(in: child) }
+    }
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -184,6 +193,7 @@ final class ResettableNativeSlider: NSSlider {
 
     override func mouseDown(with event: NSEvent) {
         guard isEnabled, !isTornDown else { return }
+        ignoresNativeChangesUntilNewInput = false
         clickWork?.cancel()
         clickWork = nil
         if event.clickCount == 2 {
@@ -208,6 +218,8 @@ final class ResettableNativeSlider: NSSlider {
     }
 
     override func keyDown(with event: NSEvent) {
+        guard isEnabled, !isTornDown else { return }
+        ignoresNativeChangesUntilNewInput = false
         clickWork?.cancel()
         clickWork = nil
         interaction.beginKeyboard()
@@ -225,6 +237,7 @@ final class ResettableNativeSlider: NSSlider {
 
     override func accessibilityPerformIncrement() -> Bool {
         guard isEnabled, !isTornDown else { return false }
+        ignoresNativeChangesUntilNewInput = false
         if let step = valueStep, step.isFinite, step > 0 {
             doubleValue = min(maxValue, doubleValue + step)
             valueChanged()
@@ -237,6 +250,7 @@ final class ResettableNativeSlider: NSSlider {
 
     override func accessibilityPerformDecrement() -> Bool {
         guard isEnabled, !isTornDown else { return false }
+        ignoresNativeChangesUntilNewInput = false
         if let step = valueStep, step.isFinite, step > 0 {
             doubleValue = max(minValue, doubleValue - step)
             valueChanged()
@@ -249,6 +263,7 @@ final class ResettableNativeSlider: NSSlider {
 
     func beginPointerTracking(at point: NSPoint) {
         guard !isTornDown else { return }
+        ignoresNativeChangesUntilNewInput = false
         initialPoint = point
         interaction.beginPointer()
     }
@@ -274,6 +289,9 @@ final class ResettableNativeSlider: NSSlider {
     }
 
     func cancelInput() {
+        // AppKit may still deliver a target/action after its tracking was
+        // canceled. Only an explicitly new user input may publish again.
+        ignoresNativeChangesUntilNewInput = true
         clickWork?.cancel()
         clickWork = nil
         initialPoint = nil
@@ -291,6 +309,10 @@ final class ResettableNativeSlider: NSSlider {
 
     private func captureNativeValue() {
         guard !isTornDown else { return }
+        guard !ignoresNativeChangesUntilNewInput else {
+            doubleValue = interaction.readValue()
+            return
+        }
         var next = doubleValue
         if let step = valueStep, step.isFinite, step > 0 {
             next = min(maxValue, max(minValue, minValue + ((next - minValue) / step).rounded() * step))
