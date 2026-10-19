@@ -2,12 +2,23 @@ import AppKit
 
 @MainActor
 enum DevelopCropCursor {
-    static func cursor(for handle: DevelopCropHandle) -> NSCursor {
-        switch handle {
-        case .top, .bottom: .resizeUpDown
-        case .left, .right: .resizeLeftRight
-        case .topLeft, .bottomRight: descending
-        case .topRight, .bottomLeft: ascending
+    static func cursor(for handle: DevelopCropHandle, angle: Double = 0) -> NSCursor {
+        let axis: Double = switch handle {
+        case .top, .bottom: 90
+        case .left, .right: 0
+        case .topLeft, .bottomRight: 45
+        case .topRight, .bottomLeft: -45
+        }
+        // Cursor axes repeat every half turn. Reduce before integer conversion
+        // so even an invalid caller's enormous angle cannot overflow. Reuse the
+        // four cached shapes nearest to the visible, clockwise-rotated axis.
+        let rotation = angle.isFinite ? angle.truncatingRemainder(dividingBy: 180) : 0
+        let orientation = Int(((axis + rotation) / 45).rounded())
+        switch ((orientation % 4) + 4) % 4 {
+        case 0: return .resizeLeftRight
+        case 1: return descending
+        case 2: return .resizeUpDown
+        default: return ascending
         }
     }
 
