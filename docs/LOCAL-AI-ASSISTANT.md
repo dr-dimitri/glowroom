@@ -4,7 +4,7 @@ Der Assistent aus [AI-02](https://github.com/dr-dimitri/picedit/issues/3) und [A
 
 ## Bedienung
 
-1. Ein Foto wählen und unter **Entwickeln → Assistent** eine Anweisung eingeben, beispielsweise „Helle die dunklen Bereiche etwas auf“ oder „Korrigiere den überstrahlten Hintergrund“. Eingaben sind auf 2048 UTF-8-Bytes begrenzt; Tippen und Bildwechsel starten keine Anfrage.
+1. Ein Foto wählen und unter **Entwickeln → Assistent** eine Anweisung eingeben, beispielsweise „Helle die dunklen Bereiche etwas auf“, „Korrigiere den überstrahlten Hintergrund“ oder „Mache den Hintergrund schwarz weiss“. Eingaben sind auf 2048 UTF-8-Bytes begrenzt; Tippen und Bildwechsel starten keine Anfrage.
 2. **Bearbeitung ausführen** schließt eine aktive Reglereingabe ab und friert den aktuellen Bild-/Bearbeitungsstand ein. Vorbereitung, Inferenz und automatische Auswahl laufen außerhalb des MainActor. Fortschritt und Abbruch bleiben bedienbar.
 3. Das Ergebnis zeigt Erklärung sowie geänderte Werte als Ausgang → Ziel mit Delta, getrennt nach gesamtem Bild und betroffenen Bereichen. Belichtung verwendet EV, die übrigen Regler ihre vorhandene Skala. Eine gültige Antwort aktiviert alle Änderungen gemeinsam als **einen Rückgängig-Schritt**. Ein zusätzlicher Übernehmen-Knopf entfällt; ein wirkungsloser Vorschlag bleibt eine Erklärung ohne Änderung.
 4. **⌘Z** nimmt die Bearbeitung zurück. **Ausgangsstand / Aktive Bearbeitung** vergleicht den eingefrorenen Ausgang mit dem Ergebnis. **Importiertes Original anzeigen** und **Aktuelle Quelle ohne Regler** bleiben die normalen Quellenvergleiche. **Ergebnis schließen** schließt nur die Anzeige; aktive Anpassungen bleiben erhalten. **Abbrechen** beendet einen noch laufenden Auftrag ohne neue Bearbeitung.
@@ -22,6 +22,8 @@ Das Schema der zweiten Phase erlaubt nur die zuvor bestimmten Bereiche und verbi
 Fehlende oder unbrauchbare Auswahl verwirft die **gesamte** Bearbeitung einschließlich globaler Werte. Die Auswahl muss bestimmte ausgewählte und nicht ausgewählte Pixel enthalten und zwischen 1 und 99 Prozent mittlerer Abdeckung liegen. Es gibt keinen Ersatz durch eine unbemerkte globale Korrektur. Bestehende Ebenen zählen weiterhin zu den normalen Grenzen von 16 lokalen Ebenen und 16 MiB Maskendaten. Vollständig ausgebrannte Bildinformationen lassen sich durch Abdunkeln nicht wiederherstellen; die Erklärung ist keine Qualitätsgarantie.
 
 Alle Zielwerte werden unabhängig validiert. Nicht genannte globale Regler bleiben erhalten; lokale Änderungen beginnen in neuen Ebenen. Originaldateien bleiben unverändert. Raster, Filmstreifen und neu geöffnete JPEG-Exporte verwenden die aktive Bearbeitung über den üblichen Speicher-/Renderpfad, auch bei sichtbarem Ausgangsvergleich.
+
+„Schwarzweiß“, „schwarz weiß“ und „schwarz weiss“ bedeuten vollständige Entsättigung mit `saturation=-100`; `0` ist der neutrale Farbwert. Bei einem reinen Hintergrundauftrag wird dieser Wert ausschließlich in einer neuen Hintergrundebene angewandt. Motivfarben und globale Helligkeitsregler bleiben erhalten. Der Planungsprompt (Version 3) und die Reglerbeschreibung erklären diese Bedeutung ausdrücklich. Das Generierungsschema begrenzt numerische Werte zusätzlich auf die gemeinsame äußere Spanne −100 bis 100; die unabhängige Prüfung erzwingt weiterhin die engeren Grenzen jedes Parameters, insbesondere −5 bis 5 EV für Belichtung. Ungültige Vorschläge werden weder geklemmt noch nachträglich in andere Korrekturen umgedeutet.
 
 Neue manuelle Eingaben, Reset, Undo/Redo, A→B→A-Bildwechsel, Quellenwechsel, Wartung und Schließen entwerten laufende oder sichtbare Ergebnisse. Quellenprüfung, Abbruchkontrollen und die vollständige Snapshotprüfung unmittelbar vor Annahme verhindern das Aktivieren überholter Ergebnisse. Fehlende, gesperrte oder unlesbare Quellen führen zu einem erklärten Fehler. Ein nach Abbruch noch laufender SDK-Aufruf behält seinen Budgetplatz bis zu seiner tatsächlichen Rückkehr; seine Antwort wird verworfen. Bereits angenommene Bearbeitungen werden zuverlässig im normalen Editorablauf gespeichert und durch Schließen der Ergebnisanzeige nicht abgebrochen.
 
@@ -59,12 +61,28 @@ Die historische Zwölf-Aufgaben-Textprüfung belegt ausschließlich den damalige
 
 Das gemeinsame `AIResourceBudget` erlaubt einen aktiven lokalen Modellaufruf. Diese serielle Grenze schützt Modellressourcen; unabhängige I/O und vorhandene Vorschauworker bleiben begrenzt parallel. Es entsteht kein zusätzlicher Renderpool. Vergleiche und Reglerbewegungen nutzen decodierte Bildbasen erneut; eine CPU-/GPU-Beschleunigung wird daraus nicht behauptet.
 
+`AIBackgroundMonochromeTests` prüft ohne Modellzugriff den vollständigen Provider-/Coordinator-/Renderpfad mit synthetischen Farben und einer deterministischen Auswahl: Hintergrund grau, Motiv unverändert farbig, vorhandene manuelle Maske und nichtneutrale globale Regler erhalten. Die ausdrücklich aktivierte `LocalImageEditingEvaluationTests` prüft zusätzlich die drei Schreibweisen „schwarz weiss“, „schwarzweiß“ und „schwarz weiß“ mit dem echten lokalen Modell und der optionalen privaten Datei `test_picture3.jpg`. Fehlen die Modellbereitschaft oder die Datei, wird diese Echtmodellprüfung ausdrücklich übersprungen. Mit `PICEDIT_IMAGE_EDITING_EVALUATION_OUTPUT=/absoluter/lokaler/Ordner` lassen sich Vorher/Nachher/Auswahl lokal speichern; die Schwarzweißprobe schreibt in den Unterordner `monochrome/`. Fotos und abgeleitete Raster werden nicht eingecheckt.
+
 ## Primärreferenzen
 
 - [Apple Foundation Models](https://developer.apple.com/documentation/foundationmodels)
 - [Multimodale Bildanalyse](https://developer.apple.com/documentation/foundationmodels/analyzing-images-with-multimodal-prompting)
 - [Guided Generation](https://developer.apple.com/documentation/foundationmodels/generating-swift-data-structures-with-guided-generation)
 - [Sprachen und Locales](https://developer.apple.com/documentation/foundationmodels/supporting-languages-and-locales-with-foundation-models)
+
+## Fehlerkorrektur Schwarzweiß vom 20. Oktober 2026
+
+Die genaue Eingabe `mache den hintergrund schwarz weiss` wurde mit dem echten lokalen Apple-Visionmodell und dem privaten Testfoto `test_picture3.jpg` reproduziert. Zwei Läufe des bisherigen Planungsprompts scheiterten mit `invalidResponse(outOfRange)`. Eine ausschließlich für diese lokale Diagnose vorübergehend erfasste Antwort enthielt einen Hintergrundauftrag mit `exposure=-10` und einer Erklärung zum Abdunkeln statt einer Entsättigung. Die unabhängige Prüfung lehnte diese Belichtung korrekt ab (zulässig sind −5 bis 5 EV). Die temporäre Diagnoseausgabe wurde entfernt; Produktionsanfragen werden weiterhin nicht protokolliert.
+
+Promptversion 3 erklärt Schwarzweiß als Sättigung −100, ergänzt das konkrete regionale Beispiel und unterscheidet Entsättigung ausdrücklich von Belichtung und Weißabgleich. Eine zusätzliche numerische Schemahilfe begrenzt die gemeinsame äußere Wertespanne. Validator, Motivauswahl, Maskenwerkzeug, Persistenz und Undo-Verhalten werden nicht gelockert oder ersetzt. Ein unabhängiges Review einschließlich Schnittstellen und Tests ergab keine Befunde; die kleinen abhängigen Prüfungen bleiben seriell, Bildoperationen nutzen die vorhandene Core-Image-Verarbeitung.
+
+Die Prüfung betrifft das vorhandene JPEG-Testfoto und synthetische Renderpixel. Die im Screenshot abgebildete Datei `IMG_8724.CR3` lag nicht als Quelldatei vor; ihr konkreter Maskenverlauf und ihre RAW-Entwicklung wurden damit nicht geprüft. Die Ergebnisse sind keine allgemeine Erfolgsquote für freie Modellanweisungen oder beliebige Motive.
+
+Der finale Echtmodelllauf war erfolgreich: drei Tests mit insgesamt fünf Aufträgen in 50,153 s, darunter alle drei Schwarzweißschreibweisen sowie die bestehenden Schatten- und Hintergrundlichter-Aufträge. Alle Schwarzweißfälle erzeugten ausschließlich eine invertierte Motivebene mit Sättigung −100, ohne globale Regleränderung. Das lokal exportierte Ergebnis wurde visuell geprüft: grauer Hintergrund, orangefarbene Karotten am Motiv. Der synthetische Integrationstest prüft entsprechende Farbkanäle zusätzlich automatisch und benötigt keine privaten Fotos. Originalbytes des verwendeten Testfotos blieben unverändert. Die Laufzeit ist eine Funktionsmessung mit bereits benutztem Modell und keine Kaltcache- oder Leistungsqualifikation.
+
+Die vollständige normale Suite (`./scripts/test.sh --skip-build --jobs 4` nach dem vollständigen Testbuild) bestand mit **1082 App-Tests in 133 Suites** und **372 Core-Tests in 48 Suites**, ohne Fehler. Optionale Echtmodelltests bleiben dort ausdrücklich deaktiviert und wurden wie oben beschrieben separat ausgeführt. Es wurden keine unabhängigen Fehler gefunden, die ein zusätzliches Issue erfordern.
+
+Wegen der laufzeitwirksamen Änderung wurde nach Ende aller Builds/Tests `.build/`, `.build-app/` und `dist/PicEdit.app` vollständig entfernt und mit `PICEDIT_BUILD_PATH=.build-app PICEDIT_BUILD_JOBS=4 ./scripts/build-app.sh` sauber neu gebaut. Der vollständige Release-Build war erfolgreich (127,60 s); Bundle/Plist/Signatur wurden validiert. Die anschließende Ergänzung dieses Prüfberichts betrifft ausschließlich Dokumentation und erfordert keinen weiteren App-Build.
 
 ## Prüfbericht vom 16. Oktober 2026
 
