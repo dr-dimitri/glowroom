@@ -447,8 +447,14 @@ final class DevelopCropNativeInputView: NSView {
         guard inputEnabled, !isInvalidated else { return }
         let point = convert(event.locationInWindow, from: nil)
         onHover(point)
-        if pansWithPointer && panSession.isActive { NSCursor.closedHand.set() }
-        else { cursor(point).set() }
+        let nextCursor = pansWithPointer && panSession.isActive ? NSCursor.closedHand : cursor(point)
+        setCursorIfNeeded(nextCursor)
+    }
+
+    private func setCursorIfNeeded(_ nextCursor: NSCursor) {
+        // Cursor changes can synchronize with the window server. Hover and
+        // tracking refreshes need no update while the tool cursor is unchanged.
+        if NSCursor.current != nextCursor { nextCursor.set() }
     }
 
     private func refreshCursorAtCurrentPointer() {
@@ -456,7 +462,7 @@ final class DevelopCropNativeInputView: NSView {
               ownsPointer(at: window.mouseLocationOutsideOfEventStream) else { return }
         // Configuration also changes while the pointer is stationary. Refresh
         // only when this surface is the actual target, preserving panel cursors.
-        cursor(convert(window.mouseLocationOutsideOfEventStream, from: nil)).set()
+        setCursorIfNeeded(cursor(convert(window.mouseLocationOutsideOfEventStream, from: nil)))
     }
 
     private func ownsPointer(at location: CGPoint) -> Bool {
@@ -467,7 +473,7 @@ final class DevelopCropNativeInputView: NSView {
 
     private func restoreCursor(at location: CGPoint? = nil) {
         guard let window, window.isKeyWindow, let content = window.contentView else {
-            NSCursor.arrow.set()
+            setCursorIfNeeded(.arrow)
             return
         }
         let location = location ?? window.mouseLocationOutsideOfEventStream
@@ -475,9 +481,9 @@ final class DevelopCropNativeInputView: NSView {
         // Tracking-area exits can arrive after the next surface's entry. Do
         // not let the loupe or a removed canvas overwrite the active picker.
         if let target = target as? DevelopCropNativeInputView, target.ownsPointer(at: location) {
-            target.cursor(target.convert(location, from: nil)).set()
+            setCursorIfNeeded(target.cursor(target.convert(location, from: nil)))
         } else {
-            NSCursor.arrow.set()
+            setCursorIfNeeded(.arrow)
         }
     }
 
@@ -507,7 +513,7 @@ final class DevelopCropNativeInputView: NSView {
         touchLocation = point
         if update.phase == .ended || update.phase == .cancelled { touchStart = nil; touchLocation = nil }
         publishInput(DevelopCropInputEvent(phase: update.phase, kind: .threeFinger, startLocation: start, location: point))
-        cursor(point).set()
+        setCursorIfNeeded(cursor(point))
     }
 
     private func stopMonitoring() {
