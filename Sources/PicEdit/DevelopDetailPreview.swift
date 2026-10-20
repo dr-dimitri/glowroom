@@ -130,6 +130,7 @@ struct DevelopDetailPreview: View {
                     Text("200 %").tag(2.0)
                 }.labelsHidden().fixedSize().controlSize(.small)
                     .accessibilityLabel("Detailvorschau Vergrößerung")
+                    .accessibilityIdentifier("develop.detail-zoom")
             }
             GeometryReader { viewport in
                 ZStack(alignment: .topLeading) {
@@ -148,6 +149,9 @@ struct DevelopDetailPreview: View {
                             .allowedDynamicRange(workspace.hdrDisplayed ? .high : .standard)
                             .frame(width: geometry.imageFrame.width, height: geometry.imageFrame.height)
                             .offset(x: geometry.imageFrame.minX, y: geometry.imageFrame.minY)
+                            // The zoomed image extends beyond the loupe. Only
+                            // its bounded native surface should receive input.
+                            .allowsHitTesting(false)
                         DevelopCropInputSurface(onInput: { event in
                             guard let action = interaction.handle(event, imageFrame: geometry.imageFrame,
                                 viewport: viewport.size, fitsImage: workspace.detailFitsImage) else { return }
@@ -181,6 +185,9 @@ struct DevelopDetailPreview: View {
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
                 }.frame(width: viewport.size.width, height: viewport.size.height, alignment: .topLeading)
+                    // Clipping pixels alone leaves the enlarged image's hit
+                    // area over the header's picker and crosshair button.
+                    .contentShape(Rectangle())
                     .clipped()
             }.aspectRatio(1, contentMode: .fit)
                 .frame(maxWidth: 260)

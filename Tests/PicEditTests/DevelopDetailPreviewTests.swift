@@ -171,6 +171,37 @@ struct DevelopDetailLoupeInteractionTests {
 @MainActor
 struct DevelopDetailPreviewTests {
     @Test(arguments: [1.0, 2.0])
+    func headerMouseClicksReactivateFollowingAfterTheDetailWasFixed(magnification: Double) async throws {
+        let fixture = try DetailPreviewFixture.make()
+        let workspace = fixture.workspace
+        let bitmap = try DetailPreviewFixture.bitmap(width: 1_200, height: 800)
+        workspace.receive(bitmap, sourceBitmap: bitmap)
+        workspace.picksDetail = false
+        workspace.detailFitsImage = true
+        workspace.detailMagnification = magnification
+        let host = DetailPreviewControlsHost()
+        defer { host.close(); workspace.clear() }
+        try await host.mount(fixture)
+
+        for index in 0..<3 {
+            try host.clickHeader("develop.detail-picker")
+            try await host.settle()
+            #expect(workspace.picksDetail, "Header mouse click \(index + 1) must activate following")
+            guard workspace.picksDetail else { return }
+            let canvas = try host.canvas()
+            let point = CGPoint(x: 450, y: 400)
+            try host.move(on: canvas, to: point)
+            #expect(workspace.detailCenter == CGPoint(x: 0.75, y: 0.75))
+            #expect(!workspace.detailFitsImage)
+            try host.clickCanvas(at: point)
+            try await host.settle()
+            #expect(!workspace.picksDetail, "An image click must fix the selected detail")
+            #expect(host.canvasIfPresent() == nil,
+                "The real picker is removed after fixing, just as it is in the photo canvas")
+        }
+    }
+
+    @Test(arguments: [1.0, 2.0])
     func hoveringFollowsTheDisplayedPhotoAndLeavesFitAtTheChosenMagnification(magnification: Double) async throws {
         let fixture = try DetailPreviewFixture.make()
         let workspace = fixture.workspace
@@ -716,6 +747,107 @@ private final class DetailPreviewLoupeHost {
         hosting.cacheDisplay(in: hosting.bounds, to: bitmap)
         try #require(bitmap.representation(using: .png, properties: [:]))
             .write(to: directory.appendingPathComponent("picedit-details-\(name).png"))
+    }
+
+    func close() { window.close() }
+}
+
+@MainActor
+private struct DetailPreviewControlsHostView: View {
+    @ObservedObject var workspace: DevelopWorkspace
+    let geometry: DevelopGeometry
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            ZStack {
+                Color(white: 0.1)
+                if workspace.picksDetail {
+                    DevelopDetailCanvas(workspace: workspace, geometry: geometry)
+                }
+            }.frame(width: 600, height: 600)
+            DevelopDetailPreview(workspace: workspace, isEnabled: true)
+                .frame(width: 340)
+        }.environment(\.displayScale, 2)
+            .padding(12).frame(width: 980, height: 640)
+            .background(Color(white: 0.16))
+    }
+}
+
+@MainActor
+private final class DetailPreviewControlsHost {
+    private let window: NSWindow
+    private let hosting = NSHostingView(rootView: AnyView(EmptyView()))
+
+    init() {
+        _ = NSApplication.shared
+        WorkspaceAccessibilityElement.enableInProcess()
+        window = NSWindow(contentRect: NSRect(x: -10_000, y: -10_000, width: 980, height: 640),
+            styleMask: .borderless, backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.ignoresMouseEvents = true
+        window.contentView = hosting
+        window.orderBack(nil)
+    }
+
+    func mount(_ fixture: DetailPreviewFixture) async throws {
+        hosting.rootView = AnyView(DetailPreviewControlsHostView(workspace: fixture.workspace,
+            geometry: fixture.settings.developGeometry))
+        try await settle()
+    }
+
+    func clickHeader(_ identifier: String) throws {
+        let element = try #require(WorkspaceAccessibilityElement.descendants(of: hosting).first {
+            $0.accessibilityIdentifier() == identifier
+        }, "Missing detail header control \(identifier)")
+        let frame = window.convertFromScreen(element.accessibilityFrame())
+        #expect(frame.width > 0 && frame.height > 0)
+        try click(at: CGPoint(x: frame.midX, y: frame.midY))
+    }
+
+    func clickCanvas(at point: CGPoint) throws {
+        let canvas = try canvas()
+        try click(at: canvas.convert(point, to: nil))
+    }
+
+    private func click(at location: CGPoint) throws {
+        for (index, type) in [NSEvent.EventType.leftMouseDown, .leftMouseUp].enumerated() {
+            let event = try #require(NSEvent.mouseEvent(with: type, location: location,
+                modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime + Double(index) * 0.025,
+                windowNumber: window.windowNumber, context: nil, eventNumber: index, clickCount: 1,
+                pressure: type == .leftMouseDown ? 1 : 0))
+            window.sendEvent(event)
+        }
+    }
+
+    func move(on canvas: DevelopCropNativeInputView, to point: CGPoint) throws {
+        // AppKit tracking callbacks are explicit, while clicks take the full
+        // window route so an overflowing loupe cannot hide header controls.
+        let event = try #require(NSEvent.mouseEvent(with: .mouseMoved,
+            location: canvas.convert(point, to: nil), modifierFlags: [],
+            timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber,
+            context: nil, eventNumber: 0, clickCount: 0, pressure: 0))
+        canvas.mouseMoved(with: event)
+    }
+
+    func canvasIfPresent() -> DevelopCropNativeInputView? {
+        var pending: [NSView] = [hosting]
+        while let view = pending.popLast() {
+            if let canvas = view as? DevelopCropNativeInputView,
+               canvas.accessibilityIdentifier() == "develop.detail-canvas" { return canvas }
+            pending.append(contentsOf: view.subviews)
+        }
+        return nil
+    }
+
+    func canvas() throws -> DevelopCropNativeInputView {
+        try #require(canvasIfPresent(), "Missing conditionally mounted detail picker canvas")
+    }
+
+    func settle() async throws {
+        hosting.layoutSubtreeIfNeeded()
+        try await Task.sleep(for: .milliseconds(40))
+        hosting.layoutSubtreeIfNeeded()
+        hosting.displayIfNeeded()
     }
 
     func close() { window.close() }
