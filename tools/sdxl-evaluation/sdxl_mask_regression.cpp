@@ -8,7 +8,7 @@
 #include "core/tensor.hpp"
 #include "model.h"
 #include "json.hpp"
-#ifdef PICEDIT_SDXL_MASK_PATCHED
+#ifdef GLOWROOM_SDXL_MASK_PATCHED
 #include "pipeline/inpaint_mask.h"
 #endif
 #define STB_IMAGE_IMPLEMENTATION
@@ -39,7 +39,7 @@ static void check_nearest_reference(const sd::Tensor<float>& input,
 
 static sd::Tensor<float> actual(const sd::Tensor<float>& mask, int width, int height,
                                  int scale, SDVersion version) {
-#ifdef PICEDIT_SDXL_MASK_PATCHED
+#ifdef GLOWROOM_SDXL_MASK_PATCHED
     return sd::pipeline::prepare_inpaint_latent_mask(mask, width, height, scale, version);
 #else
     (void)version;
@@ -53,7 +53,7 @@ int main(int argc, char** argv) {
                 {"sdkBaseRevision", "8cd731e7b4667eb8f40a153315b9a7125d09a58d"},
                 {"modelContextCreated", false}, {"inferenceExecuted", false},
                 {"gpuContextCreated", false}};
-#ifdef PICEDIT_SDXL_MASK_PATCHED
+#ifdef GLOWROOM_SDXL_MASK_PATCHED
     const bool patched = true;
 #else
     const bool patched = false;

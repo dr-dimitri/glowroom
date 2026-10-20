@@ -93,7 +93,7 @@ fn profiling() -> bool { false }
         program.append('println!("{:?}", if let Some(n)=l { vec![n.sigma,n.eps,n.k] } else if let Some(n)=c { vec![n.sigma,0.0,n.t] } else { vec![0.0,0.0,0.0] });')
         program.append('apply_nr(&mut p,l,c); println!("{:?}",p.data);')
     program.append("}")
-    with tempfile.TemporaryDirectory(prefix="picedit-lc06-oracle-") as directory:
+    with tempfile.TemporaryDirectory(prefix="glowroom-lc06-oracle-") as directory:
         root = pathlib.Path(directory)
         source = root / "oracle.rs"
         source.write_text(shell + modules + local + "\n".join(program))
@@ -108,6 +108,7 @@ fn profiling() -> bool { false }
                             blend=params[2], input=json.loads(lines[index*3]), output=json.loads(lines[index*3+2])))
     result = dict(schema_version=1, upstream_commit=COMMIT, source_sha256=SOURCES,
                   generator="Unchanged original Rust detail_scale, nr_radius, nr_params, apply_nr, guided and Gaussian functions; LC-03 std-only storage/serial scheduling shim",
+                  # Historical scope is compared verbatim with the frozen oracle metadata.
                   scope="Opaque original Rec2020 RGB; fixed detail/colorDetail/smoothness 50. Alpha normalization and unknown-sampling epsilon policy are separately tested PicEdit adaptations.",
                   absolute_float_tolerance=0.000005, relative_float_tolerance=0.000002, cases=records)
     target = pathlib.Path(__file__).with_name("vectors.json")

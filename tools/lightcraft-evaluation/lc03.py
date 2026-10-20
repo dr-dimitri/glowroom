@@ -113,7 +113,7 @@ def performance_comparison(width, height, baseline_runs, candidate_runs, manifes
                 raise ValueError("Timing phase schedules differ")
             matched = effect_matches(baseline_sample.get("effect_strength"), candidate_sample.get("effect_strength"), manifest)
             phases[phase].append(matched)
-            strength_pairs.append({"phase": phase, "picedit": baseline_sample.get("effect_strength"),
+            strength_pairs.append({"phase": phase, "glowroom": baseline_sample.get("effect_strength"),
                                    "lightcraft": candidate_sample.get("effect_strength"), "matched": matched})
     cold_matched = bool(phases["process-cold"]) and all(phases["process-cold"])
     warm_matched = bool(phases["warm"]) and all(phases["warm"])
@@ -134,7 +134,7 @@ def performance_comparison(width, height, baseline_runs, candidate_runs, manifes
     attribution = {"cold_latency_ratio": cold_matched, "warm_latency_ratio": warm_matched, "peak_rss_ratio": all_matched}
     exceeded = {key: f"{key} {ratios[key]:.6g} exceeds {limit}" for key, limit in limits.items() if ratios[key] > limit}
     failures = [failure for key, failure in exceeded.items() if attribution[key]]
-    return {"width": width, "height": height, "picedit": baseline, "lightcraft": candidate,
+    return {"width": width, "height": height, "glowroom": baseline, "lightcraft": candidate,
             "ratios": ratios, "attributable": all_matched, "phase_attribution": attribution,
             "effect_strength_pairs": strength_pairs, "budget_exceedances": list(exceeded.values()), "failures": failures,
             "note": "Ratios describe this isolated CPU implementation and its conversion/readback path, not a hypothetical accelerated implementation."}
@@ -142,7 +142,7 @@ def performance_comparison(width, height, baseline_runs, candidate_runs, manifes
 
 def views(output, records):
     style = "body{font:15px system-ui;margin:2rem;background:#eee;color:#222}section{margin:2rem 0}figure{display:inline-block;margin:8px}img{width:384px;image-rendering:pixelated}figcaption{max-width:384px}"
-    labeled = [f"<!doctype html><meta charset='utf-8'><title>LC-03 comparisons</title><style>{style}</style><h1>LC-03 comparisons</h1><p>Developed input, PicEdit, matched Lightcraft, identical values, difference ×8, and Lightcraft alpha composites over linear 0/1. Unmatched pairs cannot prove a quality gain.</p>"]
+    labeled = [f"<!doctype html><meta charset='utf-8'><title>LC-03 comparisons</title><style>{style}</style><h1>LC-03 comparisons</h1><p>Developed input, Glowroom, matched Lightcraft, identical values, difference ×8, and Lightcraft alpha composites over linear 0/1. Unmatched pairs cannot prove a quality gain.</p>"]
     blind = [f"<!doctype html><meta charset='utf-8'><title>LC-03 blind pairs</title><style>{style}</style><h1>LC-03 blind pairs</h1><p>Record preference and defects before opening blind-key.json. These image pairs alone do not constitute completed visual approval.</p>"]
     key = []
     (output / "blind").mkdir()
@@ -153,7 +153,7 @@ def views(output, records):
             raise ValueError("Invalid quality image directory")
         title = html.escape(f"{record['fixture']} · {record['direction']} · matched={record['matched']}")
         labeled.append(f"<section><h2>{title}</h2>")
-        for filename, label in (("input.png", "Input"), ("picedit.png", "PicEdit"), ("lightcraft.png", "Lightcraft matched"),
+        for filename, label in (("input.png", "Input"), ("glowroom.png", "Glowroom"), ("lightcraft.png", "Lightcraft matched"),
                                 ("same-values.png", "Lightcraft same values"), ("difference.png", "Difference ×8"),
                                 ("dark.png", "Dark composite"), ("light.png", "Light composite")):
             path = directory / filename
@@ -161,7 +161,7 @@ def views(output, records):
                 raise ValueError(f"Missing image artifact: {path}")
             labeled.append(f"<figure><img src='{html.escape(path.as_posix(), quote=True)}'><figcaption>{label}</figcaption></figure>")
         labeled.append("</section>")
-        pair = [("picedit.png", "picedit"), ("lightcraft.png", "lightcraft")]
+        pair = [("glowroom.png", "glowroom"), ("lightcraft.png", "lightcraft")]
         if hashlib.sha256(f"lc03-blind-v1:{record['fixture']}:{record['direction']}".encode()).digest()[0] % 2:
             pair.reverse()
         blind.append(f"<section><h2>Pair {number:03d}</h2>")
@@ -201,8 +201,8 @@ def execute(args):
                 "manifest_sha256": common.digest(frozen), "toolchain": common.command(["xcrun", "swift", "--version"]),
                 "os": common.command(["sw_vers"]), "hardware": hardware, "architecture": platform.machine(),
                 "timing_concurrency": 1, "configuration": "release, existing editing harness",
-                "timing_order": "Per size, five paired repetitions; odd repetitions PicEdit then Lightcraft, even repetitions Lightcraft then PicEdit",
-                "backend": "PicEdit: Core Image automatic; candidate: bounded CPU reference; no accelerated-path claim",
+                "timing_order": "Per size, five paired repetitions; odd repetitions Glowroom then Lightcraft, even repetitions Lightcraft then Glowroom",
+                "backend": "Glowroom: Core Image automatic; candidate: bounded CPU reference; no accelerated-path claim",
                 "sizes": manifest["performanceBudgets"]["sizes"], "repetitions": 5,
                 "timing_scene": manifest.get("performanceSceneClass", "texture"),
                 "warm_samples_per_process": 5, "warmups_per_process": 1, "real_inputs": "none"}
@@ -249,11 +249,11 @@ def execute(args):
     views(output, quality["records"])
     performance = []
     for width, height in manifest["performanceBudgets"]["sizes"]:
-        adapters = {"picedit": [], "lightcraft": []}
+        adapters = {"glowroom": [], "lightcraft": []}
         # Pair the processes and alternate the first adapter without concurrent
         # workloads, reducing order/thermal drift without adding samples.
         for number in range(1, 6):
-            order = ("picedit", "lightcraft") if number % 2 else ("lightcraft", "picedit")
+            order = ("glowroom", "lightcraft") if number % 2 else ("lightcraft", "glowroom")
             for adapter in order:
                 name = f"timing-{width}-{adapter}-{number}"
                 invoke("timing", name, width, height, adapter)
@@ -261,7 +261,7 @@ def execute(args):
                 if run.get("adapter") != adapter:
                     raise ValueError("Timing adapter metadata mismatch")
                 adapters[adapter].append(run)
-        performance.append(performance_comparison(width, height, adapters["picedit"], adapters["lightcraft"], manifest))
+        performance.append(performance_comparison(width, height, adapters["glowroom"], adapters["lightcraft"], manifest))
     invoke("scale", "scale", *manifest["performanceBudgets"]["sizes"][-1])
     unchanged()
     decision = decide(quality, manifest, performance)

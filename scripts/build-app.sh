@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # A developer shell must never package a benchmark entry point as the app.
-unset PICEDIT_DEVELOPER_TOOL
+unset GLOWROOM_DEVELOPER_TOOL
 
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 CONFIGURATION=release
@@ -12,8 +12,8 @@ case "${1:-}" in
     --debug) CONFIGURATION=debug ;;
     --help|-h)
         echo "Usage: $0 [--debug]"
-        echo "Builds dist/PicEdit.app for the current Mac (release by default)."
-        echo "PICEDIT_BUILD_JOBS=1..1024 overrides the automatic CPU/memory job budget."
+        echo "Builds dist/Glowroom.app for the current Mac (release by default)."
+        echo "GLOWROOM_BUILD_JOBS=1..1024 overrides the automatic CPU/memory job budget."
         exit 0
         ;;
     *) echo "Unknown argument: $1" >&2; exit 2 ;;
@@ -30,12 +30,12 @@ fi
 
 # Budget includes one icon worker while the compiler runs. Two GiB per
 # scheduled worker is a conservative memory limit, not a usage prediction.
-if [[ -n "${PICEDIT_BUILD_JOBS+x}" ]]; then
-    if [[ ! "$PICEDIT_BUILD_JOBS" =~ ^[1-9][0-9]{0,3}$ ]] || (( PICEDIT_BUILD_JOBS > 1024 )); then
-        echo "PICEDIT_BUILD_JOBS must be an integer between 1 and 1024." >&2
+if [[ -n "${GLOWROOM_BUILD_JOBS+x}" ]]; then
+    if [[ ! "$GLOWROOM_BUILD_JOBS" =~ ^[1-9][0-9]{0,3}$ ]] || (( GLOWROOM_BUILD_JOBS > 1024 )); then
+        echo "GLOWROOM_BUILD_JOBS must be an integer between 1 and 1024." >&2
         exit 2
     fi
-    JOB_BUDGET="$PICEDIT_BUILD_JOBS"
+    JOB_BUDGET="$GLOWROOM_BUILD_JOBS"
 else
     CPU_COUNT="$(sysctl -n hw.activecpu 2>/dev/null || true)"
     MEMORY_BYTES="$(sysctl -n hw.memsize 2>/dev/null || true)"
@@ -53,14 +53,14 @@ fi
 COMPILER_JOBS="$JOB_BUDGET"
 if (( JOB_BUDGET > 1 )); then COMPILER_JOBS=$(( JOB_BUDGET - 1 )); fi
 
-BUILD_PATH="${PICEDIT_BUILD_PATH:-"$ROOT/.build"}"
+BUILD_PATH="${GLOWROOM_BUILD_PATH:-"$ROOT/.build"}"
 if [[ "$BUILD_PATH" != /* ]]; then
     BUILD_PATH="$ROOT/$BUILD_PATH"
 fi
 export CLANG_MODULE_CACHE_PATH="$BUILD_PATH/ModuleCache"
 export SWIFTPM_MODULECACHE_OVERRIDE="$BUILD_PATH/ModuleCache"
 mkdir -p "$ROOT/dist"
-LOCK="$ROOT/dist/.picedit-build.lock"
+LOCK="$ROOT/dist/.glowroom-build.lock"
 if ! mkdir "$LOCK" 2>/dev/null; then
     echo "Another bundle build owns $LOCK (PID: $(cat "$LOCK/pid" 2>/dev/null || echo unknown))." >&2
     echo "Wait for it to finish. After a crash, remove this lock only if its owner is no longer running." >&2
@@ -69,7 +69,7 @@ fi
 STAGING=""
 COMPILE_PID=""
 ICON_PID=""
-DESTINATION="$ROOT/dist/PicEdit.app"
+DESTINATION="$ROOT/dist/Glowroom.app"
 cleanup() {
     local result=$?
     local worker
@@ -102,14 +102,14 @@ trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 printf '%s\n' "$$" > "$LOCK/pid"
-STAGING="$(mktemp -d "$ROOT/dist/.picedit-build.XXXXXX")"
+STAGING="$(mktemp -d "$ROOT/dist/.glowroom-build.XXXXXX")"
 mkdir -p "$BUILD_PATH/ModuleCache" "$BUILD_PATH/IconModuleCache"
 BUILD_ARGS=(--disable-sandbox --package-path "$ROOT" --configuration "$CONFIGURATION" --scratch-path "$BUILD_PATH" --jobs "$COMPILER_JOBS")
-if [[ -n "${PICEDIT_BUILD_SYSTEM:-}" ]]; then
-    BUILD_ARGS+=(--build-system "$PICEDIT_BUILD_SYSTEM")
+if [[ -n "${GLOWROOM_BUILD_SYSTEM:-}" ]]; then
+    BUILD_ARGS+=(--build-system "$GLOWROOM_BUILD_SYSTEM")
 fi
 
-APP="$STAGING/PicEdit.app"
+APP="$STAGING/Glowroom.app"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
 cat > "$APP/Contents/Info.plist" <<'PLIST'
@@ -118,12 +118,12 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 <plist version="1.0">
 <dict>
     <key>CFBundleDevelopmentRegion</key><string>de</string>
-    <key>CFBundleDisplayName</key><string>PicEdit</string>
-    <key>CFBundleExecutable</key><string>PicEdit</string>
+    <key>CFBundleDisplayName</key><string>Glowroom</string>
+    <key>CFBundleExecutable</key><string>Glowroom</string>
     <key>CFBundleIconFile</key><string>AppIcon</string>
-    <key>CFBundleIdentifier</key><string>de.wolfgangbauer.picedit</string>
+    <key>CFBundleIdentifier</key><string>de.wolfgangbauer.glowroom</string>
     <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
-    <key>CFBundleName</key><string>PicEdit</string>
+    <key>CFBundleName</key><string>Glowroom</string>
     <key>CFBundlePackageType</key><string>APPL</string>
     <key>CFBundleShortVersionString</key><string>0.1.0</string>
     <key>CFBundleVersion</key><string>1</string>
@@ -137,7 +137,7 @@ PLIST
 
 ICONSET="$STAGING/AppIcon.iconset"
 build_product() {
-    swift build "${BUILD_ARGS[@]}" --product PicEdit
+    swift build "${BUILD_ARGS[@]}" --product Glowroom
 }
 create_icon() {
     # Independent, persistent caches prevent compiler/icon workers contending
@@ -174,8 +174,8 @@ ICON_PID=""
 set +m
 
 BIN_PATH="$(swift build "${BUILD_ARGS[@]}" --show-bin-path)"
-cp "$BIN_PATH/PicEdit" "$APP/Contents/MacOS/PicEdit"
-chmod 755 "$APP/Contents/MacOS/PicEdit"
+cp "$BIN_PATH/Glowroom" "$APP/Contents/MacOS/Glowroom"
+chmod 755 "$APP/Contents/MacOS/Glowroom"
 
 # SwiftPM dependency and application resources are independent immutable bundles.
 # Bundle.module resolves them from the application Resources directory at runtime.

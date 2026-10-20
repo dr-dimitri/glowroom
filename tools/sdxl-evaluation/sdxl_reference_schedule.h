@@ -1,10 +1,10 @@
 // Evaluation-only Euler schedule, fixed to the pinned SDXL model configuration.
-#ifndef PICEDIT_SDXL_REFERENCE_SCHEDULE_H
-#define PICEDIT_SDXL_REFERENCE_SCHEDULE_H
+#ifndef GLOWROOM_SDXL_REFERENCE_SCHEDULE_H
+#define GLOWROOM_SDXL_REFERENCE_SCHEDULE_H
 
 #include <array>
 
-namespace picedit_sdxl {
+namespace glowroom_sdxl {
 inline constexpr char schedule_variant[] = "euler-leading-strength099-v1";
 inline constexpr int configured_steps = 20;
 inline constexpr int actual_steps = 19;

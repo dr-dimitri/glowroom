@@ -93,7 +93,7 @@ def main():
             program += "let mapped=raw.map(|p|if ops.vibrance==0.0 && ops.saturation==0.0 {p} else {gamut_map_to(p,[0.2126,0.7152,0.0722],1.0).0});\n"
         program += 'println!("{:?}",input);println!("{:?}",raw);println!("{:?}",mapped);\n'
     program += "}\n"
-    with tempfile.TemporaryDirectory(prefix="picedit-lc05-oracle-") as directory:
+    with tempfile.TemporaryDirectory(prefix="glowroom-lc05-oracle-") as directory:
         root = pathlib.Path(directory)
         source = root / "oracle.rs"
         source.write_text(program)

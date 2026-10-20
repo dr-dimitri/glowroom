@@ -37,7 +37,7 @@ def sha(path):
 checkpoint = args.source / 'model.safetensors'
 if sha(checkpoint) != '7d241bb3becad218f211f480487f491df4f8c0a472ecf7afdec5615815a301f1':
     parser.error('source checkpoint does not match the pinned Google revision')
-resources = pathlib.Path(__file__).resolve().parents[2] / 'Sources/PicEdit/AI/Resources'
+resources = pathlib.Path(__file__).resolve().parents[2] / 'Sources/Glowroom/AI/Resources'
 manifest = json.loads((resources / 'SemanticApprovedPackage.json').read_bytes())
 for file in manifest['files']:
     if file['path'].startswith('tokenizer/'):
@@ -69,6 +69,7 @@ package = ct.convert(traced, convert_to='mlprogram',
     outputs=[ct.TensorType(name='embedding', dtype=np.float32)],
     compute_precision=ct.precision.FLOAT32 if is_image else ct.precision.FLOAT16,
     minimum_deployment_target=ct.target.macOS14, skip_model_load=True)
+# Authorship is embedded in the approved graph bytes; preserve provenance.
 package.author = 'Google; PicEdit local Core ML conversion'
 package.license = 'Apache-2.0; source model revision 94dffa8cb1179de3e03f091dbc3917e5d5a9ae84'
 package.short_description = ('SigLIP2 Base Patch32 256 image encoder; precision diagnostic fp32; L2 externally' if is_image

@@ -164,8 +164,8 @@ def main():
     frozen_manifest.write_bytes(manifest.read_bytes())
     frozen_registry.write_bytes(registry.read_bytes())
     sources = [ROOT / "Package.swift", ROOT / "Package.resolved", Path(__file__), ROOT / "scripts/evaluate-lightcraft.sh"]
-    sources += sorted((ROOT / "Sources/PicEdit/DeveloperTools").glob("*Evaluation*.swift"))
-    sources += [ROOT / "Sources/PicEdit/DeveloperTools/EditingBenchmark.swift", ROOT / "Sources/PicEdit/Imaging/EditRenderer.swift"]
+    sources += sorted((ROOT / "Sources/Glowroom/DeveloperTools").glob("*Evaluation*.swift"))
+    sources += [ROOT / "Sources/Glowroom/DeveloperTools/EditingBenchmark.swift", ROOT / "Sources/Glowroom/Imaging/EditRenderer.swift"]
     source_hashes = {str(p.relative_to(ROOT)): digest(p) for p in sources if p.exists()}
     hardware = command(["system_profiler", "SPHardwareDataType", "SPDisplaysDataType", "-detailLevel", "mini"])
     hardware = "\n".join(line for line in hardware.splitlines() if not any(k in line for k in ("Serial Number", "Hardware UUID", "Provisioning UDID")))

@@ -64,7 +64,7 @@ Abgeschlossene Coordinator-/Teilnehmer-Receipts bleiben erhalten. Die gemeinsame
 
 ## Sicherungen und Recovery
 
-Ein `.piceditbackup` ist ein Verzeichnispaket mit Manifest, geschlossenem SQLite-Online-Snapshot und allen transitiv referenzierten Artefakten, Masken und Provenienzdaten. Auch eine zulässige Kette aus 4.096 Artefakten wird iterativ geprüft, ohne den nativen Workerstack mit rekursiven Aufrufen zu belasten. **Originale, `catalog.json`, redaktionelle Bildinformationen, Caches, Schlüssel und Cloudnutzungsdaten sind nicht enthalten.** Originale und passender Katalog müssen separat gesichert werden. Bestätigte Bildinformationen behalten ihren eigenen JSON-Export; Entwürfe sind darin nicht enthalten.
+Ein `.glowroombackup` ist ein Verzeichnispaket mit Manifest, geschlossenem SQLite-Online-Snapshot und allen transitiv referenzierten Artefakten, Masken und Provenienzdaten. Auch eine zulässige Kette aus 4.096 Artefakten wird iterativ geprüft, ohne den nativen Workerstack mit rekursiven Aufrufen zu belasten. **Originale, `catalog.json`, redaktionelle Bildinformationen, Caches, Schlüssel und Cloudnutzungsdaten sind nicht enthalten.** Originale und passender Katalog müssen separat gesichert werden. Bestätigte Bildinformationen behalten ihren eigenen JSON-Export; Entwürfe sind darin nicht enthalten.
 
 Paketgrenzen: 20 GiB Gesamtinhalt, 4.096 Artefakte, 16.384 Dateien, 32 MiB Manifest und 512 MiB je Payload. Validierung verlangt den exakten Rollenbaum, begrenzte relative Pfade, Hashes, Schema, vollständige SQL-Referenzclosure und decodierbare Raster. Symlinks, Hardlinks, Traversal und zusätzliche unbekannte Paketdateien werden abgewiesen. Kopien verwenden höchstens zwei Worker mit je 64 KiB. Benutzerexporte erhalten einen neuen Namen; bestehende Ziele werden nicht ersetzt.
 
@@ -95,9 +95,9 @@ Der gesonderte echte Store-/SQL-/Paketroundtrip verwendet ein synthetisches 4096
 
 ```sh
 ./scripts/test.sh --jobs 3
-PICEDIT_ARTIFACT_LOAD_EVALUATION=1 ./scripts/test.sh --jobs 3 --filter largeNativeArtifactPackageRoundtripWithoutOriginals
-xcrun swiftc -module-cache-path /tmp/picedit-artifact-codec-modules scripts/verify-artifact-png-icc.swift -o /tmp/picedit-artifact-icc
-/tmp/picedit-artifact-icc
+GLOWROOM_ARTIFACT_LOAD_EVALUATION=1 ./scripts/test.sh --jobs 3 --filter largeNativeArtifactPackageRoundtripWithoutOriginals
+xcrun swiftc -module-cache-path /tmp/glowroom-artifact-codec-modules scripts/verify-artifact-png-icc.swift -o /tmp/glowroom-artifact-icc
+/tmp/glowroom-artifact-icc
 ```
 
 Die optionale Lastprüfung nutzt ein deterministisches 4096×4096-RGBA8-P3-Raster, echte Artefakt-/SQL-/Paketimplementierungen und ein frisches Restoreverzeichnis ohne Original. Rohdaten bleiben unter einem neuen temporären UUID-Verzeichnis. Beobachtete Ressourcenreservierungen und Prozess-RSS werden getrennt ausgewiesen. Testseitige Vergleichsdecodierung gehört nicht zum Produktionsbudget; Timing beginnt nach Store-/Basiseinrichtung. Private Fotos, Kamera-RAWs und Modelle werden nicht verwendet.

@@ -200,7 +200,7 @@ class ColorRunnerTests(unittest.TestCase):
         with self.assertRaises(ValueError): self.decide()
 
     @staticmethod
-    def timing(adapter="picedit", control="vibrance"):
+    def timing(adapter="glowroom", control="vibrance"):
         return {"width": 512, "height": 320, "adapter": f"{adapter}-{control}", "control": control,
                 "samples": [{"phase": phase, "total_ms": 1., "effect_strength": .01}
                             for phase in ["process-cold", "warmup"] + ["warm"] * 5],
@@ -224,7 +224,7 @@ class ColorRunnerTests(unittest.TestCase):
 
     def test_timing_rejects_metadata_input_process_schedule_or_rss_mismatch(self):
         baseline = self.timing()
-        for key, value in (("width", 2400), ("control", "saturation"), ("adapter", "picedit-vibrance"),
+        for key, value in (("width", 2400), ("control", "saturation"), ("adapter", "glowroom-vibrance"),
                            ("input_sha256", "different"), ("peak_rss_bytes", float("nan"))):
             candidate = self.timing("lightcraft"); candidate[key] = value
             with self.assertRaises(ValueError):

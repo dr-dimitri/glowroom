@@ -1,6 +1,6 @@
 // Standalone native benchmark: no Python/PyTorch process or app background work.
-// swiftc tools/subject-matting/benchmark.swift -o /tmp/picedit-subject-benchmark
-// /tmp/picedit-subject-benchmark model.mlpackage image.png gpu|cpu output-directory
+// swiftc tools/subject-matting/benchmark.swift -o /tmp/glowroom-subject-benchmark
+// /tmp/glowroom-subject-benchmark model.mlpackage image.png gpu|cpu output-directory
 import CoreGraphics
 import CoreML
 import CoreVideo

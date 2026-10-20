@@ -1,4 +1,4 @@
-# PicEdit
+# Glowroom
 
 Eine native Fotobibliothek für macOS, entwickelt mit SwiftUI und AppKit. Die Anwendung unterstützt das Sichten, Organisieren und nicht destruktive Anpassen vorhandener Bilder: Ordner hinzufügen, Vorschauen durchsehen, einzelne Bilder groß anzeigen, Tonwerte und Präsenz anpassen, Rauschen mindern und Favoriten sowie Bewertungen verwalten. Die dunkle Oberfläche orientiert sich am Bibliotheksbereich professioneller Fotoanwendungen.
 
@@ -9,21 +9,21 @@ Der **Bildfokus** bietet mehr Bildfläche und Werkzeuge nach Bedarf. Die Bedienw
 Voraussetzungen: **macOS 14 oder neuer** und Xcode oder die Apple Command Line Tools mit **Swift 6.1 oder neuer**. Falls die Entwicklungswerkzeuge fehlen, lassen sie sich mit `xcode-select --install` installieren. SwiftPM löst die in `Package.resolved` festgehaltenen Swift-Bibliotheken auf; dafür ist beim ersten Build Internetzugang oder ein bereits gefüllter lokaler Paketcache nötig. Die laufende App benötigt für Bibliothek und lokale Bearbeitung keinen Online-Dienst.
 
 ```sh
-swift run PicEdit
+swift run Glowroom
 ```
 
 Ein reguläres App-Bundle erzeugen und öffnen:
 
 ```sh
 ./scripts/build-app.sh
-open dist/PicEdit.app
+open dist/Glowroom.app
 ```
 
 Für einen schnelleren Entwicklungsbuild kann `./scripts/build-app.sh --debug` verwendet werden. Das Skript baut für den aktuellen Mac, setzt das App-Icon und signiert das Bundle lokal, sofern `codesign` verfügbar ist. Diese lokale Signatur ersetzt keine Apple-Notarisierung für die Verteilung auf andere Macs.
 
-Das App-Icon verwendet den gerade ausgerichteten Glasrahmen mit türkisfarbenem Bergmotiv und goldener Sonne aus [`Assets/AppIcon.png`](Assets/AppIcon.png). Der Build skaliert diese feste Quelle unter Erhalt von Transparenz in alle zehn macOS-Iconset-Größen (16 bis 1024 Pixel einschließlich Retina), konvertiert sie zu `AppIcon.icns` und bindet sie über `CFBundleIconFile` ein. Im App-Kopf steht das freigestellte innere Bildmotiv samt Glasrahmen aus [`Sources/PicEdit/Resources/BrandMark.png`](Sources/PicEdit/Resources/BrandMark.png) neben dem Programmnamen; die Gruppe beginnt links bündig mit der Navigator-Überschrift. Zum Austauschen des Motivs die quadratische PNG-Quelle mit mindestens 1024 Pixeln Kantenlänge ersetzen und das App-Bundle neu bauen; eine Bildgenerierung beim Build ist nicht nötig.
+Das App-Icon verwendet den gerade ausgerichteten Glasrahmen mit türkisfarbenem Bergmotiv und goldener Sonne aus [`Assets/AppIcon.png`](Assets/AppIcon.png). Der Build skaliert diese feste Quelle unter Erhalt von Transparenz in alle zehn macOS-Iconset-Größen (16 bis 1024 Pixel einschließlich Retina), konvertiert sie zu `AppIcon.icns` und bindet sie über `CFBundleIconFile` ein. Im App-Kopf steht das freigestellte innere Bildmotiv samt Glasrahmen aus [`Sources/Glowroom/Resources/BrandMark.png`](Sources/Glowroom/Resources/BrandMark.png) neben dem Programmnamen; die Gruppe beginnt links bündig mit der Navigator-Überschrift. Zum Austauschen des Motivs die quadratische PNG-Quelle mit mindestens 1024 Pixeln Kantenlänge ersetzen und das App-Bundle neu bauen; eine Bildgenerierung beim Build ist nicht nötig.
 
-Optional setzt `PICEDIT_BUILD_PATH` ein separates Build-Verzeichnis. Mit neueren Swift-Versionen kann `PICEDIT_BUILD_SYSTEM=swiftbuild` explizit Apples Swift-Build-System auswählen; ohne diese Variable gilt der Standard der installierten Swift-Version.
+Optional setzt `GLOWROOM_BUILD_PATH` ein separates Build-Verzeichnis. Mit neueren Swift-Versionen kann `GLOWROOM_BUILD_SYSTEM=swiftbuild` explizit Apples Swift-Build-System auswählen; ohne diese Variable gilt der Standard der installierten Swift-Version.
 
 ### Paralleler lokaler Build
 
@@ -32,13 +32,25 @@ Das Build-Skript nutzt ein automatisches CPU-Jobbudget: höchstens die aktiven C
 Eine explizite Vorgabe überschreibt die automatische Begrenzung, beispielsweise:
 
 ```sh
-PICEDIT_BUILD_JOBS=8 ./scripts/build-app.sh
-PICEDIT_BUILD_JOBS=1 ./scripts/build-app.sh --debug
+GLOWROOM_BUILD_JOBS=8 ./scripts/build-app.sh
+GLOWROOM_BUILD_JOBS=1 ./scripts/build-app.sh --debug
 ```
 
 `1` führt Kompilierung und Icon-Erzeugung nacheinander aus. Erlaubt sind ganze Zahlen von 1 bis 1024; bei nicht verfügbarer Hardware-Erkennung verwendet das Skript einen Worker. Validierung, Signierung und Veröffentlichung warten auf beide Schritte. Schlägt ein Schritt fehl, bleibt das vorhandene App-Bundle erhalten; bei Abbruch werden die Worker samt Kindprozessen beendet.
 
-Ein Lock unter `dist/.picedit-build.lock` verhindert konkurrierende Bundle-Builds im selben Checkout. Unabhängige Pakettests können mit einem getrennten Build-Verzeichnis gleichzeitig laufen. Nach einem nicht abfangbaren Prozessabbruch kann der Lock zurückbleiben: Die darin gespeicherte PID prüfen und den Lock erst entfernen, wenn der zugehörige Build nicht mehr läuft.
+Ein Lock unter `dist/.glowroom-build.lock` verhindert konkurrierende Bundle-Builds im selben Checkout. Unabhängige Pakettests können mit einem getrennten Build-Verzeichnis gleichzeitig laufen. Nach einem nicht abfangbaren Prozessabbruch kann der Lock zurückbleiben: Die darin gespeicherte PID prüfen und den Lock erst entfernen, wenn der zugehörige Build nicht mehr läuft.
+
+## Neuer Name und frischer Datenbereich
+
+Glowroom startet mit eigenen Daten unter `~/Library/Application Support/Glowroom/`, eigenem Vorschau-Cache unter `~/Library/Caches/Glowroom/` und eigenen Einstellungen. Es gibt keine automatische Übernahme, Pfadumleitung oder Alias-Unterstützung für frühere PicEdit-Kataloge, Modelle, Caches, Einstellungen oder `.piceditbackup`-Dateien. Vorhandene PicEdit-Daten werden weder gelesen noch verändert. Bestehende Bildordner können in der frischen Glowroom-Bibliothek erneut hinzugefügt werden; Originalbilder bleiben unverändert.
+
+Für vorhandene Git-Checkouts nach der Umbenennung desselben Repositorys:
+
+```sh
+git remote set-url origin https://github.com/dr-dimitri/glowroom.git
+```
+
+Die Umstellungsreihenfolge, Prüfungen der GitHub-Einstellungen und begründete historische Namensreste stehen unter [Umbenennung zu Glowroom](docs/GLOWROOM-RENAME.md).
 
 ## Bibliothek verwenden
 
@@ -68,9 +80,9 @@ Ordnerzählung, Unterordnerfilter und Ordnerzuständigkeit vergleichen geladene 
 
 Änderungen am Inhalt verknüpfter Ordner werden mit **Ordner aktualisieren** oder **⇧⌘R** erneut eingelesen. Neue Bilder erscheinen anschließend in der Bibliothek; Bewertungen und Favoriten vorhandener Bilder bleiben erhalten. Die erste Version überwacht Ordner nicht automatisch.
 
-Die Bibliothek **verknüpft** vorhandene Dateien. Sie kopiert die Originale nicht und verändert sie nicht. Auch das Entfernen eines Ordners aus der Bibliothek löscht keine Bilder auf dem Datenträger. Für Bilder, die dadurch vollständig aus dem Katalog verschwinden, entfernt PicEdit auch Bearbeitungen, Revisionen, Varianten, Bildinformationen samt Entwürfen und Suchindexeinträge aus den aktiven Datenbanken. Erneutes Hinzufügen desselben Ordners scannt die Dateien neu und beginnt ohne frühere Bewertungen, Favoriten oder Bearbeitungen. In anderen eingebundenen Ordnern verbliebene Bilder behalten ihre Daten. Verschobene, gelöschte oder vorübergehend nicht verfügbare Originale gelten allein dadurch nicht als aus dem Katalog entfernt.
+Die Bibliothek **verknüpft** vorhandene Dateien. Sie kopiert die Originale nicht und verändert sie nicht. Auch das Entfernen eines Ordners aus der Bibliothek löscht keine Bilder auf dem Datenträger. Für Bilder, die dadurch vollständig aus dem Katalog verschwinden, entfernt Glowroom auch Bearbeitungen, Revisionen, Varianten, Bildinformationen samt Entwürfen und Suchindexeinträge aus den aktiven Datenbanken. Erneutes Hinzufügen desselben Ordners scannt die Dateien neu und beginnt ohne frühere Bewertungen, Favoriten oder Bearbeitungen. In anderen eingebundenen Ordnern verbliebene Bilder behalten ihre Daten. Verschobene, gelöschte oder vorübergehend nicht verfügbare Originale gelten allein dadurch nicht als aus dem Katalog entfernt.
 
-Bibliotheksdaten, Bewertungen und Favoriten werden lokal unter `~/Library/Application Support/PicEdit/catalog.json` gespeichert. Die Originalbilder bleiben in ihren bisherigen Ordnern.
+Bibliotheksdaten, Bewertungen und Favoriten werden lokal unter `~/Library/Application Support/Glowroom/catalog.json` gespeichert. Die Originalbilder bleiben in ihren bisherigen Ordnern.
 
 Die Bildvorschau verwendet Apples ImageIO. Gängige Formate wie JPEG, PNG, TIFF und HEIC werden unterstützt, sofern das System sie lesen kann. RAW-Unterstützung hängt von der macOS-Version und dem jeweiligen Kameraformat ab; ein vorhandenes RAW-Dateiformat garantiert daher noch keine darstellbare Vorschau.
 
@@ -84,9 +96,9 @@ Decodierung, Cache-Zugriffe und Bearbeitungsrendering können sich überlappen. 
 
 ### RAW-Vorschauen und Performance
 
-Für RAW-Dateien verwendet PicEdit eine eingebettete Kameravorschau, wenn deren Auflösung ausreicht. Andernfalls erzeugt ImageIO die Vorschau aus dem Original. Die Einzelbildansicht lädt zuerst eine kleine Vorschau und verfeinert sie anschließend bis zur bisherigen Zielgröße von 2400 Pixeln. Kamera-Vorschauen können sich in Farbe und Tonwerten von einer späteren RAW-Entwicklung unterscheiden.
+Für RAW-Dateien verwendet Glowroom eine eingebettete Kameravorschau, wenn deren Auflösung ausreicht. Andernfalls erzeugt ImageIO die Vorschau aus dem Original. Die Einzelbildansicht lädt zuerst eine kleine Vorschau und verfeinert sie anschließend bis zur bisherigen Zielgröße von 2400 Pixeln. Kamera-Vorschauen können sich in Farbe und Tonwerten von einer späteren RAW-Entwicklung unterscheiden.
 
-Raster und Filmstreifen teilen sich einen begrenzten Arbeitsspeicher-Cache. Zusätzlich werden Vorschauen unter `~/Library/Caches/PicEdit/Previews-v2` gespeichert, damit sie nach einem Neustart wieder verfügbar sind. Der Festplatten-Cache ist auf 512 MiB begrenzt und entfernt ältere Vorschauen automatisch. Pfad, Änderungszeit, Dateigröße und Vorschauauflösung bestimmen die Gültigkeit; nach Änderungen am Original den Ordner aktualisieren. Auch größere bereits vorhandene Vorschauen werden wiederverwendet.
+Raster und Filmstreifen teilen sich einen begrenzten Arbeitsspeicher-Cache. Zusätzlich werden Vorschauen unter `~/Library/Caches/Glowroom/Previews-v2` gespeichert, damit sie nach einem Neustart wieder verfügbar sind. Der Festplatten-Cache ist auf 512 MiB begrenzt und entfernt ältere Vorschauen automatisch. Pfad, Änderungszeit, Dateigröße und Vorschauauflösung bestimmen die Gültigkeit; nach Änderungen am Original den Ordner aktualisieren. Auch größere bereits vorhandene Vorschauen werden wiederverwendet.
 
 Das ausgewählte Bild erhält Vorrang vor wartenden Rasterbildern. Höchstens drei Lade- und Speichervorgänge laufen parallel; bei der Standardeinstellung bleibt ein Platz für das ausgewählte Bild frei. Nicht mehr benötigte Anfragen werden abgebrochen. Filter, Sortierung und Ordnerbäume werden zwischen unveränderten Bibliotheksansichten wiederverwendet.
 
@@ -128,11 +140,11 @@ Nach jeder Umsetzungsanforderung sind die betroffene Dokumentation zu aktualisie
 3. Nur bei erforderlichem Build alte generierte Build-Ergebnisse entfernen und das vollständige App-Bundle neu bauen. Für die Standardverzeichnisse im Repository-Stamm:
 
    ```sh
-   rm -rf -- .build .build-app dist/PicEdit.app
+   rm -rf -- .build .build-app dist/Glowroom.app
    ./scripts/build-app.sh
    ```
 
-   Das Build-Skript bereinigt vorherige Ergebnisse nicht automatisch. Bei `PICEDIT_BUILD_PATH`, `PICEDIT_TEST_BUILD_PATH` oder anderen benutzerdefinierten Build-Verzeichnissen die tatsächlich verwendeten Pfade vorab prüfen und deren alte generierte Ergebnisse ebenfalls gezielt entfernen. Relative `PICEDIT_BUILD_PATH`-Angaben beziehen sich auf den Repository-Stamm. Nur bestätigte Build-Artefakte löschen; Quelldateien und persönliche Daten bleiben erhalten. Bereinigung und anschließender Build laufen wegen ihrer Abhängigkeit nacheinander; das Build-Skript parallelisiert seine unabhängigen Arbeitsschritte selbst.
+   Das Build-Skript bereinigt vorherige Ergebnisse nicht automatisch. Bei `GLOWROOM_BUILD_PATH`, `GLOWROOM_TEST_BUILD_PATH` oder anderen benutzerdefinierten Build-Verzeichnissen die tatsächlich verwendeten Pfade vorab prüfen und deren alte generierte Ergebnisse ebenfalls gezielt entfernen. Relative `GLOWROOM_BUILD_PATH`-Angaben beziehen sich auf den Repository-Stamm. Nur bestätigte Build-Artefakte löschen; Quelldateien und persönliche Daten bleiben erhalten. Bereinigung und anschließender Build laufen wegen ihrer Abhängigkeit nacheinander; das Build-Skript parallelisiert seine unabhängigen Arbeitsschritte selbst.
 4. Nach erfolgreichem Review und erfolgreicher Prüfung den Diff kontrollieren, ausschließlich die zur Aufgabe gehörenden Änderungen aussagekräftig committen und auf den zugehörigen Remote-Branch pushen, anschließend den Git-Status prüfen.
 5. Den zugehörigen Pull Request gegen `main` erstellen oder aktualisieren, erforderliche Reviews und Statusprüfungen erfüllen und die geprüfte Änderung mergen. Branch-Schutzregeln nicht umgehen. Wird der geprüfte Stand nachträglich verändert, die betroffenen Änderungen vor dem Merge erneut reviewen und prüfen. Einen blockierten Merge mit konkreter Ursache melden und den geprüften Branch bewahren.
 6. Nach bestätigtem Merge kann der alte Aufgabenbranch lokal und auf dem Remote gelöscht werden, sofern keine ungesicherten oder noch benötigten Änderungen verloren gehen. Anschließend `main` mit `git pull --ff-only` aktualisieren und den Git-Status prüfen. `main` niemals löschen und keine unsichere Branch-Löschung erzwingen. Im Abschlussbericht Commit, Aufgabenbranch, Pull Request und Merge-Status, gegebenenfalls Branch-Löschung sowie Review- und Build-/Testergebnis oder den begründeten Build-Verzicht nennen; verbleibende Hindernisse ausdrücklich dokumentieren.
@@ -150,32 +162,32 @@ swift build
 
 Die [Scheduling-Testdokumentation](docs/TEST-SCHEDULING.md) beschreibt suspendierende Fake-Gates, den Erhalt von Workerplätzen bei Abbruch und die Kontrollprobe für blockierende gegenüber suspendierenden Testworkern. Die vollständige Suite bleibt standardmäßig parallel.
 
-Mit einer vollständigen, normal eingerichteten Xcode-Installation ist alternativ `swift test` möglich. Optional setzt `PICEDIT_TEST_BUILD_PATH` ein separates Build-Verzeichnis für die Pakettests.
+Mit einer vollständigen, normal eingerichteten Xcode-Installation ist alternativ `swift test` möglich. Optional setzt `GLOWROOM_TEST_BUILD_PATH` ein separates Build-Verzeichnis für die Pakettests.
 
-Vorschau-Smoke-Test und Editing-/Library-Benchmarks kompilieren ihre isolierten Einstiegspunkte innerhalb des echten SwiftPM-App-Targets, einschließlich aller Abhängigkeiten und Ressourcen. Ihre Release-Caches liegen unter `.build-app/developer-tools/<Werkzeug>`; `PICEDIT_DEVELOPER_BUILD_PATH` und `PICEDIT_BUILD_JOBS` erlauben eigene Build-Verzeichnisse und begrenzte Parallelität. Unabhängige Builds benötigen getrennte Verzeichnisse; Vergleichsmessungen nacheinander ausführen. App-Build und reguläres Testskript entfernen eine geerbte `PICEDIT_DEVELOPER_TOOL`-Auswahl, damit keine Benchmark-App veröffentlicht wird.
+Vorschau-Smoke-Test und Editing-/Library-Benchmarks kompilieren ihre isolierten Einstiegspunkte innerhalb des echten SwiftPM-App-Targets, einschließlich aller Abhängigkeiten und Ressourcen. Ihre Release-Caches liegen unter `.build-app/developer-tools/<Werkzeug>`; `GLOWROOM_DEVELOPER_BUILD_PATH` und `GLOWROOM_BUILD_JOBS` erlauben eigene Build-Verzeichnisse und begrenzte Parallelität. Unabhängige Builds benötigen getrennte Verzeichnisse; Vergleichsmessungen nacheinander ausführen. App-Build und reguläres Testskript entfernen eine geerbte `GLOWROOM_DEVELOPER_TOOL`-Auswahl, damit keine Benchmark-App veröffentlicht wird.
 
-`./scripts/evaluate-lightcraft.sh /tmp/picedit-lc01-run` erweitert den Editing-Harness um reproduzierbare Bildqualitätsvergleiche: feste synthetische Szenen, eingefrorene Messgrenzen, Paar-/Differenzbilder sowie getrennte kalte/warme Messungen bis über 4096 Pixel. Der [LC-01-Bericht](docs/LIGHTCRAFT-ALGORITHM-EVALUATION.md) beschreibt Kontrollpfade, Kandidatenstatus, Nutzungsrechte optionaler realer Fixtures und Evidenzlücken. Ein bestandener Harness-Kontrolllauf ist keine Freigabe eines neuen Produktionsalgorithmus.
+`./scripts/evaluate-lightcraft.sh /tmp/glowroom-lc01-run` erweitert den Editing-Harness um reproduzierbare Bildqualitätsvergleiche: feste synthetische Szenen, eingefrorene Messgrenzen, Paar-/Differenzbilder sowie getrennte kalte/warme Messungen bis über 4096 Pixel. Der [LC-01-Bericht](docs/LIGHTCRAFT-ALGORITHM-EVALUATION.md) beschreibt Kontrollpfade, Kandidatenstatus, Nutzungsrechte optionaler realer Fixtures und Evidenzlücken. Ein bestandener Harness-Kontrolllauf ist keine Freigabe eines neuen Produktionsalgorithmus.
 
 Mit `--candidate LC-03` wird der [isolierte Lichter-/Schattenvergleich](docs/LIGHTCRAFT-TONE-EVALUATION.md) ausgeführt; `--candidate LC-04` untersucht [Klarheit und Textur getrennt](docs/LIGHTCRAFT-DETAIL-EVALUATION.md). Diese Modi frieren die Effektangleichung vor der Abnahme ein und dokumentieren ihre Grenzen. `--candidate LC-05` ergänzt den [separaten Dynamik-/Sättigungsvergleich](docs/LIGHTCRAFT-COLOR-EVALUATION.md) mit angeglichener Chromawirkung. `--candidate LC-06` prüft [Entrauschung und native Skalierung](docs/LIGHTCRAFT-DENOISE-EVALUATION.md) bei angeglichener Rauschminderung und bekannter Ground Truth. Ihre CPU-Referenzen werden nicht vom Produktionsrenderer aufgerufen.
 
 `./scripts/test-developer-tools.sh` prüft die sichere Ablehnung älterer, inkompatibler Quell-Checkouts und fehlender Inferenzfreigaben ohne Swift-Kompilierung. Der frühere Keychain-Harness entfällt mit den entfernten Cloud-Anbietereinstellungen.
 
-Die Tests prüfen unter anderem Vorschau-Priorisierung und Abbruch, persistente Cache-Gültigkeit und Größenlimits, Transparenz und Farbprofile, Bibliotheks-Cache-Invalidierung sowie rekursiven Import, überlappende Ordner, Aktualisierung, Bewertungen, Favoriten, gespeicherte Kataloge und den Umgang mit beschädigten Dateien. Sie verwenden eigene temporäre Testordner und verändern weder persönliche Originalbilder noch den regulären PicEdit-Katalog. Der separate Vorschautest prüft EXIF-Orientierung, Größenbegrenzung, Cache-Verhalten, Abbruch sowie defekte und fehlende Dateien anhand synthetischer Testbilder. Die Detailauswahl-Tests stellen Mausbewegungen über AppKit an die Anwendung zu und prüfen Fadenkreuz, Tastaturfokus und Übergänge zwischen Foto und Vorschau. Dafür ist eine macOS-Sitzung mit Fensterserver-Zugriff erforderlich; lokale Testfotos werden nicht benötigt.
+Die Tests prüfen unter anderem Vorschau-Priorisierung und Abbruch, persistente Cache-Gültigkeit und Größenlimits, Transparenz und Farbprofile, Bibliotheks-Cache-Invalidierung sowie rekursiven Import, überlappende Ordner, Aktualisierung, Bewertungen, Favoriten, gespeicherte Kataloge und den Umgang mit beschädigten Dateien. Sie verwenden eigene temporäre Testordner und verändern weder persönliche Originalbilder noch den regulären Glowroom-Katalog. Der separate Vorschautest prüft EXIF-Orientierung, Größenbegrenzung, Cache-Verhalten, Abbruch sowie defekte und fehlende Dateien anhand synthetischer Testbilder. Die Detailauswahl-Tests stellen Mausbewegungen über AppKit an die Anwendung zu und prüfen Fadenkreuz, Tastaturfokus und Übergänge zwischen Foto und Vorschau. Dafür ist eine macOS-Sitzung mit Fensterserver-Zugriff erforderlich; lokale Testfotos werden nicht benötigt.
 
 `test-build-app.sh` prüft mit isolierten Testwerkzeugen die parallele Build-Steuerung, Jobbudgets, getrennte Caches, Abbruch samt Kindprozessen, den Build-Lock und den Erhalt der bisherigen App bei Compiler-, Icon-, Signatur- und Veröffentlichungsfehlern. Dieser Shell-Test benötigt keine Swift-Kompilierung und verändert das echte App-Bundle nicht.
 
 Eine kleine, rein synthetische Beispielsammlung kann ohne zusätzliche Abhängigkeiten erzeugt werden. Das Zielverzeichnis muss ausdrücklich angegeben werden; bestehende Dateien werden nicht überschrieben:
 
 ```sh
-swift scripts/make-demo-library.swift /tmp/PicEdit-Demo
+swift scripts/make-demo-library.swift /tmp/Glowroom-Demo
 ```
 
-Anschließend `/tmp/PicEdit-Demo` in PicEdit hinzufügen. Die Beispielbilder sind programmatisch gezeichnet und enthalten keine persönlichen Fotos.
+Anschließend `/tmp/Glowroom-Demo` in Glowroom hinzufügen. Die Beispielbilder sind programmatisch gezeichnet und enthalten keine persönlichen Fotos.
 
 Für einen vollständig getrennten Testkatalog lässt sich ein anderes Datenverzeichnis übergeben:
 
 ```sh
-swift run PicEdit --catalog-directory /tmp/PicEdit-Testkatalog
+swift run Glowroom --catalog-directory /tmp/Glowroom-Testkatalog
 ```
 
 Die Bibliotheksberechnungen lassen sich unabhängig vom RAW-Decoder mit 10.000 synthetischen Einträgen messen:
@@ -189,8 +201,8 @@ Das Skript verwendet einen eigenen temporären Katalog; seine Zeiten messen Filt
 Für einen Vergleich der ImageIO-Ladewege mit ausdrücklich angegebenen, lokal verfügbaren RAW-Dateien:
 
 ```sh
-xcrun swiftc -O -parse-as-library scripts/benchmark-raw-previews.swift -o /tmp/picedit-raw-benchmark
-/tmp/picedit-raw-benchmark --iterations 3 --sizes 512,2400 /Pfad/zum/Bild.CR3
+xcrun swiftc -O -parse-as-library scripts/benchmark-raw-previews.swift -o /tmp/glowroom-raw-benchmark
+/tmp/glowroom-raw-benchmark --iterations 3 --sizes 512,2400 /Pfad/zum/Bild.CR3
 ```
 
 Das Werkzeug misst erzwungene Neuerzeugung, eingebettete Vorschau und ImageIO-Fallback separat. Auflösung und erfolgreiche Decodierung müssen beim Vergleich berücksichtigt werden. Cloud-Platzhalter und unlesbare Dateien werden übersprungen; Zugriff durch die App bedeutet nicht automatisch Zugriff für ein Terminal-Werkzeug. Die tatsächliche Beschleunigung hängt vom Kameraformat, der eingebetteten Vorschau und dem Cache-Zustand ab.
@@ -233,7 +245,7 @@ Maskenänderungen wirken direkt und werden automatisch gespeichert; jeder Strich
 
 Neue Motiv-, Hintergrund- und Himmelsmasken bewahren Auswahlen mit bis zu 2048 Pixeln langer Kante. Sie starten mit **Weiche Kante = 0**, um zusätzliche breite Säume zu vermeiden. Optional lässt sich über **Motivmodell einrichten …** ein lokal vorbereitetes **BiRefNet HR Matting mit 1920 × 1920 Pixeln** importieren; neue Motiv- und Hintergrundmasken verwenden dann dessen gelernte feine Übergänge. Eine dezente Statusanzeige an der Bildfläche zeigt die laufende Maskenberechnung und bietet **Abbrechen**. Ohne Zusatzmodell bleibt Apples lokale Motiverkennung verfügbar. Die App führt das Modell nativ mit Core ML aus, benötigt kein Python und lädt keine Fotos hoch. Einrichtung, Aktualisierung älterer Modelle und Messgrenzen stehen in [automatischen Masken](docs/AUTOMATIC-MASKS.md). Hintergrund verwendet immer die umgekehrte Motivauswahl. Bestehende Masken werden nicht neu berechnet: Für das neue Modell eine neue Maske erstellen. Pinsel und Verläufe behalten ihr bisheriges Verhalten. Übersehene Zwischenräume können weiterhin eine Pinsel-/Radiererkorrektur benötigen.
 
-Die Grundeinstellungen ergänzen **Temperatur**, **Tönung**, **Neutralpipette**, drei PicEdit-Profile und **S/W**. 6500 ist die neutrale Referenz auf bereits entwickelten Pixeln, kein ausgelesener Kamera-Kelvinwert. **HDR** erhält erweiterte Helligkeitswerte und verwendet eine HDR-fähige Anzeige; die Formatwahl im Export bietet zusätzlich **HEIF 10 Bit HDR**. JPEG bleibt SDR. **Zuschneiden** bietet acht großzügig treffbare Größen-Griffe, freie/gesperrte Seitenverhältnisse, Verschieben durch Ziehen im Rahmen einschließlich Drei-Finger-Ziehen, sofort sichtbare Winkeländerungen, eine Wasserwaage mit Bezugslinie und automatische Horizonterkennung. **Reparieren** bietet direkt wirksames Entfernen mit wechselbarer automatischer oder manueller Quelle, feine Pinsel für kleine Details, Heilen und Kopierstempel, zusammenhängende Pinselzüge, Objektauswahl, prüfbare Personen-/Staubvorschläge und Fleckenansicht. Ein ausdrücklich importiertes kompatibles LaMa-Modell ergänzt kleine Bereiche lokal; das gültige Ergebnis wird direkt aktiv und lässt sich rückgängig machen. Modelle werden weder mitgeliefert noch heruntergeladen, Spiegelungsentfernung ist weiterhin nicht verfügbar. **Rote Augen** korrigiert explizit umrahmte Pupillen. Bedienung und Grenzen: [Entwickeln](docs/DEVELOP-WORKSPACE.md), [Reparaturwerkzeuge](docs/REPAIR-TOOLS.md), [Farbkorrekturen](docs/DEVELOP-COLOR.md). Ein **Doppelklick auf einen Regler** stellt seinen fachlichen Neutralwert als eigenen Rückgängig-Schritt wieder her.
+Die Grundeinstellungen ergänzen **Temperatur**, **Tönung**, **Neutralpipette**, drei Glowroom-Profile und **S/W**. 6500 ist die neutrale Referenz auf bereits entwickelten Pixeln, kein ausgelesener Kamera-Kelvinwert. **HDR** erhält erweiterte Helligkeitswerte und verwendet eine HDR-fähige Anzeige; die Formatwahl im Export bietet zusätzlich **HEIF 10 Bit HDR**. JPEG bleibt SDR. **Zuschneiden** bietet acht großzügig treffbare Größen-Griffe, freie/gesperrte Seitenverhältnisse, Verschieben durch Ziehen im Rahmen einschließlich Drei-Finger-Ziehen, sofort sichtbare Winkeländerungen, eine Wasserwaage mit Bezugslinie und automatische Horizonterkennung. **Reparieren** bietet direkt wirksames Entfernen mit wechselbarer automatischer oder manueller Quelle, feine Pinsel für kleine Details, Heilen und Kopierstempel, zusammenhängende Pinselzüge, Objektauswahl, prüfbare Personen-/Staubvorschläge und Fleckenansicht. Ein ausdrücklich importiertes kompatibles LaMa-Modell ergänzt kleine Bereiche lokal; das gültige Ergebnis wird direkt aktiv und lässt sich rückgängig machen. Modelle werden weder mitgeliefert noch heruntergeladen, Spiegelungsentfernung ist weiterhin nicht verfügbar. **Rote Augen** korrigiert explizit umrahmte Pupillen. Bedienung und Grenzen: [Entwickeln](docs/DEVELOP-WORKSPACE.md), [Reparaturwerkzeuge](docs/REPAIR-TOOLS.md), [Farbkorrekturen](docs/DEVELOP-COLOR.md). Ein **Doppelklick auf einen Regler** stellt seinen fachlichen Neutralwert als eigenen Rückgängig-Schritt wieder her.
 
 
 ### Bildinformationen: Titel, Beschreibung und Tags
@@ -259,7 +271,7 @@ Der Export läuft im Hintergrund und kann abgebrochen werden. Mehrere Bilder ver
 
 ## Datenbank und Backups
 
-Aktive Bildquelle und Regler stehen pro Foto gemeinsam in **`~/Library/Application Support/PicEdit/edits.sqlite`**. Schema 2 verwendet geschlossene SQLite-Dateien mit DELETE-Journal, `synchronous=FULL`, Transaktionen und fortlaufenden Versionen pro Bild. Vorhandene Schema-1-Regler einschließlich Revisionen und Tombstones werden übernommen; bei alten WAL-Datenbanken wird die unveränderte Dateifamilie vor der Migration unter `EditMigrationArchives` archiviert. Mehrere schnelle Regleränderungen werden zusammengefasst. Beim Beenden wartet die App auf tatsächlich abgeschlossene angenommene Schreibaufträge. Konflikte oder Schreibfehler werden angezeigt; ungespeicherte Werte bleiben wiederholbar.
+Aktive Bildquelle und Regler stehen pro Foto gemeinsam in **`~/Library/Application Support/Glowroom/edits.sqlite`**. Schema 2 verwendet geschlossene SQLite-Dateien mit DELETE-Journal, `synchronous=FULL`, Transaktionen und fortlaufenden Versionen pro Bild. Vorhandene Schema-1-Regler einschließlich Revisionen und Tombstones werden übernommen; bei alten WAL-Datenbanken wird die unveränderte Dateifamilie vor der Migration unter `EditMigrationArchives` archiviert. Mehrere schnelle Regleränderungen werden zusammengefasst. Beim Beenden wartet die App auf tatsächlich abgeschlossene angenommene Schreibaufträge. Konflikte oder Schreibfehler werden angezeigt; ungespeicherte Werte bleiben wiederholbar.
 
 Der vorhandene Bibliothekskatalog mit Ordnern, Metadaten, Bewertungen und Favoriten bleibt in `catalog.json`. Katalog, Bearbeitungen und die getrennten Bildinformationen liegen bei `--catalog-directory` im angegebenen Test-/Datenverzeichnis.
 
@@ -269,7 +281,7 @@ Beim Start werden verwaiste Einträge älterer Programmstände anhand des gespei
 
 Vorhandene manuelle/automatische Backups, Recoveryarchive und unveränderliche veröffentlichte Rasterdateien werden durch das Entfernen eines Katalogbildes nicht physisch gelöscht. Sie gehören zur Sicherungs- beziehungsweise Artefaktablage, nicht zu den aktiven Bilddatensätzen. Sie werden beim erneuten Import nicht automatisch übernommen.
 
-- **Automatisch:** Nach dem ersten erfolgreichen Speichern an einem Tag entsteht ein geprüftes `.piceditbackup` unter `EditBackups`. Die letzten sieben eindeutig app-eigenen automatischen Pakete bleiben erhalten. Veränderte, fremde oder als Original verwendete Pakete werden vorsichtshalber behalten; dann können mehr als sieben vorhanden sein. Alte `.sqlite`-Backups werden nicht automatisch gelöscht.
+- **Automatisch:** Nach dem ersten erfolgreichen Speichern an einem Tag entsteht ein geprüftes `.glowroombackup` unter `EditBackups`. Die letzten sieben eindeutig app-eigenen automatischen Pakete bleiben erhalten. Veränderte, fremde oder als Original verwendete Pakete werden vorsichtshalber behalten; dann können mehr als sieben vorhanden sein. Alte `.sqlite`-Backups werden nicht automatisch gelöscht.
 - **Manuell:** Über das Backup-Symbol oben rechts oder **Entwickeln → Bearbeitungen sichern …** einen Zielort auswählen, beispielsweise ein externes Laufwerk. Manuelle Sicherungen werden nicht automatisch gelöscht.
 - **Wiederherstellen:** **Backup wiederherstellen …** öffnet ein Bearbeitungspaket oder ein älteres `.sqlite`-Reglerbackup. Vor der Übernahme werden die gesamte referenzierte Datenmenge, Integrität, Schema und Werte geprüft und der bisherige Zustand separat gesichert. Ungültige Pakete verändern den aktiven Bearbeitungsstand nicht. Alte Reglerbackups stellen Originalquellen her.
 - **Beschädigte Datenbank:** Eine ausdrückliche Wiederherstellung aus einem gültigen Backup erhält die beschädigte Datenbankfamilie und den bisherigen Artefaktbaum unter `EditingRecoveryArchives`. Ein nicht abgeschlossener gemeinsamer Katalogumzug muss zuvor geklärt werden. Erkennbare fremde SQLite-Datenbanken und neuere Schema-Versionen werden nicht ersetzt.

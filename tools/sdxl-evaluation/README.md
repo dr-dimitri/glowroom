@@ -1,6 +1,6 @@
 # Lokale SDXL-Inpainting-Evaluation
 
-[Issue #77](https://github.com/dr-dimitri/picedit/issues/77) setzt die lokale Nachweisführung für [#1](https://github.com/dr-dimitri/picedit/issues/1) fort. Die produktive Bildgenerierung bleibt bis zum vollständigen Nachweis unavailable. Ein technischer Modelllauf allein schließt #13–16 nicht ab. Die bisherigen SD-1.5- und LaMa-No-Go-Ergebnisse bleiben unverändert.
+[Issue #77](https://github.com/dr-dimitri/glowroom/issues/77) setzt die lokale Nachweisführung für [#1](https://github.com/dr-dimitri/glowroom/issues/1) fort. Die produktive Bildgenerierung bleibt bis zum vollständigen Nachweis unavailable. Ein technischer Modelllauf allein schließt #13–16 nicht ab. Die bisherigen SD-1.5- und LaMa-No-Go-Ergebnisse bleiben unverändert.
 
 **Ergebnis der abgeschlossenen V8-Serie: No-Go für diese Konfiguration.** Alle zehn Vorhersagen wurden innerhalb ihrer Zeitgrenzen erzeugt; der erforderliche Qualitätsfall 05 und das native Abbruchgate bestehen jedoch nicht. Historische Rohberichte, Bilder und damalige Quellsnapshots wurden mit dem Reportsordner entfernt. Die Ergebnisse in diesem Dokument bleiben als historische Zusammenfassung erhalten. Neue Läufe benötigen explizite externe Eingaben und Ausgabeordner.
 
@@ -16,17 +16,17 @@ Die zunächst erwogene Abschaltung der Original-Latent-Rückmischung wird nicht 
 python3 -B tools/sdxl-evaluation/probe_denoise_mask.py --help
 ```
 
-Der Runner benötigt die extern vorhandene Pflichtmaske über `--mask-fixture /private/tmp/picedit-fixture-archive/fixtures/05-fine-motif-edges-mask-hard.png` und prüft Archiv, Quellvertrag und Fixture vor der Kompilierung. Die breite Kontrollmaske prüft, dass die Bedingung nicht stets falsch ist.
+Der Runner benötigt die extern vorhandene Pflichtmaske über `--mask-fixture /private/tmp/glowroom-fixture-archive/fixtures/05-fine-motif-edges-mask-hard.png` und prüft Archiv, Quellvertrag und Fixture vor der Kompilierung. Die breite Kontrollmaske prüft, dass die Bedingung nicht stets falsch ist.
 
 Builder, Konverter und Swift-Harness verlangen für neue Ausführungen zusätzlich `sdkScheduleBaselineReproduced`, `sdkScheduleRegressionPassed`, `sdxlSchedule = euler-leading-strength099-v1` und die Hashes des Zeitplan-Headers sowie des nativen Regressionstests. Der Test prüft den tatsächlichen SDK-Zeitplan, die tatsächliche öffentliche Übergabe und die quellgeprüfte Formel der nachfolgenden Stärkeauswahl. Diese kleine Probe führt den privaten VAE-Bildpfad nicht aus; dessen tatsächliche Schrittzahl muss zusätzlich das Inferenzlog bestätigen. Bestehende V9-Receipts autorisieren keine neue V10-Ausführung.
 
 Ein frischer privater Root und neue Ausgabeordner bewahren frühere Nachweise. Zuerst wird nur Pflichtfall 05 erzeugt; bei Qualitätsfehler endet der Kandidat als No-Go. Erst ein bestandener Pflichtfall rechtfertigt die vollständige Serie einschließlich Abbruch- und Vorschauprüfung. Alle Zeit-, Speicher- und Produktgates gelten unverändert.
 
 ```sh
-python3 -B tools/sdxl-evaluation/prepare.py --root /private/tmp/picedit-sdxl-qualification-v10 --offline --source-cache /private/tmp/picedit-sdxl-qualification-v9/inputs
-python3 -B tools/sdxl-evaluation/build_native.py --root /private/tmp/picedit-sdxl-qualification-v10 --build --mask-fixture /private/tmp/picedit-fixture-archive/fixtures/05-fine-motif-edges-mask-hard.png --cmake /absolute/path/to/cmake
-python3 -B tools/sdxl-evaluation/convert.py --root /private/tmp/picedit-sdxl-qualification-v10 --convert
-./scripts/evaluate-image-generation.sh sdxl --run --fixture-archive /private/tmp/picedit-fixture-archive --probe-case 05-fine-motif-edges-hard --root /private/tmp/picedit-sdxl-qualification-v10 --out /private/tmp/picedit-sdxl-v10-fine-edges
+python3 -B tools/sdxl-evaluation/prepare.py --root /private/tmp/glowroom-sdxl-qualification-v10 --offline --source-cache /private/tmp/glowroom-sdxl-qualification-v9/inputs
+python3 -B tools/sdxl-evaluation/build_native.py --root /private/tmp/glowroom-sdxl-qualification-v10 --build --mask-fixture /private/tmp/glowroom-fixture-archive/fixtures/05-fine-motif-edges-mask-hard.png --cmake /absolute/path/to/cmake
+python3 -B tools/sdxl-evaluation/convert.py --root /private/tmp/glowroom-sdxl-qualification-v10 --convert
+./scripts/evaluate-image-generation.sh sdxl --run --fixture-archive /private/tmp/glowroom-fixture-archive --probe-case 05-fine-motif-edges-hard --root /private/tmp/glowroom-sdxl-qualification-v10 --out /private/tmp/glowroom-sdxl-v10-fine-edges
 ```
 
 ## Fortsetzung V9: isolierte Masken- und Abbruchqualifikation
@@ -40,8 +40,8 @@ Der neue [native CPU-Test](sdxl_mask_regression.cpp) prüft die unveränderte Ba
 Zuerst wird ausschließlich dieselbe eingefrorene Pflichtfixture 05 erneut erzeugt. Nur bei ausreichendem Ergebnis folgt eine vollständige Serie. Die separate Abbruchprobe liefert unabhängig davon Messwerte zum Prozessende:
 
 ```sh
-./scripts/evaluate-image-generation.sh sdxl --run --fixture-archive /private/tmp/picedit-fixture-archive --probe-case 05-fine-motif-edges-hard --root /private/tmp/picedit-sdxl-qualification-v9 --out /private/tmp/picedit-sdxl-v9-fine-edges
-./scripts/evaluate-image-generation.sh sdxl --run --fixture-archive /private/tmp/picedit-fixture-archive --cancellation-only --root /private/tmp/picedit-sdxl-qualification-v9 --out /private/tmp/picedit-sdxl-v9-cancellation
+./scripts/evaluate-image-generation.sh sdxl --run --fixture-archive /private/tmp/glowroom-fixture-archive --probe-case 05-fine-motif-edges-hard --root /private/tmp/glowroom-sdxl-qualification-v9 --out /private/tmp/glowroom-sdxl-v9-fine-edges
+./scripts/evaluate-image-generation.sh sdxl --run --fixture-archive /private/tmp/glowroom-fixture-archive --cancellation-only --root /private/tmp/glowroom-sdxl-qualification-v9 --out /private/tmp/glowroom-sdxl-v9-cancellation
 ```
 
 `--probe-case` wählt genau einen bekannten Fall einschließlich Maskenart; dieser Lauf behauptet keine warmen Wiederholungen oder parallele Vorschau. `--cancellation-only` führt keine vollständige Vorhersage- oder Replayserie aus. Beide benötigen das ausdrückliche `--run`; numerische Diagnose und diese Probenmodi sind gegenseitig ausgeschlossen. `qualificationScope` hält den tatsächlichen Umfang fest. Die historische V9-Zusammenfassung oben ist von V1–V8 getrennt.
@@ -77,9 +77,9 @@ python3 -B tools/sdxl-evaluation/convert.py
 Jeder tatsächliche Schritt ist ein eigener ausdrücklicher Aufruf:
 
 ```sh
-python3 -B tools/sdxl-evaluation/prepare.py --root /private/tmp/picedit-sdxl --download
-python3 -B tools/sdxl-evaluation/build_native.py --root /private/tmp/picedit-sdxl --build --mask-fixture /private/tmp/picedit-fixture-archive/fixtures/05-fine-motif-edges-mask-hard.png --cmake /absolute/path/to/cmake
-python3 -B tools/sdxl-evaluation/convert.py --root /private/tmp/picedit-sdxl --convert
+python3 -B tools/sdxl-evaluation/prepare.py --root /private/tmp/glowroom-sdxl --download
+python3 -B tools/sdxl-evaluation/build_native.py --root /private/tmp/glowroom-sdxl --build --mask-fixture /private/tmp/glowroom-fixture-archive/fixtures/05-fine-motif-edges-mask-hard.png --cmake /absolute/path/to/cmake
+python3 -B tools/sdxl-evaluation/convert.py --root /private/tmp/glowroom-sdxl --convert
 ```
 
 Der Download überlappt höchstens zwei Übertragungen und publiziert die vollständig gehashten Eingaben atomar als `<root>/inputs/`. Bestehende Eingaben werden nicht überschrieben. `--offline --source-cache /absolute/path/to/cache` verwendet einen Cache mit denselben relativen Zielpfaden wie `package.json`; fehlende/falsche Dateien führen ohne Netzfallback zum Fehler. Symbolische Links, Hardlinks und spezielle Quelldateien werden abgewiesen.
@@ -95,7 +95,7 @@ Der Konverter hat eine separate Vorbereitungsfrist von 600 Sekunden. Nach erfolg
 Der modellfreie Headerinspektor liest standardmäßig ungepuffert höchstens 64 MiB Header und keine Tensorinhalte. Er erfasst tatsächliche Typen, Eingangs-Convolution und deklarierte Dateibereiche. Nur das ausdrückliche Flag `--sha256` liest zusätzlich die vollständige Datei für einen Hash:
 
 ```sh
-python3 -B tools/sdxl-evaluation/inspect_gguf.py /private/tmp/picedit-sdxl/model-q8_0.gguf
+python3 -B tools/sdxl-evaluation/inspect_gguf.py /private/tmp/glowroom-sdxl/model-q8_0.gguf
 ```
 
 Der tatsächlich geprüfte Export enthält **2.643 Tensoren: 1.350 Q8_0, 1.167 F16, 124 F32 und zwei I32**. Im VAE sind alle 124 Nicht-Bias-Tensoren F32 und alle 124 Bias-Tensoren F16. Die beiden I32-Tensoren sind die `position_ids` der Textencoder. Die Eingangs-Convolution besitzt GGML-Dimensionen `[3,3,9,320]`, entsprechend OIHW `[320,9,3,3]`. Diese Headerprüfung belegt weder Tensorinhalte noch Bildqualität oder eine durchgehend gleiche Rechenpräzision.
@@ -113,17 +113,17 @@ Die ab V5 untersuchte Ausführungsvariante verwendet gebündelte CFG-Berechnung 
 Die abgeschlossene V8-Konfiguration verwendet VAE-Tiles von 640×640 Pixeln. Der tatsächliche Plan umfasst vier Tiles mit Startkoordinaten 0 und 384 je Achse, also 256 Pixel wirksame Überlappung. Die Gewichts- und übrigen Modellparameter bleiben erhalten; V8 prüfte die korrigierte Metal-Operation ohne numerische Callbacks.
 
 ```sh
-./scripts/evaluate-image-generation.sh sdxl --run --fixture-archive /private/tmp/picedit-fixture-archive --all-fixtures --root /private/tmp/picedit-sdxl --out /private/tmp/picedit-sdxl-probe
+./scripts/evaluate-image-generation.sh sdxl --run --fixture-archive /private/tmp/glowroom-fixture-archive --all-fixtures --root /private/tmp/glowroom-sdxl --out /private/tmp/glowroom-sdxl-probe
 ```
 
 Ohne `--run` wird bereits der vorgeschaltete Entwicklerbuild abgewiesen. Der neue Berichtsordner darf nicht existieren. Der explizite SwiftPM-Entwicklerbuild kann gepinnte Paketabhängigkeiten abrufen, lädt aber keine Modelle. Ohne `--all-fixtures` wird nur das erste Bild mit drei warmen Wiederholungen und technischer Abbruch-/Vorschauprobe untersucht; dies reicht für kein vollständiges Qualitäts-Go.
 
 `criteria.json` legt die Grenzen vor der Inferenz fest: 6 GiB kombinierter Prozessspeicher, 45 s Modellladen, 180 s je Vorhersage, 240 s für den kalten Start und 5 s vom Abbruch bis zum nativen Ende. Ressourcenlease und Helperprozess werden erst nach tatsächlichem Ende freigegeben. Peak-RSS und Footprint werden bei nativen Protokollereignissen geprüft. Die künstliche 256²-Vorschauprobe verlangt echte Samples in beiden Phasen, P95 ≤ 250 ms und höchstens 2× Baseline. Sie ist kein Ersatz für den noch notwendigen Produktvorschau- und RAW-Nachweis.
 
-Der [Swift-Evaluator](../../Sources/PicEdit/DeveloperTools/ImageGenerationEvaluation.swift) prüft die Build-, Patch- und Regressionsnachweise vor dem Modellstart. Eine ausdrückliche numerische Diagnose verwendet genau einen Fall und die öffentliche SDK-Callback-Schnittstelle:
+Der [Swift-Evaluator](../../Sources/Glowroom/DeveloperTools/ImageGenerationEvaluation.swift) prüft die Build-, Patch- und Regressionsnachweise vor dem Modellstart. Eine ausdrückliche numerische Diagnose verwendet genau einen Fall und die öffentliche SDK-Callback-Schnittstelle:
 
 ```sh
-./scripts/evaluate-image-generation.sh sdxl --run --fixture-archive /private/tmp/picedit-fixture-archive --numeric-diagnostic --root /private/tmp/picedit-sdxl --out /private/tmp/picedit-sdxl-numeric
+./scripts/evaluate-image-generation.sh sdxl --run --fixture-archive /private/tmp/glowroom-fixture-archive --numeric-diagnostic --root /private/tmp/glowroom-sdxl --out /private/tmp/glowroom-sdxl-numeric
 ```
 
 Der [native Helper](helper.cpp) liest an bis zu fünf fest benannten Verarbeitungsgrenzen jeweils höchstens 256 F32-Werte zurück, also 1 KiB pro Grenze. Er untersucht erste Tiles und den ersten gebündelten UNet-Ausgang; ungesampelte Werte, weitere Tiles und spätere Schritte bleiben ungeprüft. Fehlt eine erwartete Grenze oder enthält eine Stichprobe einen nichtfiniten Wert, wird kein Ergebnis-PNG veröffentlicht. Die Callback-Registrierung wird durch RAII auch auf Fehlerpfaden zurückgesetzt; der native Selbsttest muss für diesen Diagnosemodus nachgewiesen sein. Die zusätzlichen Synchronisierungen machen diese Diagnose ungeeignet für repräsentative Laufzeitvergleiche, warme Wiederholungen oder eine Produktfreigabe.
@@ -133,21 +133,21 @@ Das Modell verarbeitet die Fälle seriell, damit keine weiteren Modellkopien ode
 Manuelles Replay benötigt keine Inferenz. `sdxl-report.json.preprocessingVersion=1` bestimmt die Straight-RGB-Provenienz; unbekannte Versionen und widersprüchliche Berichtstypen werden abgewiesen:
 
 ```sh
-./scripts/evaluate-image-generation.sh replay --historical /private/tmp/picedit-sdxl-probe --out /private/tmp/picedit-sdxl-replay
+./scripts/evaluate-image-generation.sh replay --historical /private/tmp/glowroom-sdxl-probe --out /private/tmp/glowroom-sdxl-replay
 ```
 
 Modellfreie Prüfungen:
 
 ```sh
 python3 -B -m unittest discover -s tools/sdxl-evaluation -v
-PICEDIT_TEST_BUILD_PATH=/private/tmp/picedit-sdxl-tests ./scripts/test.sh --filter SDXLEvaluationRasterTests
+GLOWROOM_TEST_BUILD_PATH=/private/tmp/glowroom-sdxl-tests ./scripts/test.sh --filter SDXLEvaluationRasterTests
 ./scripts/test-developer-tools.sh
 ```
 
 Die zusätzliche CLI-Prüfung verwendet einen bereits gebauten Entwickler-Executable:
 
 ```sh
-python3 -B tools/sdxl-evaluation/probe_replay_cli.py --binary /absolute/path/to/PicEdit --archive /private/tmp/picedit-lama-v2
+python3 -B tools/sdxl-evaluation/probe_replay_cli.py --binary /absolute/path/to/Glowroom --archive /private/tmp/glowroom-lama-v2
 ```
 
 Sie prüft die tatsächlich gespeicherten Fall-IDs, die beobachtbare Straight-RGB-/Alpha-Behandlung und das Abweisen fehlerhafter Replay-Metadaten. Dazu benötigt sie einen extern vorhandenen LaMa-V2-Ergebnisbaum mit `native/artifacts/` und `compositor/current-compositor-report.json` (`--archive`) und verpackt dessen Ausgabebilder ausdrücklich in synthetische SDXL-Metadaten. Sie baut und lädt kein Modell und führt keine Inferenz aus. Ihre Ergebnisse sind ausschließlich ein CLI-/Compositor-Vertragstest, kein SDXL-Qualitäts- oder Laufzeitnachweis. Temporäre Prüfdateien und Protokolle bleiben im ausgegebenen Prüfverzeichnis erhalten.

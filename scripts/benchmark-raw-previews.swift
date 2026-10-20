@@ -3,8 +3,8 @@ import CoreGraphics
 import ImageIO
 import Darwin
 
-// Compile: xcrun swiftc -O -parse-as-library scripts/benchmark-raw-previews.swift -o /tmp/picedit-raw-benchmark
-// Run: /tmp/picedit-raw-benchmark --iterations 3 --sizes 640,2400 /path/to/local.CR3 ...
+// Compile: xcrun swiftc -O -parse-as-library scripts/benchmark-raw-previews.swift -o /tmp/glowroom-raw-benchmark
+// Run: /tmp/glowroom-raw-benchmark --iterations 3 --sizes 640,2400 /path/to/local.CR3 ...
 // Only explicit files are read. Cloud placeholders (SF_DATALESS) are skipped.
 @main
 struct RAWPreviewBenchmark {
@@ -142,6 +142,6 @@ struct RAWPreviewBenchmark {
     }
 
     static func failure(_ message: String) -> NSError {
-        NSError(domain: "PicEditRAWBenchmark", code: 1, userInfo: [NSLocalizedDescriptionKey: message])
+        NSError(domain: "GlowroomRAWBenchmark", code: 1, userInfo: [NSLocalizedDescriptionKey: message])
     }
 }

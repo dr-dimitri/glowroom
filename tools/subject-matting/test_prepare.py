@@ -41,7 +41,7 @@ class SourceTests(unittest.TestCase):
             source = directory / "source"
             trusted = directory / "trusted"
             source.mkdir(); trusted.mkdir()
-            name = "picedit_test_safe_dependency"
+            name = "glowroom_test_safe_dependency"
             (source / (name + ".py")).write_text("raise RuntimeError('unpinned shadow executed')\n")
             (trusted / (name + ".py")).write_text("VALUE = 'safe'\n")
             (source / "BiRefNet_config.py").write_text("class BiRefNetConfig: pass\n")

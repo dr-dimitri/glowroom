@@ -54,7 +54,7 @@ def main():
     artifacts = original / "native/artifacts"
     golden = {case["caseID"]: case for case in
               json.loads((original / "compositor/current-compositor-report.json").read_text())["cases"]}
-    root = Path(tempfile.mkdtemp(prefix="picedit-sdxl-cli-replay-probe-", dir=args.output_parent))
+    root = Path(tempfile.mkdtemp(prefix="glowroom-sdxl-cli-replay-probe-", dir=args.output_parent))
     report = {"schemaVersion": 1, "purpose": DISCLAIMER, "inferenceExecuted": False,
               "binary": str(binary), "binarySHA256": digest(binary),
               "source": str(original), "sourceModel": "archived LaMa Core ML V2",

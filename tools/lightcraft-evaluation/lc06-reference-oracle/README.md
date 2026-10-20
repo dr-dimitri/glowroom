@@ -34,7 +34,7 @@ Swift tests allow absolute Float32 error `5e-6` plus relative error `2e-6`
 per component. Relative error is needed for the source's large chromaticity
 ratios around black; it is not an image-quality acceptance threshold.
 The explicit sRGB/Rec.2020 bridge, coverage-normalized alpha handling,
-exact canonical zero branch and unknown-sampling policy are PicEdit
+exact canonical zero branch and unknown-sampling policy are Glowroom
 adaptations tested separately. The source's epsilon scale² is used only when
 input area averaging is explicitly known. Unknown sampling preserves native
 epsilon while retaining geometric radius/blend scaling.
@@ -48,6 +48,6 @@ python3 tools/lightcraft-evaluation/lc06-reference-oracle/generate.py /path/to/l
 
 Without `--write` the tool must reproduce the committed JSON exactly. Rust
 source/binary files exist only in an automatically removed temporary directory.
-Normal PicEdit builds and Swift tests require neither Rust nor Lightcraft.
+Normal Glowroom builds and Swift tests require neither Rust nor Lightcraft.
 See [third-party notices](../THIRD-PARTY-NOTICES.txt) and the preserved
 [MIT license](../licenses/lightcraft/LICENSE-MIT).

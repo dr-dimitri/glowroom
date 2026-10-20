@@ -2,13 +2,13 @@
 
 Diese Dateien bauen einen **Evaluationshelper**. Sie schalten keine Produktfähigkeit frei und starten keine Inferenz. SDK/GGML, Modell, Patch, Helper und Parameter sind gepinnt. `evaluation-package.json` enthält Größen und SHA256 für alle 14 Modelldateien, beide Sourcearchive und die Buildinputs; sein eigener SHA256 ist im Vorbereitungsscript festgelegt. Das unveränderte historische `model-manifest.json` bleibt in diesem Werkzeugordner zur Prüfung des alten Vertrags bytegleich. Historische Rohberichte, Bilder und Evaluationsquellsnapshots wurden mit dem Reportsordner entfernt.
 
-Erforderlich sind Apple Silicon, macOS 14+, mindestens 16 GiB physischer Speicher, mindestens 8 GiB freier Speicherplatz, installierte Command Line Tools, Python 3 und CMake. Dies sind Startbedingungen für eine Evaluation; sie behaupten keine Qualitäts- oder Geschwindigkeitsfreigabe auf allen solchen Geräten. Die bisher tatsächlich gemessene Konfiguration ist M2 Pro/16 GiB/macOS 27.0.1. Der Build verwendet höchstens zwei Jobs und ein eigenes temporäres Quell-/Buildverzeichnis; keine PicEdit- oder fremden Buildpfade werden bereinigt.
+Erforderlich sind Apple Silicon, macOS 14+, mindestens 16 GiB physischer Speicher, mindestens 8 GiB freier Speicherplatz, installierte Command Line Tools, Python 3 und CMake. Dies sind Startbedingungen für eine Evaluation; sie behaupten keine Qualitäts- oder Geschwindigkeitsfreigabe auf allen solchen Geräten. Die bisher tatsächlich gemessene Konfiguration ist M2 Pro/16 GiB/macOS 27.0.1. Der Build verwendet höchstens zwei Jobs und ein eigenes temporäres Quell-/Buildverzeichnis; keine Glowroom- oder fremden Buildpfade werden bereinigt.
 
 Download und Build sind getrennte, ausdrücklich aufzurufende Schritte. Der Download beträgt einschließlich Modellmetadaten ungefähr 2,13 GB plus 130 MB Quellarchive. Die CreativeML-OpenRAIL-M-Gewichtelizenz mit ihren Nutzungs-/Weitergabebedingungen liegt vollständig in `LICENSE-weights.txt`; die SDK-/Drittanbieterhinweise liegen in `THIRD-PARTY-NOTICES.txt`. Es werden keine Gewichte oder Binärdateien ins Repository geschrieben.
 
 ```sh
-python3 scripts/prepare-image-generation-evaluation.py --root /private/tmp/picedit-image-evaluation --download --fixture-archive /private/tmp/picedit-fixture-archive
-python3 scripts/prepare-image-generation-evaluation.py --root /private/tmp/picedit-image-evaluation --build --fixture-archive /private/tmp/picedit-fixture-archive
+python3 scripts/prepare-image-generation-evaluation.py --root /private/tmp/glowroom-image-evaluation --download --fixture-archive /private/tmp/glowroom-fixture-archive
+python3 scripts/prepare-image-generation-evaluation.py --root /private/tmp/glowroom-image-evaluation --build --fixture-archive /private/tmp/glowroom-fixture-archive
 ```
 
 Ein expliziter CMake-Pfad kann mit `--cmake /absolute/path/to/cmake` angegeben werden. `--build` verwendet stets nur lokal vorhandene geprüfte Archive und greift niemals auf das Netzwerk zu. Ein vorhandener abgeschlossener Helper wird nicht überschrieben; für einen erneuten Build ist ein neuer Evaluationsordner zu verwenden.
@@ -16,8 +16,8 @@ Ein expliziter CMake-Pfad kann mit `--cmake /absolute/path/to/cmake` angegeben w
 Ein vollständiger vorhandener Evaluationscache kann ohne Netzverbindung wiederverwendet werden:
 
 ```sh
-python3 scripts/prepare-image-generation-evaluation.py --root /private/tmp/picedit-image-evaluation --download --fixture-archive /private/tmp/picedit-fixture-archive --offline --source-cache /absolute/path/to/verified-cache
-python3 scripts/prepare-image-generation-evaluation.py --root /private/tmp/picedit-image-evaluation --build --fixture-archive /private/tmp/picedit-fixture-archive --source-cache /absolute/path/to/verified-cache
+python3 scripts/prepare-image-generation-evaluation.py --root /private/tmp/glowroom-image-evaluation --download --fixture-archive /private/tmp/glowroom-fixture-archive --offline --source-cache /absolute/path/to/verified-cache
+python3 scripts/prepare-image-generation-evaluation.py --root /private/tmp/glowroom-image-evaluation --build --fixture-archive /private/tmp/glowroom-fixture-archive --source-cache /absolute/path/to/verified-cache
 ```
 
 `--offline` verbietet auch beim expliziten Download jede Netzanfrage. Fehlende oder beschädigte Cachedateien führen zu einem Fehler; sie werden nicht still durch einen Download ersetzt. Hashes werden vor Nutzung und nach Kopieren/Download geprüft. Das Modell wird unter einem privaten Stagingnamen vollständig vorbereitet und anschließend atomar als `model/` veröffentlicht. Der native Build erfolgt aus isoliert extrahierten, größenbegrenzten Archiven; Pfadtraversal, Links und besondere Dateitypen werden abgelehnt. Der bekannte GGML-Metadatenlink `.pi/SYSTEM.md` wird lediglich übersprungen und nie verfolgt.

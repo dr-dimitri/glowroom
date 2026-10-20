@@ -1,4 +1,4 @@
-// PicEdit evaluation-only native helper. No repository or user photo access.
+// Glowroom evaluation-only native helper. No repository or user photo access.
 // A future product build must replace this fixed evaluation root with its own
 // app-authorized spool and complete the AI-09 immutable artifact contract.
 #include <algorithm>
@@ -271,7 +271,7 @@ int main(int argc, char** argv) {
         ++library_log_count;
         if (!message) return;
         const std::string text(message);
-        const std::string marker = "PICEDIT_FLOAT_DIAGNOSTIC ";
+        const std::string marker = "GLOWROOM_FLOAT_DIAGNOSTIC ";
         const auto found = text.find(marker);
         if (found == std::string::npos) return;
         const auto begin = text.find('{', found + marker.size());
@@ -289,7 +289,7 @@ int main(int argc, char** argv) {
         } catch (...) { emit({{"event", "float-diagnostic-invalid"}, {"id", request_id}}); }
     }, nullptr);
     sd_set_progress_callback(progress, nullptr);
-    emit({{"event", "ready"}, {"helperVersion", "picedit-inpainting-eval-current-1"}, {"memory", stats()}});
+    emit({{"event", "ready"}, {"helperVersion", "glowroom-inpainting-eval-current-1"}, {"memory", stats()}});
     std::thread worker;
     for (;;) {
         std::string line; char ch;

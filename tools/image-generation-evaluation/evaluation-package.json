@@ -140,12 +140,12 @@
   ],
   "buildInputs": {
     "native-diagnostics.patch": {
-      "bytes": 11312,
-      "sha256": "e7aed7286e508f87b8c566afd1dd257b10dfb5f81a7f0081b2fc22ffe3dac7f0"
+      "bytes": 11371,
+      "sha256": "fb8f0d7d93c95432bcf028ebb93944aa82e9b0293f352cd1e6c5a19218a3bea9"
     },
-    "picedit_float_diagnostic-unbatched.h": {
-      "bytes": 4955,
-      "sha256": "13825c9a3d2edcb85848746fe19b5240fa21d420b88c1727398af77ea52af9a5"
+    "glowroom_float_diagnostic-unbatched.h": {
+      "bytes": 4960,
+      "sha256": "3c8945e37928c775810d6427b305f58e78af1a95c989b6b38781766d01aa25bc"
     },
     "LICENSE-weights.txt": {
       "bytes": 14385,
@@ -160,8 +160,8 @@
       "sha256": "666bdfbe19edd25cdf677b28d53055a19ce0983a0dde0223f35ec3091fc5ae79"
     },
     "evaluation-helper-current.cpp": {
-      "bytes": 18050,
-      "sha256": "9146c2e86f94b2040e11fc11229680f5709282e5af498330b6fa3e02b4d46400"
+      "bytes": 18053,
+      "sha256": "05d0f6c38e06d6ed55f8f008d49fe34e4d94d9fba40e29d93f8e21f760e6b922"
     },
     "unbatched-configuration.json": {
       "bytes": 1378,

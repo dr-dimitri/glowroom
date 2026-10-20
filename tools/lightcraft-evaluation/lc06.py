@@ -258,7 +258,7 @@ def scaling_decision(scale, manifest):
     missing = list(manifest["requiredMissingUntilMeasured"])
     failures, primary = [], {}
     if set(keys) != expected:
-        missing.append("Complete independent native/unscaled/PicEdit scaling matrix")
+        missing.append("Complete independent native/unscaled/Glowroom scaling matrix")
     hash_keys = ("input_sha256", "ground_truth_sha256", "full_input_sha256", "full_ground_truth_sha256", "full_output_sha256", "output_sha256")
     for row in rows:
         if row.get("finite") is not True:
@@ -273,7 +273,7 @@ def scaling_decision(scale, manifest):
         for key in ("metrics", "quality_metrics", "full_quality_metrics", "identity_metrics"):
             numeric_metrics(row.get(key))
         # Independent output contracts remain decisive even when the unscaled
-        # comparison or the diagnostic PicEdit record is absent.
+        # comparison or the diagnostic Glowroom record is absent.
         if row["variant"] == "nativePixels":
             problems = set()
             for key in ("quality_metrics", "full_quality_metrics"):
@@ -290,7 +290,7 @@ def scaling_decision(scale, manifest):
                 raise ValueError("Scaling matrix changed preview inputs between directions")
     for direction in directions:
         for diagnostic in (False, True):
-            group = [row for row in rows if row["direction"] == direction and (row["variant"] == "picedit") == diagnostic]
+            group = [row for row in rows if row["direction"] == direction and (row["variant"] == "glowroom") == diagnostic]
             for key in ("full_output_sha256", "parameter"):
                 if len({row[key] for row in group}) > 1:
                     raise ValueError("Scaling matrix changed the formula or full output between sizes")
@@ -353,14 +353,14 @@ def scaling_decision(scale, manifest):
         primary[control] = result
     return {"decision": "no-go" if failures else "blocked", "primary": primary, "critical_failures": failures,
             "missing_evidence": missing, "records": len(rows),
-            "scope": "Same frozen formula amount with nativePixels versus unscaled; area-averaged input and truth. PicEdit diagnostic only."}
+            "scope": "Same frozen formula amount with nativePixels versus unscaled; area-averaged input and truth. Glowroom diagnostic only."}
 
 
 def validate_scaling_calibration(scale, tuning, manifest):
     frozen = {(row["sceneClass"], row["directionID"]): row["parameter"] for row in tuning["records"]}
     directions = {row["id"]: row for row in manifest["directions"]}
     for row in scale["records"]:
-        amount = (directions[row["direction"]]["value"] if row["variant"] == "picedit"
+        amount = (directions[row["direction"]]["value"] if row["variant"] == "glowroom"
                   else frozen[(manifest["scaling"]["sceneClass"], row["direction"])])
         if row["parameter"] != amount:
             raise ValueError("Scaling changed the frozen quality amount")
@@ -369,7 +369,7 @@ def validate_scaling_calibration(scale, tuning, manifest):
 def performance_comparison(control, width, height, baseline_runs, candidate_runs, manifest):
     if control not in CONTROLS or len(baseline_runs) != len(candidate_runs):
         raise ValueError("Invalid control or different process counts")
-    for adapter, runs in (("picedit", baseline_runs), ("lightcraft", candidate_runs)):
+    for adapter, runs in (("glowroom", baseline_runs), ("lightcraft", candidate_runs)):
         for run in runs:
             if (run.get("width"), run.get("height"), run.get("control"), run.get("adapter")) != (width, height, control, f"{adapter}-{control}"):
                 raise ValueError("Timing geometry/control/adapter metadata mismatch")
@@ -400,7 +400,7 @@ def performance_comparison(control, width, height, baseline_runs, candidate_runs
                 raise ValueError("Timing phase schedules differ")
             match = reduction_matches(before.get("effect_strength"), after.get("effect_strength"), manifest)
             phases[phase].append(match)
-            pairs.append({"phase": phase, "picedit": before.get("effect_strength"), "lightcraft": after.get("effect_strength"), "matched": match})
+            pairs.append({"phase": phase, "glowroom": before.get("effect_strength"), "lightcraft": after.get("effect_strength"), "matched": match})
     all_matched = all(values and all(values) for values in phases.values())
     numerators = {"cold_latency_ratio": candidate["process_cold"]["median_ms"], "warm_latency_ratio": candidate["warm"]["median_ms"], "peak_rss_ratio": candidate["peak_rss_bytes"]}
     denominators = {"cold_latency_ratio": baseline["process_cold"]["median_ms"], "warm_latency_ratio": baseline["warm"]["median_ms"], "peak_rss_ratio": baseline["peak_rss_bytes"]}
@@ -412,7 +412,7 @@ def performance_comparison(control, width, height, baseline_runs, candidate_runs
     attribution = {"cold_latency_ratio": bool(phases["process-cold"]) and all(phases["process-cold"]),
                    "warm_latency_ratio": bool(phases["warm"]) and all(phases["warm"]), "peak_rss_ratio": all_matched}
     exceeded = {key: f"{key} {ratios[key]:.6g} exceeds {limit}" for key, limit in limits.items() if ratios[key] > limit}
-    return {"control": control, "width": width, "height": height, "picedit": baseline, "lightcraft": candidate,
+    return {"control": control, "width": width, "height": height, "glowroom": baseline, "lightcraft": candidate,
             "ratios": ratios, "attributable": all_matched, "phase_attribution": attribution, "effect_strength_pairs": pairs,
             "budget_exceedances": list(exceeded.values()), "failures": [value for key, value in exceeded.items() if attribution[key]],
             "note": "Isolated CPU denoise reference including conversion/readback; no accelerated-path claim. Warm samples share process caches."}
@@ -430,7 +430,7 @@ def views(output, records):
             raise ValueError("Invalid quality image directory")
         title = html.escape(f"{record['fixture']} · {record['direction']} · matched={record['matched']}")
         labeled.append(f"<section><h2>{title}</h2>")
-        for filename, label in (("input.png", "Noisy input"), ("ground-truth.png", "Clean ground truth"), ("picedit.png", "PicEdit"), ("lightcraft.png", "Matched candidate"),
+        for filename, label in (("input.png", "Noisy input"), ("ground-truth.png", "Clean ground truth"), ("glowroom.png", "Glowroom"), ("lightcraft.png", "Matched candidate"),
                                 ("same-values.png", "Candidate same values"), ("difference.png", "Difference ×8"),
                                 ("dark.png", "Dark composite"), ("light.png", "Light composite")):
             path = directory / filename
@@ -438,7 +438,7 @@ def views(output, records):
                 raise ValueError(f"Missing image artifact: {path}")
             labeled.append(f"<figure><img src='{html.escape(path.as_posix(), quote=True)}'><figcaption>{label}</figcaption></figure>")
         labeled.append("</section>")
-        pair = [("picedit.png", "picedit"), ("lightcraft.png", "lightcraft")]
+        pair = [("glowroom.png", "glowroom"), ("lightcraft.png", "lightcraft")]
         if hashlib.sha256(f"lc06-blind-v1:{record['fixture']}:{record['direction']}:lightcraft".encode()).digest()[0] % 2:
             pair.reverse()
         blind.append(f"<section><h2>Pair {number:03d}</h2>")
@@ -478,7 +478,7 @@ def execute(args):
                 "source_sha256": hashes, "binary_sha256": common.digest(args.binary), "manifest_sha256": common.digest(frozen),
                 "toolchain": common.command(["xcrun", "swift", "--version"]), "os": common.command(["sw_vers"]),
                 "hardware": hardware, "architecture": platform.machine(), "timing_concurrency": 1,
-                "configuration": "release, existing editing harness", "backend": "PicEdit: Core Image automatic; isolated denoise reference: bounded CPU",
+                "configuration": "release, existing editing harness", "backend": "Glowroom: Core Image automatic; isolated denoise reference: bounded CPU",
                 "timing_order": "Per control and size, paired separate processes; alternate first adapter each repetition. Serial measurements avoid CPU/GPU/memory contention.",
                 "sizes": budgets["sizes"], "repetitions": budgets["minimumColdProcesses"],
                 "warm_samples_per_process": budgets["minimumWarmSamplesPerProcess"], "warmups_per_process": 1,
@@ -531,15 +531,15 @@ def execute(args):
     performance = []
     for control in CONTROLS:
         for width, height in budgets["sizes"]:
-            adapters = {"picedit": [], "lightcraft": []}
+            adapters = {"glowroom": [], "lightcraft": []}
             for number in range(1, budgets["minimumColdProcesses"] + 1):
                 # Development can be parallel; competing measurements cannot.
-                order = ("picedit", "lightcraft") if number % 2 else ("lightcraft", "picedit")
+                order = ("glowroom", "lightcraft") if number % 2 else ("lightcraft", "glowroom")
                 for adapter in order:
                     name = f"timing-{control}-{width}-{adapter}-{number}"
                     invoke("timing", name, width, height, f"{adapter}-{control}")
                     adapters[adapter].append(json.loads((output / name / "timing.json").read_text()))
-            performance.append(performance_comparison(control, width, height, adapters["picedit"], adapters["lightcraft"], manifest))
+            performance.append(performance_comparison(control, width, height, adapters["glowroom"], adapters["lightcraft"], manifest))
     invoke("scale", "scale", *budgets["sizes"][-1])
     unchanged()
     decisions = decide(quality, manifest, performance)

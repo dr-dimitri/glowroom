@@ -28,7 +28,7 @@ fi
 
 PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CACHE_DIR="${CLANG_MODULE_CACHE_PATH:-$PROJECT_ROOT/.build/ModuleCache}"
-BENCHMARK_DIR="$(mktemp -d "${TMPDIR:-/tmp}/picedit-scanner-benchmark.XXXXXX")"
+BENCHMARK_DIR="$(mktemp -d "${TMPDIR:-/tmp}/glowroom-scanner-benchmark.XXXXXX")"
 trap 'rm -rf -- "$BENCHMARK_DIR"' EXIT
 TARGET="$(uname -m)-apple-macosx14.0"
 mkdir -p "$CACHE_DIR"
@@ -37,8 +37,8 @@ export CLANG_MODULE_CACHE_PATH="$CACHE_DIR"
 xcrun swiftc \
     -O -swift-version 5 -target "$TARGET" \
     -module-cache-path "$CACHE_DIR" -parse-as-library \
-    "$PROJECT_ROOT/Sources/PicEditCore/FolderScanner.swift" \
-    "$PROJECT_ROOT/Sources/PicEditCore/LibraryModels.swift" \
+    "$PROJECT_ROOT/Sources/GlowroomCore/FolderScanner.swift" \
+    "$PROJECT_ROOT/Sources/GlowroomCore/LibraryModels.swift" \
     "$PROJECT_ROOT/scripts/benchmark-scanner.swift" \
     -o "$BENCHMARK_DIR/benchmark-scanner"
 

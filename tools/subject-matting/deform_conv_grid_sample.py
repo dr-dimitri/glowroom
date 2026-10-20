@@ -57,7 +57,7 @@ def register_deform_conv2d_real():
         # The pinned BiRefNet only uses one offset group. Refuse unsupported
         # graphs instead of silently reusing the first group's learned offsets.
         if offset_groups != 1 or groups != 1 or B != 1:
-            raise ValueError("PicEdit conversion only supports batch=groups=offset_groups=1")
+            raise ValueError("Glowroom conversion only supports batch=groups=offset_groups=1")
 
         # Output spatial size (deform_conv2d formula)
         Hout = (Hin + 2 * pH - dH * (kH - 1) - 1) // sH + 1

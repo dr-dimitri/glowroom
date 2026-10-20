@@ -21,23 +21,25 @@ args = parser.parse_args()
 output = args.output.resolve()
 output.mkdir(parents=True, exist_ok=True)
 
-with tempfile.TemporaryDirectory(prefix="picedit-layout-baseline-") as temporary:
+with tempfile.TemporaryDirectory(prefix="glowroom-layout-baseline-") as temporary:
     project = Path(temporary)
     for name in ("Sources", "scripts"):
         shutil.copytree(ROOT / name, project / name)
     for name in ("Package.swift", "Package.resolved"):
         if (ROOT / name).exists():
             shutil.copy2(ROOT / name, project / name)
-    tests = project / "Tests/PicEditTests"
+    tests = project / "Tests/GlowroomTests"
     tests.mkdir(parents=True)
-    shutil.copy2(ROOT / "Tests/PicEditTests/WorkspaceGeometryTests.swift", tests)
-    shutil.copy2(ROOT / "Tests/PicEditTests/WorkspaceAccessibility.swift", tests)
-    core_tests = project / "Tests/PicEditCoreTests"
+    shutil.copy2(ROOT / "Tests/GlowroomTests/WorkspaceGeometryTests.swift", tests)
+    shutil.copy2(ROOT / "Tests/GlowroomTests/WorkspaceAccessibility.swift", tests)
+    core_tests = project / "Tests/GlowroomCoreTests"
     core_tests.mkdir()
     (core_tests / "Placeholder.swift").write_text("// Geometry-only disposable project.\n")
     for name in ("LibraryView", "PhotoGridView"):
         source = subprocess.check_output(
             ["git", "show", f"{BASELINE}:Sources/PicEdit/{name}.swift"], cwd=ROOT, text=True)
+        # Only the archived Git path uses the former name. Compile against current modules.
+        source = source.replace("import PicEditCore", "import GlowroomCore")
         for original in ("LibraryView", "PhotoGridView", "DetailView"):
             source = re.sub(rf"\b{original}\b", "Historical" + original, source)
         if name == "PhotoGridView":
@@ -49,11 +51,11 @@ with tempfile.TemporaryDirectory(prefix="picedit-layout-baseline-") as temporary
                 '\n                .accessibilityElement(children: .contain)'
                 '\n                .accessibilityLabel("Bildfläche")'
                 '\n                .accessibilityIdentifier("workspace.canvas")')
-        target = project / "Tests/PicEditTests" / f"Historical{name}.swift"
-        target.write_text("@testable import PicEdit\n" + source)
-    environment = dict(os.environ, PICEDIT_WORKSPACE_MEASUREMENTS=str(output),
-                       PICEDIT_TEST_BUILD_PATH=str(project / ".build"))
+        target = project / "Tests/GlowroomTests" / f"Historical{name}.swift"
+        target.write_text("@testable import Glowroom\n" + source)
+    environment = dict(os.environ, GLOWROOM_WORKSPACE_MEASUREMENTS=str(output),
+                       GLOWROOM_TEST_BUILD_PATH=str(project / ".build"))
     subprocess.run([str(project / "scripts/test.sh"), "--jobs", args.jobs,
-                    "-Xswiftc", "-DPICEDIT_WORKSPACE_BASELINE", "--filter", "WorkspaceGeometryTests"],
+                    "-Xswiftc", "-DGLOWROOM_WORKSPACE_BASELINE", "--filter", "WorkspaceGeometryTests"],
                    cwd=project, env=environment, check=True)
     (output / "native-layout-measurements.json").rename(output / "baseline-layout-measurements.json")

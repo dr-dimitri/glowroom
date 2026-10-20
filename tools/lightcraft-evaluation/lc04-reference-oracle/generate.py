@@ -83,7 +83,7 @@ def main():
         program.append(f"let output=apply(&p,&b,{strength}f32,{str(variant == 'clarityGuidedLog').lower()});")
         program.append('println!("{:?}",p.data); println!("{:?}",log.data); println!("{:?}",b.data); println!("{:?}",output.data);')
     program.append("}")
-    with tempfile.TemporaryDirectory(prefix="picedit-lc04-oracle-") as directory:
+    with tempfile.TemporaryDirectory(prefix="glowroom-lc04-oracle-") as directory:
         root = pathlib.Path(directory)
         source = root / "oracle.rs"
         source.write_text(LC03.SHELL + modules + local + "\n".join(program))

@@ -189,7 +189,7 @@ def performance_comparison(control, width, height, baseline_runs, candidate_runs
                 raise ValueError("Timing phase schedules differ")
             match = effect_matches(before.get("effect_strength"), after.get("effect_strength"), manifest)
             phases[phase].append(match)
-            pairs.append({"phase": phase, "picedit": before.get("effect_strength"),
+            pairs.append({"phase": phase, "glowroom": before.get("effect_strength"),
                           "lightcraft": after.get("effect_strength"), "matched": match})
     all_matched = all(values and all(values) for values in phases.values())
     numerators = {"cold_latency_ratio": candidate["process_cold"]["median_ms"],
@@ -205,7 +205,7 @@ def performance_comparison(control, width, height, baseline_runs, candidate_runs
     attribution = {"cold_latency_ratio": bool(phases["process-cold"]) and all(phases["process-cold"]),
                    "warm_latency_ratio": bool(phases["warm"]) and all(phases["warm"]), "peak_rss_ratio": all_matched}
     exceeded = {key: f"{key} {ratios[key]:.6g} exceeds {limit}" for key, limit in limits.items() if ratios[key] > limit}
-    return {"control": control, "width": width, "height": height, "picedit": baseline, "lightcraft": candidate,
+    return {"control": control, "width": width, "height": height, "glowroom": baseline, "lightcraft": candidate,
             "ratios": ratios, "attributable": all_matched, "phase_attribution": attribution,
             "effect_strength_pairs": pairs, "budget_exceedances": list(exceeded.values()),
             "failures": [failure for key, failure in exceeded.items() if attribution[key]],
@@ -224,7 +224,7 @@ def views(output, records):
             raise ValueError("Invalid quality image directory")
         title = html.escape(f"{record['fixture']} · {record['direction']} · {record['variant']} · matched={record['matched']}")
         labeled.append(f"<section><h2>{title}</h2>")
-        for filename, label in (("input.png", "Input"), ("picedit.png", "PicEdit"), ("lightcraft.png", "Matched candidate"),
+        for filename, label in (("input.png", "Input"), ("glowroom.png", "Glowroom"), ("lightcraft.png", "Matched candidate"),
                                 ("same-values.png", "Candidate same values"), ("difference.png", "Difference ×8"),
                                 ("dark.png", "Dark composite"), ("light.png", "Light composite")):
             path = directory / filename
@@ -232,7 +232,7 @@ def views(output, records):
                 raise ValueError(f"Missing image artifact: {path}")
             labeled.append(f"<figure><img src='{html.escape(path.as_posix(), quote=True)}'><figcaption>{label}</figcaption></figure>")
         labeled.append("</section>")
-        pair = [("picedit.png", "picedit"), ("lightcraft.png", record["variant"])]
+        pair = [("glowroom.png", "glowroom"), ("lightcraft.png", record["variant"])]
         if hashlib.sha256(f"lc04-blind-v1:{record['fixture']}:{record['direction']}:{record['variant']}".encode()).digest()[0] % 2:
             pair.reverse()
         blind.append(f"<section><h2>Pair {number:03d}</h2>")
@@ -272,7 +272,7 @@ def execute(args):
                 "source_sha256": hashes, "binary_sha256": common.digest(args.binary), "manifest_sha256": common.digest(frozen),
                 "toolchain": common.command(["xcrun", "swift", "--version"]), "os": common.command(["sw_vers"]),
                 "hardware": hardware, "architecture": platform.machine(), "timing_concurrency": 1,
-                "configuration": "release, existing editing harness", "backend": "PicEdit: Core Image automatic; reference: bounded CPU",
+                "configuration": "release, existing editing harness", "backend": "Glowroom: Core Image automatic; reference: bounded CPU",
                 "timing_order": "Per control and size, paired separate processes; alternate first adapter each repetition. All measurements serial to avoid CPU/GPU/memory contention.",
                 "sizes": budgets["sizes"], "repetitions": budgets["minimumColdProcesses"],
                 "warm_samples_per_process": budgets["minimumWarmSamplesPerProcess"], "warmups_per_process": 1,
@@ -320,11 +320,11 @@ def execute(args):
     performance = []
     for control in CANDIDATES:
         for width, height in budgets["sizes"]:
-            adapters = {"picedit": [], "lightcraft": []}
+            adapters = {"glowroom": [], "lightcraft": []}
             # Independent development/tests can run concurrently; measurements
             # cannot: each adapter must have exclusive compute/memory resources.
             for number in range(1, budgets["minimumColdProcesses"] + 1):
-                order = ("picedit", "lightcraft") if number % 2 else ("lightcraft", "picedit")
+                order = ("glowroom", "lightcraft") if number % 2 else ("lightcraft", "glowroom")
                 for adapter in order:
                     name = f"timing-{control}-{width}-{adapter}-{number}"
                     invoke("timing", name, width, height, f"{adapter}-{control}")
@@ -332,7 +332,7 @@ def execute(args):
                     if run.get("adapter") != f"{adapter}-{control}":
                         raise ValueError("Timing adapter metadata mismatch")
                     adapters[adapter].append(run)
-            performance.append(performance_comparison(control, width, height, adapters["picedit"], adapters["lightcraft"], manifest))
+            performance.append(performance_comparison(control, width, height, adapters["glowroom"], adapters["lightcraft"], manifest))
     invoke("scale", "scale", *budgets["sizes"][-1])
     unchanged()
     decisions = decide(quality, manifest, performance)
