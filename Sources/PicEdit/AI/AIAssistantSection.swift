@@ -16,33 +16,34 @@ struct AIAssistantSection: View {
                 Spacer()
                 SettingsLink { Text("KI-Einstellungen …").font(.system(size: 10)) }
             }
-            Text("Der Assistent übersetzt Text in Reglerwerte; er analysiert das Foto nicht.")
+            Text(model.usesImageContext
+                 ? "Der Assistent berücksichtigt die Helligkeit des Fotos und setzt deinen Auftrag als rückgängig machbare Bearbeitung um."
+                 : "Der Assistent übersetzt deinen Text in globale Reglerwerte.")
                 .font(.system(size: 10)).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
-            Text("Bearbeitung oder optionaler Look-Zusatz").font(.system(size: 11, weight: .medium))
-            TextField("Zum Beispiel: Tiefen aufhellen und Sättigung leicht senken", text: $model.prompt, axis: .vertical)
+            Text("Was möchtest du verbessern?").font(.system(size: 11, weight: .medium))
+            TextField("Zum Beispiel: Helle die dunklen Bereiche etwas auf", text: $model.prompt, axis: .vertical)
                 .lineLimit(3...6).textFieldStyle(.roundedBorder).font(.system(size: 11))
                 .focused($promptFocused).accessibilityLabel("Gewünschte Bearbeitung für den KI-Assistenten")
                 .disabled(model.state == .generating)
-            if let problem = model.lookPromptProblem {
+            if let problem = model.promptProblem, !model.prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 Text(problem).font(.system(size: 10)).foregroundStyle(Theme.muted)
                     .fixedSize(horizontal: false, vertical: true)
             } else if model.prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                Text("Für einen Einzelvorschlag Text eingeben. Drei Looks funktionieren auch ohne Zusatztext.")
-                    .font(.system(size: 10)).foregroundStyle(Theme.muted)
-            }
-            status
-            if model.state != .generating {
-                Button("Vorschlag erstellen") { model.generate() }
-                    .buttonStyle(AccentButton()).disabled(!model.canGenerate)
-                    .accessibilityHint("Aktiviert die vorgeschlagenen Reglerwerte direkt als einen rückgängig machbaren Schritt")
-                Button("Drei Looks erstellen") { model.generateLooks() }
-                    .disabled(!model.canGenerateLooks)
-                    .accessibilityHint("Erstellt drei Textrezepte; die Auswahl einer Karte aktiviert ihren Look direkt")
-                Text(model.supportsLooks ? "Natürlich · Kontrastreich · Entsättigt. Stilistische Textrezepte, keine Bildanalyse." : "Drei Looks sind bei diesem Cloud-Provider nicht verfügbar. Wähle dafür Lokal in den KI-Einstellungen.")
+                Text(model.usesImageContext
+                     ? "Zum Beispiel: „Korrigiere den überstrahlten Hintergrund“ oder „Helle die dunklen Bereiche etwas auf“."
+                     : "Zum Beispiel: „Lichter reduzieren“ oder „Tiefen etwas aufhellen“.")
                     .font(.system(size: 10)).foregroundStyle(Theme.muted)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            if model.mode == .lookGroup, model.state == .generating { lookPlaceholders }
+            Text("Maskieren bleibt als eigenes Werkzeug verfügbar.")
+                .font(.system(size: 10)).foregroundStyle(Theme.muted)
+            status
+            if model.state != .generating {
+                Button("Bearbeitung ausführen") { model.generate() }
+                    .buttonStyle(AccentButton()).disabled(!model.canGenerate)
+                    .accessibilityIdentifier("assistant.execute")
+                    .accessibilityHint("Aktiviert die Bearbeitung direkt als einen rückgängig machbaren Schritt")
+            }
             if model.state == .previewing { preview }
         }
         .padding(12)
@@ -61,12 +62,12 @@ struct AIAssistantSection: View {
         case .generating:
             HStack(spacing: 8) {
                 ProgressView().controlSize(.small)
-                Text(model.mode == .lookGroup ? "Drei Looks werden erstellt …" : "Vorschlag wird erstellt …").font(.system(size: 10))
+                Text("Bearbeitung wird vorbereitet …").font(.system(size: 10))
                 Spacer(minLength: 0)
                 Button("Abbrechen") { model.discard(); promptFocused = true }
                     .font(.system(size: 10))
             }.accessibilityElement(children: .contain)
-                .accessibilityLabel(model.mode == .lookGroup ? "Drei KI-Looks werden erstellt" : "KI-Vorschlag wird erstellt")
+                .accessibilityLabel("KI-Bearbeitung wird vorbereitet")
         case .unavailable(let reason):
             Text(reason.localizedDescription).font(.system(size: 10)).foregroundStyle(Theme.muted)
                 .fixedSize(horizontal: false, vertical: true)
@@ -85,21 +86,24 @@ struct AIAssistantSection: View {
 
     private var preview: some View {
         VStack(alignment: .leading, spacing: 10) {
-            if let group = model.lookGroup {
-                Label(model.hasAppliedChanges ? "KI-Look aktiv" : "Look auswählen", systemImage: "sparkles")
-                    .font(.system(size: 11, weight: .medium))
-                Text("Ein Klick aktiviert den Look direkt. Alle drei Looks verwenden denselben Ausgangsstand.")
-                    .font(.system(size: 10)).foregroundStyle(Theme.muted)
-                    .fixedSize(horizontal: false, vertical: true)
-                ForEach(group.validation.variants, id: \.proposal.id) { look in
-                    AILookRecipeCard(model: model, look: look)
-                }
-            } else if model.changes.isEmpty {
+            if model.changes.isEmpty && model.regionalChanges.isEmpty {
                 Text("Keine Änderung vorgeschlagen").font(.system(size: 11, weight: .medium))
             } else {
                 Label("KI-Anpassungen aktiv", systemImage: "checkmark.circle")
                     .font(.system(size: 11, weight: .medium)).fixedSize(horizontal: false, vertical: true)
-                AIAdjustmentChanges(changes: model.changes)
+                if !model.changes.isEmpty {
+                    if !model.regionalChanges.isEmpty {
+                        Text("Gesamtes Bild").font(.system(size: 11, weight: .medium))
+                    }
+                    AIAdjustmentChanges(changes: model.changes)
+                }
+                ForEach(model.regionalChanges) { region in
+                    VStack(alignment: .leading, spacing: 6) {
+                        Label(region.name, systemImage: "circle.dashed.inset.filled")
+                            .font(.system(size: 11, weight: .medium))
+                        AIAdjustmentChanges(changes: region.changes)
+                    }
+                }
             }
             if model.hasAppliedChanges {
                 Picker("Bearbeitungsvergleich", selection: $model.comparison) {
@@ -116,64 +120,14 @@ struct AIAssistantSection: View {
                     .font(.system(size: 10)).foregroundStyle(Theme.muted)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            if model.lookGroup == nil, let explanation = model.explanation, !explanation.isEmpty {
+            if let explanation = model.explanation, !explanation.isEmpty {
                 Text(explanation).font(.system(size: 10)).foregroundStyle(Theme.muted)
                     .fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
             }
             Button("Ergebnis schließen") { model.discard(); promptFocused = true }
                 .font(.system(size: 11))
-                .accessibilityHint("Schließt die Rezeptanzeige; aktive Anpassungen bleiben erhalten")
+                .accessibilityHint("Schließt die Ergebnisanzeige; aktive Anpassungen bleiben erhalten")
         }
-    }
-
-    private var lookPlaceholders: some View {
-        ForEach(AILookID.allCases, id: \.self) { id in
-            VStack(alignment: .leading, spacing: 6) {
-                Text(id.assistantLabel).font(.system(size: 11, weight: .medium))
-                ZStack {
-                    Rectangle().fill(Color.black.opacity(0.2))
-                    Text("Textrezept wird erstellt …").font(.system(size: 10)).foregroundStyle(Theme.muted)
-                }.frame(height: 110)
-            }.padding(8).background(Theme.panel, in: RoundedRectangle(cornerRadius: 6))
-        }
-    }
-}
-
-private struct AILookRecipeCard: View {
-    @ObservedObject var model: AIAssistantModel
-    let look: AIValidatedLook
-
-    private var selected: Bool { model.selectedLookID == look.proposal.id }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Button { model.selectLook(look.proposal.id) } label: {
-                VStack(alignment: .leading, spacing: 7) {
-                    HStack(spacing: 6) {
-                        Image(systemName: selected ? "checkmark.circle.fill" : "circle")
-                        Text(look.proposal.name).font(.system(size: 11, weight: .semibold))
-                        Spacer(minLength: 0)
-                        Text(selected ? "Ausgewählt" : "Auswählen").font(.system(size: 9))
-                    }
-                    AILookCardImage(store: model.cards, id: look.proposal.id)
-                        .frame(maxWidth: .infinity).frame(height: 110)
-                        .background(Color.black.opacity(0.2))
-                        .clipped()
-                }.contentShape(Rectangle())
-            }.buttonStyle(.plain)
-                .accessibilityLabel("\(look.proposal.name), \(selected ? "ausgewählt" : "Look auswählen")")
-                .accessibilityHint("Aktiviert diesen Look direkt als einen rückgängig machbaren Schritt")
-            Text("Gemeinsamer Ausgang: Bearbeitung vor den Looks").font(.system(size: 9)).foregroundStyle(Theme.muted)
-            if let explanation = look.proposal.proposal.explanation, !explanation.isEmpty {
-                Text("Textrezept: \(explanation)").font(.system(size: 10)).foregroundStyle(Theme.muted)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            DisclosureGroup("Regleränderungen (\(model.changes(for: look.proposal.id).count))") {
-                AIAdjustmentChanges(changes: model.changes(for: look.proposal.id)).padding(.top, 5)
-            }.font(.system(size: 10))
-        }.padding(8)
-            .background(Theme.panel, in: RoundedRectangle(cornerRadius: 6))
-            .overlay { RoundedRectangle(cornerRadius: 6).stroke(selected ? Theme.accent : Theme.line, lineWidth: 1) }
     }
 }
 
@@ -186,16 +140,6 @@ private struct AIAdjustmentChanges: View {
                 Text("\(change.parameter.assistantValue(change.baseline)) → \(change.parameter.assistantValue(change.target)) · Δ \(change.parameter.assistantValue(change.delta, signed: true))")
                     .font(.system(size: 10, design: .monospaced)).foregroundStyle(Theme.muted)
             }.accessibilityElement(children: .combine)
-        }
-    }
-}
-
-extension AILookID {
-    var assistantLabel: String {
-        switch self {
-        case .natural: return "Natürlich"
-        case .contrasty: return "Kontrastreich"
-        case .desaturated: return "Entsättigt"
         }
     }
 }

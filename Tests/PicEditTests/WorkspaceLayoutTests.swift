@@ -17,7 +17,7 @@ struct WorkspaceLayoutTests {
         layout.update(developing: true) {
             $0.toolsWidth = 430
             $0.singleGroup = true
-            $0.openGroups = [.assistant, .analysis]
+            $0.openGroups = [.assistant, .versions]
         }
         #expect(emitted.count == 1, "Normalization must not send a second unchanged @Published value")
         #expect(emitted.first?.toolsWidth == 430)
@@ -33,7 +33,7 @@ struct WorkspaceLayoutTests {
         layout.update(developing: false) {
             $0.showsLibrary = false
             $0.libraryWidth = 260
-            $0.openGroups = [.metadata, .analysis]
+            $0.openGroups = [.metadata, .versions]
         }
         layout.update(developing: true) {
             $0.toolsWidth = 430
@@ -66,7 +66,7 @@ struct WorkspaceLayoutTests {
             $0.showsTools = false
             $0.libraryWidth = 310
             $0.filmstripHeight = 190
-            $0.openGroups = [.analysis, .metadata]
+            $0.openGroups = [.versions, .metadata]
         }
         let library = layout.library, develop = layout.develop
         layout.enterFocus(developing: false, showsDetail: false)
@@ -146,9 +146,9 @@ struct WorkspaceLayoutTests {
         #expect(layout.develop.openGroups == [.edit, .assistant])
         layout.update(developing: true) { $0.singleGroup = true }
         #expect(layout.develop.openGroups == [.edit, .assistant], "Each column keeps its own open group")
-        layout.toggleGroup(.analysis, developing: true)
-        #expect(layout.develop.openGroups == [.edit, .analysis])
-        layout.toggleGroup(.analysis, developing: true)
+        layout.toggleGroup(.versions, developing: true)
+        #expect(layout.develop.openGroups == [.edit, .versions])
+        layout.toggleGroup(.versions, developing: true)
         #expect(layout.develop.openGroups == [.edit])
         layout.update(developing: true) { $0.showsLibrary = false; $0.showsTools = false }
         let before = layout.revealRequest
@@ -171,7 +171,7 @@ struct WorkspaceLayoutTests {
         let fixture = try Preferences()
         defer { fixture.remove() }
         let json = """
-        {"library":"damaged", "develop":{"toolsWidth":450,"openGroups":["assistant","newerTool"],
+        {"library":"damaged", "develop":{"toolsWidth":450,"openGroups":["assistant","analysis","newerTool"],
         "openAdjustmentGroups":["presence","unknown"]}, "focus":{"toolsWidth":"NaN"},"isFocused":true}
         """
         fixture.defaults.set(Data(json.utf8), forKey: WorkspaceLayoutModel.preferencesKey)
@@ -181,6 +181,20 @@ struct WorkspaceLayoutTests {
         #expect(layout.develop.openAdjustmentGroups == ["presence"])
         #expect(layout.focus == .focusDefault)
         #expect(layout.isFocused)
+    }
+
+    @Test
+    func removedAnalysisGroupDoesNotDiscardSavedAssistantOrPanelDimensions() throws {
+        let fixture = try Preferences()
+        defer { fixture.remove() }
+        let json = #"{"develop":{"libraryWidth":340,"toolsWidth":430,"openGroups":["analysis","assistant","metadata"]}}"#
+        fixture.defaults.set(Data(json.utf8), forKey: WorkspaceLayoutModel.preferencesKey)
+
+        let layout = WorkspaceLayoutModel(defaults: fixture.defaults)
+        #expect(layout.develop.libraryWidth == 340 && layout.develop.toolsWidth == 430)
+        #expect(layout.develop.openGroups == [.assistant, .metadata])
+        layout.remember()
+        #expect(WorkspaceLayoutModel(defaults: fixture.defaults).develop == layout.develop)
     }
 
     @Test
@@ -232,7 +246,7 @@ struct WorkspaceLayoutTests {
         layout.update(developing: true) { $0.toolsWidth = 440 }
         let library = layout.library, develop = layout.develop
         layout.enterFocus(developing: false, showsDetail: true)
-        layout.reveal(.analysis, developing: true)
+        layout.reveal(.versions, developing: true)
         layout.reset(developing: true)
         #expect(layout.focus == .focusDefault && layout.isFocused)
         #expect(layout.library == library && layout.develop == develop)

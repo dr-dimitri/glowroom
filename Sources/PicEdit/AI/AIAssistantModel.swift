@@ -30,6 +30,12 @@ final class AIAssistantModel: ObservableObject {
         var delta: Double { target - baseline }
     }
 
+    struct RegionalChange: Identifiable, Equatable {
+        let id: UUID
+        let name: String
+        let changes: [Change]
+    }
+
     @Published var prompt = ""
     @Published private(set) var state: State = .idle
     @Published private(set) var availability: AIAvailability?
@@ -47,6 +53,7 @@ final class AIAssistantModel: ObservableObject {
     private var authorization: (@MainActor (AIEditingRequest) async throws -> Bool)?
     @Published private(set) var providerLabel = "Lokal · Apple"
     @Published private(set) var supportsLooks = true
+    @Published private(set) var usesImageContext = false
     private let snapshot: @MainActor () -> AIEditingSnapshot?
     private let accept: @MainActor (AIProposalResult) -> Bool
     private let commitInput: @MainActor () -> Void
@@ -69,6 +76,7 @@ final class AIAssistantModel: ObservableObject {
         self.provider = provider
         self.providerLabel = provider is any AIRemoteEditingProvider ? "Cloud · Anthropic (nur Text)" : "Lokal · Apple"
         self.supportsLooks = provider.capabilities.contains(.lookSuggestions)
+        self.usesImageContext = provider.capabilities.contains(.imageUnderstanding)
         self.coordinator = coordinator
         self.maximumPromptBytes = max(1, maximumPromptBytes)
         self.snapshot = snapshot
@@ -111,7 +119,7 @@ final class AIAssistantModel: ObservableObject {
     deinit { requestTask?.cancel() }
 
     var promptProblem: String? {
-        if prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return "Beschreibe die gewünschte Regleränderung." }
+        if prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return "Beschreibe die gewünschte Bildkorrektur." }
         if prompt.utf8.count > maximumPromptBytes { return "Die Eingabe ist zu lang (höchstens \(maximumPromptBytes) UTF-8-Bytes)." }
         return nil
     }
@@ -154,6 +162,14 @@ final class AIAssistantModel: ObservableObject {
     var changes: [Change] {
         guard let result = activeProposalResult, case .changes(_, let target) = result.validation else { return [] }
         return changes(from: result.request.snapshot.settings, to: target)
+    }
+
+    var regionalChanges: [RegionalChange] {
+        guard let result = activeProposalResult else { return [] }
+        return result.localAdjustments.map { layer in
+            RegionalChange(id: layer.id, name: layer.name,
+                changes: changes(from: .neutral, to: layer.settings.editSettings))
+        }
     }
 
     func changes(for lookID: AILookID) -> [Change] {
@@ -207,6 +223,7 @@ final class AIAssistantModel: ObservableObject {
         providerSuspended = false
         providerLabel = provider is any AIRemoteEditingProvider ? "Cloud · Anthropic (nur Text)" : "Lokal · Apple"
         supportsLooks = provider.capabilities.contains(.lookSuggestions)
+        usesImageContext = provider.capabilities.contains(.imageUnderstanding)
         Task { [weak self] in await self?.refreshAvailability() }
     }
 
@@ -268,6 +285,7 @@ final class AIAssistantModel: ObservableObject {
         requestSnapshot = baseline
         state = .generating
         let sourceReadable = self.sourceReadable
+        let preparesImageInput = provider is any AIResolvedEditingProvider
         let coordinator = self.coordinator
         let authorization = self.authorization
         requestTask = Task { [weak self] in
@@ -276,8 +294,13 @@ final class AIAssistantModel: ObservableObject {
                     guard try await authorization(request) else { throw CancellationError() }
                     try Task.checkCancellation()
                 }
-                guard await sourceReadable(baseline) else {
-                    throw AssistantError.unreadableSource
+                // The image provider verifies and decodes its stamped input.
+                // A separate 2400px preflight here would decode the same RAW
+                // again under a different cache revision before its 1024px input.
+                if !preparesImageInput {
+                    guard await sourceReadable(baseline) else {
+                        throw AssistantError.unreadableSource
+                    }
                 }
                 try Task.checkCancellation()
                 guard let owner = self, owner.requestID == id, owner.snapshot() == baseline else { throw CancellationError() }

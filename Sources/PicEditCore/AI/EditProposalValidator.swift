@@ -26,6 +26,68 @@ public struct EditProposalValidator: Sendable {
         return try validate(proposal(from: value), against: settings)
     }
 
+    /// Scope classification cannot silently drop a requested region while the
+    /// subsequent guided generation chooses scalar values for that same scope.
+    public func validateImageEditingScopeEnvelope(_ data: Data) throws {
+        try validateLimits()
+        guard data.count <= maximumResponseBytes else { throw invalid(.responseTooLarge) }
+        var parser = BoundedJSONParser(bytes: Array(data), maximumDepth: maximumNestingDepth,
+                                       maximumValues: maximumJSONValues)
+        guard case .object(let root) = try parser.parse() else { throw invalid(.invalidType) }
+        let fields: Set<String> = ["status", "background", "subject", "sky", "global"]
+        try requireFields(root, allowed: fields, required: fields)
+        guard case .string(let status) = root["status"],
+              ["proposal", "whiteBalance", "unsupported", "unsupportedLanguage", "refused"].contains(status),
+              case .boolean(let background) = root["background"],
+              case .boolean(let subject) = root["subject"],
+              case .boolean(let sky) = root["sky"],
+              case .boolean(let global) = root["global"] else { throw invalid(.invalidType) }
+        let hasScope = background || subject || sky || global
+        guard status == "proposal" ? hasScope : !hasScope else { throw invalid(.invalidType) }
+    }
+
+    /// Validates the raw vision-plan envelope before a typed SDK adapter decodes
+    /// it. This does not extend the scalar proposal wire schema or accept masks;
+    /// region selection and the narrower local control set remain app-owned.
+    public func validateImageEditingPlanEnvelope(_ data: Data) throws {
+        try validateLimits()
+        guard data.count <= maximumResponseBytes else { throw invalid(.responseTooLarge) }
+        // Even sixteen global controls plus three sixteen-control regions use
+        // only 206 JSON values: object keys do not consume the parser's budget.
+        var parser = BoundedJSONParser(bytes: Array(data), maximumDepth: maximumNestingDepth,
+                                       maximumValues: maximumJSONValues)
+        guard case .object(let root) = try parser.parse() else { throw invalid(.invalidType) }
+        let fields: Set<String> = ["status", "changes", "regions", "explanation"]
+        try requireFields(root, allowed: fields, required: fields)
+        guard case .string(let status) = root["status"],
+              ["proposal", "whiteBalance", "unsupported", "unsupportedLanguage", "refused"].contains(status),
+              case .array(let changes) = root["changes"],
+              case .array(let regions) = root["regions"],
+              case .string(let explanation) = root["explanation"] else { throw invalid(.invalidType) }
+        let global = try proposal(from: .object([
+            "schemaVersion": .number("1"), "changes": .array(changes), "explanation": .string(explanation)
+        ]))
+        _ = try validate(global, against: .neutral)
+        guard regions.count <= 3 else { throw invalid(.tooManyChanges) }
+        guard status == "proposal" || (changes.isEmpty && regions.isEmpty) else { throw invalid(.invalidType) }
+        var targets = Set<String>()
+        // At most three small dependent checks complete before the adapter may
+        // decode any plan. Scheduling workers would cost more than this work.
+        for region in regions {
+            guard case .object(let values) = region else { throw invalid(.invalidType) }
+            try requireFields(values, allowed: ["target", "changes"], required: ["target", "changes"])
+            guard case .string(let target) = values["target"],
+                  ["background", "subject", "sky"].contains(target),
+                  targets.insert(target).inserted, let regionalChanges = values["changes"] else {
+                throw invalid(.invalidType)
+            }
+            let regional = try proposal(from: .object([
+                "schemaVersion": .number("1"), "changes": regionalChanges
+            ]))
+            _ = try validate(regional, against: .neutral)
+        }
+    }
+
     private func proposal(from value: JSONValue) throws -> EditProposal {
         guard case .object(let root) = value else { throw invalid(.invalidType) }
         try requireFields(root, allowed: ["schemaVersion", "changes", "explanation"],
@@ -181,7 +243,7 @@ private indirect enum JSONValue {
     case array([JSONValue])
     case string(String)
     case number(String)
-    case boolean
+    case boolean(Bool)
     case null
 }
 
@@ -218,8 +280,8 @@ private struct BoundedJSONParser {
         case 123: return try object(depth: depth) // {
         case 91: return try array(depth: depth) // [
         case 34: return .string(try string())
-        case 116: try literal([116, 114, 117, 101]); return .boolean
-        case 102: try literal([102, 97, 108, 115, 101]); return .boolean
+        case 116: try literal([116, 114, 117, 101]); return .boolean(true)
+        case 102: try literal([102, 97, 108, 115, 101]); return .boolean(false)
         case 110: try literal([110, 117, 108, 108]); return .null
         case 45, 48...57: return .number(try number())
         default: throw invalid(.malformedJSON)

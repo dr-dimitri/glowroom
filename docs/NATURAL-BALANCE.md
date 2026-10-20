@@ -8,7 +8,7 @@ In **Entwickeln → Bearbeiten** ersetzt **Natürlicher Bildausgleich** die bish
 
 Die beiden Werte gehören zu Foto, Undo/Redo, Bildstand, Backup und Export. Bestehende `autoToneAmount`-Bearbeitungen behalten ihren bisherigen Renderer; die Oberfläche kennzeichnet diesen Altbestand. Erst das ausdrückliche Einschalten des neuen Effekts ersetzt ihn. Bei Daten, die beide Effekte enthalten, hat der neue Vorrang; sie werden nie gestapelt.
 
-Die vorhandenen lokalen und optionalen Cloud-Textassistenten können `naturalBalanceAmount` und `naturalBalanceColorAmount` als Reglerziele vorschlagen, beispielsweise auf „Aktiviere den natürlichen Bildausgleich mit Stärke 70 und Farbe 50“. Die üblichen Vorschau-/Übernehmen-Schritte gelten weiter. Textmodelle erhalten dadurch keine Bildpixel und behaupten keine Motiverkennung. Die separate KI-Bildbeschreibung bleibt ein eigener, unverbindlicher Analyseablauf.
+Der lokale Assistent und der optionale Cloud-Textprovider können `naturalBalanceAmount` und `naturalBalanceColorAmount` als globale Reglerziele vorschlagen, beispielsweise auf „Aktiviere den natürlichen Bildausgleich mit Stärke 70 und Farbe 50“. Eine gültige Antwort wird direkt als ein Rückgängig-Schritt aktiv. Der lokale Bildassistent ab macOS 27 berücksichtigt zusätzlich das aktuelle Foto; Textfallback und Cloud bleiben ohne Bildpixel. Natürlicher Bildausgleich ist kein regionaler Maskenparameter. Der frühere eigenständige Analysebereich ist entfernt. Datenfluss und Grenzen: [Lokaler Entwicklungsassistent](LOCAL-AI-ASSISTANT.md).
 
 ## Verfahren und Grenzen
 

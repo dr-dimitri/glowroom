@@ -464,8 +464,10 @@ final class WorkspaceProposalLifecycleTests {
             WorkspaceActions.reveal(.assistant, layout: layout, library: f.library)
             f.assistant.prompt = "Tiefen aufhellen"
             try await wait("assistant action is enabled before mask editing") {
-                host.accessibilityElements.first { $0.accessibilityRole() == .button && $0.accessibilityLabel() == "Vorschlag erstellen" }?.isAccessibilityEnabled() == true
+                host.accessibilityElements.first { $0.accessibilityRole() == .button && $0.accessibilityLabel() == "Bearbeitung ausführen" }?.isAccessibilityEnabled() == true
             }
+            #expect(!host.accessibilityElements.contains { $0.accessibilityLabel() == "Drei Looks erstellen" })
+            #expect(!host.accessibilityElements.contains { $0.accessibilityIdentifier() == "workspace.group.analysis" })
             #expect(host.accessibilityElements.first { $0.accessibilityIdentifier() == "workspace.undo" }?.isAccessibilityEnabled() == false)
             #expect(host.accessibilityElements.first { $0.accessibilityIdentifier() == "workspace.reset" }?.isAccessibilityEnabled() == true)
         }
@@ -479,7 +481,7 @@ final class WorkspaceProposalLifecycleTests {
         #expect(f.editor.settings(for: assetID) == expected)
         if tool == .assistant {
             try await host.settle()
-            #expect(host.accessibilityElements.first { $0.accessibilityRole() == .button && $0.accessibilityLabel() == "Vorschlag erstellen" }?.isAccessibilityEnabled() == false)
+            #expect(host.accessibilityElements.first { $0.accessibilityRole() == .button && $0.accessibilityLabel() == "Bearbeitung ausführen" }?.isAccessibilityEnabled() == false)
             #expect(host.accessibilityElements.first { $0.accessibilityIdentifier() == "workspace.undo" }?.isAccessibilityEnabled() == true)
             for identifier in ["workspace.redo", "workspace.reset"] {
                 #expect(host.accessibilityElements.first { $0.accessibilityIdentifier() == identifier }?.isAccessibilityEnabled() == false)
@@ -497,7 +499,7 @@ final class WorkspaceProposalLifecycleTests {
         #expect(!host.accessibilityElements.contains { $0.accessibilityIdentifier() == "local-mask.close" })
         #expect(layout.develop.openGroups.contains(tool))
         if tool == .assistant {
-            #expect(host.accessibilityElements.first { $0.accessibilityRole() == .button && $0.accessibilityLabel() == "Vorschlag erstellen" }?.isAccessibilityEnabled() == true)
+            #expect(host.accessibilityElements.first { $0.accessibilityRole() == .button && $0.accessibilityLabel() == "Bearbeitung ausführen" }?.isAccessibilityEnabled() == true)
             // Direct inspector/menu reveals use the same path from geometry tools.
             let crop = try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == "develop.tool.crop" })
             #expect(crop.accessibilityPerformPress())
@@ -660,7 +662,7 @@ final class WorkspaceProposalLifecycleTests {
         let layout = WorkspaceLayoutModel(defaults: defaults)
         layout.update(developing: false) {
             $0.showsLibrary = false; $0.libraryWidth = 270
-            $0.openGroups = [.metadata, .analysis]; $0.filmstripHeight = 140
+            $0.openGroups = [.metadata, .versions]; $0.filmstripHeight = 140
         }
         layout.update(developing: true) {
             $0.showsTools = false; $0.toolsWidth = 420
@@ -699,7 +701,7 @@ final class WorkspaceProposalLifecycleTests {
         #expect(layout.isFocused && f.library.isDeveloping && f.library.showsDetail)
         WorkspaceActions.reveal(.assistant, layout: layout, library: f.library)
         #expect(layout.focus.showsLibrary && !layout.focus.showsTools && layout.focus.openGroups.contains(.assistant))
-        WorkspaceActions.reveal(.analysis, layout: layout, library: f.library)
+        WorkspaceActions.reveal(.metadata, layout: layout, library: f.library)
         WorkspaceActions.toggleLibrary(layout, library: f.library)
         WorkspaceActions.toggleFilmstrip(layout, library: f.library)
         WorkspaceActions.toggleFocus(layout, library: f.library)
@@ -731,7 +733,7 @@ final class WorkspaceProposalLifecycleTests {
         #expect(f.assistant.result == proposal && f.assistant.hasAppliedChanges)
 
         // The same command also leaves an ordinary, non-focus tool/detail view.
-        WorkspaceActions.reveal(.analysis, layout: layout, library: f.library)
+        WorkspaceActions.reveal(.metadata, layout: layout, library: f.library)
         let revealedPanels = layout.develop
         WorkspaceActions.showGrid(layout, library: f.library)
         await Task.yield()

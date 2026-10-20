@@ -11,7 +11,6 @@ struct PicEditApp: App {
     @StateObject private var editor: EditingModel
     @StateObject private var assistant: AIAssistantModel
     @StateObject private var aiSettings: AIProviderSettings
-    @StateObject private var imageAnalysis: ImageAnalysisModel
     @StateObject private var photoMetadata: PhotoMetadataModel
     @StateObject private var exporter = JPEGExportModel()
     @StateObject private var layout = WorkspaceLayoutModel()
@@ -43,7 +42,7 @@ struct PicEditApp: App {
         editor.library = library
         library.synchronizeEditing = { [weak editor] in try await editor?.reloadAfterCatalogChange() }
         library.invalidateEditingSources = { [weak editor] in editor?.invalidateSourcesForCoordination() }
-        let provider = LocalAIEditingProviderFactory.makeProvider()
+        let provider = LocalAIEditingProviderFactory.makeAssistantProvider()
         let coordinator = AIRequestCoordinator(provider: provider)
         _library = StateObject(wrappedValue: library)
         _editor = StateObject(wrappedValue: editor)
@@ -55,7 +54,6 @@ struct PicEditApp: App {
         _assistant = StateObject(wrappedValue: assistant)
         _aiSettings = StateObject(wrappedValue: aiSettings)
         let vision = LocalImageAnalysisFactory.makeSharedService()
-        _imageAnalysis = StateObject(wrappedValue: ImageAnalysisModel(service: vision, editor: editor, library: library))
         let photoMetadata = PhotoMetadataModel(store: metadataStore,
             suggestor: LocalPhotoMetadataSuggestor(service: vision), library: library, editor: editor)
         library.prepareCatalogCleanup = { [weak editor, weak photoMetadata] in
@@ -74,7 +72,6 @@ struct PicEditApp: App {
                 .environmentObject(exporter)
                 .environmentObject(layout)
                 .environmentObject(assistant)
-                .environmentObject(imageAnalysis)
                 .environmentObject(photoMetadata)
                 .frame(minWidth: 1000, minHeight: 660)
                 .preferredColorScheme(.dark)

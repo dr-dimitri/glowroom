@@ -227,8 +227,7 @@ private extension WorkspaceTool {
     var dockTitle: String {
         switch self {
         case .edit: return "Bearbeiten"
-        case .assistant: return "Assistent & Looks"
-        case .analysis: return "Analyse"
+        case .assistant: return "Assistent"
         case .metadata: return "Informationen"
         case .versions: return "Bildstände"
         }
