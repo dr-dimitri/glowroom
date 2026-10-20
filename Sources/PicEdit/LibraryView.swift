@@ -286,9 +286,33 @@ struct LibraryView: View {
                                  showsTools: panels.showsTools, showsFilmstrip: panels.showsFilmstrip)
     }
 
+    private static let brandImage: NSImage? = {
+        // Classic SwiftPM's accessor can point at the development build. A
+        // packaged app must load its branding from its own Resources bundle.
+        let main = Bundle.main
+        let containingApp = main.executableURL?.deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent()
+        let appURL = [main.bundleURL, containingApp].compactMap { $0 }
+            .first { $0.pathExtension.lowercased() == "app" }
+        let resources: Bundle?
+        if let appURL {
+            resources = Bundle(url: appURL.appendingPathComponent("Contents/Resources/PicEdit_PicEdit.bundle"))
+        } else {
+            resources = .module
+        }
+        guard let url = resources?.url(forResource: "BrandMark", withExtension: "png") else { return nil }
+        // Cache the explicit PNG resource instead of relying on named-image lookup.
+        return NSImage(contentsOf: url)
+    }()
+
     private var appHeader: some View {
         HStack(spacing: 12) {
-            Image(systemName: "camera.aperture").font(.system(size: 22, weight: .light))
+            Group {
+                if let image = Self.brandImage {
+                    Image(nsImage: image).renderingMode(.original).resizable()
+                        .interpolation(.high).aspectRatio(contentMode: .fit)
+                }
+            }.frame(width: 28, height: 28).accessibilityHidden(true)
             Text("PicEdit").font(.system(size: 17, weight: .semibold))
             Spacer(minLength: 8)
             if !layout.isFocused {
@@ -334,7 +358,7 @@ struct LibraryView: View {
                 .disabled(model.selectedIDs.isEmpty || !model.canExportJPEG || model.isProjecting || editor.isLoading || editor.isRestoring || editor.isClosing || exporter.isPresented)
                 .help("Ausgewählte Fotos als JPEG oder HDR-HEIF exportieren · ⇧⌘E")
         }.buttonStyle(.plain).font(.system(size: 12, weight: .medium))
-            .padding(.leading, 82).padding(.trailing, 16).frame(height: 48).background(Theme.chrome)
+            .padding(.leading, 8).padding(.trailing, 16).frame(height: 48).background(Theme.chrome)
     }
 
     private var sidebar: some View {
