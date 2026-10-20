@@ -1,0 +1,916 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-20",
+  "requestedModel": "sam2.1_hiera_large",
+  "testedConversion": "apple/coreml-sam2.1-large Float16",
+  "hardware": {
+    "chip": "Apple M2 Pro",
+    "logicalCPUs": 12,
+    "memoryBytes": 17179869184,
+    "macOS": "27.0.1 (26A434)"
+  },
+  "dataset": {
+    "privateJPEGCount": 7,
+    "proxyMaxLongEdge": 2048,
+    "rawDecodingIncluded": false,
+    "originalsUnchanged": true,
+    "groundTruthAvailable": false,
+    "photoAndDerivedImageFilesCommitted": false
+  },
+  "protocol": {
+    "runOrder": [
+      "large",
+      "tiny"
+    ],
+    "heavyModelJobsConcurrent": false,
+    "nativeGPUServiceAccessible": true,
+    "systemCachesPurged": false,
+    "sameProxyBytesAsPreviousEvaluation": true,
+    "sameFinalPrompts": true,
+    "foxBoxRightCoordinate": 0.86,
+    "modelsResidentWithinSeries": true,
+    "promptRepeatsUseCachedEncoder": true,
+    "selection": "highest model-score mask, bilinear logit resize, threshold zero",
+    "kernelScope": "image encoder + first prompt encoder + first mask decoder",
+    "requestScope": "PNG decode + preparation + encoder + prompt/decoder + validated native logit copy; excludes loading and aspect restoration/PNG export",
+    "memoryScope": "separate process peak RSS in bytes; excludes some GPU/driver memory",
+    "limitations": "No ground-truth alpha, no VLM grounding, no German instruction or full app rendering; first process invocations are not equivalent cold system starts."
+  },
+  "packages": {
+    "large": {
+      "repository": "apple/coreml-sam2.1-large",
+      "revision": "e830c0874326be7ada2bdc9dff23b7073f884a83",
+      "files": [
+        {
+          "path": "SAM2_1LargeImageEncoderFLOAT16.mlpackage/Data/com.apple.CoreML/model.mlmodel",
+          "bytes": 528540,
+          "sha256": "b382195d0c3e2a93798f39e36085a71e66b1525ebd679d23a1bc8466361028b8",
+          "url": "https://huggingface.co/apple/coreml-sam2.1-large/resolve/e830c0874326be7ada2bdc9dff23b7073f884a83/SAM2_1LargeImageEncoderFLOAT16.mlpackage/Data/com.apple.CoreML/model.mlmodel"
+        },
+        {
+          "path": "SAM2_1LargeImageEncoderFLOAT16.mlpackage/Data/com.apple.CoreML/weights/weight.bin",
+          "bytes": 444351360,
+          "sha256": "a2908ac87bd862d756a4966c0ea9e710297bbc38b37b8c0243fc33dac5ff51d0",
+          "url": "https://huggingface.co/apple/coreml-sam2.1-large/resolve/e830c0874326be7ada2bdc9dff23b7073f884a83/SAM2_1LargeImageEncoderFLOAT16.mlpackage/Data/com.apple.CoreML/weights/weight.bin"
+        },
+        {
+          "path": "SAM2_1LargeImageEncoderFLOAT16.mlpackage/Manifest.json",
+          "bytes": 617,
+          "sha256": "824ba98e9bf70d99139f69383284ca7a84b5666a5a54850b54a617c58fbecc63",
+          "url": "https://huggingface.co/apple/coreml-sam2.1-large/resolve/e830c0874326be7ada2bdc9dff23b7073f884a83/SAM2_1LargeImageEncoderFLOAT16.mlpackage/Manifest.json"
+        },
+        {
+          "path": "SAM2_1LargeMaskDecoderFLOAT16.mlpackage/Data/com.apple.CoreML/model.mlmodel",
+          "bytes": 75167,
+          "sha256": "71d343eb9464951bb6e7de6d8099c268b0dd2bdeb78e694e792b2562a5b55bea",
+          "url": "https://huggingface.co/apple/coreml-sam2.1-large/resolve/e830c0874326be7ada2bdc9dff23b7073f884a83/SAM2_1LargeMaskDecoderFLOAT16.mlpackage/Data/com.apple.CoreML/model.mlmodel"
+        },
+        {
+          "path": "SAM2_1LargeMaskDecoderFLOAT16.mlpackage/Data/com.apple.CoreML/weights/weight.bin",
+          "bytes": 10222400,
+          "sha256": "d7ccf6fc95e4fe21dba407f0d97a5859c1abce0c31edf1befb14714cfac58a7f",
+          "url": "https://huggingface.co/apple/coreml-sam2.1-large/resolve/e830c0874326be7ada2bdc9dff23b7073f884a83/SAM2_1LargeMaskDecoderFLOAT16.mlpackage/Data/com.apple.CoreML/weights/weight.bin"
+        },
+        {
+          "path": "SAM2_1LargeMaskDecoderFLOAT16.mlpackage/Manifest.json",
+          "bytes": 617,
+          "sha256": "9b88413746456ef5e562dadd5676c3f2b391f51867ebd24c69e374033cbe094c",
+          "url": "https://huggingface.co/apple/coreml-sam2.1-large/resolve/e830c0874326be7ada2bdc9dff23b7073f884a83/SAM2_1LargeMaskDecoderFLOAT16.mlpackage/Manifest.json"
+        },
+        {
+          "path": "SAM2_1LargePromptEncoderFLOAT16.mlpackage/Data/com.apple.CoreML/model.mlmodel",
+          "bytes": 20618,
+          "sha256": "3a83c167d8bd63e80f86349a78c2ab0527ce97eca1f848a4ce57fe5351241fa3",
+          "url": "https://huggingface.co/apple/coreml-sam2.1-large/resolve/e830c0874326be7ada2bdc9dff23b7073f884a83/SAM2_1LargePromptEncoderFLOAT16.mlpackage/Data/com.apple.CoreML/model.mlmodel"
+        },
+        {
+          "path": "SAM2_1LargePromptEncoderFLOAT16.mlpackage/Data/com.apple.CoreML/weights/weight.bin",
+          "bytes": 2101056,
+          "sha256": "eadc79dd01eaf71001525a84bf835c8925d3a0463d1b34786bb6b734714fb0e7",
+          "url": "https://huggingface.co/apple/coreml-sam2.1-large/resolve/e830c0874326be7ada2bdc9dff23b7073f884a83/SAM2_1LargePromptEncoderFLOAT16.mlpackage/Data/com.apple.CoreML/weights/weight.bin"
+        },
+        {
+          "path": "SAM2_1LargePromptEncoderFLOAT16.mlpackage/Manifest.json",
+          "bytes": 617,
+          "sha256": "babfa641ed5d14501a8036258561fe5fbcee90223f6045d92f64ca0d42e2e895",
+          "url": "https://huggingface.co/apple/coreml-sam2.1-large/resolve/e830c0874326be7ada2bdc9dff23b7073f884a83/SAM2_1LargePromptEncoderFLOAT16.mlpackage/Manifest.json"
+        }
+      ],
+      "totalBytes": 457300992
+    },
+    "tiny": {
+      "repository": "apple/coreml-sam2.1-tiny",
+      "revision": "39ae0a8a83e5e6cd196e804bf7cccc5f8171f306",
+      "files": [
+        {
+          "path": "SAM2_1TinyImageEncoderFLOAT16.mlpackage/Data/com.apple.CoreML/model.mlmodel",
+          "bytes": 154372,
+          "sha256": "6cbc50301ee3ff4a9366083f9647e1f06762759542d8dd0fac394ebc3682cce7",
+          "url": "https://huggingface.co/apple/coreml-sam2.1-tiny/resolve/39ae0a8a83e5e6cd196e804bf7cccc5f8171f306/SAM2_1TinyImageEncoderFLOAT16.mlpackage/Data/com.apple.CoreML/model.mlmodel"
+        },
+        {
+          "path": "SAM2_1TinyImageEncoderFLOAT16.mlpackage/Data/com.apple.CoreML/weights/weight.bin",
+          "bytes": 67069504,
+          "sha256": "eab96eb8ff35720c79eedc0cac2a4ef32d685f9c994c39736027078528c48a97",
+          "url": "https://huggingface.co/apple/coreml-sam2.1-tiny/resolve/39ae0a8a83e5e6cd196e804bf7cccc5f8171f306/SAM2_1TinyImageEncoderFLOAT16.mlpackage/Data/com.apple.CoreML/weights/weight.bin"
+        },
+        {
+          "path": "SAM2_1TinyImageEncoderFLOAT16.mlpackage/Manifest.json",
+          "bytes": 617,
+          "sha256": "dd72aa75e3f2f92d0653696bf4d8350d87690d92b116b34912fe640f2b116e08",
+          "url": "https://huggingface.co/apple/coreml-sam2.1-tiny/resolve/39ae0a8a83e5e6cd196e804bf7cccc5f8171f306/SAM2_1TinyImageEncoderFLOAT16.mlpackage/Manifest.json"
+        },
+        {
+          "path": "SAM2_1TinyMaskDecoderFLOAT16.mlpackage/Data/com.apple.CoreML/model.mlmodel",
+          "bytes": 75167,
+          "sha256": "4601f302d4c6936e15de3a22089c2afe1fa009ef703f82147ff829b4be677577",
+          "url": "https://huggingface.co/apple/coreml-sam2.1-tiny/resolve/39ae0a8a83e5e6cd196e804bf7cccc5f8171f306/SAM2_1TinyMaskDecoderFLOAT16.mlpackage/Data/com.apple.CoreML/model.mlmodel"
+        },
+        {
+          "path": "SAM2_1TinyMaskDecoderFLOAT16.mlpackage/Data/com.apple.CoreML/weights/weight.bin",
+          "bytes": 10222400,
+          "sha256": "f5a8635981199fa1199007ed6798c61a326288548b74553b3c2ddb932fcdc8de",
+          "url": "https://huggingface.co/apple/coreml-sam2.1-tiny/resolve/39ae0a8a83e5e6cd196e804bf7cccc5f8171f306/SAM2_1TinyMaskDecoderFLOAT16.mlpackage/Data/com.apple.CoreML/weights/weight.bin"
+        },
+        {
+          "path": "SAM2_1TinyMaskDecoderFLOAT16.mlpackage/Manifest.json",
+          "bytes": 617,
+          "sha256": "dc6121b61ac560498080d55f9d5fb293cdb305f942a85adb5b71dc8e9d14a8aa",
+          "url": "https://huggingface.co/apple/coreml-sam2.1-tiny/resolve/39ae0a8a83e5e6cd196e804bf7cccc5f8171f306/SAM2_1TinyMaskDecoderFLOAT16.mlpackage/Manifest.json"
+        },
+        {
+          "path": "SAM2_1TinyPromptEncoderFLOAT16.mlpackage/Data/com.apple.CoreML/model.mlmodel",
+          "bytes": 20618,
+          "sha256": "3a83c167d8bd63e80f86349a78c2ab0527ce97eca1f848a4ce57fe5351241fa3",
+          "url": "https://huggingface.co/apple/coreml-sam2.1-tiny/resolve/39ae0a8a83e5e6cd196e804bf7cccc5f8171f306/SAM2_1TinyPromptEncoderFLOAT16.mlpackage/Data/com.apple.CoreML/model.mlmodel"
+        },
+        {
+          "path": "SAM2_1TinyPromptEncoderFLOAT16.mlpackage/Data/com.apple.CoreML/weights/weight.bin",
+          "bytes": 2101056,
+          "sha256": "af466cf28ef8838f409c2bfd8cc0049b9efbf9db335d60a57dbfc5160af883f2",
+          "url": "https://huggingface.co/apple/coreml-sam2.1-tiny/resolve/39ae0a8a83e5e6cd196e804bf7cccc5f8171f306/SAM2_1TinyPromptEncoderFLOAT16.mlpackage/Data/com.apple.CoreML/weights/weight.bin"
+        },
+        {
+          "path": "SAM2_1TinyPromptEncoderFLOAT16.mlpackage/Manifest.json",
+          "bytes": 617,
+          "sha256": "0c0f9b80f0445017dac52f81e93aeb50b9c2c9918708c882df4a65671fda2bd4",
+          "url": "https://huggingface.co/apple/coreml-sam2.1-tiny/resolve/39ae0a8a83e5e6cd196e804bf7cccc5f8171f306/SAM2_1TinyPromptEncoderFLOAT16.mlpackage/Manifest.json"
+        }
+      ],
+      "totalBytes": 79644968
+    }
+  },
+  "models": {
+    "large": {
+      "model": "SAM 2.1 Hiera Large",
+      "variant": "large",
+      "sourceRepository": "apple/coreml-sam2.1-large",
+      "sourceRevision": "e830c0874326be7ada2bdc9dff23b7073f884a83",
+      "precision": "Float16",
+      "computeUnits": "cpuAndGPU",
+      "inputSide": 1024,
+      "loadSeconds": {
+        "ImageEncoder": 1.317338208318688,
+        "MaskDecoder": 0.1335574999684468,
+        "PromptEncoder": 0.03911495837382972
+      },
+      "processPeakResidentBytes": 968425472,
+      "iterationsPerPrompt": 2,
+      "elapsedSecondsIncludingOutputs": 8.642528624972329,
+      "status": "complete",
+      "totalModelLoadSeconds": 1.4900106666609645,
+      "firstKernelSeconds": 2.5672849998809397,
+      "firstRequestToValidatedLogitsSeconds": 2.7129123749909922,
+      "warmKernelSeconds": {
+        "median": 0.41278814582619816,
+        "minimum": 0.41027658339589834,
+        "maximum": 0.4251636249246076
+      },
+      "warmRequestToValidatedLogitsSeconds": {
+        "median": 0.5622667083516717,
+        "minimum": 0.5505161250475794,
+        "maximum": 0.60974950005766
+      },
+      "warmEncoderSeconds": {
+        "median": 0.40427602076670155,
+        "minimum": 0.4017330417409539,
+        "maximum": 0.4116318332962692
+      },
+      "warmLogitCopyAndValidationSeconds": {
+        "median": 0.09294154169037938,
+        "minimum": 0.0918975000968203,
+        "maximum": 0.11941108328755945
+      },
+      "warmExportSeconds": {
+        "median": 0.03550147917121649,
+        "minimum": 0.032804666669107974,
+        "maximum": 0.04496049997396767
+      },
+      "warmCachedPromptAndDecoderSeconds": {
+        "median": 0.008201812452170998,
+        "minimum": 0.006550791673362255,
+        "maximum": 0.04099362506531179
+      },
+      "records": [
+        {
+          "id": "test_picture1",
+          "width": 1333,
+          "height": 2000,
+          "decodeSeconds": 0.03858529170975089,
+          "preprocessingSeconds": 0.014493416645564139,
+          "imageEncoderSeconds": 2.435281249927357,
+          "kernelSeconds": 2.5672849998809397,
+          "promptEncoderSeconds": [
+            0.0011033333139494061,
+            0.0012270832667127252
+          ],
+          "decoderSeconds": [
+            0.13090041663963348,
+            0.008925458299927413
+          ],
+          "logitCopyAndValidationSeconds": [
+            0.09226695832330734,
+            0.0908107083523646
+          ],
+          "requestToValidatedLogitsSeconds": 2.7129123749909922,
+          "maskExportSeconds": 0.03576183330733329,
+          "scores": [
+            0.74560546875,
+            0.78369140625,
+            0.80078125
+          ],
+          "selectedIndex": 2,
+          "maximumLogitDifferenceAcrossRepeats": 0,
+          "boxXYXYNormalized": [
+            0.11999999731779099,
+            0.5,
+            0.6299999952316284,
+            0.8199999928474426
+          ],
+          "pointsXYLabelNormalized": [
+            {
+              "label": 1,
+              "x": 0.38999998569488525,
+              "y": 0.6499999761581421
+            }
+          ]
+        },
+        {
+          "id": "test_picture2",
+          "width": 2000,
+          "height": 1333,
+          "decodeSeconds": 0.049036000040359795,
+          "preprocessingSeconds": 0.011266499990597367,
+          "imageEncoderSeconds": 0.40229079162236303,
+          "kernelSeconds": 0.4106159582734108,
+          "promptEncoderSeconds": [
+            0.0005258750170469284,
+            0.0005372917512431741
+          ],
+          "decoderSeconds": [
+            0.007799291634000838,
+            0.040456333314068615
+          ],
+          "logitCopyAndValidationSeconds": [
+            0.0918975000968203,
+            0.09053312498144805
+          ],
+          "requestToValidatedLogitsSeconds": 0.5630152917001396,
+          "maskExportSeconds": 0.03576741670258343,
+          "scores": [
+            0.697265625,
+            0.5888671875,
+            0.583984375
+          ],
+          "selectedIndex": 0,
+          "maximumLogitDifferenceAcrossRepeats": 0,
+          "boxXYXYNormalized": [
+            0.47999998927116394,
+            0.4300000071525574,
+            0.9399999976158142,
+            0.6200000047683716
+          ],
+          "pointsXYLabelNormalized": [
+            {
+              "label": 1,
+              "x": 0.6899999976158142,
+              "y": 0.5199999809265137
+            }
+          ]
+        },
+        {
+          "id": "test_picture3",
+          "width": 2000,
+          "height": 1815,
+          "decodeSeconds": 0.05211237503681332,
+          "preprocessingSeconds": 0.01650854165200144,
+          "imageEncoderSeconds": 0.411446625017561,
+          "kernelSeconds": 0.42127358342986554,
+          "promptEncoderSeconds": [
+            0.0014482917031273246,
+            0.0005506667075678706
+          ],
+          "decoderSeconds": [
+            0.008378666709177196,
+            0.008074749959632754
+          ],
+          "logitCopyAndValidationSeconds": [
+            0.09807212511077523,
+            0.09368599997833371
+          ],
+          "requestToValidatedLogitsSeconds": 0.5882390417391434,
+          "maskExportSeconds": 0.04496049997396767,
+          "scores": [
+            0.97314453125,
+            0.6904296875,
+            0.97998046875
+          ],
+          "selectedIndex": 2,
+          "maximumLogitDifferenceAcrossRepeats": 0,
+          "boxXYXYNormalized": [
+            0.12999999523162842,
+            0.05000000074505806,
+            0.8799999952316284,
+            0.9399999976158142
+          ],
+          "pointsXYLabelNormalized": [
+            {
+              "label": 1,
+              "x": 0.5099999904632568,
+              "y": 0.6100000143051147
+            }
+          ]
+        },
+        {
+          "id": "test_picture4",
+          "width": 2000,
+          "height": 1462,
+          "decodeSeconds": 0.05205020832363516,
+          "preprocessingSeconds": 0.0126309166662395,
+          "imageEncoderSeconds": 0.4116318332962692,
+          "kernelSeconds": 0.4251636249246076,
+          "promptEncoderSeconds": [
+            0.0015608749818056822,
+            0.0005317083559930325
+          ],
+          "decoderSeconds": [
+            0.011970916646532714,
+            0.011290416703559458
+          ],
+          "logitCopyAndValidationSeconds": [
+            0.11941108328755945,
+            0.09187324997037649
+          ],
+          "requestToValidatedLogitsSeconds": 0.60974950005766,
+          "maskExportSeconds": 0.035235541639849544,
+          "scores": [
+            0.8330078125,
+            0.85302734375,
+            0.87890625
+          ],
+          "selectedIndex": 2,
+          "maximumLogitDifferenceAcrossRepeats": 0,
+          "boxXYXYNormalized": [
+            0.019999999552965164,
+            0.18000000715255737,
+            0.9900000095367432,
+            0.9700000286102295
+          ],
+          "pointsXYLabelNormalized": [
+            {
+              "label": 1,
+              "x": 0.5299999713897705,
+              "y": 0.6299999952316284
+            }
+          ]
+        },
+        {
+          "id": "test_picture5",
+          "width": 2000,
+          "height": 1333,
+          "decodeSeconds": 0.04203558340668678,
+          "preprocessingSeconds": 0.011521624983288348,
+          "imageEncoderSeconds": 0.40626124991104007,
+          "kernelSeconds": 0.41437912499532104,
+          "promptEncoderSeconds": [
+            0.0005730417324230075,
+            0.0005444582784548402
+          ],
+          "decoderSeconds": [
+            0.00754483335185796,
+            0.006543625029735267
+          ],
+          "logitCopyAndValidationSeconds": [
+            0.09334762510843575,
+            0.09173741668928415
+          ],
+          "requestToValidatedLogitsSeconds": 0.5615181250032037,
+          "maskExportSeconds": 0.03508141660131514,
+          "scores": [
+            0.92333984375,
+            0.76025390625,
+            0.9345703125
+          ],
+          "selectedIndex": 2,
+          "maximumLogitDifferenceAcrossRepeats": 0,
+          "boxXYXYNormalized": [
+            0.3400000035762787,
+            0.4300000071525574,
+            0.6700000166893005,
+            0.5899999737739563
+          ],
+          "pointsXYLabelNormalized": [
+            {
+              "label": 1,
+              "x": 0.49000000953674316,
+              "y": 0.5099999904632568
+            }
+          ]
+        },
+        {
+          "id": "test_picture6",
+          "width": 2000,
+          "height": 1333,
+          "decodeSeconds": 0.03592029167339206,
+          "preprocessingSeconds": 0.011542874970473349,
+          "imageEncoderSeconds": 0.4018744999775663,
+          "kernelSeconds": 0.41027658339589834,
+          "promptEncoderSeconds": [
+            0.0006800834089517593,
+            0.0005532916402444243
+          ],
+          "decoderSeconds": [
+            0.007722000009380281,
+            0.007224916596896946
+          ],
+          "logitCopyAndValidationSeconds": [
+            0.09253545827232301,
+            0.09254516661167145
+          ],
+          "requestToValidatedLogitsSeconds": 0.5505161250475794,
+          "maskExportSeconds": 0.032804666669107974,
+          "scores": [
+            0.9267578125,
+            0.927734375,
+            0.955078125
+          ],
+          "selectedIndex": 2,
+          "maximumLogitDifferenceAcrossRepeats": 0,
+          "boxXYXYNormalized": [
+            0.28999999165534973,
+            0.25,
+            0.8600000143051147,
+            0.9700000286102295
+          ],
+          "pointsXYLabelNormalized": [
+            {
+              "label": 1,
+              "x": 0.4699999988079071,
+              "y": 0.5799999833106995
+            }
+          ]
+        },
+        {
+          "id": "test_picture7",
+          "width": 2048,
+          "height": 1365,
+          "decodeSeconds": 0.04153912502806634,
+          "preprocessingSeconds": 0.011845249915495515,
+          "imageEncoderSeconds": 0.4017330417409539,
+          "kernelSeconds": 0.4111971666570753,
+          "promptEncoderSeconds": [
+            0.0007099999347701669,
+            0.0006955417338758707
+          ],
+          "decoderSeconds": [
+            0.008754124981351197,
+            0.005855249939486384
+          ],
+          "logitCopyAndValidationSeconds": [
+            0.09224349993746728,
+            0.09199900005478412
+          ],
+          "requestToValidatedLogitsSeconds": 0.5570514582796022,
+          "maskExportSeconds": 0.03638912504538894,
+          "scores": [
+            0.62548828125,
+            0.0235748291015625,
+            0.923828125
+          ],
+          "selectedIndex": 2,
+          "maximumLogitDifferenceAcrossRepeats": 0,
+          "boxXYXYNormalized": [
+            0.27000001072883606,
+            0.25999999046325684,
+            0.4699999988079071,
+            0.7200000286102295
+          ],
+          "pointsXYLabelNormalized": [
+            {
+              "label": 1,
+              "x": 0.36000001430511475,
+              "y": 0.5299999713897705
+            }
+          ]
+        }
+      ]
+    },
+    "tiny": {
+      "model": "SAM 2.1 Hiera Tiny",
+      "variant": "tiny",
+      "sourceRepository": "apple/coreml-sam2.1-tiny",
+      "sourceRevision": "39ae0a8a83e5e6cd196e804bf7cccc5f8171f306",
+      "precision": "Float16",
+      "computeUnits": "cpuAndGPU",
+      "inputSide": 1024,
+      "loadSeconds": {
+        "ImageEncoder": 0.2870302082737908,
+        "MaskDecoder": 0.1271387083688751,
+        "PromptEncoder": 0.03263050003442913
+      },
+      "processPeakResidentBytes": 303398912,
+      "iterationsPerPrompt": 2,
+      "elapsedSecondsIncludingOutputs": 3.2330875833285972,
+      "status": "complete",
+      "totalModelLoadSeconds": 0.446799416677095,
+      "firstKernelSeconds": 0.2588826665887609,
+      "firstRequestToValidatedLogitsSeconds": 0.399032499990426,
+      "warmKernelSeconds": {
+        "median": 0.09406866680365056,
+        "minimum": 0.08867754158563912,
+        "maximum": 0.09770270832814276
+      },
+      "warmRequestToValidatedLogitsSeconds": {
+        "median": 0.2353431875235401,
+        "minimum": 0.22487391671165824,
+        "maximum": 0.24930999998468906
+      },
+      "warmEncoderSeconds": {
+        "median": 0.08584747923305258,
+        "minimum": 0.082010000012815,
+        "maximum": 0.09094704163726419
+      },
+      "warmLogitCopyAndValidationSeconds": {
+        "median": 0.09183879167539999,
+        "minimum": 0.08968470827676356,
+        "maximum": 0.1043530834140256
+      },
+      "warmExportSeconds": {
+        "median": 0.03513266664231196,
+        "minimum": 0.03309391671791673,
+        "maximum": 0.043911000015214086
+      },
+      "warmCachedPromptAndDecoderSeconds": {
+        "median": 0.008175458293408155,
+        "minimum": 0.007211875054053962,
+        "maximum": 0.015067999949678779
+      },
+      "records": [
+        {
+          "id": "test_picture1",
+          "width": 1333,
+          "height": 2000,
+          "decodeSeconds": 0.03414779168087989,
+          "preprocessingSeconds": 0.014867166639305651,
+          "imageEncoderSeconds": 0.17082954163197428,
+          "kernelSeconds": 0.2588826665887609,
+          "promptEncoderSeconds": [
+            0.000773124978877604,
+            0.0004925417015329003
+          ],
+          "decoderSeconds": [
+            0.08727999997790903,
+            0.00887308327946812
+          ],
+          "logitCopyAndValidationSeconds": [
+            0.09080858342349529,
+            0.08948320825584233
+          ],
+          "requestToValidatedLogitsSeconds": 0.399032499990426,
+          "maskExportSeconds": 0.03517254162579775,
+          "scores": [
+            0.71875,
+            0.75341796875,
+            0.779296875
+          ],
+          "selectedIndex": 2,
+          "maximumLogitDifferenceAcrossRepeats": 0,
+          "boxXYXYNormalized": [
+            0.11999999731779099,
+            0.5,
+            0.6299999952316284,
+            0.8199999928474426
+          ],
+          "pointsXYLabelNormalized": [
+            {
+              "label": 1,
+              "x": 0.38999998569488525,
+              "y": 0.6499999761581421
+            }
+          ]
+        },
+        {
+          "id": "test_picture2",
+          "width": 2000,
+          "height": 1333,
+          "decodeSeconds": 0.03167649998795241,
+          "preprocessingSeconds": 0.011230166652239859,
+          "imageEncoderSeconds": 0.08476129174232483,
+          "kernelSeconds": 0.09101620852015913,
+          "promptEncoderSeconds": [
+            0.0004729584325104952,
+            0.0005497916135936975
+          ],
+          "decoderSeconds": [
+            0.005781958345323801,
+            0.007867750013247132
+          ],
+          "logitCopyAndValidationSeconds": [
+            0.09072175004985183,
+            0.08972924994304776
+          ],
+          "requestToValidatedLogitsSeconds": 0.22487391671165824,
+          "maskExportSeconds": 0.03494466666597873,
+          "scores": [
+            0.78466796875,
+            0.75341796875,
+            0.83349609375
+          ],
+          "selectedIndex": 2,
+          "maximumLogitDifferenceAcrossRepeats": 0,
+          "boxXYXYNormalized": [
+            0.47999998927116394,
+            0.4300000071525574,
+            0.9399999976158142,
+            0.6200000047683716
+          ],
+          "pointsXYLabelNormalized": [
+            {
+              "label": 1,
+              "x": 0.6899999976158142,
+              "y": 0.5199999809265137
+            }
+          ]
+        },
+        {
+          "id": "test_picture3",
+          "width": 2000,
+          "height": 1815,
+          "decodeSeconds": 0.04282045841682702,
+          "preprocessingSeconds": 0.014821583405137062,
+          "imageEncoderSeconds": 0.09092141676228493,
+          "kernelSeconds": 0.0974762502592057,
+          "promptEncoderSeconds": [
+            0.0006133334245532751,
+            0.0004993332549929619
+          ],
+          "decoderSeconds": [
+            0.005941500072367489,
+            0.009592458372935653
+          ],
+          "logitCopyAndValidationSeconds": [
+            0.08968470827676356,
+            0.09277883335016668
+          ],
+          "requestToValidatedLogitsSeconds": 0.24501341674476862,
+          "maskExportSeconds": 0.043911000015214086,
+          "scores": [
+            0.9111328125,
+            0.95458984375,
+            0.96875
+          ],
+          "selectedIndex": 2,
+          "maximumLogitDifferenceAcrossRepeats": 0,
+          "boxXYXYNormalized": [
+            0.12999999523162842,
+            0.05000000074505806,
+            0.8799999952316284,
+            0.9399999976158142
+          ],
+          "pointsXYLabelNormalized": [
+            {
+              "label": 1,
+              "x": 0.5099999904632568,
+              "y": 0.6100000143051147
+            }
+          ]
+        },
+        {
+          "id": "test_picture4",
+          "width": 2000,
+          "height": 1462,
+          "decodeSeconds": 0.03831037494819611,
+          "preprocessingSeconds": 0.012043375056236982,
+          "imageEncoderSeconds": 0.09094704163726419,
+          "kernelSeconds": 0.09770270832814276,
+          "promptEncoderSeconds": [
+            0.00054883339907974,
+            0.0005614999681711197
+          ],
+          "decoderSeconds": [
+            0.00620683329179883,
+            0.014506499981507659
+          ],
+          "logitCopyAndValidationSeconds": [
+            0.09165983332786709,
+            0.09044999990146607
+          ],
+          "requestToValidatedLogitsSeconds": 0.23992066667415202,
+          "maskExportSeconds": 0.03532066661864519,
+          "scores": [
+            0.77880859375,
+            0.7822265625,
+            0.80615234375
+          ],
+          "selectedIndex": 2,
+          "maximumLogitDifferenceAcrossRepeats": 0,
+          "boxXYXYNormalized": [
+            0.019999999552965164,
+            0.18000000715255737,
+            0.9900000095367432,
+            0.9700000286102295
+          ],
+          "pointsXYLabelNormalized": [
+            {
+              "label": 1,
+              "x": 0.5299999713897705,
+              "y": 0.6299999952316284
+            }
+          ]
+        },
+        {
+          "id": "test_picture5",
+          "width": 2000,
+          "height": 1333,
+          "decodeSeconds": 0.03656224999576807,
+          "preprocessingSeconds": 0.010975874960422516,
+          "imageEncoderSeconds": 0.082010000012815,
+          "kernelSeconds": 0.08867754158563912,
+          "promptEncoderSeconds": [
+            0.0006402499275282025,
+            0.0005107916658744216
+          ],
+          "decoderSeconds": [
+            0.006027291645295918,
+            0.006701083388179541
+          ],
+          "logitCopyAndValidationSeconds": [
+            0.09201775002293289,
+            0.08966500009410083
+          ],
+          "requestToValidatedLogitsSeconds": 0.22846508328802884,
+          "maskExportSeconds": 0.03475262504070997,
+          "scores": [
+            0.62646484375,
+            0.8701171875,
+            0.896484375
+          ],
+          "selectedIndex": 2,
+          "maximumLogitDifferenceAcrossRepeats": 0,
+          "boxXYXYNormalized": [
+            0.3400000035762787,
+            0.4300000071525574,
+            0.6700000166893005,
+            0.5899999737739563
+          ],
+          "pointsXYLabelNormalized": [
+            {
+              "label": 1,
+              "x": 0.49000000953674316,
+              "y": 0.5099999904632568
+            }
+          ]
+        },
+        {
+          "id": "test_picture6",
+          "width": 2000,
+          "height": 1333,
+          "decodeSeconds": 0.03348612494301051,
+          "preprocessingSeconds": 0.012788749998435378,
+          "imageEncoderSeconds": 0.08215612499043345,
+          "kernelSeconds": 0.08982541656587273,
+          "promptEncoderSeconds": [
+            0.0006791666382923722,
+            0.0006251666927710176
+          ],
+          "decoderSeconds": [
+            0.006990124937146902,
+            0.006798916729167104
+          ],
+          "logitCopyAndValidationSeconds": [
+            0.09442974999547005,
+            0.09161491657141596
+          ],
+          "requestToValidatedLogitsSeconds": 0.2307657083729282,
+          "maskExportSeconds": 0.03309391671791673,
+          "scores": [
+            0.845703125,
+            0.83984375,
+            0.88818359375
+          ],
+          "selectedIndex": 2,
+          "maximumLogitDifferenceAcrossRepeats": 0,
+          "boxXYXYNormalized": [
+            0.28999999165534973,
+            0.25,
+            0.8600000143051147,
+            0.9700000286102295
+          ],
+          "pointsXYLabelNormalized": [
+            {
+              "label": 1,
+              "x": 0.4699999988079071,
+              "y": 0.5799999833106995
+            }
+          ]
+        },
+        {
+          "id": "test_picture7",
+          "width": 2048,
+          "height": 1365,
+          "decodeSeconds": 0.03635299997404218,
+          "preprocessingSeconds": 0.011271749972365797,
+          "imageEncoderSeconds": 0.08693366672378033,
+          "kernelSeconds": 0.09712112508714199,
+          "promptEncoderSeconds": [
+            0.0008929582545533776,
+            0.0005716249579563737
+          ],
+          "decoderSeconds": [
+            0.009294500108808279,
+            0.007361750002019107
+          ],
+          "logitCopyAndValidationSeconds": [
+            0.1043530834140256,
+            0.0954914583126083
+          ],
+          "requestToValidatedLogitsSeconds": 0.24930999998468906,
+          "maskExportSeconds": 0.0360070833703503,
+          "scores": [
+            0.7060546875,
+            0.720703125,
+            0.79931640625
+          ],
+          "selectedIndex": 2,
+          "maximumLogitDifferenceAcrossRepeats": 0,
+          "boxXYXYNormalized": [
+            0.27000001072883606,
+            0.25999999046325684,
+            0.4699999988079071,
+            0.7200000286102295
+          ],
+          "pointsXYLabelNormalized": [
+            {
+              "label": 1,
+              "x": 0.36000001430511475,
+              "y": 0.5299999713897705
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "ratiosLargeOverTiny": {
+    "warmKernelMedian": 4.388157713426623,
+    "warmRequestMedian": 2.389135263562414,
+    "peakProcessRSS": 3.191921373798466
+  },
+  "tinyRegressionAgainstPreviousFinalResults": [
+    {
+      "id": "test_picture1",
+      "identicalNativeLogits": true,
+      "identicalMaskPNG": true
+    },
+    {
+      "id": "test_picture2",
+      "identicalNativeLogits": true,
+      "identicalMaskPNG": true
+    },
+    {
+      "id": "test_picture3",
+      "identicalNativeLogits": true,
+      "identicalMaskPNG": true
+    },
+    {
+      "id": "test_picture4",
+      "identicalNativeLogits": true,
+      "identicalMaskPNG": true
+    },
+    {
+      "id": "test_picture5",
+      "identicalNativeLogits": true,
+      "identicalMaskPNG": true
+    },
+    {
+      "id": "test_picture6",
+      "identicalNativeLogits": true,
+      "identicalMaskPNG": true
+    },
+    {
+      "id": "test_picture7",
+      "identicalNativeLogits": true,
+      "identicalMaskPNG": true
+    }
+  ],
+  "priorMeasurements": "measurements.json (unchanged previous series; other models not rerun)"
+}

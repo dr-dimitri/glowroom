@@ -1,8 +1,8 @@
-// Standalone, image-only SAM 2.1 Tiny evaluation; never linked into PicEdit.
+// Standalone, image-only SAM 2.1 Tiny/Large evaluation; never linked into PicEdit.
 // Reference interfaces: huggingface/sam2-studio @ 0dd708d0162e8e0b8c1e447123465b4b027e8b12.
 // swiftc -O tools/mask-evaluation/sam2.swift -o /tmp/picedit-sam2-evaluation
-// compile: BINARY compile MODEL_DIRECTORY COMPILED_DIRECTORY
-// run: BINARY run COMPILED_DIRECTORY MANIFEST.json OUTPUT_DIRECTORY gpu|cpu
+// compile: BINARY compile MODEL_DIRECTORY COMPILED_DIRECTORY [tiny|large]
+// run: BINARY run COMPILED_DIRECTORY MANIFEST.json OUTPUT_DIRECTORY gpu|cpu [tiny|large]
 // Manifest: {"iterations":2,"images":[{"id":"photo1","path":"/absolute/image.png",
 //   "prompts":[{"id":"subject","box":[0.1,0.1,0.9,0.9],
 //   "points":[{"x":0.5,"y":0.5,"label":1}]}]}]}
@@ -63,21 +63,30 @@ func values(_ array: MLMultiArray) -> [Float] {
 }
 
 let modelNames = ["ImageEncoder", "PromptEncoder", "MaskDecoder"]
-func modelURL(_ directory: URL, _ name: String, extension suffix: String) -> URL {
-    directory.appendingPathComponent("SAM2_1Tiny\(name)FLOAT16.\(suffix)")
+enum SAMVariant: String {
+    case tiny, large
+    var name: String { self == .tiny ? "Tiny" : "Large" }
+    var repository: String { "apple/coreml-sam2.1-\(rawValue)" }
+    var revision: String {
+        self == .tiny ? "39ae0a8a83e5e6cd196e804bf7cccc5f8171f306" : "e830c0874326be7ada2bdc9dff23b7073f884a83"
+    }
+}
+func modelURL(_ directory: URL, _ name: String, variant: SAMVariant, extension suffix: String) -> URL {
+    directory.appendingPathComponent("SAM2_1\(variant.name)\(name)FLOAT16.\(suffix)")
 }
 
-func compileModels(source: URL, destination: URL) throws {
+func compileModels(source: URL, destination: URL, variant: SAMVariant) throws {
     try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: false)
     var report: [String: Any] = [:]
     // Compile sequentially to avoid disturbing another model's memory/timing run.
     for name in modelNames {
         let started = time()
-        let compiled = try MLModel.compileModel(at: modelURL(source, name, extension: "mlpackage"))
-        try FileManager.default.copyItem(at: compiled, to: modelURL(destination, name, extension: "mlmodelc"))
+        let compiled = try MLModel.compileModel(at: modelURL(source, name, variant: variant, extension: "mlpackage"))
+        try FileManager.default.copyItem(at: compiled, to: modelURL(destination, name, variant: variant, extension: "mlmodelc"))
         report[name] = ["compileSeconds": time() - started]
     }
     report["processPeakResidentBytes"] = peakRSS()
+    report["variant"] = variant.rawValue
     try writeJSON(report, to: destination.appendingPathComponent("compile.json"))
     print(String(decoding: try JSONSerialization.data(withJSONObject: report, options: [.sortedKeys]), as: UTF8.self))
 }
@@ -193,7 +202,7 @@ func writeMaskPNG(_ mask: MaskResult, width: Int, height: Int, url: URL) throws 
     return time() - start
 }
 
-func run(models directory: URL, manifestURL: URL, output: URL, useGPU: Bool) throws {
+func run(models directory: URL, manifestURL: URL, output: URL, useGPU: Bool, variant: SAMVariant) throws {
     let manifest = try JSONDecoder().decode(Manifest.self, from: Data(contentsOf: manifestURL))
     let iterations = manifest.iterations ?? 2
     guard (1...3).contains(iterations), !manifest.images.isEmpty else {
@@ -224,7 +233,7 @@ func run(models directory: URL, manifestURL: URL, output: URL, useGPU: Bool) thr
     // overlap. Each image encoder result is reused by all prompts/iterations.
     for name in modelNames {
         let start = time()
-        let model = try MLModel(contentsOf: modelURL(directory, name, extension: "mlmodelc"), configuration: config)
+        let model = try MLModel(contentsOf: modelURL(directory, name, variant: variant, extension: "mlmodelc"), configuration: config)
         loadSeconds[name] = time() - start
         loaded[name] = model
         descriptions[name] = [
@@ -321,8 +330,8 @@ func run(models directory: URL, manifestURL: URL, output: URL, useGPU: Bool) thr
         fflush(stdout)
     }
     let report: [String: Any] = [
-        "model": "SAM 2.1 Hiera Tiny", "sourceRepository": "apple/coreml-sam2.1-tiny",
-        "sourceRevision": "39ae0a8a83e5e6cd196e804bf7cccc5f8171f306", "precision": "Float16",
+        "model": "SAM 2.1 Hiera \(variant.name)", "sourceRepository": variant.repository,
+        "sourceRevision": variant.revision, "variant": variant.rawValue, "precision": "Float16",
         "coordinateConvention": manifest.coordinateConvention ?? "Normalized x/y, origin top left",
         "promptProvenance": "Manual test annotations; not model-generated grounding",
         "computeUnits": useGPU ? "cpuAndGPU" : "cpuOnly", "inputSide": side,
@@ -336,13 +345,19 @@ func run(models directory: URL, manifestURL: URL, output: URL, useGPU: Bool) thr
 
 do {
     let args = CommandLine.arguments
-    if args.count == 4, args[1] == "compile" {
-        try compileModels(source: URL(fileURLWithPath: args[2]), destination: URL(fileURLWithPath: args[3]))
-    } else if args.count == 6, args[1] == "run", ["gpu", "cpu"].contains(args[5]) {
+    if [4, 5].contains(args.count), args[1] == "compile" {
+        guard let variant = SAMVariant(rawValue: args.count == 5 ? args[4] : "tiny") else {
+            throw EvaluationFailure("Expected variant tiny or large")
+        }
+        try compileModels(source: URL(fileURLWithPath: args[2]), destination: URL(fileURLWithPath: args[3]), variant: variant)
+    } else if [6, 7].contains(args.count), args[1] == "run", ["gpu", "cpu"].contains(args[5]) {
+        guard let variant = SAMVariant(rawValue: args.count == 7 ? args[6] : "tiny") else {
+            throw EvaluationFailure("Expected variant tiny or large")
+        }
         try run(models: URL(fileURLWithPath: args[2]), manifestURL: URL(fileURLWithPath: args[3]),
-                output: URL(fileURLWithPath: args[4]), useGPU: args[5] == "gpu")
+                output: URL(fileURLWithPath: args[4]), useGPU: args[5] == "gpu", variant: variant)
     } else {
-        throw EvaluationFailure("usage: sam2 compile MODEL_DIRECTORY COMPILED_DIRECTORY | sam2 run COMPILED_DIRECTORY MANIFEST.json OUTPUT_DIRECTORY gpu|cpu")
+        throw EvaluationFailure("usage: sam2 compile MODEL_DIRECTORY COMPILED_DIRECTORY [tiny|large] | sam2 run COMPILED_DIRECTORY MANIFEST.json OUTPUT_DIRECTORY gpu|cpu [tiny|large]")
     }
 } catch {
     FileHandle.standardError.write(Data("SAM2 evaluation failed: \(error)\n".utf8))

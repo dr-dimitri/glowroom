@@ -1,5 +1,10 @@
 # Lokaler Vergleich der Maskierungsmodelle
 
+**Ergänzung:** Der [Folgetest von SAM 2.1 Hiera Large](sam21-large.md)
+vergleicht Large mit einer neuen Tiny-Kontrollserie auf denselben sieben Fotos
+und finalen Auswahlvorgaben. Die nachstehenden ursprünglichen Messwerte bleiben
+als eigenständige Serie erhalten.
+
 Stand: 20.10.2026. Sieben vorhandene private Testfotos wurden mit fünf
 Modellvarianten tatsächlich verarbeitet. **SAM 2.1 Tiny ist der aussichtsreichste
 Kandidat für schnelle, gezielte Objektauswahl. Ein vollständiger Ersatz für
