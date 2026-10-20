@@ -88,6 +88,15 @@ The [additional candidate instructions](extra_README.md) describe pinned
 BiRefNet GGUF/vision.cpp and EfficientSAM3 EV-M setups, including compatibility
 accommodations and external timeouts.
 
+The separate [official EfficientViT-SAM-L1 harness](efficientvit_sam_README.md)
+uses current Hugging Face Hub for downloading pinned weights and the verified
+official MIT predictor for Float32 MPS/CPU inference. Its 512-pixel encoder,
+1024-pixel prompt frame and padding removal differ from the square Core ML
+SAM2 pipeline. The [L1 evaluation report](../../reports/mask-models/2026-10-20/efficientvit-sam-l1.md)
+records the required official source compatibility pin, actual inference runs
+and library interface limits; it does not claim Ultralytics/Transformers
+inference support for EfficientViT-SAM.
+
 Process RSS includes each harness/runtime and omits some GPU/driver allocations.
 First-use measurements do not establish cold-cache performance: system caches
 are not purged. Loading, inference, aspect restoration and PNG export have

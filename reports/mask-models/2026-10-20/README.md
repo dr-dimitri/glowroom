@@ -1,5 +1,10 @@
 # Lokaler Vergleich der Maskierungsmodelle
 
+**Weitere Ergänzung:** Der [offizielle EfficientViT-SAM-L1-Test](efficientvit-sam-l1.md)
+untersucht den 512²-Encoder mit aktuellem Python/MPS-/Hugging-Face-Hub-Pfad,
+abweichendem Promptvertrag und denselben sieben Fotos. Die älteren Serien
+bleiben zur Nachvollziehbarkeit unverändert.
+
 **Ergänzung:** Der [Folgetest von SAM 2.1 Hiera Large](sam21-large.md)
 vergleicht Large mit einer neuen Tiny-Kontrollserie auf denselben sieben Fotos
 und finalen Auswahlvorgaben. Die nachstehenden ursprünglichen Messwerte bleiben

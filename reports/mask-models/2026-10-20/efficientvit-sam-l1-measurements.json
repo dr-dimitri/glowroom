@@ -1,0 +1,1016 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-20",
+  "hardware": {
+    "chip": "Apple M2 Pro",
+    "logicalCPUs": 12,
+    "memoryBytes": 17179869184,
+    "macOS": "27.0.1 (26A434)"
+  },
+  "dataset": {
+    "privateJPEGCount": 7,
+    "proxyMaxLongEdge": 2048,
+    "rawDecodingIncluded": false,
+    "originalsUnchanged": true,
+    "groundTruthAvailable": false,
+    "photoAndDerivedImageFilesCommitted": false
+  },
+  "protocol": {
+    "sameProxyBytesAsPreviousEvaluation": true,
+    "sameFinalManualPrompts": true,
+    "mainSeriesEncoderRepeated": false,
+    "promptIterations": 2,
+    "heavyModelJobsConcurrent": false,
+    "systemCachesPurged": false,
+    "moduleWallTiming": "forward hooks synchronize MPS before and after modules; these are module wall times, not Metal GPU-event timestamps",
+    "requestScope": "decode + official set_image/preprocessing/encoder + first predict/postprocess/full-resolution CPU NumPy copy + validation; excludes file export",
+    "pixelPipeline": "512 longest edge with corner padding; independent rounded 1024 prompt frame; official 1024 interpolation/crop/source aspect restoration",
+    "integration": "standalone Python/MPS Float32, not a native Swift/Core ML application benchmark"
+  },
+  "interfaceAudit": {
+    "ultralytics": {
+      "version": "8.4.183",
+      "method": "published release source inspection only",
+      "EfficientViTSAMBuilder": false,
+      "SAMLoaderGGUFExtension": false
+    },
+    "transformers": {
+      "version": "5.20.2",
+      "method": "published release source inspection only",
+      "EfficientViTSAMAutoModelAdapter": false
+    },
+    "huggingfaceHub": {
+      "version": "2.2.0",
+      "method": "executed public pinned checkpoint download; inference uses official MIT predictor"
+    }
+  },
+  "modelRun": {
+    "autocast": false,
+    "checkpointBytes": 190916834,
+    "checkpointSHA256": "fa151df2b9b96896accd505470755cdd293a4c50cdabac95478f3fbd86d9152b",
+    "device": "mps",
+    "efficientvitCodeRevision": "e81ebbe761b2c75fc99b7827cb7dbd30a76c0ace",
+    "elapsedSecondsIncludingImportsAndOutputs": 6.836582583026029,
+    "encoderInputSide": 512,
+    "images": [
+      {
+        "decodeSeconds": 0.04112349997740239,
+        "encoderInputShape": [
+          1,
+          3,
+          512,
+          512
+        ],
+        "encoderKernelSeconds": 1.7151722080307081,
+        "height": 2000,
+        "id": "test_picture1",
+        "imageIndex": 0,
+        "memory": {
+          "mpsCurrentAllocatedBytes": 195465728,
+          "mpsDriverAllocatedBytes": 1363132416,
+          "processPeakResidentBytes": 930414592
+        },
+        "promptFrameInputSizeHW": [
+          1024,
+          682
+        ],
+        "prompts": [
+          {
+            "boxNormalized": [
+              0.12,
+              0.5,
+              0.63,
+              0.82
+            ],
+            "boxPromptFrame": [
+              [
+                81.83999562817951,
+                512.0,
+                429.65998875817587,
+                839.6800000000001
+              ]
+            ],
+            "boxSourcePixels": [
+              159.95999145507812,
+              1000.0,
+              839.7899780273438,
+              1640.0
+            ],
+            "differentBinaryPixelsAcrossRepeats": 0,
+            "exportSeconds": 0.00600308389402926,
+            "firstValidatedPromptSeconds": 2.118972541997209,
+            "id": "target",
+            "imageRequestToFirstValidatedMaskSeconds": 3.8890275000594556,
+            "maximumLogitDifferenceAcrossRepeats": 0.0,
+            "nativeLogitsShape": [
+              256,
+              256
+            ],
+            "pointsNormalized": [
+              {
+                "label": 1,
+                "x": 0.39,
+                "y": 0.65
+              }
+            ],
+            "pointsPromptFrame": [
+              [
+                265.97999750181685,
+                665.6
+              ]
+            ],
+            "pointsSourcePixels": [
+              [
+                519.8699951171875,
+                1300.0
+              ]
+            ],
+            "predictions": [
+              {
+                "maskDecoderKernelSeconds": 1.6817750839982182,
+                "predictSeconds": 2.1124618330504745,
+                "promptEncoderKernelSeconds": 0.3190879999892786
+              },
+              {
+                "maskDecoderKernelSeconds": 0.008966249995864928,
+                "predictSeconds": 0.01967070798855275,
+                "promptEncoderKernelSeconds": 0.005307832965627313
+              }
+            ],
+            "runToFirstValidatedMaskSeconds": 3.889054833096452,
+            "scoresByRepeat": [
+              [
+                0.7520182728767395,
+                0.7795958518981934,
+                0.7720776796340942
+              ],
+              [
+                0.7520182728767395,
+                0.7795958518981934,
+                0.7720776796340942
+              ]
+            ],
+            "selectedMaskIndices": [
+              1,
+              1
+            ],
+            "sourceMaskShape": [
+              2000,
+              1333
+            ]
+          }
+        ],
+        "repeatEncoderFirstProbe": null,
+        "setImageSeconds": 1.7277052500285208,
+        "target": "buckets",
+        "width": 1333
+      },
+      {
+        "decodeSeconds": 0.04151679202914238,
+        "encoderInputShape": [
+          1,
+          3,
+          512,
+          512
+        ],
+        "encoderKernelSeconds": 0.05326441605575383,
+        "height": 1333,
+        "id": "test_picture2",
+        "imageIndex": 1,
+        "memory": {
+          "mpsCurrentAllocatedBytes": 195465728,
+          "mpsDriverAllocatedBytes": 1363132416,
+          "processPeakResidentBytes": 930414592
+        },
+        "promptFrameInputSizeHW": [
+          682,
+          1024
+        ],
+        "prompts": [
+          {
+            "boxNormalized": [
+              0.48,
+              0.43,
+              0.94,
+              0.62
+            ],
+            "boxPromptFrame": [
+              [
+                491.52,
+                293.2600012490916,
+                962.5600000000001,
+                422.84001124182413
+              ]
+            ],
+            "boxSourcePixels": [
+              960.0,
+              573.1900024414062,
+              1880.0,
+              826.4600219726562
+            ],
+            "differentBinaryPixelsAcrossRepeats": 0,
+            "exportSeconds": 0.0045958340633660555,
+            "firstValidatedPromptSeconds": 0.015861250110901892,
+            "id": "target",
+            "imageRequestToFirstValidatedMaskSeconds": 0.12142954207956791,
+            "maximumLogitDifferenceAcrossRepeats": 0.0,
+            "nativeLogitsShape": [
+              256,
+              256
+            ],
+            "pointsNormalized": [
+              {
+                "label": 1,
+                "x": 0.69,
+                "y": 0.52
+              }
+            ],
+            "pointsPromptFrame": [
+              [
+                706.5600000000001,
+                354.6399862599927
+              ]
+            ],
+            "pointsSourcePixels": [
+              [
+                1380.0,
+                693.1599731445312
+              ]
+            ],
+            "predictions": [
+              {
+                "maskDecoderKernelSeconds": 0.008715374977327883,
+                "predictSeconds": 0.014208417036570609,
+                "promptEncoderKernelSeconds": 0.0019749589264392853
+              },
+              {
+                "maskDecoderKernelSeconds": 0.008767624967731535,
+                "predictSeconds": 0.014511249959468842,
+                "promptEncoderKernelSeconds": 0.0018784590065479279
+              }
+            ],
+            "runToFirstValidatedMaskSeconds": 4.040921125095338,
+            "scoresByRepeat": [
+              [
+                0.6961657404899597,
+                0.7358196973800659,
+                0.741706132888794
+              ],
+              [
+                0.6961657404899597,
+                0.7358196973800659,
+                0.741706132888794
+              ]
+            ],
+            "selectedMaskIndices": [
+              2,
+              2
+            ],
+            "sourceMaskShape": [
+              1333,
+              2000
+            ]
+          }
+        ],
+        "repeatEncoderFirstProbe": null,
+        "setImageSeconds": 0.06373787496704608,
+        "target": "houses",
+        "width": 2000
+      },
+      {
+        "decodeSeconds": 0.05108216602820903,
+        "encoderInputShape": [
+          1,
+          3,
+          512,
+          512
+        ],
+        "encoderKernelSeconds": 0.04377774999011308,
+        "height": 1815,
+        "id": "test_picture3",
+        "imageIndex": 2,
+        "memory": {
+          "mpsCurrentAllocatedBytes": 195465728,
+          "mpsDriverAllocatedBytes": 1363132416,
+          "processPeakResidentBytes": 930414592
+        },
+        "promptFrameInputSizeHW": [
+          929,
+          1024
+        ],
+        "prompts": [
+          {
+            "boxNormalized": [
+              0.13,
+              0.05,
+              0.88,
+              0.94
+            ],
+            "boxPromptFrame": [
+              [
+                133.12,
+                46.449999999999996,
+                901.12,
+                873.2599875037663
+              ]
+            ],
+            "boxSourcePixels": [
+              260.0,
+              90.75,
+              1760.0,
+              1706.0999755859375
+            ],
+            "differentBinaryPixelsAcrossRepeats": 0,
+            "exportSeconds": 0.012626208015717566,
+            "firstValidatedPromptSeconds": 0.022288166917860508,
+            "id": "target",
+            "imageRequestToFirstValidatedMaskSeconds": 0.131343541899696,
+            "maximumLogitDifferenceAcrossRepeats": 0.0,
+            "nativeLogitsShape": [
+              256,
+              256
+            ],
+            "pointsNormalized": [
+              {
+                "label": 1,
+                "x": 0.51,
+                "y": 0.61
+              }
+            ],
+            "pointsPromptFrame": [
+              [
+                522.24,
+                566.6900124962336
+              ]
+            ],
+            "pointsSourcePixels": [
+              [
+                1020.0,
+                1107.1500244140625
+              ]
+            ],
+            "predictions": [
+              {
+                "maskDecoderKernelSeconds": 0.008784000063315034,
+                "predictSeconds": 0.015796707943081856,
+                "promptEncoderKernelSeconds": 0.0019232920603826642
+              },
+              {
+                "maskDecoderKernelSeconds": 0.008729791967198253,
+                "predictSeconds": 0.015454625012353063,
+                "promptEncoderKernelSeconds": 0.0021027910988777876
+              }
+            ],
+            "runToFirstValidatedMaskSeconds": 4.193809290998615,
+            "scoresByRepeat": [
+              [
+                0.8093366622924805,
+                0.8092637062072754,
+                0.7951633930206299
+              ],
+              [
+                0.8093366622924805,
+                0.8092637062072754,
+                0.7951633930206299
+              ]
+            ],
+            "selectedMaskIndices": [
+              0,
+              0
+            ],
+            "sourceMaskShape": [
+              1815,
+              2000
+            ]
+          }
+        ],
+        "repeatEncoderFirstProbe": null,
+        "setImageSeconds": 0.057711458997800946,
+        "target": "snowman",
+        "width": 2000
+      },
+      {
+        "decodeSeconds": 0.04374279105104506,
+        "encoderInputShape": [
+          1,
+          3,
+          512,
+          512
+        ],
+        "encoderKernelSeconds": 0.04228616692125797,
+        "height": 1462,
+        "id": "test_picture4",
+        "imageIndex": 3,
+        "memory": {
+          "mpsCurrentAllocatedBytes": 195465728,
+          "mpsDriverAllocatedBytes": 1363132416,
+          "processPeakResidentBytes": 930414592
+        },
+        "promptFrameInputSizeHW": [
+          749,
+          1024
+        ],
+        "prompts": [
+          {
+            "boxNormalized": [
+              0.02,
+              0.18,
+              0.99,
+              0.97
+            ],
+            "boxPromptFrame": [
+              [
+                20.48,
+                134.82000187614221,
+                1013.76,
+                726.530007504569
+              ]
+            ],
+            "boxSourcePixels": [
+              40.0,
+              263.1600036621094,
+              1980.0,
+              1418.1400146484375
+            ],
+            "differentBinaryPixelsAcrossRepeats": 0,
+            "exportSeconds": 0.010372207965701818,
+            "firstValidatedPromptSeconds": 0.01629212498664856,
+            "id": "target",
+            "imageRequestToFirstValidatedMaskSeconds": 0.11357870895881206,
+            "maximumLogitDifferenceAcrossRepeats": 0.0,
+            "nativeLogitsShape": [
+              256,
+              256
+            ],
+            "pointsNormalized": [
+              {
+                "label": 1,
+                "x": 0.53,
+                "y": 0.63
+              }
+            ],
+            "pointsPromptFrame": [
+              [
+                542.72,
+                471.86999874923856
+              ]
+            ],
+            "pointsSourcePixels": [
+              [
+                1060.0,
+                921.0599975585938
+              ]
+            ],
+            "predictions": [
+              {
+                "maskDecoderKernelSeconds": 0.00877537508495152,
+                "predictSeconds": 0.014447542023845017,
+                "promptEncoderKernelSeconds": 0.0020845000399276614
+              },
+              {
+                "maskDecoderKernelSeconds": 0.008698917110450566,
+                "predictSeconds": 0.014733333955518901,
+                "promptEncoderKernelSeconds": 0.0022109999554231763
+              }
+            ],
+            "runToFirstValidatedMaskSeconds": 4.339809666038491,
+            "scoresByRepeat": [
+              [
+                0.7014452815055847,
+                0.7858530282974243,
+                0.8023730516433716
+              ],
+              [
+                0.7014452815055847,
+                0.7858530282974243,
+                0.8023730516433716
+              ]
+            ],
+            "selectedMaskIndices": [
+              2,
+              2
+            ],
+            "sourceMaskShape": [
+              1462,
+              2000
+            ]
+          }
+        ],
+        "repeatEncoderFirstProbe": null,
+        "setImageSeconds": 0.05325370794162154,
+        "target": "toy pyramid",
+        "width": 2000
+      },
+      {
+        "decodeSeconds": 0.04257862502709031,
+        "encoderInputShape": [
+          1,
+          3,
+          512,
+          512
+        ],
+        "encoderKernelSeconds": 0.0423800420248881,
+        "height": 1333,
+        "id": "test_picture5",
+        "imageIndex": 4,
+        "memory": {
+          "mpsCurrentAllocatedBytes": 195465728,
+          "mpsDriverAllocatedBytes": 1363132416,
+          "processPeakResidentBytes": 930414592
+        },
+        "promptFrameInputSizeHW": [
+          682,
+          1024
+        ],
+        "prompts": [
+          {
+            "boxNormalized": [
+              0.34,
+              0.43,
+              0.67,
+              0.59
+            ],
+            "boxPromptFrame": [
+              [
+                348.16,
+                293.2600012490916,
+                686.08,
+                402.3799850109012
+              ]
+            ],
+            "boxSourcePixels": [
+              680.0,
+              573.1900024414062,
+              1340.0,
+              786.469970703125
+            ],
+            "differentBinaryPixelsAcrossRepeats": 0,
+            "exportSeconds": 0.0028943339129909873,
+            "firstValidatedPromptSeconds": 0.018174082972109318,
+            "id": "target",
+            "imageRequestToFirstValidatedMaskSeconds": 0.11307191697414964,
+            "maximumLogitDifferenceAcrossRepeats": 0.0,
+            "nativeLogitsShape": [
+              256,
+              256
+            ],
+            "pointsNormalized": [
+              {
+                "label": 1,
+                "x": 0.49,
+                "y": 0.51
+              }
+            ],
+            "pointsPromptFrame": [
+              [
+                501.76,
+                347.820008743641
+              ]
+            ],
+            "pointsSourcePixels": [
+              [
+                980.0,
+                679.8300170898438
+              ]
+            ],
+            "predictions": [
+              {
+                "maskDecoderKernelSeconds": 0.008140875026583672,
+                "predictSeconds": 0.01339724997524172,
+                "promptEncoderKernelSeconds": 0.0019249169854447246
+              },
+              {
+                "maskDecoderKernelSeconds": 0.008782749995589256,
+                "predictSeconds": 0.014237124938517809,
+                "promptEncoderKernelSeconds": 0.0017705830978229642
+              }
+            ],
+            "runToFirstValidatedMaskSeconds": 4.480833500041626,
+            "scoresByRepeat": [
+              [
+                0.7651392817497253,
+                0.7707769870758057,
+                0.7640208005905151
+              ],
+              [
+                0.7651392817497253,
+                0.7707769870758057,
+                0.7640208005905151
+              ]
+            ],
+            "selectedMaskIndices": [
+              1,
+              1
+            ],
+            "sourceMaskShape": [
+              1333,
+              2000
+            ]
+          }
+        ],
+        "repeatEncoderFirstProbe": null,
+        "setImageSeconds": 0.05203391704708338,
+        "target": "island",
+        "width": 2000
+      },
+      {
+        "decodeSeconds": 0.03526420902926475,
+        "encoderInputShape": [
+          1,
+          3,
+          512,
+          512
+        ],
+        "encoderKernelSeconds": 0.04178179195150733,
+        "height": 1333,
+        "id": "test_picture6",
+        "imageIndex": 5,
+        "memory": {
+          "mpsCurrentAllocatedBytes": 195465728,
+          "mpsDriverAllocatedBytes": 1363132416,
+          "processPeakResidentBytes": 930414592
+        },
+        "promptFrameInputSizeHW": [
+          682,
+          1024
+        ],
+        "prompts": [
+          {
+            "boxNormalized": [
+              0.29,
+              0.25,
+              0.86,
+              0.97
+            ],
+            "boxPromptFrame": [
+              [
+                296.96,
+                170.5,
+                880.64,
+                661.5400049963663
+              ]
+            ],
+            "boxSourcePixels": [
+              580.0,
+              333.25,
+              1720.0,
+              1293.010009765625
+            ],
+            "differentBinaryPixelsAcrossRepeats": 0,
+            "exportSeconds": 0.00657337496522814,
+            "firstValidatedPromptSeconds": 0.017850458971224725,
+            "id": "target",
+            "imageRequestToFirstValidatedMaskSeconds": 0.104748958023265,
+            "maximumLogitDifferenceAcrossRepeats": 0.0,
+            "nativeLogitsShape": [
+              256,
+              256
+            ],
+            "pointsNormalized": [
+              {
+                "label": 1,
+                "x": 0.47,
+                "y": 0.58
+              }
+            ],
+            "pointsPromptFrame": [
+              [
+                481.28000000000003,
+                395.56000749454944
+              ]
+            ],
+            "pointsSourcePixels": [
+              [
+                940.0,
+                773.1400146484375
+              ]
+            ],
+            "predictions": [
+              {
+                "maskDecoderKernelSeconds": 0.00824108300730586,
+                "predictSeconds": 0.013922667014412582,
+                "promptEncoderKernelSeconds": 0.0021003750152885914
+              },
+              {
+                "maskDecoderKernelSeconds": 0.008142959093675017,
+                "predictSeconds": 0.013759040972217917,
+                "promptEncoderKernelSeconds": 0.0017955419607460499
+              }
+            ],
+            "runToFirstValidatedMaskSeconds": 4.60495020810049,
+            "scoresByRepeat": [
+              [
+                0.762908399105072,
+                0.7888469696044922,
+                0.7689380645751953
+              ],
+              [
+                0.762908399105072,
+                0.7888469696044922,
+                0.7689380645751953
+              ]
+            ],
+            "selectedMaskIndices": [
+              1,
+              1
+            ],
+            "sourceMaskShape": [
+              1333,
+              2000
+            ]
+          }
+        ],
+        "repeatEncoderFirstProbe": null,
+        "setImageSeconds": 0.0513415839523077,
+        "target": "stuffed fox",
+        "width": 2000
+      },
+      {
+        "decodeSeconds": 0.04022020800039172,
+        "encoderInputShape": [
+          1,
+          3,
+          512,
+          512
+        ],
+        "encoderKernelSeconds": 0.04219683399423957,
+        "height": 1365,
+        "id": "test_picture7",
+        "imageIndex": 6,
+        "memory": {
+          "mpsCurrentAllocatedBytes": 195465728,
+          "mpsDriverAllocatedBytes": 1363132416,
+          "processPeakResidentBytes": 930414592
+        },
+        "promptFrameInputSizeHW": [
+          683,
+          1024
+        ],
+        "prompts": [
+          {
+            "boxNormalized": [
+              0.27,
+              0.26,
+              0.47,
+              0.72
+            ],
+            "boxPromptFrame": [
+              [
+                276.4800109863281,
+                177.57999694600647,
+                481.2799987792969,
+                491.76002443194824
+              ]
+            ],
+            "boxSourcePixels": [
+              552.9600219726562,
+              354.8999938964844,
+              962.5599975585938,
+              982.800048828125
+            ],
+            "differentBinaryPixelsAcrossRepeats": 0,
+            "exportSeconds": 0.005234375013969839,
+            "firstValidatedPromptSeconds": 0.017579082981683314,
+            "id": "target",
+            "imageRequestToFirstValidatedMaskSeconds": 0.1102839169325307,
+            "maximumLogitDifferenceAcrossRepeats": 0.0,
+            "nativeLogitsShape": [
+              256,
+              256
+            ],
+            "pointsNormalized": [
+              {
+                "label": 1,
+                "x": 0.36,
+                "y": 0.53
+              }
+            ],
+            "pointsPromptFrame": [
+              [
+                368.6400146484375,
+                361.9900061079871
+              ]
+            ],
+            "pointsSourcePixels": [
+              [
+                737.280029296875,
+                723.4500122070312
+              ]
+            ],
+            "predictions": [
+              {
+                "maskDecoderKernelSeconds": 0.008786458056420088,
+                "predictSeconds": 0.014129957999102771,
+                "promptEncoderKernelSeconds": 0.001921582967042923
+              },
+              {
+                "maskDecoderKernelSeconds": 0.008676292025484145,
+                "predictSeconds": 0.013737958041019738,
+                "promptEncoderKernelSeconds": 0.0017933329800143838
+              }
+            ],
+            "runToFirstValidatedMaskSeconds": 4.737913416000083,
+            "scoresByRepeat": [
+              [
+                0.5946921706199646,
+                0.6484051942825317,
+                0.6977449059486389
+              ],
+              [
+                0.5946921706199646,
+                0.6484051942825317,
+                0.6977449059486389
+              ]
+            ],
+            "selectedMaskIndices": [
+              2,
+              2
+            ],
+            "sourceMaskShape": [
+              1365,
+              2048
+            ]
+          }
+        ],
+        "repeatEncoderFirstProbe": null,
+        "setImageSeconds": 0.052230500034056604,
+        "target": "vase of tulips",
+        "width": 2048
+      }
+    ],
+    "importSeconds": 1.6073050419799984,
+    "limitations": "Serial photo evaluation, one cached image embedding per image, two identical prompt decodes without mask_input refinement. Optional first-image encoder repeat is a separate probe. Manual source-pixel box/points, not VLM grounding or text segmentation. Official 512 longest-side/ImageNet-normalized corner-padded encoder and separate rounded 1024 prompt frame/postprocessing. Forward hooks synchronize MPS before and after each stage; stage kernel measurements exclude some work between modules. predictSeconds includes official postprocessing, source-resolution restoration and NumPy CPU copies, not just the decoder. imageRequestToFirstValidatedMaskSeconds includes decode/set_image/first validated result and optional encoder probe, excludes mask file export. Float32 without autocast; no MPS CPU fallback. OS/device caches not purged; initial graph work is not a controlled cold start. macOS process peak RSS excludes some driver/GPU memory; MPS driver values are sampled, not true peaks. No ground-truth masks or broad quality benchmark. Native logits are segmentation confidence, not alpha mattes.",
+    "maximumSampledMPSDriverAllocatedBytes": 1363132416,
+    "model": "Official EfficientViT-SAM-L1",
+    "modelBuildAndStrictCPUWeightLoadSeconds": 0.19711220799945295,
+    "modelDeviceTransferSeconds": 0.1553904580650851,
+    "mpsFallbackEnabled": false,
+    "normalizationEpsilons": [
+      1e-15,
+      1e-06
+    ],
+    "officialFactory": "create_sam_model('l1', pretrained=False)",
+    "officialPredictor": "EfficientViTSamPredictor.predict",
+    "packageVersions": {
+      "einops": "0.8.2",
+      "huggingface_hub": "2.2.0",
+      "numpy": "2.4.6",
+      "omegaconf": "2.4.0",
+      "opencv-python-headless": "5.0.0.93",
+      "pillow": "13.0.0",
+      "scipy": "1.17.1",
+      "timm": "1.0.30",
+      "torch": "2.14.1",
+      "torchprofile": "0.1.0",
+      "torchvision": "0.29.1"
+    },
+    "parameterCount": 47650128,
+    "precision": "Float32",
+    "processPeakResidentBytes": 930414592,
+    "promptFrameSide": 1024,
+    "pythonVersion": "3.11.16",
+    "segmentAnythingCodeRevision": "dca509fe793f601edb92606367a655c15ac00fdf",
+    "sourceCompatibilityNote": "Official unmodified 2024-10-15 pre-DC-AE source; reviewed 2025-09-05 repohead imports CUDA/Triton unconditionally and fails on macOS before inference. Current PyTorch/HFHub remain in use.",
+    "sourceRepository": "mit-han-lab/efficientvit-sam",
+    "sourceRevision": "a2f0c5929196a13ef1ffc9338d3f9e482e1e0e68",
+    "sourceVerification": [
+      {
+        "archiveSHA256": "0e45211a243cb342a2156f7da0d3b1e07f98dbd9c6761f1b40fda313a3a76636",
+        "directory": "efficientvit",
+        "packagePythonTreeSHA256": "eb75bc5a9b309a0a6f32ed052e8f27459010f9dbd8718e6a6227ab1181397ae3",
+        "revision": "e81ebbe761b2c75fc99b7827cb7dbd30a76c0ace",
+        "verifiedPythonFiles": 59
+      },
+      {
+        "archiveSHA256": "b693c2358e9e1c63589a322b1baa6a6dc384df0013ff455d933d9a8e23549dab",
+        "directory": "segment-anything",
+        "packagePythonTreeSHA256": "7d034980ecf52296ac582a0cb2350e074dbb90c761e37517e1a25ef4d2f8aa09",
+        "revision": "dca509fe793f601edb92606367a655c15ac00fdf",
+        "verifiedPythonFiles": 15
+      }
+    ],
+    "torchInteropThreads": 1,
+    "torchThreads": 4
+  },
+  "summary": {
+    "kernelSeconds": {
+      "first": 3.716035292018205,
+      "warmMedian": 0.05302545853191987,
+      "warmMinimum": 0.05212324997410178,
+      "warmMaximum": 0.063954749959521
+    },
+    "encoderSeconds": {
+      "first": 1.7151722080307081,
+      "warmMedian": 0.042333104473073035,
+      "warmMinimum": 0.04178179195150733,
+      "warmMaximum": 0.05326441605575383
+    },
+    "setImageSeconds": {
+      "first": 1.7277052500285208,
+      "warmMedian": 0.05274210398783907,
+      "warmMinimum": 0.0513415839523077,
+      "warmMaximum": 0.06373787496704608
+    },
+    "officialPredictSeconds": {
+      "first": 2.1124618330504745,
+      "warmMedian": 0.01416918751783669,
+      "warmMinimum": 0.01339724997524172,
+      "warmMaximum": 0.015796707943081856
+    },
+    "imageRequestSeconds": {
+      "first": 3.8890275000594556,
+      "warmMedian": 0.11332531296648085,
+      "warmMinimum": 0.104748958023265,
+      "warmMaximum": 0.131343541899696
+    },
+    "exportSeconds": {
+      "first": 0.00600308389402926,
+      "warmMedian": 0.0059038749895989895,
+      "warmMinimum": 0.0028943339129909873,
+      "warmMaximum": 0.012626208015717566
+    }
+  },
+  "cpuMPSConsistency": {
+    "image": "test_picture6",
+    "purpose": "One-image device consistency check, not ground-truth quality or a broad CPU benchmark",
+    "mpsPrecision": "Float32",
+    "cpuPrecision": "Float32",
+    "nativeLogitsShape": [
+      256,
+      256
+    ],
+    "nativeLogitsMAE": 0.00022217104560695589,
+    "nativeLogitsP99AbsoluteDifference": 0.0009206056711263955,
+    "nativeLogitsMaximumAbsoluteDifference": 0.0016074180603027344,
+    "sourceMaskShape": [
+      1333,
+      2000
+    ],
+    "sourceBinaryAgreement": 0.9999992498124531,
+    "sourceBinaryDifferentPixels": 2,
+    "sourceBinaryIoU": 0.9999946629093549,
+    "mpsSelectedIndices": [
+      1,
+      1
+    ],
+    "cpuSelectedIndices": [
+      1,
+      1
+    ],
+    "cpuSetImageSeconds": 0.5330981670413166,
+    "cpuEncoderKernelSeconds": 0.524189917021431,
+    "cpuPredictSeconds": [
+      0.025835041073150933,
+      0.020920458948239684
+    ],
+    "cpuPromptRepeatLogitDifference": 0.0
+  },
+  "separateEncoderProbe": {
+    "encoderKernelSeconds": 0.042164582991972566,
+    "maximumFeatureDifference": 0.0,
+    "setImageSeconds": 0.05206874990835786
+  },
+  "failedImportAttempt": {
+    "name": "efficientvit",
+    "repository": "mit-han-lab/efficientvit",
+    "revision": "de7d7733cc0329f391b33f1f459271562ec27bd5",
+    "archiveURL": "https://codeload.github.com/mit-han-lab/efficientvit/tar.gz/de7d7733cc0329f391b33f1f459271562ec27bd5",
+    "archiveSHA256": "df147f9df841cba530a5de51db57d6d8e2464a099bba574dc1f141a1114440b7",
+    "archiveBytes": 25735887,
+    "failure": "Unconditional CUDA/Triton import from DC-AE RMSNorm prevents clean macOS import; no inference attempted",
+    "stage": "official model-zoo import, before model construction/inference",
+    "errorType": "ModuleNotFoundError",
+    "errorMessage": "No module named 'triton'",
+    "errorModule": "efficientvit/models/nn/triton_rms_norm.py:2",
+    "pythonVersion": "3.11.16",
+    "packageVersions": {
+      "torch": "2.14.1",
+      "torchvision": "0.29.1",
+      "huggingface_hub": "2.2.0"
+    },
+    "remedy": "Use the last unmodified official source before DC-AE introduced the unconditional Triton import; no inference code patches"
+  },
+  "sources": [
+    {
+      "name": "efficientvit",
+      "repository": "mit-han-lab/efficientvit",
+      "revision": "e81ebbe761b2c75fc99b7827cb7dbd30a76c0ace",
+      "archiveURL": "https://codeload.github.com/mit-han-lab/efficientvit/tar.gz/e81ebbe761b2c75fc99b7827cb7dbd30a76c0ace",
+      "archiveSHA256": "0e45211a243cb342a2156f7da0d3b1e07f98dbd9c6761f1b40fda313a3a76636",
+      "archiveBytes": 82881179
+    },
+    {
+      "name": "segment-anything",
+      "repository": "facebookresearch/segment-anything",
+      "revision": "dca509fe793f601edb92606367a655c15ac00fdf",
+      "archiveURL": "https://codeload.github.com/facebookresearch/segment-anything/tar.gz/dca509fe793f601edb92606367a655c15ac00fdf",
+      "archiveSHA256": "b693c2358e9e1c63589a322b1baa6a6dc384df0013ff455d933d9a8e23549dab",
+      "archiveBytes": 19139738
+    }
+  ],
+  "priorMeasurements": [
+    "measurements.json",
+    "sam21-large-measurements.json"
+  ],
+  "limits": "Seven private photos, no ground truth, manual prompts, no VLM/text instruction or full application integration. Native Core ML and Python MPS timings use different precision, image geometry and output-copy/postprocessing scopes. CPU control is one image, not dataset-wide device equivalence."
+}
