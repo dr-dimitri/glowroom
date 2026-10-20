@@ -1,5 +1,10 @@
 # Lokaler Vergleich der Maskierungsmodelle
 
+**Textgesteuerte Ergänzung:** [Florence-2-large](florence2-large.md) wurde auf
+denselben sieben Proxys mit direkter Polygonsegmentierung und Phrase Grounding
+geprüft. Die übrigen Modelle wurden dafür nicht erneut ausgeführt; ihre finalen
+Masken und getrennten Messreihen dienen als Referenz.
+
 **Weitere Ergänzung:** Der [offizielle EfficientViT-SAM-L1-Test](efficientvit-sam-l1.md)
 untersucht den 512²-Encoder mit aktuellem Python/MPS-/Hugging-Face-Hub-Pfad,
 abweichendem Promptvertrag und denselben sieben Fotos. Die älteren Serien

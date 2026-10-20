@@ -97,6 +97,13 @@ records the required official source compatibility pin, actual inference runs
 and library interface limits; it does not claim Ultralytics/Transformers
 inference support for EfficientViT-SAM.
 
+The [Florence-2-large harness](florence2_README.md) tests the exact pinned
+Microsoft checkpoint through its original task processor, using a separate
+compatible Transformers runtime. It measures text-directed polygons and phrase
+grounding boxes separately. The [report](../../reports/mask-models/2026-10-20/florence2-large.md)
+compares the same private image proxies with previously saved masks; generated
+text, token IDs and full coordinates remain private alongside the masks.
+
 Process RSS includes each harness/runtime and omits some GPU/driver allocations.
 First-use measurements do not establish cold-cache performance: system caches
 are not purged. Loading, inference, aspect restoration and PNG export have
