@@ -93,6 +93,11 @@ die in der App verfügbaren Modelle nicht. Private Fotos und Vergleichsbilder
 bleiben ausschließlich lokal unter dem von Git ausgeschlossenen
 `Fixtures/LocalTestImages/Evaluation-20261020/`.
 
+Der [Folgetest von SAM 2.1 Hiera Large](../reports/mask-models/2026-10-20/sam21-large.md)
+enthält einen direkten nativen Core-ML-Vergleich mit Tiny bei identischen
+Vorschau-Dateien und finalen manuellen Auswahlvorgaben. Auch dieser Test ändert
+die Modellauswahl der App nicht.
+
 Die Himmelsauswahl ist ein Vorschlag eines allgemeinen COCO-Segmentierungsmodells. Feine Äste, Haare, transparente Flächen, Spiegelungen und ungewöhnliche Lichtverhältnisse können ungenaue Ränder oder falsche Auswahlteile erzeugen. Die Modelleingabe und das gespeicherte Raster sind bewusst begrenzt; es wird keine pixelgenaue Freistellung in voller RAW-Auflösung zugesichert. Bildgeführte Kantennachführung kann vollständig fehlende Zwischenräume nicht rekonstruieren, wenn die Ausgangsmaske dort und in ihrer Umgebung nur Vordergrund enthält. Pinsel und Radierer bleiben für solche Korrekturen verfügbar. Es werden keine Leistungs- oder Genauigkeitsgewinne gegenüber Lightroom behauptet.
 
 Pro Bearbeitung sind insgesamt höchstens 16 MiB automatische Raster zulässig; ein einzelnes Raster bleibt auf 2048 × 2048 Pixel begrenzt. Das JSON-Budget der vollständigen Bearbeitungseinstellungen beträgt 32 MiB einschließlich der codierten Raster. Die bestehenden Grenzen von 16 Masken sowie 16.384 Pinsel-/Korrekturpunkten in 1024 Strichen bleiben erhalten. Wird eine Grenze überschritten, bleibt der vorherige gültige Bearbeitungsstand erhalten.

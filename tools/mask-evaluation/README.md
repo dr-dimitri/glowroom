@@ -46,11 +46,28 @@ with `swiftc -O`; invoke with `MODEL.mlmodelc INPUTS OUTPUT gpu|cpu`.
 Validate its source package against `SubjectMattingApprovedPackage.json` first.
 
 `sam2-download.py` downloads and verifies the pinned public Apple Core ML
-conversion of Meta SAM 2.1 Tiny. `sam2.swift` has `compile` and `run` commands
-documented in its header. The encoder runs once per photo, while prompt and mask
-decoders repeat against its cached features. Output is thresholded segmentation,
-not a transparency matte. Run native GPU measurements with an accessible Core ML
-service; sandbox-limited runs must be labelled separately.
+conversions of Meta SAM 2.1 Tiny and Hiera Large. Select `--variant tiny|large`
+(default `tiny`); `--verify-only` validates existing files without downloading.
+Both variants pin all nine package files by length and SHA-256. Hashing streams
+the large encoder weights rather than allocating a weight-sized byte buffer.
+`sam2.swift` has `compile` and `run` commands documented in its header. Append
+`tiny` or `large` after the existing arguments; omitting the variant preserves
+the original Tiny interface. For example, from the repository root:
+
+```sh
+python tools/mask-evaluation/sam2-download.py /private/tmp/sam21-large/models --variant large
+swiftc -O tools/mask-evaluation/sam2.swift -o /private/tmp/sam21-large/benchmark
+/private/tmp/sam21-large/benchmark compile /private/tmp/sam21-large/models /private/tmp/sam21-large/compiled large
+/private/tmp/sam21-large/benchmark run /private/tmp/sam21-large/compiled /absolute/private-prompts.json /private/tmp/sam21-large/results gpu large
+```
+
+The encoder runs once per photo, while prompt and mask decoders repeat against
+its cached features. Both variants use the highest model-scored mask, bilinear
+logit restoration and a zero threshold; scores are not comparable accuracy
+measurements. Output is segmentation, not a transparency matte. Run native GPU
+measurements with an accessible Core ML service; sandbox-limited runs must be
+labelled separately. The [Large follow-up](../../reports/mask-models/2026-10-20/sam21-large.md)
+compares fresh Tiny/Large series on identical proxy bytes and final annotations.
 
 `ben2.py` uses ONNX Runtime in an isolated environment. Pin `onnxruntime==1.31.0`,
 plus NumPy/Pillow/psutil, and download `BEN2_Base.onnx` from the revision and
