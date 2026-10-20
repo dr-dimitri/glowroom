@@ -1,8 +1,0 @@
-warning: /Users/wolfgangbauer/Library/org.swift.swiftpm/configuration is not accessible or not writable, disabling user-level cache features.
-warning: /Users/wolfgangbauer/Library/org.swift.swiftpm/security is not accessible or not writable, disabling user-level cache features.
-warning: /Users/wolfgangbauer/Library/Caches/org.swift.swiftpm is not accessible or not writable, disabling user-level cache features.
-warning: 'picedit': failed storing manifest for 'picedit' in cache: attempt to write a readonly database
-Fetching https://github.com/huggingface/swift-transformers.git
-error: Failed to clone repository https://github.com/huggingface/swift-transformers.git:
-    Cloning into bare repository '/Users/wolfgangbauer/dev/workspace/picedit/.build-app/developer-tools/editing/repositories/swift-transformers-e50307c3'...
-    fatal: unable to access 'https://github.com/huggingface/swift-transformers.git/': Could not resolve host: github.com

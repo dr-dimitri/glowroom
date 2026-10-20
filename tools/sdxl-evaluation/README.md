@@ -2,11 +2,11 @@
 
 [Issue #77](https://github.com/dr-dimitri/picedit/issues/77) setzt die lokale Nachweisführung für [#1](https://github.com/dr-dimitri/picedit/issues/1) fort. Die produktive Bildgenerierung bleibt bis zum vollständigen Nachweis unavailable. Ein technischer Modelllauf allein schließt #13–16 nicht ab. Die bisherigen SD-1.5- und LaMa-No-Go-Ergebnisse bleiben unverändert.
 
-**Ergebnis der abgeschlossenen V8-Serie: No-Go für diese Konfiguration.** Alle zehn Vorhersagen wurden innerhalb ihrer Zeitgrenzen erzeugt; der erforderliche Qualitätsfall 05 und das native Abbruchgate bestehen jedoch nicht. [Messwerte](../../reports/image-backend/sdxl-inpainting-2026-10-18/v8-quality-and-cancel-no-go/measurement-summary.json), [visuelles Review](../../reports/image-backend/sdxl-inpainting-2026-10-18/v8-quality-and-cancel-no-go/visual-review.json) und damalige Quellen bleiben mit den älteren Versuchen erhalten.
+**Ergebnis der abgeschlossenen V8-Serie: No-Go für diese Konfiguration.** Alle zehn Vorhersagen wurden innerhalb ihrer Zeitgrenzen erzeugt; der erforderliche Qualitätsfall 05 und das native Abbruchgate bestehen jedoch nicht. Historische Rohberichte, Bilder und damalige Quellsnapshots wurden mit dem Reportsordner entfernt. Die Ergebnisse in diesem Dokument bleiben als historische Zusammenfassung erhalten. Neue Läufe benötigen explizite externe Eingaben und Ausgabeordner.
 
 ## Fortsetzung V10: gepinnter Euler-Zeitplan
 
-**Die tatsächliche V10-Einzelprobe bleibt No-Go:** 157,055 s bei 19 tatsächlichen Schritten, unveränderte Erhaltpixel, aber weiterhin breite dunkle Konturen und helle Säume. Zwei Sichtungen bestätigen den Pflichtfehler; keine vollständige Serie oder neue Abbruchfreigabe. [Rohdaten und Entscheidung](../../reports/image-backend/sdxl-schedule-qualification-2026-10-18/README.md).
+**Die tatsächliche V10-Einzelprobe bleibt No-Go:** 157,055 s bei 19 tatsächlichen Schritten, unveränderte Erhaltpixel, aber weiterhin breite dunkle Konturen und helle Säume. Zwei Sichtungen bestätigen den Pflichtfehler; keine vollständige Serie oder neue Abbruchfreigabe.
 
 Der aktuelle Builder verwendet den [gepinnten Modellzeitplan](provenance/reference-scheduler-semantics.json): Euler mit `leading`, `steps_offset=1`, 20 angeforderten Schritten und Stärke 0,99. Die Referenz wählt daraus 19 tatsächliche Schritte bei Trainingszeitpunkten 901, 851, …, 1 und eine abschließende Sigma-Null. Das bisherige SDK-`discrete` verwendete dagegen 20 Schritte von 999 bis 0. V10 übergibt die ausgewählten Sigmas über die öffentliche `custom_sigmas`-Schnittstelle. Gewichte, CFG, Prompt, Seed, Nearest-Maske, Kachelung und finale Komposition bleiben gleich. Dies prüft eine Zeitplanabweichung; es behauptet keine vollständige numerische Gleichheit mit Diffusers.
 
@@ -16,7 +16,7 @@ Die zunächst erwogene Abschaltung der Original-Latent-Rückmischung wird nicht 
 python3 -B tools/sdxl-evaluation/probe_denoise_mask.py --help
 ```
 
-Der Runner prüft Archiv, Quellvertrag und Fixture vor der Kompilierung. Die breite Kontrollmaske prüft, dass die Bedingung nicht stets falsch ist.
+Der Runner benötigt die extern vorhandene Pflichtmaske über `--mask-fixture /private/tmp/picedit-fixture-archive/fixtures/05-fine-motif-edges-mask-hard.png` und prüft Archiv, Quellvertrag und Fixture vor der Kompilierung. Die breite Kontrollmaske prüft, dass die Bedingung nicht stets falsch ist.
 
 Builder, Konverter und Swift-Harness verlangen für neue Ausführungen zusätzlich `sdkScheduleBaselineReproduced`, `sdkScheduleRegressionPassed`, `sdxlSchedule = euler-leading-strength099-v1` und die Hashes des Zeitplan-Headers sowie des nativen Regressionstests. Der Test prüft den tatsächlichen SDK-Zeitplan, die tatsächliche öffentliche Übergabe und die quellgeprüfte Formel der nachfolgenden Stärkeauswahl. Diese kleine Probe führt den privaten VAE-Bildpfad nicht aus; dessen tatsächliche Schrittzahl muss zusätzlich das Inferenzlog bestätigen. Bestehende V9-Receipts autorisieren keine neue V10-Ausführung.
 
@@ -24,27 +24,27 @@ Ein frischer privater Root und neue Ausgabeordner bewahren frühere Nachweise. Z
 
 ```sh
 python3 -B tools/sdxl-evaluation/prepare.py --root /private/tmp/picedit-sdxl-qualification-v10 --offline --source-cache /private/tmp/picedit-sdxl-qualification-v9/inputs
-python3 -B tools/sdxl-evaluation/build_native.py --root /private/tmp/picedit-sdxl-qualification-v10 --build --cmake /absolute/path/to/cmake
+python3 -B tools/sdxl-evaluation/build_native.py --root /private/tmp/picedit-sdxl-qualification-v10 --build --mask-fixture /private/tmp/picedit-fixture-archive/fixtures/05-fine-motif-edges-mask-hard.png --cmake /absolute/path/to/cmake
 python3 -B tools/sdxl-evaluation/convert.py --root /private/tmp/picedit-sdxl-qualification-v10 --convert
-./scripts/evaluate-image-generation.sh sdxl --run --probe-case 05-fine-motif-edges-hard --root /private/tmp/picedit-sdxl-qualification-v10 --out /private/tmp/picedit-sdxl-v10-fine-edges
+./scripts/evaluate-image-generation.sh sdxl --run --fixture-archive /private/tmp/picedit-fixture-archive --probe-case 05-fine-motif-edges-hard --root /private/tmp/picedit-sdxl-qualification-v10 --out /private/tmp/picedit-sdxl-v10-fine-edges
 ```
 
 ## Fortsetzung V9: isolierte Masken- und Abbruchqualifikation
 
 V9 ergänzte eine getrennte **Maskenvariante**, die in V10 erhalten bleibt. Die [gehashte Diffusers-Referenz](provenance/reference-mask-semantics.json) verwendet gewöhnliches Nearest-Sampling für den UNet-Maskenkanal. Das bisherige SDK-`NearestMax` verliert in Pflichtfall 05 sämtliche geschützten Latentzellen; die neue, ausschließlich für `VERSION_SDXL_INPAINT` gewählte Interpolation erhält 141 von 16.384 Zellen. Der [Patch](sdk-sdxl-mask.patch) ändert weder Originalgewichte, native Masken noch Denoise-Blending. Dies ist eine geprüfte Algorithmusabweichung und zunächst eine Qualitätshypothese, kein Produkt-Go.
 
-**Die tatsächliche V9-Probe ist abgeschlossen und bleibt No-Go:** Nach 163,944 Sekunden sind weiterhin breite schwarze Konturen und helle Säume neben den feinen Erhaltlinien sichtbar. Zwei Sichtungen bestätigen den Pflichtfehler. Die separate Abbruchprobe bestätigt das Prozessende nach 4,067 Sekunden mit SIGKILL, jedoch ohne native kooperative Rückkehr. Entsprechend wird keine vollständige Wiederholungsserie oder Produktfreigabe behauptet; [neue Rohdaten und Entscheidung](../../reports/image-backend/sdxl-mask-qualification-2026-10-18/README.md) bleiben von V1–V8 getrennt.
+**Die tatsächliche V9-Probe ist abgeschlossen und bleibt No-Go:** Nach 163,944 Sekunden sind weiterhin breite schwarze Konturen und helle Säume neben den feinen Erhaltlinien sichtbar. Zwei Sichtungen bestätigen den Pflichtfehler. Die separate Abbruchprobe bestätigt das Prozessende nach 4,067 Sekunden mit SIGKILL, jedoch ohne native kooperative Rückkehr. Entsprechend wird keine vollständige Wiederholungsserie oder Produktfreigabe behauptet. Die historische Entscheidung bleibt von V1–V8 getrennt.
 
 Der neue [native CPU-Test](sdxl_mask_regression.cpp) prüft die unveränderte Baseline, den tatsächlichen gepatchten SDK-Helfer, asymmetrische Koordinaten und unveränderte andere Modellpfade. Der Builder verlangt vor Veröffentlichung zusätzlich `sdkMaskBaselineReproduced`, `sdkMaskRegressionPassed`, `sdxlMaskInterpolation = nearest-v1` sowie Patch-, Test- und Fixturehashes. Konverter und Swift-Harness weisen alte Receipts für neue Ausführungen ab; historische Installationen und Rohberichte werden nicht umgeschrieben. Ein neuer privater Root mit erneut geprüften Eingaben ist erforderlich.
 
 Zuerst wird ausschließlich dieselbe eingefrorene Pflichtfixture 05 erneut erzeugt. Nur bei ausreichendem Ergebnis folgt eine vollständige Serie. Die separate Abbruchprobe liefert unabhängig davon Messwerte zum Prozessende:
 
 ```sh
-./scripts/evaluate-image-generation.sh sdxl --run --probe-case 05-fine-motif-edges-hard --root /private/tmp/picedit-sdxl-qualification-v9 --out /private/tmp/picedit-sdxl-v9-fine-edges
-./scripts/evaluate-image-generation.sh sdxl --run --cancellation-only --root /private/tmp/picedit-sdxl-qualification-v9 --out /private/tmp/picedit-sdxl-v9-cancellation
+./scripts/evaluate-image-generation.sh sdxl --run --fixture-archive /private/tmp/picedit-fixture-archive --probe-case 05-fine-motif-edges-hard --root /private/tmp/picedit-sdxl-qualification-v9 --out /private/tmp/picedit-sdxl-v9-fine-edges
+./scripts/evaluate-image-generation.sh sdxl --run --fixture-archive /private/tmp/picedit-fixture-archive --cancellation-only --root /private/tmp/picedit-sdxl-qualification-v9 --out /private/tmp/picedit-sdxl-v9-cancellation
 ```
 
-`--probe-case` wählt genau einen bekannten Fall einschließlich Maskenart; dieser Lauf behauptet keine warmen Wiederholungen oder parallele Vorschau. `--cancellation-only` führt keine vollständige Vorhersage- oder Replayserie aus. Beide benötigen das ausdrückliche `--run`; numerische Diagnose und diese Probenmodi sind gegenseitig ausgeschlossen. `qualificationScope` hält den tatsächlichen Umfang fest. Die ergänzenden [V9-Nachweise](../../reports/image-backend/sdxl-mask-qualification-2026-10-18/README.md) sind von V1–V8 getrennt.
+`--probe-case` wählt genau einen bekannten Fall einschließlich Maskenart; dieser Lauf behauptet keine warmen Wiederholungen oder parallele Vorschau. `--cancellation-only` führt keine vollständige Vorhersage- oder Replayserie aus. Beide benötigen das ausdrückliche `--run`; numerische Diagnose und diese Probenmodi sind gegenseitig ausgeschlossen. `qualificationScope` hält den tatsächlichen Umfang fest. Die historische V9-Zusammenfassung oben ist von V1–V8 getrennt.
 
 Alle SDXL-Abbruch-/Fehler-/Schließpfade teilen jetzt die erste absolute Fünfsekundenfrist. Ein unabhängiger Wächter versucht nach vier Sekunden SIGKILL und misst bis zur Rückkehr von `Process.waitUntilExit`, vor dem Leeren der Logreader. Auch bei Fristüberschreitung bleibt die Ressourcenlease bis zum tatsächlichen Ende belegt. Blockierendes Schreiben an den Helper darf den Wächter nicht blockieren. `cancelGatePassed` verlangt weiterhin eine kooperative `cancelled`-Rückkehr und bestätigtes Ende innerhalb der unveränderten Frist. `cancelProcessContainmentGatePassed` kann auch bei ausdrücklich ausgewiesener erzwungener Beendigung bestehen; es erteilt kein kooperatives oder Produkt-Go. Beide Probe-Gates verlangen den tatsächlich beobachteten Fortschrittsauslöser; ein Fehler vor diesem Auslöser kann nur Aufräumwerte liefern. Der SDK-Callback kann Laden oder VAE melden und beweist keinen bestimmten UNet-Schritt.
 
@@ -78,7 +78,7 @@ Jeder tatsächliche Schritt ist ein eigener ausdrücklicher Aufruf:
 
 ```sh
 python3 -B tools/sdxl-evaluation/prepare.py --root /private/tmp/picedit-sdxl --download
-python3 -B tools/sdxl-evaluation/build_native.py --root /private/tmp/picedit-sdxl --build --cmake /absolute/path/to/cmake
+python3 -B tools/sdxl-evaluation/build_native.py --root /private/tmp/picedit-sdxl --build --mask-fixture /private/tmp/picedit-fixture-archive/fixtures/05-fine-motif-edges-mask-hard.png --cmake /absolute/path/to/cmake
 python3 -B tools/sdxl-evaluation/convert.py --root /private/tmp/picedit-sdxl --convert
 ```
 
@@ -104,6 +104,8 @@ Insbesondere initialisiert die tatsächliche gepinnte [SDK-Klasse `Conv2d`](http
 
 ## Eigene SDXL-Konfiguration und Messung
 
+Für echte Bildläufe ist `--fixture-archive` mit einem extern vorhandenen Archivbaum (`provenance/fixtures-manifest.json` und `fixtures/`) erforderlich. Die gepinnten Originalhashes bleiben verbindlich; neu erzeugte Contract-Fixtures ersetzen das historische Archiv nicht. Der native Builder benötigt daraus die Pflichtmaske über `--mask-fixture`.
+
 Die Probe verwendet **1024×1024**, 20 nominale Euler-Schritte, CFG 8, Seed 4281 und Stärke 0,99. V10 führt daraus nach Referenz-Stärkeauswahl tatsächlich 19 Schritte aus; ältere Varianten führten 20 aus. Native Fixturepixel werden ohne Skalierung durch eine zentrierte ganzzahlige Translation eingebettet. Gerades RGB und die binäre Modellmaske verwenden denselben Clamp-Sampler einschließlich künstlichen Paddings. Quellalpha und native Softmaske bleiben separat für das finale Compositing.
 
 Die ab V5 untersuchte Ausführungsvariante verwendet gebündelte CFG-Berechnung (`batchedCFG=true`) und ein angefordertes SDK-Limit von 5 GiB für verwalteten GPU-Speicher. Diffusion und VAE verwenden Metal, der Textencoder läuft auf der CPU mit Parametern vom Datenträger. Die Modellparameter, 20 Schritte und übergreifende Grenze von 6 GiB bleiben unverändert. Das SDK-Limit ersetzt keine Prozessspeicherprüfung und ist keine Betriebssystemquote.
@@ -111,7 +113,7 @@ Die ab V5 untersuchte Ausführungsvariante verwendet gebündelte CFG-Berechnung 
 Die abgeschlossene V8-Konfiguration verwendet VAE-Tiles von 640×640 Pixeln. Der tatsächliche Plan umfasst vier Tiles mit Startkoordinaten 0 und 384 je Achse, also 256 Pixel wirksame Überlappung. Die Gewichts- und übrigen Modellparameter bleiben erhalten; V8 prüfte die korrigierte Metal-Operation ohne numerische Callbacks.
 
 ```sh
-./scripts/evaluate-image-generation.sh sdxl --run --all-fixtures --root /private/tmp/picedit-sdxl --out /private/tmp/picedit-sdxl-probe
+./scripts/evaluate-image-generation.sh sdxl --run --fixture-archive /private/tmp/picedit-fixture-archive --all-fixtures --root /private/tmp/picedit-sdxl --out /private/tmp/picedit-sdxl-probe
 ```
 
 Ohne `--run` wird bereits der vorgeschaltete Entwicklerbuild abgewiesen. Der neue Berichtsordner darf nicht existieren. Der explizite SwiftPM-Entwicklerbuild kann gepinnte Paketabhängigkeiten abrufen, lädt aber keine Modelle. Ohne `--all-fixtures` wird nur das erste Bild mit drei warmen Wiederholungen und technischer Abbruch-/Vorschauprobe untersucht; dies reicht für kein vollständiges Qualitäts-Go.
@@ -121,7 +123,7 @@ Ohne `--run` wird bereits der vorgeschaltete Entwicklerbuild abgewiesen. Der neu
 Der [Swift-Evaluator](../../Sources/PicEdit/DeveloperTools/ImageGenerationEvaluation.swift) prüft die Build-, Patch- und Regressionsnachweise vor dem Modellstart. Eine ausdrückliche numerische Diagnose verwendet genau einen Fall und die öffentliche SDK-Callback-Schnittstelle:
 
 ```sh
-./scripts/evaluate-image-generation.sh sdxl --run --numeric-diagnostic --root /private/tmp/picedit-sdxl --out /private/tmp/picedit-sdxl-numeric
+./scripts/evaluate-image-generation.sh sdxl --run --fixture-archive /private/tmp/picedit-fixture-archive --numeric-diagnostic --root /private/tmp/picedit-sdxl --out /private/tmp/picedit-sdxl-numeric
 ```
 
 Der [native Helper](helper.cpp) liest an bis zu fünf fest benannten Verarbeitungsgrenzen jeweils höchstens 256 F32-Werte zurück, also 1 KiB pro Grenze. Er untersucht erste Tiles und den ersten gebündelten UNet-Ausgang; ungesampelte Werte, weitere Tiles und spätere Schritte bleiben ungeprüft. Fehlt eine erwartete Grenze oder enthält eine Stichprobe einen nichtfiniten Wert, wird kein Ergebnis-PNG veröffentlicht. Die Callback-Registrierung wird durch RAII auch auf Fehlerpfaden zurückgesetzt; der native Selbsttest muss für diesen Diagnosemodus nachgewiesen sein. Die zusätzlichen Synchronisierungen machen diese Diagnose ungeeignet für repräsentative Laufzeitvergleiche, warme Wiederholungen oder eine Produktfreigabe.
@@ -145,31 +147,31 @@ PICEDIT_TEST_BUILD_PATH=/private/tmp/picedit-sdxl-tests ./scripts/test.sh --filt
 Die zusätzliche CLI-Prüfung verwendet einen bereits gebauten Entwickler-Executable:
 
 ```sh
-python3 -B tools/sdxl-evaluation/probe_replay_cli.py --binary /absolute/path/to/PicEdit
+python3 -B tools/sdxl-evaluation/probe_replay_cli.py --binary /absolute/path/to/PicEdit --archive /private/tmp/picedit-lama-v2
 ```
 
-Sie prüft die tatsächlich gespeicherten Fall-IDs, die beobachtbare Straight-RGB-/Alpha-Behandlung und das Abweisen fehlerhafter Replay-Metadaten. Dazu verpackt sie archivierte LaMa-Ausgabebilder ausdrücklich in synthetische SDXL-Metadaten. Sie baut und lädt kein Modell und führt keine Inferenz aus. Ihre Ergebnisse sind ausschließlich ein CLI-/Compositor-Vertragstest, kein SDXL-Qualitäts- oder Laufzeitnachweis. Temporäre Prüfdateien und Protokolle bleiben im ausgegebenen Prüfverzeichnis erhalten.
+Sie prüft die tatsächlich gespeicherten Fall-IDs, die beobachtbare Straight-RGB-/Alpha-Behandlung und das Abweisen fehlerhafter Replay-Metadaten. Dazu benötigt sie einen extern vorhandenen LaMa-V2-Ergebnisbaum mit `native/artifacts/` und `compositor/current-compositor-report.json` (`--archive`) und verpackt dessen Ausgabebilder ausdrücklich in synthetische SDXL-Metadaten. Sie baut und lädt kein Modell und führt keine Inferenz aus. Ihre Ergebnisse sind ausschließlich ein CLI-/Compositor-Vertragstest, kein SDXL-Qualitäts- oder Laufzeitnachweis. Temporäre Prüfdateien und Protokolle bleiben im ausgegebenen Prüfverzeichnis erhalten.
 
 ## Stand der tatsächlichen Prüfung
 
-Die bisherigen Versuche sind einschließlich damaliger Quellen, Konfigurationen, Protokolle und Ergebnisse erhalten:
+Die folgenden historischen Versuche sind hier zusammengefasst; ihre Quellenkopien, Rohprotokolle und Ergebnisdateien sind im aktuellen Repository nicht mehr enthalten:
 
 | Versuch | Tatsächlicher Stand |
 | --- | --- |
-| [V1](../../reports/image-backend/sdxl-inpainting-2026-10-18/v1-load-failure/) | Laden fehlgeschlagen; kein Bild erzeugt. |
-| [V2](../../reports/image-backend/sdxl-inpainting-2026-10-18/v2-loader-diagnosis/) | Diagnose desselben Modells: falsche SD-1.x-Erkennung infolge des zweiten Textencoder-Präfixes; kein Bild erzeugt. |
-| [V3](../../reports/image-backend/sdxl-inpainting-2026-10-18/v3-cpu-vae-timeout/) | Mit SDK-Korrektur und bestandenem SDK-Regressionstest als `SDXL Inpaint` geladen; VAE auf der CPU. Erste Vorhersage überschritt die Frist von 180 s, kein fertiges Bild. Prozessende bestätigt. |
-| [V4](../../reports/image-backend/sdxl-inpainting-2026-10-18/v4-metal-vae-timeout/) | VAE und Diffusion auf Metal, CFG weiterhin ungebündelt und angefordertes verwaltetes GPU-Budget 4 GiB. Erste Vorhersage überschritt dieselbe Frist; kein fertiges Bild. Prozessende bestätigt. |
-| [V5](../../reports/image-backend/sdxl-inpainting-2026-10-18/v5-batched-cfg-timeout/) | Gebündelte CFG-Berechnung und 5 GiB angefordertes verwaltetes GPU-Budget; erste Vorhersage überschritt 180 s, kein fertiges Bild. |
-| [V6](../../reports/image-backend/sdxl-inpainting-2026-10-18/v6-white-output/) | Erste Vorhersage abgeschlossen: 165,228 s, kalt einschließlich Laden 165,519 s. Der native Crop ist exakt deckend weiß; der aktuelle Compositor erzeugt einen weißen Kreis statt der fortgesetzten Holztextur. Diese Konfiguration besteht den ersten erforderlichen Qualitätsfall nicht. |
-| [V7](../../reports/image-backend/sdxl-inpainting-2026-10-18/v7-unet-nonfinite-diagnostic/) | Öffentliche Float-Callbacks: beide VAE-Encoder-Stichproben mit je 256 Werten finit; am ersten gebündelten UNet-Ausgang 128 Stichproben des ersten Batches finit und 128 des zweiten Batches NaN. Kontrollierter Stopp ohne PNG. Die Diagnosezeit ist kein repräsentativer Benchmark. |
-| [V8](../../reports/image-backend/sdxl-inpainting-2026-10-18/v8-quality-and-cancel-no-go/) | Alle zehn Vorhersagen abgeschlossen, einschließlich drei identischer warmer Wiederholungen und aktuellem Compositor-Replay. Qualitätsfall 05 und Abbruchgate fehlgeschlagen: No-Go für diese Konfiguration. |
+| V1 | Laden fehlgeschlagen; kein Bild erzeugt. |
+| V2 | Diagnose desselben Modells: falsche SD-1.x-Erkennung infolge des zweiten Textencoder-Präfixes; kein Bild erzeugt. |
+| V3 | Mit SDK-Korrektur und bestandenem SDK-Regressionstest als `SDXL Inpaint` geladen; VAE auf der CPU. Erste Vorhersage überschritt die Frist von 180 s, kein fertiges Bild. Prozessende bestätigt. |
+| V4 | VAE und Diffusion auf Metal, CFG weiterhin ungebündelt und angefordertes verwaltetes GPU-Budget 4 GiB. Erste Vorhersage überschritt dieselbe Frist; kein fertiges Bild. Prozessende bestätigt. |
+| V5 | Gebündelte CFG-Berechnung und 5 GiB angefordertes verwaltetes GPU-Budget; erste Vorhersage überschritt 180 s, kein fertiges Bild. |
+| V6 | Erste Vorhersage abgeschlossen: 165,228 s, kalt einschließlich Laden 165,519 s. Der native Crop ist exakt deckend weiß; der aktuelle Compositor erzeugt einen weißen Kreis statt der fortgesetzten Holztextur. Diese Konfiguration besteht den ersten erforderlichen Qualitätsfall nicht. |
+| V7 | Öffentliche Float-Callbacks: beide VAE-Encoder-Stichproben mit je 256 Werten finit; am ersten gebündelten UNet-Ausgang 128 Stichproben des ersten Batches finit und 128 des zweiten Batches NaN. Kontrollierter Stopp ohne PNG. Die Diagnosezeit ist kein repräsentativer Benchmark. |
+| V8 | Alle zehn Vorhersagen abgeschlossen, einschließlich drei identischer warmer Wiederholungen und aktuellem Compositor-Replay. Qualitätsfall 05 und Abbruchgate fehlgeschlagen: No-Go für diese Konfiguration. |
 
 V1 und V2 verwenden den Export mit SHA-256 `55570c0dd79d37cd4d4e44a1e2c7613c161e4ac6385215705968593d0825226e`. Die Namenskorrektur ergibt ab V3 den neu aus den gleichen Originaleingaben konvertierten Export mit SHA-256 `2e0d24d76de6557144948429e7e86ca2d0a03aa920402529cef1df6665c72531`. Die Quellenpinning- und Qualitätsgrenzen wurden dabei nicht gelockert.
 
-Für den historischen Versuch V6 bestätigt der kanonische RGBA8-Hash `f5fb04aa5b882706b9309e885f19477261336ef76a150c3b4d3489dfac3953ec` den exakt weißen nativen Crop. Das [damalige Compositor-Replay und visuelle Review](../../reports/image-backend/sdxl-inpainting-2026-10-18/v6-white-output/visual-review.json) prüften 244.263 Erhaltpixel: kein RGBA-Byte außerhalb der Ersetzungsmaske und kein Quellalpha-Byte wurde verändert. Der weiße Kreis war ein klarer Qualitätsfehler dieser Ausgabe. Das RGB8-Ergebnis allein lokalisierte seine Ursache nicht. V7 belegte anschließend NaN-Stichproben in einem UNet-Batch; der separate kleine GPU-Test reproduzierte den unbehandelten Folgebatch bei Metal-`GROUP_NORM`. V8 lieferte nach der Korrektur echte Bildinhalte statt dieser Weißausgabe. Daraus folgt keine pauschale Qualitätsaussage über die Modellfamilie und kein Nachweis einer durchgehend vollständigen F32-Ausführung.
+Für den historischen Versuch V6 bestätigt der kanonische RGBA8-Hash `f5fb04aa5b882706b9309e885f19477261336ef76a150c3b4d3489dfac3953ec` den exakt weißen nativen Crop. Das damalige Compositor-Replay und visuelle Review prüften 244.263 Erhaltpixel: kein RGBA-Byte außerhalb der Ersetzungsmaske und kein Quellalpha-Byte wurde verändert. Der weiße Kreis war ein klarer Qualitätsfehler dieser Ausgabe. Das RGB8-Ergebnis allein lokalisierte seine Ursache nicht. V7 belegte anschließend NaN-Stichproben in einem UNet-Batch; der separate kleine GPU-Test reproduzierte den unbehandelten Folgebatch bei Metal-`GROUP_NORM`. V8 lieferte nach der Korrektur echte Bildinhalte statt dieser Weißausgabe. Daraus folgt keine pauschale Qualitätsaussage über die Modellfamilie und kein Nachweis einer durchgehend vollständigen F32-Ausführung.
 
-Die V6-Serie wurde nach ihrem ersten fehlgeschlagenen Pflichtbild per SIGINT gestoppt. Der Helper endete tatsächlich, die Ressourcenlease blieb bis zu diesem Ende gehalten. Die seinerzeit fehlenden warmen Wiederholungen und weiteren Pflichtbilder wurden erst mit V8 untersucht; die historischen V6-Protokolle bleiben unverändert.
+Die V6-Serie wurde nach ihrem ersten fehlgeschlagenen Pflichtbild per SIGINT gestoppt. Der Helper endete tatsächlich, die Ressourcenlease blieb bis zu diesem Ende gehalten. Die seinerzeit fehlenden warmen Wiederholungen und weiteren Pflichtbilder wurden erst mit V8 untersucht; die damaligen V6-Protokolle wurden mit den historischen Berichten entfernt.
 
 ## Abgeschlossene V8-Messung und Entscheidung
 
@@ -179,7 +181,7 @@ Der berichtete kombinierte Speicherhöchstwert beträgt **3.757.559.360 Byte**. 
 
 Die synthetische Vorschauprobe lieferte 31 Baseline- und 1.555 parallele Samples. P95 betrug 12,955 ms ohne und 10,734 ms während der Inferenz; das definierte synthetische Gate ist damit erfüllt. Das sind weder echte Produktvorschauen noch RAW-Messungen, und die Werte belegen keine allgemeine Beschleunigung durch Inferenz.
 
-Das [visuelle Review](../../reports/image-backend/sdxl-inpainting-2026-10-18/v8-quality-and-cancel-no-go/visual-review.json) hält den eindeutigen Qualitätsfehler von Fall 05 fest: Neu erzeugte breite schwarze Zweige und helle Säume um die erhaltenen grünen Motivlinien ersetzen die feinen Kanten. Die beige Hintergrundfläche entspricht dem Prompt; die zusätzlichen Konturen verletzen das Gate. Fall 01 wurde von den Reviewern unterschiedlich bewertet, bei 02 und 03 sind Nähte erkennbar. Fall 06 erzeugt zusätzliche Rahmen, Paneele und blaue Rechtecke statt nahtloser Fortsetzung; er ist ausschließlich eine Canvas-Diagnose und begründet keine Outpainting-Freigabe. Das aktuelle Compositing erhält in allen zehn Fällen die geprüften RGBA-Bytes außerhalb der Ersetzungsmaske und die Quellalpha-Bytes unverändert. Dieser technische Erhalt ersetzt keine visuelle Qualitätsprüfung.
+Das damalige visuelle Review dokumentierte den eindeutigen Qualitätsfehler von Fall 05: Neu erzeugte breite schwarze Zweige und helle Säume um die erhaltenen grünen Motivlinien ersetzen die feinen Kanten. Die beige Hintergrundfläche entspricht dem Prompt; die zusätzlichen Konturen verletzen das Gate. Fall 01 wurde von den Reviewern unterschiedlich bewertet, bei 02 und 03 sind Nähte erkennbar. Fall 06 erzeugt zusätzliche Rahmen, Paneele und blaue Rechtecke statt nahtloser Fortsetzung; er ist ausschließlich eine Canvas-Diagnose und begründet keine Outpainting-Freigabe. Das aktuelle Compositing erhält in allen zehn Fällen die geprüften RGBA-Bytes außerhalb der Ersetzungsmaske und die Quellalpha-Bytes unverändert. Dieser technische Erhalt ersetzt keine visuelle Qualitätsprüfung.
 
 Auch das Abbruchgate ist nicht bestanden: Innerhalb von 5 s lag keine abgeschlossene native Abbruchrückkehr vor. Nach Timeout und begrenztem Herunterfahren wurde der Helper per SIGKILL beendet; Exit 9 und das tatsächliche Einsammeln des Prozesses sind bestätigt. Ein Abbruch-PNG wurde nicht publiziert. Die genaue Gesamtdauer vom Abbruch bis zum Prozessende wurde nicht aufgezeichnet; daraus darf kein bestandener Prozess-Endzeitnachweis abgeleitet werden. Die Ressourcenlease blieb bis zum tatsächlichen Ende gehalten.
 

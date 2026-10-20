@@ -36,6 +36,28 @@ private func json(_ url: URL) throws -> JSONObject {
     guard let value = try JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? JSONObject else { throw Failure.code("invalid-json-object") }
     return value
 }
+// Explicit external inputs replace the removed in-repository evidence archive.
+// Validate before model compilation/loading or an inference resource lease.
+private func validateFixtureArchive(_ archive: URL) throws {
+    let repository = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+        .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().resolvingSymlinksInPath()
+    let path = archive.resolvingSymlinksInPath().path
+    try require(path != repository.path && !path.hasPrefix(repository.path + "/"), "fixture-archive-must-be-external")
+    let manifest = archive.appendingPathComponent("provenance/fixtures-manifest.json")
+    try require(FileManager.default.fileExists(atPath: manifest.path),
+                "fixture-archive-missing-provenance/fixtures-manifest.json; supply --fixture-archive")
+    try require(try hash(manifest) == fixtureSHA, "fixture-archive-manifest-hash")
+    // Keep every image pin from the original tool package; missing/corrupt
+    // inputs must fail before model work, including the canvas ROI reference.
+    let packageURL = repository.appendingPathComponent("tools/image-generation-evaluation/evaluation-package.json")
+    try require(try hash(packageURL) == "7dbd04800b71a868442c99ad85e3daf1d2f4051658a65fb48a992ac0baf07ce8",
+                "fixture-archive-package-pin")
+    for entry in try json(packageURL)["fixtureFiles"] as! [JSONObject] {
+        let file = archive.appendingPathComponent(entry["path"] as! String)
+        try require(FileManager.default.fileExists(atPath: file.path), "fixture-archive-missing-" + file.lastPathComponent)
+        try require(try hash(file) == entry["sha256"] as! String, "fixture-archive-file-hash-" + file.lastPathComponent)
+    }
+}
 private func writeJSON(_ value: Any, _ url: URL) throws {
     try JSONSerialization.data(withJSONObject: value, options: [.prettyPrinted, .sortedKeys]).write(to: url, options: .atomic)
 }
@@ -401,7 +423,7 @@ private func benchmark(directory: URL, allFixtures: Bool) throws {
     if let failure { throw failure }
 }
 
-private func sdxlBenchmark(directory: URL, allFixtures: Bool, numericDiagnostic: Bool = false,
+private func sdxlBenchmark(directory: URL, fixtureArchive: URL, allFixtures: Bool, numericDiagnostic: Bool = false,
                            probeCase: String? = nil, cancellationOnly: Bool = false) throws {
     signal(SIGPIPE, SIG_IGN)
     stopControl.setDeadline(now() + (allFixtures ? 2400 : 1000))
@@ -499,7 +521,7 @@ private func sdxlBenchmark(directory: URL, allFixtures: Bool, numericDiagnostic:
                     conversion["helperSHA256"] as? String == installation["helperSHA256"] as? String, "sdxl-conversion-inputs")
         try require(try hash(root.appendingPathComponent("model-q8_0.gguf")) == conversion["modelSHA256"] as? String, "sdxl-converted-hash")
         report["installation"] = installation; report["conversion"] = conversion
-        let historical = repository.appendingPathComponent("reports/image-backend/historical-2026-10-16")
+        let historical = fixtureArchive
         let manifest = historical.appendingPathComponent("provenance/fixtures-manifest.json")
         try require(try hash(manifest) == fixtureSHA, "sdxl-fixture-manifest-hash")
         let fixtures = try json(manifest)["fixtures"] as! [JSONObject]
@@ -706,13 +728,15 @@ private struct ImageGenerationEvaluation {
         case "lama":
             try require(arguments.contains("--run"), "explicit-run-required")
             let modelRoot = try option("--root"), output = try option("--out")
+            let inspect = arguments.contains("--inspect")
+            let fixtureArchive = inspect ? nil : try option("--fixture-archive")
+            if let fixtureArchive { try validateFixtureArchive(fixtureArchive) }
             let repository = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
                 .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
-            let inspect = arguments.contains("--inspect")
             let budget = AIResourceBudget.shared
             let lease = try await budget.acquireLocalInference(residentBytes: Int64(memoryLimit))
             do {
-                try await Task.detached { try LaMaEvaluation.run(root: modelRoot, repository: repository, output: output, inspectOnly: inspect) }.value
+                try await Task.detached { try LaMaEvaluation.run(root: modelRoot, repository: repository, fixtureArchive: fixtureArchive, output: output, inspectOnly: inspect) }.value
             } catch { await budget.release(lease); throw error }
             await budget.release(lease)
             if !inspect {
@@ -727,6 +751,8 @@ private struct ImageGenerationEvaluation {
             }
         case "sdxl":
             try require(arguments.contains("--run"), "explicit-run-required")
+            let fixtureArchive = try option("--fixture-archive")
+            try validateFixtureArchive(fixtureArchive)
             root = try option("--root")
             let output = try option("--out"), all = arguments.contains("--all-fixtures")
             let diagnostic = arguments.contains("--numeric-diagnostic")
@@ -739,7 +765,7 @@ private struct ImageGenerationEvaluation {
             try require(!diagnostic || (probeCase == nil && !cancellationOnly), "incompatible-sdxl-probe-modes")
             let budget = AIResourceBudget.shared
             let lease = try await budget.acquireLocalInference(residentBytes: Int64(memoryLimit))
-            do { try await Task.detached { try sdxlBenchmark(directory: output, allFixtures: all || probeCase != nil, numericDiagnostic: diagnostic,
+            do { try await Task.detached { try sdxlBenchmark(directory: output, fixtureArchive: fixtureArchive, allFixtures: all || probeCase != nil, numericDiagnostic: diagnostic,
                     probeCase: probeCase, cancellationOnly: cancellationOnly) }.value }
             catch { await budget.release(lease); throw error }
             await budget.release(lease)

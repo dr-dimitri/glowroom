@@ -39,11 +39,18 @@ def main():
     parser.add_argument("--binary", type=Path, required=True,
                         help="already built image-generation developer executable; never built by this probe")
     parser.add_argument("--repository", type=Path, default=Path(__file__).resolve().parents[2])
+    parser.add_argument("--archive", type=Path, required=True,
+                        help="external LaMa V2 archive containing native/artifacts and compositor report")
     parser.add_argument("--output-parent", type=Path, default=Path(tempfile.gettempdir()))
     args = parser.parse_args()
     binary = args.binary.resolve(strict=True)
     repository = args.repository.resolve(strict=True)
-    original = repository / "reports/image-backend/lama-coreml-2026-10-18/v2-straight-rgb"
+    original = args.archive.resolve(strict=True)
+    require(original != repository and repository not in original.parents,
+            "--archive must be outside the repository")
+    require((original / "native/artifacts").is_dir() and
+            (original / "compositor/current-compositor-report.json").is_file(),
+            "--archive must contain native/artifacts and compositor/current-compositor-report.json")
     artifacts = original / "native/artifacts"
     golden = {case["caseID"]: case for case in
               json.loads((original / "compositor/current-compositor-report.json").read_text())["cases"]}

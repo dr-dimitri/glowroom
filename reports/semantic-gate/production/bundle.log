@@ -1,6 +1,0 @@
-{
-  "output": "/private/tmp/picedit-semantic-product-reproduction/PicEdit-Semantic-Model",
-  "source_bytes": 975162333,
-  "release": "siglip2-base-p32-256-fp32-image-fp16-text-v1",
-  "files": 15
-}

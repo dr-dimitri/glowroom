@@ -1,8 +1,9 @@
 # Offline comparison of local masking models
 
 These standalone developer tools do not change PicEdit's model selection or app
-dependencies. The measured results and limitations are in
-[the evaluation report](../../reports/mask-models/2026-10-20/README.md).
+dependencies. Historical reports were removed with the `reports` directory.
+The product limitations remain documented in [Automatic masks](../../docs/AUTOMATIC-MASKS.md);
+use explicit local output directories for new measurements.
 
 The seven private JPEGs are available only in this local checkout at
 `Fixtures/LocalTestImages/test_picture1.jpg` through `test_picture7.jpg`.
@@ -66,8 +67,8 @@ its cached features. Both variants use the highest model-scored mask, bilinear
 logit restoration and a zero threshold; scores are not comparable accuracy
 measurements. Output is segmentation, not a transparency matte. Run native GPU
 measurements with an accessible Core ML service; sandbox-limited runs must be
-labelled separately. The [Large follow-up](../../reports/mask-models/2026-10-20/sam21-large.md)
-compares fresh Tiny/Large series on identical proxy bytes and final annotations.
+labelled separately. The historical Large follow-up
+compared fresh Tiny/Large series on identical proxy bytes and final annotations.
 
 `ben2.py` uses ONNX Runtime in an isolated environment. Pin `onnxruntime==1.31.0`,
 plus NumPy/Pillow/psutil, and download `BEN2_Base.onnx` from the revision and
@@ -77,8 +78,8 @@ Lanczos/ImageNet pipeline, or `onnx-example` to reproduce the published ONNX
 example. `--save-raw` retains native prediction arrays before min-max scaling.
 The Core ML provider permits CPU fallback and
 does not prove exclusive GPU execution. Its load time includes graph setup and
-potential Core ML compilation. See the report for the upstream preprocessing
-discrepancy and reference runs; do not mix their variants.
+potential Core ML compilation. Keep the upstream preprocessing variants and
+reference runs separate; do not mix their measurements.
 
 `ben2_reference.py` audits the pinned original safetensors checkpoint against
 the native ONNX paths. It uses strict tensor loading and records the two
@@ -92,16 +93,16 @@ The separate [official EfficientViT-SAM-L1 harness](efficientvit_sam_README.md)
 uses current Hugging Face Hub for downloading pinned weights and the verified
 official MIT predictor for Float32 MPS/CPU inference. Its 512-pixel encoder,
 1024-pixel prompt frame and padding removal differ from the square Core ML
-SAM2 pipeline. The [L1 evaluation report](../../reports/mask-models/2026-10-20/efficientvit-sam-l1.md)
-records the required official source compatibility pin, actual inference runs
-and library interface limits; it does not claim Ultralytics/Transformers
+SAM2 pipeline. The harness instructions record the required official source
+compatibility pin
+and library interface limits; they do not claim Ultralytics/Transformers
 inference support for EfficientViT-SAM.
 
 The [Florence-2-large harness](florence2_README.md) tests the exact pinned
 Microsoft checkpoint through its original task processor, using a separate
 compatible Transformers runtime. It measures text-directed polygons and phrase
-grounding boxes separately. The [report](../../reports/mask-models/2026-10-20/florence2-large.md)
-compares the same private image proxies with previously saved masks; generated
+grounding boxes separately. The historical comparison used the same private
+image proxies and previously saved masks; generated
 text, token IDs and full coordinates remain private alongside the masks.
 
 Process RSS includes each harness/runtime and omits some GPU/driver allocations.

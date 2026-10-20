@@ -1,5 +1,12 @@
 # LC-05: Dynamik und Sättigung getrennt vergleichen
 
+Die historischen Rohdaten, Vergleichsbilder, Quellsnapshots und Prüfprotokolle
+wurden mit dem bisherigen Ergebnisordner aus dem Repository entfernt. Die
+folgenden Messwerte und Entscheidungen bleiben als historische Zusammenfassung
+erhalten; die ursprünglichen Einzelartefakte stehen hier nicht mehr zur Verfügung.
+Neue Läufe schreiben in ein ausdrücklich gewähltes externes Ergebnisverzeichnis,
+beispielsweise unter `/private/tmp/`.
+
 Vergleich zu [Issue #54](https://github.com/dr-dimitri/picedit/issues/54) nach
 [Roadmap #49](https://github.com/dr-dimitri/picedit/issues/49). Die Referenz
 untersucht nur die vorhandenen Regler `vibrance` und `saturation`. Sie ist ein
@@ -16,16 +23,10 @@ mit ihrer Ausgaberegel; eine gezielt überarbeitete Formel müsste separat
 geprüft werden. Eine pauschale Aussage über Lightcrafts Bildqualität folgt
 daraus nicht.
 
-Vollständige [Rohdaten und Entscheidung](../reports/lightcraft-evaluation/lc05-2026-10-17/summary.json),
-[beschriftete Paarbilder](../reports/lightcraft-evaluation/lc05-2026-10-17/labeled.html),
-[verblindete Paare](../reports/lightcraft-evaluation/lc05-2026-10-17/blind.html)
-und [Prüfprotokolle](../reports/lightcraft-evaluation/lc05-validation/README.md)
-bleiben im Repository erhalten.
-
 ## Reproduktion und Referenzgrenze
 
 ```sh
-./scripts/evaluate-lightcraft.sh /tmp/picedit-lc05-run --candidate LC-05
+./scripts/evaluate-lightcraft.sh /private/tmp/picedit-lc05-run --candidate LC-05
 python3 -m unittest discover -s tools/lightcraft-evaluation -p 'test_*.py'
 ```
 
@@ -301,11 +302,11 @@ behauptet weder dort separat gematchte Wirkung noch produktive Exportparität.
 
 ## Prüfung und Abschlussgrenze
 
-Die [Validierung](../reports/lightcraft-evaluation/lc05-validation/README.md)
-umfasst 88 bestandene native Tests in zehn Suiten, 53 Python-Tests,
+Die damalige Validierung
+umfasste 88 bestandene native Tests in zehn Suiten, 53 Python-Tests,
 24 Original-Rust-Fälle mit je 20 Pixeln und den generischen LC-01-Smoketest
 mit 126 Datensätzen ohne Kontrollfehler. Die anfänglichen Compile-/Testfehler
-im neuen Harness-/Testcode sind korrigiert und samt Diagnose protokolliert.
+im neuen Harness-/Testcode wurden korrigiert.
 Unabhängige Reviews prüften Quelltreue, Metriken/Fixtures, Swift-/Python-
 Schnittstelle, Zahlen und Schlussfolgerungen. Der AutoTone-Diagnoseumfang
 wurde dabei präzisiert. Es wurden keine unabhängigen Repository-Bugs gefunden.
@@ -313,9 +314,6 @@ Der abschließende vollständige Release-Build mit `./scripts/build-app.sh`
 bestand nach sicherer Entfernung von `.build/`, `.build-app/` und
 `dist/PicEdit.app`; Plist und App-Signatur wurden erfolgreich geprüft.
 
-Das Ergebnisarchiv enthält die vollständigen JSON-/PNG-Daten, Befehle und
-Herkunftshashes. Nach dem erfolgreichen Lauf wurden ausschließlich 83 leere
-Prozesslogs weggelassen; die Liste steht in `artifact-packaging.json`.
 Reale Fotos, visuelle Präferenz und Produktionsintegration bleiben ausdrücklich
 unbelegt. Für diesen No-Go-Abschluss sind weder LC-02 noch ein erzwungener
 Algorithmusaustausch erforderlich.

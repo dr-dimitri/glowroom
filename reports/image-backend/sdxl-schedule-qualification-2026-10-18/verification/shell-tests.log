@@ -1,2 +1,0 @@
-PASS: incompatible manifest and missing harness rejected before build or execution
-PASS: image evaluation defaults to a plan and rejects missing inference opt-in

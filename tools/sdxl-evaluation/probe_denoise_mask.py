@@ -41,7 +41,7 @@ def verify_source_contract(sources):
         raise PreparationError("Pinned SDK no longer matches the mask/no-op probe source contract")
 
 
-def run_probe(source_cache, output, compiler=None):
+def run_probe(source_cache, output, compiler=None, mask_fixture=None):
     if not output.is_absolute() or output.exists() or output.is_symlink():
         raise PreparationError("--out must be a new absolute directory")
     output = output.resolve()
@@ -51,8 +51,7 @@ def run_probe(source_cache, output, compiler=None):
     archive_entry = BUILDER.SOURCES[0]
     archive = source_cache / archive_entry["name"]
     BUILDER.PREPARATION.verify(archive, archive_entry)
-    if BUILDER.PREPARATION.digest(BUILDER.MASK_FIXTURE)[1] != BUILDER.MASK_FIXTURE_SHA256:
-        raise PreparationError("Frozen mask fixture SHA-256 mismatch")
+    mask_fixture = BUILDER.validate_mask_fixture(mask_fixture)
     prefix = "stable-diffusion.cpp-" + archive_entry["revision"] + "/"
     sources = {}
     with tarfile.open(archive, "r:gz") as sdk:
@@ -72,8 +71,8 @@ def run_probe(source_cache, output, compiler=None):
         target.write_bytes(data)
     probe = output / "sdxl_denoise_mask_probe.cpp"
     probe.write_bytes((TOOLS / probe.name).read_bytes())
-    fixture = output / BUILDER.MASK_FIXTURE.name
-    fixture.write_bytes(BUILDER.MASK_FIXTURE.read_bytes())
+    fixture = output / "05-fine-motif-edges-mask-hard.png"
+    fixture.write_bytes(mask_fixture.read_bytes())
     if BUILDER.PREPARATION.digest(fixture)[1] != BUILDER.MASK_FIXTURE_SHA256:
         raise PreparationError("Frozen mask fixture changed during probe staging")
     binary = output / "sdxl-denoise-mask-probe"
@@ -104,8 +103,9 @@ def main():
     parser.add_argument("--source-cache", type=Path, required=True)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--compiler")
+    parser.add_argument("--mask-fixture", required=True, type=Path, help="external frozen fine-motif hard mask PNG")
     args = parser.parse_args()
-    print(json.dumps(run_probe(args.source_cache, args.out, args.compiler), sort_keys=True))
+    print(json.dumps(run_probe(args.source_cache, args.out, args.compiler, args.mask_fixture), sort_keys=True))
 
 
 if __name__ == "__main__":

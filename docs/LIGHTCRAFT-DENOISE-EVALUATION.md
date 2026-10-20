@@ -1,5 +1,12 @@
 # LC-06: Entrauschung und native Vorschau-Skalierung
 
+Die historischen Rohdaten, Vergleichsbilder, Quellsnapshots und Prüfprotokolle
+wurden mit dem bisherigen Ergebnisordner aus dem Repository entfernt. Die
+folgenden Messwerte und Entscheidungen bleiben als historische Zusammenfassung
+erhalten; die ursprünglichen Einzelartefakte stehen hier nicht mehr zur Verfügung.
+Neue Läufe schreiben in ein ausdrücklich gewähltes externes Ergebnisverzeichnis,
+beispielsweise unter `/private/tmp/`.
+
 Vergleich zu [Issue #55](https://github.com/dr-dimitri/picedit/issues/55) nach
 [Roadmap #49](https://github.com/dr-dimitri/picedit/issues/49), begonnen auf
 aktualisiertem `main` bei `f75a5e131e7de1c674b768c905dfeb9be6e03f43`.
@@ -13,14 +20,13 @@ Detail-/Kantennachweis, Chroma verletzt auch an normalen Farblinien die
 Detail-/Farbsäumgrenzen. Die native Skalierung verbessert die Übereinstimmung
 zur Vollauflösung deutlich, erhält aber die Rauschminderung nicht innerhalb
 der vorher festgelegten Grenzen. Deshalb erfolgt keine Produktionsübernahme;
-LC-02 wird durch dieses Ergebnis nicht ausgelöst. Die
-[vollständige Zusammenfassung](../reports/lightcraft-evaluation/lc06-2026-10-18/summary.json)
-bewahrt positive Teilbefunde und fehlende Evidenz neben den Vetos.
+LC-02 wird durch dieses Ergebnis nicht ausgelöst. Positive Teilbefunde und
+fehlende Evidenz bleiben neben den Vetos unten zusammengefasst.
 
 ## Reproduktion und eingefrorene Referenz
 
 ```sh
-./scripts/evaluate-lightcraft.sh /tmp/picedit-lc06-run --candidate LC-06
+./scripts/evaluate-lightcraft.sh /private/tmp/picedit-lc06-run --candidate LC-06
 python3 -m unittest discover -s tools/lightcraft-evaluation -p 'test_*.py'
 ```
 
@@ -154,7 +160,7 @@ Skalierungen besitzen andere diskrete Varianzen als ideale gleich große
 Blöcke; die Ergebnisse prüfen die `scale²`-Näherung tatsächlich, statt deren
 Genauigkeit vorauszusetzen.
 
-Die vorab berechnete [Varianz der Flächengewichte](../reports/lightcraft-evaluation/lc06-validation/area-variance-analysis.json)
+Die vorab berechnete Varianz der Flächengewichte
 illustriert diese Grenze. Für unabhängiges natives Rauschen ist der
 Varianzfaktor das Produkt der mittleren Summen quadrierter Überlappungsgewichte
 beider Achsen. Das ist eine analytische Eigenschaft des Resamplers, keine
@@ -220,8 +226,8 @@ reine Reihenfolge bei festem Tonmodell und ersetzen keine Produktionsprüfung.
 
 ## Gemessene Qualität am 18. Oktober 2026
 
-Die [Rohdaten](../reports/lightcraft-evaluation/lc06-2026-10-18/quality/quality.json)
-enthalten 48 Fälle. Luminanz ist in 18 von 24, Chroma in allen 24 Fällen
+Die historische Qualitätsreihe
+umfasste 48 Fälle. Luminanz ist in 18 von 24, Chroma in allen 24 Fällen
 angeglichen. Alle acht primären Fälle je Regler sind gematcht und besitzen
 unabhängigen Noise-, Detail- und Kantensupport. Die sechs übrigen Luma-Fälle
 bleiben als Matchinglücke sichtbar; sie begründen keine Qualitätsaussage.
@@ -250,21 +256,17 @@ nicht von diesen negativen-Y-Pixeln allein ab: An den Farblinien steigt der
 Detailfehler bei 20/60 um 21,58 %/64,48 %, der Kantenfehler um 26,74 %/22,44 %.
 Der Farbsäum-RMSE steigt bei Farblinien 20 von 0,01552 auf 0,02144 und bei
 Transparenz 20 von 0,01851 auf 0,02757. Insgesamt verletzen zwölf gematchte
-Chroma-Fälle 23 kritische Grenzen. Die vollständigen Einzelwerte bleiben in
-den Rohdaten erhalten.
+Chroma-Fälle 23 kritische Grenzen. Die ursprünglichen Einzelwerte wurden mit dem Ergebnisordner entfernt.
 
 Alle 16 Null-Hashes sind exakt, sämtliche 32 Null-/1-Diagnosen bestehen.
 Die Qualitätsausgaben sind endlich; Alpha- und verborgenes-RGB-Fehlermaß
 sind null. Die beschrifteten Farblinien-/Dark-edge-Bilder wurden als technische
-Darstellung geprüft. Das ist keine verblindete Bevorzugungsstudie; die
-[Blindansicht](../reports/lightcraft-evaluation/lc06-2026-10-18/blind.html)
-und die [beschrifteten Paare](../reports/lightcraft-evaluation/lc06-2026-10-18/labeled.html)
-bleiben zur Nachprüfung erhalten.
+Darstellung geprüft. Das war keine verblindete Bevorzugungsstudie.
 
 ## Skalierungsergebnis
 
-Die [54 Skalierungsdatensätze](../reports/lightcraft-evaluation/lc06-2026-10-18/scale/scale.json)
-enthalten alle drei Varianten, drei Vorschauen und sechs Reglerfälle. Alle
+Die 54 historischen Skalierungsdatensätze
+umfassten alle drei Varianten, drei Vorschauen und sechs Reglerfälle. Alle
 18 Referenzvergleiche besitzen vollständigen Noise-/Detail-/Kantensupport
 und denselben verifizierten nativen Ausgangsraster. Die gemeinsam getestete
 Radius-/Blend-/Epsilon-Regel
@@ -321,7 +323,7 @@ bei gleicher Wirkung. Die Qualitäts-No-Gos sind davon unabhängig. Für einen
 späteren fairen Leistungsnachweis wären vorab getrennt abgestimmte
 Größenmappings nötig, keine nachträgliche Umdeutung dieser Reihe.
 
-Die Rohdaten enthalten Streuung und sämtliche Einzelsamples. Fünf kalte
+Die damaligen Rohdaten erfassten Streuung und sämtliche Einzelsamples. Fünf kalte
 Prozesse liefern kein belastbares p95; native synthetische Raster ersetzen
 keine RAW-Decodier-/Cache-End-to-End-Messung. Reale dunkle/helle Foto-Raster,
 Original-Problemaufnahmen, Blindabnahme und optimierte CI-/Metal-Parität
@@ -330,8 +332,7 @@ abgeleitet.
 
 ## Prüfung und Abschluss
 
-Die [Prüfprotokolle](../reports/lightcraft-evaluation/lc06-validation/README.md)
-belegen 90 bestandene native Tests in zehn Suites, 78 bestandene Python-Tests,
+Die damalige Prüfung ergab 90 bestandene native Tests in zehn Suites, 78 bestandene Python-Tests,
 40 unabhängig regenerierte Original-Rust-Fälle und den generischen LC-01-
 Smoke-Test mit 126 Datensätzen ohne Kontrollfehler. Der saubere vollständige
 `./scripts/build-app.sh` nach sicherer Entfernung von `.build/`, `.build-app/`

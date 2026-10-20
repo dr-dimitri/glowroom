@@ -1,3 +1,0 @@
-{"event":"ready","helperVersion":"picedit-sdxl-evaluation-1","memory":{"footprintBytes":2441720,"peakFootprintBytes":2474488,"peakRSSBytes":8404992,"residentBytes":8404992},"protocol":1}
-{"code":"model-load-failed","event":"completed","id":"load","libraryLogCount":508,"memory":{"footprintBytes":53363600,"peakFootprintBytes":122553328,"peakRSSBytes":148832256,"residentBytes":110247936},"operation":"load","protocol":1,"seconds":19.543677459,"status":"error"}
-{"contextExists":false,"event":"cancel-requested","id":"close","protocol":1}

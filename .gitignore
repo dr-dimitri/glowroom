@@ -11,3 +11,6 @@ __pycache__/
 /IMG_8724.CR3
 # Local test images; never commit or push these user-supplied resources to GitHub.
 /Fixtures/LocalTestImages/
+
+# Historical reports were removed; keep newly generated local reports out of Git.
+/reports/

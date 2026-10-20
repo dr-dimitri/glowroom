@@ -1,5 +1,12 @@
 # LC-04: Klarheit und Textur getrennt vergleichen
 
+Die historischen Rohdaten, Vergleichsbilder, Quellsnapshots und Prüfprotokolle
+wurden mit dem bisherigen Ergebnisordner aus dem Repository entfernt. Die
+folgenden Messwerte und Entscheidungen bleiben als historische Zusammenfassung
+erhalten; die ursprünglichen Einzelartefakte stehen hier nicht mehr zur Verfügung.
+Neue Läufe schreiben in ein ausdrücklich gewähltes externes Ergebnisverzeichnis,
+beispielsweise unter `/private/tmp/`.
+
 Vergleich zu [Issue #53](https://github.com/dr-dimitri/picedit/issues/53) nach der
 [Roadmap #49](https://github.com/dr-dimitri/picedit/issues/49). Die isolierte
 Referenz ergänzt die [LC-01-Vergleichsgrundlage](LIGHTCRAFT-ALGORITHM-EVALUATION.md)
@@ -17,7 +24,7 @@ LC-02 wird durch diesen Vergleich nicht ausgelöst.
 ## Reproduktion und Umfang
 
 ```sh
-./scripts/evaluate-lightcraft.sh /tmp/picedit-lc04-run --candidate LC-04
+./scripts/evaluate-lightcraft.sh /private/tmp/picedit-lc04-run --candidate LC-04
 python3 -m unittest discover -s tools/lightcraft-evaluation -p 'test_*.py'
 ```
 
@@ -113,9 +120,8 @@ wird über identische Float-Raster-Hashes geprüft; Aufnahmen bei −1 und +1
 dokumentieren den Übergang, ohne eine nicht definierte Kontinuitätsschwelle
 vorzutäuschen.
 
-Die erste vollständige Reihe `LC04-detail-v1` bleibt unter
-[`lc04-2026-10-17`](../reports/lightcraft-evaluation/lc04-2026-10-17/summary.json)
-erhalten. Ihre Texturwirkung in den beiden primären Kantenszenen lag selbst
+Die erste vollständige Reihe hieß `LC04-detail-v1`. Ihre Texturwirkung in den
+beiden primären Kantenszenen lag selbst
 bei ±60 unter der Mindestwirkung von 0,0002. Bei Klarheit verschob die
 unterschiedliche Flächenaufteilung der harten Kante die Wirkung der eingefrorenen
 Abstimmung um etwa 9 %. Das bedeutet fehlendes Matching, keinen Sieg durch
@@ -130,21 +136,19 @@ Pixeln Breite. Die feste Messregion umfasst dort `x=64..<448, y=48..<112`;
 ganzzahlige Phasenverschiebungen trennen Abstimmung und Abnahme bei identischem
 Eingangskontrast und gleicher Anzahl von Paaren. Die untere Hälfte mit allen
 Halo-Messpunkten bleibt pixelgleich zu v1. Algorithmen, Reglerfälle, Grenzwerte,
-andere Szenen und Performanceprotokoll bleiben unverändert. Die
-[v1-Quellsnapshots](../reports/lightcraft-evaluation/lc04-2026-10-17/source-snapshot/README.md)
-sind gegen die ursprünglichen Hashes geprüft; keine Messreihe wird überschrieben
-oder mit der anderen zu einem günstigeren Ergebnis gemischt.
+andere Szenen und Performanceprotokoll bleiben unverändert. Die damaligen
+v1-Quellsnapshots wurden gegen die ursprünglichen Hashes geprüft; keine Messreihe
+wurde überschrieben oder mit der anderen zu einem günstigeren Ergebnis gemischt.
 
 Das neutrale Probe-Feld normiert die Effektstärke auf festgelegten Frequenzen
 und einer Helligkeit. Es beweist keine identische Wirkung über alle Farben,
-Helligkeiten oder echten Fotomotive. Die ursprünglichen v1-Befunde bleiben
-deshalb separat verfügbar.
+Helligkeiten oder echten Fotomotive. Die ursprünglichen v1-Befunde werden
+deshalb hier getrennt zusammengefasst.
 
 ## Qualitätsentscheidung
 
-Die vollständige
-[v2-Zusammenfassung](../reports/lightcraft-evaluation/lc04-matched-2026-10-17/summary.json)
-enthält 140 Qualitätsfälle einschließlich der Ablationen. **94 sind gematcht**:
+Die historische v2-Reihe
+umfasste 140 Qualitätsfälle einschließlich der Ablationen. **94 sind gematcht**:
 40 von 56 Klarheitsfällen und 54 von 84 Texturfällen. Alle primären
 Kantenszenen bei ±20 besitzen passende Effektstärke und Unterstützung auf
 beiden Kantenseiten. Nicht gematchte Farb-/Transparenz- und schwache
@@ -203,12 +207,12 @@ Transparenzszenen liefern wegen fehlendem Matching ebenfalls keine positive
 Qualitätsfreigabe, auch wenn ihre separaten Neutralitäts-/Alpha-Verträge
 geprüft werden.
 
-Der [Reproduktionsvergleich](../reports/lightcraft-evaluation/lc04-matched-2026-10-17/reproducibility-comparison.json)
-bestätigt zwischen v1 und v2 **100 identische Mappings, 100 identische
+Der damalige Reproduktionsvergleich
+bestätigte zwischen v1 und v2 **100 identische Mappings, 100 identische
 Qualitätsfälle, 96 identische Stufendiagnosen, 75 identische Nullübergangsdiagnosen,
 724 identische Qualitäts-PNGs und alle 16 identischen Skalenfälle** außerhalb
 der beabsichtigten Änderung. Genau drei gehashte Swift-Quellen unterscheiden
-sich; ihre v1-Snapshots sind verifiziert. Das v2-Manifest hat SHA256
+sich; ihre v1-Snapshots wurden damals verifiziert. Das v2-Manifest hat SHA256
 `94c6aedd328c1034852952cc9bbf7833beb09acb24c44335a7528d237459bb5d`, die vor der
 Abnahme eingefrorene Kalibrierung
 `a7c52ea8afb2c35fc9754397ae300ba2804a3a7282f22ec8ee570d14d88141ea`.
@@ -233,8 +237,8 @@ Maximum des gesamten Prozesses, einschließlich gemeinsamer Eingabe und
 vorbereiteter Diagnosemaske. Es ist kein isolierter Kernel-Speicherwert.
 
 Alle Zahlenpaare nennen **PicEdit / CPU-Referenz**; Zeitwerte sind Mediane in
-Millisekunden, Speicher ist Peak-RSS in MiB. Bereiche und Rohsamples stehen
-in der [Zusammenfassung](../reports/lightcraft-evaluation/lc04-matched-2026-10-17/summary.json).
+Millisekunden, Speicher ist Peak-RSS in MiB. Die ursprünglichen Bereiche und Rohsamples
+wurden mit dem Ergebnisordner entfernt.
 
 | Effekt, Größe | Kalt ms | Warm ms | Peak-RSS MiB | Wirkung in allen Phasen gematcht |
 |---|---:|---:|---:|---|
@@ -255,7 +259,7 @@ Referenz wird nicht integriert, und ein neuer beschleunigter Pfad wurde nicht
 implementiert. Es gibt keinen zusätzlichen Decoderaufruf im Regler-Harness;
 reale RAW-Wechsel, UI-Latenz und Produktionscaches wären separat abzunehmen.
 
-Der [Skalenvergleich](../reports/lightcraft-evaluation/lc04-matched-2026-10-17/scale/scale.json)
+Der Skalenvergleich
 prüft dieselbe Mauer-/Textilszene direkt bei 400 × 267 gegen das verkleinerte
 Ergebnis von 4608 × 3072. Die Werte sind mittlere absolute RGB-Differenzen
 innerhalb des jeweiligen Adapters, bei eingefrorenen Parametern:
@@ -301,8 +305,7 @@ Effektunterstützung der Splits, die unveränderte untere Bildhälfte und die
 Unabhängigkeit der Detailmessung von Haloänderungen. Die 31 Python-Tests
 bestehen auch mit dem v2-Manifest.
 
-Die [Validierungsprotokolle](../reports/lightcraft-evaluation/lc04-validation/)
-bewahren auch die anfänglichen Hindernisse: Der erste Harness-Build konnte
+Der erste Harness-Build konnte damals
 innerhalb der Sandbox die gepinnten Abhängigkeiten nicht auflösen. Der erste
 Swift-Testbuild scheiterte an zwei inzwischen korrigierten Swift-Testing-
 Makroausdrücken. Ein anschließender Sandbox-Testlauf wurde nach Diagnose einer
@@ -314,8 +317,7 @@ Der abschließende vollständige Release-Build mit
 aller Messungen/Tests und vollständiger Entfernung von `.build/`, `.build-app/`
 und `dist/PicEdit.app`. Es waren keine abweichenden Buildpfade gesetzt und
 kein aktiver Build-Lock vorhanden. Bundle-Plist und Signaturprüfung bestanden.
-Das [Buildprotokoll](../reports/lightcraft-evaluation/lc04-validation/clean-build.log)
-enthält den vollständigen Neuaufbau. Die anfänglichen Build-/Testprobleme
+Die anfänglichen Build-/Testprobleme
 sind oben dokumentiert; der finale Build ist erfolgreich.
 
 Der finale Diff-, Schnittstellen-, Test- und Dokumentationsreview erfolgte

@@ -37,7 +37,6 @@ SOURCES = [
      "sha256": "bbfaebbfe2564a796f1a9309ff87cd6c6a5acdfffe7b779f96b847f57945403b",
      "revision": "d25b121ce1d6ae0c7e62ad080460d9fc1e46dd93", "destination": "source/ggml"},
 ]
-MASK_FIXTURE = REPOSITORY / "reports/image-backend/historical-2026-10-16/fixtures/05-fine-motif-edges-mask-hard.png"
 MASK_FIXTURE_SHA256 = "26a0c86703ceff7901679361426ac3620c1d0eee2bc43037b783c0ef17eb4d2c"
 
 
@@ -84,7 +83,18 @@ def open_build_lock(root):
         raise
 
 
-def build(root, cmake=None, source_cache=None):
+def validate_mask_fixture(path):
+    if path is None or not path.is_absolute() or not path.is_file() or path.is_symlink():
+        raise PreparationError("--mask-fixture requires an existing absolute nonsymbolic PNG outside the repository")
+    path = path.resolve()
+    if REPOSITORY in path.parents:
+        raise PreparationError("--mask-fixture must stay outside the repository")
+    if PREPARATION.digest(path)[1] != MASK_FIXTURE_SHA256:
+        raise PreparationError("Frozen mask-regression fixture SHA-256 mismatch")
+    return path
+
+
+def build(root, cmake=None, source_cache=None, mask_fixture=None):
     root = admit_root(root)
     helper, receipt, log = (root / name for name in ["sdxl-helper", "native-installation.json", "native-build.log"])
     if any(path.exists() or path.is_symlink() for path in [helper, receipt, log]):
@@ -99,8 +109,7 @@ def build(root, cmake=None, source_cache=None):
     # mock compiler. The actual source extraction verifies the hashes again.
     for entry in SOURCES:
         PREPARATION.verify(archives / entry["name"], entry)
-    if PREPARATION.digest(MASK_FIXTURE)[1] != MASK_FIXTURE_SHA256:
-        raise PreparationError("Frozen mask-regression fixture SHA-256 mismatch")
+    mask_fixture = validate_mask_fixture(mask_fixture)
     if platform.system() != "Darwin" or platform.machine() != "arm64":
         raise PreparationError("native SDXL evaluation requires Apple Silicon macOS")
     cmake = str(Path(cmake).resolve()) if cmake else shutil.which("cmake")
@@ -164,8 +173,9 @@ def build(root, cmake=None, source_cache=None):
         shutil.copyfile(TOOLS / "sdxl_mask_regression.cpp", mask_regression_source)
         if PREPARATION.digest(mask_regression_source)[1] != mask_regression_hash:
             raise PreparationError("SDXL mask regression source changed during build")
+        external_mask_fixture = mask_fixture
         mask_fixture = stage / "05-fine-motif-edges-mask-hard.png"
-        shutil.copyfile(MASK_FIXTURE, mask_fixture)
+        shutil.copyfile(external_mask_fixture, mask_fixture)
         if PREPARATION.digest(mask_fixture)[1] != MASK_FIXTURE_SHA256:
             raise PreparationError("Frozen mask-regression fixture changed during build")
         mask_baseline_binary = stage / "sdxl-mask-baseline"
@@ -260,6 +270,7 @@ def main():
     parser.add_argument("--root", required=True, type=Path)
     parser.add_argument("--build", required=True, action="store_true", help="explicit offline build; no conversion or inference")
     parser.add_argument("--cmake")
+    parser.add_argument("--mask-fixture", required=True, type=Path, help="external frozen fine-motif hard mask PNG")
     parser.add_argument("--source-cache", type=Path, help="read-only pinned archive directory; allows building before model installation")
     args = parser.parse_args()
     root = admit_root(args.root)
@@ -270,7 +281,7 @@ def main():
             fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError as error:
             raise PreparationError("another native build uses this root") from error
-        print(json.dumps(build(root, args.cmake, args.source_cache), sort_keys=True))
+        print(json.dumps(build(root, args.cmake, args.source_cache, args.mask_fixture), sort_keys=True))
 
 
 if __name__ == "__main__":

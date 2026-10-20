@@ -25,7 +25,6 @@ import urllib.request
 
 REPOSITORY = Path(__file__).resolve().parent.parent
 TOOLS = REPOSITORY / "tools/image-generation-evaluation"
-HISTORICAL = REPOSITORY / "reports/image-backend/historical-2026-10-16"
 BLOCK_BYTES = 1024 * 1024
 MINIMUM_RAM = 16 * 1024**3
 MINIMUM_DISK = 8 * 1024**3
@@ -148,8 +147,15 @@ def preflight(root):
             "physicalMemoryBytes": memory, "freeDiskBytes": free}
 
 
-def install_fixtures(root, package):
-    original = HISTORICAL / "provenance/fixtures-manifest.json"
+def validate_fixture_archive(archive, package):
+    if archive is None or not archive.is_absolute() or not archive.is_dir():
+        raise PreparationError("--fixture-archive requires an existing absolute external fixture archive")
+    archive = archive.resolve()
+    if archive == REPOSITORY or REPOSITORY in archive.parents:
+        raise PreparationError("fixture archives must stay outside the repository")
+    original = archive / "provenance/fixtures-manifest.json"
+    if not original.is_file() or original.is_symlink():
+        raise PreparationError("fixture archive missing provenance/fixtures-manifest.json")
     if digest(original)[1] != package["fixtureManifestSHA256"]:
         raise PreparationError("fixture manifest hash mismatch")
     original_manifest = json.loads(original.read_text())
@@ -161,12 +167,19 @@ def install_fixtures(root, package):
         relative = PurePosixPath(entry["path"])
         if relative.is_absolute() or ".." in relative.parts or relative.parts[0] != "fixtures":
             raise PreparationError("invalid pinned fixture path")
-        atomic_copy(HISTORICAL / entry["path"], root / entry["path"], entry)
-    atomic_copy(original, root / "fixtures-manifest.json", {
-        "bytes": original.stat().st_size, "sha256": package["fixtureManifestSHA256"]})
-    # Parse before publication; malformed metadata never becomes a ready receipt.
+        verify(archive / entry["path"], entry)
     if not isinstance(original_manifest, dict):
         raise PreparationError("invalid fixture manifest")
+    return archive
+
+
+def install_fixtures(root, package, archive):
+    archive = validate_fixture_archive(archive, package)
+    original = archive / "provenance/fixtures-manifest.json"
+    for entry in package["fixtureFiles"]:
+        atomic_copy(archive / entry["path"], root / entry["path"], entry)
+    atomic_copy(original, root / "fixtures-manifest.json", {
+        "bytes": original.stat().st_size, "sha256": package["fixtureManifestSHA256"]})
 
 
 def install_model(root, package, cache, allow_network=True):
@@ -244,7 +257,7 @@ def run_checked(arguments, log):
             raise PreparationError("native build failed; inspect " + log.name)
 
 
-def build_helper(root, package, cmake, preflight_report):
+def build_helper(root, package, cmake, preflight_report, fixture_archive):
     helper = root / "evaluation-helper-current"
     receipt = root / "evaluation-installation.json"
     if helper.exists() or receipt.exists():
@@ -293,7 +306,7 @@ def build_helper(root, package, cmake, preflight_report):
         run_checked(arguments, log)
         staged_helper.chmod(0o700)
         helper_sha = digest(staged_helper)[1]
-        install_fixtures(root, package)
+        install_fixtures(root, package, fixture_archive)
         atomic_copy(TOOLS / "model-manifest.json", root / "model-manifest.json",
                     package["buildInputs"]["model-manifest.json"])
         atomic_copy(TOOLS / "unbatched-configuration.json", root / "unbatched-configuration.json",
@@ -323,6 +336,8 @@ def main():
     action = parser.add_mutually_exclusive_group(required=True)
     action.add_argument("--download", action="store_true", help="explicitly install pinned sources and 2.13 GB model")
     action.add_argument("--build", action="store_true", help="build from already downloaded/verified cached sources; no network")
+    parser.add_argument("--fixture-archive", type=Path, required=True,
+                        help="external archive containing provenance/fixtures-manifest.json and fixtures/")
     parser.add_argument("--source-cache", type=Path, help="read-only verified local archive/model cache")
     parser.add_argument("--offline", action="store_true", help="refuse every network request, including explicit downloads")
     parser.add_argument("--cmake", help="explicit CMake executable for --build")
@@ -332,6 +347,11 @@ def main():
     root = arguments.root.resolve()
     if root == Path("/") or root == REPOSITORY or REPOSITORY in root.parents:
         raise PreparationError("generated evaluation resources must stay outside the repository")
+    package_path = TOOLS / "evaluation-package.json"
+    if digest(package_path)[1] != EXPECTED_PACKAGE_SHA256:
+        raise PreparationError("pinned evaluation package manifest SHA256 mismatch")
+    package = json.loads(package_path.read_text())
+    fixture_archive = validate_fixture_archive(arguments.fixture_archive, package)
     root.mkdir(mode=0o700, parents=True, exist_ok=True)
     cache = arguments.source_cache.resolve() if arguments.source_cache else None
     with (root / ".prepare-image-generation.lock").open("a+b") as lock:
@@ -340,10 +360,6 @@ def main():
         except BlockingIOError as error:
             raise PreparationError("another preparation uses this evaluation root") from error
         report = preflight(root)
-        package_path = TOOLS / "evaluation-package.json"
-        if digest(package_path)[1] != EXPECTED_PACKAGE_SHA256:
-            raise PreparationError("pinned evaluation package manifest SHA256 mismatch")
-        package = json.loads(package_path.read_text())
         for filename, entry in package["buildInputs"].items():
             verify(TOOLS / filename, entry)
         source_archives(root, package, cache, arguments.download and not arguments.offline)
@@ -353,11 +369,11 @@ def main():
                         package["buildInputs"]["model-manifest.json"])
             atomic_copy(TOOLS / "unbatched-configuration.json", root / "unbatched-configuration.json",
                         package["buildInputs"]["unbatched-configuration.json"])
-            install_fixtures(root, package)
+            install_fixtures(root, package, fixture_archive)
             report.update({"status": "downloaded-verified-no-build-no-inference",
                            "modelRevision": package["modelRevision"]})
         else:
-            report = build_helper(root, package, arguments.cmake, report)
+            report = build_helper(root, package, arguments.cmake, report, fixture_archive)
         print(json.dumps(report, indent=2))
 
 

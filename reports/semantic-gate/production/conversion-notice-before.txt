@@ -1,1 +1,0 @@
-Google SigLIP2 Base Patch32 256, source94dffa8cb1179de3e03f091dbc3917e5d5a9ae84, Apache2.0 per original model card. PicEdit conversion: image Float32, text Float16; Torch2.5.0, Transformers4.51.3, coremltools8.3, macOS14 target. Native Gemma JSON tokenizer from swift-transformers e37cacea74498bba66002bb83ecafee3e4ab8884. No original checkpoint is included.
