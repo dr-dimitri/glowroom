@@ -73,12 +73,12 @@ unbekannte Schlüssel, falsche Typen und ungültige Werte werden an der strikten
 Persistenzgrenze abgewiesen. Eine ausdrücklich gespeicherte neutrale Komponente
 ist keine kanonische Repräsentation.
 
-Textbasierte KI-Vorschläge verändern weiterhin nur die freigegebenen numerischen
-Parameter. Profil, Weißabgleich, Schwarzweiß, HDR, Geometrie und Masken bleiben
-vollständig als Ausgangsstand erhalten. Eine manuelle Weißabgleichfunktion
-erweitert damit nicht automatisch die Modellfähigkeiten der KI-Anbieter.
+Einzelne numerische Parameteränderungen über `EditParameter` erhalten den übrigen
+Bearbeitungsstand vollständig: Profil, Weißabgleich, Schwarzweiß, HDR, Geometrie
+und Masken bleiben unverändert. Die gemeinsamen Bearbeitungssnapshots erfassen
+auch diese Komponenten.
 
 Die Regressionstests prüfen alte Snapshotbytes und Hashes, neue strikte
-Roundtrips, SQL-Sicherung und Wiederherstellung, erhaltene KI-Ausgangswerte,
+Roundtrips, SQL-Sicherung und Wiederherstellung, erhaltene Ausgangswerte bei einzelnen Parameteränderungen,
 bekannte Neutralreferenzen, Alpha, Vorschau-/Exportgleichheit und HDR-Lichter
 einschließlich lokaler Masken und zwischengespeicherter Renderpräfixe.

@@ -7,7 +7,6 @@ struct LibraryView: View {
     @EnvironmentObject private var editor: EditingModel
     @EnvironmentObject private var exporter: JPEGExportModel
     @EnvironmentObject private var layout: WorkspaceLayoutModel
-    @EnvironmentObject private var assistant: AIAssistantModel
     @EnvironmentObject private var photoMetadata: PhotoMetadataModel
     @FocusState private var focusedWorkspaceControl: WorkspaceControlFocus?
     let dataDirectory: URL
@@ -622,12 +621,6 @@ struct LibraryView: View {
 
     private var workspaceNoticeLinks: some View {
         Group {
-            switch assistant.state {
-            case .generating: Button("Assistent läuft") { revealNoticeTool(.assistant) }
-            case .previewing: Button("Assistent: Ergebnis anzeigen") { revealNoticeTool(.assistant) }
-            case .failed: Button("Assistent: Fehler prüfen") { revealNoticeTool(.assistant) }
-            default: EmptyView()
-            }
             if photoMetadata.hasManualDraft || photoMetadata.record?.draft != nil {
                 Button("Bildinformationen: Entwurf prüfen") { revealNoticeTool(.metadata) }
             }
@@ -647,7 +640,6 @@ struct LibraryView: View {
 
     private var hasWorkspaceError: Bool {
         if saveStatus.hasError || photoMetadata.errorMessage != nil || photoMetadata.hasPendingRetry || photoMetadata.recovery != nil { return true }
-        if case .failed = assistant.state { return true }
         return false
     }
 
@@ -680,7 +672,6 @@ struct LibraryView: View {
                 Button("Bildinformationen erneut laden") { photoMetadata.retryLoading() }
                     .disabled(photoMetadata.isSaving || photoMetadata.isClosing)
             }
-            if case .failed(let message) = assistant.state { Text("Assistent: \(message)") }
             Divider()
             workspaceNoticeLinks
             Button("Schließen") { showsWorkspaceErrors = false }
@@ -690,10 +681,7 @@ struct LibraryView: View {
 
     private var noticeLabel: String {
         if photoMetadata.errorMessage != nil || photoMetadata.hasPendingRetry || photoMetadata.recovery != nil || editor.failedArtifactCommitID != nil || editor.isReadOnly || editor.errorMessage != nil { return "Fehler prüfen" }
-        if case .failed = assistant.state { return "Assistent: Fehler" }
-        if case .generating = assistant.state { return "Assistent läuft" }
         if photoMetadata.isAnalyzing { return "Bildinformationen: Analyse" }
-        if assistant.state == .previewing { return assistant.hasAppliedChanges ? "KI-Bearbeitung aktiv" : "Assistent: Ergebnis" }
         if photoMetadata.hasManualDraft || photoMetadata.record?.draft != nil { return "Entwurf vorhanden" }
         return "Hinweise"
     }

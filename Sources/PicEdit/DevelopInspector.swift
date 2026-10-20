@@ -10,7 +10,6 @@ struct DevelopInspector: View {
     var focusedControl: FocusState<WorkspaceControlFocus?>.Binding
     var column: DevelopInspectorColumn = .adjustments
     @EnvironmentObject private var editor: EditingModel
-    @EnvironmentObject private var assistant: AIAssistantModel
     @EnvironmentObject private var photoMetadata: PhotoMetadataModel
     @EnvironmentObject private var layout: WorkspaceLayoutModel
     @EnvironmentObject private var maskWorkspace: InlineMaskWorkspace
@@ -28,7 +27,7 @@ struct DevelopInspector: View {
     private var saveStatus: WorkspaceSaveStatus { WorkspaceSaveStatus(editor: editor) }
 
     private var groups: [WorkspaceTool] {
-        column == .navigation ? [.assistant, .metadata, .versions] : [.edit]
+        column == .navigation ? [.metadata, .versions] : [.edit]
     }
 
     var body: some View {
@@ -281,8 +280,6 @@ struct DevelopInspector: View {
                 adjustmentSection("Präsenz", key: "presence", controls: Array(Adjustment.allCases.dropFirst(6).prefix(5)), assetID: asset.id)
                 adjustmentSection("Entrauschen", key: "noise", controls: Array(Adjustment.allCases.suffix(2)), assetID: asset.id)
             }
-        case .assistant:
-            AIAssistantSection(model: assistant, comparesOriginal: library.comparesOriginal || library.comparesCurrentSourceWithoutSettings)
         case .metadata:
             VStack(alignment: .leading, spacing: 20) {
                 PhotoMetadataSection(model: photoMetadata)
@@ -401,13 +398,6 @@ struct DevelopInspector: View {
             if editor.isReadOnly { return ("Fehler", "exclamationmark.triangle", true) }
             if editor.isSaving || editor.isLoading || editor.hasPendingChanges { return ("Läuft", "arrow.triangle.2.circlepath", false) }
             if !editor.settings(for: assetID).isNeutral { return ("Geändert", "slider.horizontal.3", false) }
-        case .assistant:
-            switch assistant.state {
-            case .generating: return ("Läuft", "arrow.triangle.2.circlepath", false)
-            case .previewing: return ("Vorschlag", "sparkles", false)
-            case .failed: return ("Fehler", "exclamationmark.triangle", true)
-            default: break
-            }
         case .metadata:
             if photoMetadata.errorMessage != nil || photoMetadata.hasPendingRetry || photoMetadata.recovery != nil {
                 return ("Fehler", "exclamationmark.triangle", true)

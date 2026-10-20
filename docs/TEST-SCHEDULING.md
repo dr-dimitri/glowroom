@@ -2,19 +2,13 @@
 
 Die Testkorrektur zu [Issue #62](https://github.com/dr-dimitri/picedit/issues/62) trennt das Warten auf eine kontrollierte Fake-Operation vom Blockieren eines Betriebssystemthreads. Ein synchrones `DispatchSemaphore.wait` innerhalb mehrerer `Task.detached`-Fakes kann die kooperativen Threads belegen, auf denen auch die Teststeuerung ihre Freigaben ausführen müsste. Ein längerer Timeout oder ein serieller Gesamtlauf behebt diese Abhängigkeit nicht.
 
-Die Preview-, Adjusted-Preview- und Look-Tests verwenden dafür suspendierende Fakes. `TestAsyncLatch` ignoriert bewusst den Abbruch der simulierten nativen Arbeit, bis der Test `releaseAll()` ausführt. Die Pipelines halten ihren Workerplatz weiterhin bis zur tatsächlichen Rückkehr. Die vorhandenen synchronen Decoder und Renderer laufen unverändert innerhalb derselben begrenzten Hintergrundworker; optionale interne `asyncDecoder`-/`asyncRenderer`-Abhängigkeiten ermöglichen die suspendierenden Testdoubles. Kurze separate Tests prüfen auch die synchronen Pfade, Fehler, Priorität und Ausführung außerhalb des MainActor.
+Die Preview- und Adjusted-Preview-Tests verwenden dafür suspendierende Fakes. `TestAsyncLatch` ignoriert bewusst den Abbruch der simulierten nativen Arbeit, bis der Test `releaseAll()` ausführt. Die Pipelines halten ihren Workerplatz weiterhin bis zur tatsächlichen Rückkehr. Die vorhandenen synchronen Decoder und Renderer laufen unverändert innerhalb derselben begrenzten Hintergrundworker; optionale interne `asyncDecoder`-/`asyncRenderer`-Abhängigkeiten ermöglichen die suspendierenden Testdoubles. Kurze separate Tests prüfen auch die synchronen Pfade, Fehler, Priorität und Ausführung außerhalb des MainActor.
 
 `TestStateSignal` speichert Ereignisse auch vor einer Warteanmeldung. Anmeldung, Ereignis und Abbruch sind durch kurze Locks geordnet; Continuations werden außerhalb des Locks fortgesetzt. Cancellation entfernt wartende Testfortsetzungen. Ein Test-Timeout wirft mit Bezeichnung und zuletzt beobachtetem Zustand, statt Folgeassertionen mit unerfüllter Vorbedingung auszuführen. `TestAsyncLatch` wird dagegen ausdrücklich vom Test freigegeben, auch in dessen Cleanup. Gestartete Caller werden bei vorzeitigem Testende abgebrochen.
 
 Die semantischen Service-Tests warten auf Text-/Bild-/Installations-/Vorbereitungsereignisse ihrer Fakes. Das gemeinsame Inferenzbudget liefert seine vorhandenen Zustandsereignisse. Für wenige interne Actor-Zustände ohne Ereignisschnittstelle liest `waitForTestState` den tatsächlichen Zustand; seine Frist ist ein Hangwächter, kein Beweis einer Einreihung. Die bisherigen Drei-/Viersekundenfristen bleiben bestehen. Der semantische Bibliotheks-Fixture wartet auf die kombinierten Modellpublisher und beschreibt fehlende Bereitschaft ausdrücklich als Test-Wartefehler, nicht als Providerfehler.
 
-Ein-/Ausreihen, gemeinsame Waiter, ausgewählte gegenüber Hintergrundarbeit, schnelle Änderungen, Abbruch ohne vorzeitige Slot-/Leasefreigabe und Quellenwechsel bleiben Gegenstand der Tests. Produktionslimits und Deadlineprüfungen werden dafür nicht gelockert. Die normale parallele Swift-Testing-Ausführung bleibt eingeschaltet. Die bereits bestehende Serialisierung echter Look-Rastervergleiche dient deren getrennten Bildprüfungen und wurde nicht zur Beruhigung dieser Scheduling-Tests ergänzt.
-
-## Look-Lifecycle und Persistenz
-
-Die unabhängigen Szenarien der Look-Lifecycle-Tests zu [Issue #71](https://github.com/dr-dimitri/picedit/issues/71) verlangen vor jedem Durchlauf ein erfolgreiches `editor.flush()`. Ein Inferenzzustand mit `runningCount == 0` bestätigt nur die Rückkehr der Inferenzarbeit; `canGenerateLooks` zeigt die Verfügbarkeit der Aktion. Beide Zustände garantieren nicht, dass ausstehende Bearbeitungen gespeichert sind. Ein späterer Autosave kann die `persistedVersion` des Bearbeitungssnapshots verändern, während die Quellenprüfung eines neuen Requests suspendiert.
-
-Eine parameterisierte Regression hält diese Quellenprüfung mit `TestAsyncLatch` an und speichert eine zurückgesetzte Bearbeitung entweder vor dem Request oder während der Prüfung. Einstellungen, Quelle und UI-Token bleiben gleich. Ändert sich die `persistedVersion` während der Prüfung, muss der vorhandene Schutz vor veralteten Snapshots vor dem Provideraufruf abbrechen. Bei bereits vor dem Request gespeicherter Bearbeitung darf der Provider erreicht und die Look-Gruppe veröffentlicht werden. Providerstart und Coordinator-Rückkehr werden als gespeicherte Ereignisse beobachtet; die bisherigen Zehnsekundenfristen bleiben reine Hangwächter mit Diagnose der jeweiligen Wartephase. Die Regression verändert keine Produktionslogik.
+Ein-/Ausreihen, gemeinsame Waiter, ausgewählte gegenüber Hintergrundarbeit, schnelle Änderungen, Abbruch ohne vorzeitige Slot-/Leasefreigabe und Quellenwechsel bleiben Gegenstand der Tests. Produktionslimits und Deadlineprüfungen werden dafür nicht gelockert. Die normale parallele Swift-Testing-Ausführung bleibt eingeschaltet.
 
 ## Kontrollprobe und Prüfkommandos
 
@@ -33,7 +27,7 @@ Die Regressionen und danach die vollständige parallele Suite verwenden denselbe
 
 ```sh
 PICEDIT_TEST_BUILD_PATH=/tmp/picedit-scheduling-tests ./scripts/test.sh --jobs 4 \
-  --filter 'PreviewPipelineTests|AILookPreviewTests|AILookAssistantTests|SemanticSearchServiceTests|SemanticLibraryTests|TestSchedulingGatesTests'
+  --filter 'PreviewPipelineTests|SemanticSearchServiceTests|SemanticLibraryTests|TestSchedulingGatesTests'
 PICEDIT_TEST_BUILD_PATH=/tmp/picedit-scheduling-tests ./scripts/test.sh --jobs 4
 ```
 

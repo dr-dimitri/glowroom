@@ -9,8 +9,6 @@ struct PicEditApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     @StateObject private var library: LibraryModel
     @StateObject private var editor: EditingModel
-    @StateObject private var assistant: AIAssistantModel
-    @StateObject private var aiSettings: AIProviderSettings
     @StateObject private var photoMetadata: PhotoMetadataModel
     @StateObject private var exporter = JPEGExportModel()
     @StateObject private var layout = WorkspaceLayoutModel()
@@ -42,17 +40,8 @@ struct PicEditApp: App {
         editor.library = library
         library.synchronizeEditing = { [weak editor] in try await editor?.reloadAfterCatalogChange() }
         library.invalidateEditingSources = { [weak editor] in editor?.invalidateSourcesForCoordination() }
-        let provider = LocalAIEditingProviderFactory.makeAssistantProvider()
-        let coordinator = AIRequestCoordinator(provider: provider)
         _library = StateObject(wrappedValue: library)
         _editor = StateObject(wrappedValue: editor)
-        let assistant = AIAssistantModel(provider: provider, coordinator: coordinator,
-                                                             editor: editor, library: library,
-                                                             maximumPromptBytes: LocalAIEditingPrompt.maximumUserTextBytes)
-        let aiSettings = AIProviderSettings(directory: repository.directory, local: provider)
-        aiSettings.attach(assistant)
-        _assistant = StateObject(wrappedValue: assistant)
-        _aiSettings = StateObject(wrappedValue: aiSettings)
         let vision = LocalImageAnalysisFactory.makeSharedService()
         let photoMetadata = PhotoMetadataModel(store: metadataStore,
             suggestor: LocalPhotoMetadataSuggestor(service: vision), library: library, editor: editor)
@@ -71,16 +60,9 @@ struct PicEditApp: App {
                 .environmentObject(editor)
                 .environmentObject(exporter)
                 .environmentObject(layout)
-                .environmentObject(assistant)
                 .environmentObject(photoMetadata)
                 .frame(minWidth: 1000, minHeight: 660)
                 .preferredColorScheme(.dark)
-                .background {
-                    if let consent = aiSettings.pendingConsent {
-                        AICloudConsentPresenter(settings: aiSettings, consent: consent)
-                            .id(consent.id)
-                    }
-                }
                 .background {
                     if let review = photoMetadata.importReview {
                         PhotoMetadataImportPresenter(model: photoMetadata, review: review).id(review.id)
@@ -94,7 +76,7 @@ struct PicEditApp: App {
                 .onChange(of: library.isRetryingCoordination) { _, retrying in
                     if !retrying, library.coordinationError == nil { editor.retryLoading(); photoMetadata.retryLoading() }
                 }
-                .onAppear { delegate.photoMetadata = photoMetadata; delegate.library = library; delegate.editor = editor; delegate.exporter = exporter; delegate.aiSettings = aiSettings; NSApp.setActivationPolicy(.regular); NSApp.activate(ignoringOtherApps: true) }
+                .onAppear { delegate.photoMetadata = photoMetadata; delegate.library = library; delegate.editor = editor; delegate.exporter = exporter; NSApp.setActivationPolicy(.regular); NSApp.activate(ignoringOtherApps: true) }
         }
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 1440, height: 900)
@@ -167,40 +149,6 @@ struct PicEditApp: App {
                 WorkspaceViewCommands(layout: layout, library: library, shortcuts: true)
             }
         }
-        Settings { AIProviderSettingsView(settings: aiSettings) }
-    }
-}
-
-/// Each sheet host has a stable identity and captures the consent it displays.
-/// In particular, a late nil setter never consults a newer pending consent ID.
-@MainActor
-struct AICloudConsentPresentation {
-    let settings: AIProviderSettings
-    let consent: AICloudConsent
-
-    var binding: Binding<AICloudConsent?> {
-        Binding(get: {
-            settings.pendingConsent?.id == consent.id ? consent : nil
-        }, set: { value in
-            if value == nil { settings.respondToConsent(false, for: consent.id) }
-        })
-    }
-
-    func answer(_ allowed: Bool) {
-        settings.respondToConsent(allowed, for: consent.id)
-    }
-}
-
-private struct AICloudConsentPresenter: View {
-    @ObservedObject var settings: AIProviderSettings
-    let consent: AICloudConsent
-
-    var body: some View {
-        let presentation = AICloudConsentPresentation(settings: settings, consent: consent)
-        Color.clear.frame(width: 0, height: 0)
-            .sheet(item: presentation.binding) { _ in
-                AICloudConsentView(consent: consent, answer: presentation.answer)
-            }
     }
 }
 
@@ -209,7 +157,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     weak var library: LibraryModel?
     weak var editor: EditingModel?
     weak var exporter: JPEGExportModel?
-    weak var aiSettings: AIProviderSettings?
     weak var photoMetadata: PhotoMetadataModel?
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
@@ -232,7 +179,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         // Commit an active numeric field while edits are still accepted.
         NSApp.keyWindow?.makeFirstResponder(nil)
-        aiSettings?.revoke()
         photoMetadata?.beginTermination()
         library.beginTermination()
         editor?.beginTermination()

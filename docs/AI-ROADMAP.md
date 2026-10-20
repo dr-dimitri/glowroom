@@ -1,10 +1,10 @@
 # KI-Roadmap: Stand und nächste Freigabe
 
-Stand: **18. Oktober 2026**. [Issue #1](https://github.com/dr-dimitri/picedit/issues/1) verfolgt die Gesamtarbeit; die Teilissues enthalten die verbindlichen Voraussetzungen. Ein geschlossenes Evaluationsissue kann eine negative Entscheidung belegen. Es bestätigt damit keine nutzbare Bildgenerierung.
+Stand: **20. Oktober 2026**. [Issue #1](https://github.com/dr-dimitri/picedit/issues/1) verfolgt die Gesamtarbeit; die Teilissues enthalten die verbindlichen Voraussetzungen. Ein geschlossenes Evaluationsissue kann eine negative Entscheidung belegen. Es bestätigt damit keine nutzbare Bildgenerierung.
 
 | Arbeitspaket | Geprüfter Stand | Weitere Voraussetzung |
 | --- | --- | --- |
-| [#2–9](https://github.com/dr-dimitri/picedit/issues/2) – Verträge, Assistent, Looks, Analyse, Metadaten, Suche und optionaler Text-Cloudprovider | Geschlossen | Die jeweils dokumentierte Modell-/Systemverfügbarkeit gilt weiterhin. |
+| [#2–9](https://github.com/dr-dimitri/picedit/issues/2) – ursprüngliche KI-Grundlagen | Historische Issues geschlossen; interaktiver Assistent, Looks und Text-Cloudprovider entfernt | Metadatenvorschläge, lokale Bildanalyse und semantische Suche bleiben eigenständig verfügbar; ihre Modell-/Systemvoraussetzungen gelten weiterhin. |
 | [#10](https://github.com/dr-dimitri/picedit/issues/10) – dauerhafte Varianten und Bearbeitungspakete | Geschlossen | Die Speichergrundlage allein erzeugt keine neuen Bildpixel. |
 | [#11](https://github.com/dr-dimitri/picedit/issues/11) – Masken und Compositor | Geschlossen | Die Maskengrundlage erteilt keine Modellfreigabe. |
 | [#12](https://github.com/dr-dimitri/picedit/issues/12) – Bildbackend-Gate | Geschlossen mit **`fullNoGo`** | [Entscheidung und echte Nachweise](AI-IMAGE-BACKEND-DECISION.md); kein lokales oder Cloud-Go. |

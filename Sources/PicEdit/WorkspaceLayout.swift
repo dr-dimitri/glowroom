@@ -2,7 +2,7 @@ import Combine
 import Foundation
 
 enum WorkspaceTool: String, CaseIterable, Codable, Identifiable {
-    case edit, assistant, metadata, versions
+    case edit, metadata, versions
 
     var id: String { rawValue }
 
@@ -12,7 +12,6 @@ enum WorkspaceTool: String, CaseIterable, Codable, Identifiable {
     var title: String {
         switch self {
         case .edit: "Bearbeiten"
-        case .assistant: "Assistent"
         case .metadata: "Bildinformationen"
         case .versions: "Bildstände"
         }
@@ -21,7 +20,6 @@ enum WorkspaceTool: String, CaseIterable, Codable, Identifiable {
     var symbol: String {
         switch self {
         case .edit: "slider.horizontal.3"
-        case .assistant: "sparkles"
         case .metadata: "info.circle"
         case .versions: "square.stack.3d.up"
         }

@@ -8,7 +8,7 @@ In **Entwickeln → Bearbeiten** ersetzt **Natürlicher Bildausgleich** die bish
 
 Die beiden Werte gehören zu Foto, Undo/Redo, Bildstand, Backup und Export. Bestehende `autoToneAmount`-Bearbeitungen behalten ihren bisherigen Renderer; die Oberfläche kennzeichnet diesen Altbestand. Erst das ausdrückliche Einschalten des neuen Effekts ersetzt ihn. Bei Daten, die beide Effekte enthalten, hat der neue Vorrang; sie werden nie gestapelt.
 
-Der lokale Assistent und der optionale Cloud-Textprovider können `naturalBalanceAmount` und `naturalBalanceColorAmount` als globale Reglerziele vorschlagen, beispielsweise auf „Aktiviere den natürlichen Bildausgleich mit Stärke 70 und Farbe 50“. Eine gültige Antwort wird direkt als ein Rückgängig-Schritt aktiv. Der lokale Bildassistent ab macOS 27 berücksichtigt zusätzlich das aktuelle Foto; Textfallback und Cloud bleiben ohne Bildpixel. Natürlicher Bildausgleich ist kein regionaler Maskenparameter. Der frühere eigenständige Analysebereich ist entfernt. Datenfluss und Grenzen: [Lokaler Entwicklungsassistent](LOCAL-AI-ASSISTANT.md).
+Natürlicher Bildausgleich wird über seine beiden manuellen Regler gesteuert und ist kein regionaler Maskenparameter. Der interaktive KI-Assistent und der frühere eigenständige Analysebereich sind entfernt.
 
 ## Verfahren und Grenzen
 
@@ -34,7 +34,7 @@ Die synthetischen Tests prüfen Aus/Altbestand, Tonwertreihenfolge, ungleiche he
 
 ```sh
 PICEDIT_TEST_BUILD_PATH=/tmp/picedit-natural-tests ./scripts/test.sh --jobs 4 \
-  --filter 'NaturalBalance|AutoTone|EditRenderSession|AIContracts|LocalAIProvider|CloudAIProvider|EditingModel|JPEGExporter|Lightcraft.*Reference'
+  --filter 'NaturalBalance|AutoTone|EditRenderSession|EditingModel|JPEGExporter|Lightcraft.*Reference'
 
 PICEDIT_NATURAL_BALANCE_RAW="$PWD/IMG_8362.CR3" \
 PICEDIT_NATURAL_BALANCE_OUTPUT=/tmp/picedit-natural-balance-review \

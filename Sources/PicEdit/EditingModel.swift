@@ -462,19 +462,6 @@ final class EditingModel: ObservableObject, GeneratedArtifactAccepting {
         objectWillChange.send()
         if aiEditGeneration == .max { aiEditSessionID = UUID(); aiEditGeneration = 0 } else { aiEditGeneration += 1 }
     }
-    func acceptAIProposal(_ result: AIProposalResult, in library: LibraryModel) -> Bool {
-        do { try result.request.snapshot.validate() } catch { return false }
-        guard (result.request.mode == .single || result.localAdjustments.isEmpty), result.request.snapshot.persistedVersion != nil,
-              isCurrentAISnapshot(result.request.snapshot, in: library), case .changes(let proposal, let settings) = result.validation,
-              let checked = try? AIProposalResult.validate(proposal: proposal, localAdjustments: result.localAdjustments,
-                  against: result.request.snapshot.settings),
-              case .changes(_, let validated) = checked, settings == validated,
-              settings != self.settings(for: result.request.snapshot.assetID), nextRevisionAvailable(for: result.request.snapshot.assetID) else { return false }
-        let assetID = result.request.snapshot.assetID
-        let previous = localRevision(for: assetID)
-        endEditing(assetID: assetID); setSettings(validated, for: assetID)
-        return localRevision(for: assetID) > previous
-    }
     private func install(_ state: EditingStoreState) {
         invalidateVariants()
         storeEpoch = state.storeEpoch; baselines = state.byAsset.mapValues { EditingExpectedState($0) }

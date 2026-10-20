@@ -6,13 +6,13 @@ struct WorkspaceFocusRoutingTests {
     @Test(arguments: [false, true])
     func closingNavigationOrFilmstripKeepsTheirReopenControlReachable(focused: Bool) {
         let visible = visibility(focused: focused)
-        #expect(target(from: visible, to: visibility(focused: focused, library: false)) == (focused ? .tool(.assistant) : .library))
+        #expect(target(from: visible, to: visibility(focused: focused, library: false)) == (focused ? .tool(.metadata) : .library))
         #expect(target(from: visible, to: visibility(focused: focused, filmstrip: false)) == .filmstrip)
     }
 
     @Test
     func closingClassicToolsReturnsToToolsRatherThanChangingWorkspace() {
-        #expect(target(from: visibility(), to: visibility(tools: false), tool: .assistant) == .tools)
+        #expect(target(from: visibility(), to: visibility(tools: false), tool: .metadata) == .tools)
         #expect(target(from: visibility(), to: visibility(tools: false), hasSelection: false) == .tools)
     }
 
@@ -26,7 +26,7 @@ struct WorkspaceFocusRoutingTests {
     func closingFocusNavigationReturnsToItsLastGroupOrTheFirstNavigationTool(_ tool: WorkspaceTool) {
         #expect(target(from: visibility(focused: true),
                        to: visibility(focused: true, library: false), tool: tool)
-                == .tool(tool == .edit ? .assistant : tool))
+                == .tool(tool == .edit ? .metadata : tool))
     }
 
     @Test

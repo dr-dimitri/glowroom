@@ -1,5 +1,7 @@
 # Review: Bibliothek, Bearbeitung und Sicherungen
 
+Historischer Reviewbericht: Die hier ebenfalls geprüften Assistenten- und Cloud-Funktionen wurden am 20. Oktober 2026 entfernt. Der Bericht bewahrt die damaligen Befunde und Prüfergebnisse.
+
 Stand: 16. Oktober 2026. Geprüft auf dem vorhandenen Apple-Silicon-Mac mit macOS 27 und den Apple Command Line Tools. Keine Behauptung einer vollständigen Fehlerfreiheit oder identischer Ergebnisse auf jeder Kamera/macOS-Version.
 
 ## Umfang

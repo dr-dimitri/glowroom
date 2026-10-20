@@ -1,15 +1,14 @@
 # Lokale Bildanalyse: interne Grundlage und historische Entscheidung
 
-Der eigenständige Bereich **Bildanalyse** wurde aus der aktuellen Oberfläche entfernt. Die lokale Vision-Anbindung, Quellenprüfung und begrenzte Rastervorbereitung bleiben für **Bildinformationen** und den [bildbezogenen Assistenten](LOCAL-AI-ASSISTANT.md) erhalten. Die folgenden datierten Nachweise betreffen Bildbeschreibung und Vorbereitung; sie belegen allein keine textgesteuerte Bildkorrektur.
+Der eigenständige Bereich **Bildanalyse** wurde aus der aktuellen Oberfläche entfernt. Die lokale Vision-Anbindung, Quellenprüfung und begrenzte Rastervorbereitung bleiben für **Bildinformationen** erhalten. Die folgenden datierten Nachweise betreffen Bildbeschreibung und Vorbereitung; sie belegen allein keine textgesteuerte Bildkorrektur.
 
-Stand: 16. Oktober 2026. Diese Entscheidung wurde vor der Adapterimplementierung für [AI-05 / Issue #6](https://github.com/dr-dimitri/picedit/issues/6) getroffen. Der ursprüngliche Textprovider ohne Bildzugriff bleibt als Textfallback erhalten. Eine getrennte Bildanalysefähigkeit darf nur nach SDK-, Laufzeit-, Sprach- und Modellprüfung angeboten werden.
+Stand: 16. Oktober 2026. Diese Entscheidung wurde vor der Adapterimplementierung für [AI-05 / Issue #6](https://github.com/dr-dimitri/picedit/issues/6) getroffen. Der damalige Textprovider ohne Bildzugriff ist mit dem interaktiven Assistenten entfernt. Eine getrennte Bildanalysefähigkeit darf nur nach SDK-, Laufzeit-, Sprach- und Modellprüfung angeboten werden.
 
 ## Gebaute und geprüfte Grundlage
 
 | Pfad | Gebautes SDK / Compiler | Niedrigste optionale Laufzeit | Nachweis |
 | --- | --- | --- | --- |
 | Vorhandene Bibliothek und Bearbeitung | Swift tools 5.9, Deploymentziel macOS 14 | macOS 14 | Mindestziel bleibt unverändert |
-| Lokaler Textprovider | FoundationModels 1.5.2 / SDK 26.5, Swift 6.4 | macOS 26 | Textprüfung in AI-02/AI-04, keine Bildfähigkeit daraus abgeleitet |
 | Native Bildattachments | FoundationModels 2.0.68.1.402 / SDK 27, Swift 6.4 | macOS 27 | Gebaute synthetische Attachment-Probe erfolgreich |
 | SDK 26.5 / älterer Build | Keine Attachment- oder Vision-Symbole | Bildanalyse nicht verfügbar | Getrenntes Compile-Time-Gate erforderlich |
 
@@ -37,9 +36,9 @@ Analyseergebnisse bleiben begrenzte Vorschläge. Sie sind keine bestätigten Met
 
 ## Erhaltene interne Implementierung
 
-Der frühere eigenständige Analyse-Inspector samt Start-, Abbruch- und Verwerfen-Aktionen ist entfernt. Interne Originalanalysen dienen weiterhin den Metadatenvorschlägen. Der neue Assistent verwendet für seine Planung eine bearbeitete Vorschau und einen eigenen streng validierten Bearbeitungsvertrag; automatische Masken entstehen anschließend aus der geometrieneutralen Quelle. Der reine Beschreibungsdienst ändert selbst weiterhin keine Regler oder Metadaten.
+Der frühere eigenständige Analyse-Inspector samt Start-, Abbruch- und Verwerfen-Aktionen ist entfernt. Interne Originalanalysen dienen weiterhin den Metadatenvorschlägen. Der reine Beschreibungsdienst ändert selbst weiterhin keine Regler oder Metadaten.
 
-`ImageAnalysisRequest` bindet Sprache `de_DE`, Originalquelle, Eingabeart und getrennte Auswahl-/Bearbeitungs-/Lebenszyklusepochen. `ImageAnalysisResult` trennt den modellgelieferten Vorschlag von appseitiger Provenienz. `ImageAnalysisProviderDescriptor.capabilities` nennt ausdrücklich `imageUnderstanding`; die Bereitschaft des Textproviders schaltet diesen Dienst nicht frei. Die Systemmodellversion ist über die verwendete API nicht öffentlich verfügbar und bleibt deshalb `nil`, statt eine Version zu erfinden.
+`ImageAnalysisRequest` bindet Sprache `de_DE`, Originalquelle, Eingabeart und getrennte Auswahl-/Bearbeitungs-/Lebenszyklusepochen. `ImageAnalysisResult` trennt den modellgelieferten Vorschlag von appseitiger Provenienz. `ImageAnalysisProviderDescriptor.capabilities` nennt ausdrücklich `imageUnderstanding`; die Modellbereitschaft allein genügt ohne diese Bildfähigkeit nicht. Die Systemmodellversion ist über die verwendete API nicht öffentlich verfügbar und bleibt deshalb `nil`, statt eine Version zu erfinden.
 
 `ImageAnalysisPreparer` verwendet die vorhandenen ausgewählten Decoder-/Renderpfade ohne eingebettete Kamera-Vorschau. Die Ausgabe ist hart auf **1024 Pixel lange Kante und 16 MiB tatsächliche Rasterbytes** beschränkt, auch wenn bereits eine größere Entwicklungsbasis im Cache liegt. Dies ist ein konservatives appseitiges Aufnahmebudget für die native Attachment-Schnittstelle, kein behauptetes internes Tensorformat des Systemmodells. Das Framework führt seine eigene Modellvorverarbeitung aus; PicEdit fügt keine zweite Farbkonvertierung hinzu. Die Bildorientierung ist zuvor durch ImageIO angewendet.
 
