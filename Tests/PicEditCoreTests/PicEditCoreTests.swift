@@ -115,6 +115,42 @@ final class PicEditCoreTests {
     }
 
     @Test
+    func testScanPreservesDecimalExposuresAndConventionalReciprocals() async throws {
+        let exposures: [(Double, String)] = [
+            (0.8, "0.8 s"), (0.6, "0.6 s"), (0.3, "0.3 s"),
+            (2.5, "2.5 s"), (2.25, "2.25 s"),
+            (1 / 300.0, "1/300 s"), (0.008, "1/125 s"), (0.5, "1/2 s")
+        ]
+        for (index, exposure) in exposures.enumerated() {
+            try writeImage(to: temporaryDirectory.appendingPathComponent("exposure-\(index).jpg"), metadata: [
+                kCGImagePropertyExifDictionary: [kCGImagePropertyExifExposureTime: exposure.0]
+            ])
+        }
+
+        let scan = try await FolderScanner().scan(folder: LibraryFolder(url: temporaryDirectory))
+        #expect(scan.assets.count == exposures.count)
+        for (index, exposure) in exposures.enumerated() {
+            let asset = try #require(scan.assets.first { $0.fileName == "exposure-\(index).jpg" })
+            #expect(asset.shutterSpeed == exposure.1)
+        }
+    }
+
+    @Test
+    func testExposureDescriptionHandlesSerializationAndNumericLimits() throws {
+        #expect(FolderScanner.exposureDescription(Double(Float(1 / 300.0))) == "1/300 s")
+        for seconds in [1e-30, Double.leastNonzeroMagnitude, Double.leastNormalMagnitude, 1 / Double(Int.max)] {
+            let description = try #require(FolderScanner.exposureDescription(seconds))
+            #expect(description.hasSuffix(" s"))
+            let restored = try #require(Double(description.dropLast(2)))
+            #expect(restored.isFinite && restored > 0)
+            #expect(abs(restored / seconds - 1) < 1e-12)
+        }
+        for seconds in [0.0, -1, Double.nan, Double.infinity, -Double.infinity] {
+            #expect(FolderScanner.exposureDescription(seconds) == nil)
+        }
+    }
+
+    @Test
     func testMissingFolderFailsInsteadOfReturningEmptyScan() async throws {
         let absent = temporaryDirectory.appendingPathComponent("missing")
         do {

@@ -148,12 +148,16 @@ struct DetailView: View {
         GeometryReader { available in
         VStack(spacing: 0) {
             if let asset = model.selectedAsset {
-                HStack(spacing: 8) {
-                    Text(asset.fileName).fontWeight(.medium)
-                    Text(previewLabel).foregroundStyle(Theme.muted)
-                    Spacer(minLength: 0)
-                }.font(.system(size: 11)).lineLimit(1).truncationMode(.middle)
-                    .padding(.horizontal, 18).frame(height: 30).background(Theme.chrome)
+                if model.isDeveloping {
+                    DevelopPhotoHeader(asset: asset, previewLabel: previewLabel)
+                } else {
+                    HStack(spacing: 8) {
+                        Text(asset.fileName).fontWeight(.medium)
+                        Text(previewLabel).foregroundStyle(Theme.muted)
+                        Spacer(minLength: 0)
+                    }.font(.system(size: 11)).lineLimit(1).truncationMode(.middle)
+                        .padding(.horizontal, 18).frame(height: 30).background(Theme.chrome)
+                }
                 GeometryReader { geometry in
                     if zoomed {
                         ScrollView([.horizontal, .vertical]) {

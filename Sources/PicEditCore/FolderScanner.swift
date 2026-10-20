@@ -223,17 +223,7 @@ public struct FolderScanner: Sendable {
         let createdAt = values.creationDate ?? modifiedAt
         let aperture = number(exif[kCGImagePropertyExifFNumber as String]).map { "ƒ/\(decimal($0))" }
         let focalLength = number(exif[kCGImagePropertyExifFocalLength as String]).map { "\(decimal($0)) mm" }
-        let exposure = number(exif[kCGImagePropertyExifExposureTime as String]).flatMap { value -> String? in
-            guard value > 0 else { return nil }
-            if value < 1 {
-                let reciprocal = (1 / value).rounded()
-                guard reciprocal.isFinite, reciprocal < Double(Int.max) else {
-                    return String(format: "%.3g s", locale: Locale(identifier: "en_US_POSIX"), value)
-                }
-                return "1/\(Int(reciprocal)) s"
-            }
-            return "\(decimal(value)) s"
-        }
+        let exposure = number(exif[kCGImagePropertyExifExposureTime as String]).flatMap(exposureDescription)
         let isoValues = exif[kCGImagePropertyExifISOSpeedRatings as String] as? [NSNumber]
         let iso = isoValues?.first.map { $0.stringValue }
         let captureDate = parseDate(
@@ -270,6 +260,20 @@ public struct FolderScanner: Sendable {
         guard let value = value as? String else { return nil }
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? nil : trimmed
+    }
+
+    static func exposureDescription(_ seconds: Double) -> String? {
+        guard seconds.isFinite, seconds > 0 else { return nil }
+        if seconds < 1 {
+            let reciprocal = (1 / seconds).rounded()
+            // Allow one part per million for serialized EXIF fractions, without
+            // turning decimal exposures such as 0.8 s or 0.3 s into other values.
+            if reciprocal.isFinite, reciprocal > 1, reciprocal < Double(Int.max),
+               abs(1 / reciprocal - seconds) <= seconds * 1e-6 {
+                return "1/\(Int(reciprocal)) s"
+            }
+        }
+        return String(format: "%.15g s", locale: Locale(identifier: "en_US_POSIX"), seconds)
     }
 
     private static func decimal(_ number: Double) -> String {
