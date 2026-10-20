@@ -2,7 +2,7 @@
 
 Eine native Fotobibliothek für macOS, entwickelt mit SwiftUI und AppKit. Die Anwendung unterstützt das Sichten, Organisieren und nicht destruktive Anpassen vorhandener Bilder: Ordner hinzufügen, Vorschauen durchsehen, einzelne Bilder groß anzeigen, Tonwerte und Präsenz anpassen, Rauschen mindern und Favoriten sowie Bewertungen verwalten. Die dunkle Oberfläche orientiert sich am Bibliotheksbereich professioneller Fotoanwendungen.
 
-Der **Bildfokus aus Vorschlag B** der [Entwürfe zu Issue #45](docs/design/issue-45/README.md) bietet mehr Bildfläche und Werkzeuge nach Bedarf. Die historischen Mockups dokumentieren den Entwurf; die implementierten Bedienwege und Zustandsregeln stehen unter [Bildfokus und Arbeitsbereiche](docs/WORKSPACE-LAYOUT.md).
+Der **Bildfokus** bietet mehr Bildfläche und Werkzeuge nach Bedarf. Die Bedienwege und Zustandsregeln stehen unter [Bildfokus und Arbeitsbereiche](docs/WORKSPACE-LAYOUT.md).
 
 ## Starten
 
