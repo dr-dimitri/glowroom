@@ -1,5 +1,7 @@
 # Abnahmeprotokoll zu Issue 45
 
+Historischer Nachweis: Die hier beschriebenen Assistenten-, Look- und Cloud-Bedienwege wurden am 20. Oktober 2026 entfernt. Die aktuellen Funktionen stehen unter [Entwickeln](../../DEVELOP-WORKSPACE.md).
+
 18. Oktober 2026 · [Issue #45](https://github.com/dr-dimitri/picedit/issues/45) · Ausgangsoberfläche `fba0c9b`, native Einführung `162f6ae` / [PR #56](https://github.com/dr-dimitri/picedit/pull/56).
 
 Die klassische Ansicht und der Bildfokus verwenden dieselben Werkzeuggruppen, Bildauswahl und Bearbeitungsmodelle. Die klassische Ansicht stellt Bibliothek und Werkzeuge neben dem Bild dar; Seitenleisten und Filmstreifen lassen sich unabhängig schließen und verändern. Der Bildfokus blendet die Bibliotheksköpfe aus, hält Navigation und Bildsteuerung beim Foto und öffnet Gruppen über das beschriftete Dock. Die Werkzeugseite beansprucht eigene Breite neben dem Motiv. Rückkehr, Export, Sicherungen und Status bleiben sichtbar. Die konkrete Bedienung steht unter [Bildfokus und Arbeitsbereiche](../../WORKSPACE-LAYOUT.md).

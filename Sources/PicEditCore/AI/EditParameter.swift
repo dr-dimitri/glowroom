@@ -1,6 +1,6 @@
 import Foundation
 
-/// The exhaustive mapping between model-visible IDs and the sixteen numeric controls.
+/// The exhaustive mapping between persisted IDs and the sixteen numeric controls.
 public enum EditParameter: String, CaseIterable, Codable, Hashable, Sendable {
     case exposure, contrast, highlights, shadows, whites, blacks
     case texture, clarity, dehaze, vibrance, saturation
@@ -41,8 +41,8 @@ public enum EditParameter: String, CaseIterable, Codable, Hashable, Sendable {
 
     /// Applies an absolute target without normalizing or modifying any other control.
     public func applying(_ value: Double, to settings: EditSettings) throws -> EditSettings {
-        guard value.isFinite else { throw AIEditingError.invalidResponse(.nonFiniteValue) }
-        guard range.contains(value) else { throw AIEditingError.invalidResponse(.outOfRange) }
+        guard value.isFinite else { throw ArtifactContractError.invalidValue("nonfinite edit parameter") }
+        guard range.contains(value) else { throw ArtifactContractError.invalidValue("edit parameter out of range") }
         var result = settings
         result[keyPath: keyPath] = value
         return result

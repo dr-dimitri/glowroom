@@ -119,7 +119,6 @@ private struct PhotoContextMenu: View {
 struct DetailView: View {
     @ObservedObject var model: LibraryModel
     @EnvironmentObject private var editor: EditingModel
-    @EnvironmentObject private var assistant: AIAssistantModel
     @EnvironmentObject private var layout: WorkspaceLayoutModel
     @Environment(\.workspaceCanvasMeasurement) private var measureCanvas
     @ViewState<Bool> private var zoomed = false
@@ -186,13 +185,11 @@ struct DetailView: View {
                                 }
                             } else if developWorkspace.isAutoStraightening {
                                 EditingProgressIndicator().allowsHitTesting(false)
-                            } else if assistant.state == .generating {
-                                EditingProgressIndicator(cancelLabel: "Assistent abbrechen") { assistant.discard() }
                             }
                         }
                     }
                     .environment(\.editingProgressIsCovered, maskWorkspace.showsCalculationStatus
-                        || developWorkspace.repairBusy || developWorkspace.isAutoStraightening || assistant.state == .generating)
+                        || developWorkspace.repairBusy || developWorkspace.isAutoStraightening)
                     .contextMenu { PhotoContextMenu(asset: asset, model: model) }
                     .accessibilityElement(children: .contain)
                     .accessibilityLabel("Bildfläche")
@@ -262,15 +259,11 @@ struct DetailView: View {
     private var previewLabel: String {
         if model.comparesOriginal { return " · Importiertes Original" }
         if model.comparesCurrentSourceWithoutSettings { return " · Aktuelle Quelle ohne Regler" }
-        if model.isDeveloping, assistant.hasAppliedChanges {
-            return assistant.comparison == .proposal ? " · KI-Bearbeitung" : " · Ausgangsstand vor KI"
-        }
         return ""
     }
 
     private func previewSettings(for assetID: String) -> EditSettings {
-        var settings = maskWorkspace.previewSettings ?? assistant.displaySettings(assetID: assetID,
-            committed: editor.settings(for: assetID), developing: model.isDeveloping, comparesOriginal: model.comparesOriginal)
+        var settings = maskWorkspace.previewSettings ?? editor.settings(for: assetID)
         if developWorkspace.tool.usesOriginalCanvas || developWorkspace.picksWhiteBalance {
             settings.developGeometry.crop = nil
             settings.developGeometry.quarterTurns = 0

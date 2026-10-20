@@ -4,39 +4,39 @@ import PicEditCore
 import Testing
 @testable import PicEdit
 
-@Suite("AI proposal preview reuse")
-struct AIAssistantPreviewTests {
+@Suite("Preview comparison cache reuse")
+struct PreviewComparisonCacheTests {
     @Test
-    func comparingCommittedProposalAndOriginalReusesDecodedBaseAndRenderedResults() async throws {
-        let probe = AIPreviewProbe()
+    func comparingEditedVersionsAndOriginalReusesDecodedBaseAndRenderedResults() async throws {
+        let probe = PreviewComparisonProbe()
         let decoder = ImagePreviewPipeline(concurrencyLimit: 1, decoder: { try probe.decode($0) })
         let renderer = AdjustedPreviewPipeline(maximumConcurrentRenders: 1,
             renderer: { bitmap, settings in probe.render(bitmap, settings: settings) })
         // All three comparisons use the developed original, including neutral
         // settings. Switching to a camera thumbnail would change the source.
-        let request = PreviewRequest(url: URL(fileURLWithPath: "/tmp/ai-preview-fixture.raw"),
+        let request = PreviewRequest(url: URL(fileURLWithPath: "/tmp/comparison-preview-fixture.raw"),
             modifiedAt: Date(timeIntervalSince1970: 100), pixelSize: 2400,
             fileSize: 50, allowsEmbeddedPreview: false)
         var committed = EditSettings.neutral
         committed.exposure = 0.6
-        var proposed = committed
-        proposed.shadows = 30
+        var comparison = committed
+        comparison.shadows = 30
         let base = try await decoder.image(for: request, priority: .selected)
         let firstCommitted = try await renderer.image(base, request: request, settings: committed, priority: .selected)
-        let firstProposed = try await renderer.image(base, request: request, settings: proposed, priority: .selected)
-        for settings in [committed, proposed, .neutral, proposed, committed, proposed] {
+        let firstProposed = try await renderer.image(base, request: request, settings: comparison, priority: .selected)
+        for settings in [committed, comparison, .neutral, comparison, committed, comparison] {
             let reusedBase = try await decoder.image(for: request, priority: .selected)
             #expect(reusedBase.image === base.image)
             let rendered = try await renderer.image(reusedBase, request: request, settings: settings, priority: .selected)
             if settings == committed { #expect(rendered.image === firstCommitted.image) }
-            if settings == proposed { #expect(rendered.image === firstProposed.image) }
+            if settings == comparison { #expect(rendered.image === firstProposed.image) }
         }
         #expect(probe.decodeCount == 1)
-        #expect(probe.renderedSettings == [committed, proposed])
+        #expect(probe.renderedSettings == [committed, comparison])
     }
 }
 
-private final class AIPreviewProbe: @unchecked Sendable {
+private final class PreviewComparisonProbe: @unchecked Sendable {
     private let lock = NSLock()
     private var decodes = 0
     private var renders: [EditSettings] = []

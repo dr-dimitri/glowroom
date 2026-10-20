@@ -1,5 +1,7 @@
 # Zwei Oberflächenentwürfe für Issue 45
 
+Historischer Nachweis: Die hier beschriebenen Assistenten-, Look- und Cloud-Bedienwege wurden am 20. Oktober 2026 entfernt. Die aktuellen Funktionen stehen unter [Entwickeln](../../DEVELOP-WORKSPACE.md).
+
 17. Oktober 2026 · [Issue #45](https://github.com/dr-dimitri/picedit/issues/45) · analysierter App-Stand `fba0c9b`.
 
 Umsetzungsstand: Die klassische Ansicht mit gruppierten Werkzeugen und der Bildfokus sind in der Anwendung umgesetzt. Die aktuellen Bedienwege und Zustandsregeln stehen unter [Bildfokus und Arbeitsbereiche](../../WORKSPACE-LAYOUT.md); der [Abnahmebericht](ACCEPTANCE.md) beschreibt den nativen Stand, Belege und verbleibende manuelle Grenzen. Die folgenden Bilder, Klickwege und Geometrien bleiben die ursprünglichen statischen Entwürfe.

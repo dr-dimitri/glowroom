@@ -43,9 +43,6 @@ struct WorkspaceGeometryTests {
         try repository.save(LibraryCatalog(folders: [folder], assets: assets))
         let library = LibraryModel(repository: repository)
         let editor = EditingModel(directory: directory.appendingPathComponent("Editing"))
-        let provider = LocalAIEditingProvider(runtime: UnavailableLocalAIModelRuntime(reason: .sdkUnavailable))
-        let assistant = AIAssistantModel(provider: provider,
-            coordinator: AIRequestCoordinator(provider: provider, budget: AIResourceBudget()), editor: editor, library: library)
         let analysisService = ImageAnalysisService(provider: UnavailableImageAnalysisProvider(reason: .sdkUnavailable), budget: AIResourceBudget())
         let analysis = ImageAnalysisModel(service: analysisService, editor: editor, library: library)
         let metadata = PhotoMetadataModel(store: PhotoMetadataRepository(directory: directory.appendingPathComponent("Metadata")),
@@ -69,7 +66,7 @@ struct WorkspaceGeometryTests {
             #endif
             host.mount(root
                 .environmentObject(editor).environmentObject(exporter).environmentObject(layout)
-                .environmentObject(assistant).environmentObject(analysis).environmentObject(metadata)
+                .environmentObject(analysis).environmentObject(metadata)
                 .environment(\.workspaceCanvasMeasurement, { [weak host] size in host?.canvasSize = size })
                 .preferredColorScheme(.dark))
             for asset in assets {

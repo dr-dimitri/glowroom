@@ -24,7 +24,7 @@ enum WorkspaceFocusRouting {
         if previous.showsLibrary && !current.showsLibrary {
             if !current.isFocused { return .library }
             guard hasSelection else { return .focus }
-            let navigationTool = revealedTool.flatMap { $0.isNavigationTool ? $0 : nil } ?? .assistant
+            let navigationTool = revealedTool.flatMap { $0.isNavigationTool ? $0 : nil } ?? .metadata
             return .tool(navigationTool)
         }
         if previous.showsTools && !current.showsTools {
@@ -227,7 +227,6 @@ private extension WorkspaceTool {
     var dockTitle: String {
         switch self {
         case .edit: return "Bearbeiten"
-        case .assistant: return "Assistent"
         case .metadata: return "Informationen"
         case .versions: return "Bildstände"
         }

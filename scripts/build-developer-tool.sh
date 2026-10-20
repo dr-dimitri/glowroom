@@ -3,14 +3,13 @@ set -euo pipefail
 
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 TOOL="${1:-}"
-case "$TOOL" in image-pipeline|editing|library|keychain|image-generation) ;; *) echo "Usage: $0 image-pipeline|editing|library|keychain|image-generation" >&2; exit 2 ;; esac
+case "$TOOL" in image-pipeline|editing|library|image-generation) ;; *) echo "Usage: $0 image-pipeline|editing|library|image-generation" >&2; exit 2 ;; esac
 [[ $# == 1 ]] || { echo "Expected one developer tool name" >&2; exit 2; }
 SOURCE_ROOT="${PICEDIT_TOOL_SOURCE_ROOT:-$ROOT}"
 case "$TOOL" in
     image-pipeline) HARNESS=ImagePipelineSmoke ;;
     editing) HARNESS=EditingBenchmark ;;
     library) HARNESS=LibraryBenchmark ;;
-    keychain) HARNESS=KeychainSmoke ;;
     image-generation) HARNESS=ImageGenerationEvaluation ;;
 esac
 # Older checkouts ignore the harness selector and would launch the real app.

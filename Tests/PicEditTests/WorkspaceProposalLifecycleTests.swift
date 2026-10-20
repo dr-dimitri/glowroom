@@ -5,7 +5,7 @@ import SwiftUI
 import Testing
 @testable import PicEdit
 
-@Suite("Workspace dock proposal lifecycle", .serialized, .timeLimit(.minutes(2)))
+@Suite("Workspace dock and analysis lifecycle", .serialized, .timeLimit(.minutes(2)))
 @MainActor
 final class WorkspaceProposalLifecycleTests {
     private let directory: URL
@@ -42,7 +42,6 @@ final class WorkspaceProposalLifecycleTests {
                 .environmentObject(f.editor)
                 .environmentObject(exporter)
                 .environmentObject(layout)
-                .environmentObject(f.assistant)
                 .environmentObject(f.analysis)
                 .environmentObject(metadata)
         )
@@ -63,11 +62,9 @@ final class WorkspaceProposalLifecycleTests {
             try await host.settle()
             try host.snapshot(to: output.appendingPathComponent("focus-panels-\(Int(size.width)).png"))
             layout.update(developing: true) { $0.singleGroup = true }
-            for tool in [WorkspaceTool.assistant, .metadata] {
-                layout.reveal(tool, developing: true)
-                try await host.settle()
-                try host.snapshot(to: output.appendingPathComponent("focus-\(tool.rawValue)-\(Int(size.width)).png"))
-            }
+            layout.reveal(.metadata, developing: true)
+            try await host.settle()
+            try host.snapshot(to: output.appendingPathComponent("focus-metadata-\(Int(size.width)).png"))
             layout.focus = savedFocus
         }
         let origin = layout.focusOrigin
@@ -110,7 +107,6 @@ final class WorkspaceProposalLifecycleTests {
         #expect(layout.library == libraryPanels && layout.develop == developPanels)
         #expect(f.library.assets == assets)
         #expect(try assets.map { try Data(contentsOf: $0.fileURL) } == originalBytes)
-        #expect(await f.provider.requests.isEmpty)
         #expect(await f.service.requests.isEmpty)
         #expect(!f.editor.hasPendingChanges)
         #expect(await f.editor.flush())
@@ -125,20 +121,13 @@ final class WorkspaceProposalLifecycleTests {
         let host = WorkspaceSectionTestHost()
         defer { host.close() }
         try await host.mount(sections(f))
-        try await wait { f.assistant.availability == .available && f.analysis.availability == .available }
+        try await wait { f.analysis.availability == .available }
         let baseline = try #require(f.editor.aiSnapshot(in: f.library))
-        f.assistant.prompt = "Aufhellen"
-        f.assistant.generate()
         f.analysis.analyze()
-        try await wait {
-            let proposals = await f.provider.requests.count
-            let analyses = await f.service.requests.count
-            return proposals == 1 && analyses == 1
-        }
+        try await wait { await f.service.requests.count == 1 }
         if !whilePending {
-            await f.provider.complete()
             await f.service.complete()
-            try await wait { f.assistant.state == .previewing && f.analysis.state == .ready }
+            try await wait { f.analysis.state == .ready }
         }
         try await host.unmount()
         let original = try #require(f.library.selectedAsset).fileURL
@@ -148,23 +137,17 @@ final class WorkspaceProposalLifecycleTests {
         try await wait {
             !f.library.isImporting && !f.library.isProjecting
                 && f.editor.aiSnapshot(in: f.library)?.source != baseline.source
-                && f.assistant.result == nil && f.assistant.requestID == nil && f.analysis.result == nil
-                && f.analysis.state != .analyzing
+                && f.analysis.result == nil && f.analysis.state != .analyzing
         }
-        if whilePending {
-            await f.provider.complete()
-            await f.service.complete()
-        }
+        if whilePending { await f.service.complete() }
         try await host.mount(sections(f))
         try await host.settle()
         #expect(f.library.selectedID == baseline.assetID)
-        #expect(f.assistant.result == nil && !f.assistant.canAccept)
         #expect(f.analysis.result == nil)
-        #expect(await f.provider.requests.count == 1)
         #expect(await f.service.requests.count == 1)
-        #expect(f.editor.settings(for: baseline.assetID) == (whilePending ? baseline.settings : EditSettings(exposure: 1)))
+        #expect(f.editor.settings(for: baseline.assetID) == baseline.settings)
         #expect(await f.editor.flush())
-        #expect(await f.store.saveCount == (whilePending ? 0 : 1))
+        #expect(await f.store.saveCount == 0)
         #expect(await f.library.finishSaving())
     }
 
@@ -189,6 +172,10 @@ final class WorkspaceProposalLifecycleTests {
                     "\(identifier) has one visible owner")
         }
         #expect(!elements.contains { $0.accessibilityIdentifier() == "workspace.mask" })
+        #expect(!elements.contains { $0.accessibilityIdentifier() == "workspace.group.assistant" })
+        #expect(!elements.contains { $0.accessibilityIdentifier() == "assistant.execute" })
+        #expect(!elements.contains { $0.accessibilityLabel() == "Drei Looks erstellen" })
+        #expect(!elements.contains { ($0.accessibilityLabel() ?? "").hasPrefix("KI-Einstellungen") })
         #expect(!elements.contains { $0.accessibilityLabel() == "Originalfoto" || $0.accessibilityLabel() == "Autom." })
         let navigator = try #require(elements.first { $0.accessibilityIdentifier() == "workspace.navigator" })
         let masks = try #require(elements.first { $0.accessibilityIdentifier() == "develop.tool.masks" })
@@ -198,16 +185,15 @@ final class WorkspaceProposalLifecycleTests {
         }
 
         layout.update(developing: true) { $0.showsLibrary = false; $0.showsTools = false }
-        WorkspaceActions.reveal(.assistant, layout: layout, library: f.library)
+        WorkspaceActions.reveal(.metadata, layout: layout, library: f.library)
         try await host.settle()
         #expect(layout.panels(developing: true).showsLibrary && !layout.panels(developing: true).showsTools)
-        #expect(host.accessibilityElements.contains { $0.accessibilityIdentifier() == "workspace.group.assistant" })
+        #expect(host.accessibilityElements.contains { $0.accessibilityIdentifier() == "workspace.group.metadata" })
         #expect(!host.accessibilityElements.contains { $0.accessibilityIdentifier() == "develop.tool.masks" })
         WorkspaceActions.reveal(.edit, layout: layout, library: f.library)
         try await host.settle()
-        #expect(layout.panels(developing: true).openGroups == [.edit, .assistant])
+        #expect(layout.panels(developing: true).openGroups == [.edit, .metadata])
         #expect(host.accessibilityElements.contains { $0.accessibilityIdentifier() == "develop.tool.masks" })
-        #expect(await f.provider.requests.isEmpty)
         #expect(await f.service.requests.isEmpty)
         #expect(await metadata.finishSaving())
         #expect(await f.library.finishSaving())
@@ -293,7 +279,6 @@ final class WorkspaceProposalLifecycleTests {
         try host.sendHistoryKey()
         try await host.settle()
         #expect(f.editor.settings(for: assetID) == activeMasks)
-        #expect(await f.provider.requests.isEmpty)
         #expect(await f.service.requests.isEmpty)
         #expect(await f.editor.flush())
         #expect(await metadata.finishSaving())
@@ -326,7 +311,6 @@ final class WorkspaceProposalLifecycleTests {
                 .environmentObject(f.editor)
                 .environmentObject(JPEGExportModel(preferences: nil))
                 .environmentObject(layout)
-                .environmentObject(f.assistant)
                 .environmentObject(f.analysis)
                 .environmentObject(metadata)
         )
@@ -447,7 +431,7 @@ final class WorkspaceProposalLifecycleTests {
         #expect(await f.library.finishSaving())
     }
 
-    @Test(arguments: [WorkspaceTool.edit, .assistant])
+    @Test(arguments: [WorkspaceTool.edit, .metadata])
     func toolRevealPreservesLiveMasksAndMountsItsDestination(tool: WorkspaceTool) async throws {
         let f = try await fixture()
         let host = WorkspaceSectionTestHost(size: NSSize(width: 1_440, height: 900))
@@ -457,17 +441,13 @@ final class WorkspaceProposalLifecycleTests {
         defer { defaults.removePersistentDomain(forName: suite) }
         let layout = WorkspaceLayoutModel(defaults: defaults)
         let assetID = try #require(f.library.selectedID)
-        if tool == .assistant { f.editor.setSettings(EditSettings(exposure: 0.2), for: assetID) }
+        if tool == .metadata { f.editor.setSettings(EditSettings(exposure: 0.2), for: assetID) }
         let mask = LocalAdjustmentEditorModel(settings: f.editor.settings(for: assetID))
         let metadata = try await mountLibrary(f, mask: mask, layout: layout, host: host)
-        if tool == .assistant {
-            WorkspaceActions.reveal(.assistant, layout: layout, library: f.library)
-            f.assistant.prompt = "Tiefen aufhellen"
-            try await wait("assistant action is enabled before mask editing") {
-                host.accessibilityElements.first { $0.accessibilityRole() == .button && $0.accessibilityLabel() == "Bearbeitung ausführen" }?.isAccessibilityEnabled() == true
-            }
-            #expect(!host.accessibilityElements.contains { $0.accessibilityLabel() == "Drei Looks erstellen" })
-            #expect(!host.accessibilityElements.contains { $0.accessibilityIdentifier() == "workspace.group.analysis" })
+        if tool == .metadata {
+            WorkspaceActions.reveal(.metadata, layout: layout, library: f.library)
+            try await host.settle()
+            #expect(host.accessibilityElements.contains { $0.accessibilityIdentifier() == "workspace.group.metadata" })
             #expect(host.accessibilityElements.first { $0.accessibilityIdentifier() == "workspace.undo" }?.isAccessibilityEnabled() == false)
             #expect(host.accessibilityElements.first { $0.accessibilityIdentifier() == "workspace.reset" }?.isAccessibilityEnabled() == true)
         }
@@ -479,14 +459,13 @@ final class WorkspaceProposalLifecycleTests {
         mask.add(.radial); mask.updateSelected { $0.settings.exposure = 1 }
         let expected = mask.settings
         #expect(f.editor.settings(for: assetID) == expected)
-        if tool == .assistant {
+        if tool == .metadata {
             try await host.settle()
-            #expect(host.accessibilityElements.first { $0.accessibilityRole() == .button && $0.accessibilityLabel() == "Bearbeitung ausführen" }?.isAccessibilityEnabled() == false)
             #expect(host.accessibilityElements.first { $0.accessibilityIdentifier() == "workspace.undo" }?.isAccessibilityEnabled() == true)
             for identifier in ["workspace.redo", "workspace.reset"] {
                 #expect(host.accessibilityElements.first { $0.accessibilityIdentifier() == identifier }?.isAccessibilityEnabled() == false)
             }
-            let group = try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == "workspace.group.assistant" })
+            let group = try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == "workspace.group.metadata" })
             #expect(group.accessibilityPerformPress(), "The already open navigation header returns to its controls")
         } else {
             WorkspaceActions.reveal(tool, layout: layout, library: f.library)
@@ -498,8 +477,7 @@ final class WorkspaceProposalLifecycleTests {
         #expect(host.sheet == nil)
         #expect(!host.accessibilityElements.contains { $0.accessibilityIdentifier() == "local-mask.close" })
         #expect(layout.develop.openGroups.contains(tool))
-        if tool == .assistant {
-            #expect(host.accessibilityElements.first { $0.accessibilityRole() == .button && $0.accessibilityLabel() == "Bearbeitung ausführen" }?.isAccessibilityEnabled() == true)
+        if tool == .metadata {
             // Direct inspector/menu reveals use the same path from geometry tools.
             let crop = try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == "develop.tool.crop" })
             #expect(crop.accessibilityPerformPress())
@@ -536,15 +514,15 @@ final class WorkspaceProposalLifecycleTests {
         mask.add(.linear); mask.updateSelected { $0.settings.exposure = 1 }
         mask.add(.subject)
         try await wait("automatic selection has started") { await gate.started }
-        WorkspaceActions.reveal(.assistant, layout: layout, library: f.library)
+        WorkspaceActions.reveal(.metadata, layout: layout, library: f.library)
         try await host.settle()
         #expect(mask.source != nil && mask.isGenerating && mask.settings.localAdjustments.count == 1)
         #expect(f.editor.settings(for: assetID) == mask.settings)
         #expect(host.accessibilityElements.contains { $0.accessibilityIdentifier() == "local-mask.close" })
         await gate.complete()
-        try await wait("completed selection is accepted before assistant navigation") {
+        try await wait("completed selection is accepted before metadata navigation") {
             mask.source == nil && f.editor.settings(for: assetID).localAdjustments.count == 2
-                && host.accessibilityElements.contains { $0.accessibilityIdentifier() == "workspace.group.assistant" }
+                && host.accessibilityElements.contains { $0.accessibilityIdentifier() == "workspace.group.metadata" }
         }
         #expect(f.editor.settings(for: assetID).localAdjustments.first?.settings.exposure == 1)
         #expect(await f.editor.flush())
@@ -571,7 +549,7 @@ final class WorkspaceProposalLifecycleTests {
         let originalDraft = mask.settings
         mask.add(.subject)
         try await wait("failing automatic selection has started") { await gate.pending }
-        WorkspaceActions.reveal(.assistant, layout: layout, library: f.library)
+        WorkspaceActions.reveal(.metadata, layout: layout, library: f.library)
         try await host.settle()
         #expect(mask.isGenerating && mask.source != nil)
         await gate.fail()
@@ -599,10 +577,10 @@ final class WorkspaceProposalLifecycleTests {
         let accepted = mask.settings
         // An explicit navigation after a failure is allowed, including while
         // its already-understood error text remains visible in the palette.
-        WorkspaceActions.reveal(.assistant, layout: layout, library: f.library)
+        WorkspaceActions.reveal(.metadata, layout: layout, library: f.library)
         try await wait("a new explicit reveal accepts the retained draft") {
             mask.source == nil && f.editor.settings(for: assetID) == accepted
-                && host.accessibilityElements.contains { $0.accessibilityIdentifier() == "workspace.group.assistant" }
+                && host.accessibilityElements.contains { $0.accessibilityIdentifier() == "workspace.group.metadata" }
         }
         #expect(f.editor.settings(for: assetID).localAdjustments.first?.settings.exposure == 1)
         #expect(await f.editor.flush())
@@ -611,7 +589,7 @@ final class WorkspaceProposalLifecycleTests {
     }
 
     @Test
-    func acceptedProposalSaveFinishesWhileItsSectionsAndDetailAreHidden() async throws {
+    func acceptedEditSaveFinishesWhileItsSectionsAndDetailAreHidden() async throws {
         let f = try await fixture()
         let host = WorkspaceSectionTestHost()
         defer { host.close() }
@@ -620,15 +598,10 @@ final class WorkspaceProposalLifecycleTests {
         defer { defaults.removePersistentDomain(forName: suite) }
         let layout = WorkspaceLayoutModel(defaults: defaults)
         try await host.mount(sections(f))
-        try await wait { f.assistant.availability == .available }
         let assetID = try #require(f.library.selectedID)
         let originalBytes = try Data(contentsOf: try #require(f.library.selectedAsset).fileURL)
-        f.assistant.prompt = "Aufhellen"
-        f.assistant.generate()
-        try await wait { await f.provider.requests.count == 1 }
         await f.store.blockWrites()
-        await f.provider.complete()
-        try await wait { f.assistant.hasAppliedChanges }
+        f.editor.setSettings(EditSettings(exposure: 1), for: assetID)
         let saving = Task { await f.editor.flush() }
         try await wait { await f.store.hasBlockedWrite }
         try await host.unmount()
@@ -644,9 +617,7 @@ final class WorkspaceProposalLifecycleTests {
         #expect(!f.editor.hasPendingChanges)
         #expect(f.editor.settings(for: assetID).exposure == 1)
         #expect(f.editor.canUndo(assetID: assetID))
-        #expect(f.assistant.result != nil)
         #expect(await f.store.saveCount == 1)
-        #expect(await f.provider.requests.count == 1)
         #expect(try Data(contentsOf: try #require(f.library.selectedAsset).fileURL) == originalBytes)
         #expect(await f.library.finishSaving())
     }
@@ -677,7 +648,7 @@ final class WorkspaceProposalLifecycleTests {
         let selectedIDs = f.library.selectedIDs
         let selectedID = try #require(f.library.selectedID)
         #expect(selectedIDs.count == 2)
-        f.editor.selectEditingFunction(.assistant, assetID: selectedID)
+        f.editor.selectEditingFunction(.adjustments, assetID: selectedID)
         f.editor.setSettings(EditSettings(exposure: 0.4), for: selectedID)
         f.editor.setSettings(EditSettings(exposure: 0.8), for: selectedID)
         f.editor.undo(assetID: selectedID)
@@ -687,21 +658,13 @@ final class WorkspaceProposalLifecycleTests {
         f.library.showsDetail = showsDetail
         let libraryPanels = layout.library, developPanels = layout.develop
         try await host.mount(sections(f))
-        try await wait { f.assistant.availability == .available }
-        f.assistant.prompt = "Aufhellen"
-        f.assistant.generate()
-        try await wait { await f.provider.requests.count == 1 }
-        await f.provider.complete()
-        try await wait { f.assistant.state == .previewing }
-        let proposal = try #require(f.assistant.result)
-        #expect(await f.editor.flush())
         let snapshot = try #require(f.editor.aiSnapshot(in: f.library))
 
         WorkspaceActions.toggleFocus(layout, library: f.library)
         #expect(layout.isFocused && f.library.isDeveloping && f.library.showsDetail)
-        WorkspaceActions.reveal(.assistant, layout: layout, library: f.library)
-        #expect(layout.focus.showsLibrary && !layout.focus.showsTools && layout.focus.openGroups.contains(.assistant))
         WorkspaceActions.reveal(.metadata, layout: layout, library: f.library)
+        #expect(layout.focus.showsLibrary && !layout.focus.showsTools && layout.focus.openGroups.contains(.metadata))
+        WorkspaceActions.reveal(.versions, layout: layout, library: f.library)
         WorkspaceActions.toggleLibrary(layout, library: f.library)
         WorkspaceActions.toggleFilmstrip(layout, library: f.library)
         WorkspaceActions.toggleFocus(layout, library: f.library)
@@ -714,11 +677,9 @@ final class WorkspaceProposalLifecycleTests {
         #expect(f.library.selection == .favorites && f.library.search == ".png")
         #expect(f.library.minimumRating == 2 && f.library.sort == .name)
         #expect(f.editor.aiSnapshot(in: f.library) == snapshot)
-        #expect(f.editor.canUndo(assetID: selectedID) && !f.editor.canRedo(assetID: selectedID))
-        #expect(f.assistant.result == proposal && f.assistant.hasAppliedChanges)
-        #expect(await f.provider.requests.count == 1)
+        #expect(f.editor.canUndo(assetID: selectedID) && f.editor.canRedo(assetID: selectedID))
         #expect(await f.service.requests.count == 0)
-        #expect(await f.store.saveCount == saves + 1)
+        #expect(await f.store.saveCount == saves)
 
         // The explicit grid command overrides either remembered focus origin.
         WorkspaceActions.toggleFocus(layout, library: f.library)
@@ -729,8 +690,7 @@ final class WorkspaceProposalLifecycleTests {
         #expect(f.library.selectedID == selectedID && f.library.selectedIDs == selectedIDs)
         #expect(f.library.selection == .favorites && f.library.search == ".png")
         #expect(f.editor.aiSnapshot(in: f.library) == snapshot)
-        #expect(f.editor.canUndo(assetID: selectedID) && !f.editor.canRedo(assetID: selectedID))
-        #expect(f.assistant.result == proposal && f.assistant.hasAppliedChanges)
+        #expect(f.editor.canUndo(assetID: selectedID) && f.editor.canRedo(assetID: selectedID))
 
         // The same command also leaves an ordinary, non-focus tool/detail view.
         WorkspaceActions.reveal(.metadata, layout: layout, library: f.library)
@@ -741,21 +701,21 @@ final class WorkspaceProposalLifecycleTests {
         #expect(layout.library == libraryPanels && layout.develop == revealedPanels)
         #expect(f.library.selectedID == selectedID && f.library.selectedIDs == selectedIDs)
         #expect(f.editor.aiSnapshot(in: f.library) == snapshot)
-        #expect(f.assistant.result == proposal && f.assistant.hasAppliedChanges)
-        #expect(await f.provider.requests.count == 1)
         #expect(await f.service.requests.count == 0)
-        #expect(await f.store.saveCount == saves + 1)
+        #expect(await f.store.saveCount == saves)
         // Check the actual retained history, beyond the menu's enabled state.
         f.editor.undo(assetID: selectedID)
-        #expect(f.editor.settings(for: selectedID).exposure == 0.4)
-        f.editor.undo(assetID: selectedID)
         #expect(f.editor.settings(for: selectedID).isNeutral)
+        f.editor.redo(assetID: selectedID)
+        #expect(f.editor.settings(for: selectedID).exposure == 0.4)
+        f.editor.redo(assetID: selectedID)
+        #expect(f.editor.settings(for: selectedID).exposure == 0.8)
         #expect(await f.editor.flush())
         #expect(await f.library.finishSaving())
     }
 
     @Test
-    func pendingAndCompletedWorkSurvivesActualSectionUnmountAndModeChanges() async throws {
+    func pendingAndCompletedAnalysisSurvivesActualSectionUnmountAndModeChanges() async throws {
         let f = try await fixture()
         let host = WorkspaceSectionTestHost()
         defer { host.close() }
@@ -763,95 +723,36 @@ final class WorkspaceProposalLifecycleTests {
         let assets = f.library.assets
         let bytes = try assets.map { try Data(contentsOf: $0.fileURL) }
         try await host.mount(sections(f))
-        try await wait { f.assistant.availability == .available && f.analysis.availability == .available }
-        #expect(await f.provider.requests.count == 0)
+        try await wait { f.analysis.availability == .available }
         #expect(await f.service.requests.count == 0)
 
-        f.assistant.prompt = "Tiefen aufhellen, warme Farben erhalten"
-        f.assistant.generate()
         f.analysis.analyze()
-        try await wait {
-            let proposals = await f.provider.requests.count
-            let analyses = await f.service.requests.count
-            return proposals == 1 && analyses == 1
-        }
-        let assistantRequest = try #require(f.assistant.requestID)
-        // Admission rechecks availability inside AIRequestCoordinator. Capture
-        // that legitimate check before measuring subsequent layout-only work.
-        let providerAvailabilityChecks = await f.provider.availabilityChecks
+        try await wait { await f.service.requests.count == 1 }
         let analysisAvailabilityChecks = await f.service.availabilityChecks
         try await host.unmount()
         f.library.isDeveloping = false
         await Task.yield()
-        #expect(f.assistant.requestID == assistantRequest)
-        #expect(f.assistant.state == .generating)
         #expect(f.analysis.state == .analyzing)
 
-        await f.provider.complete()
         await f.service.complete()
-        try await wait { f.assistant.state == .previewing && f.analysis.state == .ready }
-        let proposal = try #require(f.assistant.result)
+        try await wait { f.analysis.state == .ready }
         let analysis = try #require(f.analysis.result)
-        f.assistant.comparison = .current
         for _ in 0..<3 {
             f.library.isDeveloping = true
             try await host.mount(sections(f))
-            #expect(f.assistant.result == proposal)
-            #expect(f.assistant.hasAppliedChanges)
-            #expect(f.assistant.comparison == .current)
-            #expect(f.assistant.prompt == "Tiefen aufhellen, warme Farben erhalten")
             #expect(f.analysis.result == analysis)
             try await host.unmount()
             f.library.isDeveloping = false
             await Task.yield()
         }
-        #expect(await f.provider.requests.count == 1)
         #expect(await f.service.requests.count == 1)
-        #expect(await f.provider.availabilityChecks == providerAvailabilityChecks)
         #expect(await f.service.availabilityChecks == analysisAvailabilityChecks)
-        #expect(f.editor.aiSnapshot(in: f.library)?.source == baseline.source)
-        #expect(f.editor.settings(for: baseline.assetID).exposure == 1)
+        #expect(f.editor.aiSnapshot(in: f.library) == baseline)
         #expect(f.library.assets == assets)
         #expect(try assets.map { try Data(contentsOf: $0.fileURL) } == bytes)
-        #expect(f.editor.canUndo(assetID: baseline.assetID))
+        #expect(!f.editor.canUndo(assetID: baseline.assetID))
         #expect(await f.editor.flush())
-        #expect(await f.store.saveCount == 1)
-        #expect(await f.library.finishSaving())
-    }
-
-    @Test
-    func looksKeepSelectionAndComparisonUntilExplicitDiscard() async throws {
-        let f = try await fixture()
-        let host = WorkspaceSectionTestHost()
-        defer { host.close() }
-        try await host.mount(sections(f))
-        try await wait { f.assistant.availability == .available }
-        f.assistant.prompt = "Zusatz für drei Looks\n"
-        f.assistant.generateLooks()
-        try await wait { await f.provider.requests.count == 1 }
-        await f.provider.complete()
-        try await wait { f.assistant.state == .previewing }
-        f.assistant.selectLook(.contrasty)
-        f.assistant.comparison = .current
-        let group = try #require(f.assistant.lookGroup)
-        try await host.unmount()
-        try await host.mount(sections(f))
-        #expect(f.assistant.lookGroup == group)
-        #expect(f.assistant.selectedLookID == .contrasty)
-        #expect(f.assistant.cards.groupID == group.request.id)
-        #expect(f.assistant.comparison == .current)
-        #expect(f.assistant.prompt == "Zusatz für drei Looks\n")
-        #expect(await f.provider.requests.count == 1)
-        try await host.unmount()
-        f.assistant.discard()
-        try await host.mount(sections(f))
-        #expect(f.assistant.lookGroup == nil)
-        #expect(f.assistant.activeProposalResult == nil)
-        #expect(f.assistant.cards.groupID == nil)
-        #expect(await f.provider.requests.count == 1)
-        #expect(f.editor.settings(for: try #require(f.library.selectedID)).contrast == 35)
-        #expect(await f.editor.flush())
-        #expect(await f.store.saveCount == 1)
+        #expect(await f.store.saveCount == 0)
         #expect(await f.library.finishSaving())
     }
 
@@ -861,20 +762,14 @@ final class WorkspaceProposalLifecycleTests {
         let host = WorkspaceSectionTestHost()
         defer { host.close() }
         try await host.mount(sections(f))
-        try await wait { f.assistant.availability == .available && f.analysis.availability == .available }
+        try await wait { f.analysis.availability == .available }
         let selected = try #require(f.library.selectedID)
         for event in 0..<2 {
-            f.assistant.prompt = "Aufhellen"
-            f.assistant.generate()
-            try await wait { await f.provider.requests.count == event + 1 }
-            await f.provider.complete()
-            try await wait { f.assistant.state == .previewing }
-            #expect(await f.editor.flush())
             f.analysis.inputKind = .editedPreview
             f.analysis.analyze()
             try await wait { await f.service.requests.count == event + 1 }
             await f.service.complete()
-            try await wait { f.assistant.state == .previewing && f.analysis.state == .ready }
+            try await wait { f.analysis.state == .ready }
             try await host.unmount()
             if event == 0 {
                 f.library.selectedID = f.library.assets[1].id
@@ -883,11 +778,9 @@ final class WorkspaceProposalLifecycleTests {
                 f.editor.setSettings(EditSettings(exposure: 0.5), for: selected)
                 f.editor.undo(assetID: selected)
             }
-            try await wait { f.assistant.result == nil && f.analysis.result == nil }
+            try await wait { f.analysis.result == nil }
             try await host.mount(sections(f))
-            #expect(!f.assistant.canAccept)
             #expect(f.analysis.result == nil)
-            #expect(await f.provider.requests.count == event + 1)
             #expect(await f.service.requests.count == event + 1)
         }
         #expect(await f.editor.flush())
@@ -895,10 +788,7 @@ final class WorkspaceProposalLifecycleTests {
     }
 
     private func sections(_ f: WorkspaceProposalFixture) -> some View {
-        VStack {
-            AIAssistantSection(model: f.assistant, comparesOriginal: false)
-            ImageAnalysisSection(model: f.analysis)
-        }
+        ImageAnalysisSection(model: f.analysis)
     }
 
     private func mountLibrary(_ f: WorkspaceProposalFixture, mask: LocalAdjustmentEditorModel,
@@ -910,7 +800,7 @@ final class WorkspaceProposalLifecycleTests {
         f.library.showsDetail = true
         try await host.mount(LibraryView(model: f.library, dataDirectory: directory, localMaskModel: mask)
             .environmentObject(f.editor).environmentObject(JPEGExportModel(preferences: nil)).environmentObject(layout)
-            .environmentObject(f.assistant).environmentObject(f.analysis).environmentObject(metadata))
+            .environmentObject(f.analysis).environmentObject(metadata))
         return metadata
     }
 
@@ -935,13 +825,10 @@ final class WorkspaceProposalLifecycleTests {
         try await wait { !library.isLoading && !library.isProjecting && !editor.isLoading }
         library.selectedID = assets[0].id
         library.isDeveloping = true
-        let provider = WorkspaceProposalProvider()
-        let assistant = AIAssistantModel(provider: provider,
-            coordinator: AIRequestCoordinator(provider: provider, budget: AIResourceBudget()), editor: editor, library: library)
         let service = WorkspaceAnalysisService()
         let analysis = ImageAnalysisModel(service: service, editor: editor, library: library)
         return WorkspaceProposalFixture(library: library, editor: editor, store: store,
-            provider: provider, service: service, assistant: assistant, analysis: analysis)
+            service: service, analysis: analysis)
     }
 }
 
@@ -1050,9 +937,7 @@ private struct WorkspaceProposalFixture {
     let library: LibraryModel
     let editor: EditingModel
     let store: WorkspaceProposalStore
-    let provider: WorkspaceProposalProvider
     let service: WorkspaceAnalysisService
-    let assistant: AIAssistantModel
     let analysis: ImageAnalysisModel
 }
 
@@ -1066,35 +951,6 @@ private func wait(_ stage: String = "condition", _ condition: @escaping @MainAct
 }
 
 private enum WorkspaceLifecycleTestError: Error { case timeout(String) }
-
-private actor WorkspaceProposalProvider: AIEditingProvider {
-    nonisolated let id = "workspace-proposal-test"
-    nonisolated let capabilities: AIProviderCapabilities = [.textEditing, .lookSuggestions]
-    private(set) var requests: [AIEditingRequest] = []
-    private(set) var availabilityChecks = 0
-    private var pending: CheckedContinuation<Data, Error>?
-
-    func availability() -> AIAvailability { availabilityChecks += 1; return .available }
-    func proposal(for request: AIEditingRequest) async throws -> Data {
-        requests.append(request)
-        return try await withCheckedThrowingContinuation { pending = $0 }
-    }
-    func complete() {
-        let data: Data
-        if requests.last?.mode == .lookGroup {
-            let group = AILookProposalGroup(variants: [
-                AILookProposal(id: .natural, name: "Natürlich", proposal: EditProposal(changes: [.init(parameter: .exposure, value: 0.6)])),
-                AILookProposal(id: .contrasty, name: "Kontrastreich", proposal: EditProposal(changes: [.init(parameter: .contrast, value: 35)])),
-                AILookProposal(id: .desaturated, name: "Entsättigt", proposal: EditProposal(changes: [.init(parameter: .saturation, value: -45)]))
-            ])
-            data = try! JSONEncoder().encode(group)
-        } else {
-            data = Data(#"{"schemaVersion":1,"changes":[{"parameter":"exposure","value":1}]}"#.utf8)
-        }
-        let continuation = pending; pending = nil
-        continuation?.resume(returning: data)
-    }
-}
 
 private actor WorkspaceAnalysisService: ImageAnalysisServing {
     nonisolated let descriptor = ImageAnalysisProviderDescriptor(providerID: "workspace-analysis-test", modelID: "synthetic")

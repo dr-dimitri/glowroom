@@ -30,6 +30,32 @@ struct ImageAnalysisContractsTests {
     }
 
     @Test
+    func snapshotRejectsInvalidSourcesAssetIDsAndNumericBaselines() throws {
+        let original = analysisContractRequest().snapshot
+        try original.validate()
+        let invalidSources = [
+            AIOriginalSourceFingerprint(fileURL: URL(string: "https://example.invalid/photo.raw")!, modifiedAt: Date(), fileSize: 1),
+            AIOriginalSourceFingerprint(fileURL: URL(fileURLWithPath: "/tmp/photo.raw"), modifiedAt: Date(), fileSize: -1),
+            AIOriginalSourceFingerprint(fileURL: URL(fileURLWithPath: "/tmp/photo.raw"), modifiedAt: Date(timeIntervalSinceReferenceDate: .infinity), fileSize: 1)
+        ]
+        for source in invalidSources {
+            #expect(throws: ImageAnalysisError.invalidRequest) {
+                try AIEditingSnapshot(assetID: original.assetID, source: .original(source), settings: .neutral,
+                    token: original.token).validate()
+            }
+        }
+        #expect(throws: ImageAnalysisError.invalidRequest) {
+            try AIEditingSnapshot(assetID: " \n", source: original.source, settings: .neutral, token: original.token).validate()
+        }
+        for settings in [EditSettings(exposure: 6), EditSettings(contrast: .nan)] {
+            #expect(throws: ImageAnalysisError.invalidRequest) {
+                try AIEditingSnapshot(assetID: original.assetID, source: original.source, settings: settings,
+                    token: original.token).validate()
+            }
+        }
+    }
+
+    @Test
     func languageAndCapabilitiesAreExplicit() {
         let base = analysisContractRequest()
         #expect(ImageAnalysisProviderDescriptor(providerID: "local", modelID: "vision").capabilities == [.imageUnderstanding])
@@ -54,6 +80,10 @@ struct ImageAnalysisContractsTests {
 
     @Test(arguments: [
         #"{"schemaVersion":1,"description":"x","description":"y","attributes":[]}"#,
+        #"{"schemaVersion":1,"description":"x","\u0064escription":"y","attributes":[]}"#,
+        #"{"schemaVersion":1,"description":"\uD800","attributes":[]}"#,
+        #"{"schemaVersion":01,"description":"x","attributes":[]}"#,
+        #"{"schemaVersion":1,"description":"x","attributes":[],}"#,
         #"{"schemaVersion":1,"description":"x","attributes":[],"rasterSHA256":"forged"}"#,
         #"{"schemaVersion":1,"description":"x","attributes":[],"source":"/secret"}"#,
         #"{"schemaVersion":1,"description":"x","attributes":[{"category":"identity","value":"Name"}]}"#,
@@ -67,6 +97,23 @@ struct ImageAnalysisContractsTests {
     ])
     func malformedUnknownAndDuplicateValuesRejectWholeResponse(_ json: String) {
         #expect(throws: ImageAnalysisError.invalidResponse) { try ImageAnalysisSuggestionValidator().validate(Data(json.utf8)) }
+    }
+
+    @Test
+    func escapedUnicodeIsDecodedAndMalformedUTF8IsRejected() throws {
+        let valid = Data(#"{"schema\u0056ersion":1,"description":"Grüße \uD83D\uDE00","attributes":[]}"#.utf8)
+        #expect(try ImageAnalysisSuggestionValidator().validate(valid).description == "Grüße 😀")
+        var malformed = Array(#"{"schemaVersion":1,"description":""#.utf8)
+        malformed.append(0xFF)
+        malformed.append(contentsOf: Array(#"","attributes":[]}"#.utf8))
+        #expect(throws: ImageAnalysisError.invalidResponse) {
+            try ImageAnalysisSuggestionValidator().validate(Data(malformed))
+        }
+        let excessiveValues = #"{"schemaVersion":1,"description":"x","attributes":[],"extra":["#
+            + Array(repeating: "null", count: 100).joined(separator: ",") + "]}"
+        #expect(throws: ImageAnalysisError.invalidResponse) {
+            try ImageAnalysisSuggestionValidator().validate(Data(excessiveValues.utf8))
+        }
     }
 
     @Test

@@ -17,11 +17,11 @@ struct WorkspaceLayoutTests {
         layout.update(developing: true) {
             $0.toolsWidth = 430
             $0.singleGroup = true
-            $0.openGroups = [.assistant, .versions]
+            $0.openGroups = [.metadata, .versions]
         }
         #expect(emitted.count == 1, "Normalization must not send a second unchanged @Published value")
         #expect(emitted.first?.toolsWidth == 430)
-        #expect(emitted.first?.openGroups == [.assistant])
+        #expect(emitted.first?.openGroups == [.metadata])
         #expect(WorkspaceLayoutModel(defaults: fixture.defaults).develop == layout.develop)
     }
 
@@ -38,7 +38,7 @@ struct WorkspaceLayoutTests {
         layout.update(developing: true) {
             $0.toolsWidth = 430
             $0.filmstripHeight = 150
-            $0.openGroups = [.edit, .assistant]
+            $0.openGroups = [.edit, .metadata]
             $0.openAdjustmentGroups = ["tone", "presence"]
         }
         let library = layout.library, develop = layout.develop
@@ -75,13 +75,13 @@ struct WorkspaceLayoutTests {
         layout.update(developing: true) {
             $0.showsLibrary = true
             $0.libraryWidth = 240
-            $0.openGroups = [.assistant]
+            $0.openGroups = [.metadata]
         }
         #expect(layout.leaveFocus() == WorkspaceFocusOrigin(developing: false, showsDetail: false))
         #expect(layout.library == library && layout.develop == develop)
         layout.enterFocus()
         #expect(layout.focus.showsLibrary && layout.focus.libraryWidth == 300)
-        #expect(layout.focus.openGroups == [.assistant])
+        #expect(layout.focus.openGroups == [.metadata])
     }
 
     @Test
@@ -142,10 +142,10 @@ struct WorkspaceLayoutTests {
         defer { fixture.remove() }
         let layout = WorkspaceLayoutModel(defaults: fixture.defaults)
         let library = layout.library
-        layout.toggleGroup(.assistant, developing: true)
-        #expect(layout.develop.openGroups == [.edit, .assistant])
+        layout.toggleGroup(.metadata, developing: true)
+        #expect(layout.develop.openGroups == [.edit, .metadata])
         layout.update(developing: true) { $0.singleGroup = true }
-        #expect(layout.develop.openGroups == [.edit, .assistant], "Each column keeps its own open group")
+        #expect(layout.develop.openGroups == [.edit, .metadata], "Each column keeps its own open group")
         layout.toggleGroup(.versions, developing: true)
         #expect(layout.develop.openGroups == [.edit, .versions])
         layout.toggleGroup(.versions, developing: true)
@@ -177,14 +177,14 @@ struct WorkspaceLayoutTests {
         fixture.defaults.set(Data(json.utf8), forKey: WorkspaceLayoutModel.preferencesKey)
         let layout = WorkspaceLayoutModel(defaults: fixture.defaults)
         #expect(layout.library == .libraryDefault)
-        #expect(layout.develop.toolsWidth == 450 && layout.develop.openGroups == [.assistant])
+        #expect(layout.develop.toolsWidth == 450 && layout.develop.openGroups.isEmpty)
         #expect(layout.develop.openAdjustmentGroups == ["presence"])
         #expect(layout.focus == .focusDefault)
         #expect(layout.isFocused)
     }
 
     @Test
-    func removedAnalysisGroupDoesNotDiscardSavedAssistantOrPanelDimensions() throws {
+    func removedAssistantAndAnalysisGroupsKeepSavedMetadataAndPanelDimensions() throws {
         let fixture = try Preferences()
         defer { fixture.remove() }
         let json = #"{"develop":{"libraryWidth":340,"toolsWidth":430,"openGroups":["analysis","assistant","metadata"]}}"#
@@ -192,7 +192,7 @@ struct WorkspaceLayoutTests {
 
         let layout = WorkspaceLayoutModel(defaults: fixture.defaults)
         #expect(layout.develop.libraryWidth == 340 && layout.develop.toolsWidth == 430)
-        #expect(layout.develop.openGroups == [.assistant, .metadata])
+        #expect(layout.develop.openGroups == [.metadata])
         layout.remember()
         #expect(WorkspaceLayoutModel(defaults: fixture.defaults).develop == layout.develop)
     }
@@ -230,10 +230,10 @@ struct WorkspaceLayoutTests {
         layout.develop.toolsWidth = .infinity
         layout.develop.filmstripHeight = -1
         layout.develop.singleGroup = true
-        layout.develop.openGroups = [.versions, .assistant]
+        layout.develop.openGroups = [.versions, .metadata]
         #expect(layout.develop.libraryWidth == 300 && layout.develop.toolsWidth == 320)
         #expect(layout.develop.filmstripHeight == 80)
-        #expect(layout.develop.openGroups == [.assistant])
+        #expect(layout.develop.openGroups == [.metadata])
         #expect(WorkspaceLayoutModel(defaults: fixture.defaults).develop == layout.develop)
     }
 

@@ -8,20 +8,15 @@ actor AIResourceBudget {
     static let shared = AIResourceBudget()
 
     struct Limits: Equatable, Sendable {
-        /// Text, image analysis, semantic inference and model compilation share
+        /// Image analysis, semantic inference, image generation and model compilation share
         /// one admission slot; native work owns it until its actual return.
         let maximumConcurrentLocalInferences = 1
-        let maximumPromptBytes: Int
-        let maximumResponseBytes: Int
         /// Admission for declared resident weights plus native working buffers.
         /// The evaluation helper separately measures actual RSS/footprint; this
         /// estimate is not a hard limit on framework or system GPU allocations.
         let maximumResidentModelBytes: Int64
 
-        init(maximumPromptBytes: Int = 16_384, maximumResponseBytes: Int = 65_536,
-             maximumResidentModelBytes: Int64 = 6 * 1_024 * 1_024 * 1_024) {
-            self.maximumPromptBytes = max(1, maximumPromptBytes)
-            self.maximumResponseBytes = max(1, maximumResponseBytes)
+        init(maximumResidentModelBytes: Int64 = 6 * 1_024 * 1_024 * 1_024) {
             self.maximumResidentModelBytes = max(0, maximumResidentModelBytes)
         }
     }

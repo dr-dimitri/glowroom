@@ -61,14 +61,12 @@ struct DevelopColorSettingsTests {
         }
     }
 
-    @Test func textOnlyAIProposalsPreserveTheEntireDevelopColorBaseline() throws {
+    @Test func scalarEditsPreserveTheEntireDevelopColorBaseline() throws {
         let color = DevelopColorSettings(temperature: 4_500, tint: -24, profile: .portrait, isMonochrome: true, hdrEnabled: true)
         let original = EditSettings(developColor: color)
-        let proposal = EditProposal(changes: [.init(parameter: .exposure, value: 0.5)])
-        if case .changes(_, let result) = try EditProposalValidator().validate(proposal, against: original) {
-            #expect(result.developColor == color)
-            #expect(result.exposure == 0.5)
-        } else { Issue.record("Expected an effective exposure proposal") }
+        let result = try EditParameter.exposure.applying(0.5, to: original)
+        #expect(result.developColor == color)
+        #expect(result.exposure == 0.5)
     }
 
     @Test func newColorStateSurvivesDurableSQLBackupAndRestore() async throws {

@@ -132,15 +132,13 @@ struct LocalAdjustmentTests {
         #expect(restored.byAsset["photo"]!.version.revision > updated.version.revision)
     }
 
-    @Test func maskChangesParticipateInCASAndAIProposalsPreserveTheirBaselineMasks() async throws {
+    @Test func maskChangesParticipateInCASAndScalarEditsPreserveTheirBaselineMasks() async throws {
         let f = try EditingFixture(), state = try await f.repository.loadState()
         var settings = try fixtureSettings()
         let snapshot = try EditingSnapshot(settings: settings)
         let first = try await f.repository.saveSnapshot(snapshot, for: f.id, expected: .init(storeEpoch: state.storeEpoch, revision: nil, snapshot: nil), revision: 1)
-        let proposal = EditProposal(changes: [.init(parameter: .exposure, value: 0.5)])
-        if case .changes(_, let result) = try EditProposalValidator().validate(proposal, against: settings) {
-            #expect(result.localAdjustments == settings.localAdjustments)
-        } else { Issue.record("Expected an effective AI proposal") }
+        let result = try EditParameter.exposure.applying(0.5, to: settings)
+        #expect(result.localAdjustments == settings.localAdjustments)
         settings.localAdjustments[0].mask.isInverted.toggle()
         let latest = try await f.repository.saveSnapshot(.init(settings: settings), for: f.id, expected: .init(first), revision: 2)
         let stale = try EditingExpectedState(storeEpoch: latest.version.storeEpoch, revision: latest.version.revision, snapshot: snapshot)
