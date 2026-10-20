@@ -135,7 +135,7 @@ struct DetailView: View {
             && model.editingRenderIntent == .currentEditing && !maskWorkspace.isPresented && !developWorkspace.picksWhiteBalance
     }
     private var usesPhotoNavigationInput: Bool {
-        !maskWorkspace.isPresented && (!model.isDeveloping || model.editingRenderIntent != .currentEditing
+        !maskWorkspace.isPresented && !developWorkspace.picksDetail && (!model.isDeveloping || model.editingRenderIntent != .currentEditing
             || (developWorkspace.tool == .basic && !developWorkspace.picksWhiteBalance))
     }
     private struct NavigationIdentity: Hashable {
@@ -162,13 +162,13 @@ struct DetailView: View {
                                 // changes the viewport around this scroll content.
                                 .frame(width: zoomCanvasSize.width, height: zoomCanvasSize.height)
                                 .environment(\.photoCanvasPanning, true)
-                                .onTapGesture(count: 2) { if !usesNativeDevelopInput && !usesPhotoNavigationInput { zoomed = false } }
+                                .onTapGesture(count: 2) { if !usesNativeDevelopInput && !usesPhotoNavigationInput && !developWorkspace.picksDetail { zoomed = false } }
                         }
                     } else {
                         developCanvas(asset: asset)
                             .padding(18)
                             .frame(width: geometry.size.width, height: geometry.size.height)
-                            .onTapGesture(count: 2) { if !usesNativeDevelopInput && !usesPhotoNavigationInput { toggleZoom(viewport: geometry.size) } }
+                            .onTapGesture(count: 2) { if !usesNativeDevelopInput && !usesPhotoNavigationInput && !developWorkspace.picksDetail { toggleZoom(viewport: geometry.size) } }
                     }
                 }.onGeometryChange(for: CGSize.self) { $0.size } action: {
                     canvasSize = $0
@@ -225,8 +225,13 @@ struct DetailView: View {
                 if maskWorkspace.isPresented {
                     InlineMaskCanvas(workspace: maskWorkspace).allowsHitTesting(developWorkspace.isOriginalCanvasReady)
                 } else if model.isDeveloping, model.editingRenderIntent == .currentEditing {
-                    DevelopCanvasInteraction(asset: asset, workspace: developWorkspace,
-                        onDoubleClick: { toggleZoom(viewport: canvasSize) })
+                    if developWorkspace.picksDetail {
+                        DevelopDetailCanvas(workspace: developWorkspace,
+                            geometry: editor.settings(for: asset.id).developGeometry)
+                    } else {
+                        DevelopCanvasInteraction(asset: asset, workspace: developWorkspace,
+                            onDoubleClick: { toggleZoom(viewport: canvasSize) })
+                    }
                 }
                 if developWorkspace.tool == .basic, !developWorkspace.picksWhiteBalance,
                    let analysis = developWorkspace.analysis,

@@ -8,11 +8,19 @@ import PicEditCore
 final class DevelopWorkspace: ObservableObject {
     @Published var tool: DevelopCanvasTool = .basic {
         didSet {
-            if oldValue != tool { cancelAutomaticTone() }
+            if oldValue != tool { cancelAutomaticTone(); picksDetail = false }
             if oldValue == .repair && tool != .repair { cancelRepairWork(); repairSpotImage = nil }
         }
     }
-    @Published var picksWhiteBalance = false
+    @Published var picksWhiteBalance = false {
+        didSet { if picksWhiteBalance { picksDetail = false } }
+    }
+    @Published var picksDetail = false {
+        didSet { if picksDetail { picksWhiteBalance = false } }
+    }
+    @Published var detailCenter = CGPoint(x: 0.5, y: 0.5)
+    @Published var detailMagnification = 1.0
+    @Published var detailFitsImage = false
     @Published var showsShadows = false
     @Published var showsHighlights = false
     @Published var cropAspect = "free"
@@ -26,7 +34,12 @@ final class DevelopWorkspace: ObservableObject {
     var isOriginalCanvasReady: Bool { sourceIdentity != nil && displayedMapping == .original }
     func markDisplayed(source: AISourceIdentity, settings: EditSettings) {
         guard source == sourceIdentity else { return }
-        displayedMapping = DevelopCanvasMapping(settings.developGeometry)
+        let mapping = DevelopCanvasMapping(settings.developGeometry)
+        if let displayedMapping, displayedMapping != mapping {
+            detailCenter = CGPoint(x: 0.5, y: 0.5)
+            picksDetail = false
+        }
+        displayedMapping = mapping
         hdrDisplayed = settings.developColor.hdrEnabled
     }
     @Published var repairMode: DevelopRepairMode = .remove
@@ -177,14 +190,17 @@ final class DevelopWorkspace: ObservableObject {
         displayedMapping = nil; hdrDisplayed = false
         navigatorImage = nil
         analysis = nil; sourceAnalysis = nil; sourceSize = nil; baseIdentity = nil; sourceIdentity = nil; isAnalyzing = false; repairSource = nil
-        picksWhiteBalance = false; tool = .basic; errorMessage = nil
+        picksWhiteBalance = false; picksDetail = false
+        detailCenter = CGPoint(x: 0.5, y: 0.5)
+        detailFitsImage = false
+        tool = .basic; errorMessage = nil
         cropAspect = "free"; cropAspectLocked = false; lockedCropRatio = nil; isStraightening = false
     }
 }
 
 /// Only spatial presentation controls input readiness. Tone/brush updates may
 /// keep the preceding frame while the next render is coalesced.
-struct DevelopCanvasMapping: Equatable {
+struct DevelopCanvasMapping: Hashable {
     let crop: DevelopCropRect?
     let turns: Int
     let flipsX: Bool

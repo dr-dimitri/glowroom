@@ -143,7 +143,7 @@ struct WorkspaceLayoutTests {
         let layout = WorkspaceLayoutModel(defaults: fixture.defaults)
         let library = layout.library
         layout.toggleGroup(.metadata, developing: true)
-        #expect(layout.develop.openGroups == [.edit, .metadata])
+        #expect(layout.develop.openGroups == [.edit, .details, .metadata])
         layout.update(developing: true) { $0.singleGroup = true }
         #expect(layout.develop.openGroups == [.edit, .metadata], "Each column keeps its own open group")
         layout.toggleGroup(.versions, developing: true)
@@ -164,6 +164,56 @@ struct WorkspaceLayoutTests {
         layout.toggleGroup(.edit, developing: true)
         #expect(layout.develop.openGroups == [.metadata])
         #expect(layout.library == library)
+    }
+
+    @Test
+    func detailsShareAdjustmentHistoryAndRevealTheRightColumn() throws {
+        let fixture = try Preferences()
+        defer { fixture.remove() }
+        let layout = WorkspaceLayoutModel(defaults: fixture.defaults)
+        #expect(EditingFunction(WorkspaceTool.details) == .adjustments)
+        #expect(!WorkspaceTool.details.isNavigationTool)
+        layout.update(developing: true) {
+            $0.showsLibrary = false
+            $0.showsTools = false
+            $0.singleGroup = true
+            $0.openGroups = [.edit, .metadata]
+        }
+        layout.reveal(.details, developing: true)
+        #expect(!layout.develop.showsLibrary && layout.develop.showsTools)
+        #expect(layout.develop.openGroups == [.details, .metadata])
+        layout.toggleGroup(.edit, developing: true)
+        #expect(layout.develop.openGroups == [.edit, .metadata])
+        #expect(WorkspaceLayoutModel(defaults: fixture.defaults).develop == layout.develop)
+    }
+
+    @Test(arguments: [false, true])
+    func olderOpenNoiseGroupMovesToDetailsAndSubsequentClosingPersists(_ singleGroup: Bool) throws {
+        let fixture = try Preferences()
+        defer { fixture.remove() }
+        let json = """
+        {"develop":{"openGroups":["edit","metadata"],"singleGroup":\(singleGroup),
+        "openAdjustmentGroups":["tone","noise"]}}
+        """
+        fixture.defaults.set(Data(json.utf8), forKey: WorkspaceLayoutModel.preferencesKey)
+        let layout = WorkspaceLayoutModel(defaults: fixture.defaults)
+        #expect(layout.develop.openGroups.contains(.details))
+        #expect(layout.develop.openGroups.contains(.metadata))
+        #expect(layout.develop.openGroups.contains(.edit) == !singleGroup)
+        #expect(layout.develop.openAdjustmentGroups.contains("noise"))
+        layout.toggleGroup(.details, developing: true)
+        let restored = WorkspaceLayoutModel(defaults: fixture.defaults)
+        #expect(!restored.develop.openGroups.contains(.details))
+        #expect(restored.develop == layout.develop)
+    }
+
+    @Test
+    func olderClosedNoiseGroupDoesNotForceDetailsOpen() throws {
+        let fixture = try Preferences()
+        defer { fixture.remove() }
+        let json = #"{"develop":{"openGroups":["edit"],"openAdjustmentGroups":["tone"]}}"#
+        fixture.defaults.set(Data(json.utf8), forKey: WorkspaceLayoutModel.preferencesKey)
+        #expect(WorkspaceLayoutModel(defaults: fixture.defaults).develop.openGroups == [.edit])
     }
 
     @Test

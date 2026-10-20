@@ -1,7 +1,8 @@
 import AppKit
 import SwiftUI
 
-/// A native slider whose double click restores the control's semantic default.
+/// A native slider with the shared detail-panel appearance whose double click
+/// restores the control's semantic default.
 /// Control-double-click can request an automatically calculated value instead.
 /// A plain click is held until AppKit's double-click interval has elapsed. This
 /// prevents the first click of a reset from becoming an unwanted undo entry;
@@ -351,6 +352,79 @@ final class ResettableNativeSlider: NSSlider {
 
 @MainActor
 private final class ResettableSliderCell: NSSliderCell {
+    // Only painting is customized. AppKit still owns knob geometry, hit testing,
+    // keyboard navigation, accessibility and focus-ring rendering.
+    override func drawBar(inside rect: NSRect, flipped: Bool) {
+        guard !isVertical else {
+            super.drawBar(inside: rect, flipped: flipped)
+            return
+        }
+        let opacity: CGFloat = isEnabled ? 1 : 0.4
+        let track = NSRect(x: rect.minX, y: rect.midY - 1.5, width: rect.width, height: 3)
+        let path = NSBezierPath(roundedRect: track, xRadius: 1.5, yRadius: 1.5)
+        NSColor(calibratedWhite: 0.43, alpha: opacity).setFill()
+        path.fill()
+        NSColor(calibratedWhite: 0.12, alpha: opacity).setStroke()
+        path.lineWidth = 0.8
+        path.stroke()
+
+        // Decorative marks do not quantize the continuous value or alter the
+        // native slider's hit area, unlike NSSlider's snapping tick marks.
+        let intervals = max(2, min(10, Int(rect.width / 28)))
+        let direction: CGFloat = flipped ? -1 : 1
+        let markOffset: CGFloat = controlSize == .mini ? 3 : controlSize == .small ? 4 : 4.5
+        let longMark: CGFloat = controlSize == .regular || controlSize == .large ? 3 : 2
+        let marks = NSBezierPath()
+        for index in 0...intervals {
+            let x = rect.minX + rect.width * CGFloat(index) / CGFloat(intervals)
+            let length = index.isMultiple(of: 2) ? longMark : longMark - 1
+            marks.move(to: NSPoint(x: x, y: rect.midY + direction * markOffset))
+            marks.line(to: NSPoint(x: x, y: rect.midY + direction * (markOffset + length)))
+        }
+        NSColor(calibratedWhite: 0.22, alpha: opacity).setStroke()
+        marks.lineWidth = 1
+        marks.stroke()
+    }
+
+    override func drawKnob(_ knobRect: NSRect) {
+        guard !isVertical else {
+            super.drawKnob(knobRect)
+            return
+        }
+        let opacity: CGFloat = isEnabled ? 1 : 0.4
+        let width = min(knobRect.width - 1, controlSize == .mini ? 10 : 12)
+        let height = min(knobRect.height - 1, controlSize == .mini ? 12 : 14)
+        let flipped = controlView?.isFlipped ?? false
+        func point(_ x: CGFloat, _ y: CGFloat) -> NSPoint {
+            NSPoint(x: knobRect.midX + (x - 0.5) * width,
+                    y: knobRect.midY + (flipped ? y - 0.5 : 0.5 - y) * height)
+        }
+        let knob = NSBezierPath()
+        knob.move(to: point(0.5, 0))
+        knob.curve(to: point(0.96, 0.59), controlPoint1: point(0.65, 0.2), controlPoint2: point(0.96, 0.42))
+        knob.curve(to: point(0.75, 0.96), controlPoint1: point(1.04, 0.8), controlPoint2: point(0.95, 0.96))
+        knob.curve(to: point(0.25, 0.96), controlPoint1: point(0.62, 1.02), controlPoint2: point(0.38, 1.02))
+        knob.curve(to: point(0.04, 0.59), controlPoint1: point(0.05, 0.96), controlPoint2: point(-0.04, 0.8))
+        knob.curve(to: point(0.5, 0), controlPoint1: point(0.04, 0.42), controlPoint2: point(0.35, 0.2))
+        knob.close()
+
+        NSGraphicsContext.saveGraphicsState()
+        let shadow = NSShadow()
+        shadow.shadowColor = NSColor.black.withAlphaComponent(0.35 * opacity)
+        shadow.shadowBlurRadius = 1.5
+        shadow.shadowOffset = NSSize(width: 0, height: -0.5)
+        shadow.set()
+        NSColor(calibratedWhite: 0.64, alpha: opacity).setFill()
+        knob.fill()
+        NSGraphicsContext.restoreGraphicsState()
+        NSGradient(starting: NSColor(calibratedWhite: isHighlighted ? 0.72 : 0.86, alpha: opacity),
+                   ending: NSColor(calibratedWhite: isHighlighted ? 0.42 : 0.55, alpha: opacity))?
+            .draw(in: knob, angle: flipped ? 90 : -90)
+        NSColor(calibratedWhite: 0.06, alpha: opacity).setStroke()
+        knob.lineWidth = 1
+        knob.stroke()
+    }
+
     override func continueTracking(last lastPoint: NSPoint, current currentPoint: NSPoint, in controlView: NSView) -> Bool {
         let continues = super.continueTracking(last: lastPoint, current: currentPoint, in: controlView)
         (controlView as? ResettableNativeSlider)?.continuedTracking(at: currentPoint)

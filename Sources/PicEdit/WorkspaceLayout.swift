@@ -2,16 +2,17 @@ import Combine
 import Foundation
 
 enum WorkspaceTool: String, CaseIterable, Codable, Identifiable {
-    case edit, metadata, versions
+    case edit, details, metadata, versions
 
     var id: String { rawValue }
 
     /// Supporting information lives to the left of the image; adjustments live to its right.
-    var isNavigationTool: Bool { self != .edit }
+    var isNavigationTool: Bool { self == .metadata || self == .versions }
 
     var title: String {
         switch self {
         case .edit: "Bearbeiten"
+        case .details: "Details"
         case .metadata: "Bildinformationen"
         case .versions: "Bildstände"
         }
@@ -20,6 +21,7 @@ enum WorkspaceTool: String, CaseIterable, Codable, Identifiable {
     var symbol: String {
         switch self {
         case .edit: "slider.horizontal.3"
+        case .details: "viewfinder"
         case .metadata: "info.circle"
         case .versions: "square.stack.3d.up"
         }
@@ -44,9 +46,11 @@ struct WorkspacePanels: Codable, Equatable {
     var libraryWidth = 300.0
     var toolsWidth = 320.0
     var filmstripHeight = 98.0
-    var openGroups: Set<WorkspaceTool> = [.edit]
+    var openGroups: Set<WorkspaceTool> = [.edit, .details]
     var singleGroup = false
-    var openAdjustmentGroups: Set<String> = ["tone"]
+    var openAdjustmentGroups: Set<String> = ["tone", "noise"]
+    // Persist the migration marker so deliberately closing Details remains closed.
+    private var detailsGroupVersion = 1
 
     static var libraryDefault: Self {
         var panels = Self()
@@ -69,7 +73,7 @@ struct WorkspacePanels: Codable, Equatable {
 
     private enum CodingKeys: String, CodingKey {
         case showsLibrary, showsTools, showsFilmstrip, libraryWidth, toolsWidth, filmstripHeight
-        case openGroups, singleGroup, openAdjustmentGroups
+        case openGroups, singleGroup, openAdjustmentGroups, detailsGroupVersion
     }
 
     init(from decoder: Decoder) throws {
@@ -90,8 +94,14 @@ struct WorkspacePanels: Codable, Equatable {
             openGroups = Set(names.compactMap(WorkspaceTool.init(rawValue:)))
         }
         singleGroup = (try? values.decode(Bool.self, forKey: .singleGroup)) ?? singleGroup
-        if let names = try? values.decode(Set<String>.self, forKey: .openAdjustmentGroups) {
+        let savedAdjustmentGroups = try? values.decode(Set<String>.self, forKey: .openAdjustmentGroups)
+        if let names = savedAdjustmentGroups {
             openAdjustmentGroups = names
+        }
+        if navigation, !values.contains(.detailsGroupVersion),
+           openGroups.contains(.edit), savedAdjustmentGroups?.contains("noise") == true {
+            if singleGroup { openGroups.remove(.edit) }
+            openGroups.insert(.details)
         }
         normalize(navigation: navigation)
     }
@@ -104,8 +114,10 @@ struct WorkspacePanels: Codable, Equatable {
         openAdjustmentGroups.formIntersection(["tone", "presence", "noise"])
         if singleGroup {
             let firstNavigation = WorkspaceTool.allCases.first { $0.isNavigationTool && openGroups.contains($0) }
-            openGroups = Set(openGroups.filter { !$0.isNavigationTool })
+            let firstAdjustment = WorkspaceTool.allCases.first { !$0.isNavigationTool && openGroups.contains($0) }
+            openGroups = []
             if let firstNavigation { openGroups.insert(firstNavigation) }
+            if let firstAdjustment { openGroups.insert(firstAdjustment) }
         }
     }
 
