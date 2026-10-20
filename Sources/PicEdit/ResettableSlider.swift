@@ -1,6 +1,37 @@
 import AppKit
 import SwiftUI
 
+/// Shared by a workspace, independently of each control's undo callbacks.
+/// UI input boundaries stay ordered on MainActor; database I/O stays backgrounded.
+@MainActor
+final class SliderPersistenceSession {
+    private var inputs: Set<UUID> = []
+    var onIdle: () -> Void = {}
+    var hasActiveInput: Bool { !inputs.isEmpty }
+
+    func begin() -> UUID {
+        let id = UUID()
+        inputs.insert(id)
+        return id
+    }
+
+    func end(_ id: UUID) {
+        guard inputs.remove(id) != nil, inputs.isEmpty else { return }
+        onIdle()
+    }
+}
+
+private struct SliderPersistenceSessionKey: EnvironmentKey {
+    static let defaultValue: SliderPersistenceSession? = nil
+}
+
+extension EnvironmentValues {
+    var sliderPersistenceSession: SliderPersistenceSession? {
+        get { self[SliderPersistenceSessionKey.self] }
+        set { self[SliderPersistenceSessionKey.self] = newValue }
+    }
+}
+
 /// A native slider with the shared detail-panel appearance whose double click
 /// restores the control's semantic default.
 /// Control-double-click can request an automatically calculated value instead.
@@ -16,6 +47,7 @@ struct ResettableSlider: NSViewRepresentable {
     let onEditingChanged: (Bool) -> Void
     @Environment(\.isEnabled) private var isEnabled
     @Environment(\.controlSize) private var controlSize
+    @Environment(\.sliderPersistenceSession) private var persistenceSession
 
     init(value: Binding<Double>, in range: ClosedRange<Double>, step: Double? = nil,
          neutralValue: Double = 0, onAutomaticValue: (() -> Void)? = nil,
@@ -51,6 +83,7 @@ struct ResettableSlider: NSViewRepresentable {
         slider.interaction.readValue = { value }
         slider.interaction.writeValue = { value = $0 }
         slider.interaction.onEditingChanged = onEditingChanged
+        slider.interaction.persistenceSession = persistenceSession
         slider.synchronizeValueFromBinding()
     }
 
@@ -70,6 +103,8 @@ final class ResettableSliderInteraction {
     var readValue: () -> Double = { 0 }
     var writeValue: (Double) -> Void = { _ in }
     var onEditingChanged: (Bool) -> Void = { _ in }
+    var persistenceSession: SliderPersistenceSession?
+    private var activePersistenceInput: (session: SliderPersistenceSession, id: UUID)?
     private var pointerValue: Double?
     private var pendingClick: Double?
     private var pendingBaseline: Double?
@@ -158,6 +193,9 @@ final class ResettableSliderInteraction {
     private func beginEditing() {
         guard !isTracking else { return }
         isTracking = true
+        if let persistenceSession {
+            activePersistenceInput = (persistenceSession, persistenceSession.begin())
+        }
         onEditingChanged(true)
     }
 
@@ -165,6 +203,10 @@ final class ResettableSliderInteraction {
         guard isTracking else { return }
         isTracking = false
         onEditingChanged(false)
+        if let input = activePersistenceInput {
+            activePersistenceInput = nil
+            input.session.end(input.id)
+        }
     }
 
     private func publish(_ value: Double) {

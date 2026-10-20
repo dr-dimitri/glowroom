@@ -84,6 +84,7 @@ final class EditingModel: ObservableObject, GeneratedArtifactAccepting {
     private var startupAllowsOriginalPreview = false
     private var revisionsByAsset: [String: Int64] = [:]
     private var pending: [String: PendingEdit] = [:]
+    let sliderPersistenceSession = SliderPersistenceSession()
     private var histories = BoundedEditingHistory<EditingSnapshot>(footprint: EditingHistoryFootprint.snapshot)
     var historyStateCount: Int { histories.count }
     var historyByteCount: Int { histories.byteCount }
@@ -137,6 +138,7 @@ final class EditingModel: ObservableObject, GeneratedArtifactAccepting {
     }
     init(directory: URL? = nil, loader: @escaping @Sendable () async throws -> EditingModelDependencies) {
         self.directory = directory; self.repositoryLoader = loader
+        sliderPersistenceSession.onIdle = { [weak self] in self?.scheduleSave(immediately: true) }
         startLoading()
     }
     private func startLoading() {
@@ -322,22 +324,31 @@ final class EditingModel: ObservableObject, GeneratedArtifactAccepting {
         } catch { errorMessage = error.localizedDescription }
     }
     func flush() async -> Bool {
+        await flush(includingActiveSliderEdits: true)
+    }
+    private func flush(includingActiveSliderEdits: Bool) async -> Bool {
         while isRestoring || isBackingUp { await withCheckedContinuation { maintenanceWaiters.append($0) } }
         guard await awaitAcceptedCommits() else { return false }
-        return await flushPending()
+        return await flushPending(includingActiveSliderEdits: includingActiveSliderEdits)
     }
-    private func flushPending() async -> Bool {
+    private func flushPending(includingActiveSliderEdits: Bool = true) async -> Bool {
         if let loadingTask { await loadingTask.value }
         debounceTask?.cancel(); debounceTask = nil
-        if let saveTask { return await saveTask.value }
+        if let saveTask {
+            guard await saveTask.value else { return false }
+            // An explicit drain may have joined an automatic save which stopped
+            // at a slider boundary. It must also persist the remaining edits.
+            return await flushPending(includingActiveSliderEdits: includingActiveSliderEdits)
+        }
         guard let database else { return false }
         guard !pending.isEmpty else { return !isReadOnly }
+        guard includingActiveSliderEdits || !sliderPersistenceSession.hasActiveInput else { return true }
         do {
             for (id, edit) in pending where edit.admission == nil {
                 pending[id] = PendingEdit(snapshot: edit.snapshot, revision: edit.revision, admission: try registerWrite())
             }
         } catch { errorMessage = error.localizedDescription; return false }
-        let task = Task { await self.savePending(using: database) }; saveTask = task
+        let task = Task { await self.savePending(using: database, includingActiveSliderEdits: includingActiveSliderEdits) }; saveTask = task
         return await task.value
     }
     private func registerWrite() throws -> CatalogAcceptedWriteAdmission? {
@@ -352,7 +363,7 @@ final class EditingModel: ObservableObject, GeneratedArtifactAccepting {
         pending[assetID] = PendingEdit(snapshot: value, revision: revision, admission: admission)
         hasPendingChanges = true; scheduleSave()
     }
-    private func savePending(using database: any EditingPersistence) async -> Bool {
+    private func savePending(using database: any EditingPersistence, includingActiveSliderEdits: Bool) async -> Bool {
         isSaving = true
         var savedBatch = false
         defer {
@@ -365,6 +376,9 @@ final class EditingModel: ObservableObject, GeneratedArtifactAccepting {
         repeat {
             let batch = pending
             for assetID in batch.keys.sorted() {
+                // Recheck after each awaited write: a new gesture may have
+                // started while a previously accepted snapshot was on disk.
+                guard includingActiveSliderEdits || !sliderPersistenceSession.hasActiveInput else { return true }
                 guard let edit = batch[assetID], let expected = persistedState(for: assetID) else { return false }
                 do {
                     let result: StoredEditingState
@@ -442,12 +456,16 @@ final class EditingModel: ObservableObject, GeneratedArtifactAccepting {
         return commitsSaved && (saved || (isReadOnly && pending.isEmpty))
     }
 
-    private func scheduleSave() {
+    private func scheduleSave(immediately: Bool = false) {
         debounceTask?.cancel()
+        debounceTask = nil
+        guard !pending.isEmpty, !sliderPersistenceSession.hasActiveInput else { return }
         debounceTask = Task { [weak self] in
-            do { try await Task.sleep(for: .milliseconds(300)) } catch { return }
+            if !immediately {
+                do { try await Task.sleep(for: .milliseconds(300)) } catch { return }
+            }
             guard let self, !Task.isCancelled else { return }; debounceTask = nil
-            _ = await flush()
+            _ = await flush(includingActiveSliderEdits: false)
         }
     }
     private func nextRevisionAvailable(for assetID: String) -> Bool {

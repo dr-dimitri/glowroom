@@ -11,6 +11,46 @@ import Testing
 @Suite("Sharpening workspace native interaction", .serialized, .timeLimit(.minutes(2)))
 @MainActor
 struct DevelopSharpeningWorkspaceTests {
+    @Test func detailControlsIgnoreClosedWorkspaceGroupsAndHaveNoCollapseAction() async throws {
+        let fixture = try await SharpeningWorkspaceFixture.make()
+        fixture.layout.update(developing: true) {
+            $0.openGroups = []; $0.openAdjustmentGroups = []; $0.singleGroup = true
+        }
+        let host = WorkspaceSectionTestHost(size: NSSize(width: 1_200, height: 900))
+        defer { host.close(); fixture.removeTemporaryFiles() }
+        try await host.mount(LibraryView(model: fixture.library, dataDirectory: fixture.directory)
+            .environmentObject(fixture.editor).environmentObject(fixture.layout)
+            .environmentObject(fixture.metadata).environmentObject(fixture.exporter)
+            .environment(\.displayScale, 2).preferredColorScheme(.dark))
+        try await waitForSharpeningWorkspace(operation: "detail sliders despite closed saved groups") {
+            host.sliders.count == 6
+        }
+        try await host.settle()
+
+        for (identifier, label) in [("workspace.group.details", "Details"),
+                                    ("develop.adjustment-group.sharpening", "Schärfen"),
+                                    ("develop.adjustment-group.noise", "Entrauschen")] {
+            let header = try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == identifier })
+            #expect(header.accessibilityLabel() == label || header.accessibilityValue() as? String == label)
+            #expect(header.accessibilityRole() != .button, "The \(label) heading must not offer collapsing")
+        }
+        let sliderRoot = try #require(host.sliders.first?.window?.contentView)
+        for (identifier, label) in [("sharpeningAmount", "Betrag"), ("sharpeningRadius", "Radius"),
+                                    ("sharpeningDetail", "Details"), ("sharpeningMasking", "Maskieren"),
+                                    ("luminanceNoiseReduction", "Luminanz"), ("colorNoiseReduction", "Farbe")] {
+            _ = try sharpeningSlider(identifier: "develop.adjustment.\(identifier)", label: label, root: sliderRoot)
+        }
+
+        // Single-group mode can replace the saved Details state when another
+        // tool opens; these controls must remain mounted regardless.
+        fixture.layout.toggleGroup(.edit, developing: true)
+        try await host.settle()
+        #expect(host.sliders.contains { $0.minValue == 0 && $0.maxValue == 150 })
+        #expect(host.accessibilityElements.contains { $0.accessibilityIdentifier() == "develop.adjustment-group.noise" })
+        #expect(await fixture.library.finishSaving())
+        #expect(await fixture.editor.flush())
+    }
+
     @Test func amountSliderEnablesControlsAndRadiusResetParticipatesInWorkspaceHistory() async throws {
         let fixture = try await SharpeningWorkspaceFixture.make()
         let host = WorkspaceSectionTestHost(size: NSSize(width: 1_200, height: 900))

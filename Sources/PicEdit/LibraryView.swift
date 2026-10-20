@@ -190,6 +190,7 @@ struct LibraryView: View {
             Button("Aus Bibliothek entfernen", role: .destructive) { if let folder = folderToRemove { model.removeFolder(folder.id) }; folderToRemove = nil }
             Button("Abbrechen", role: .cancel) { folderToRemove = nil }
         } message: { Text("Die Originalbilder bleiben auf deinem Mac. Für vollständig entfernte Bilder werden Bearbeitungen, Bildinformationen und Suchindexeinträge gelöscht. Erneutes Hinzufügen erfasst sie neu. Bilder in anderen eingebundenen Ordnern bleiben erhalten.") }
+        .environment(\.sliderPersistenceSession, editor.sliderPersistenceSession)
     }
 
     private func openMasks() {
