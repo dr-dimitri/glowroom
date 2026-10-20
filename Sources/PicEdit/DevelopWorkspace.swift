@@ -7,7 +7,10 @@ import PicEditCore
 @MainActor
 final class DevelopWorkspace: ObservableObject {
     @Published var tool: DevelopCanvasTool = .basic {
-        didSet { if oldValue == .repair && tool != .repair { cancelRepairWork(); repairSpotImage = nil } }
+        didSet {
+            if oldValue != tool { cancelAutomaticTone() }
+            if oldValue == .repair && tool != .repair { cancelRepairWork(); repairSpotImage = nil }
+        }
     }
     @Published var picksWhiteBalance = false
     @Published var showsShadows = false
@@ -64,18 +67,23 @@ final class DevelopWorkspace: ObservableObject {
     private var analysisTask: Task<Void, Never>?
     private var autoStraightenTask: Task<Double?, Error>?
     private var autoStraightenIdentity = UUID()
+    var automaticToneTask: Task<Void, Never>?
+    var automaticToneIdentity = UUID()
     private(set) var originalBitmap: PreviewBitmap?
     private var identity = UUID()
     typealias Analyze = @Sendable (PreviewBitmap) async throws -> DevelopPreviewAnalysis
     typealias EstimateHorizon = @Sendable (PreviewBitmap) async throws -> Double?
+    typealias EstimateTone = @Sendable (AutomaticToneControl, PreviewBitmap, EditSettings) async throws -> Double
     private let analyze: Analyze
     private let estimateHorizon: EstimateHorizon
+    let estimateTone: EstimateTone
 
-    init(analyze: Analyze? = nil, estimateHorizon: EstimateHorizon? = nil,
+    init(analyze: Analyze? = nil, estimateHorizon: EstimateHorizon? = nil, estimateTone: EstimateTone? = nil,
          repairServices: DevelopRepairServices = .live, repairAIStore: DevelopRepairAIModelStore = .shared) {
         self.repairServices = repairServices
         self.repairAIStore = repairAIStore
         self.estimateHorizon = estimateHorizon ?? { try await DevelopHorizonEstimator.shared.estimate($0) }
+        self.estimateTone = estimateTone ?? { try await AutomaticToneEstimator.shared.value(for: $0, bitmap: $1, settings: $2) }
         if let analyze { self.analyze = analyze }
         else {
             let worker = DevelopPreviewAnalyzer()
@@ -96,6 +104,7 @@ final class DevelopWorkspace: ObservableObject {
         let baseID = ObjectIdentifier(sourceBitmap.image)
         if originalBitmap.map({ ObjectIdentifier($0.image) }) != baseID {
             cancelAutoStraighten()
+            cancelAutomaticTone()
         }
         originalBitmap = sourceBitmap
         let needsBase = baseIdentity != baseID || sourceAnalysis == nil
@@ -160,6 +169,7 @@ final class DevelopWorkspace: ObservableObject {
         isAutoStraightening = false
     }
     func clear() {
+        cancelAutomaticTone()
         cancelRepairWork(); repairSpotTask?.cancel(); repairSpotTask = nil
         repairDisplayBitmap = nil; repairSpotImage = nil; repairStatus = nil
         identity = UUID(); analysisTask?.cancel(); analysisTask = nil

@@ -50,6 +50,14 @@ Schlägt die automatische Auswahl fehl, bleiben Fehlermeldung und Palette sichtb
 
 Die Maskengeometrie bezieht sich auf die orientierte, unbeschnittene Quelle. Während der Bearbeitung zeigen die Bildwerkzeuge diese Quelle; **Schließen** zeigt wieder den gespeicherten Zuschnitt und die Ausrichtung. [Maskenvertrag](MASK-EDITING.md).
 
+## Automatikwert pro Tonwertregler
+
+**Control gedrückt halten und auf den Regler oder seine Beschriftung doppelklicken:** Belichtung, Kontrast, Lichter, Tiefen, Weiß und Schwarz erhalten jeweils einen aus dem Bild berechneten Wert. Die Geste verändert ausschließlich den gewählten globalen Regler und erzeugt bei einer Wertänderung einen Rückgängig-Schritt. Ein gewöhnlicher Doppelklick setzt weiterhin auf den Neutralwert zurück. Präsenz-, Entrauschungs- und lokale Maskenregler behalten ihre bisherige Bedienung.
+
+Die Automatik arbeitet im Hintergrund auf einer Vorschau mit höchstens 256 Pixeln langer Kante aus der bereits decodierten aktiven Quelle. Sie verwendet PicEdits eigene Filter und Helligkeitsperzentile, berücksichtigt die übrigen globalen Korrekturen einschließlich des natürlichen Bildausgleichs und lässt den bisherigen Wert des gewählten Reglers bei der Berechnung weg. Eine wiederholte Geste bei unveränderten übrigen Einstellungen liefert daher denselben Wert. Zuschnitt, Retuschen und lokale Masken fließen nicht in diese globale Schätzung ein. Transparente Flächen werden nach Deckkraft gewichtet; sehr gleichförmige und vollständig transparente Bilder liefern den neutralen Wert. Die Schätzung ersetzt keine verlorenen Bilddetails und bildet Adobes Automatik nicht identisch nach.
+
+Schnell aufeinanderfolgende Gesten ersetzen den laufenden Auftrag. Foto-, Quellen- und Werkzeugwechsel brechen ihn ab. Eine inzwischen geänderte oder rückgängig gemachte Bearbeitung wird durch ein verspätetes Ergebnis nicht überschrieben. Ohne geladene Bildbasis oder bei einem Berechnungsfehler bleibt der bisherige Wert erhalten und ein Hinweis erscheint. Angenommene Werte verwenden dieselbe Speicherung, Vorschau und Exportverarbeitung wie manuelle Einstellungen.
+
 ## Zuschneiden und Ausrichten
 
 Die Palette enthält **Werkzeug**, **Seitenverhältnis** mit Schloss, **Winkel** mit **Wasserwaage** und **Auto** sowie **Zurücksetzen / Schließen**. Die vier zusätzlichen Dreh-/Spiegelsymbole, **Auf Bild beschränken** und **Werkzeugüberlagerung** wurden entfernt. Ihr nicht mehr benötigter UI- und Überlagerungszustand entfällt. Bereits gespeicherte Drehungen, Spiegelungen und Bildbegrenzungen bleiben für alte Bearbeitungen lesbar und werden im Ergebnis weiterhin berücksichtigt.
