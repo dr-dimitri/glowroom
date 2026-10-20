@@ -1,1 +1,0 @@
-{"bytes":4347581632,"conversionType":"q8_0","event":"converted","inferenceExecuted":false,"memory":{"footprintBytes":425198408,"peakFootprintBytes":560038824,"peakRSSBytes":550584320,"residentBytes":411910144},"output":"model-q8_0.gguf","protocol":1,"seconds":23.2654665,"status":"success","tensorTypeRules":"^(first_stage_model\\.|vae\\.)=f32","threads":2}

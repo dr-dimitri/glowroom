@@ -1,7 +1,0 @@
-/private/tmp/picedit-semantic-convert-venv/lib/python3.11/site-packages/transformers/models/siglip/modeling_siglip.py:340: TracerWarning: Converting a tensor to a Python boolean might cause the trace to be incorrect. We can't record the data flow of Python values, so this value will be treated as a constant in the future. This means that the trace might not generalize to other inputs!
-  if seq_length > max_position_embedding:
-Converting PyTorch Frontend ==> MIL Ops:   0%|          | 0/487 [00:00<?, ? ops/s]Converting PyTorch Frontend ==> MIL Ops: 100%|█████████▉| 486/487 [00:00<00:00, 9506.28 ops/s]
-Running MIL frontend_pytorch pipeline:   0%|          | 0/5 [00:00<?, ? passes/s]Running MIL frontend_pytorch pipeline: 100%|██████████| 5/5 [00:00<00:00, 266.15 passes/s]
-Running MIL default pipeline:   0%|          | 0/89 [00:00<?, ? passes/s]Running MIL default pipeline:  34%|███▎      | 30/89 [00:00<00:00, 297.92 passes/s]Running MIL default pipeline:  67%|██████▋   | 60/89 [00:07<00:04,  6.90 passes/s] Running MIL default pipeline:  85%|████████▌ | 76/89 [00:07<00:01,  9.80 passes/s]Running MIL default pipeline: 100%|██████████| 89/89 [00:07<00:00, 11.20 passes/s]
-Running MIL backend_mlprogram pipeline:   0%|          | 0/12 [00:00<?, ? passes/s]Running MIL backend_mlprogram pipeline: 100%|██████████| 12/12 [00:00<00:00, 338.28 passes/s]
-Approved export reproduced: /private/tmp/picedit-semantic-product-reproduction/text-canonical.mlpackage

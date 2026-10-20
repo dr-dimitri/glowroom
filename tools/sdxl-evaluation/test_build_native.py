@@ -28,6 +28,19 @@ class NativeBuilderTests(unittest.TestCase):
                 "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
                 "revision": "fixture-only", "destination": "source"}
 
+    def test_explicit_mask_fixture_requires_external_verified_file(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            fixture = root / "mask.png"; fixture.write_bytes(b"small temporary mask")
+            alias = root / "alias.png"; alias.symlink_to(fixture)
+            for path in [None, root / "missing.png", alias, Path("relative.png")]:
+                with self.subTest(path=path), self.assertRaises(BUILDER.PreparationError):
+                    BUILDER.validate_mask_fixture(path)
+            with mock.patch.object(BUILDER, "MASK_FIXTURE_SHA256", hashlib.sha256(fixture.read_bytes()).hexdigest()):
+                self.assertEqual(BUILDER.validate_mask_fixture(fixture), fixture.resolve())
+            with self.assertRaisesRegex(BUILDER.PreparationError, "fixture SHA-256"):
+                BUILDER.validate_mask_fixture(fixture)
+
     def test_corrupt_cache_stops_before_tools_or_build_outputs(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder) / "evaluation"; root.mkdir()
@@ -49,11 +62,10 @@ class NativeBuilderTests(unittest.TestCase):
             entry = self.source(cache)
             bad_fixture = Path(folder) / "mask.png"; bad_fixture.write_bytes(b"changed mask")
             with mock.patch.object(BUILDER, "SOURCES", [entry]), \
-                    mock.patch.object(BUILDER, "MASK_FIXTURE", bad_fixture), \
                     mock.patch.object(BUILDER.subprocess, "check_output") as probe, \
                     mock.patch.object(BUILDER.PREPARATION, "run_checked") as command:
                 with self.assertRaisesRegex(BUILDER.PreparationError, "fixture SHA-256"):
-                    BUILDER.build(root, source_cache=cache)
+                    BUILDER.build(root, source_cache=cache, mask_fixture=bad_fixture)
             probe.assert_not_called(); command.assert_not_called()
             self.assertEqual(list(root.iterdir()), [])
 
@@ -97,17 +109,19 @@ class NativeBuilderTests(unittest.TestCase):
             root = Path(folder) / "evaluation"; root.mkdir()
             cache = Path(folder) / "cache"; cache.mkdir()
             entry = self.source(cache)
+            mask_fixture = Path(folder) / "mask.png"; mask_fixture.write_bytes(b"test mask")
             before = (cache / entry["name"]).read_bytes()
             foreign = root / ".sdxl-native-foreign"; foreign.mkdir()
             (foreign / "keep").write_text("preserve")
-            with mock.patch.object(BUILDER, "SOURCES", [entry]), \
+            with mock.patch.object(BUILDER, "MASK_FIXTURE_SHA256", hashlib.sha256(mask_fixture.read_bytes()).hexdigest()), \
+                    mock.patch.object(BUILDER, "SOURCES", [entry]), \
                     mock.patch.object(BUILDER.platform, "system", return_value="Darwin"), \
                     mock.patch.object(BUILDER.platform, "machine", return_value="arm64"), \
                     mock.patch.object(BUILDER.subprocess, "check_output", return_value="/fixture/tool\n"), \
                     mock.patch.object(BUILDER, "verify_schedule_strength_contract"), \
                     mock.patch.object(BUILDER.PREPARATION, "run_checked", side_effect=BUILDER.PreparationError("fixture failure")):
                 with self.assertRaises(BUILDER.PreparationError):
-                    BUILDER.build(root, cmake=Path(__file__), source_cache=cache)
+                    BUILDER.build(root, cmake=Path(__file__), source_cache=cache, mask_fixture=mask_fixture)
             self.assertEqual((cache / entry["name"]).read_bytes(), before)
             self.assertEqual((foreign / "keep").read_text(), "preserve")
             self.assertEqual(list(root.iterdir()), [foreign])
@@ -176,6 +190,7 @@ class NativeBuilderTests(unittest.TestCase):
                 root = Path(folder) / "evaluation"; root.mkdir()
                 cache = Path(folder) / "cache"; cache.mkdir()
                 entry = self.source(cache)
+                mask_fixture = Path(folder) / "mask.png"; mask_fixture.write_bytes(b"test mask")
                 original = (cache / entry["name"]).read_bytes()
                 reached = []
 
@@ -192,14 +207,15 @@ class NativeBuilderTests(unittest.TestCase):
                             self.assertIn("--expect-baseline-bug", arguments)
                         raise BUILDER.PreparationError("fixture regression failure")
 
-                with mock.patch.object(BUILDER, "SOURCES", [entry]), \
+                with mock.patch.object(BUILDER, "MASK_FIXTURE_SHA256", hashlib.sha256(mask_fixture.read_bytes()).hexdigest()), \
+                        mock.patch.object(BUILDER, "SOURCES", [entry]), \
                         mock.patch.object(BUILDER.platform, "system", return_value="Darwin"), \
                         mock.patch.object(BUILDER.platform, "machine", return_value="arm64"), \
                         mock.patch.object(BUILDER.subprocess, "check_output", return_value="/fixture/tool\n"), \
                         mock.patch.object(BUILDER, "verify_schedule_strength_contract"), \
                         mock.patch.object(BUILDER.PREPARATION, "run_checked", side_effect=command):
                     with self.assertRaisesRegex(BUILDER.PreparationError, "fixture regression failure"):
-                        BUILDER.build(root, cmake=Path(__file__), source_cache=cache)
+                        BUILDER.build(root, cmake=Path(__file__), source_cache=cache, mask_fixture=mask_fixture)
                 expected = ordered[:ordered.index(boundary) + 1]
                 self.assertEqual(reached, expected)
                 self.assertFalse((root / "sdxl-helper").exists())

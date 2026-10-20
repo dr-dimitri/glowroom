@@ -23,6 +23,51 @@ def entry(data):
 
 
 class PreparationTests(unittest.TestCase):
+    def fixture_archive(self, root):
+        archive = root / "archive"
+        (archive / "provenance").mkdir(parents=True)
+        (archive / "fixtures").mkdir()
+        manifest = b'{"fixtures": []}'
+        (archive / "provenance/fixtures-manifest.json").write_bytes(manifest)
+        payload = b"small temporary fixture"
+        (archive / "fixtures/source.png").write_bytes(payload)
+        package = {"fixtureManifestSHA256": entry(manifest)["sha256"],
+                   "fixtureFiles": [{"path": "fixtures/source.png", **entry(payload)}]}
+        return archive, package
+
+    def test_external_fixture_archive_is_verified_and_installed(self):
+        with tempfile.TemporaryDirectory() as name:
+            root = Path(name)
+            archive, package = self.fixture_archive(root)
+            destination = root / "installed"
+            PREPARE.install_fixtures(destination, package, archive)
+            self.assertEqual((destination / "fixtures/source.png").read_bytes(), b"small temporary fixture")
+            self.assertEqual((destination / "fixtures-manifest.json").read_bytes(),
+                             (archive / "provenance/fixtures-manifest.json").read_bytes())
+
+    def test_missing_or_corrupt_fixture_archive_is_rejected_before_publication(self):
+        with tempfile.TemporaryDirectory() as name:
+            root = Path(name)
+            archive, package = self.fixture_archive(root)
+            destination = root / "installed"
+            for path in [None, root / "missing", PREPARE.REPOSITORY]:
+                with self.subTest(path=path), self.assertRaises(PREPARE.PreparationError):
+                    PREPARE.install_fixtures(destination, package, path)
+            self.assertFalse(destination.exists())
+            (archive / "fixtures/source.png").write_bytes(b"changed")
+            with self.assertRaisesRegex(PREPARE.PreparationError, "SHA256 mismatch"):
+                PREPARE.install_fixtures(destination, package, archive)
+            self.assertFalse(destination.exists())
+
+    def test_fixture_archive_traversal_is_rejected_before_publication(self):
+        with tempfile.TemporaryDirectory() as name:
+            root = Path(name)
+            archive, package = self.fixture_archive(root)
+            package["fixtureFiles"][0]["path"] = "fixtures/../../outside"
+            with self.assertRaisesRegex(PREPARE.PreparationError, "invalid pinned fixture path"):
+                PREPARE.install_fixtures(root / "installed", package, archive)
+            self.assertFalse((root / "installed").exists())
+
     def test_atomic_copy_rejects_hash_mismatch_without_publishing(self):
         with tempfile.TemporaryDirectory() as name:
             root = Path(name)
@@ -119,7 +164,7 @@ class PreparationTests(unittest.TestCase):
             with patch.object(PREPARE.subprocess, "check_output", return_value="/fake/toolchain"), \
                     patch.object(PREPARE, "run_checked", side_effect=PREPARE.PreparationError("build-failed")):
                 with self.assertRaises(PREPARE.PreparationError):
-                    PREPARE.build_helper(root, package, sys.executable, {})
+                    PREPARE.build_helper(root, package, sys.executable, {}, None)
             self.assertFalse((root / "evaluation-helper-current").exists())
             self.assertFalse((root / "evaluation-installation.json").exists())
             self.assertEqual(sorted(p.name for p in root.iterdir()), ["downloads"])

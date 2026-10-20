@@ -1,9 +1,0 @@
-{
-  "v1": "UNREVIEWED",
-  "v2": "UNREVIEWED",
-  "frozenExpectation": "The edge cup disappears; no inward displacement, mirrored mask, edge smear, or invented new object.",
-  "qualityGatesChanged": false,
-  "nativeGenerationIsReal": true,
-  "backendGo": false,
-  "reviewInstruction": "Inspect full-size v1/v2 images, not only thumbnails. Record each frozen quality gate honestly; a context-color pass is not a visual pass."
-}

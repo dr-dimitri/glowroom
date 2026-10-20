@@ -1,5 +1,0 @@
-{
-  "purpose": "Only original canvas fixture added to a COPY for post-failure compositor replay; native report remains unchanged",
-  "source": "reports/image-backend/historical-2026-10-16/fixtures/06-canvas-original.png",
-  "sha256": "1ad2c9e1bfc37f7dfa83cd66a975eb8fb347d4933ea78e2f8d4f1e6c3170dc08"
-}

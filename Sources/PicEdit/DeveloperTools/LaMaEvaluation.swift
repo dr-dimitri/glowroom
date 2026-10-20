@@ -47,7 +47,7 @@ enum LaMaEvaluation {
             .write(to: url, options: .atomic)
     }
 
-    static func run(root: URL, repository: URL, output: URL, inspectOnly: Bool) throws {
+    static func run(root: URL, repository: URL, fixtureArchive: URL?, output: URL, inspectOnly: Bool) throws {
         try check(!FileManager.default.fileExists(atPath: output.path), "report directory already exists")
         try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
         var report: JSON = ["schemaVersion": 1, "createdAt": ISO8601DateFormatter().string(from: Date()),
@@ -106,7 +106,7 @@ enum LaMaEvaluation {
                 "outputPixelFormat": resultImage.pixelFormatType, "outputName": result.name]
             if inspectOnly { report["status"] = "interface-inspected-no-inference"; return }
 
-            let historical = repository.appendingPathComponent("reports/image-backend/historical-2026-10-16")
+            guard let historical = fixtureArchive else { throw Failure.invalid("missing --fixture-archive") }
             let manifest = try Data(contentsOf: historical.appendingPathComponent("provenance/fixtures-manifest.json"))
             try check(sha(manifest) == "799d51e22631500e9caa2fbdd2c09403788d55d4248ddeacc9cc0db0c4a7a2d5", "fixture manifest hash")
             let fixtures = try JSONDecoder().decode(Fixtures.self, from: manifest).fixtures

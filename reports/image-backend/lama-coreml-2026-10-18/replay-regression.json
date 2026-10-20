@@ -1,8 +1,0 @@
-{
-  "v2ReplayCases": 7,
-  "v2ReplayPixelsAndAlphaMetadataIdentical": true,
-  "historicalCasesIdentical": 7,
-  "unknownVersionRejectedBeforeOutput": true,
-  "v1ArchiveByteIdentical": true,
-  "scope": "Replay-only regression after CLI metadata fix; no model inference repeated"
-}

@@ -1,24 +1,31 @@
 # LC-03: detailerhaltende Lichter und Schatten
 
+Die historischen Rohdaten, Vergleichsbilder, Quellsnapshots und Prüfprotokolle
+wurden mit dem bisherigen Ergebnisordner aus dem Repository entfernt. Die
+folgenden Messwerte und Entscheidungen bleiben als historische Zusammenfassung
+erhalten; die ursprünglichen Einzelartefakte stehen hier nicht mehr zur Verfügung.
+Neue Läufe schreiben in ein ausdrücklich gewähltes externes Ergebnisverzeichnis,
+beispielsweise unter `/private/tmp/`.
+
 Stand: 17. Oktober 2026. Vergleich zu [Issue #52](https://github.com/dr-dimitri/picedit/issues/52) nach der [Roadmap #49](https://github.com/dr-dimitri/picedit/issues/49) auf der [LC-01-Vergleichsgrundlage](LIGHTCRAFT-ALGORITHM-EVALUATION.md). Die Versuchsregeln wurden vor dem ersten Abnahmelauf festgelegt.
 
 ## Ergebnis der Qualitätsabnahme: No-Go für den isolierten Kandidaten
 
-Die abschließende [Zusammenfassung der v2-Reihe](../reports/lightcraft-evaluation/lc03-matched-2026-10-17/summary.json), [Umgebung und Quell-/Binary-Hashes](../reports/lightcraft-evaluation/lc03-matched-2026-10-17/environment.json) und [exakten Aufrufe](../reports/lightcraft-evaluation/lc03-matched-2026-10-17/commands.json) bilden den vollständigen Ergebnisnachweis. Reproduktion mit dem aktuellen Quellstand:
+Die v2-Reihe wurde mit Umgebung, Quell-/Binary-Hashes und exakten Aufrufen protokolliert. Ein neuer Lauf mit dem aktuellen Quellstand:
 
 ```sh
-./scripts/evaluate-lightcraft.sh /tmp/picedit-lc03-run --candidate LC-03
+./scripts/evaluate-lightcraft.sh /private/tmp/picedit-lc03-run --candidate LC-03
 ```
 
 Die übertragene V2-Basis erhält den lokalen Float-Kontrast der feinen Linien deutlich besser, verletzt mit ihren ursprünglichen Lichter-/Schattengewichten aber das vorab festgelegte Gamut-/Clipping-Gate. Daher wird **dieser isolierte CPU-Kandidat nicht in PicEdits Produktionsgraph übernommen**. Das ist keine Ablehnung aller Lightcraft-Verfahren oder jeder möglichen Verwendung der besseren Steuerbasis. Eine abweichende Gewichtung oder ein neues Ausgabemodell wäre ein neuer Kandidat mit eigenem vorab festgelegtem Vergleich.
 
 Der entscheidende Fall ist `fine-lines / shadows-positive-20`: Beide Seiten erhalten dieselbe vollständig opake Eingabe aus 0,035 und 0,92 linearem RGB, also keine schon ausgebrannten oder außerhalb des sRGB-Würfels liegenden Pixel. PicEdit erzeugt in der festen Schatten-ROI eine mittlere Anhebung von **0,0138252117**, der auf der Abstimmvariante eingefrorene Referenzparameter **84,5703125** erzeugt **0,0138359053**. Die Tonwirkung ist damit innerhalb der erlaubten Toleranz angeglichen. Trotzdem steigen Gamut- und Clippinganteil jeweils um **0,05625 = 5,625 Prozentpunkte**, gegenüber höchstens **2 Prozentpunkten** im vorab festgelegten Gate. Die Metrik zählt sichtbare, alpha-gewichtete RGB-Komponenten; in diesem grauen, opaken Fall entspricht der Anteil auch dem Pixelanteil. Die spätere PNG-/Ausgabebegrenzung kann diese Float-Überschreitung verdecken, aber nicht rückgängig machen. Dieser gematchte kritische Befund genügt für das No-Go.
 
-Die vollständige [Qualitätsdatei](../reports/lightcraft-evaluation/lc03-matched-2026-10-17/quality/quality.json) enthält 72 getrennte Abnahmefälle und 96 Stufendiagnosen. **28 von 72** Fällen erreichen das Matching; **44** sind nicht angeglichen oder besitzen keine geeignete Ziel-ROI. Sie zählen weder als bestandene Qualitätsvergleiche noch allein als No-Go. Sieben der gematchten Fälle verletzen mindestens eine kritische Grenze. Das vor der ersten Abstimmung eingefrorene [v1-Manifest](../reports/lightcraft-evaluation/lc03-2026-10-17/lc03-manifest.json) hat SHA256 `19153efe6b749c6554390f0cfcb7025e8ed28e600358c87cf95290bcb142e371`.
+Die historische Qualitätsreihe umfasste 72 getrennte Abnahmefälle und 96 Stufendiagnosen. **28 von 72** Fällen erreichen das Matching; **44** sind nicht angeglichen oder besitzen keine geeignete Ziel-ROI. Sie zählen weder als bestandene Qualitätsvergleiche noch allein als No-Go. Sieben der gematchten Fälle verletzen mindestens eine kritische Grenze. Das vor der ersten Abstimmung eingefrorene v1-Manifest hat SHA256 `19153efe6b749c6554390f0cfcb7025e8ed28e600358c87cf95290bcb142e371`.
 
-Diese erste Reihe heißt `LC03-tone-v1` und bleibt vollständig unter `lc03-2026-10-17` erhalten. Eine getrennte Ergänzungsreihe `LC03-tone-v2` wechselt ausschließlich die Performance-/Skalenfixture von `texture` auf `fine-lines`, deren moderate Tonwirkung bereits angeglichen ist. Matching, Richtungen, Qualitätsgrenzen und Stufendiagnose bleiben identisch; es findet keine Abstimmung anhand der Abnahme und keine Lockerung eines Gates statt. Das aktuelle v2-Manifest hat SHA256 `d1a77063c9e61b92f713f34ad59fd48e9052baeee89a8b4f86900b744845b272`. Die für die Wiederholung geänderten v1-Quellen sind samt ursprünglichen Hashes als [Quellsnapshot](../reports/lightcraft-evaluation/lc03-2026-10-17/source-snapshot/) gesichert.
+Die erste Reihe hieß `LC03-tone-v1`. Eine getrennte Ergänzungsreihe `LC03-tone-v2` wechselt ausschließlich die Performance-/Skalenfixture von `texture` auf `fine-lines`, deren moderate Tonwirkung bereits angeglichen ist. Matching, Richtungen, Qualitätsgrenzen und Stufendiagnose bleiben identisch; es findet keine Abstimmung anhand der Abnahme und keine Lockerung eines Gates statt. Das aktuelle v2-Manifest hat SHA256 `d1a77063c9e61b92f713f34ad59fd48e9052baeee89a8b4f86900b744845b272`. Die für die Wiederholung geänderten v1-Quellen wurden damals samt ursprünglichen Hashes als Quellsnapshot gesichert.
 
-Der [direkte Reproduzierbarkeitsabgleich](../reports/lightcraft-evaluation/lc03-matched-2026-10-17/reproducibility-comparison.json) bestätigt: Alle 72 Kalibrierungsdatensätze, 72 Qualitätsdatensätze und 96 Stufendatensätze sind zwischen v1 und v2 exakt identisch; auch sämtliche 552 Qualitäts-PNGs haben identische SHA256-Werte. Der entscheidende erste Clipping-Befund bleibt unverändert. Nur die Meta-Hashes der JSON-Gesamtdateien ändern sich wegen des neuen Manifests; die eigentlichen Qualitätsdaten ändern sich nicht.
+Der damalige direkte Reproduzierbarkeitsabgleich bestätigte: Alle 72 Kalibrierungsdatensätze, 72 Qualitätsdatensätze und 96 Stufendatensätze sind zwischen v1 und v2 exakt identisch; auch sämtliche 552 Qualitäts-PNGs haben identische SHA256-Werte. Der entscheidende erste Clipping-Befund bleibt unverändert. Nur die Meta-Hashes der JSON-Gesamtdateien ändern sich wegen des neuen Manifests; die eigentlichen Qualitätsdaten ändern sich nicht.
 
 Alle vier moderaten Feinlinienfälle erreichen die Tonangleichung. Ihr gleich gewichteter mittlerer Log-Kontrastfehler sinkt von **0,0697150171** auf **0,0031355793**, numerisch um **95,5023 %**. Diese Werte stammen aus dem unbegrenzten Float-Raster; sie sind wegen des Clipping-Vetos kein freigegebener Bildqualitätsgewinn.
 
@@ -35,11 +42,11 @@ Weitere kritische Beobachtungen sind zusätzliche Clippinganteile von 0,0870504 
 
 Die 96 Stufendiagnosen zeigen bei ausgeschaltetem AutoTone keinen Unterschied zwischen den beiden untersuchten Reihenfolgen. Mit AutoTone liegt der mittlere absolute RGB-Unterschied je Fall zwischen 0 und 0,0359140. Das zeigt die Nichtvertauschbarkeit der Stufen, keine beste Reihenfolge: Die Diagnose wurde nicht separat auf gleiche Effektstärke abgestimmt und enthält unterschiedliche Materialisierungspunkte. Für eine Produktionseinbindung ist deshalb keine Stufenposition freigegeben.
 
-Stichproben der beschrifteten Feinlinien- und Farbpaare wurden auf plausiblen Bildinhalt geprüft. Die [beschriftete Ansicht](../reports/lightcraft-evaluation/lc03-matched-2026-10-17/labeled.html) und [verblindete Ansicht](../reports/lightcraft-evaluation/lc03-matched-2026-10-17/blind.html) bleiben Sichtprüfungsartefakte; es fand keine abgeschlossene verblindete Präferenzabnahme statt. Reale Porträts, Gegenlichtfotos, Landschaften und hoch-ISO-Aufnahmen fehlen weiterhin. Diese Lücken verhindern eine positive Übernahme, sind aber nicht die Begründung des nachgewiesenen technischen No-Go.
+Stichproben der beschrifteten Feinlinien- und Farbpaare wurden auf plausiblen Bildinhalt geprüft. Die beschriftete und die verblindete Ansicht dienten der Sichtprüfung; es fand keine abgeschlossene verblindete Präferenzabnahme statt. Reale Porträts, Gegenlichtfotos, Landschaften und hoch-ISO-Aufnahmen fehlen weiterhin. Diese Lücken verhindern eine positive Übernahme, sind aber nicht die Begründung des nachgewiesenen technischen No-Go.
 
 ## Gemessene Kosten und Skalen
 
-Die v2-Reihe enthält 40 getrennte Timingprozesse, fünf pro Adapter und Größe, mit jeweils einem prozesskalten Aufruf, einem ausgeschlossenen Warmup und fünf warmen Samples. Alle kalten und warmen Effektstärken sind im vorab definierten Sinn angeglichen. Gemessen wurde auf einem Apple M2 Pro mit 12 CPU-Kernen, 19 GPU-Kernen und 16 GB RAM, macOS 27.0.1 (26A434), Swift 6.4.0.34.1. Die Tabelle zeigt Mediane in Millisekunden und das höchste Prozess-RSS in MiB (1.048.576 Byte); sämtliche Spannweiten und Rohsamples stehen in den Reports.
+Die v2-Reihe enthält 40 getrennte Timingprozesse, fünf pro Adapter und Größe, mit jeweils einem prozesskalten Aufruf, einem ausgeschlossenen Warmup und fünf warmen Samples. Alle kalten und warmen Effektstärken sind im vorab definierten Sinn angeglichen. Gemessen wurde auf einem Apple M2 Pro mit 12 CPU-Kernen, 19 GPU-Kernen und 16 GB RAM, macOS 27.0.1 (26A434), Swift 6.4.0.34.1. Die Tabelle zeigt Mediane in Millisekunden und das höchste Prozess-RSS in MiB (1.048.576 Byte); die ursprünglichen Spannweiten und Rohsamples wurden mit dem Ergebnisordner entfernt.
 
 | Bildmaß | PicEdit kalt | CPU-Kandidat kalt | PicEdit warm | CPU-Kandidat warm | PicEdit RSS, MiB | CPU-Kandidat RSS, MiB |
 |---|---:|---:|---:|---:|---:|---:|
@@ -50,9 +57,9 @@ Die v2-Reihe enthält 40 getrennte Timingprozesse, fünf pro Adapter und Größe
 
 Die gemessenen Kosten des isolierten CPU-Adapters liegen in dieser Reihe unter den gemeinsamen Budgets; **das No-Go beruht auf Bildqualität, nicht auf einer Kostenverletzung**. Der Referenzadapter übernimmt nur den begrenzten Tonwertbaustein, hat keinen CI-Materialisierungs-/Readback-Schritt und verwendet warm seine vorbereitete Basis wieder. PicEdit rendert den bestehenden Graphen einschließlich seiner gemeinsamen Float-Brücke. Diese Ergebnisse belegen keine allgemeine Überlegenheit von CPU über GPU, keine Beschleunigung der unveränderten App und keine Kosten einer späteren Produktionsintegration. Weder RAW-Decode noch UI-Präsentation wurden in diesem Modus ausgeführt.
 
-Die [erste v1-Kostenserie](../reports/lightcraft-evaluation/lc03-2026-10-17/summary.json) bleibt als nachvollziehbare negative Matchingkontrolle erhalten. Ihr `texture`-Abstimmfall konnte die Tonwirkung nicht erreichen; der eingefrorene Kandidatenwert war null. Dadurch führten warme Samples nur Exposure aus oder nahmen den neutralen Schnellpfad. Keine v1-Timingphase wurde als gematcht gewertet. Ihre kleineren Zeiten und ihre nullwertigen Kandidaten-Skalenfehler sind weder Geschwindigkeitsgewinn noch Skalentreue-Nachweis. Dieser Befund war der ausdrücklich dokumentierte Grund für die getrennte v2-Lastwahl.
+Die erste v1-Kostenserie diente als negative Matchingkontrolle. Ihr `texture`-Abstimmfall konnte die Tonwirkung nicht erreichen; der eingefrorene Kandidatenwert war null. Dadurch führten warme Samples nur Exposure aus oder nahmen den neutralen Schnellpfad. Keine v1-Timingphase wurde als gematcht gewertet. Ihre kleineren Zeiten und ihre nullwertigen Kandidaten-Skalenfehler sind weder Geschwindigkeitsgewinn noch Skalentreue-Nachweis. Dieser Befund war der ausdrücklich dokumentierte Grund für die getrennte v2-Lastwahl.
 
-Der [v2-Skalentest](../reports/lightcraft-evaluation/lc03-matched-2026-10-17/scale/scale.json) vergleicht die direkte Verarbeitung bei 400 × 267 mit dem in Float32 von 4608 × 3072 verkleinerten Ergebnis, jeweils mit der eingefrorenen Reglerzuordnung. Das Eingangsmuster enthält pixelbreite Linien; seine Kleinansicht mischt diese mit dem Hintergrund. Die mittleren absoluten RGB-Abweichungen lauten:
+Der v2-Skalentest vergleicht die direkte Verarbeitung bei 400 × 267 mit dem in Float32 von 4608 × 3072 verkleinerten Ergebnis, jeweils mit der eingefrorenen Reglerzuordnung. Das Eingangsmuster enthält pixelbreite Linien; seine Kleinansicht mischt diese mit dem Hintergrund. Die mittleren absoluten RGB-Abweichungen lauten:
 
 | Richtung | PicEdit | CPU-Kandidat |
 |---|---:|---:|

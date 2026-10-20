@@ -2,6 +2,8 @@
 
 Dieses Werkzeug untersucht in [Issue #74](https://github.com/dr-dimitri/picedit/issues/74) einen weiteren lokalen Kandidaten nach dem [No-Go aus Issue #12](../../docs/AI-IMAGE-BACKEND-DECISION.md). **V2 hat echte technische Inferenz nachgewiesen; das Produkt-No-Go bleibt bestehen.** Ein erforderlicher Qualitätsfall scheitert, weitere Produktnachweise fehlen. Das Werkzeug installiert keinen PicEdit-Bildprovider. Es verspricht weder Promptsteuerung noch Hintergrundersetzung oder Outpainting. Die [Roadmap](../../docs/AI-ROADMAP.md) erklärt die weiterhin blockierten Folgeissues.
 
+Historische Rohberichte, Vergleichsbilder und Quellsnapshots aus V1/V2 wurden mit dem Reportsordner entfernt. Die Messwerte unten sind eine historische Zusammenfassung. Neue Läufe benötigen einen extern vorhandenen Fixture-Archivbaum und schreiben ihre Ergebnisse in ein explizites externes Verzeichnis.
+
 ## Gepinnte Daten und offene Provenienz
 
 `package.json` bindet die öffentlich angebotene [Core-ML-Konvertierung](https://huggingface.co/mlboydaisuke/LaMa-CoreML/tree/5ed76e3799ab4cad31381750d29880c267477e18) an Revision `5ed76e3799ab4cad31381750d29880c267477e18`. Die vier ungepackten Dateien umfassen **216.650.601 Byte**: Modellspezifikation, Gewichte, Paketmanifest und Modellkarte. Größen und vollständige SHA-256-Hashes sind festgelegt; der eigene Package-Hash ist zusätzlich im Installer und nativen Harness gepinnt. Manifest und Modellkarte wurden bei der Metadatenprüfung außerdem gegen ihre Git-Blob-SHA1-Werte geprüft. Diese Identität ist keine Herkunfts- oder Lizenzfreigabe.
@@ -40,14 +42,14 @@ Auch eine reine Paketinspektion benötigt das ausdrückliche `--run`: Sie prüft
 
 ```sh
 ./scripts/evaluate-image-generation.sh lama --run --inspect --root /private/tmp/picedit-lama-install --out /private/tmp/picedit-lama-interface
-./scripts/evaluate-image-generation.sh lama --run --root /private/tmp/picedit-lama-install --out /private/tmp/picedit-lama-native
+./scripts/evaluate-image-generation.sh lama --run --fixture-archive /private/tmp/picedit-fixture-archive --root /private/tmp/picedit-lama-install --out /private/tmp/picedit-lama-native
 ```
 
 Die vollständige Probe prüft zunächst die echte `image`-/`mask`-/Ausgabeschnittstelle des 800×800-Pakets; die separate Inspektion hat BGRA-RGB-Bufferschnittstellen und eine Gray8-Maske bestätigt. Kleinere native Fixturebilder werden ohne Skalierung durch eine zentrierte ganzzahlige Verschiebung eingebettet. V2 übergibt gerades, nicht mit Alpha multipliziertes RGB ohne vorgemischten Hintergrund. Der vierkanalige Modellbuffer trägt dabei vollständig deckendes Alpha; das ursprüngliche Quellalpha bleibt separat und wird vor dem finalen Compositing wiederhergestellt.
 
 RGB und binäre Modellmaske verwenden exakt denselben am Bildrand geklammerten Sampler. Die Modellmaske ersetzt bei Gray8-Werten ab 128; ein markierter Randpixel bleibt deshalb auch in seinem künstlichen Paddingkontext markiert. Die Ausgabe wird anhand derselben Verschiebung auf die nativen Fixturemaße zurückgeschnitten; künstliches Padding wird verworfen. Die gespeicherte native weiche Maske bleibt unverändert. Der anschließende aktuelle `MaskCompositor` erhält ursprüngliche Maske und Quellalpha; Bereiche mit nativem Maskengewicht 0 bleiben nach dessen Vertrag erhalten.
 
-Die Probe verwendet denselben eingefrorenen synthetischen Fixturesatz wie die frühere Evaluation. Auf die erste Vorhersage folgen drei warme Wiederholungen derselben Eingabe; die weiteren Fälle prüfen Objekt am Rand, harte/weiche Kante, Teiltransparenz, feine Motivkanten und diagnostisch ein nichtquadratisches Canvas. Ein Modellkontext verarbeitet sie nacheinander unter einer **6-GiB-Inferenzlease**. Serielle Vorhersagen vermeiden konkurrierende Modellkopien und unbrauchbare Vergleichszeiten. `criteria.json` legt vor der V2-Messung in Schema 2 die korrigierte Vorbereitung fest. Die ursprünglichen Grenzen von 45 Sekunden für das Laden, 180 Sekunden je Vorhersage und 6 GiB Peak-RSS/Footprint sowie die fachlichen Anforderungen bleiben erhalten.
+Die Probe benötigt denselben eingefrorenen synthetischen Fixturesatz wie die frühere Evaluation in einem ausdrücklich angegebenen externen Archiv (`--fixture-archive` mit `provenance/fixtures-manifest.json` und `fixtures/`). Die dortigen Dateien müssen die weiterhin gepinnten Originalhashes erfüllen; neu erzeugte Contract-Fixtures ersetzen dieses Archiv nicht. Auf die erste Vorhersage folgen drei warme Wiederholungen derselben Eingabe; die weiteren Fälle prüfen Objekt am Rand, harte/weiche Kante, Teiltransparenz, feine Motivkanten und diagnostisch ein nichtquadratisches Canvas. Ein Modellkontext verarbeitet sie nacheinander unter einer **6-GiB-Inferenzlease**. Serielle Vorhersagen vermeiden konkurrierende Modellkopien und unbrauchbare Vergleichszeiten. `criteria.json` legt vor der V2-Messung in Schema 2 die korrigierte Vorbereitung fest. Die ursprünglichen Grenzen von 45 Sekunden für das Laden, 180 Sekunden je Vorhersage und 6 GiB Peak-RSS/Footprint sowie die fachlichen Anforderungen bleiben erhalten.
 
 Zeit- und Speichergrenzen werden **nach Rückkehr des synchronen Core-ML-Aufrufs** geprüft. Sie sind kein Watchdog, unterbrechen keinen festhängenden Aufruf und erzwingen keine Betriebssystem-Speicherquote. Die Ressourcenlease bleibt bis zur tatsächlichen Rückkehr belegt. RSS und physischer Footprint betreffen den eigenen Harnessprozess; sie erfassen nicht zuverlässig den vollständigen Speicher ausgelagerter Core-ML-Dienste. Aus diesen Werten wird kein gesamter Systemspeicherverbrauch des Modells abgeleitet.
 
@@ -55,13 +57,13 @@ Zeit- und Speichergrenzen werden **nach Rückkehr des synchronen Core-ML-Aufrufs
 
 ## Nachvollziehbare Vorbereitungskorrektur
 
-Die tatsächlich ausgeführte [V1-Serie](../../reports/image-backend/lama-coreml-2026-10-18/v1-white-matte/) enthält die damaligen Berichte, Bilder und exakten Evaluationsquellen. Sie verwendete weißen Vormatte-Hintergrund und eine unmaskierte Paddingfläche. Bei Teiltransparenz führte die spätere Wiederanwendung des Quellalpha zu einem hellen Fleck. Bei einem Randobjekt konnten dessen RGB-Pixel ins künstliche Padding geklammert werden, ohne auch die Ersetzungsmaske dorthin fortzusetzen; dieser Kontext begünstigte die erneute Objektrekonstruktion.
+Die tatsächlich ausgeführte V1-Serie wurde mit den damaligen Evaluationsquellen geprüft. Sie verwendete weißen Vormatte-Hintergrund und eine unmaskierte Paddingfläche. Bei Teiltransparenz führte die spätere Wiederanwendung des Quellalpha zu einem hellen Fleck. Bei einem Randobjekt konnten dessen RGB-Pixel ins künstliche Padding geklammert werden, ohne auch die Ersetzungsmaske dorthin fortzusetzen; dieser Kontext begünstigte die erneute Objektrekonstruktion.
 
-V2 korrigiert diese beiden Eingabeverträge wie oben beschrieben und wurde tatsächlich ausgeführt. Sie besitzt einen eigenen [Berichtsbaum](../../reports/image-backend/lama-coreml-2026-10-18/v2-straight-rgb/). V1 bleibt unverändert archiviert. Der Replay nutzt für die LaMa-Ausgabe eine explizite Alpha-Metadatenangabe für gerades RGB; der bisherige Standardpfad und die historische SD-1.5-Auswertung werden nicht nachträglich geändert.
+V2 korrigiert diese beiden Eingabeverträge wie oben beschrieben und wurde tatsächlich ausgeführt. Die damaligen V1- und V2-Artefakte sind im aktuellen Repository nicht mehr enthalten. Der Replay nutzt für die LaMa-Ausgabe eine explizite Alpha-Metadatenangabe für gerades RGB; der bisherige Standardpfad und die historische SD-1.5-Auswertung werden nicht nachträglich geändert.
 
 ## Belegtes Ergebnis und Produktgrenze
 
-Die [vollständige Auswertung](../../reports/image-backend/lama-coreml-2026-10-18/README.md) enthält die native V2-Serie mit zehn Vorhersagen und den anschließenden aktuellen Compositor-Replay. Die Messung erfolgte mit 16 GiB physischem Speicher unter macOS 27.0.1, Compute Units `.all` und unveränderten Schema-2-Kriterien:
+Die damalige Auswertung umfasste die native V2-Serie mit zehn Vorhersagen und den anschließenden Compositor-Replay. Die Messung erfolgte mit 16 GiB physischem Speicher unter macOS 27.0.1, Compute Units `.all` und unveränderten Schema-2-Kriterien:
 
 | Messgröße | Tatsächlicher V2-Wert |
 | --- | --- |

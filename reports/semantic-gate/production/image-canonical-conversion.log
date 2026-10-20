@@ -1,5 +1,0 @@
-Converting PyTorch Frontend ==> MIL Ops:   0%|          | 0/570 [00:00<?, ? ops/s]Converting PyTorch Frontend ==> MIL Ops: 100%|█████████▉| 569/570 [00:00<00:00, 9053.58 ops/s]
-Running MIL frontend_pytorch pipeline:   0%|          | 0/5 [00:00<?, ? passes/s]Running MIL frontend_pytorch pipeline: 100%|██████████| 5/5 [00:00<00:00, 230.59 passes/s]
-Running MIL default pipeline:   0%|          | 0/87 [00:00<?, ? passes/s]Running MIL default pipeline:  29%|██▊       | 25/87 [00:00<00:00, 247.35 passes/s]Running MIL default pipeline:  57%|█████▋    | 50/87 [00:00<00:00, 215.07 passes/s]Running MIL default pipeline:  83%|████████▎ | 72/87 [00:00<00:00, 204.41 passes/s]Running MIL default pipeline: 100%|██████████| 87/87 [00:00<00:00, 199.57 passes/s]
-Running MIL backend_mlprogram pipeline:   0%|          | 0/12 [00:00<?, ? passes/s]Running MIL backend_mlprogram pipeline: 100%|██████████| 12/12 [00:00<00:00, 314.13 passes/s]
-Approved export reproduced: /private/tmp/picedit-semantic-product-reproduction/image-canonical.mlpackage

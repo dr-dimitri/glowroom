@@ -1,17 +1,23 @@
 # LC-01: Vergleichsharness
 
 ```sh
-./scripts/evaluate-lightcraft.sh /tmp/picedit-lc01-run
+./scripts/evaluate-lightcraft.sh /private/tmp/picedit-lc01-run
 ```
 
 Der Wrapper baut den vorhandenen `editing`-Harness in Release-Konfiguration und orchestriert dessen `evaluation`-Szenario. Er startet keinen persönlichen Katalog und verändert keinen Produktionsalgorithmus. Die fachliche Methode, Quellen, Grenzen und Kandidatenentscheidungen stehen in [`docs/LIGHTCRAFT-ALGORITHM-EVALUATION.md`](../../docs/LIGHTCRAFT-ALGORITHM-EVALUATION.md).
 
-Der eingecheckte [LC-01-Lauf vom 17. Oktober 2026](../../reports/lightcraft-evaluation/run-2026-10-17/summary.json) enthält 126 Qualitätsdatensätze, 54 bestandene Kontrollen und die vollständige Größen-/Timingmatrix. In diesem historischen Kontrolllauf bleiben alle vier Algorithmuskandidaten mangels isolierter Referenz und Qualitätsnachweis blockiert. Der folgende LC-03-Modus ergänzt die separate Tonwertevaluation; er ändert diese historischen Kontrollwerte nicht.
+Der historische LC-01-Lauf vom 17. Oktober 2026 umfasste 126 Qualitätsdatensätze, 54 bestandene Kontrollen und die vollständige Größen-/Timingmatrix. In diesem historischen Kontrolllauf bleiben alle vier Algorithmuskandidaten mangels isolierter Referenz und Qualitätsnachweis blockiert. Der folgende LC-03-Modus ergänzt die separate Tonwertevaluation; er ändert diese historischen Kontrollwerte nicht.
+
+Historische Rohdaten, Vergleichsbilder, Quellsnapshots und Prüfprotokolle wurden
+mit dem bisherigen Ergebnisordner aus dem Repository entfernt. Zusammengefasste
+Messwerte und Entscheidungen bleiben in den verlinkten Evaluationsdokumenten.
+Neue Läufe benötigen ein ausdrücklich gewähltes externes Ergebnisverzeichnis,
+wie `/private/tmp/picedit-lc01-run` im Beispiel oben.
 
 ## LC-03: isolierter Lichter-/Schattenvergleich
 
 ```sh
-./scripts/evaluate-lightcraft.sh /tmp/picedit-lc03-run --candidate LC-03
+./scripts/evaluate-lightcraft.sh /private/tmp/picedit-lc03-run --candidate LC-03
 ```
 
 `lc03.py` orchestriert zusätzliche Modi desselben `editing`-Harness: `tone-tune`, `tone-quality`, `tone-timing` und `tone-scale`. [`lc03-manifest.json`](lc03-manifest.json) legt vor der Abnahme die acht Reglerfälle, Matching-ROIs, Detail-/Halo-Ziele und Budgets fest. [`docs/LIGHTCRAFT-TONE-EVALUATION.md`](../../docs/LIGHTCRAFT-TONE-EVALUATION.md) erklärt Verfahren, Quellübernahme, Reihenfolge und Grenzen. Die [numerischen Referenzvektoren](lc03-reference-oracle/README.md) lassen sich ohne Rust im normalen Swift-Testlauf prüfen; nur ihre optionale Neuerzeugung benötigt `rustc` und den gepinnten lokalen Checkout.
@@ -27,7 +33,7 @@ Die Timingmatrix umfasst 512 × 320, 2400 × 1600, 4096 × 2731 und 4608 × 3072
 ## LC-04: isolierte Klarheit und getrennte Texturablation
 
 ```sh
-./scripts/evaluate-lightcraft.sh /tmp/picedit-lc04-run --candidate LC-04
+./scripts/evaluate-lightcraft.sh /private/tmp/picedit-lc04-run --candidate LC-04
 ```
 
 `lc04.py` verwendet die Modi `detail-tune`, `detail-quality`, `detail-timing` und
@@ -44,7 +50,7 @@ abgelehnt.
 ## LC-05: Dynamik und Sättigung bei gleicher Chromawirkung
 
 ```sh
-./scripts/evaluate-lightcraft.sh /tmp/picedit-lc05-run --candidate LC-05
+./scripts/evaluate-lightcraft.sh /private/tmp/picedit-lc05-run --candidate LC-05
 ```
 
 `lc05.py` ergänzt `color-tune`, `color-quality`, `color-timing` und `color-scale`.
@@ -60,7 +66,7 @@ abgelehnt. Details stehen im [LC-05-Bericht](../../docs/LIGHTCRAFT-COLOR-EVALUAT
 ## LC-06: Luminanz, Chroma und native Skalierung
 
 ```sh
-./scripts/evaluate-lightcraft.sh /tmp/picedit-lc06-run --candidate LC-06
+./scripts/evaluate-lightcraft.sh /private/tmp/picedit-lc06-run --candidate LC-06
 ```
 
 `lc06.py` verwendet `denoise-tune`, `denoise-quality`, `denoise-timing` und
@@ -128,7 +134,7 @@ Reale Fotos oder bereits entwickelte RAW-Raster sind optional und vom synthetisc
 ```
 
 ```sh
-./scripts/evaluate-lightcraft.sh /tmp/picedit-lc01-with-real --real-manifest /path/to/local-fixtures.json
+./scripts/evaluate-lightcraft.sh /private/tmp/picedit-lc01-with-real --real-manifest /path/to/local-fixtures.json
 ```
 
 Die Eingaben werden einmal nach `private-inputs/` kopiert und dort gegen ihren Datei-Hash geprüft. Die Messung decodiert diese lokale Momentaufnahme, damit eine spätere Änderung des Originals die Provenienz nicht verfälscht. Die optionalen Resultate stehen separat unter `private-real-N/` mit Provenienz und werden nicht automatisch veröffentlicht. Sie liefern PicEdit-Diagnosebilder, noch keine registrierten Abnahmeszenen mit passenden ROIs, Vergleichsreferenzen oder dokumentierter visueller Bewertung. Fehlende Bildklassen bleiben deshalb in der Auswertung sichtbar; ein lokal hinzugefügtes Bild ersetzt nicht automatisch die noch fehlende reale Abnahme. Originaldateien werden nicht verändert.

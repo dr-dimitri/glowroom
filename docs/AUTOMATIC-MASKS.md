@@ -85,26 +85,30 @@ Der Motiv-Worker behält genau ein Ergebnis für dasselbe unveränderliche Vorsc
 
 ## Grenzen und Verifikation
 
-Ein separater [lokaler Vergleich mit sieben Testfotos](../reports/mask-models/2026-10-20/README.md)
+Die folgenden Modellvergleiche beschreiben historische Messungen. Ihre Berichte
+wurden mit dem Ordner `reports` entfernt; Werkzeuge für neue lokale Messungen
+stehen unter [Maskenmodellvergleich](../tools/mask-evaluation/README.md).
+
+Ein separater lokaler Vergleich mit sieben Testfotos
 untersucht BiRefNet HR, BEN2, BiRefNet GGUF, SAM 2.1 Tiny und EfficientSAM3 EV-M.
-Er enthält reale Laufzeiten, Speicherwerte, Sichtbefunde und die Unterschiede
+Er erfasste reale Laufzeiten, Speicherwerte, Sichtbefunde und die Unterschiede
 zwischen automatischer Vordergrundwahl und gezielter Objektauswahl. Er ändert
 die in der App verfügbaren Modelle nicht. Private Fotos und Vergleichsbilder
 bleiben ausschließlich lokal unter dem von Git ausgeschlossenen
 `Fixtures/LocalTestImages/Evaluation-20261020/`.
 
-Der [Folgetest von SAM 2.1 Hiera Large](../reports/mask-models/2026-10-20/sam21-large.md)
+Der Folgetest von SAM 2.1 Hiera Large
 enthält einen direkten nativen Core-ML-Vergleich mit Tiny bei identischen
 Vorschau-Dateien und finalen manuellen Auswahlvorgaben. Auch dieser Test ändert
 die Modellauswahl der App nicht.
 
-Der [EfficientViT-SAM-L1-Vergleich](../reports/mask-models/2026-10-20/efficientvit-sam-l1.md)
+Der EfficientViT-SAM-L1-Vergleich
 prüft zusätzlich den offiziellen Predictor mit 512²-Encoder und separatem
 1024er Promptframe auf MPS sowie eine CPU-Kontrolle. Hugging Face Hub übernimmt
 den Download; ein direkter Ultralytics-/Transformers-Adapter wird nicht
 vorausgesetzt. Auch diese isolierten Entwicklertests ändern die App nicht.
 
-Der [Florence-2-large-Test](../reports/mask-models/2026-10-20/florence2-large.md)
+Der Florence-2-large-Test
 untersucht auf denselben sieben Proxys zusätzlich die Auswahl durch englische
 Zielbegriffe: direkte Polygonmasken und separat erkannte Rechtecke. Diese
 Rechtecke sind noch keine Segmentierung. Frühere finale Masken werden als
