@@ -1,0 +1,12 @@
+{
+  "coordinateConvention": "Normalized x/y, origin top left; manual test annotations, not model-generated grounding",
+  "images": [
+    {"id":"test_picture1","target":"buckets","automaticForegroundAmbiguous":false,"prompts":[{"id":"target","box":[0.12,0.50,0.63,0.82],"points":[{"x":0.39,"y":0.65,"label":1}]}]},
+    {"id":"test_picture2","target":"houses","automaticForegroundAmbiguous":true,"prompts":[{"id":"target","box":[0.48,0.43,0.94,0.62],"points":[{"x":0.69,"y":0.52,"label":1}]}]},
+    {"id":"test_picture3","target":"snowman","automaticForegroundAmbiguous":false,"prompts":[{"id":"target","box":[0.13,0.05,0.88,0.94],"points":[{"x":0.51,"y":0.61,"label":1}]}]},
+    {"id":"test_picture4","target":"toy pyramid","automaticForegroundAmbiguous":false,"prompts":[{"id":"target","box":[0.02,0.18,0.99,0.97],"points":[{"x":0.53,"y":0.63,"label":1}]}]},
+    {"id":"test_picture5","target":"island","automaticForegroundAmbiguous":true,"prompts":[{"id":"target","box":[0.34,0.43,0.67,0.59],"points":[{"x":0.49,"y":0.51,"label":1}]}]},
+    {"id":"test_picture6","target":"stuffed fox","automaticForegroundAmbiguous":false,"prompts":[{"id":"target","box":[0.29,0.25,0.86,0.97],"points":[{"x":0.47,"y":0.58,"label":1}]}]},
+    {"id":"test_picture7","target":"vase of tulips","automaticForegroundAmbiguous":true,"prompts":[{"id":"target","box":[0.27,0.26,0.47,0.72],"points":[{"x":0.36,"y":0.53,"label":1}]}]}
+  ]
+}
