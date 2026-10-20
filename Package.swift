@@ -34,7 +34,7 @@ let package = Package(
     targets: [
         .systemLibrary(name: "CSQLite"),
         .target(name: "PicEditCore", dependencies: ["CSQLite"]),
-        .executableTarget(name: "PicEdit", dependencies: ["PicEditCore", "CSQLite", .product(name: "Tokenizers", package: "swift-transformers"), .product(name: "Hub", package: "swift-transformers")], resources: [.process("AI/Resources")], swiftSettings: appSettings),
+        .executableTarget(name: "PicEdit", dependencies: ["PicEditCore", "CSQLite", .product(name: "Tokenizers", package: "swift-transformers"), .product(name: "Hub", package: "swift-transformers")], resources: [.process("AI/Resources"), .process("Resources")], swiftSettings: appSettings),
         .testTarget(name: "PicEditCoreTests", dependencies: ["PicEditCore", "CSQLite"]),
         .testTarget(name: "PicEditTests", dependencies: ["PicEdit", "PicEditCore"])
     ]
