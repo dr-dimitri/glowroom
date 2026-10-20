@@ -29,6 +29,12 @@ Abhängigkeiten und gemeinsam veränderlicher Zustand müssen geschützt bleiben
 - Nach bestätigtem Merge muss der alte Aufgabenbranch lokal und auf dem Remote entfernt werden, sofern dadurch keine ungesicherten oder noch benötigten Änderungen verloren gehen. Die automatische Branch-Löschung auf GitHub ersetzt die lokale Bereinigung nicht. Wechsle vor der lokalen Löschung auf `main`, aktualisiere ihn mit `git pull --ff-only`, prüfe den bestätigten Merge und verwende eine sichere Löschung ohne Erzwingen. Prüfe anschließend, dass der Branch lokal und auf dem Remote nicht mehr existiert. Ist eine sichere Bereinigung nicht möglich, bewahre den Branch und melde das konkrete Hindernis im Abschlussbericht. Arbeite beim nächsten Auftrag vom aktualisierten `main` weiter. Lösche niemals `main` und erzwinge keine Branch-Löschung, wenn dessen sicherer Abschluss nicht nachgewiesen ist.
 - Prüfe vor dem Push den Diff, nach dem Push den Git-Status und nach dem Merge den aktualisierten `main`. Berichte Commit, Aufgabenbranch, Pull Request und Merge-Status, gegebenenfalls die Branch-Löschung sowie Ergebnis des sauberen lokalen Builds oder den begründeten Build-Verzicht, Testergebnis und verbleibende Hindernisse. Melde fehlgeschlagene Builds ausdrücklich; eine Umsetzungsanforderung ist erst nach erfolgreicher geeigneter Prüfung, einem gegebenenfalls erforderlichen erfolgreichen sauberen lokalen Build und dem vorgesehenen Merge abgeschlossen. Ist der Merge blockiert, melde die konkrete Ursache und bewahre den geprüften Branch.
 
+## Lokale Testbilder
+
+- Die sieben Bilder `test_picture1.jpg` bis `test_picture7.jpg` stehen lokal unter `Fixtures/LocalTestImages/` als Testbilder für Bildbearbeitung und visuelle Prüfungen zur Verfügung. Originaldateien unverändert lassen; abgeleitete Ergebnisse separat speichern.
+- Der gesamte Ordner `Fixtures/LocalTestImages/` ist in `.gitignore` aufgenommen. Die Bilder dürfen weder committet noch nach GitHub gepusht werden, auch nicht mit `git add -f`; sie gehören nicht zum App-Bundle.
+- In frischen Checkouts und in CI sind diese Bilder nicht vorhanden. Prüfungen, die sie benötigen, müssen dies ausdrücklich angeben und dürfen sie nicht stillschweigend voraussetzen.
+
 ## CPU, GPU und Ein-/Ausgabe
 
 - **CPU:** Nutze begrenzte Hintergrundparallelität für unabhängige Datei- und Metadatenverarbeitung, Katalogberechnungen, Analysen und andere geeignete Aufgaben. Bevorzuge strukturierte Swift-Concurrency mit `TaskGroup`, Actors oder passend begrenzten Queues.
