@@ -9,3 +9,5 @@ __pycache__/
 # Local, user-supplied RAW validation image; never distribute with the sources.
 /IMG_8362.CR3
 /IMG_8724.CR3
+# Local test images; never commit or push these user-supplied resources to GitHub.
+/Fixtures/LocalTestImages/
