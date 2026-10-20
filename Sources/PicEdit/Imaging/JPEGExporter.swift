@@ -336,7 +336,8 @@ actor JPEGExporter {
                                 format: JPEGExportFormat) throws {
         let source = UInt64(sourceWidth).multipliedReportingOverflow(by: UInt64(sourceHeight))
         let target = UInt64(output.width).multipliedReportingOverflow(by: UInt64(output.height))
-        let decoded = source.partialValue.multipliedReportingOverflow(by: 48)
+        let decoded = source.partialValue.multipliedReportingOverflow(
+            by: 48 + DevelopSharpening.additionalBytesPerPixel(settings: settings))
         // HEIF additionally retains the encoder's bounded returned Data buffer.
         let rendered = target.partialValue.multipliedReportingOverflow(by: format == .jpeg ? 12 : 32)
         let base = decoded.partialValue.addingReportingOverflow(rendered.partialValue)

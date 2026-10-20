@@ -193,7 +193,9 @@ xcrun swiftc -O -parse-as-library scripts/benchmark-raw-previews.swift -o /tmp/p
 
 Das Werkzeug misst erzwungene Neuerzeugung, eingebettete Vorschau und ImageIO-Fallback separat. Auflösung und erfolgreiche Decodierung müssen beim Vergleich berücksichtigt werden. Cloud-Platzhalter und unlesbare Dateien werden übersprungen; Zugriff durch die App bedeutet nicht automatisch Zugriff für ein Terminal-Werkzeug. Die tatsächliche Beschleunigung hängt vom Kameraformat, der eingebetteten Vorschau und dem Cache-Zustand ab.
 
-## Entwickeln: Tonwert, Präsenz und Entrauschen
+## Entwickeln: Tonwert, Präsenz, Schärfen und Entrauschen
+
+Unter **Details → Schärfen** stehen **Betrag**, **Radius**, **Details** und **Maskieren** bereit. Betrag 0 lässt das Bild unverändert; Radius arbeitet in Originalpixeln, Details verstärkt feine Texturen und Maskieren schützt ruhige Flächen. Die vier Werte fließen in Vorschau, Export, Rückgängig und Backups ein. Verfahren, Reglerbereiche und Vorschaugrenzen: [Schärfen](docs/SHARPENING.md).
 
 Wähle ein Foto und öffne **Entwickeln** (oder **⌘D**). Die Regler arbeiten nicht destruktiv; Originaldateien werden weder überschrieben noch verschoben.
 

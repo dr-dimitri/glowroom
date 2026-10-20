@@ -11,7 +11,7 @@ enum EditRenderError: LocalizedError, Equatable {
         switch self {
         case .unavailable: "Die Bildbearbeitung konnte nicht gerendert werden."
         case .oversizedPreview: "Die Vorschau ist für die Bildbearbeitung zu groß."
-        case .insufficientMaskMemory: "Die Vorschau mit Masken oder Retusche überschreitet das verfügbare Speicherbudget. Verkleinere die Vorschau oder reduziere vorübergehend die Korrekturen."
+        case .insufficientMaskMemory: "Die Vorschau mit Schärfung, Masken oder Retusche überschreitet das verfügbare Speicherbudget. Verkleinere die Vorschau oder reduziere vorübergehend die Korrekturen."
         }
     }
 }
@@ -169,7 +169,7 @@ enum EditRenderer {
                                                              format: format, colorSpace: colorSpace, deferred: false)
             else { throw EditRenderError.unavailable }
             try Task.checkCancellation()
-            return PreviewBitmap(image: result)
+            return PreviewBitmap(image: result, sourceLongEdge: bitmap.sourceLongEdge)
         }
     }
 
@@ -192,14 +192,17 @@ enum EditRenderer {
         }
         // Direct callers must honor the same local-work limit as the adaptive
         // preview pipeline. The export graph has its separate full-size budget.
+        let sharpeningBytes = UInt64(original.width) * UInt64(original.height)
+            * DevelopSharpening.additionalBytesPerPixel(settings: settings)
         guard let localBytes = LocalAdjustmentRenderer.estimatedAdditionalBytes(adjustments: settings.localAdjustments,
             width: original.width, height: original.height,
             additionalRenderCount: DevelopGeometryRenderer.replacementCount(in: settings.developGeometry)),
               let geometryBytes = DevelopGeometryRenderer.estimatedAdditionalBytes(geometry: settings.developGeometry,
                 width: original.width, height: original.height,
                 replacementColorBytesPerPixel: replacementColorBytesPerPixel(settings: settings)),
-              geometryBytes <= LocalAdjustmentRenderer.previewWorkingMemoryBudget,
-              localBytes <= LocalAdjustmentRenderer.previewWorkingMemoryBudget - geometryBytes else {
+              sharpeningBytes <= LocalAdjustmentRenderer.previewWorkingMemoryBudget,
+              geometryBytes <= LocalAdjustmentRenderer.previewWorkingMemoryBudget - sharpeningBytes,
+              localBytes <= LocalAdjustmentRenderer.previewWorkingMemoryBudget - sharpeningBytes - geometryBytes else {
             throw EditRenderError.insufficientMaskMemory
         }
 
@@ -208,7 +211,8 @@ enum EditRenderer {
             // Keep spatial effects comparable at progressive preview sizes.
             let scale = max(0.25, Double(max(original.width, original.height)) / 1_600)
             let prefix = try session.prefix(bitmap, settings: settings, extent: extent, scale: scale)
-            let global = try manualAdjustments(prefix, settings: settings, extent: extent, scale: scale)
+            let global = try manualAdjustments(prefix, settings: settings, extent: extent, scale: scale,
+                                               sourcePixelScale: bitmap.sourcePixelScale)
             // Artifact mask allocations belong to this render's admitted phase;
             // retaining their CPU rasters in a global cache would outlive it.
             let maskCache = bitmap.resourceOwner == nil ? session.localMaskCache : nil
@@ -216,7 +220,7 @@ enum EditRenderer {
                                                           extent: extent, scale: scale, cache: maskCache,
                                                           preservesExtendedRange: settings.developColor.hdrEnabled)
             let replacements = try replacementImages(original, settings: settings, extent: extent,
-                scale: scale, maskCache: maskCache)
+                scale: scale, maskCache: maskCache, sourcePixelScale: bitmap.sourcePixelScale)
             let developed = try DevelopGeometryRenderer.apply(to: image,
                 geometry: settings.developGeometry, extent: extent, replacementImages: replacements)
 
@@ -235,7 +239,7 @@ enum EditRenderer {
                 throw EditRenderError.unavailable
             }
             try Task.checkCancellation()
-            return PreviewBitmap(image: rendered)
+            return PreviewBitmap(image: rendered, sourceLongEdge: bitmap.sourceLongEdge)
         }
     }
 
@@ -258,7 +262,8 @@ enum EditRenderer {
     }
 
     static func manualAdjustments(_ input: CIImage, settings: EditSettings,
-                                  extent: CGRect, scale: Double, preservesExtendedRange: Bool = false) throws -> CIImage {
+                                  extent: CGRect, scale: Double, preservesExtendedRange: Bool = false,
+                                  sourcePixelScale: Double = 1) throws -> CIImage {
         try Task.checkCancellation()
         let extended = preservesExtendedRange || settings.developColor.hdrEnabled
         var image = try DevelopColorAdjustments.input(input, settings: settings.developColor, extent: extent)
@@ -282,7 +287,9 @@ enum EditRenderer {
             image = result
         }
         try Task.checkCancellation()
-        return try DevelopColorAdjustments.output(image, settings: settings.developColor, extent: extent)
+        image = try DevelopColorAdjustments.output(image, settings: settings.developColor, extent: extent)
+        return try DevelopSharpening.apply(to: image, settings: settings, extent: extent,
+                                          sourcePixelScale: sourcePixelScale)
     }
 
     private static func prefix(_ image: CIImage, original: CGImage, settings: EditSettings,
@@ -293,7 +300,8 @@ enum EditRenderer {
     }
 
     private static func replacementImages(_ original: CGImage, settings: EditSettings, extent: CGRect,
-                                          scale: Double, maskCache: LocalMaskImageCache?) throws -> [UUID: CIImage] {
+                                          scale: Double, maskCache: LocalMaskImageCache?,
+                                          sourcePixelScale: Double = 1) throws -> [UUID: CIImage] {
         var result: [UUID: CIImage] = [:]
         let input = CIImage(cgImage: original)
         // Each frozen ROI gets the identical source color pipeline. The actual
@@ -304,7 +312,8 @@ enum EditRenderer {
             try Task.checkCancellation()
             let candidate = try DevelopGeometryRenderer.replacementInput(replacement, original: input, extent: extent)
             let base = try prefix(candidate, original: original, settings: settings, extent: extent, scale: scale)
-            let global = try manualAdjustments(base, settings: settings, extent: extent, scale: scale)
+            let global = try manualAdjustments(base, settings: settings, extent: extent, scale: scale,
+                                               sourcePixelScale: sourcePixelScale)
             result[stroke.id] = try LocalAdjustmentRenderer.apply(to: global, adjustments: settings.localAdjustments,
                 extent: extent, scale: scale, cache: maskCache, preservesExtendedRange: settings.developColor.hdrEnabled)
         }
@@ -334,6 +343,7 @@ enum EditRenderer {
             if settings.clarity != 0 { bytes += 16 }
         }
         if color.isMonochrome { bytes += 16 }
+        bytes += DevelopSharpening.additionalBytesPerPixel(settings: settings)
         return bytes
     }
 

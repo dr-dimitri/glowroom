@@ -1,17 +1,21 @@
 import Foundation
 
-/// The exhaustive mapping between persisted IDs and the sixteen numeric controls.
+/// The exhaustive mapping between persisted IDs and the numeric controls.
 public enum EditParameter: String, CaseIterable, Codable, Hashable, Sendable {
     case exposure, contrast, highlights, shadows, whites, blacks
     case texture, clarity, dehaze, vibrance, saturation
     case luminanceNoiseReduction, colorNoiseReduction, autoToneAmount
+    case sharpeningAmount, sharpeningRadius, sharpeningDetail, sharpeningMasking
     case naturalBalanceAmount, naturalBalanceColorAmount
 
     public var range: ClosedRange<Double> {
         switch self {
         case .exposure: return -5...5
+        case .sharpeningAmount: return 0...150
+        case .sharpeningRadius: return 0.5...3
         case .luminanceNoiseReduction, .colorNoiseReduction, .autoToneAmount,
-             .naturalBalanceAmount, .naturalBalanceColorAmount: return 0...100
+             .naturalBalanceAmount, .naturalBalanceColorAmount,
+             .sharpeningDetail, .sharpeningMasking: return 0...100
         default: return -100...100
         }
     }
@@ -31,6 +35,10 @@ public enum EditParameter: String, CaseIterable, Codable, Hashable, Sendable {
         case .saturation: return \.saturation
         case .luminanceNoiseReduction: return \.luminanceNoiseReduction
         case .colorNoiseReduction: return \.colorNoiseReduction
+        case .sharpeningAmount: return \.sharpeningAmount
+        case .sharpeningRadius: return \.sharpeningRadius
+        case .sharpeningDetail: return \.sharpeningDetail
+        case .sharpeningMasking: return \.sharpeningMasking
         case .autoToneAmount: return \.autoToneAmount
         case .naturalBalanceAmount: return \.naturalBalanceAmount
         case .naturalBalanceColorAmount: return \.naturalBalanceColorAmount

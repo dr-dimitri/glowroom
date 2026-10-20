@@ -46,11 +46,17 @@ enum PreviewPriority: Int, Sendable {
 /// CGImage is immutable. AppKit images are constructed on the main actor.
 struct PreviewBitmap: @unchecked Sendable {
     let image: CGImage
+    /// Native source dimensions survive reduced previews and subsequent renders,
+    /// so spatial edit parameters remain expressed in original image pixels.
+    let sourceLongEdge: Int
     let memoryOwnership: ArtifactMemoryReservation?
     let resourceOwner: (any ArtifactResourceAdmitting)?
-    init(image: CGImage, memoryOwnership: ArtifactMemoryReservation? = nil, resourceOwner: (any ArtifactResourceAdmitting)? = nil) {
-        self.image = image; self.memoryOwnership = memoryOwnership; self.resourceOwner = resourceOwner
+    init(image: CGImage, sourceLongEdge: Int? = nil, memoryOwnership: ArtifactMemoryReservation? = nil, resourceOwner: (any ArtifactResourceAdmitting)? = nil) {
+        self.image = image
+        self.sourceLongEdge = max(1, sourceLongEdge ?? max(image.width, image.height))
+        self.memoryOwnership = memoryOwnership; self.resourceOwner = resourceOwner
     }
+    var sourcePixelScale: Double { Double(max(image.width, image.height)) / Double(sourceLongEdge) }
     var byteCost: Int { image.bytesPerRow * image.height }
 }
 

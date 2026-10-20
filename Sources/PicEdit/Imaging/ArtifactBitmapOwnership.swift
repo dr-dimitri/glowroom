@@ -26,6 +26,6 @@ extension PreviewBitmap {
             provider: provider, decode: image.decode, shouldInterpolate: image.shouldInterpolate, intent: image.renderingIntent) else {
             throw ArtifactContractError.corruptArtifact
         }
-        return PreviewBitmap(image: wrapped, memoryOwnership: memory, resourceOwner: owner)
+        return PreviewBitmap(image: wrapped, sourceLongEdge: sourceLongEdge, memoryOwnership: memory, resourceOwner: owner)
     }
 }

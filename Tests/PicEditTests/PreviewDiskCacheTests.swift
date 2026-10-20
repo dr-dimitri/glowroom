@@ -37,6 +37,36 @@ final class PreviewDiskCacheTests {
         #expect(!FileManager.default.fileExists(atPath: original.path))
     }
 
+    @Test(arguments: [false, true])
+    func nativePixelScaleSurvivesRestartWithoutOriginal(alpha: Bool) async throws {
+        let original = root.appendingPathComponent("Unavailable-Original.nef")
+        let request = request(url: original)
+        let directory = root.appendingPathComponent("ScaleCache")
+        let image = try bitmap(alpha: alpha).image
+        await PreviewDiskCache(directory: directory).store(PreviewBitmap(image: image, sourceLongEdge: 6_000), for: request)
+        let restored = try #require(await PreviewDiskCache(directory: directory).image(for: request))
+        #expect(restored.sourceLongEdge == 6_000)
+        #expect(restored.sourcePixelScale == Double(max(image.width, image.height)) / 6_000)
+        #expect(!FileManager.default.fileExists(atPath: original.path))
+    }
+
+    @Test
+    func oldCacheImageWithoutNativePixelMetadataBecomesMiss() async throws {
+        let directory = root.appendingPathComponent("ScaleCache")
+        let cache = PreviewDiskCache(directory: directory)
+        let request = request()
+        let bitmap = try bitmap(alpha: true)
+        await cache.store(bitmap, for: request)
+        let file = try #require(cacheFiles(in: directory).first)
+        // A readable image alone cannot establish the original pixel radius.
+        // Missing metadata is a miss, never a silent scale of 1.
+        let destination = try #require(CGImageDestinationCreateWithURL(file as CFURL, UTType.png.identifier as CFString, 1, nil))
+        CGImageDestinationAddImage(destination, bitmap.image, nil)
+        #expect(CGImageDestinationFinalize(destination))
+        #expect(await cache.image(for: request) == nil)
+        #expect(!FileManager.default.fileExists(atPath: file.path))
+    }
+
     @Test
     func editingBaseIsPersistedLosslesslyEvenWithoutAlpha() async throws {
         let directory = root.appendingPathComponent("EditingCache")

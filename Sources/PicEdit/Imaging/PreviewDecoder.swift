@@ -23,6 +23,15 @@ enum PreviewDecoder {
                 throw PreviewFailure.unsupportedOrDamaged
             }
             try Task.checkCancellation()
+            let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, sourceOptions) as? [CFString: Any]
+            let sourceLongEdge: Int?
+            if let width = properties?[kCGImagePropertyPixelWidth] as? NSNumber,
+               let height = properties?[kCGImagePropertyPixelHeight] as? NSNumber,
+               width.intValue > 0, height.intValue > 0 {
+                sourceLongEdge = max(width.intValue, height.intValue)
+            } else {
+                sourceLongEdge = nil
+            }
 
             var options: [CFString: Any] = [
                 kCGImageSourceCreateThumbnailWithTransform: true,
@@ -37,15 +46,11 @@ enum PreviewDecoder {
                 if let preview = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) {
                     try Task.checkCancellation()
                     var requiredSize = request.pixelSize
-                    if max(preview.width, preview.height) < requiredSize,
-                       let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, sourceOptions) as? [CFString: Any],
-                       let width = properties[kCGImagePropertyPixelWidth] as? NSNumber,
-                       let height = properties[kCGImagePropertyPixelHeight] as? NSNumber,
-                       width.intValue > 0, height.intValue > 0 {
-                        requiredSize = min(requiredSize, max(width.intValue, height.intValue))
+                    if let sourceLongEdge {
+                        requiredSize = min(requiredSize, sourceLongEdge)
                     }
                     if isUsefulEmbeddedPreview(preview, requestedSize: requiredSize) {
-                        return PreviewBitmap(image: preview)
+                        return PreviewBitmap(image: preview, sourceLongEdge: sourceLongEdge)
                     }
                 }
                 try Task.checkCancellation()
@@ -63,7 +68,7 @@ enum PreviewDecoder {
                 throw PreviewFailure.unsupportedOrDamaged
             }
             try Task.checkCancellation()
-            return PreviewBitmap(image: image)
+            return PreviewBitmap(image: image, sourceLongEdge: sourceLongEdge)
         }
     }
 
