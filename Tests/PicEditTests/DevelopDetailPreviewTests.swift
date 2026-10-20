@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import Foundation
 import PicEditCore
 import SwiftUI
@@ -170,6 +171,30 @@ struct DevelopDetailLoupeInteractionTests {
 @Suite("Detail picker canvas and lifecycle", .serialized)
 @MainActor
 struct DevelopDetailPreviewTests {
+    @Test func pointerMovementDoesNotInvalidateTheEntireWorkspace() async throws {
+        let fixture = try DetailPreviewFixture.make()
+        let workspace = fixture.workspace
+        let bitmap = try DetailPreviewFixture.bitmap(width: 2_400, height: 1_600)
+        workspace.receive(bitmap, sourceBitmap: bitmap)
+        let host = DetailPreviewControlsHost()
+        defer { host.close(); workspace.clear() }
+        try await host.mount(fixture)
+        let canvas = try host.canvas()
+        var workspaceChanges = 0
+        let observation = workspace.objectWillChange.sink { workspaceChanges += 1 }
+        defer { observation.cancel() }
+
+        for index in 0..<120 {
+            try host.move(on: canvas, to: CGPoint(x: index.isMultiple(of: 2) ? 150 : 450, y: 300))
+        }
+
+        #expect(workspace.detailCenter == CGPoint(x: 0.75, y: 0.5))
+        #expect(workspaceChanges == 0,
+            "High-frequency pointer positions must only invalidate the loupe, not LibraryView and every inspector")
+        #expect(workspace.navigatorImage === bitmap.image,
+            "Following the pointer must retain the already rendered preview")
+    }
+
     @Test(arguments: [1.0, 2.0])
     func headerMouseClicksReactivateFollowingAfterTheDetailWasFixed(magnification: Double) async throws {
         let fixture = try DetailPreviewFixture.make()

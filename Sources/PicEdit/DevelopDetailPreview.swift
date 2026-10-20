@@ -82,9 +82,16 @@ struct DevelopDetailLoupeInteraction {
 
 struct DevelopDetailPreview: View {
     @ObservedObject var workspace: DevelopWorkspace
+    @ObservedObject private var detailPosition: DevelopDetailPosition
     let isEnabled: Bool
     @Environment(\.displayScale) private var displayScale
     @ViewState private var interaction = DevelopDetailLoupeInteraction()
+
+    init(workspace: DevelopWorkspace, isEnabled: Bool) {
+        self.workspace = workspace
+        self.detailPosition = workspace.detailPosition
+        self.isEnabled = isEnabled
+    }
 
     private struct LoupeIdentity: Hashable {
         let source: AISourceIdentity?
@@ -138,7 +145,7 @@ struct DevelopDetailPreview: View {
                     if let image = workspace.navigatorImage {
                         let geometry = DevelopDetailGeometry(
                             imageSize: CGSize(width: image.width, height: image.height),
-                            viewport: viewport.size, center: workspace.detailCenter,
+                            viewport: viewport.size, center: detailPosition.center,
                             magnification: workspace.detailMagnification, displayScale: displayScale,
                             fitsImage: workspace.detailFitsImage)
                         // Reuse the immutable, accepted canvas frame. Clipping

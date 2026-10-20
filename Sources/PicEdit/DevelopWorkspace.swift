@@ -2,6 +2,14 @@ import AppKit
 import SwiftUI
 import PicEditCore
 
+/// Pointer positions only invalidate the loupe. Publishing them on the shared
+/// workspace would rebuild LibraryView, both inspectors and the photo canvas
+/// for every movement. These few UI scalars stay ordered on the main actor.
+@MainActor
+final class DevelopDetailPosition: ObservableObject {
+    @Published var center = CGPoint(x: 0.5, y: 0.5)
+}
+
 /// A single workspace owns the active canvas tool; pixels are observed after
 /// the normal preview pipeline, so histogram and picker never decode a RAW.
 @MainActor
@@ -18,7 +26,11 @@ final class DevelopWorkspace: ObservableObject {
     @Published var picksDetail = false {
         didSet { if picksDetail { picksWhiteBalance = false } }
     }
-    @Published var detailCenter = CGPoint(x: 0.5, y: 0.5)
+    let detailPosition = DevelopDetailPosition()
+    var detailCenter: CGPoint {
+        get { detailPosition.center }
+        set { if detailPosition.center != newValue { detailPosition.center = newValue } }
+    }
     @Published var detailMagnification = 1.0
     @Published var detailFitsImage = false
     @Published var showsShadows = false
