@@ -104,6 +104,14 @@ prüft zusätzlich den offiziellen Predictor mit 512²-Encoder und separatem
 den Download; ein direkter Ultralytics-/Transformers-Adapter wird nicht
 vorausgesetzt. Auch diese isolierten Entwicklertests ändern die App nicht.
 
+Der [Florence-2-large-Test](../reports/mask-models/2026-10-20/florence2-large.md)
+untersucht auf denselben sieben Proxys zusätzlich die Auswahl durch englische
+Zielbegriffe: direkte Polygonmasken und separat erkannte Rechtecke. Diese
+Rechtecke sind noch keine Segmentierung. Frühere finale Masken werden als
+Referenz wiederverwendet; die Modellreihen laufen nicht gemeinsam. Florence
+ist damit weder als neues App-Modell freigegeben noch als Auswertung freier
+deutscher Bearbeitungsanweisungen qualifiziert.
+
 Die Himmelsauswahl ist ein Vorschlag eines allgemeinen COCO-Segmentierungsmodells. Feine Äste, Haare, transparente Flächen, Spiegelungen und ungewöhnliche Lichtverhältnisse können ungenaue Ränder oder falsche Auswahlteile erzeugen. Die Modelleingabe und das gespeicherte Raster sind bewusst begrenzt; es wird keine pixelgenaue Freistellung in voller RAW-Auflösung zugesichert. Bildgeführte Kantennachführung kann vollständig fehlende Zwischenräume nicht rekonstruieren, wenn die Ausgangsmaske dort und in ihrer Umgebung nur Vordergrund enthält. Pinsel und Radierer bleiben für solche Korrekturen verfügbar. Es werden keine Leistungs- oder Genauigkeitsgewinne gegenüber Lightroom behauptet.
 
 Pro Bearbeitung sind insgesamt höchstens 16 MiB automatische Raster zulässig; ein einzelnes Raster bleibt auf 2048 × 2048 Pixel begrenzt. Das JSON-Budget der vollständigen Bearbeitungseinstellungen beträgt 32 MiB einschließlich der codierten Raster. Die bestehenden Grenzen von 16 Masken sowie 16.384 Pinsel-/Korrekturpunkten in 1024 Strichen bleiben erhalten. Wird eine Grenze überschritten, bleibt der vorherige gültige Bearbeitungsstand erhalten.

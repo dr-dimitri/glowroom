@@ -1,0 +1,1078 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-20",
+  "hardware": {
+    "chip": "Apple M2 Pro",
+    "logicalCPUs": 12,
+    "memoryBytes": 17179869184,
+    "macOS": "27.0.1 (26A434)"
+  },
+  "dataset": {
+    "privateJPEGCount": 7,
+    "proxyMaxLongEdge": 2048,
+    "sameProxyBytesAsPreviousEvaluation": true,
+    "originalsUnchanged": true,
+    "groundTruthAvailable": false,
+    "photoOrReconstructableDerivedDataCommitted": false
+  },
+  "protocol": {
+    "manualBoxesAndPointsUsed": false,
+    "englishTargetsMatchPreviousEvaluation": true,
+    "otherModelsRerun": false,
+    "previousFinalMasksReused": true,
+    "heavyModelJobsConcurrent": false,
+    "systemCachesPurged": false,
+    "scope": "Each generate includes image encoding and autoregressive output; decoded photo reused across tasks, vision features not cached. No RAW development or Swift/Core ML integration. First call may include MPS initialization; all-photo statistics are not repeated warm-input latency."
+  },
+  "interfaceAudit": {
+    "transformers5Preflight": {
+      "version": "5.20.2",
+      "status": "failed before weights or inference",
+      "errorType": "AttributeError",
+      "error": "'Florence2LanguageConfig' object has no attribute 'forced_bos_token_id'"
+    },
+    "executedMicrosoftCodePatched": false,
+    "downloadHuggingfaceHubVersion": "2.2.0",
+    "inferenceHuggingfaceHubVersion": "0.28.1",
+    "generationConfigInspection": {
+      "scope": "Post-run meta-device reconstruction of exact original model configuration; no weights, image or inference",
+      "method": "same configuration and unmodified Microsoft model, reconstructed on meta device after runs",
+      "innerEffectiveDefaults": {
+        "early_stopping": true,
+        "no_repeat_ngram_size": 3,
+        "forced_bos_token_id": 0,
+        "forced_eos_token_id": 2,
+        "decoder_start_token_id": 2,
+        "length_penalty": 1.0,
+        "repetition_penalty": 1.0,
+        "num_beams": 3,
+        "do_sample": false,
+        "use_cache": true
+      },
+      "outerPublishedGenerationConfig": {
+        "num_beams": 3,
+        "early_stopping": false
+      },
+      "mainOverrides": {
+        "max_new_tokens": 1024,
+        "num_beams": 3,
+        "do_sample": false,
+        "use_cache": true
+      },
+      "control2048Overrides": {
+        "max_new_tokens": 2048,
+        "num_beams": 3,
+        "do_sample": false,
+        "use_cache": true
+      }
+    }
+  },
+  "modelRun": {
+    "schemaVersion": 1,
+    "repository": "microsoft/Florence-2-large",
+    "revision": "21a599d414c4d928c9032694c424fb94458e3594",
+    "status": "completed",
+    "images": [
+      {
+        "id": "test_picture1",
+        "target": "buckets",
+        "sourceWidth": 1333,
+        "sourceHeight": 2000,
+        "imageDecodeSeconds": 0.04008129192516208,
+        "tasks": [
+          {
+            "task": "referring-segmentation",
+            "taskToken": "<REFERRING_EXPRESSION_SEGMENTATION>",
+            "preprocessSeconds": 0.0426713329507038,
+            "inputTransferSeconds": 0.0014161660801619291,
+            "generateSeconds": 5.68728445796296,
+            "decodeAndOfficialParseSeconds": 0.0016275839880108833,
+            "rasterAndMaskSaveSeconds": 0.003294333000667393,
+            "requestToParsedOutputSeconds": 5.732999540981837,
+            "requestToSavedMaskSeconds": 5.736296999966726,
+            "inputShape": [
+              1,
+              3,
+              768,
+              768
+            ],
+            "sequenceTokenCount": 181,
+            "generatedTokenCountExcludingDecoderStart": 180,
+            "eosAfterDecoderStart": true,
+            "tokenCapReached": false,
+            "truncationRisk": false,
+            "syntax": {
+              "coordinateRunLengths": [
+                176
+              ],
+              "coordinateCount": 176,
+              "coordinateBinsInRange": true,
+              "polygonOpenTags": 0,
+              "polygonCloseTags": 0,
+              "rawCoordinateRunsValid": true,
+              "polygonTagsBalanced": true
+            },
+            "outputCompleteByChecks": true,
+            "hasNonemptyParsedOutput": true,
+            "raster": {
+              "instanceCount": 1,
+              "polygonCount": 1,
+              "boxCount": 0,
+              "invalidParsedShapes": 0,
+              "outOfBoundsVertices": 0,
+              "nonzeroMaskPixels": 35980,
+              "maskSemantics": "Union of source-pixel polygons; binary segmentation, no alpha matting"
+            },
+            "memory": {
+              "processPeakRSSBytes": 576634880,
+              "mpsCurrentAllocatedBytes": 1559414784,
+              "mpsDriverAllocatedBytes": 2817490944
+            }
+          },
+          {
+            "task": "phrase-grounding",
+            "taskToken": "<CAPTION_TO_PHRASE_GROUNDING>",
+            "preprocessSeconds": 0.030852625030092895,
+            "inputTransferSeconds": 0.0015311249298974872,
+            "generateSeconds": 0.8054111250676215,
+            "decodeAndOfficialParseSeconds": 0.0007401249604299664,
+            "rasterAndMaskSaveSeconds": 0.0025442499900236726,
+            "requestToParsedOutputSeconds": 0.8385349999880418,
+            "requestToSavedMaskSeconds": 0.8410820420831442,
+            "inputShape": [
+              1,
+              3,
+              768,
+              768
+            ],
+            "sequenceTokenCount": 25,
+            "generatedTokenCountExcludingDecoderStart": 24,
+            "eosAfterDecoderStart": true,
+            "tokenCapReached": false,
+            "truncationRisk": false,
+            "syntax": {
+              "coordinateRunLengths": [
+                20
+              ],
+              "coordinateCount": 20,
+              "coordinateBinsInRange": true,
+              "polygonOpenTags": 0,
+              "polygonCloseTags": 0,
+              "rawCoordinateRunsValid": true,
+              "polygonTagsBalanced": true
+            },
+            "outputCompleteByChecks": true,
+            "hasNonemptyParsedOutput": true,
+            "raster": {
+              "instanceCount": 5,
+              "polygonCount": 0,
+              "boxCount": 5,
+              "invalidParsedShapes": 0,
+              "outOfBoundsVertices": 0,
+              "nonzeroMaskPixels": 185745,
+              "maskSemantics": "Diagnostic union of bounding rectangles; not an object segmentation mask"
+            },
+            "memory": {
+              "processPeakRSSBytes": 590987264,
+              "mpsCurrentAllocatedBytes": 1559544576,
+              "mpsDriverAllocatedBytes": 2817490944
+            }
+          }
+        ]
+      },
+      {
+        "id": "test_picture2",
+        "target": "houses",
+        "sourceWidth": 2000,
+        "sourceHeight": 1333,
+        "imageDecodeSeconds": 0.0358052080264315,
+        "tasks": [
+          {
+            "task": "referring-segmentation",
+            "taskToken": "<REFERRING_EXPRESSION_SEGMENTATION>",
+            "preprocessSeconds": 0.023244875017553568,
+            "inputTransferSeconds": 0.0015668749110773206,
+            "generateSeconds": 15.672340040910058,
+            "decodeAndOfficialParseSeconds": 0.0013307089684531093,
+            "rasterAndMaskSaveSeconds": 0.002381332917138934,
+            "requestToParsedOutputSeconds": 15.698482499807142,
+            "requestToSavedMaskSeconds": 15.70086620899383,
+            "inputShape": [
+              1,
+              3,
+              768,
+              768
+            ],
+            "sequenceTokenCount": 987,
+            "generatedTokenCountExcludingDecoderStart": 986,
+            "eosAfterDecoderStart": true,
+            "tokenCapReached": false,
+            "truncationRisk": false,
+            "syntax": {
+              "coordinateRunLengths": [
+                982
+              ],
+              "coordinateCount": 982,
+              "coordinateBinsInRange": true,
+              "polygonOpenTags": 0,
+              "polygonCloseTags": 0,
+              "rawCoordinateRunsValid": true,
+              "polygonTagsBalanced": true
+            },
+            "outputCompleteByChecks": true,
+            "hasNonemptyParsedOutput": true,
+            "raster": {
+              "instanceCount": 1,
+              "polygonCount": 1,
+              "boxCount": 0,
+              "invalidParsedShapes": 0,
+              "outOfBoundsVertices": 0,
+              "nonzeroMaskPixels": 14611,
+              "maskSemantics": "Union of source-pixel polygons; binary segmentation, no alpha matting"
+            },
+            "memory": {
+              "processPeakRSSBytes": 627343360,
+              "mpsCurrentAllocatedBytes": 1559552256,
+              "mpsDriverAllocatedBytes": 2746187776
+            }
+          },
+          {
+            "task": "phrase-grounding",
+            "taskToken": "<CAPTION_TO_PHRASE_GROUNDING>",
+            "preprocessSeconds": 0.024086583056487143,
+            "inputTransferSeconds": 0.0015902499435469508,
+            "generateSeconds": 0.7723440419649705,
+            "decodeAndOfficialParseSeconds": 0.0005593749228864908,
+            "rasterAndMaskSaveSeconds": 0.0021757909562438726,
+            "requestToParsedOutputSeconds": 0.7985802498878911,
+            "requestToSavedMaskSeconds": 0.800758833065629,
+            "inputShape": [
+              1,
+              3,
+              768,
+              768
+            ],
+            "sequenceTokenCount": 24,
+            "generatedTokenCountExcludingDecoderStart": 23,
+            "eosAfterDecoderStart": true,
+            "tokenCapReached": false,
+            "truncationRisk": false,
+            "syntax": {
+              "coordinateRunLengths": [
+                20
+              ],
+              "coordinateCount": 20,
+              "coordinateBinsInRange": true,
+              "polygonOpenTags": 0,
+              "polygonCloseTags": 0,
+              "rawCoordinateRunsValid": true,
+              "polygonTagsBalanced": true
+            },
+            "outputCompleteByChecks": true,
+            "hasNonemptyParsedOutput": true,
+            "raster": {
+              "instanceCount": 5,
+              "polygonCount": 0,
+              "boxCount": 5,
+              "invalidParsedShapes": 0,
+              "outOfBoundsVertices": 0,
+              "nonzeroMaskPixels": 114183,
+              "maskSemantics": "Diagnostic union of bounding rectangles; not an object segmentation mask"
+            },
+            "memory": {
+              "processPeakRSSBytes": 634650624,
+              "mpsCurrentAllocatedBytes": 1559413504,
+              "mpsDriverAllocatedBytes": 2813296640
+            }
+          }
+        ]
+      },
+      {
+        "id": "test_picture3",
+        "target": "snowman",
+        "sourceWidth": 2000,
+        "sourceHeight": 1815,
+        "imageDecodeSeconds": 0.046827792073599994,
+        "tasks": [
+          {
+            "task": "referring-segmentation",
+            "taskToken": "<REFERRING_EXPRESSION_SEGMENTATION>",
+            "preprocessSeconds": 0.030753124970942736,
+            "inputTransferSeconds": 0.001364625059068203,
+            "generateSeconds": 9.727078291005455,
+            "decodeAndOfficialParseSeconds": 0.0010391660034656525,
+            "rasterAndMaskSaveSeconds": 0.009655000059865415,
+            "requestToParsedOutputSeconds": 9.760235207038932,
+            "requestToSavedMaskSeconds": 9.769892791984603,
+            "inputShape": [
+              1,
+              3,
+              768,
+              768
+            ],
+            "sequenceTokenCount": 643,
+            "generatedTokenCountExcludingDecoderStart": 642,
+            "eosAfterDecoderStart": true,
+            "tokenCapReached": false,
+            "truncationRisk": false,
+            "syntax": {
+              "coordinateRunLengths": [
+                638
+              ],
+              "coordinateCount": 638,
+              "coordinateBinsInRange": true,
+              "polygonOpenTags": 0,
+              "polygonCloseTags": 0,
+              "rawCoordinateRunsValid": true,
+              "polygonTagsBalanced": true
+            },
+            "outputCompleteByChecks": true,
+            "hasNonemptyParsedOutput": true,
+            "raster": {
+              "instanceCount": 1,
+              "polygonCount": 1,
+              "boxCount": 0,
+              "invalidParsedShapes": 0,
+              "outOfBoundsVertices": 0,
+              "nonzeroMaskPixels": 851423,
+              "maskSemantics": "Union of source-pixel polygons; binary segmentation, no alpha matting"
+            },
+            "memory": {
+              "processPeakRSSBytes": 686129152,
+              "mpsCurrentAllocatedBytes": 1559549696,
+              "mpsDriverAllocatedBytes": 2746187776
+            }
+          },
+          {
+            "task": "phrase-grounding",
+            "taskToken": "<CAPTION_TO_PHRASE_GROUNDING>",
+            "preprocessSeconds": 0.027137584052979946,
+            "inputTransferSeconds": 0.001180749968625605,
+            "generateSeconds": 0.5782447500387207,
+            "decodeAndOfficialParseSeconds": 0.0005362919764593244,
+            "rasterAndMaskSaveSeconds": 0.0047102500684559345,
+            "requestToParsedOutputSeconds": 0.6070993760367855,
+            "requestToSavedMaskSeconds": 0.6118122499901801,
+            "inputShape": [
+              1,
+              3,
+              768,
+              768
+            ],
+            "sequenceTokenCount": 10,
+            "generatedTokenCountExcludingDecoderStart": 9,
+            "eosAfterDecoderStart": true,
+            "tokenCapReached": false,
+            "truncationRisk": false,
+            "syntax": {
+              "coordinateRunLengths": [
+                4
+              ],
+              "coordinateCount": 4,
+              "coordinateBinsInRange": true,
+              "polygonOpenTags": 0,
+              "polygonCloseTags": 0,
+              "rawCoordinateRunsValid": true,
+              "polygonTagsBalanced": true
+            },
+            "outputCompleteByChecks": true,
+            "hasNonemptyParsedOutput": true,
+            "raster": {
+              "instanceCount": 1,
+              "polygonCount": 0,
+              "boxCount": 1,
+              "invalidParsedShapes": 0,
+              "outOfBoundsVertices": 0,
+              "nonzeroMaskPixels": 1826992,
+              "maskSemantics": "Diagnostic union of bounding rectangles; not an object segmentation mask"
+            },
+            "memory": {
+              "processPeakRSSBytes": 686899200,
+              "mpsCurrentAllocatedBytes": 1559413504,
+              "mpsDriverAllocatedBytes": 2817490944
+            }
+          }
+        ]
+      },
+      {
+        "id": "test_picture4",
+        "target": "toy pyramid",
+        "sourceWidth": 2000,
+        "sourceHeight": 1462,
+        "imageDecodeSeconds": 0.041746624978259206,
+        "tasks": [
+          {
+            "task": "referring-segmentation",
+            "taskToken": "<REFERRING_EXPRESSION_SEGMENTATION>",
+            "preprocessSeconds": 0.023221416980959475,
+            "inputTransferSeconds": 0.0017116250237450004,
+            "generateSeconds": 16.507429832941853,
+            "decodeAndOfficialParseSeconds": 0.0013847500085830688,
+            "rasterAndMaskSaveSeconds": 0.004082124913111329,
+            "requestToParsedOutputSeconds": 16.53374762495514,
+            "requestToSavedMaskSeconds": 16.537832875037566,
+            "inputShape": [
+              1,
+              3,
+              768,
+              768
+            ],
+            "sequenceTokenCount": 987,
+            "generatedTokenCountExcludingDecoderStart": 986,
+            "eosAfterDecoderStart": true,
+            "tokenCapReached": false,
+            "truncationRisk": false,
+            "syntax": {
+              "coordinateRunLengths": [
+                982
+              ],
+              "coordinateCount": 982,
+              "coordinateBinsInRange": true,
+              "polygonOpenTags": 0,
+              "polygonCloseTags": 0,
+              "rawCoordinateRunsValid": true,
+              "polygonTagsBalanced": true
+            },
+            "outputCompleteByChecks": true,
+            "hasNonemptyParsedOutput": true,
+            "raster": {
+              "instanceCount": 1,
+              "polygonCount": 1,
+              "boxCount": 0,
+              "invalidParsedShapes": 0,
+              "outOfBoundsVertices": 0,
+              "nonzeroMaskPixels": 7707,
+              "maskSemantics": "Union of source-pixel polygons; binary segmentation, no alpha matting"
+            },
+            "memory": {
+              "processPeakRSSBytes": 688537600,
+              "mpsCurrentAllocatedBytes": 1559552256,
+              "mpsDriverAllocatedBytes": 2746187776
+            }
+          },
+          {
+            "task": "phrase-grounding",
+            "taskToken": "<CAPTION_TO_PHRASE_GROUNDING>",
+            "preprocessSeconds": 0.02375079202465713,
+            "inputTransferSeconds": 0.0010735420510172844,
+            "generateSeconds": 0.6342192080337554,
+            "decodeAndOfficialParseSeconds": 0.0005680000176653266,
+            "rasterAndMaskSaveSeconds": 0.004558915970847011,
+            "requestToParsedOutputSeconds": 0.6596115421270952,
+            "requestToSavedMaskSeconds": 0.6641730419360101,
+            "inputShape": [
+              1,
+              3,
+              768,
+              768
+            ],
+            "sequenceTokenCount": 10,
+            "generatedTokenCountExcludingDecoderStart": 9,
+            "eosAfterDecoderStart": true,
+            "tokenCapReached": false,
+            "truncationRisk": false,
+            "syntax": {
+              "coordinateRunLengths": [
+                4
+              ],
+              "coordinateCount": 4,
+              "coordinateBinsInRange": true,
+              "polygonOpenTags": 0,
+              "polygonCloseTags": 0,
+              "rawCoordinateRunsValid": true,
+              "polygonTagsBalanced": true
+            },
+            "outputCompleteByChecks": true,
+            "hasNonemptyParsedOutput": true,
+            "raster": {
+              "instanceCount": 1,
+              "polygonCount": 0,
+              "boxCount": 1,
+              "invalidParsedShapes": 0,
+              "outOfBoundsVertices": 0,
+              "nonzeroMaskPixels": 2464633,
+              "maskSemantics": "Diagnostic union of bounding rectangles; not an object segmentation mask"
+            },
+            "memory": {
+              "processPeakRSSBytes": 691273728,
+              "mpsCurrentAllocatedBytes": 1559413504,
+              "mpsDriverAllocatedBytes": 2813296640
+            }
+          }
+        ]
+      },
+      {
+        "id": "test_picture5",
+        "target": "island",
+        "sourceWidth": 2000,
+        "sourceHeight": 1333,
+        "imageDecodeSeconds": 0.04081387503538281,
+        "tasks": [
+          {
+            "task": "referring-segmentation",
+            "taskToken": "<REFERRING_EXPRESSION_SEGMENTATION>",
+            "preprocessSeconds": 0.02222454093862325,
+            "inputTransferSeconds": 0.001494124997407198,
+            "generateSeconds": 19.113426374970004,
+            "decodeAndOfficialParseSeconds": 0.0020513749914243817,
+            "rasterAndMaskSaveSeconds": 0.004964416963048279,
+            "requestToParsedOutputSeconds": 19.13919641589746,
+            "requestToSavedMaskSeconds": 19.14416349993553,
+            "inputShape": [
+              1,
+              3,
+              768,
+              768
+            ],
+            "sequenceTokenCount": 1025,
+            "generatedTokenCountExcludingDecoderStart": 1024,
+            "eosAfterDecoderStart": true,
+            "tokenCapReached": true,
+            "truncationRisk": true,
+            "syntax": {
+              "coordinateRunLengths": [
+                1020
+              ],
+              "coordinateCount": 1020,
+              "coordinateBinsInRange": true,
+              "polygonOpenTags": 0,
+              "polygonCloseTags": 0,
+              "rawCoordinateRunsValid": true,
+              "polygonTagsBalanced": true
+            },
+            "outputCompleteByChecks": false,
+            "hasNonemptyParsedOutput": true,
+            "raster": {
+              "instanceCount": 1,
+              "polygonCount": 1,
+              "boxCount": 0,
+              "invalidParsedShapes": 0,
+              "outOfBoundsVertices": 0,
+              "nonzeroMaskPixels": 47581,
+              "maskSemantics": "Union of source-pixel polygons; binary segmentation, no alpha matting"
+            },
+            "memory": {
+              "processPeakRSSBytes": 691273728,
+              "mpsCurrentAllocatedBytes": 1559552768,
+              "mpsDriverAllocatedBytes": 2746187776
+            }
+          },
+          {
+            "task": "phrase-grounding",
+            "taskToken": "<CAPTION_TO_PHRASE_GROUNDING>",
+            "preprocessSeconds": 0.035480083082802594,
+            "inputTransferSeconds": 0.0015931669622659683,
+            "generateSeconds": 0.7812329169828445,
+            "decodeAndOfficialParseSeconds": 0.0006126250373199582,
+            "rasterAndMaskSaveSeconds": 0.004662833991460502,
+            "requestToParsedOutputSeconds": 0.818918792065233,
+            "requestToSavedMaskSeconds": 0.8235846670577303,
+            "inputShape": [
+              1,
+              3,
+              768,
+              768
+            ],
+            "sequenceTokenCount": 19,
+            "generatedTokenCountExcludingDecoderStart": 18,
+            "eosAfterDecoderStart": true,
+            "tokenCapReached": false,
+            "truncationRisk": false,
+            "syntax": {
+              "coordinateRunLengths": [
+                12
+              ],
+              "coordinateCount": 12,
+              "coordinateBinsInRange": true,
+              "polygonOpenTags": 0,
+              "polygonCloseTags": 0,
+              "rawCoordinateRunsValid": true,
+              "polygonTagsBalanced": true
+            },
+            "outputCompleteByChecks": true,
+            "hasNonemptyParsedOutput": true,
+            "raster": {
+              "instanceCount": 3,
+              "polygonCount": 0,
+              "boxCount": 3,
+              "invalidParsedShapes": 0,
+              "outOfBoundsVertices": 0,
+              "nonzeroMaskPixels": 2569560,
+              "maskSemantics": "Diagnostic union of bounding rectangles; not an object segmentation mask"
+            },
+            "memory": {
+              "processPeakRSSBytes": 691273728,
+              "mpsCurrentAllocatedBytes": 1559413504,
+              "mpsDriverAllocatedBytes": 2813296640
+            }
+          }
+        ]
+      },
+      {
+        "id": "test_picture6",
+        "target": "stuffed fox",
+        "sourceWidth": 2000,
+        "sourceHeight": 1333,
+        "imageDecodeSeconds": 0.03811404202133417,
+        "tasks": [
+          {
+            "task": "referring-segmentation",
+            "taskToken": "<REFERRING_EXPRESSION_SEGMENTATION>",
+            "preprocessSeconds": 0.03002004197333008,
+            "inputTransferSeconds": 0.001537666074000299,
+            "generateSeconds": 11.927117333048955,
+            "decodeAndOfficialParseSeconds": 0.0013087500119581819,
+            "rasterAndMaskSaveSeconds": 0.006750333006493747,
+            "requestToParsedOutputSeconds": 11.959983791108243,
+            "requestToSavedMaskSeconds": 11.966736749978736,
+            "inputShape": [
+              1,
+              3,
+              768,
+              768
+            ],
+            "sequenceTokenCount": 650,
+            "generatedTokenCountExcludingDecoderStart": 649,
+            "eosAfterDecoderStart": true,
+            "tokenCapReached": false,
+            "truncationRisk": false,
+            "syntax": {
+              "coordinateRunLengths": [
+                488,
+                156
+              ],
+              "coordinateCount": 644,
+              "coordinateBinsInRange": true,
+              "polygonOpenTags": 0,
+              "polygonCloseTags": 0,
+              "rawCoordinateRunsValid": true,
+              "polygonTagsBalanced": true
+            },
+            "outputCompleteByChecks": true,
+            "hasNonemptyParsedOutput": true,
+            "raster": {
+              "instanceCount": 1,
+              "polygonCount": 2,
+              "boxCount": 0,
+              "invalidParsedShapes": 0,
+              "outOfBoundsVertices": 0,
+              "nonzeroMaskPixels": 368827,
+              "maskSemantics": "Union of source-pixel polygons; binary segmentation, no alpha matting"
+            },
+            "memory": {
+              "processPeakRSSBytes": 691273728,
+              "mpsCurrentAllocatedBytes": 1559549696,
+              "mpsDriverAllocatedBytes": 2746187776
+            }
+          },
+          {
+            "task": "phrase-grounding",
+            "taskToken": "<CAPTION_TO_PHRASE_GROUNDING>",
+            "preprocessSeconds": 0.029871625010855496,
+            "inputTransferSeconds": 0.0014474999625235796,
+            "generateSeconds": 0.6735745000187308,
+            "decodeAndOfficialParseSeconds": 0.0006977920420467854,
+            "rasterAndMaskSaveSeconds": 0.004057624959386885,
+            "requestToParsedOutputSeconds": 0.7055914170341566,
+            "requestToSavedMaskSeconds": 0.7096519579645246,
+            "inputShape": [
+              1,
+              3,
+              768,
+              768
+            ],
+            "sequenceTokenCount": 12,
+            "generatedTokenCountExcludingDecoderStart": 11,
+            "eosAfterDecoderStart": true,
+            "tokenCapReached": false,
+            "truncationRisk": false,
+            "syntax": {
+              "coordinateRunLengths": [
+                4
+              ],
+              "coordinateCount": 4,
+              "coordinateBinsInRange": true,
+              "polygonOpenTags": 0,
+              "polygonCloseTags": 0,
+              "rawCoordinateRunsValid": true,
+              "polygonTagsBalanced": true
+            },
+            "outputCompleteByChecks": true,
+            "hasNonemptyParsedOutput": true,
+            "raster": {
+              "instanceCount": 1,
+              "polygonCount": 0,
+              "boxCount": 1,
+              "invalidParsedShapes": 0,
+              "outOfBoundsVertices": 0,
+              "nonzeroMaskPixels": 984315,
+              "maskSemantics": "Diagnostic union of bounding rectangles; not an object segmentation mask"
+            },
+            "memory": {
+              "processPeakRSSBytes": 691273728,
+              "mpsCurrentAllocatedBytes": 1559413504,
+              "mpsDriverAllocatedBytes": 2813296640
+            }
+          }
+        ]
+      },
+      {
+        "id": "test_picture7",
+        "target": "vase of tulips",
+        "sourceWidth": 2048,
+        "sourceHeight": 1365,
+        "imageDecodeSeconds": 0.04410816705785692,
+        "tasks": [
+          {
+            "task": "referring-segmentation",
+            "taskToken": "<REFERRING_EXPRESSION_SEGMENTATION>",
+            "preprocessSeconds": 0.03421054198406637,
+            "inputTransferSeconds": 0.0016889589605852962,
+            "generateSeconds": 18.965510083013214,
+            "decodeAndOfficialParseSeconds": 0.0016608330188319087,
+            "rasterAndMaskSaveSeconds": 0.00511429097969085,
+            "requestToParsedOutputSeconds": 19.003070416976698,
+            "requestToSavedMaskSeconds": 19.008187500061467,
+            "inputShape": [
+              1,
+              3,
+              768,
+              768
+            ],
+            "sequenceTokenCount": 1025,
+            "generatedTokenCountExcludingDecoderStart": 1024,
+            "eosAfterDecoderStart": true,
+            "tokenCapReached": true,
+            "truncationRisk": true,
+            "syntax": {
+              "coordinateRunLengths": [
+                1020
+              ],
+              "coordinateCount": 1020,
+              "coordinateBinsInRange": true,
+              "polygonOpenTags": 0,
+              "polygonCloseTags": 0,
+              "rawCoordinateRunsValid": true,
+              "polygonTagsBalanced": true
+            },
+            "outputCompleteByChecks": false,
+            "hasNonemptyParsedOutput": true,
+            "raster": {
+              "instanceCount": 1,
+              "polygonCount": 1,
+              "boxCount": 0,
+              "invalidParsedShapes": 0,
+              "outOfBoundsVertices": 0,
+              "nonzeroMaskPixels": 49264,
+              "maskSemantics": "Union of source-pixel polygons; binary segmentation, no alpha matting"
+            },
+            "memory": {
+              "processPeakRSSBytes": 691273728,
+              "mpsCurrentAllocatedBytes": 1559552768,
+              "mpsDriverAllocatedBytes": 2754576384
+            }
+          },
+          {
+            "task": "phrase-grounding",
+            "taskToken": "<CAPTION_TO_PHRASE_GROUNDING>",
+            "preprocessSeconds": 0.030728749930858612,
+            "inputTransferSeconds": 0.001744207926094532,
+            "generateSeconds": 0.7441632499685511,
+            "decodeAndOfficialParseSeconds": 0.0005630410742014647,
+            "rasterAndMaskSaveSeconds": 0.0031690410105511546,
+            "requestToParsedOutputSeconds": 0.7771992488997057,
+            "requestToSavedMaskSeconds": 0.7803709579166025,
+            "inputShape": [
+              1,
+              3,
+              768,
+              768
+            ],
+            "sequenceTokenCount": 14,
+            "generatedTokenCountExcludingDecoderStart": 13,
+            "eosAfterDecoderStart": true,
+            "tokenCapReached": false,
+            "truncationRisk": false,
+            "syntax": {
+              "coordinateRunLengths": [
+                8
+              ],
+              "coordinateCount": 8,
+              "coordinateBinsInRange": true,
+              "polygonOpenTags": 0,
+              "polygonCloseTags": 0,
+              "rawCoordinateRunsValid": true,
+              "polygonTagsBalanced": true
+            },
+            "outputCompleteByChecks": true,
+            "hasNonemptyParsedOutput": true,
+            "raster": {
+              "instanceCount": 2,
+              "polygonCount": 0,
+              "boxCount": 2,
+              "invalidParsedShapes": 0,
+              "outOfBoundsVertices": 0,
+              "nonzeroMaskPixels": 114234,
+              "maskSemantics": "Diagnostic union of bounding rectangles; not an object segmentation mask"
+            },
+            "memory": {
+              "processPeakRSSBytes": 691273728,
+              "mpsCurrentAllocatedBytes": 1559413504,
+              "mpsDriverAllocatedBytes": 2825879552
+            }
+          }
+        ]
+      }
+    ],
+    "device": "mps",
+    "dtype": "float16",
+    "generation": {
+      "numBeams": 3,
+      "doSample": false,
+      "maxNewTokens": 1024,
+      "useCache": true
+    },
+    "maskSemantics": "Generated polygons rasterized in original proxy geometry; not alpha matting",
+    "manualBoxesAndPointsUsed": false,
+    "runDescription": "Each generate call includes image encoder and autoregressive text generation. Images decoded once per photo; no cross-task vision-feature cache.",
+    "mpsFallbackEnvironment": "0",
+    "platform": "macOS-27.0.1-arm64-arm-64bit",
+    "python": "3.11.16",
+    "verifiedArtifacts": [
+      {
+        "path": "model.safetensors",
+        "bytes": 1553563458,
+        "sha256": "4f38ce741c6b71188fe2b3419a55e11917a8a7b321ae2e63c61da0191b0ebad7"
+      },
+      {
+        "path": "config.json",
+        "bytes": 2445,
+        "sha256": "6f8a8f92a74ce18b5c1e5646b4a8222477dd1ac49f31b953e75d6fc3e0f8583a"
+      },
+      {
+        "path": "preprocessor_config.json",
+        "bytes": 806,
+        "sha256": "2f5921bbc53c7cc04251e1027b45b1cec726276be6db23d1bb40641bfbe2cf29"
+      },
+      {
+        "path": "generation_config.json",
+        "bytes": 51,
+        "sha256": "30e9865458ecc8ee931eeeb43f44f1d169c5ab95be39e0072142a7a6b8f31990"
+      },
+      {
+        "path": "configuration_florence2.py",
+        "bytes": 15119,
+        "sha256": "de2e45a975b3582de05d2f4d963a3e9f9a3d20dccf78d28e0052932a0be93bdf"
+      },
+      {
+        "path": "modeling_florence2.py",
+        "bytes": 127455,
+        "sha256": "5162bf465e61b6e29cc113a467630ec3cb56ed8e4d46eb6207157f10fb9b8a24"
+      },
+      {
+        "path": "processing_florence2.py",
+        "bytes": 48674,
+        "sha256": "c655782a9e4347965c735ea54cbc4e98fdbc02155ffd1ce2ecd61f42c45eda28"
+      },
+      {
+        "path": "tokenizer.json",
+        "bytes": 1355863,
+        "sha256": "847bbeab6174d66a88898f729d52fa8d355fafe1bea101cf960dd404581df70e"
+      },
+      {
+        "path": "tokenizer_config.json",
+        "bytes": 34,
+        "sha256": "79ffcf43af8ebda99d165f61d243180da2e2639952e41e71e11611c18770489c"
+      },
+      {
+        "path": "vocab.json",
+        "bytes": 1099884,
+        "sha256": "394fdc63c71aabe0a9b97117f5d62fb5fcc4d59b2b3ea929a3929e6a53217b3c"
+      },
+      {
+        "path": "LICENSE",
+        "bytes": 1141,
+        "sha256": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+      },
+      {
+        "path": "README.md",
+        "bytes": 16315,
+        "sha256": "16212f1929e4992649d18b812e0ebf7ebbbaffd90a5ba23dfdc5c78df2f92ac2"
+      }
+    ],
+    "verifyArtifactSeconds": 0.7730107499519363,
+    "importSeconds": 7.9628884580451995,
+    "versions": {
+      "torch": "2.14.1",
+      "torchvision": "0.29.1",
+      "transformers": "4.49.0",
+      "huggingface_hub": "0.28.1",
+      "tokenizers": "0.21.4",
+      "accelerate": "1.15.0",
+      "timm": "1.0.30",
+      "einops": "0.8.2",
+      "numpy": "2.4.6",
+      "pillow": "13.0.0",
+      "safetensors": "0.8.0"
+    },
+    "loadingInfo": {
+      "missing_keys": [],
+      "unexpected_keys": [],
+      "mismatched_keys": [],
+      "error_msgs": []
+    },
+    "executedMicrosoftSources": [
+      {
+        "class": "transformers_modules.models.modeling_florence2.Florence2ForConditionalGeneration",
+        "sha256": "5162bf465e61b6e29cc113a467630ec3cb56ed8e4d46eb6207157f10fb9b8a24"
+      },
+      {
+        "class": "transformers_modules.models.configuration_florence2.Florence2Config",
+        "sha256": "de2e45a975b3582de05d2f4d963a3e9f9a3d20dccf78d28e0052932a0be93bdf"
+      },
+      {
+        "class": "transformers_modules.models.processing_florence2.Florence2Processor",
+        "sha256": "c655782a9e4347965c735ea54cbc4e98fdbc02155ffd1ce2ecd61f42c45eda28"
+      }
+    ],
+    "checkpointTensorCount": 918,
+    "checkpointStoredElements": 776721497,
+    "processor": {
+      "class": "Florence2Processor",
+      "imageProcessorClass": "CLIPImageProcessor",
+      "imageProcessorSize": {
+        "height": 768,
+        "width": 768
+      },
+      "tokenizerClass": "BartTokenizerFast",
+      "tokenizerLength": 51289,
+      "supportedTasks": {
+        "referring-segmentation": "polygons",
+        "phrase-grounding": "phrase_grounding"
+      }
+    },
+    "modelAndProcessorLoadToDeviceSeconds": 1.2857449169969186,
+    "memoryAfterLoad": {
+      "processPeakRSSBytes": 451837952,
+      "mpsCurrentAllocatedBytes": 1555874048,
+      "mpsDriverAllocatedBytes": 1585856512
+    },
+    "totalWallSeconds": 113.44270799995866,
+    "finalMemory": {
+      "processPeakRSSBytes": 691273728,
+      "mpsCurrentAllocatedBytes": 1559413504,
+      "mpsDriverAllocatedBytes": 2825879552
+    }
+  },
+  "summary": {
+    "referring-segmentation": {
+      "imageCount": 7,
+      "completeBySyntaxAndGeometryChecks": 5,
+      "tokenCapReachedCount": 2,
+      "nonemptyParsedCount": 7,
+      "generateMedianSeconds": 15.672340040910058,
+      "generateRangeSeconds": [
+        5.68728445796296,
+        19.113426374970004
+      ],
+      "requestToParsedMedianSeconds": 15.698482499807142,
+      "requestToSavedDiagnosticMedianSeconds": 15.70086620899383
+    },
+    "phrase-grounding": {
+      "imageCount": 7,
+      "completeBySyntaxAndGeometryChecks": 7,
+      "tokenCapReachedCount": 0,
+      "nonemptyParsedCount": 7,
+      "generateMedianSeconds": 0.7441632499685511,
+      "generateRangeSeconds": [
+        0.5782447500387207,
+        0.8054111250676215
+      ],
+      "requestToParsedMedianSeconds": 0.7771992488997057,
+      "requestToSavedDiagnosticMedianSeconds": 0.7803709579166025
+    }
+  },
+  "privacy": "No photos, masks, generated raw text, token IDs, complete predicted coordinates, private image hashes, weights or environments are included.",
+  "controls": {
+    "scope": "Separate initialized-process controls; original 1024-token main series retained",
+    "caveat": "MPS repeated non-sampling segmentation is not token-identical. The 2048 controls also differ in process/history; completion is observed but cannot be attributed solely to token-budget change. IoU is output agreement, not ground-truth accuracy.",
+    "controls": [
+      {
+        "id": "test_picture3",
+        "task": "referring-segmentation",
+        "mainTokens": 642,
+        "controlTokens": 482,
+        "tokenIDsEqual": false,
+        "matchingTokenPrefixLength": 10,
+        "maskPixelsEqual": false,
+        "binaryAgreement": 0.9987019283746557,
+        "binaryIoU": 0.9944766082248367,
+        "mainGenerateSeconds": 9.727078291005455,
+        "controlGenerateSeconds": 7.904096583952196,
+        "controlRequestToParsedSeconds": 7.944213708979078,
+        "controlCompleteByChecks": true,
+        "controlTokenCapReached": false,
+        "controlPolygonCount": 1,
+        "controlBoxCount": 0,
+        "controlNonzeroMaskPixels": 850063
+      },
+      {
+        "id": "test_picture3",
+        "task": "phrase-grounding",
+        "mainTokens": 9,
+        "controlTokens": 9,
+        "tokenIDsEqual": true,
+        "matchingTokenPrefixLength": 10,
+        "maskPixelsEqual": true,
+        "binaryAgreement": 1.0,
+        "binaryIoU": 1.0,
+        "mainGenerateSeconds": 0.5782447500387207,
+        "controlGenerateSeconds": 0.6141377920284867,
+        "controlRequestToParsedSeconds": 0.6474808749044314,
+        "controlCompleteByChecks": true,
+        "controlTokenCapReached": false,
+        "controlPolygonCount": 0,
+        "controlBoxCount": 1,
+        "controlNonzeroMaskPixels": 1826992
+      },
+      {
+        "id": "test_picture5",
+        "task": "referring-segmentation",
+        "mainTokens": 1024,
+        "controlTokens": 934,
+        "tokenIDsEqual": false,
+        "matchingTokenPrefixLength": 4,
+        "maskPixelsEqual": false,
+        "binaryAgreement": 0.9701714178544636,
+        "binaryIoU": 0.0026963304823296296,
+        "mainGenerateSeconds": 19.113426374970004,
+        "controlGenerateSeconds": 17.886477750027552,
+        "controlRequestToParsedSeconds": 17.923202832927927,
+        "controlCompleteByChecks": true,
+        "controlTokenCapReached": false,
+        "controlPolygonCount": 1,
+        "controlBoxCount": 0,
+        "controlNonzeroMaskPixels": 32372
+      },
+      {
+        "id": "test_picture7",
+        "task": "referring-segmentation",
+        "mainTokens": 1024,
+        "controlTokens": 1062,
+        "tokenIDsEqual": false,
+        "matchingTokenPrefixLength": 5,
+        "maskPixelsEqual": false,
+        "binaryAgreement": 0.9982293097527473,
+        "binaryIoU": 0.9019063850025762,
+        "mainGenerateSeconds": 18.965510083013214,
+        "controlGenerateSeconds": 17.986485374975018,
+        "controlRequestToParsedSeconds": 18.025307250092737,
+        "controlCompleteByChecks": true,
+        "controlTokenCapReached": false,
+        "controlPolygonCount": 1,
+        "controlBoxCount": 0,
+        "controlNonzeroMaskPixels": 46710
+      }
+    ]
+  }
+}
