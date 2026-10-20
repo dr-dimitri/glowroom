@@ -170,6 +170,59 @@ struct DevelopDetailLoupeInteractionTests {
 @Suite("Detail picker canvas and lifecycle", .serialized)
 @MainActor
 struct DevelopDetailPreviewTests {
+    @Test(arguments: [1.0, 2.0])
+    func hoveringFollowsTheDisplayedPhotoAndLeavesFitAtTheChosenMagnification(magnification: Double) async throws {
+        let fixture = try DetailPreviewFixture.make()
+        let workspace = fixture.workspace
+        workspace.detailMagnification = magnification
+        workspace.detailFitsImage = true
+        let host = DetailPreviewCanvasHost()
+        defer { host.close(); workspace.clear() }
+        try await host.mount(fixture)
+        let input = try host.inputView()
+
+        #expect(workspace.detailFitsImage)
+        try host.send(.mouseEntered, to: input, at: CGPoint(x: 200, y: 450))
+        #expect(workspace.detailCenter == CGPoint(x: 0.25, y: 0.75))
+        #expect(!workspace.detailFitsImage, "Following the photo must show the detail rather than the fitted overview")
+        #expect(workspace.detailMagnification == magnification)
+        #expect(workspace.picksDetail, "Hovering must keep following until an image click fixes the detail")
+
+        try host.send(.mouseMoved, to: input, at: CGPoint(x: 400, y: 150))
+        #expect(workspace.detailCenter == CGPoint(x: 0.75, y: 0.25))
+        #expect(workspace.detailMagnification == magnification)
+        #expect(workspace.picksDetail)
+        #expect(workspace.navigatorImage === fixture.displayed.image)
+    }
+
+    @Test func clickingFixesTheFollowedDetailAndReactivatingResumesFollowing() async throws {
+        let fixture = try DetailPreviewFixture.make()
+        let workspace = fixture.workspace
+        let host = DetailPreviewCanvasHost()
+        defer { host.close(); workspace.clear() }
+        try await host.mount(fixture)
+        let input = try host.inputView()
+
+        try host.send(.mouseMoved, to: input, at: CGPoint(x: 400, y: 150))
+        #expect(workspace.detailCenter == CGPoint(x: 0.75, y: 0.25))
+        try host.click(input, at: CGPoint(x: 200, y: 450))
+        #expect(!workspace.picksDetail)
+        #expect(workspace.detailCenter == CGPoint(x: 0.25, y: 0.75))
+        // The old native callback can still receive a movement before SwiftUI
+        // disables the surface. Its live selection guard must keep the lock.
+        try host.send(.mouseMoved, to: input, at: CGPoint(x: 400, y: 150))
+        #expect(workspace.detailCenter == CGPoint(x: 0.25, y: 0.75))
+        try await host.settle()
+        #expect(!input.inputEnabled)
+
+        workspace.picksDetail = true
+        try await host.settle()
+        #expect(input.inputEnabled)
+        try host.send(.mouseMoved, to: input, at: CGPoint(x: 400, y: 150))
+        #expect(workspace.detailCenter == CGPoint(x: 0.75, y: 0.25))
+        #expect(workspace.picksDetail)
+    }
+
     @Test func croppedAndRotatedPreviewCanBePickedWithoutAnOriginalCanvas() async throws {
         let fixture = try DetailPreviewFixture.make()
         let host = DetailPreviewCanvasHost()
@@ -190,22 +243,28 @@ struct DevelopDetailPreviewTests {
         #expect(fixture.workspace.navigatorImage === fixture.displayed.image)
     }
 
-    @Test func letterboxClickKeepsThePickerActiveAndDoesNotMoveTheDetail() async throws {
+    @Test func letterboxesAndExitingKeepTheLastDetailWithoutFixingIt() async throws {
         let fixture = try DetailPreviewFixture.make()
         let host = DetailPreviewCanvasHost()
         defer { host.close(); fixture.workspace.clear() }
         try await host.mount(fixture)
         let input = try host.inputView()
+        try host.send(.mouseMoved, to: input, at: CGPoint(x: 400, y: 150))
         let previous = fixture.workspace.detailCenter
+        #expect(previous == CGPoint(x: 0.75, y: 0.25))
+        try host.send(.mouseMoved, to: input, at: CGPoint(x: 50, y: 300))
+        try host.send(.mouseExited, to: input, at: CGPoint(x: -1, y: 300))
+        #expect(fixture.workspace.picksDetail)
+        #expect(fixture.workspace.detailCenter == previous)
         try host.click(input, at: CGPoint(x: 50, y: 300))
         #expect(fixture.workspace.picksDetail)
         #expect(fixture.workspace.detailCenter == previous)
 
-        // A press outside the image must not turn into a selection on release inside.
+        // Releasing inside resumes following, but an outside press cannot fix it.
         try host.send(.leftMouseDown, to: input, at: CGPoint(x: 50, y: 300))
         try host.send(.leftMouseUp, to: input, at: CGPoint(x: 200, y: 450))
         #expect(fixture.workspace.picksDetail)
-        #expect(fixture.workspace.detailCenter == previous)
+        #expect(fixture.workspace.detailCenter == CGPoint(x: 0.25, y: 0.75))
         try host.click(input, at: CGPoint(x: 200, y: 450))
         #expect(!fixture.workspace.picksDetail)
         #expect(fixture.workspace.detailCenter == CGPoint(x: 0.25, y: 0.75))
@@ -217,11 +276,12 @@ struct DevelopDetailPreviewTests {
         defer { host.close(); fixture.workspace.clear() }
         try await host.mount(fixture)
         let input = try host.inputView()
-        let previous = fixture.workspace.detailCenter
         try host.send(.leftMouseDown, to: input, at: CGPoint(x: 200, y: 450))
+        let previous = fixture.workspace.detailCenter
+        #expect(previous == CGPoint(x: 0.25, y: 0.75))
         #expect(input.cancelForEscape())
         #expect(!fixture.workspace.picksDetail)
-        try host.send(.leftMouseUp, to: input, at: CGPoint(x: 200, y: 450))
+        try host.send(.leftMouseUp, to: input, at: CGPoint(x: 400, y: 150))
         #expect(fixture.workspace.detailCenter == previous)
         #expect(input.cursor(CGPoint(x: 200, y: 450)) === NSCursor.arrow)
     }
@@ -242,11 +302,12 @@ struct DevelopDetailPreviewTests {
         defer { host.close(); fixture.workspace.clear() }
         try await host.mount(fixture)
         let input = try host.inputView()
-        let previous = fixture.workspace.detailCenter
         try host.send(.leftMouseDown, to: input, at: CGPoint(x: 200, y: 450))
+        let previous = fixture.workspace.detailCenter
+        #expect(previous == CGPoint(x: 0.25, y: 0.75))
         fixture.workspace.picksDetail = false
         try await host.settle()
-        try host.send(.leftMouseUp, to: input, at: CGPoint(x: 200, y: 450))
+        try host.send(.leftMouseUp, to: input, at: CGPoint(x: 400, y: 150))
         #expect(fixture.workspace.detailCenter == previous)
         #expect(!fixture.workspace.picksDetail)
     }
@@ -280,6 +341,29 @@ struct DevelopDetailPreviewTests {
         try host.send(.leftMouseUp, to: input, at: CGPoint(x: 200, y: 450))
         #expect(fixture.workspace.detailCenter == expected)
         #expect(!fixture.workspace.picksDetail)
+    }
+
+    @Test func aStaleSpatialMappingCannotMoveTheDetailWhileFollowing() async throws {
+        let fixture = try DetailPreviewFixture.make()
+        let host = DetailPreviewCanvasHost()
+        defer { host.close(); fixture.workspace.clear() }
+        try await host.mount(fixture)
+        var pendingGeometry = fixture.settings.developGeometry
+        pendingGeometry.flipHorizontal.toggle()
+        host.presentation.geometry = pendingGeometry
+        try await host.settle()
+        let input = try host.inputView()
+        #expect(!input.inputEnabled)
+
+        // Keep selection requested to distinguish the mapping guard from the
+        // cancellation caused by replacing the previous input identity.
+        fixture.workspace.picksDetail = true
+        try await host.settle()
+        let previous = fixture.workspace.detailCenter
+        #expect(!input.inputEnabled)
+        try host.send(.mouseMoved, to: input, at: CGPoint(x: 400, y: 150))
+        #expect(fixture.workspace.detailCenter == previous)
+        #expect(fixture.workspace.picksDetail)
     }
 
     @Test func acceptingANewSpatialMappingResetsTheSelectionButToneChangesKeepIt() throws {
@@ -520,10 +604,21 @@ private final class DetailPreviewCanvasHost {
     }
 
     func send(_ type: NSEvent.EventType, to input: DevelopCropNativeInputView, at point: CGPoint) throws {
-        let event = try #require(NSEvent.mouseEvent(with: type, location: input.convert(point, to: nil),
-            modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber,
-            context: nil, eventNumber: 0, clickCount: 1, pressure: 1))
+        let location = input.convert(point, to: nil)
+        let event: NSEvent
+        if type == .mouseEntered || type == .mouseExited {
+            event = try #require(NSEvent.enterExitEvent(with: type, location: location,
+                modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber,
+                context: nil, eventNumber: 0, trackingNumber: 0, userData: nil))
+        } else {
+            event = try #require(NSEvent.mouseEvent(with: type, location: location,
+                modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber,
+                context: nil, eventNumber: 0, clickCount: 1, pressure: 1))
+        }
         switch type {
+        case .mouseEntered: input.mouseEntered(with: event)
+        case .mouseMoved: input.mouseMoved(with: event)
+        case .mouseExited: input.mouseExited(with: event)
         case .leftMouseDown: input.mouseDown(with: event)
         case .leftMouseUp: input.mouseUp(with: event)
         default: Issue.record("Unsupported detail picker input event: \(type)")
