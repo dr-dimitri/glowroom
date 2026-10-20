@@ -27,10 +27,11 @@ actor AdjustedPreviewPipeline {
         let settings: EditSettings
         let width: Int
         let height: Int
+        let sourceLongEdge: Int
         let outputWidth: Int
         let outputHeight: Int
 
-        init(request: PreviewRequest, settings: EditSettings, width: Int, height: Int,
+        init(request: PreviewRequest, settings: EditSettings, width: Int, height: Int, sourceLongEdge: Int,
              outputWidth: Int, outputHeight: Int) {
             // Once the actual source raster is known, the decoder's requested
             // size is not render identity. Cards and thumbnails can share it.
@@ -43,6 +44,7 @@ actor AdjustedPreviewPipeline {
             self.settings = settings
             self.width = width
             self.height = height
+            self.sourceLongEdge = sourceLongEdge
             self.outputWidth = outputWidth
             self.outputHeight = outputHeight
         }
@@ -121,9 +123,11 @@ actor AdjustedPreviewPipeline {
         let size = try LocalAdjustmentRenderer.previewSize(width: requestedSize.width, height: requestedSize.height,
             adjustments: normalized.localAdjustments, geometry: normalized.developGeometry, fixedBytes: fixedBytes,
             outputBytesPerPixel: outputBytesPerPixel, totalMemoryBudget: totalMemoryBudget,
-            replacementColorBytesPerPixel: EditRenderer.replacementColorBytesPerPixel(settings: normalized))
+            replacementColorBytesPerPixel: EditRenderer.replacementColorBytesPerPixel(settings: normalized),
+            globalBytesPerPixel: DevelopSharpening.additionalBytesPerPixel(settings: normalized))
         guard !normalized.isNeutral || size.width != source.image.width || size.height != source.image.height else { return source }
         let key = Key(request: request, settings: normalized, width: source.image.width, height: source.image.height,
+                      sourceLongEdge: source.sourceLongEdge,
                       outputWidth: size.width, outputHeight: size.height)
         sequence &+= 1
         if var entry = cache[key] {
@@ -219,7 +223,8 @@ actor AdjustedPreviewPipeline {
                     if let resources = source.resourceOwner {
                         let sourceBytes = Int64(source.byteCost).multipliedReportingOverflow(by: 4)
                         let outputPixels = Int64(outputWidth).multipliedReportingOverflow(by: Int64(outputHeight))
-                        let outputBytes = outputPixels.partialValue.multipliedReportingOverflow(by: 32)
+                        let outputBytes = outputPixels.partialValue.multipliedReportingOverflow(
+                            by: Int64(32 + DevelopSharpening.additionalBytesPerPixel(settings: settings)))
                         let baseBytes = sourceBytes.partialValue.addingReportingOverflow(outputBytes.partialValue)
                         guard !sourceBytes.overflow, !outputPixels.overflow, !outputBytes.overflow, !baseBytes.overflow,
                               let local = LocalAdjustmentRenderer.estimatedAdditionalBytes(adjustments: settings.localAdjustments,
@@ -244,7 +249,7 @@ actor AdjustedPreviewPipeline {
                         // This temporary proxy belongs to the active phase, not
                         // a retained reservation. Mark its owner so renderer
                         // prefix/mask caches cannot keep scratch after the lease.
-                        input = PreviewBitmap(image: input.image, resourceOwner: resources)
+                        input = PreviewBitmap(image: input.image, sourceLongEdge: input.sourceLongEdge, resourceOwner: resources)
                     }
                     var bitmap: PreviewBitmap
                     if settings.isNeutral { bitmap = input }

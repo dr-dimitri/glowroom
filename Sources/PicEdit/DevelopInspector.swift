@@ -284,6 +284,8 @@ struct DevelopInspector: View {
                 DevelopDetailPreview(workspace: developWorkspace,
                     isEnabled: developWorkspace.tool == .basic && !maskWorkspace.isPresented
                         && !library.comparesOriginal && !library.comparesCurrentSourceWithoutSettings)
+                adjustmentSection("Schärfen", key: "sharpening",
+                    controls: [.sharpeningAmount, .sharpeningRadius, .sharpeningDetail, .sharpeningMasking], assetID: asset.id)
                 adjustmentSection("Entrauschen", key: "noise", controls: Array(Adjustment.allCases.suffix(2)), assetID: asset.id)
             }
             .onDisappear { developWorkspace.picksDetail = false }
@@ -409,7 +411,7 @@ struct DevelopInspector: View {
             if editor.isSaving || editor.isLoading || editor.hasPendingChanges { return ("Läuft", "arrow.triangle.2.circlepath", false) }
             let settings = editor.settings(for: assetID)
             let changed = tool == .details
-                ? settings.luminanceNoiseReduction != 0 || settings.colorNoiseReduction != 0
+                ? settings.sharpeningAmount != 0 || settings.luminanceNoiseReduction != 0 || settings.colorNoiseReduction != 0
                 : !settings.isNeutral
             if changed { return ("Geändert", "slider.horizontal.3", false) }
         case .metadata:
@@ -547,7 +549,7 @@ struct DevelopInspector: View {
                 Button {
                     finishInput(assetID: assetID)
                     var settings = editor.settings(for: assetID)
-                    for item in controls { settings[keyPath: item.keyPath] = 0 }
+                    for item in controls { settings[keyPath: item.keyPath] = item.neutralValue }
                     setAdjustmentSettings(settings, for: assetID)
                 } label: { Image(systemName: "arrow.counterclockwise").font(.system(size: 11)).frame(width: 24, height: 24) }
                     .buttonStyle(.plain).foregroundStyle(Theme.muted).help("\(title) zurücksetzen")
@@ -583,8 +585,12 @@ struct DevelopInspector: View {
                             if editing { beginAdjustment(assetID: assetID) }
                             else { editor.endEditing(assetID: assetID) }
                         })
+                        .disabled(control.isSharpeningPreference && editor.settings(for: assetID).sharpeningAmount == 0)
                     }
-                    if key == "noise" {
+                    if key == "sharpening" {
+                        Text("Betrag verstärkt Kanten, Radius bestimmt ihre Breite. Details betont feine Strukturen; Maskieren schützt glatte Flächen. Prüfe die Wirkung im Detailzoom.")
+                            .font(.system(size: 10)).foregroundStyle(Theme.muted).lineSpacing(3)
+                    } else if key == "noise" {
                         Text("Luminanz reduziert Helligkeitsrauschen, Farbe reduziert Farbflecken. Der Detailzoom zeigt die Wirkung am gewählten Ausschnitt.")
                             .font(.system(size: 10)).foregroundStyle(Theme.muted).lineSpacing(3)
                     }
@@ -620,22 +626,23 @@ struct AdjustmentSlider: View {
                     if let onAutomaticValue { onEditingChanged(false); onAutomaticValue() }
                     else { resetValue() }
                 }).help(gestureHelp)
-            ResettableSlider(value: $value, in: control.range, step: control == .exposure ? 0.05 : 1,
+            ResettableSlider(value: $value, in: control.range, step: control.step, neutralValue: control.neutralValue,
                              onAutomaticValue: onAutomaticValue,
                              onEditingChanged: onEditingChanged)
                 .controlSize(.mini).accessibilityLabel(control.label).help(gestureHelp)
                 .accessibilityHint(gestureHelp)
             TextField(control.label, value: numericValue,
-                      format: .number.precision(.fractionLength(control == .exposure ? 2 : 0)))
+                      format: .number.precision(.fractionLength(control.fractionDigits)))
                 .textFieldStyle(.plain).multilineTextAlignment(.trailing)
                 .font(.system(size: 10, design: .monospaced))
-                .foregroundStyle(value == 0 ? Theme.muted : Theme.accent)
+                .foregroundStyle(value == control.neutralValue ? Theme.muted : Theme.accent)
                 .frame(width: 38).accessibilityLabel("\(control.label) Wert")
                 .focused($valueFocused)
                 .onSubmit { onEditingChanged(false) }
                 .onChange(of: valueFocused) { _, focused in if !focused { onEditingChanged(false) } }
                 .onDisappear { onEditingChanged(false) }
         }.frame(minHeight: 20)
+            .accessibilityIdentifier("develop.adjustment.\(control.rawValue)")
     }
 
     private var gestureHelp: String {
@@ -644,13 +651,14 @@ struct AdjustmentSlider: View {
     }
 
     private func resetValue() {
-        onEditingChanged(false); onEditingChanged(true); value = 0; onEditingChanged(false)
+        onEditingChanged(false); onEditingChanged(true); value = control.neutralValue; onEditingChanged(false)
     }
 }
 
 enum Adjustment: String, CaseIterable, Identifiable {
     case exposure, contrast, highlights, shadows, whites, blacks
     case texture, clarity, dehaze, vibrance, saturation
+    case sharpeningAmount, sharpeningRadius, sharpeningDetail, sharpeningMasking
     case luminanceNoiseReduction, colorNoiseReduction
     var id: String { rawValue }
     var automaticToneControl: AutomaticToneControl? { AutomaticToneControl(rawValue: rawValue) }
@@ -667,6 +675,10 @@ enum Adjustment: String, CaseIterable, Identifiable {
         case .dehaze: return "Dunst entfernen"
         case .vibrance: return "Dynamik"
         case .saturation: return "Sättigung"
+        case .sharpeningAmount: return "Betrag"
+        case .sharpeningRadius: return "Radius"
+        case .sharpeningDetail: return "Details"
+        case .sharpeningMasking: return "Maskieren"
         case .luminanceNoiseReduction: return "Luminanz"
         case .colorNoiseReduction: return "Farbe"
         }
@@ -674,9 +686,35 @@ enum Adjustment: String, CaseIterable, Identifiable {
     var range: ClosedRange<Double> {
         switch self {
         case .exposure: return -5...5
-        case .luminanceNoiseReduction, .colorNoiseReduction: return 0...100
+        case .sharpeningAmount: return 0...150
+        case .sharpeningRadius: return 0.5...3
+        case .luminanceNoiseReduction, .colorNoiseReduction, .sharpeningDetail, .sharpeningMasking: return 0...100
         default: return -100...100
         }
+    }
+    var neutralValue: Double {
+        switch self {
+        case .sharpeningRadius: 1
+        case .sharpeningDetail: 25
+        default: 0
+        }
+    }
+    var step: Double {
+        switch self {
+        case .exposure: 0.05
+        case .sharpeningRadius: 0.1
+        default: 1
+        }
+    }
+    var fractionDigits: Int {
+        switch self {
+        case .exposure: 2
+        case .sharpeningRadius: 1
+        default: 0
+        }
+    }
+    var isSharpeningPreference: Bool {
+        self == .sharpeningRadius || self == .sharpeningDetail || self == .sharpeningMasking
     }
     var keyPath: WritableKeyPath<EditSettings, Double> {
         switch self {
@@ -691,6 +729,10 @@ enum Adjustment: String, CaseIterable, Identifiable {
         case .dehaze: return \.dehaze
         case .vibrance: return \.vibrance
         case .saturation: return \.saturation
+        case .sharpeningAmount: return \.sharpeningAmount
+        case .sharpeningRadius: return \.sharpeningRadius
+        case .sharpeningDetail: return \.sharpeningDetail
+        case .sharpeningMasking: return \.sharpeningMasking
         case .luminanceNoiseReduction: return \.luminanceNoiseReduction
         case .colorNoiseReduction: return \.colorNoiseReduction
         }

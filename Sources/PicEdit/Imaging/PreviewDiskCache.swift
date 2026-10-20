@@ -21,7 +21,9 @@ actor PreviewDiskCache {
     }
 
     // Increment when changing orientation, color handling, or preview rendering.
-    private static let rendererVersion = "picedit-preview-renderer-3"
+    private static let rendererVersion = "picedit-preview-renderer-4"
+    private static let metadataNamespace = "https://picedit.app/ns/preview/1.0/"
+    private static let sourceLongEdgePath = "picedit:sourceLongEdge"
     private static let prefix = "picedit-v2-"
     private static let suffix = ".preview"
     private let directory: URL
@@ -57,6 +59,9 @@ actor PreviewDiskCache {
                   let height = properties[kCGImagePropertyPixelHeight] as? Int,
                   width > 0, height > 0,
                   max(width, height) <= request.pixelSize,
+                  let metadata = CGImageSourceCopyMetadataAtIndex(source, 0, nil),
+                  let nativeSize = CGImageMetadataCopyStringValueWithPath(metadata, nil, Self.sourceLongEdgePath as CFString) as String?,
+                  let sourceLongEdge = Int(nativeSize), sourceLongEdge > 0,
                   let image = CGImageSourceCreateImageAtIndex(source, 0, [kCGImageSourceShouldCacheImmediately: true] as CFDictionary) else {
                 removeEntry(key)
                 return nil
@@ -67,7 +72,7 @@ actor PreviewDiskCache {
             // Persist recency without maintaining a separate manifest that can
             // become inconsistent with an atomic image write or an interrupted app.
             try? FileManager.default.setAttributes([.modificationDate: Date()], ofItemAtPath: entry.url.path)
-            return PreviewBitmap(image: image)
+            return PreviewBitmap(image: image, sourceLongEdge: sourceLongEdge)
         }
     }
 
@@ -76,7 +81,7 @@ actor PreviewDiskCache {
               bitmap.image.width > 0, bitmap.image.height > 0,
               max(bitmap.image.width, bitmap.image.height) <= request.pixelSize else { return }
         loadIndexIfNeeded()
-        guard let data = Self.encode(bitmap.image, lossless: !request.allowsEmbeddedPreview), data.count <= byteLimit, !Task.isCancelled else { return }
+        guard let data = Self.encode(bitmap, lossless: !request.allowsEmbeddedPreview), data.count <= byteLimit, !Task.isCancelled else { return }
         let key = Self.key(for: request)
         let destination = directory.appendingPathComponent(Self.prefix + key + Self.suffix)
         let existingSize = entries[key]?.byteCount ?? 0
@@ -179,8 +184,9 @@ actor PreviewDiskCache {
         return SHA256.hash(data: Data(input.utf8)).map { String(format: "%02x", $0) }.joined()
     }
 
-    private nonisolated static func encode(_ image: CGImage, lossless: Bool) -> Data? {
+    private nonisolated static func encode(_ bitmap: PreviewBitmap, lossless: Bool) -> Data? {
         autoreleasepool {
+            let image = bitmap.image
             let hasAlpha: Bool
             switch image.alphaInfo {
             case .none, .noneSkipFirst, .noneSkipLast: hasAlpha = false
@@ -194,9 +200,13 @@ actor PreviewDiskCache {
             guard let destination = CGImageDestinationCreateWithData(output, type as CFString, 1, nil) else { return nil }
             var properties: [CFString: Any] = [kCGImagePropertyOrientation: 1]
             if !usePNG { properties[kCGImageDestinationLossyCompressionQuality] = 0.88 }
+            let metadata = CGImageMetadataCreateMutable()
+            guard CGImageMetadataRegisterNamespaceForPrefix(metadata, metadataNamespace as CFString, "picedit" as CFString, nil),
+                  CGImageMetadataSetValueWithPath(metadata, nil, sourceLongEdgePath as CFString, String(bitmap.sourceLongEdge) as CFString) else { return nil }
             // ImageIO takes the profile from the rendered CGImage color space.
-            // No camera, location, or original-file metadata is copied.
-            CGImageDestinationAddImage(destination, image, properties as CFDictionary)
+            // Only app-owned scale metadata is persisted in the same atomic
+            // image write; no camera, location, or original metadata is copied.
+            CGImageDestinationAddImageAndMetadata(destination, image, metadata, properties as CFDictionary)
             guard CGImageDestinationFinalize(destination) else { return nil }
             return output as Data
         }

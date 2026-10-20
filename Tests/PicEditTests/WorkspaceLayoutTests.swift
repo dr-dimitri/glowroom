@@ -13,10 +13,23 @@ struct WorkspaceLayoutTests {
         let layout = WorkspaceLayoutModel(defaults: fixture.defaults)
         #expect(layout.develop.openGroups == [.edit])
         #expect(layout.focus.openGroups == [.edit])
+        #expect(layout.develop.openAdjustmentGroups.contains("sharpening"))
 
         layout.toggleGroup(.details, developing: true)
         let restored = WorkspaceLayoutModel(defaults: fixture.defaults)
         #expect(restored.develop.openGroups == [.edit, .details])
+    }
+
+    @Test
+    func sharpeningGroupCanBeOpenedClosedAndRestored() throws {
+        let fixture = try Preferences()
+        defer { fixture.remove() }
+        let layout = WorkspaceLayoutModel(defaults: fixture.defaults)
+        layout.update(developing: true) { $0.openAdjustmentGroups = ["sharpening", "unknown"] }
+        #expect(layout.develop.openAdjustmentGroups == ["sharpening"])
+        #expect(WorkspaceLayoutModel(defaults: fixture.defaults).develop.openAdjustmentGroups == ["sharpening"])
+        layout.update(developing: true) { $0.openAdjustmentGroups.remove("sharpening") }
+        #expect(!WorkspaceLayoutModel(defaults: fixture.defaults).develop.openAdjustmentGroups.contains("sharpening"))
     }
 
     @Test

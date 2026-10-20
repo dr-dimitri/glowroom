@@ -8,7 +8,8 @@ struct EditParameterTests {
         exposure: 1.25, contrast: -22.5, highlights: 11.5, shadows: 10,
         whites: -13, blacks: 14, texture: 15, clarity: -16, dehaze: 17,
         vibrance: -18, saturation: 19, luminanceNoiseReduction: 20,
-        colorNoiseReduction: 21, autoToneAmount: 22,
+        colorNoiseReduction: 21, sharpeningAmount: 40, sharpeningRadius: 1.4,
+        sharpeningDetail: 60, sharpeningMasking: 25, autoToneAmount: 22,
         naturalBalanceAmount: 23, naturalBalanceColorAmount: 24
     )
 
@@ -20,12 +21,16 @@ struct EditParameterTests {
         let expectedRange: ClosedRange<Double>
         switch parameter {
         case .exposure: expectedRange = -5...5
+        case .sharpeningAmount: expectedRange = 0...150
+        case .sharpeningRadius: expectedRange = 0.5...3
         case .luminanceNoiseReduction, .colorNoiseReduction, .autoToneAmount,
-             .naturalBalanceAmount, .naturalBalanceColorAmount: expectedRange = 0...100
+             .naturalBalanceAmount, .naturalBalanceColorAmount,
+             .sharpeningDetail, .sharpeningMasking: expectedRange = 0...100
         default: expectedRange = -100...100
         }
         #expect(parameter.range == expectedRange)
-        for value in [expectedRange.lowerBound, expectedRange.upperBound, 0.125] {
+        for value in [expectedRange.lowerBound, expectedRange.upperBound,
+                      (expectedRange.lowerBound + expectedRange.upperBound) / 2] {
             let target = try parameter.applying(value, to: baseline)
             #expect(parameter.value(in: target) == value)
             for untouched in EditParameter.allCases where untouched != parameter {
@@ -46,7 +51,7 @@ struct EditParameterTests {
 
     @Test func scalarIDsAreUniqueAndMatchPersistedNumericSettings() throws {
         let persisted = try JSONDecoder().decode([String: Double].self, from: JSONEncoder().encode(baseline))
-        #expect(EditParameter.allCases.count == 16)
+        #expect(EditParameter.allCases.count == 20)
         #expect(Set(EditParameter.allCases.map(\.rawValue)) == Set(persisted.keys))
     }
 }

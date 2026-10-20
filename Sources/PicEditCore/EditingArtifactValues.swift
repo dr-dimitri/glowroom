@@ -101,7 +101,10 @@ public struct EditingSnapshot: Codable, Hashable, Sendable {
     // must not invalidate strict JSON checks or change signed manifest/journal
     // bytes merely because a saved snapshot was read by a newer application.
     private var omittedDefaultSettings: Set<EditParameter> = []
-    private static let defaultedSettings: Set<EditParameter> = [.autoToneAmount, .naturalBalanceAmount, .naturalBalanceColorAmount]
+    private static let defaultedSettings: Set<EditParameter> = [
+        .autoToneAmount, .naturalBalanceAmount, .naturalBalanceColorAmount,
+        .sharpeningAmount, .sharpeningRadius, .sharpeningDetail, .sharpeningMasking
+    ]
     public init(source: EditableSourceRef = .original, settings: EditSettings = .neutral) throws {
         guard settings == settings.normalized else { throw ArtifactContractError.invalidValue("settings") }
         try settings.validateLocalAdjustments()

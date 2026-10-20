@@ -19,11 +19,15 @@ struct EditingSnapshotCompatibilityTests {
         #expect(try ArtifactJSONCodec.digest(decoded) == ArtifactJSONCodec.digestBytes(legacy))
     }
 
-    @Test(arguments: 0..<8)
+    @Test(arguments: 0..<128)
     func absentAndExplicitDefaultControlsPreserveTheirOwnShape(mask: Int) throws {
         var object = try #require(JSONSerialization.jsonObject(with: legacy) as? [String: Any])
         var settings = try #require(object["settings"] as? [String: Any])
-        for (bit, key, value) in [(0, "autoToneAmount", 0), (1, "naturalBalanceAmount", 0), (2, "naturalBalanceColorAmount", 50)] {
+        let defaults: [(Int, String, Double)] = [
+            (0, "autoToneAmount", 0), (1, "naturalBalanceAmount", 0), (2, "naturalBalanceColorAmount", 50),
+            (3, "sharpeningAmount", 0), (4, "sharpeningRadius", 1), (5, "sharpeningDetail", 25), (6, "sharpeningMasking", 0)
+        ]
+        for (bit, key, value) in defaults {
             if mask & (1 << bit) == 0 { settings.removeValue(forKey: key) }
             else { settings[key] = value }
         }
@@ -44,7 +48,8 @@ struct EditingSnapshotCompatibilityTests {
 
     @Test func missingRequiredUnknownNullAndWrongTypedControlsStillReject() throws {
         let base = try #require(JSONSerialization.jsonObject(with: legacy) as? [String: Any])
-        for key in ["autoToneAmount", "naturalBalanceAmount", "naturalBalanceColorAmount"] {
+        for key in ["autoToneAmount", "naturalBalanceAmount", "naturalBalanceColorAmount",
+                    "sharpeningAmount", "sharpeningRadius", "sharpeningDetail", "sharpeningMasking"] {
             for invalid in [NSNull(), "strong", true] as [Any] {
                 var object = base
                 var settings = try #require(object["settings"] as? [String: Any])

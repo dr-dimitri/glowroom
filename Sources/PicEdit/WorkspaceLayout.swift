@@ -48,7 +48,7 @@ struct WorkspacePanels: Codable, Equatable {
     var filmstripHeight = 98.0
     var openGroups: Set<WorkspaceTool> = [.edit]
     var singleGroup = false
-    var openAdjustmentGroups: Set<String> = ["tone", "noise"]
+    var openAdjustmentGroups: Set<String> = ["tone", "sharpening", "noise"]
     // Persist the migration marker so deliberately closing Details remains closed.
     private var detailsGroupVersion = 1
 
@@ -111,7 +111,7 @@ struct WorkspacePanels: Codable, Equatable {
         libraryWidth = Self.bounded(libraryWidth, fallback: navigation ? 300 : 218, range: leftRange)
         toolsWidth = Self.bounded(toolsWidth, fallback: 320, range: WorkspaceLayoutMetrics.toolsRange)
         filmstripHeight = Self.bounded(filmstripHeight, fallback: 98, range: WorkspaceLayoutMetrics.filmstripRange)
-        openAdjustmentGroups.formIntersection(["tone", "presence", "noise"])
+        openAdjustmentGroups.formIntersection(["tone", "presence", "sharpening", "noise"])
         if singleGroup {
             let firstNavigation = WorkspaceTool.allCases.first { $0.isNavigationTool && openGroups.contains($0) }
             let firstAdjustment = WorkspaceTool.allCases.first { !$0.isNavigationTool && openGroups.contains($0) }

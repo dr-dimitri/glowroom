@@ -72,7 +72,8 @@ extension PreviewDecoder {
                     kCGImageSourceShouldCacheImmediately: true
                   ] as CFDictionary) else { throw ArtifactContractError.corruptArtifact }
             try Task.checkCancellation()
-            return PreviewBitmap(image: image)
+            let size = expected.raster.format.size
+            return PreviewBitmap(image: image, sourceLongEdge: max(size.width, size.height))
         }
     }
 }

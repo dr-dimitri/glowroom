@@ -19,6 +19,12 @@ public struct EditSettings: Codable, Hashable, Sendable {
     public var saturation: Double
     public var luminanceNoiseReduction: Double
     public var colorNoiseReduction: Double
+    /// Zero disables sharpening while retaining its subordinate preferences.
+    public var sharpeningAmount: Double
+    /// Radius in source-image pixels; previews scale the same physical radius.
+    public var sharpeningRadius: Double
+    public var sharpeningDetail: Double
+    public var sharpeningMasking: Double
     /// Legacy tone balancing retained for existing edits. New balance takes precedence.
     public var autoToneAmount: Double
     /// Opt-in image-adaptive tone and color balance. Zero disables the whole effect.
@@ -34,6 +40,8 @@ public struct EditSettings: Codable, Hashable, Sendable {
                 texture: Double = 0, clarity: Double = 0, dehaze: Double = 0,
                 vibrance: Double = 0, saturation: Double = 0,
                 luminanceNoiseReduction: Double = 0, colorNoiseReduction: Double = 0,
+                sharpeningAmount: Double = 0, sharpeningRadius: Double = 1,
+                sharpeningDetail: Double = 25, sharpeningMasking: Double = 0,
                 autoToneAmount: Double = 0, naturalBalanceAmount: Double = 0,
                 naturalBalanceColorAmount: Double = 50, localAdjustments: [LocalAdjustment] = [],
                 developColor: DevelopColorSettings = .neutral, developGeometry: DevelopGeometry = .neutral) {
@@ -50,6 +58,10 @@ public struct EditSettings: Codable, Hashable, Sendable {
         self.saturation = saturation
         self.luminanceNoiseReduction = luminanceNoiseReduction
         self.colorNoiseReduction = colorNoiseReduction
+        self.sharpeningAmount = sharpeningAmount
+        self.sharpeningRadius = sharpeningRadius
+        self.sharpeningDetail = sharpeningDetail
+        self.sharpeningMasking = sharpeningMasking
         self.autoToneAmount = autoToneAmount
         self.naturalBalanceAmount = naturalBalanceAmount
         self.naturalBalanceColorAmount = naturalBalanceColorAmount
@@ -62,6 +74,7 @@ public struct EditSettings: Codable, Hashable, Sendable {
         case exposure, contrast, highlights, shadows, whites, blacks
         case texture, clarity, dehaze, vibrance, saturation
         case luminanceNoiseReduction, colorNoiseReduction, autoToneAmount
+        case sharpeningAmount, sharpeningRadius, sharpeningDetail, sharpeningMasking
         case naturalBalanceAmount, naturalBalanceColorAmount
         case localAdjustments
         case developColor, developGeometry
@@ -84,6 +97,14 @@ public struct EditSettings: Codable, Hashable, Sendable {
         colorNoiseReduction = try values.decode(Double.self, forKey: .colorNoiseReduction)
         // Existing databases and backups may predate these controls. Only an
         // absent key gets a legacy default; malformed values still fail.
+        sharpeningAmount = values.contains(.sharpeningAmount)
+            ? try values.decode(Double.self, forKey: .sharpeningAmount) : 0
+        sharpeningRadius = values.contains(.sharpeningRadius)
+            ? try values.decode(Double.self, forKey: .sharpeningRadius) : 1
+        sharpeningDetail = values.contains(.sharpeningDetail)
+            ? try values.decode(Double.self, forKey: .sharpeningDetail) : 25
+        sharpeningMasking = values.contains(.sharpeningMasking)
+            ? try values.decode(Double.self, forKey: .sharpeningMasking) : 0
         autoToneAmount = values.contains(.autoToneAmount)
             ? try values.decode(Double.self, forKey: .autoToneAmount) : 0
         naturalBalanceAmount = values.contains(.naturalBalanceAmount)
@@ -110,6 +131,14 @@ public struct EditSettings: Codable, Hashable, Sendable {
         try values.encode(saturation, forKey: .saturation)
         try values.encode(luminanceNoiseReduction, forKey: .luminanceNoiseReduction)
         try values.encode(colorNoiseReduction, forKey: .colorNoiseReduction)
+        // Old snapshot bytes and digests stay unchanged until a preference is
+        // edited. Persist dormant preferences too, so toggling amount is lossless.
+        if sharpeningAmount != 0 || sharpeningRadius != 1 || sharpeningDetail != 25 || sharpeningMasking != 0 {
+            try values.encode(sharpeningAmount, forKey: .sharpeningAmount)
+            try values.encode(sharpeningRadius, forKey: .sharpeningRadius)
+            try values.encode(sharpeningDetail, forKey: .sharpeningDetail)
+            try values.encode(sharpeningMasking, forKey: .sharpeningMasking)
+        }
         try values.encode(autoToneAmount, forKey: .autoToneAmount)
         try values.encode(naturalBalanceAmount, forKey: .naturalBalanceAmount)
         try values.encode(naturalBalanceColorAmount, forKey: .naturalBalanceColorAmount)
@@ -145,8 +174,8 @@ public struct EditSettings: Codable, Hashable, Sendable {
     public static let neutral = EditSettings()
 
     public var normalized: Self {
-        func clamp(_ value: Double, _ range: ClosedRange<Double>) -> Double {
-            value.isFinite ? min(max(value, range.lowerBound), range.upperBound) : 0
+        func clamp(_ value: Double, _ range: ClosedRange<Double>, fallback: Double = 0) -> Double {
+            value.isFinite ? min(max(value, range.lowerBound), range.upperBound) : fallback
         }
         return Self(exposure: clamp(exposure, -5...5), contrast: clamp(contrast, -100...100),
                     highlights: clamp(highlights, -100...100), shadows: clamp(shadows, -100...100),
@@ -156,6 +185,10 @@ public struct EditSettings: Codable, Hashable, Sendable {
                     saturation: clamp(saturation, -100...100),
                     luminanceNoiseReduction: clamp(luminanceNoiseReduction, 0...100),
                     colorNoiseReduction: clamp(colorNoiseReduction, 0...100),
+                    sharpeningAmount: clamp(sharpeningAmount, 0...150),
+                    sharpeningRadius: clamp(sharpeningRadius, 0.5...3, fallback: 1),
+                    sharpeningDetail: clamp(sharpeningDetail, 0...100, fallback: 25),
+                    sharpeningMasking: clamp(sharpeningMasking, 0...100),
                     autoToneAmount: clamp(autoToneAmount, 0...100),
                     naturalBalanceAmount: clamp(naturalBalanceAmount, 0...100),
                     naturalBalanceColorAmount: clamp(naturalBalanceColorAmount, 0...100),
@@ -168,6 +201,11 @@ public struct EditSettings: Codable, Hashable, Sendable {
         // A saved color preference has no rendering effect until explicitly enabled.
         if effective.naturalBalanceAmount == 0 {
             effective.naturalBalanceColorAmount = Self.neutral.naturalBalanceColorAmount
+        }
+        if effective.sharpeningAmount == 0 {
+            effective.sharpeningRadius = Self.neutral.sharpeningRadius
+            effective.sharpeningDetail = Self.neutral.sharpeningDetail
+            effective.sharpeningMasking = Self.neutral.sharpeningMasking
         }
         return effective == .neutral
     }

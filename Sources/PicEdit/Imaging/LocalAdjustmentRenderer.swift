@@ -16,7 +16,8 @@ enum LocalAdjustmentRenderer {
     static func previewSize(width: Int, height: Int, adjustments: [LocalAdjustment],
                             geometry: DevelopGeometry = .neutral, fixedBytes: UInt64 = 0, outputBytesPerPixel: UInt64 = 0,
                             totalMemoryBudget: UInt64 = .max,
-                            replacementColorBytesPerPixel: UInt64 = 0) throws -> (width: Int, height: Int) {
+                            replacementColorBytesPerPixel: UInt64 = 0,
+                            globalBytesPerPixel: UInt64 = 0) throws -> (width: Int, height: Int) {
         guard width > 0, height > 0 else { throw EditRenderError.unavailable }
         func additionalBytes(_ width: Int, _ height: Int) -> UInt64? {
             guard let local = estimatedAdditionalBytes(adjustments: adjustments, width: width, height: height,
@@ -24,7 +25,10 @@ enum LocalAdjustmentRenderer {
                   let geometryBytes = DevelopGeometryRenderer.estimatedAdditionalBytes(geometry: geometry, width: width, height: height,
                     replacementColorBytesPerPixel: replacementColorBytesPerPixel) else { return nil }
             let sum = local.addingReportingOverflow(geometryBytes)
-            return sum.overflow ? nil : sum.partialValue
+            let pixels = UInt64(width).multipliedReportingOverflow(by: UInt64(height))
+            let global = pixels.partialValue.multipliedReportingOverflow(by: globalBytesPerPixel)
+            let total = sum.partialValue.addingReportingOverflow(global.partialValue)
+            return sum.overflow || pixels.overflow || global.overflow || total.overflow ? nil : total.partialValue
         }
         // A dormant mask or crop transform alone adds no spatial buffers. Keep
         // the existing resolution policy when no additional work is needed.

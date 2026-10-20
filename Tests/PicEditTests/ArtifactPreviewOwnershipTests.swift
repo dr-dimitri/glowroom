@@ -12,9 +12,11 @@ struct ArtifactPreviewOwnershipTests {
         let context = try #require(CGContext(data: nil, width: 3, height: 2, bitsPerComponent: 8, bytesPerRow: 12,
             space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
         context.setFillColor(CGColor(red: 1, green: 0, blue: 0, alpha: 0.5)); context.fill(CGRect(x: 0, y: 0, width: 3, height: 2))
-        let base = PreviewBitmap(image: try #require(context.makeImage()))
+        let base = PreviewBitmap(image: try #require(context.makeImage()), sourceLongEdge: 300)
         var memory: ArtifactMemoryReservation? = try await resources.retain(bytes: Int64(base.byteCost) * 2, from: try #require(phase))
         var bitmap: PreviewBitmap? = try base.retainingArtifactMemory(try #require(memory), owner: resources)
+        #expect(bitmap?.sourceLongEdge == 300)
+        #expect(bitmap?.sourcePixelScale == 0.01)
         var nativeImage: CGImage? = bitmap?.image
         memory = nil; bitmap = nil; phase = nil
         let live = await resources.state()
