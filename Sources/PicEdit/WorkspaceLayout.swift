@@ -46,7 +46,7 @@ struct WorkspacePanels: Codable, Equatable {
     var libraryWidth = 300.0
     var toolsWidth = 320.0
     var filmstripHeight = 98.0
-    var openGroups: Set<WorkspaceTool> = [.edit, .details]
+    var openGroups: Set<WorkspaceTool> = [.edit]
     var singleGroup = false
     var openAdjustmentGroups: Set<String> = ["tone", "noise"]
     // Persist the migration marker so deliberately closing Details remains closed.

@@ -7,6 +7,19 @@ import Testing
 @MainActor
 struct WorkspaceLayoutTests {
     @Test
+    func developDefaultsOpenOnlyBasicAdjustmentsAndPreserveExplicitDetailsChoice() throws {
+        let fixture = try Preferences()
+        defer { fixture.remove() }
+        let layout = WorkspaceLayoutModel(defaults: fixture.defaults)
+        #expect(layout.develop.openGroups == [.edit])
+        #expect(layout.focus.openGroups == [.edit])
+
+        layout.toggleGroup(.details, developing: true)
+        let restored = WorkspaceLayoutModel(defaults: fixture.defaults)
+        #expect(restored.develop.openGroups == [.edit, .details])
+    }
+
+    @Test
     func preferenceUpdatePublishesTheNormalizedLayoutOnce() throws {
         let fixture = try Preferences()
         defer { fixture.remove() }
@@ -143,7 +156,7 @@ struct WorkspaceLayoutTests {
         let layout = WorkspaceLayoutModel(defaults: fixture.defaults)
         let library = layout.library
         layout.toggleGroup(.metadata, developing: true)
-        #expect(layout.develop.openGroups == [.edit, .details, .metadata])
+        #expect(layout.develop.openGroups == [.edit, .metadata])
         layout.update(developing: true) { $0.singleGroup = true }
         #expect(layout.develop.openGroups == [.edit, .metadata], "Each column keeps its own open group")
         layout.toggleGroup(.versions, developing: true)
@@ -293,16 +306,20 @@ struct WorkspaceLayoutTests {
         defer { fixture.remove() }
         let layout = WorkspaceLayoutModel(defaults: fixture.defaults)
         layout.update(developing: false) { $0.libraryWidth = 300 }
-        layout.update(developing: true) { $0.toolsWidth = 440 }
+        layout.update(developing: true) { $0.toolsWidth = 440; $0.openGroups = [.edit, .details] }
         let library = layout.library, develop = layout.develop
         layout.enterFocus(developing: false, showsDetail: true)
         layout.reveal(.versions, developing: true)
+        layout.reveal(.details, developing: true)
         layout.reset(developing: true)
         #expect(layout.focus == .focusDefault && layout.isFocused)
+        #expect(layout.focus.openGroups == [.edit])
         #expect(layout.library == library && layout.develop == develop)
         #expect(layout.leaveFocus() == WorkspaceFocusOrigin(developing: false, showsDetail: true))
         layout.reset(developing: true)
         #expect(layout.develop == .developDefault && layout.library == library)
+        #expect(layout.develop.openGroups == [.edit])
+        #expect(WorkspaceLayoutModel(defaults: fixture.defaults).develop.openGroups == [.edit])
     }
 
     private struct Preferences {
