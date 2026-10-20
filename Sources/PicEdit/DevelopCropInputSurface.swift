@@ -174,6 +174,7 @@ final class DevelopCropNativeInputView: NSView {
         didSet {
             setAccessibilityEnabled(inputEnabled)
             if oldValue && !inputEnabled { cancelInput() }
+            updateMouseMovementRegistration()
         }
     }
     private var pointerStart: CGPoint?
@@ -184,8 +185,16 @@ final class DevelopCropNativeInputView: NSView {
     private var touchLocation: CGPoint?
     private var touchTracker = DevelopCropThreeFingerTracker()
     private var hoverTrackingArea: NSTrackingArea?
-    private var cancellationMonitor: Any?
+    private var inputMonitor: Any?
     private var windowObserver: NSObjectProtocol?
+    private weak var mouseMovementWindow: NSWindow?
+    private final class MouseMovementRegistration {
+        let previousValue: Bool
+        var consumers = Set<ObjectIdentifier>()
+        init(window: NSWindow) { previousValue = window.acceptsMouseMovedEvents }
+    }
+    private static let mouseMovementWindows = NSMapTable<NSWindow, MouseMovementRegistration>(
+        keyOptions: .weakMemory, valueOptions: .strongMemory)
     private var isInvalidated = false
     private var pansEnclosingScrollView = false
     private var pansWithPointer = false
@@ -241,6 +250,7 @@ final class DevelopCropNativeInputView: NSView {
         // Initial attachment has no active input to cancel. In particular, a
         // one-shot picker must not close just because its surface was mounted.
         if window != nil, window !== newWindow { cancelInput() }
+        releaseMouseMovementRegistration()
         stopMonitoring()
         super.viewWillMove(toWindow: newWindow)
     }
@@ -248,14 +258,23 @@ final class DevelopCropNativeInputView: NSView {
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
         guard let window, !isInvalidated else { return }
+        updateMouseMovementRegistration()
         windowObserver = NotificationCenter.default.addObserver(forName: NSWindow.didResignKeyNotification,
             object: window, queue: .main) { [weak self] _ in
                 MainActor.assumeIsolated { self?.cancelInput() }
             }
-        cancellationMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            guard let self, event.window === self.window, event.keyCode == 53,
-                  self.cancelForEscape() else { return event }
-            return nil
+        inputMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .mouseMoved]) { [weak self] event in
+            guard let self, event.window === self.window else { return event }
+            if event.type == .mouseMoved {
+                // SwiftUI's canvas wrappers can own AppKit's hover dispatch.
+                // Observe the window queue without taking keyboard focus or
+                // consuming the event, and only update its actual hit target.
+                if self.window?.isKeyWindow == true, self.ownsPointer(at: event.locationInWindow) {
+                    self.publishHover(event)
+                }
+                return event
+            }
+            return event.keyCode == 53 && self.cancelForEscape() ? nil : event
         }
         refreshCursorAtCurrentPointer()
     }
@@ -263,7 +282,7 @@ final class DevelopCropNativeInputView: NSView {
     override func updateTrackingAreas() {
         if let hoverTrackingArea { removeTrackingArea(hoverTrackingArea) }
         let area = NSTrackingArea(rect: .zero,
-            options: [.mouseEnteredAndExited, .mouseMoved, .cursorUpdate, .activeInKeyWindow, .inVisibleRect], owner: self)
+            options: [.mouseEnteredAndExited, .cursorUpdate, .activeInKeyWindow, .inVisibleRect], owner: self)
         addTrackingArea(area)
         hoverTrackingArea = area
         super.updateTrackingAreas()
@@ -272,7 +291,10 @@ final class DevelopCropNativeInputView: NSView {
 
     override func mouseEntered(with event: NSEvent) { publishHover(event) }
     override func mouseMoved(with event: NSEvent) { publishHover(event) }
-    override func mouseExited(with event: NSEvent) { onHover(nil); NSCursor.arrow.set() }
+    override func mouseExited(with event: NSEvent) {
+        onHover(nil)
+        restoreCursor(at: event.locationInWindow)
+    }
     override func cursorUpdate(with event: NSEvent) { publishHover(event) }
 
     override func mouseDown(with event: NSEvent) {
@@ -342,7 +364,7 @@ final class DevelopCropNativeInputView: NSView {
         panViewportSize = nil
         touchTracker.suspendUntilAllTouchesEnd()
         onHover(nil)
-        NSCursor.arrow.set()
+        restoreCursor()
     }
 
     /// Passive preview controls must not consume the workspace's Escape key.
@@ -358,8 +380,36 @@ final class DevelopCropNativeInputView: NSView {
     func invalidate() {
         guard !isInvalidated else { return }
         isInvalidated = true
+        releaseMouseMovementRegistration()
         cancelInput()
         stopMonitoring()
+    }
+
+    // A photo and its loupe can share a window. Keep AppKit movement delivery
+    // enabled until the last active surface leaves, then restore its owner’s
+    // preference. This small shared UI registration stays on the main actor.
+    private func updateMouseMovementRegistration() {
+        let target = inputEnabled && !isInvalidated ? window : nil
+        guard target !== mouseMovementWindow else { return }
+        releaseMouseMovementRegistration()
+        guard let target else { return }
+        let registration = Self.mouseMovementWindows.object(forKey: target)
+            ?? MouseMovementRegistration(window: target)
+        registration.consumers.insert(ObjectIdentifier(self))
+        Self.mouseMovementWindows.setObject(registration, forKey: target)
+        target.acceptsMouseMovedEvents = true
+        mouseMovementWindow = target
+    }
+
+    private func releaseMouseMovementRegistration() {
+        guard let window = mouseMovementWindow else { return }
+        mouseMovementWindow = nil
+        guard let registration = Self.mouseMovementWindows.object(forKey: window) else { return }
+        registration.consumers.remove(ObjectIdentifier(self))
+        if registration.consumers.isEmpty {
+            window.acceptsMouseMovedEvents = registration.previousValue
+            Self.mouseMovementWindows.removeObject(forKey: window)
+        }
     }
 
     private func cancelPointer() {
@@ -402,13 +452,33 @@ final class DevelopCropNativeInputView: NSView {
     }
 
     private func refreshCursorAtCurrentPointer() {
-        guard inputEnabled, !isInvalidated, let window, window.isKeyWindow,
-              let content = window.contentView else { return }
-        let point = convert(window.mouseLocationOutsideOfEventStream, from: nil)
+        guard let window, window.isKeyWindow,
+              ownsPointer(at: window.mouseLocationOutsideOfEventStream) else { return }
         // Configuration also changes while the pointer is stationary. Refresh
         // only when this surface is the actual target, preserving panel cursors.
-        guard visibleRect.contains(point), content.hitTest(convert(point, to: content.superview)) === self else { return }
-        cursor(point).set()
+        cursor(convert(window.mouseLocationOutsideOfEventStream, from: nil)).set()
+    }
+
+    private func ownsPointer(at location: CGPoint) -> Bool {
+        guard inputEnabled, !isInvalidated, let content = window?.contentView else { return false }
+        let point = convert(location, from: nil)
+        return visibleRect.contains(point) && content.hitTest(convert(point, to: content.superview)) === self
+    }
+
+    private func restoreCursor(at location: CGPoint? = nil) {
+        guard let window, window.isKeyWindow, let content = window.contentView else {
+            NSCursor.arrow.set()
+            return
+        }
+        let location = location ?? window.mouseLocationOutsideOfEventStream
+        let target = content.hitTest(content.superview?.convert(location, from: nil) ?? location)
+        // Tracking-area exits can arrive after the next surface's entry. Do
+        // not let the loupe or a removed canvas overwrite the active picker.
+        if let target = target as? DevelopCropNativeInputView, target.ownsPointer(at: location) {
+            target.cursor(target.convert(location, from: nil)).set()
+        } else {
+            NSCursor.arrow.set()
+        }
     }
 
     private func receiveTouches(_ event: NSEvent, cancelled: Bool = false) {
@@ -441,7 +511,7 @@ final class DevelopCropNativeInputView: NSView {
     }
 
     private func stopMonitoring() {
-        if let cancellationMonitor { NSEvent.removeMonitor(cancellationMonitor); self.cancellationMonitor = nil }
+        if let inputMonitor { NSEvent.removeMonitor(inputMonitor); self.inputMonitor = nil }
         if let windowObserver { NotificationCenter.default.removeObserver(windowObserver); self.windowObserver = nil }
     }
 

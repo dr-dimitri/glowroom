@@ -189,16 +189,61 @@ struct DevelopDetailPreviewTests {
             #expect(workspace.picksDetail, "Header mouse click \(index + 1) must activate following")
             guard workspace.picksDetail else { return }
             let canvas = try host.canvas()
+            #expect(host.acceptsMouseMovedEvents,
+                "The mounted picker must enable AppKit mouse-moved delivery")
             let point = CGPoint(x: 450, y: 400)
             try host.move(on: canvas, to: point)
             #expect(workspace.detailCenter == CGPoint(x: 0.75, y: 0.75))
             #expect(!workspace.detailFitsImage)
+            #expect(NSCursor.current === NSCursor.crosshair,
+                "AppKit mouse movement over the photo must display the selection cursor")
             try host.clickCanvas(at: point)
             try await host.settle()
             #expect(!workspace.picksDetail, "An image click must fix the selected detail")
             #expect(host.canvasIfPresent() == nil,
                 "The real picker is removed after fixing, just as it is in the photo canvas")
         }
+    }
+
+    @Test func applicationMovementsRouteBetweenThePhotoLetterboxLoupeAndHeaderWithoutMovingFocus() async throws {
+        let fixture = try DetailPreviewFixture.make()
+        let workspace = fixture.workspace
+        let bitmap = try DetailPreviewFixture.bitmap(width: 1_200, height: 800)
+        workspace.receive(bitmap, sourceBitmap: bitmap)
+        workspace.picksDetail = false
+        workspace.detailFitsImage = true
+        let host = DetailPreviewControlsHost()
+        defer { host.close(); workspace.clear() }
+        try await host.mount(fixture)
+        try host.clickHeader("develop.detail-picker")
+        try await host.settle()
+        let photo = try host.canvas()
+
+        try host.move(on: photo, to: CGPoint(x: 450, y: 400))
+        #expect(workspace.detailCenter == CGPoint(x: 0.75, y: 0.75))
+        #expect(NSCursor.current === NSCursor.crosshair)
+        try host.move(on: photo, to: CGPoint(x: 450, y: 50))
+        #expect(workspace.detailCenter == CGPoint(x: 0.75, y: 0.75),
+            "Letterbox movement must preserve the previous detail")
+        #expect(NSCursor.current === NSCursor.arrow)
+        try host.move(on: photo, to: CGPoint(x: 150, y: 200))
+        #expect(workspace.detailCenter == CGPoint(x: 0.25, y: 0.25))
+        #expect(NSCursor.current === NSCursor.crosshair)
+
+        let loupe = try host.loupe()
+        try host.move(on: loupe, to: CGPoint(x: 130, y: 130))
+        #expect(workspace.detailCenter == CGPoint(x: 0.25, y: 0.25),
+            "The loupe must not reinterpret its movement as a photo selection")
+        #expect(NSCursor.current === NSCursor.openHand)
+        try host.exit(photo, toward: loupe, at: CGPoint(x: 130, y: 130))
+        #expect(NSCursor.current === NSCursor.openHand,
+            "A late photo exit must preserve the loupe's cursor")
+        try host.moveToHeader("develop.detail-picker")
+        #expect(workspace.detailCenter == CGPoint(x: 0.25, y: 0.25))
+        try host.exit(loupe, toHeader: "develop.detail-picker")
+        #expect(NSCursor.current === NSCursor.arrow,
+            "Leaving the image surfaces must restore the header cursor")
+        #expect(workspace.picksDetail, "Moving between surfaces must keep selection active")
     }
 
     @Test(arguments: [1.0, 2.0])
@@ -765,6 +810,8 @@ private struct DetailPreviewControlsHostView: View {
                     DevelopDetailCanvas(workspace: workspace, geometry: geometry)
                 }
             }.frame(width: 600, height: 600)
+                .onTapGesture(count: 2) { }
+                .contextMenu { Button("Fotoaktion") { } }
             DevelopDetailPreview(workspace: workspace, isEnabled: true)
                 .frame(width: 340)
         }.environment(\.displayScale, 2)
@@ -777,11 +824,12 @@ private struct DetailPreviewControlsHostView: View {
 private final class DetailPreviewControlsHost {
     private let window: NSWindow
     private let hosting = NSHostingView(rootView: AnyView(EmptyView()))
+    var acceptsMouseMovedEvents: Bool { window.acceptsMouseMovedEvents }
 
     init() {
         _ = NSApplication.shared
         WorkspaceAccessibilityElement.enableInProcess()
-        window = NSWindow(contentRect: NSRect(x: -10_000, y: -10_000, width: 980, height: 640),
+        window = DetailPreviewMouseTestWindow(contentRect: NSRect(x: -10_000, y: -10_000, width: 980, height: 640),
             styleMask: .borderless, backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         window.ignoresMouseEvents = true
@@ -796,12 +844,41 @@ private final class DetailPreviewControlsHost {
     }
 
     func clickHeader(_ identifier: String) throws {
+        try click(at: headerLocation(identifier))
+    }
+
+    func moveToHeader(_ identifier: String) throws {
+        try dispatchMovement(at: headerLocation(identifier))
+    }
+
+    func exit(_ canvas: DevelopCropNativeInputView, toHeader identifier: String) throws {
+        try sendExit(from: canvas, at: headerLocation(identifier))
+    }
+
+    func exit(_ canvas: DevelopCropNativeInputView, toward target: DevelopCropNativeInputView,
+              at point: CGPoint) throws {
+        try sendExit(from: canvas, at: target.convert(point, to: nil))
+    }
+
+    private func sendExit(from canvas: DevelopCropNativeInputView, at location: CGPoint) throws {
+        // Offscreen mouse events exercise the application monitor, but the
+        // window server does not synthesize tracking-area boundary events.
+        // Deliver the previous area's exit after the destination's movement,
+        // as AppKit does not guarantee tracking-area enter/exit ordering.
+        let event = try #require(NSEvent.enterExitEvent(with: .mouseExited,
+            location: location, modifierFlags: [],
+            timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber,
+            context: nil, eventNumber: 0, trackingNumber: 0, userData: nil))
+        canvas.mouseExited(with: event)
+    }
+
+    private func headerLocation(_ identifier: String) throws -> CGPoint {
         let element = try #require(WorkspaceAccessibilityElement.descendants(of: hosting).first {
             $0.accessibilityIdentifier() == identifier
         }, "Missing detail header control \(identifier)")
         let frame = window.convertFromScreen(element.accessibilityFrame())
         #expect(frame.width > 0 && frame.height > 0)
-        try click(at: CGPoint(x: frame.midX, y: frame.midY))
+        return CGPoint(x: frame.midX, y: frame.midY)
     }
 
     func clickCanvas(at point: CGPoint) throws {
@@ -820,13 +897,27 @@ private final class DetailPreviewControlsHost {
     }
 
     func move(on canvas: DevelopCropNativeInputView, to point: CGPoint) throws {
-        // AppKit tracking callbacks are explicit, while clicks take the full
-        // window route so an overflowing loupe cannot hide header controls.
+        let content = try #require(window.contentView)
+        #expect(content.hitTest(canvas.convert(point, to: content.superview)) === canvas,
+            "The intended input surface must own the native hit target")
+        try dispatchMovement(at: canvas.convert(point, to: nil))
+    }
+
+    private func dispatchMovement(at location: CGPoint) throws {
+        let application = NSApplication.shared
+        let keyWindow = application.keyWindow
+        let firstResponder = window.firstResponder
+        // NSApplication dispatch invokes local event monitors before routing
+        // to the window. No nested event loop or direct hover callback is used.
         let event = try #require(NSEvent.mouseEvent(with: .mouseMoved,
-            location: canvas.convert(point, to: nil), modifierFlags: [],
+            location: location, modifierFlags: [],
             timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber,
             context: nil, eventNumber: 0, clickCount: 0, pressure: 0))
-        canvas.mouseMoved(with: event)
+        application.sendEvent(event)
+        #expect(application.keyWindow === keyWindow,
+            "Following the pointer must preserve the application's focused window")
+        #expect(window.firstResponder === firstResponder,
+            "Following the pointer must not move keyboard focus to the canvas")
     }
 
     func canvasIfPresent() -> DevelopCropNativeInputView? {
@@ -843,6 +934,16 @@ private final class DetailPreviewControlsHost {
         try #require(canvasIfPresent(), "Missing conditionally mounted detail picker canvas")
     }
 
+    func loupe() throws -> DevelopCropNativeInputView {
+        var pending: [NSView] = [hosting]
+        while let view = pending.popLast() {
+            if let input = view as? DevelopCropNativeInputView,
+               input.accessibilityIdentifier() == "develop.detail-loupe" { return input }
+            pending.append(contentsOf: view.subviews)
+        }
+        return try #require(nil as DevelopCropNativeInputView?, "Missing native detail loupe surface")
+    }
+
     func settle() async throws {
         hosting.layoutSubtreeIfNeeded()
         try await Task.sleep(for: .milliseconds(40))
@@ -851,4 +952,11 @@ private final class DetailPreviewControlsHost {
     }
 
     func close() { window.close() }
+}
+
+@MainActor
+private final class DetailPreviewMouseTestWindow: NSWindow {
+    // Keep the regression offscreen without moving focus from the user's app.
+    // The picker requests tracking only while its window is key.
+    override var isKeyWindow: Bool { true }
 }
