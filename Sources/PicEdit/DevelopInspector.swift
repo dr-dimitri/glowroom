@@ -216,42 +216,44 @@ struct DevelopInspector: View {
     }
 
     private func toolGroup(_ tool: WorkspaceTool, asset: PhotoAsset) -> some View {
-        let expanded = panels.openGroups.contains(tool)
+        // Detail controls stay available even when an older workspace saved
+        // this group as closed or single-group mode opens another tool.
+        let collapsible = tool != .details
+        let expanded = !collapsible || panels.openGroups.contains(tool)
         let groupStatus = status(for: tool, assetID: asset.id)
         return VStack(alignment: .leading, spacing: 0) {
-            Button {
-                toggleGroup(tool, assetID: asset.id)
-            } label: {
-                HStack(spacing: 8) {
-                    Text(groupTitle(tool)).font(.system(size: 12, weight: .medium))
-                        .lineLimit(1).minimumScaleFactor(0.85)
-                    Spacer(minLength: 3)
-                    if let status = groupStatus {
-                        Label(status.text, systemImage: status.symbol)
-                            .font(.system(size: 9)).foregroundStyle(status.isError ? Color.orange : Theme.muted)
-                            .labelStyle(.iconOnly).help(status.text)
-                    }
-                    Image(systemName: expanded ? "chevron.down" : "chevron.left")
-                        .font(.system(size: 10, weight: .semibold)).foregroundStyle(Theme.muted)
-                }.padding(.horizontal, 7).frame(maxWidth: .infinity, minHeight: 31, alignment: .leading)
-                    .background(Theme.panel).contentShape(Rectangle())
-            }.buttonStyle(.plain)
-                .workspaceFocusTarget(focusedControl, equals: .group(tool)) {
+            if collapsible {
+                Button {
                     toggleGroup(tool, assetID: asset.id)
-                }
-                .accessibilityLabel(groupTitle(tool))
-                .accessibilityIdentifier("workspace.group.\(tool.rawValue)")
-                .accessibilityValue([expanded ? "Geöffnet" : "Geschlossen", groupStatus?.text].compactMap { $0 }.joined(separator: ", "))
-                .accessibilityHint(expanded ? "Werkzeuggruppe zuklappen" : "Werkzeuggruppe aufklappen")
-                .contextMenu {
-                    Toggle("Nur eine Gruppe geöffnet", isOn: Binding(
-                        get: { panels.singleGroup },
-                        set: { enabled in
-                            finishInput(assetID: asset.id)
-                            layout.update(developing: library.isDeveloping) { $0.singleGroup = enabled }
-                        }
-                    ))
-                }
+                } label: {
+                    toolGroupHeading(tool, expanded: expanded, status: groupStatus)
+                }.buttonStyle(.plain)
+                    .workspaceFocusTarget(focusedControl, equals: .group(tool)) {
+                        toggleGroup(tool, assetID: asset.id)
+                    }
+                    .accessibilityLabel(groupTitle(tool))
+                    .accessibilityIdentifier("workspace.group.\(tool.rawValue)")
+                    .accessibilityValue([expanded ? "Geöffnet" : "Geschlossen", groupStatus?.text].compactMap { $0 }.joined(separator: ", "))
+                    .accessibilityHint(expanded ? "Werkzeuggruppe zuklappen" : "Werkzeuggruppe aufklappen")
+                    .contextMenu {
+                        Toggle("Nur eine Gruppe geöffnet", isOn: Binding(
+                            get: { panels.singleGroup },
+                            set: { enabled in
+                                finishInput(assetID: asset.id)
+                                layout.update(developing: library.isDeveloping) { $0.singleGroup = enabled }
+                            }
+                        ))
+                    }
+            } else {
+                toolGroupHeading(tool, expanded: nil, status: groupStatus)
+                    .focusable(interactions: [.edit])
+                    .focused(focusedControl, equals: .group(tool))
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityAddTraits(.isHeader)
+                    .accessibilityLabel(groupTitle(tool))
+                    .accessibilityIdentifier("workspace.group.\(tool.rawValue)")
+                    .accessibilityValue(["Immer geöffnet", groupStatus?.text].compactMap { $0 }.joined(separator: ", "))
+            }
             if expanded {
                 if column == .navigation, maskWorkspace.isPresented {
                     Text("Zum Wechseln die Gruppenüberschrift anklicken und den Maskenentwurf übernehmen.")
@@ -270,6 +272,25 @@ struct DevelopInspector: View {
         }.padding(.bottom, 2).id(tool)
     }
 
+    private func toolGroupHeading(_ tool: WorkspaceTool, expanded: Bool?,
+                                 status: (text: String, symbol: String, isError: Bool)?) -> some View {
+        HStack(spacing: 8) {
+            Text(groupTitle(tool)).font(.system(size: 12, weight: .medium))
+                .lineLimit(1).minimumScaleFactor(0.85)
+            Spacer(minLength: 3)
+            if let status {
+                Label(status.text, systemImage: status.symbol)
+                    .font(.system(size: 9)).foregroundStyle(status.isError ? Color.orange : Theme.muted)
+                    .labelStyle(.iconOnly).help(status.text)
+            }
+            if let expanded {
+                Image(systemName: expanded ? "chevron.down" : "chevron.left")
+                    .font(.system(size: 10, weight: .semibold)).foregroundStyle(Theme.muted)
+            }
+        }.padding(.horizontal, 7).frame(maxWidth: .infinity, minHeight: 31, alignment: .leading)
+            .background(Theme.panel).contentShape(Rectangle())
+    }
+
     @ViewBuilder private func toolContent(_ tool: WorkspaceTool, asset: PhotoAsset) -> some View {
         switch tool {
         case .edit:
@@ -285,8 +306,10 @@ struct DevelopInspector: View {
                     isEnabled: developWorkspace.tool == .basic && !maskWorkspace.isPresented
                         && !library.comparesOriginal && !library.comparesCurrentSourceWithoutSettings)
                 adjustmentSection("Schärfen", key: "sharpening",
-                    controls: [.sharpeningAmount, .sharpeningRadius, .sharpeningDetail, .sharpeningMasking], assetID: asset.id)
-                adjustmentSection("Entrauschen", key: "noise", controls: Array(Adjustment.allCases.suffix(2)), assetID: asset.id)
+                    controls: [.sharpeningAmount, .sharpeningRadius, .sharpeningDetail, .sharpeningMasking], assetID: asset.id,
+                    collapsible: false)
+                adjustmentSection("Entrauschen", key: "noise", controls: Array(Adjustment.allCases.suffix(2)), assetID: asset.id,
+                    collapsible: false)
             }
             .onDisappear { developWorkspace.picksDetail = false }
         case .metadata:
@@ -526,26 +549,34 @@ struct DevelopInspector: View {
         }.frame(minHeight: 20)
     }
 
-    private func adjustmentSection(_ title: String, key: String, controls: [Adjustment], assetID: String) -> some View {
-        let expanded = panels.openAdjustmentGroups.contains(key)
+    private func adjustmentSection(_ title: String, key: String, controls: [Adjustment], assetID: String,
+                                   collapsible: Bool = true) -> some View {
+        let expanded = !collapsible || panels.openAdjustmentGroups.contains(key)
         let readOnly = !editor.canEdit || !library.canModify || library.comparesOriginal || library.comparesCurrentSourceWithoutSettings
         return VStack(alignment: .leading, spacing: 2) {
             HStack(spacing: 10) {
-                Button {
-                    toggleAdjustmentGroup(key, assetID: assetID)
-                } label: {
-                    HStack(spacing: 8) {
-                        Text(title).font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.muted)
-                        Spacer(minLength: 0)
-                        Image(systemName: expanded ? "chevron.down" : "chevron.left")
-                            .font(.system(size: 9, weight: .semibold)).foregroundStyle(Theme.muted)
-                    }.frame(minHeight: 24).contentShape(Rectangle())
-                }.buttonStyle(.plain)
-                    .workspaceFocusTarget(focusedControl, equals: .adjustmentGroup(key)) {
+                if collapsible {
+                    Button {
                         toggleAdjustmentGroup(key, assetID: assetID)
-                    }
-                    .accessibilityLabel(title).accessibilityValue(expanded ? "Geöffnet" : "Geschlossen")
-                    .accessibilityHint(expanded ? "Reglergruppe zuklappen" : "Reglergruppe aufklappen")
+                    } label: {
+                        HStack(spacing: 8) {
+                            Text(title).font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.muted)
+                            Spacer(minLength: 0)
+                            Image(systemName: expanded ? "chevron.down" : "chevron.left")
+                                .font(.system(size: 9, weight: .semibold)).foregroundStyle(Theme.muted)
+                        }.frame(minHeight: 24).contentShape(Rectangle())
+                    }.buttonStyle(.plain)
+                        .workspaceFocusTarget(focusedControl, equals: .adjustmentGroup(key)) {
+                            toggleAdjustmentGroup(key, assetID: assetID)
+                        }
+                        .accessibilityLabel(title).accessibilityValue(expanded ? "Geöffnet" : "Geschlossen")
+                        .accessibilityHint(expanded ? "Reglergruppe zuklappen" : "Reglergruppe aufklappen")
+                } else {
+                    Text(title).font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.muted)
+                        .frame(maxWidth: .infinity, minHeight: 24, alignment: .leading)
+                        .accessibilityAddTraits(.isHeader)
+                        .accessibilityIdentifier("develop.adjustment-group.\(key)")
+                }
                 Button {
                     finishInput(assetID: assetID)
                     var settings = editor.settings(for: assetID)
