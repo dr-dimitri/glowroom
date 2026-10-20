@@ -26,7 +26,7 @@ struct WorkspaceFocusRoutingTests {
     func closingFocusNavigationReturnsToItsLastGroupOrTheFirstNavigationTool(_ tool: WorkspaceTool) {
         #expect(target(from: visibility(focused: true),
                        to: visibility(focused: true, library: false), tool: tool)
-                == .tool(tool == .edit ? .metadata : tool))
+                == .tool(tool.isNavigationTool ? tool : .metadata))
     }
 
     @Test

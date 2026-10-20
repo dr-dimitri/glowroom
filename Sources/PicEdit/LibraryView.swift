@@ -143,6 +143,7 @@ struct LibraryView: View {
         }
         .onChange(of: model.editingRenderIntent) { _, _ in
             developWorkspace.picksWhiteBalance = false
+            developWorkspace.picksDetail = false
             if model.editingRenderIntent != .currentEditing { maskWorkspace.cancel(); developWorkspace.tool = .basic }
         }
         .onChange(of: model.selection) { _, _ in model.reconcileSelection() }
@@ -234,6 +235,7 @@ struct LibraryView: View {
             }
         }
         developWorkspace.picksWhiteBalance = false
+        developWorkspace.picksDetail = false
         developWorkspace.repairSource = nil
         developWorkspace.tool = .basic
         if let id = model.selectedID { editor.selectEditingFunction(EditingFunction(tool), assetID: id) }
@@ -733,7 +735,8 @@ struct LibraryView: View {
         case 125: model.navigate(model.showsDetail ? 1 : model.gridColumnCount, extending: extending)
         case 126: model.navigate(model.showsDetail ? -1 : -model.gridColumnCount, extending: extending)
         case 53:
-            if layout.isFocused { WorkspaceActions.toggleFocus(layout, library: model) }
+            if developWorkspace.picksDetail { developWorkspace.picksDetail = false }
+            else if layout.isFocused { WorkspaceActions.toggleFocus(layout, library: model) }
             else { model.showsDetail = false }
         case 49:
             guard model.selectedAsset != nil else { return false }

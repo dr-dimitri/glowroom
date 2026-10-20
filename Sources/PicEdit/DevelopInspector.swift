@@ -27,7 +27,7 @@ struct DevelopInspector: View {
     private var saveStatus: WorkspaceSaveStatus { WorkspaceSaveStatus(editor: editor) }
 
     private var groups: [WorkspaceTool] {
-        column == .navigation ? [.metadata, .versions] : [.edit]
+        column == .navigation ? [.metadata, .versions] : [.edit, .details]
     }
 
     var body: some View {
@@ -49,7 +49,7 @@ struct DevelopInspector: View {
                                     DevelopGeometryInspector(asset: asset, workspace: developWorkspace)
                                         .id(asset.id).id(developWorkspace.tool)
                                 } else {
-                                    toolGroup(.edit, asset: asset)
+                                    ForEach(groups, id: \.self) { tool in toolGroup(tool, asset: asset) }
                                 }
                             }
                         }.padding(.horizontal, 8).padding(.top, 6).padding(.bottom, 12)
@@ -278,8 +278,15 @@ struct DevelopInspector: View {
                 naturalBalanceSection(assetID: asset.id)
                 adjustmentSection("Tonwert", key: "tone", controls: Array(Adjustment.allCases.prefix(6)), assetID: asset.id)
                 adjustmentSection("Präsenz", key: "presence", controls: Array(Adjustment.allCases.dropFirst(6).prefix(5)), assetID: asset.id)
+            }
+        case .details:
+            VStack(alignment: .leading, spacing: 8) {
+                DevelopDetailPreview(workspace: developWorkspace,
+                    isEnabled: developWorkspace.tool == .basic && !maskWorkspace.isPresented
+                        && !library.comparesOriginal && !library.comparesCurrentSourceWithoutSettings)
                 adjustmentSection("Entrauschen", key: "noise", controls: Array(Adjustment.allCases.suffix(2)), assetID: asset.id)
             }
+            .onDisappear { developWorkspace.picksDetail = false }
         case .metadata:
             VStack(alignment: .leading, spacing: 20) {
                 PhotoMetadataSection(model: photoMetadata)
@@ -355,6 +362,9 @@ struct DevelopInspector: View {
 
     private func toggleGroup(_ tool: WorkspaceTool, assetID: String) {
         finishInput(assetID: assetID)
+        if tool == .details, panels.openGroups.contains(.details) {
+            developWorkspace.picksDetail = false
+        }
         if tool.isNavigationTool, developWorkspace.tool != .basic {
             // A supporting group can already be open when a canvas draft starts.
             // Use the same admission/acceptance path as an explicit group reveal.
@@ -394,10 +404,14 @@ struct DevelopInspector: View {
 
     private func status(for tool: WorkspaceTool, assetID: String) -> (text: String, symbol: String, isError: Bool)? {
         switch tool {
-        case .edit:
+        case .edit, .details:
             if editor.isReadOnly { return ("Fehler", "exclamationmark.triangle", true) }
             if editor.isSaving || editor.isLoading || editor.hasPendingChanges { return ("Läuft", "arrow.triangle.2.circlepath", false) }
-            if !editor.settings(for: assetID).isNeutral { return ("Geändert", "slider.horizontal.3", false) }
+            let settings = editor.settings(for: assetID)
+            let changed = tool == .details
+                ? settings.luminanceNoiseReduction != 0 || settings.colorNoiseReduction != 0
+                : !settings.isNeutral
+            if changed { return ("Geändert", "slider.horizontal.3", false) }
         case .metadata:
             if photoMetadata.errorMessage != nil || photoMetadata.hasPendingRetry || photoMetadata.recovery != nil {
                 return ("Fehler", "exclamationmark.triangle", true)
@@ -571,7 +585,7 @@ struct DevelopInspector: View {
                         })
                     }
                     if key == "noise" {
-                        Text("Luminanz reduziert Helligkeitsrauschen, Farbe reduziert Farbflecken. Vergrößere das Bild, um die Wirkung zu beurteilen.")
+                        Text("Luminanz reduziert Helligkeitsrauschen, Farbe reduziert Farbflecken. Der Detailzoom zeigt die Wirkung am gewählten Ausschnitt.")
                             .font(.system(size: 10)).foregroundStyle(Theme.muted).lineSpacing(3)
                     }
                 }.disabled(readOnly)

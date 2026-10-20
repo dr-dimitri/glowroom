@@ -28,6 +28,7 @@ struct DevelopCropInputSurface: NSViewRepresentable {
     let canvasLabel: String
     let canvasIdentifier: String
     let onCancel: (() -> Void)?
+    let capturesEscapeWhileIdle: Bool
     let onDoubleClickBegan: (() -> Void)?
     let pansWithPointer: Bool
 
@@ -36,7 +37,8 @@ struct DevelopCropInputSurface: NSViewRepresentable {
          inputIdentity: AnyHashable, cursor: @escaping (CGPoint) -> NSCursor,
          onDoubleClick: (() -> Void)? = nil, canvasLabel: String = "Zuschneiden und Drehen auf dem Bild",
          onCancel: (() -> Void)? = nil, onDoubleClickBegan: (() -> Void)? = nil,
-         pansWithPointer: Bool = false, canvasIdentifier: String = "develop.interactive-canvas") {
+         pansWithPointer: Bool = false, canvasIdentifier: String = "develop.interactive-canvas",
+         capturesEscapeWhileIdle: Bool = true) {
         self.onInput = onInput
         self.onHover = onHover
         self.isEnabled = isEnabled
@@ -46,6 +48,7 @@ struct DevelopCropInputSurface: NSViewRepresentable {
         self.canvasLabel = canvasLabel
         self.canvasIdentifier = canvasIdentifier
         self.onCancel = onCancel
+        self.capturesEscapeWhileIdle = capturesEscapeWhileIdle
         self.onDoubleClickBegan = onDoubleClickBegan
         self.pansWithPointer = pansWithPointer
     }
@@ -60,7 +63,8 @@ struct DevelopCropInputSurface: NSViewRepresentable {
         view.configure(onInput: onInput, onHover: onHover, isEnabled: isEnabled,
                        inputIdentity: inputIdentity, cursor: cursor, onDoubleClick: onDoubleClick, onCancel: onCancel,
                        onDoubleClickBegan: onDoubleClickBegan,
-                       pansEnclosingScrollView: photoCanvasPanning, pansWithPointer: pansWithPointer)
+                       pansEnclosingScrollView: photoCanvasPanning, pansWithPointer: pansWithPointer,
+                       capturesEscapeWhileIdle: capturesEscapeWhileIdle)
         view.setAccessibilityLabel(canvasLabel)
         view.setAccessibilityIdentifier(canvasIdentifier)
     }
@@ -185,6 +189,7 @@ final class DevelopCropNativeInputView: NSView {
     private var isInvalidated = false
     private var pansEnclosingScrollView = false
     private var pansWithPointer = false
+    private var capturesEscapeWhileIdle = true
     private let panSession = PhotoCanvasPanSession()
     private var panViewportSize: CGSize?
     override var isFlipped: Bool { true }
@@ -210,7 +215,8 @@ final class DevelopCropNativeInputView: NSView {
                    inputIdentity: AnyHashable, cursor: @escaping (CGPoint) -> NSCursor,
                    onDoubleClick: (() -> Void)? = nil, onCancel: (() -> Void)? = nil,
                    onDoubleClickBegan: (() -> Void)? = nil,
-                   pansEnclosingScrollView: Bool = false, pansWithPointer: Bool = false) {
+                   pansEnclosingScrollView: Bool = false, pansWithPointer: Bool = false,
+                   capturesEscapeWhileIdle: Bool = true) {
         // End an old asset/tool transaction using its old callback before a new
         // identity's closures replace it.
         if self.inputIdentity != inputIdentity || (!isEnabled && inputEnabled)
@@ -226,12 +232,15 @@ final class DevelopCropNativeInputView: NSView {
         self.inputIdentity = inputIdentity
         self.pansEnclosingScrollView = pansEnclosingScrollView
         self.pansWithPointer = pansWithPointer
+        self.capturesEscapeWhileIdle = capturesEscapeWhileIdle
         inputEnabled = isEnabled
         refreshCursorAtCurrentPointer()
     }
 
     override func viewWillMove(toWindow newWindow: NSWindow?) {
-        if window !== newWindow { cancelInput() }
+        // Initial attachment has no active input to cancel. In particular, a
+        // one-shot picker must not close just because its surface was mounted.
+        if window != nil, window !== newWindow { cancelInput() }
         stopMonitoring()
         super.viewWillMove(toWindow: newWindow)
     }
@@ -245,8 +254,7 @@ final class DevelopCropNativeInputView: NSView {
             }
         cancellationMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self, event.window === self.window, event.keyCode == 53,
-                  self.onCancel != nil || self.pointerStart != nil || self.touchStart != nil || self.pendingDoubleClick != nil else { return event }
-            self.cancelInput()
+                  self.cancelForEscape() else { return event }
             return nil
         }
         refreshCursorAtCurrentPointer()
@@ -335,6 +343,16 @@ final class DevelopCropNativeInputView: NSView {
         touchTracker.suspendUntilAllTouchesEnd()
         onHover(nil)
         NSCursor.arrow.set()
+    }
+
+    /// Passive preview controls must not consume the workspace's Escape key.
+    /// A one-shot canvas picker can opt in even before a pointer gesture starts.
+    @discardableResult
+    func cancelForEscape() -> Bool {
+        guard (capturesEscapeWhileIdle && onCancel != nil)
+            || pointerStart != nil || touchStart != nil || pendingDoubleClick != nil else { return false }
+        cancelInput()
+        return true
     }
 
     func invalidate() {
