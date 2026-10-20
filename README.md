@@ -21,6 +21,8 @@ open dist/PicEdit.app
 
 Für einen schnelleren Entwicklungsbuild kann `./scripts/build-app.sh --debug` verwendet werden. Das Skript baut für den aktuellen Mac, setzt das App-Icon und signiert das Bundle lokal, sofern `codesign` verfügbar ist. Diese lokale Signatur ersetzt keine Apple-Notarisierung für die Verteilung auf andere Macs.
 
+Das App-Icon verwendet den Glasrahmen mit türkisfarbenem Bergmotiv und goldener Sonne aus [`Assets/AppIcon.png`](Assets/AppIcon.png). Der Build skaliert diese feste Quelle unter Erhalt von Transparenz in alle zehn macOS-Iconset-Größen (16 bis 1024 Pixel einschließlich Retina), konvertiert sie zu `AppIcon.icns` und bindet sie über `CFBundleIconFile` ein. Zum Austauschen des Motivs die quadratische PNG-Quelle mit mindestens 1024 Pixeln Kantenlänge ersetzen und das App-Bundle neu bauen; eine Bildgenerierung beim Build ist nicht nötig.
+
 Optional setzt `PICEDIT_BUILD_PATH` ein separates Build-Verzeichnis. Mit neueren Swift-Versionen kann `PICEDIT_BUILD_SYSTEM=swiftbuild` explizit Apples Swift-Build-System auswählen; ohne diese Variable gilt der Standard der installierten Swift-Version.
 
 ### Paralleler lokaler Build

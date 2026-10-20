@@ -144,7 +144,7 @@ create_icon() {
     # for the same module files and avoid recompiling imports on every build.
     export CLANG_MODULE_CACHE_PATH="$BUILD_PATH/IconModuleCache"
     export SWIFTPM_MODULECACHE_OVERRIDE="$BUILD_PATH/IconModuleCache"
-    swift -module-cache-path "$CLANG_MODULE_CACHE_PATH" "$ROOT/scripts/make-app-icon.swift" "$ICONSET"
+    swift -module-cache-path "$CLANG_MODULE_CACHE_PATH" "$ROOT/scripts/make-app-icon.swift" "$ROOT/Assets/AppIcon.png" "$ICONSET"
     iconutil --convert icns --output "$APP/Contents/Resources/AppIcon.icns" "$ICONSET"
 }
 wait_for_worker() {
