@@ -85,6 +85,14 @@ Der Motiv-Worker behält genau ein Ergebnis für dasselbe unveränderliche Vorsc
 
 ## Grenzen und Verifikation
 
+Ein separater [lokaler Vergleich mit sieben Testfotos](../reports/mask-models/2026-10-20/README.md)
+untersucht BiRefNet HR, BEN2, BiRefNet GGUF, SAM 2.1 Tiny und EfficientSAM3 EV-M.
+Er enthält reale Laufzeiten, Speicherwerte, Sichtbefunde und die Unterschiede
+zwischen automatischer Vordergrundwahl und gezielter Objektauswahl. Er ändert
+die in der App verfügbaren Modelle nicht. Private Fotos und Vergleichsbilder
+bleiben ausschließlich lokal unter dem von Git ausgeschlossenen
+`Fixtures/LocalTestImages/Evaluation-20261020/`.
+
 Die Himmelsauswahl ist ein Vorschlag eines allgemeinen COCO-Segmentierungsmodells. Feine Äste, Haare, transparente Flächen, Spiegelungen und ungewöhnliche Lichtverhältnisse können ungenaue Ränder oder falsche Auswahlteile erzeugen. Die Modelleingabe und das gespeicherte Raster sind bewusst begrenzt; es wird keine pixelgenaue Freistellung in voller RAW-Auflösung zugesichert. Bildgeführte Kantennachführung kann vollständig fehlende Zwischenräume nicht rekonstruieren, wenn die Ausgangsmaske dort und in ihrer Umgebung nur Vordergrund enthält. Pinsel und Radierer bleiben für solche Korrekturen verfügbar. Es werden keine Leistungs- oder Genauigkeitsgewinne gegenüber Lightroom behauptet.
 
 Pro Bearbeitung sind insgesamt höchstens 16 MiB automatische Raster zulässig; ein einzelnes Raster bleibt auf 2048 × 2048 Pixel begrenzt. Das JSON-Budget der vollständigen Bearbeitungseinstellungen beträgt 32 MiB einschließlich der codierten Raster. Die bestehenden Grenzen von 16 Masken sowie 16.384 Pinsel-/Korrekturpunkten in 1024 Strichen bleiben erhalten. Wird eine Grenze überschritten, bleibt der vorherige gültige Bearbeitungsstand erhalten.
