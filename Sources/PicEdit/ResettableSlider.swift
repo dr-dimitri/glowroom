@@ -2,6 +2,7 @@ import AppKit
 import SwiftUI
 
 /// A native slider whose double click restores the control's semantic default.
+/// Control-double-click can request an automatically calculated value instead.
 /// A plain click is held until AppKit's double-click interval has elapsed. This
 /// prevents the first click of a reset from becoming an unwanted undo entry;
 /// dragging and keyboard input still publish their values immediately.
@@ -10,16 +11,19 @@ struct ResettableSlider: NSViewRepresentable {
     let range: ClosedRange<Double>
     let step: Double?
     let neutralValue: Double
+    let onAutomaticValue: (() -> Void)?
     let onEditingChanged: (Bool) -> Void
     @Environment(\.isEnabled) private var isEnabled
     @Environment(\.controlSize) private var controlSize
 
     init(value: Binding<Double>, in range: ClosedRange<Double>, step: Double? = nil,
-         neutralValue: Double = 0, onEditingChanged: @escaping (Bool) -> Void = { _ in }) {
+         neutralValue: Double = 0, onAutomaticValue: (() -> Void)? = nil,
+         onEditingChanged: @escaping (Bool) -> Void = { _ in }) {
         _value = value
         self.range = range
         self.step = step
         self.neutralValue = neutralValue
+        self.onAutomaticValue = onAutomaticValue
         self.onEditingChanged = onEditingChanged
     }
 
@@ -34,6 +38,7 @@ struct ResettableSlider: NSViewRepresentable {
         if slider.maxValue != range.upperBound { slider.maxValue = range.upperBound }
         slider.resetNeutralValue = min(range.upperBound, max(range.lowerBound, neutralValue))
         slider.valueStep = step
+        slider.onAutomaticValue = onAutomaticValue
         slider.isEnabled = isEnabled
         if !isEnabled { slider.cancelInput() }
         slider.controlSize = switch controlSize {
@@ -119,14 +124,20 @@ final class ResettableSliderInteraction {
     }
 
     func reset(to value: Double) {
+        prepareForAutomaticValue()
+        atomicChange(value)
+    }
+
+    /// Calculation may finish asynchronously, so discard the first click and
+    /// close any preceding edit before the caller starts that separate change.
+    func prepareForAutomaticValue() {
         pendingClick = nil; pendingBaseline = nil
         pointerValue = nil
         pointerDown = false
         // A numeric field may own an open editing group even when this native
-        // slider has not started tracking. Close it before the reset's group.
+        // slider has not started tracking. Close it before the next change.
         if isTracking { endEditing() }
         else { onEditingChanged(false) }
-        atomicChange(value)
     }
 
     func cancel() {
@@ -165,6 +176,7 @@ final class ResettableNativeSlider: NSSlider {
     let interaction = ResettableSliderInteraction()
     var resetNeutralValue: Double = 0
     var valueStep: Double?
+    var onAutomaticValue: (() -> Void)?
     private var clickWork: DispatchWorkItem?
     private var initialPoint: NSPoint?
     private var isTornDown = false
@@ -195,6 +207,14 @@ final class ResettableNativeSlider: NSSlider {
         clickWork?.cancel()
         clickWork = nil
         if event.clickCount == 2 {
+            if event.modifierFlags.contains(.control), let onAutomaticValue {
+                initialPoint = nil
+                ignoresNativeChangesUntilNewInput = true
+                interaction.prepareForAutomaticValue()
+                doubleValue = interaction.readValue()
+                onAutomaticValue()
+                return
+            }
             interaction.reset(to: resetNeutralValue)
             doubleValue = resetNeutralValue
             return

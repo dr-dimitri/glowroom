@@ -159,6 +159,118 @@ struct ResettableSliderTests {
     }
 
     @Test @MainActor
+    func controlDoubleClickRequestsAutomaticValueWithoutPublishingItsFirstClick() throws {
+        let probe = SliderEditProbe(value: 9_000)
+        let slider = nativeSlider(probe)
+        slider.beginPointerTracking(at: NSPoint(x: 40, y: 10))
+        slider.doubleValue = 10_150
+        slider.endPointerTracking()
+        var requestedValues: [Double] = []
+        slider.onAutomaticValue = { [weak slider] in
+            requestedValues.append(probe.value)
+            #expect(slider?.doubleValue == 9_000,
+                    "The deferred first click must be removed from the native knob before calculation")
+            #expect(slider?.interaction.hasUncommittedClick == false)
+        }
+
+        slider.mouseDown(with: try doubleClickEvent(modifiers: .control))
+        slider.interaction.commitClick()
+        #expect(requestedValues == [9_000])
+        #expect(probe.value == 9_000 && probe.history.isEmpty)
+        #expect(probe.events == ["end"])
+
+        // An asynchronous result starts its own edit from the pre-click value.
+        slider.interaction.nativeValueChanged(7_500)
+        #expect(probe.value == 7_500 && probe.history == [9_000])
+    }
+
+    @Test @MainActor
+    func controlDoubleClickFinishesTextEditingBeforeAutomaticValueCallback() throws {
+        let probe = SliderEditProbe(value: 6_500)
+        let slider = nativeSlider(probe)
+        probe.begin()
+        probe.write(7_500)
+        slider.onAutomaticValue = {
+            #expect(probe.history == [6_500])
+            probe.interaction.nativeValueChanged(8_000)
+        }
+
+        slider.mouseDown(with: try doubleClickEvent(modifiers: .control))
+        #expect(probe.value == 8_000 && probe.history == [6_500, 7_500])
+        probe.undo()
+        #expect(probe.value == 7_500)
+        probe.undo()
+        #expect(probe.value == 6_500)
+    }
+
+    @Test @MainActor
+    func controlDoubleClickFinishesNativeDraggingBeforeAutomaticValueCallback() throws {
+        let probe = SliderEditProbe(value: 6_500)
+        let slider = nativeSlider(probe)
+        slider.beginPointerTracking(at: NSPoint(x: 40, y: 10))
+        slider.doubleValue = 7_500
+        slider.continuedTracking(at: NSPoint(x: 90, y: 10))
+        slider.onAutomaticValue = { [weak slider] in
+            #expect(slider?.interaction.isTracking == false)
+            #expect(slider?.interaction.pointerDown == false)
+            #expect(probe.history == [6_500])
+            probe.interaction.nativeValueChanged(8_000)
+        }
+
+        slider.mouseDown(with: try doubleClickEvent(modifiers: [.control, .shift]))
+        slider.doubleValue = 11_000
+        slider.endPointerTracking()
+        #expect(probe.value == 8_000 && probe.history == [6_500, 7_500])
+    }
+
+    @Test @MainActor
+    func doubleClickWithoutControlStillResetsEvenWithAutomaticValueCallback() throws {
+        for modifiers in [NSEvent.ModifierFlags(), .option, .command, .shift] {
+            let probe = SliderEditProbe(value: 9_000)
+            let slider = nativeSlider(probe)
+            slider.resetNeutralValue = 6_500
+            var automaticRequests = 0
+            slider.onAutomaticValue = { automaticRequests += 1 }
+            slider.beginPointerTracking(at: NSPoint(x: 40, y: 10))
+            slider.doubleValue = 10_150
+            slider.endPointerTracking()
+
+            slider.mouseDown(with: try doubleClickEvent(modifiers: modifiers))
+            slider.interaction.commitClick()
+            #expect(automaticRequests == 0)
+            #expect(probe.value == 6_500 && slider.doubleValue == 6_500)
+            #expect(probe.history == [9_000])
+        }
+    }
+
+    @Test @MainActor
+    func controlDoubleClickWithoutAutomaticValueCallbackRetainsResetBehavior() throws {
+        let probe = SliderEditProbe(value: 9_000)
+        let slider = nativeSlider(probe)
+        slider.resetNeutralValue = 6_500
+
+        slider.mouseDown(with: try doubleClickEvent(modifiers: .control))
+        #expect(probe.value == 6_500 && slider.doubleValue == 6_500)
+        #expect(probe.history == [9_000])
+    }
+
+    @Test @MainActor
+    func disabledAndDismantledSlidersRejectAutomaticValueRequests() throws {
+        for tornDown in [false, true] {
+            let probe = SliderEditProbe(value: 9_000)
+            let slider = nativeSlider(probe)
+            var automaticRequests = 0
+            slider.onAutomaticValue = { automaticRequests += 1 }
+            if tornDown { slider.invalidate() }
+            else { slider.isEnabled = false }
+
+            slider.mouseDown(with: try doubleClickEvent(modifiers: .control))
+            #expect(automaticRequests == 0)
+            #expect(probe.value == 9_000 && probe.history.isEmpty)
+        }
+    }
+
+    @Test @MainActor
     func doubleClickDiscardsFirstClickAndCreatesOneResetUndoStep() {
         let probe = SliderEditProbe(value: 36)
         let input = probe.interaction
@@ -278,6 +390,14 @@ struct ResettableSliderTests {
         // on an action that AppKit was observed not to send during tracking.
         slider.target = nil; slider.action = nil
         return slider
+    }
+
+    @MainActor private func doubleClickEvent(modifiers: NSEvent.ModifierFlags) throws -> NSEvent {
+        try #require(NSEvent.mouseEvent(with: .leftMouseDown, location: NSPoint(x: 40, y: 10),
+                                       modifierFlags: modifiers,
+                                       timestamp: ProcessInfo.processInfo.systemUptime,
+                                       windowNumber: 0, context: nil, eventNumber: 2,
+                                       clickCount: 2, pressure: 1))
     }
 }
 

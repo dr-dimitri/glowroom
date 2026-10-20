@@ -569,7 +569,23 @@ struct DevelopInspector: View {
                                 settings[keyPath: control.keyPath] = newValue
                                 setAdjustmentSettings(settings, for: assetID)
                             }
-                        ), onEditingChanged: { editing in
+                        ), onAutomaticValue: control.automaticToneControl.map { toneControl in
+                            {
+                                finishInput(assetID: assetID)
+                                let selectionSession = library.aiSelectionSessionID
+                                let selectionGeneration = library.aiSelectionGeneration
+                                developWorkspace.applyAutomaticTone(toneControl, assetID: assetID, editor: editor) {
+                                    guard let selected = library.selectedAsset, selected.id == assetID,
+                                          library.aiSelectionSessionID == selectionSession,
+                                          library.aiSelectionGeneration == selectionGeneration,
+                                          library.isDeveloping, library.canModify,
+                                          !library.comparesOriginal, !library.comparesCurrentSourceWithoutSettings,
+                                          !maskWorkspace.isPresented,
+                                          let source = try? editor.resolvedSource(for: selected) else { return false }
+                                    return source.identity == developWorkspace.sourceIdentity
+                                }
+                            }
+                        }, onEditingChanged: { editing in
                             if editing { beginAdjustment(assetID: assetID) }
                             else { editor.endEditing(assetID: assetID) }
                         })
@@ -585,9 +601,10 @@ struct DevelopInspector: View {
     }
 }
 
-private struct AdjustmentSlider: View {
+struct AdjustmentSlider: View {
     let control: Adjustment
     @Binding var value: Double
+    var onAutomaticValue: (() -> Void)? = nil
     let onEditingChanged: (Bool) -> Void
     @FocusState private var valueFocused: Bool
 
@@ -604,12 +621,16 @@ private struct AdjustmentSlider: View {
         HStack(spacing: 7) {
             Text(control.label).font(.system(size: 10)).foregroundStyle(.white.opacity(0.7))
                 .frame(width: 76, alignment: .trailing)
-                .onTapGesture(count: 2) {
-                    onEditingChanged(false); onEditingChanged(true); value = 0; onEditingChanged(false)
-                }.help("Doppelklick setzt den Wert zurück")
+                .onTapGesture(count: 2, perform: resetValue)
+                .highPriorityGesture(TapGesture(count: 2).modifiers(.control).onEnded { _ in
+                    if let onAutomaticValue { onEditingChanged(false); onAutomaticValue() }
+                    else { resetValue() }
+                }).help(gestureHelp)
             ResettableSlider(value: $value, in: control.range, step: control == .exposure ? 0.05 : 1,
+                             onAutomaticValue: onAutomaticValue,
                              onEditingChanged: onEditingChanged)
-                .controlSize(.mini).accessibilityLabel(control.label)
+                .controlSize(.mini).accessibilityLabel(control.label).help(gestureHelp)
+                .accessibilityHint(gestureHelp)
             TextField(control.label, value: numericValue,
                       format: .number.precision(.fractionLength(control == .exposure ? 2 : 0)))
                 .textFieldStyle(.plain).multilineTextAlignment(.trailing)
@@ -623,13 +644,22 @@ private struct AdjustmentSlider: View {
         }.frame(minHeight: 20)
     }
 
+    private var gestureHelp: String {
+        onAutomaticValue == nil ? "Doppelklick setzt den Wert zurück" :
+            "Control-Doppelklick berechnet diesen Tonwert automatisch. Doppelklick setzt den Wert zurück."
+    }
+
+    private func resetValue() {
+        onEditingChanged(false); onEditingChanged(true); value = 0; onEditingChanged(false)
+    }
 }
 
-private enum Adjustment: String, CaseIterable, Identifiable {
+enum Adjustment: String, CaseIterable, Identifiable {
     case exposure, contrast, highlights, shadows, whites, blacks
     case texture, clarity, dehaze, vibrance, saturation
     case luminanceNoiseReduction, colorNoiseReduction
     var id: String { rawValue }
+    var automaticToneControl: AutomaticToneControl? { AutomaticToneControl(rawValue: rawValue) }
     var label: String {
         switch self {
         case .exposure: return "Belichtung"

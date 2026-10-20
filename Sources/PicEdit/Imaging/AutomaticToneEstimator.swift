@@ -1,0 +1,189 @@
+import CoreGraphics
+import Foundation
+import PicEditCore
+
+enum AutomaticToneControl: String, CaseIterable, Sendable {
+    case exposure, contrast, highlights, shadows, whites, blacks
+
+    var keyPath: WritableKeyPath<EditSettings, Double> {
+        switch self {
+        case .exposure: \.exposure
+        case .contrast: \.contrast
+        case .highlights: \.highlights
+        case .shadows: \.shadows
+        case .whites: \.whites
+        case .blacks: \.blacks
+        }
+    }
+
+    var range: ClosedRange<Double> { self == .exposure ? -5...5 : -100...100 }
+    var step: Double { self == .exposure ? 0.05 : 1 }
+
+    fileprivate var target: Double {
+        switch self {
+        case .exposure: 0.46
+        case .contrast: 0.65
+        case .highlights: 0.80
+        case .shadows: 0.20
+        case .whites: 0.99
+        case .blacks: 0.01
+        }
+    }
+
+    fileprivate func measurement(in histogram: AutomaticToneHistogram) -> Double {
+        switch self {
+        case .exposure: histogram.percentile(0.5)
+        case .contrast: histogram.percentile(0.9) - histogram.percentile(0.1)
+        case .highlights: histogram.percentile(0.8)
+        case .shadows: histogram.percentile(0.2)
+        case .whites: histogram.percentile(0.995)
+        case .blacks: histogram.percentile(0.005)
+        }
+    }
+}
+
+/// One bounded analysis at a time off MainActor. Core Image chooses CPU/GPU
+/// execution and reuses the unchanged color/balance prefix between candidates.
+actor AutomaticToneEstimator {
+    static let shared = AutomaticToneEstimator()
+    private lazy var session = EditRenderer.Session(cacheIntermediates: true, lowPriority: true)
+
+    /// Estimates one absolute slider value from an already decoded source.
+    /// Other global adjustments, profiles and natural balance remain active.
+    /// Local masks, crop and retouch are deliberately excluded: this is a
+    /// global source estimate, with no mask allocations or replacement renders.
+    func value(for control: AutomaticToneControl, bitmap: PreviewBitmap, settings: EditSettings) throws -> Double {
+        try Task.checkCancellation()
+        let size = try EditRenderer.outputSize(bitmap, maximumPixelSize: 256)
+        let proxy = try EditRenderer.resized(bitmap, width: size.width, height: size.height, priority: .thumbnail)
+        let source = try AutomaticToneHistogram(proxy.image)
+        // A flat field, nearly uniform noise or isolated specular outliers do
+        // not provide enough tonal evidence to justify an automatic change.
+        guard source.hasUsefulRange else { return 0 }
+
+        var global = settings
+        global.localAdjustments = []
+        global.developGeometry = .neutral
+        global[keyPath: control.keyPath] = 0
+        global = global.normalized
+        let baseline = try histogram(proxy, settings: global)
+        guard baseline.hasUsefulRange else { return 0 }
+        let initial = control.measurement(in: baseline)
+        let target = control.target
+        let tolerance = 2.0 / 1_023
+        guard abs(initial - target) > tolerance else { return 0 }
+        // Shadow/highlight recovery only opens blocked shadows or restrains
+        // bright highlights; it does not force an already suitable tail.
+        if control == .shadows && initial >= target { return 0 }
+        if control == .highlights && initial <= target { return 0 }
+
+        let direction = initial < target ? 1.0 : -1.0
+        var lower = 1
+        var upper = Int((control.range.upperBound / control.step).rounded())
+        var best = 0.0
+        var bestError = abs(initial - target)
+        var firstCandidate = true
+
+        // Search on the UI's exact step grid. At most nine small candidate
+        // renders are needed; accepted results never depend on the old value
+        // of the selected control, so repeated invocation is idempotent.
+        while lower <= upper {
+            try Task.checkCancellation()
+            let units = firstCandidate ? upper : (lower + upper) / 2
+            firstCandidate = false
+            let candidate = direction * Double(units) * control.step
+            var proposed = global
+            proposed[keyPath: control.keyPath] = candidate
+            let result = try histogram(proxy, settings: proposed)
+            let measured = control.measurement(in: result)
+            let error = abs(measured - target)
+            // Do not trade a substantial newly clipped region for a better
+            // percentile. Existing clipping and tiny specular points are kept.
+            let safe = result.blackClipping <= baseline.blackClipping + 0.005 &&
+                result.whiteClipping <= baseline.whiteClipping + 0.005
+            if safe && (error < bestError - 0.000_001 ||
+                (abs(error - bestError) <= 0.000_001 && abs(candidate) < abs(best))) {
+                best = candidate
+                bestError = error
+            }
+            let passedTarget = direction * (measured - target) >= 0
+            if !safe || passedTarget {
+                upper = units - 1
+            } else {
+                lower = units + 1
+            }
+        }
+        try Task.checkCancellation()
+        // Avoid jumping to a limit when that control has no useful influence
+        // on the sampled tonal region (for example whites in a dark scene).
+        guard abs(initial - target) - bestError > tolerance else { return 0 }
+        return min(control.range.upperBound, max(control.range.lowerBound, best))
+    }
+
+    private func histogram(_ bitmap: PreviewBitmap, settings: EditSettings) throws -> AutomaticToneHistogram {
+        try Task.checkCancellation()
+        let rendered = try EditRenderer.render(bitmap, settings: settings, session: session)
+        return try AutomaticToneHistogram(rendered.image)
+    }
+}
+
+fileprivate struct AutomaticToneHistogram {
+    private let bins: [Double]
+    private let total: Double
+    let blackClipping: Double
+    let whiteClipping: Double
+
+    var hasUsefulRange: Bool {
+        total > 0 && percentile(0.95) - percentile(0.05) >= 0.04
+    }
+
+    init(_ image: CGImage) throws {
+        try Task.checkCancellation()
+        let width = image.width, height = image.height
+        guard width > 0, height > 0, width <= 256, height <= 256 else { throw EditRenderError.oversizedPreview }
+        var pixels = [UInt8](repeating: 0, count: width * height * 4)
+        try pixels.withUnsafeMutableBytes { buffer in
+            guard let context = CGContext(data: buffer.baseAddress, width: width, height: height,
+                bitsPerComponent: 8, bytesPerRow: width * 4,
+                space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { throw EditRenderError.unavailable }
+            context.setBlendMode(.copy)
+            context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+        }
+        var bins = [Double](repeating: 0, count: 1_024)
+        var total = 0.0, black = 0.0, white = 0.0
+        // At most 65,536 pixels: a serial alpha-weighted CPU histogram avoids
+        // worker startup, synchronization and another GPU readback per bin.
+        for y in 0..<height {
+            try Task.checkCancellation()
+            for x in 0..<width {
+                let offset = (y * width + x) * 4
+                let alpha = Double(pixels[offset + 3])
+                guard alpha > 0 else { continue }
+                let luminance = min(1, (0.2126 * Double(pixels[offset]) +
+                    0.7152 * Double(pixels[offset + 1]) + 0.0722 * Double(pixels[offset + 2])) / alpha)
+                let weight = alpha / 255
+                bins[Int((luminance * 1_023).rounded())] += weight
+                total += weight
+                let maximumChannel = Double(max(pixels[offset], max(pixels[offset + 1], pixels[offset + 2]))) / alpha
+                if maximumChannel <= 1.0 / 255 { black += weight }
+                if maximumChannel >= 254.0 / 255 { white += weight }
+            }
+        }
+        self.bins = bins
+        self.total = total
+        blackClipping = total > 0 ? black / total : 0
+        whiteClipping = total > 0 ? white / total : 0
+    }
+
+    func percentile(_ fraction: Double) -> Double {
+        guard total > 0 else { return 0 }
+        let threshold = total * fraction
+        var cumulative = 0.0
+        for (index, count) in bins.enumerated() {
+            cumulative += count
+            if cumulative >= threshold { return Double(index) / 1_023 }
+        }
+        return 1
+    }
+}
