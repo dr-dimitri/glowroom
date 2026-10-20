@@ -120,7 +120,7 @@ struct DevelopDetailPreview: View {
                     .accessibilityLabel("Detailbereich auswählen")
                     .accessibilityValue(workspace.picksDetail ? "Aktiv" : "Inaktiv")
                     .accessibilityIdentifier("develop.detail-picker")
-                    .help("Detailbereich auswählen: im Foto einmal klicken. Erneutes Klicken auf das Fadenkreuz oder Escape bricht ab.")
+                    .help("Detailvorschau folgt dem Mauszeiger im Foto. Ein Klick im Foto fixiert den Ausschnitt. Erneutes Klicken auf das Fadenkreuz oder Escape beendet die Auswahl.")
                     .disabled(!isEnabled || workspace.navigatorImage == nil)
                 Text("Detailvorschau").font(.system(size: 11, weight: .medium))
                 Spacer(minLength: 0)
@@ -190,7 +190,7 @@ struct DevelopDetailPreview: View {
                 .accessibilityLabel("Vergrößerter Ausschnitt der bearbeiteten Vorschau")
                 .accessibilityIdentifier("develop.detail-preview")
             Text(workspace.picksDetail
-                 ? "Klicke auf den gewünschten Bereich im Foto. Escape bricht ab."
+                 ? "Bewege den Mauszeiger im Foto. Klicken fixiert den Ausschnitt; Escape beendet die Auswahl."
                  : "Klicken: Zoom / Gesamtansicht · Ziehen: Ausschnitt verschieben.")
                 .font(.system(size: 10))
                 .foregroundStyle(workspace.picksDetail ? Color.white.opacity(0.9) : Theme.muted)
@@ -202,7 +202,8 @@ struct DevelopDetailPreview: View {
 }
 
 /// Select in the final displayed image, including its crop, flips and rotation.
-/// The normal navigation surface yields while this one-shot picker is active.
+/// Follow the pointer until a click locks the detail. The normal navigation
+/// surface yields while this picker is active.
 struct DevelopDetailCanvas: View {
     @ObservedObject var workspace: DevelopWorkspace
     let geometry: DevelopGeometry
@@ -231,14 +232,22 @@ struct DevelopDetailCanvas: View {
                     workspace.detailFitsImage = false
                     workspace.picksDetail = false
                     NSCursor.arrow.set()
-                }, onHover: { point in if point == nil { NSCursor.arrow.set() } }, isEnabled: ready,
+                }, onHover: { location in
+                    guard let location else { NSCursor.arrow.set(); return }
+                    guard ready, workspace.picksDetail,
+                          let point = DevelopDetailGeometry.normalizedPoint(location, imageRect: rect) else { return }
+                    // Only move the existing image layer; pointer updates need
+                    // no render/decode work or asynchronous worker per event.
+                    if workspace.detailCenter != point { workspace.detailCenter = point }
+                    if workspace.detailFitsImage { workspace.detailFitsImage = false }
+                }, isEnabled: ready,
                     inputIdentity: AnyHashable(InputIdentity(source: workspace.sourceIdentity, geometry: geometry,
                         width: image.width, height: image.height,
                         viewportWidth: viewport.size.width, viewportHeight: viewport.size.height)),
                     cursor: { point in
                         ready && workspace.picksDetail && rect.contains(point) ? .crosshair : .arrow
                     },
-                    canvasLabel: "Detailbereich im Foto mit einem Klick auswählen",
+                    canvasLabel: "Detailvorschau folgt dem Mauszeiger im Foto · Klicken fixiert den Ausschnitt",
                     onCancel: { workspace.picksDetail = false },
                     canvasIdentifier: "develop.detail-canvas")
             }
