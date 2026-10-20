@@ -4,7 +4,7 @@ import PicEditCore
 /// Metadata-free model input. Source identities, paths, epochs and existing
 /// layer pixels remain app-side; user text is encoded as a JSON string.
 struct ImageEditingModelPrompt: Sendable {
-    static let version = 2
+    static let version = 3
     let data: String
     static let instructions = """
     The person's locale is de_DE.
@@ -14,6 +14,7 @@ struct ImageEditingModelPrompt: Sendable {
     status=proposal nur für unterstützte Bearbeitungen. Andere Aufgaben: unsupported; Weißabgleich, Farbtemperatur, Tönung, wärmer/kühler: whiteBalance; nicht unterstützte Sprache: unsupportedLanguage; Ablehnung: refused. Bei anderen Status sind changes und regions leer.
     Die beigefügten Pixel zeigen den aktuellen bearbeiteten Stand. Ändere nur Regler, die für den tatsächlichen Wunsch nötig sind, und erhalte die übrigen Einstellungen.
     changes enthält ausschließlich globale absolute Zielwerte bezogen auf parameters.baseline. NICHT als Delta ausgeben. exposure ist EV -5...5, ein kleiner Schritt ist 0.3 EV, niemals 10 oder 20.
+    Schwarzweiß ('schwarzweiß', 'schwarz weiß', 'schwarz weiss', 'black and white') bedeutet vollständige Entsättigung: saturation=-100. saturation=0 ist neutral und erhält die Farbe; -1 ist nur eine minimale Entsättigung. Schwarzweiß ist KEINE Belichtungs-, Schwarzpunkt-, Weißpunkt- oder Weißabgleichkorrektur. Wende dafür ausschließlich saturation=-100 im gewünschten Bereich an; die Bildhelligkeit bleibt erhalten.
     'Helle die dunklen Bereiche etwas auf' bedeutet normalerweise global shadows vorsichtig anheben, etwa um 20; helle Bereiche erhalten. Dafür KEINE räumliche Maske erzeugen.
     'Korrigiere den überstrahlten Hintergrund' (auch 'überstahlten') bedeutet regions target=background, highlights absenken, falls nötig exposure leicht absenken. Diese Korrektur NICHT zusätzlich global anwenden.
     regions enthält höchstens drei verschiedene räumliche Ziele, jedes höchstens einmal: subject=Hauptmotiv/Vordergrund; background=Umkehrung des Hauptmotivs; sky=Himmel. Nur verwenden, wenn der Benutzer eine solche räumliche Beschränkung verlangt und sie im Bild sinnvoll ist.
@@ -29,6 +30,7 @@ struct ImageEditingModelPrompt: Sendable {
     Verbindliche Beispiele bei globalem Ausgang 0:
     'Helle die dunklen Bereiche etwas auf' -> changes [{parameter:shadows,value:20}], regions [].
     'Korrigiere den überstrahlten Hintergrund' -> changes [], regions [{target:background,changes:[{parameter:highlights,value:-30},{parameter:exposure,value:-0.3}]}].
+    'mache den hintergrund schwarz weiss' -> changes [], regions [{target:background,changes:[{parameter:saturation,value:-100}]}]. Das Motiv bleibt farbig.
     'Verringere nur die Belichtung etwas' bei global exposure=1 -> changes [{parameter:exposure,value:0.7}], regions [].
     'Mache nur den Himmel etwas dunkler' -> changes [], regions [{target:sky,changes:[{parameter:exposure,value:-0.3}]}].
     Klassifiziere den tatsächlichen userText, nicht diese Beispielaufträge. Apple-Schutzmechanismen respektieren.
@@ -213,6 +215,7 @@ struct AppleImageEditingRuntime: ImageEditingModelRuntime {
     background=true nur wenn der Hintergrund bearbeitet werden soll. subject=true nur wenn Hauptmotiv/Vordergrund bearbeitet werden soll. sky=true nur wenn der Himmel bearbeitet werden soll. 'Erhalte das Motiv' fordert KEINE Motivbearbeitung.
     global=true nur für eine gewünschte Bearbeitung des gesamten Bildes oder von hellen/dunklen Tonwerten ohne räumliche Einschränkung. Eine reine Hintergrund-, Motiv- oder Himmelskorrektur hat global=false.
     'Korrigiere den überstrahlten Hintergrund' (auch 'überstahlten') -> status proposal, background true, subject false, sky false, global false.
+    'Mache den Hintergrund schwarz weiss' (auch 'schwarzweiß' oder 'schwarz weiß') ist eine unterstützte Entsättigung, kein Weißabgleich -> status proposal, background true, subject false, sky false, global false.
     'Helle die dunklen Bereiche etwas auf' -> status proposal, background false, subject false, sky false, global true. Dunkle Tonwerte sind KEIN räumliches Motiv.
     'Helle das Motiv auf und entsättige den Hintergrund' -> background true, subject true, sky false, global false.
     'Hintergrund korrigieren und übriges Bild natürlich sättigen' -> background true, subject true, sky false, global false.
@@ -236,8 +239,8 @@ struct AppleImageEditingRuntime: ImageEditingModelRuntime {
             DynamicGenerationSchema(name: name, properties: [
                 .init(name: "parameter", schema: DynamicGenerationSchema(type: String.self,
                     guides: [.anyOf(parameters.map(\.rawValue))])),
-                .init(name: "value", description: "Absoluter Zielwert innerhalb der Parametergrenzen; exposure in EV -5...5",
-                    schema: DynamicGenerationSchema(type: Double.self))
+                .init(name: "value", description: "Absoluter Zielwert: exposure -5...5 EV; übrige lokale Regler -100...100. saturation: 0 neutral, -100 vollständig schwarzweiß. Globale positive Regler 0...100 entsprechend parameters.",
+                    schema: DynamicGenerationSchema(type: Double.self, guides: [.range(-100...100)]))
             ])
         }
         let global = change(name: "GlobalerRegler", parameters: EditParameter.allCases)

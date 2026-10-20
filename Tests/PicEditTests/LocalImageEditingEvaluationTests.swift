@@ -64,6 +64,36 @@ struct LocalImageEditingEvaluationTests {
         imageEditingEvaluationMeasurement("production background and retained manual mask", start: start)
         try await imageEditingEvaluationExport(baseline: snapshot, target: target, layer: layer)
     }
+
+    @Test(.enabled("Requires PICEDIT_RUN_IMAGE_EDITING_EVALUATION=1, a ready local vision model, and the ignored local test_picture3.jpg fixture") {
+        guard await imageEditingEvaluationAvailable() else { return false }
+        let exists = FileManager.default.fileExists(atPath: imageEditingEvaluationFixture.path)
+        if !exists { print("Image editing monochrome qualification skipped: optional local fixture test_picture3.jpg is absent; it is not available in CI.") }
+        return exists
+    }, arguments: ["mache den hintergrund schwarz weiss", "Mache den Hintergrund schwarzweiß.", "Mache den Hintergrund schwarz weiß."])
+    func actualAssistantMakesOnlyBackgroundBlackAndWhite(_ prompt: String) async throws {
+        let source = imageEditingEvaluationFixture
+        let original = try Data(contentsOf: source)
+        let snapshot = try analysisFileRequest(source).snapshot
+        let request = AIEditingRequest(prompt: prompt, snapshot: snapshot)
+        let coordinator = AIRequestCoordinator(provider: LocalAIEditingProviderFactory.makeAssistantProvider())
+        let start = ProcessInfo.processInfo.systemUptime
+        let result = try await coordinator.proposal(for: request)
+        guard case .changes(let proposal, let target) = result.validation else { Issue.record("Expected background desaturation"); return }
+        let layer = try #require(result.localAdjustments.first)
+        #expect(result.localAdjustments.count == 1)
+        #expect(layer.mask.isInverted)
+        #expect(layer.settings == LocalAdjustmentSettings(saturation: -100))
+        #expect(proposal.changes.isEmpty)
+        var globals = target
+        globals.localAdjustments = snapshot.settings.localAdjustments
+        #expect(globals == snapshot.settings)
+        #expect(try Data(contentsOf: source) == original)
+        imageEditingEvaluationMeasurement("production black-and-white background", start: start)
+        if prompt == "mache den hintergrund schwarz weiss" {
+            try await imageEditingEvaluationExport(baseline: snapshot, target: target, layer: layer, subdirectory: "monochrome")
+        }
+    }
 }
 
 private func imageEditingEvaluationAvailable() async -> Bool {
@@ -99,12 +129,14 @@ private func imageEditingEvaluationMeasurement(_ label: String, start: TimeInter
     var usage = rusage(); getrusage(RUSAGE_SELF, &usage)
     print("Image editing qualification v1 \(label): elapsed=\(String(format: "%.3f", ProcessInfo.processInfo.systemUptime - start))s, high-water-RSS=\(usage.ru_maxrss)B; direction/selection/schema checks only, no perceptual quality guarantee.")
 }
-private func imageEditingEvaluationExport(baseline: AIEditingSnapshot, target: EditSettings, layer: LocalAdjustment) async throws {
+private func imageEditingEvaluationExport(baseline: AIEditingSnapshot, target: EditSettings, layer: LocalAdjustment,
+                                          subdirectory: String? = nil) async throws {
     // Photo-derived artifacts are created only for an explicitly requested local
     // evaluation destination. The ignored source fixture is never overwritten.
     guard let path = ProcessInfo.processInfo.environment["PICEDIT_IMAGE_EDITING_EVALUATION_OUTPUT"] else { return }
     guard path.hasPrefix("/") else { Issue.record("Evaluation output must be an absolute local directory"); return }
-    let output = URL(fileURLWithPath: path, isDirectory: true)
+    let root = URL(fileURLWithPath: path, isDirectory: true)
+    let output = subdirectory.map { root.appendingPathComponent($0, isDirectory: true) } ?? root
     try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
     let preparer = ImageAnalysisPreparer()
     let lifecycle = UUID()
