@@ -11,7 +11,6 @@ struct DevelopInspector: View {
     var column: DevelopInspectorColumn = .adjustments
     @EnvironmentObject private var editor: EditingModel
     @EnvironmentObject private var assistant: AIAssistantModel
-    @EnvironmentObject private var imageAnalysis: ImageAnalysisModel
     @EnvironmentObject private var photoMetadata: PhotoMetadataModel
     @EnvironmentObject private var layout: WorkspaceLayoutModel
     @EnvironmentObject private var maskWorkspace: InlineMaskWorkspace
@@ -29,7 +28,7 @@ struct DevelopInspector: View {
     private var saveStatus: WorkspaceSaveStatus { WorkspaceSaveStatus(editor: editor) }
 
     private var groups: [WorkspaceTool] {
-        column == .navigation ? [.assistant, .analysis, .metadata, .versions] : [.edit]
+        column == .navigation ? [.assistant, .metadata, .versions] : [.edit]
     }
 
     var body: some View {
@@ -284,8 +283,6 @@ struct DevelopInspector: View {
             }
         case .assistant:
             AIAssistantSection(model: assistant, comparesOriginal: library.comparesOriginal || library.comparesCurrentSourceWithoutSettings)
-        case .analysis:
-            ImageAnalysisSection(model: imageAnalysis)
         case .metadata:
             VStack(alignment: .leading, spacing: 20) {
                 PhotoMetadataSection(model: photoMetadata)
@@ -408,13 +405,6 @@ struct DevelopInspector: View {
             switch assistant.state {
             case .generating: return ("Läuft", "arrow.triangle.2.circlepath", false)
             case .previewing: return ("Vorschlag", "sparkles", false)
-            case .failed: return ("Fehler", "exclamationmark.triangle", true)
-            default: break
-            }
-        case .analysis:
-            switch imageAnalysis.state {
-            case .analyzing: return ("Läuft", "arrow.triangle.2.circlepath", false)
-            case .ready: return ("Vorschlag", "doc.text.magnifyingglass", false)
             case .failed: return ("Fehler", "exclamationmark.triangle", true)
             default: break
             }

@@ -464,9 +464,10 @@ final class EditingModel: ObservableObject, GeneratedArtifactAccepting {
     }
     func acceptAIProposal(_ result: AIProposalResult, in library: LibraryModel) -> Bool {
         do { try result.request.snapshot.validate() } catch { return false }
-        guard result.request.snapshot.persistedVersion != nil,
+        guard (result.request.mode == .single || result.localAdjustments.isEmpty), result.request.snapshot.persistedVersion != nil,
               isCurrentAISnapshot(result.request.snapshot, in: library), case .changes(let proposal, let settings) = result.validation,
-              let checked = try? EditProposalValidator().validate(proposal, against: result.request.snapshot.settings),
+              let checked = try? AIProposalResult.validate(proposal: proposal, localAdjustments: result.localAdjustments,
+                  against: result.request.snapshot.settings),
               case .changes(_, let validated) = checked, settings == validated,
               settings != self.settings(for: result.request.snapshot.assetID), nextRevisionAvailable(for: result.request.snapshot.assetID) else { return false }
         let assetID = result.request.snapshot.assetID

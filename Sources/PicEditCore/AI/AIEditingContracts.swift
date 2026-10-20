@@ -61,6 +61,8 @@ public enum AIEditingError: Error, Hashable, Sendable {
     case safetyRefusal
     case inputLimitExceeded
     case temporaryModelFailure
+    case regionSelectionUnavailable
+    case skyModelUnavailable
     case invalidRequest
     case staleSnapshot
     case invalidResponse(AIProposalValidationError)
@@ -78,6 +80,8 @@ extension AIEditingError: LocalizedError {
         case .safetyRefusal: return "Das lokale Systemmodell hat die Anfrage aus Sicherheitsgründen abgelehnt."
         case .inputLimitExceeded: return "Die Anfrage überschreitet das Eingabe- oder Kontextlimit der lokalen KI. Bitte kürzen."
         case .temporaryModelFailure: return "Das lokale Systemmodell ist vorübergehend beschäftigt. Bitte die Anfrage erneut starten."
+        case .regionSelectionUnavailable: return "Der gewünschte Bildbereich konnte nicht zuverlässig ausgewählt werden. Verwende das Werkzeug Maskieren oder präzisiere deinen Auftrag. Es wurde nichts geändert."
+        case .skyModelUnavailable: return "Für die Himmelskorrektur wird das lokale Himmelsmodell benötigt. Öffne Maskieren und prüfe dort „Himmelsmodell einrichten …“. Es wurde nichts geändert."
         case .invalidRequest: return "Die KI-Anfrage ist ungültig."
         case .staleSnapshot: return "Der Bild- oder Bearbeitungsstand hat sich inzwischen geändert."
         case .invalidResponse(let reason):

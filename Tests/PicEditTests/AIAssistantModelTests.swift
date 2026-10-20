@@ -16,6 +16,51 @@ final class AIAssistantModelTests {
     deinit { try? FileManager.default.removeItem(at: directory) }
 
     @Test
+    func regionalOnlyResponseActivatesAndShowsItsControlsWithoutGlobalChanges() async throws {
+        let baseline = providerRequest(prompt: "Korrigiere den überstrahlten Hintergrund").snapshot
+        var current = baseline
+        var acceptCount = 0
+        let raster = try LocalMaskRaster(width: 2, height: 1, bytes: Data([0, 255]))
+        let layer = try LocalAdjustment(name: "KI · Hintergrund",
+            mask: LocalAdjustmentMask(shape: .subject(raster), isInverted: true, feather: 0),
+            settings: LocalAdjustmentSettings(exposure: -0.2, highlights: -25))
+        let provider = AssistantRegionalProvider(layer: layer)
+        let preflight = AssistantPreflightProbe()
+        let assistant = AIAssistantModel(provider: provider,
+            coordinator: AIRequestCoordinator(provider: provider, budget: AIResourceBudget()),
+            snapshot: { current }, accept: { result in
+                guard case .changes(_, let target) = result.validation else { return false }
+                acceptCount += 1
+                current = AIEditingSnapshot(assetID: baseline.assetID, source: baseline.source, settings: target,
+                    token: AIEditingToken(editSessionID: baseline.token.editSessionID,
+                        editGeneration: baseline.token.editGeneration + 1,
+                        selectionSessionID: baseline.token.selectionSessionID,
+                        selectionGeneration: baseline.token.selectionGeneration), persistedVersion: baseline.persistedVersion)
+                return true
+            }, sourceReadable: { _ in await preflight.check() })
+        assistant.prompt = "Korrigiere den überstrahlten Hintergrund"
+        await assistant.refreshAvailability()
+        #expect(assistant.usesImageContext)
+        assistant.generate()
+        try await wait { assistant.state == .previewing }
+        #expect(acceptCount == 1 && assistant.hasAppliedChanges)
+        #expect(await preflight.calls == 0, "The image provider owns stamped source preparation; no second decode preflight")
+        #expect(assistant.changes.isEmpty)
+        #expect(assistant.regionalChanges.count == 1)
+        #expect(assistant.regionalChanges.first?.name == layer.name)
+        #expect(assistant.regionalChanges.first?.changes.map(\.parameter) == [.exposure, .highlights])
+        #expect(current.settings.localAdjustments == [layer])
+        assistant.comparison = .current
+        #expect(assistant.displaySettings(assetID: baseline.assetID, committed: current.settings,
+            developing: true, comparesOriginal: false) == baseline.settings)
+        assistant.discard()
+        #expect(current.settings.localAdjustments == [layer])
+        #expect(assistant.regionalChanges.isEmpty)
+        assistant.replaceProvider(AssistantProvider())
+        #expect(!assistant.usesImageContext)
+    }
+
+    @Test
     func generationActivatesImmediatelyAndClosingDetailsKeepsSavedEdit() async throws {
         let (library, editor, store, provider, assistant) = try await fixture()
         let assetID = try #require(library.selectedID)
@@ -322,6 +367,23 @@ final class AIAssistantModelTests {
 }
 
 private enum AssistantTestError: Error { case timeout, injected }
+
+private actor AssistantPreflightProbe {
+    private(set) var calls = 0
+    func check() -> Bool { calls += 1; return true }
+}
+
+private struct AssistantRegionalProvider: AIResolvedEditingProvider {
+    let id = "assistant-region-test"
+    let capabilities: AIProviderCapabilities = [.textEditing, .imageUnderstanding]
+    let layer: LocalAdjustment
+    func availability() async -> AIAvailability { .available }
+    func proposal(for request: AIEditingRequest) async throws -> Data { throw AIEditingError.unsupportedCapability }
+    func resolvedProposal(for request: AIEditingRequest) async throws -> AIResolvedEditingProposal {
+        AIResolvedEditingProposal(data: try JSONEncoder().encode(EditProposal(changes: [], explanation: "Lichter im Hintergrund reduzieren.")),
+            localAdjustments: [layer])
+    }
+}
 
 private actor AssistantProvider: AIEditingProvider {
     nonisolated let id = "assistant-test"

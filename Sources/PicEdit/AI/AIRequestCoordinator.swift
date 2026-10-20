@@ -6,6 +6,51 @@ import PicEditCore
 struct AIProposalResult: Equatable, Sendable {
     let request: AIEditingRequest
     let validation: EditProposalValidationResult
+    /// Frozen selections created by app services, never decoded from provider JSON.
+    let localAdjustments: [LocalAdjustment]
+
+    init(request: AIEditingRequest, validation: EditProposalValidationResult,
+         localAdjustments: [LocalAdjustment] = []) {
+        self.request = request
+        self.validation = validation
+        self.localAdjustments = localAdjustments
+    }
+
+    /// Reused at acceptance so a target cannot replace existing masks or smuggle
+    /// unsupported settings past the model's deliberately small scalar schema.
+    static func validate(proposal: EditProposal, localAdjustments: [LocalAdjustment],
+                         against baseline: EditSettings,
+                         validator: EditProposalValidator = .init()) throws -> EditProposalValidationResult {
+        let global = try validator.validate(proposal, against: baseline)
+        do {
+            try baseline.validateLocalAdjustments()
+            guard localAdjustments.count <= 3,
+                  localAdjustments.allSatisfy(\.isEffective) else {
+                throw AIEditingError.invalidResponse(.invalidType)
+            }
+            // These bounded scalar/shape checks remain serial. Raster coverage
+            // generation and inspection belong to the background mask service.
+            for layer in localAdjustments {
+                try layer.validate()
+                guard layer.mask.refinement == nil else { throw AIEditingError.invalidResponse(.invalidType) }
+                switch layer.mask.shape {
+                case .subject, .sky: break
+                case .brush, .linear, .radial: throw AIEditingError.invalidResponse(.invalidType)
+                }
+            }
+            var target: EditSettings
+            switch global {
+            case .changes(_, let settings): target = settings
+            case .noChange: target = baseline
+            }
+            target.localAdjustments.append(contentsOf: localAdjustments)
+            try target.validateLocalAdjustments()
+            return target == baseline ? .noChange(explanation: proposal.explanation)
+                : .changes(proposal: proposal, settings: target)
+        } catch {
+            throw AIEditingError.invalidResponse(.invalidType)
+        }
+    }
 }
 
 struct AILookGroupResult: Equatable, Sendable {
@@ -14,7 +59,7 @@ struct AILookGroupResult: Equatable, Sendable {
 }
 
 private enum AIRequestValidation: Sendable {
-    case single(EditProposalValidationResult)
+    case single(EditProposalValidationResult, localAdjustments: [LocalAdjustment])
     case looks(AIValidatedLookGroup)
 }
 
@@ -66,8 +111,8 @@ actor AIRequestCoordinator {
 
     func proposal(for request: AIEditingRequest) async throws -> AIProposalResult {
         guard request.mode == .single else { throw AIEditingError.invalidRequest }
-        guard case .single(let validation) = try await perform(request) else { throw AIEditingError.invalidRequest }
-        return AIProposalResult(request: request, validation: validation)
+        guard case .single(let validation, let localAdjustments) = try await perform(request) else { throw AIEditingError.invalidRequest }
+        return AIProposalResult(request: request, validation: validation, localAdjustments: localAdjustments)
     }
 
     func lookGroup(for request: AIEditingRequest) async throws -> AILookGroupResult {
@@ -179,17 +224,39 @@ actor AIRequestCoordinator {
                 let availability = await provider.availability()
                 try Task.checkCancellation()
                 if case let .unavailable(reason) = availability { throw AIEditingError.unavailable(reason) }
-                if !(provider is any AIRemoteEditingProvider) { lease = try await budget.acquireLocalInference() }
+                // Resolved providers lease their actual inference separately
+                // from mask work; an outer lease would deadlock a shared budget.
+                if !(provider is any AIRemoteEditingProvider), !(provider is any AIResolvedEditingProvider) {
+                    lease = try await budget.acquireLocalInference()
+                }
                 try Task.checkCancellation()
-                let data = try await provider.proposal(for: request)
+                let data: Data
+                let localAdjustments: [LocalAdjustment]
+                if let resolved = provider as? any AIResolvedEditingProvider {
+                    let proposal = try await resolved.resolvedProposal(for: request)
+                    data = proposal.data
+                    localAdjustments = proposal.localAdjustments
+                } else {
+                    data = try await provider.proposal(for: request)
+                    localAdjustments = []
+                }
                 try Task.checkCancellation()
                 guard data.count <= budget.limits.maximumResponseBytes else {
                     throw AIEditingError.invalidResponse(.responseTooLarge)
                 }
                 switch request.mode {
                 case .single:
-                    result = .success(.single(try validator.validate(data, against: request.snapshot.settings)))
+                    let global = try validator.validate(data, against: request.snapshot.settings)
+                    let proposal: EditProposal
+                    switch global {
+                    case .changes(let patch, _): proposal = patch
+                    case .noChange(let explanation): proposal = EditProposal(changes: [], explanation: explanation)
+                    }
+                    let validation = try AIProposalResult.validate(proposal: proposal, localAdjustments: localAdjustments,
+                        against: request.snapshot.settings, validator: validator)
+                    result = .success(.single(validation, localAdjustments: localAdjustments))
                 case .lookGroup:
+                    guard localAdjustments.isEmpty else { throw AIEditingError.invalidResponse(.invalidType) }
                     result = .success(.looks(try validator.validateLookGroup(data, against: request.snapshot.settings)))
                 }
             } catch is CancellationError {

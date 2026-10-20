@@ -1,6 +1,8 @@
-# Lokale Bildanalyse: Machbarkeitsentscheidung
+# Lokale Bildanalyse: interne Grundlage und historische Entscheidung
 
-Stand: 16. Oktober 2026. Diese Entscheidung wurde vor der Adapterimplementierung für [AI-05 / Issue #6](https://github.com/dr-dimitri/picedit/issues/6) getroffen. Der vorhandene Textprovider bleibt ein Anbieter ohne Bildzugriff. Eine getrennte Bildanalysefähigkeit darf nur nach SDK-, Laufzeit-, Sprach- und Modellprüfung angeboten werden.
+Der eigenständige Bereich **Bildanalyse** wurde aus der aktuellen Oberfläche entfernt. Die lokale Vision-Anbindung, Quellenprüfung und begrenzte Rastervorbereitung bleiben für **Bildinformationen** und den [bildbezogenen Assistenten](LOCAL-AI-ASSISTANT.md) erhalten. Die folgenden datierten Nachweise betreffen Bildbeschreibung und Vorbereitung; sie belegen allein keine textgesteuerte Bildkorrektur.
+
+Stand: 16. Oktober 2026. Diese Entscheidung wurde vor der Adapterimplementierung für [AI-05 / Issue #6](https://github.com/dr-dimitri/picedit/issues/6) getroffen. Der ursprüngliche Textprovider ohne Bildzugriff bleibt als Textfallback erhalten. Eine getrennte Bildanalysefähigkeit darf nur nach SDK-, Laufzeit-, Sprach- und Modellprüfung angeboten werden.
 
 ## Gebaute und geprüfte Grundlage
 
@@ -33,9 +35,9 @@ Gleiche Analyseanfragen sollen ihre Arbeit teilen; Abbruch eines Beobachters dar
 
 Analyseergebnisse bleiben begrenzte Vorschläge. Sie sind keine bestätigten Metadaten und geben weder Auskunft über Identität oder Gesundheit von Personen noch über nicht belegte Aufnahmeorte. Metadatenpersistenz folgt separat in [AI-06 / Issue #7](https://github.com/dr-dimitri/picedit/issues/7).
 
-## Implementierung und Bedienung
+## Erhaltene interne Implementierung
 
-Der eigene Bereich **Bildanalyse** im Entwickeln-Inspector startet ausschließlich durch **Bild lokal analysieren**. **Originalvorschau** ist vorausgewählt und bleibt bei normalen Regleränderungen gültig. **Bearbeitete Vorschau** beendet zunächst die aktive Reglergeste und erfasst die übernommenen Werte; eine noch nicht angenommene KI-Lookvorschau gehört nicht dazu. **Analyse abbrechen**, **Analyse verwerfen** und **Bildfähigkeit erneut prüfen** betreffen ausschließlich diesen Ablauf.
+Der frühere eigenständige Analyse-Inspector samt Start-, Abbruch- und Verwerfen-Aktionen ist entfernt. Interne Originalanalysen dienen weiterhin den Metadatenvorschlägen. Der neue Assistent verwendet für seine Planung eine bearbeitete Vorschau und einen eigenen streng validierten Bearbeitungsvertrag; automatische Masken entstehen anschließend aus der geometrieneutralen Quelle. Der reine Beschreibungsdienst ändert selbst weiterhin keine Regler oder Metadaten.
 
 `ImageAnalysisRequest` bindet Sprache `de_DE`, Originalquelle, Eingabeart und getrennte Auswahl-/Bearbeitungs-/Lebenszyklusepochen. `ImageAnalysisResult` trennt den modellgelieferten Vorschlag von appseitiger Provenienz. `ImageAnalysisProviderDescriptor.capabilities` nennt ausdrücklich `imageUnderstanding`; die Bereitschaft des Textproviders schaltet diesen Dienst nicht frei. Die Systemmodellversion ist über die verwendete API nicht öffentlich verfügbar und bleibt deshalb `nil`, statt eine Version zu erfinden.
 
@@ -49,7 +51,7 @@ Der SHA-256-Digest umfasst die tatsächlich als `CGImage` übergebenen Pixelzeil
 
 Der native Adapter erstellt pro Auftrag eine frische Sitzung am wiederverwendeten Systemmodell, ohne Tools oder Cloud. Guided Generation liefert Schema 1 mit höchstens zwölf Attributen aus Motiv, Farbe, Komposition, Licht und Stil. Die gemeinsame unabhängige JSON-Prüfung lehnt unbekannte/doppelte Felder, ungültige Versionen, Kategorien und Typen vollständig ab. Grenzen: 16 KiB rohe Antwort, sechs Verschachtelungsebenen, 96 JSON-Werte, 2048 UTF-8-Bytes Beschreibung und 256 UTF-8-Bytes pro Attribut. Ungültige Antworten werden nicht gekürzt oder teilweise angezeigt. Modellfehler werden ohne rohe Antwort oder Dateipfad kategorisiert.
 
-## Prüfung der Integration
+## Historische Prüfung der Bildanalyse-Integration vom 16. Oktober 2026
 
 Die Standardtests verwenden ausschließlich Fakes und isolierte synthetische Dateien. Gesteuerte Fortsetzungen prüfen geteilte Aufträge, einzelne Abbrüche, zwanzig schnelle Kontexte, nicht kooperierende Arbeit, gemeinsame Lease, Original-/Bearbeitungsidentität, Quellenwechsel, begrenzten LRU-Cache, Schemafehler und Verfügbarkeitsgründe. Controllerprüfungen erfassen A → B → A, Undo auf gleiche Werte, kurze Restore-/Backup-/Schließen-Phasen und verspätete Antworten. Sie prüfen außerdem, dass Analyse keine Regler, Undo-Schritte oder Metadaten speichert.
 

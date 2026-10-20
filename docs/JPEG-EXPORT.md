@@ -6,7 +6,7 @@ HEIF verwendet Core Images echten [10-Bit-HEIF-Encoder](https://developer.apple.
 
 Übernommene Freistellung, Spiegelung und Drehung sind Teil der Ausgabe. Lokale Korrekturen, manuelle Klon-/Reparaturstellen und Rote-Augen-Korrekturen verwenden Koordinaten der unbeschnittenen, orientierten Quelle; die Freistellung folgt am Ende des gemeinsamen Bildgraphen. Die Exportgrößen und die Vorschau im Dialog beziehen sich auf diese freigestellte und gedrehte Ausgabe. Lanczos skaliert deren tatsächliche Maße, damit ein Beschnitt nicht anschließend auf die ursprünglichen Proportionen gestreckt wird.
 
-Gültige KI-Reglerantworten und angeklickte Lookkarten werden direkt aktiviert. Der Exportdialog erfasst ausschließlich `EditingModel.settings(for:)`; ein danach neu geöffneter Export enthält sofort diese aktiven Werte. Noch nicht ausgewählte Lookkarten verändern den Export nicht. Der Originalvergleich und der Vergleich mit dem KI-Ausgangsstand ändern die Exportquelle nicht.
+Gültige Assistentenaufträge aktivieren globale Regler und gegebenenfalls neue lokale Maskenebenen gemeinsam. Der Exportdialog erfasst ausschließlich `EditingModel.settings(for:)`; ein danach neu geöffneter Export enthält sofort diese aktiven Werte. Fehlgeschlagene oder noch laufende Aufträge verändern den Export nicht. Der Originalvergleich und der Vergleich mit dem KI-Ausgangsstand ändern die Exportquelle nicht.
 
 Seit der Einführung dauerhafter Rasterquellen wird der Dialog für eine Auswahl mit aktiver Artefaktquelle ausdrücklich gesperrt. Der bisherige Exportpfad gilt für Originalquellen; der Variantenexport wird separat integriert. Dadurch kann kein scheinbar erfolgreicher Export versehentlich das importierte Original anstelle des gewählten Rasterstands verwenden.
 

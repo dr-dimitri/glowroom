@@ -121,6 +121,20 @@ struct UnavailableLocalAIModelRuntime: LocalAIModelRuntime {
 }
 
 enum LocalAIEditingProviderFactory {
+    /// Image-aware editing has a separate SDK/runtime gate. Older systems keep
+    /// the existing text controls; the independent mask tools remain available.
+    static func makeAssistantProvider() -> any AIEditingProvider {
+        if #available(macOS 27.0, *) {
+            #if compiler(>=6.4) && canImport(FoundationModels, _version: 2.0) && !PICEDIT_DISABLE_FOUNDATION_MODELS
+            if AppleImageEditingRuntime.supportsVision {
+                return ImageAwareEditingProvider(runtime: AppleImageEditingRuntime())
+            }
+            #endif
+        }
+        return makeProvider()
+    }
+
+    /// Retained for isolated text-only adapter evaluations and older systems.
     static func makeProvider() -> any AIEditingProvider {
         if #available(macOS 26.0, *) {
             // Optional Apple SDK support must not raise the package's Swift 5.9 minimum.

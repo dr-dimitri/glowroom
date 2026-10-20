@@ -38,7 +38,7 @@ final class AIProviderSettings: ObservableObject {
 
     init(directory: URL, defaults: UserDefaults = .standard,
          keychain: any AICloudKeychain = SystemAICloudKeychain(),
-         local: any AIEditingProvider = LocalAIEditingProviderFactory.makeProvider(),
+         local: any AIEditingProvider = LocalAIEditingProviderFactory.makeAssistantProvider(),
          transport: any CloudHTTPTransport = BoundedCloudHTTPTransport()) {
         self.defaults = defaults; self.keychain = keychain; self.local = local
         let savedWorkspace = defaults.string(forKey: "ai.cloud.workspaceID") ?? ""

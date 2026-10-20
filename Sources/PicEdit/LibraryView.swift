@@ -8,7 +8,6 @@ struct LibraryView: View {
     @EnvironmentObject private var exporter: JPEGExportModel
     @EnvironmentObject private var layout: WorkspaceLayoutModel
     @EnvironmentObject private var assistant: AIAssistantModel
-    @EnvironmentObject private var imageAnalysis: ImageAnalysisModel
     @EnvironmentObject private var photoMetadata: PhotoMetadataModel
     @FocusState private var focusedWorkspaceControl: WorkspaceControlFocus?
     let dataDirectory: URL
@@ -629,12 +628,6 @@ struct LibraryView: View {
             case .failed: Button("Assistent: Fehler prüfen") { revealNoticeTool(.assistant) }
             default: EmptyView()
             }
-            switch imageAnalysis.state {
-            case .analyzing: Button("Bildanalyse läuft") { revealNoticeTool(.analysis) }
-            case .ready: Button("Bildanalyse: Ergebnis anzeigen") { revealNoticeTool(.analysis) }
-            case .failed: Button("Bildanalyse: Fehler prüfen") { revealNoticeTool(.analysis) }
-            default: EmptyView()
-            }
             if photoMetadata.hasManualDraft || photoMetadata.record?.draft != nil {
                 Button("Bildinformationen: Entwurf prüfen") { revealNoticeTool(.metadata) }
             }
@@ -655,7 +648,6 @@ struct LibraryView: View {
     private var hasWorkspaceError: Bool {
         if saveStatus.hasError || photoMetadata.errorMessage != nil || photoMetadata.hasPendingRetry || photoMetadata.recovery != nil { return true }
         if case .failed = assistant.state { return true }
-        if case .failed = imageAnalysis.state { return true }
         return false
     }
 
@@ -689,7 +681,6 @@ struct LibraryView: View {
                     .disabled(photoMetadata.isSaving || photoMetadata.isClosing)
             }
             if case .failed(let message) = assistant.state { Text("Assistent: \(message)") }
-            if case .failed(let message) = imageAnalysis.state { Text("Bildanalyse: \(message)") }
             Divider()
             workspaceNoticeLinks
             Button("Schließen") { showsWorkspaceErrors = false }
@@ -700,12 +691,10 @@ struct LibraryView: View {
     private var noticeLabel: String {
         if photoMetadata.errorMessage != nil || photoMetadata.hasPendingRetry || photoMetadata.recovery != nil || editor.failedArtifactCommitID != nil || editor.isReadOnly || editor.errorMessage != nil { return "Fehler prüfen" }
         if case .failed = assistant.state { return "Assistent: Fehler" }
-        if case .failed = imageAnalysis.state { return "Analyse: Fehler" }
         if case .generating = assistant.state { return "Assistent läuft" }
-        if imageAnalysis.state == .analyzing || photoMetadata.isAnalyzing { return "Analyse läuft" }
-        if assistant.state == .previewing { return assistant.hasAppliedChanges ? "KI-Bearbeitung aktiv" : "Look auswählen" }
+        if photoMetadata.isAnalyzing { return "Bildinformationen: Analyse" }
+        if assistant.state == .previewing { return assistant.hasAppliedChanges ? "KI-Bearbeitung aktiv" : "Assistent: Ergebnis" }
         if photoMetadata.hasManualDraft || photoMetadata.record?.draft != nil { return "Entwurf vorhanden" }
-        if imageAnalysis.result != nil { return "Analyseergebnis" }
         return "Hinweise"
     }
 

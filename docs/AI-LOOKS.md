@@ -1,14 +1,8 @@
-# Drei lokale Lookvorschläge
+# Drei lokale Lookvorschläge – Kompatibilitätsbestand
 
-[AI-04 / Issue #5](https://github.com/dr-dimitri/picedit/issues/5) ergänzt den [Entwicklungsassistenten](LOCAL-AI-ASSISTANT.md) um drei vergleichbare Textrezepte. Die Voraussetzungen AI-01, AI-02 und AI-03 sind gemergt. Die Varianten beruhen auf einem gemeinsamen übernommenen Ausgangsstand; der reine Textprovider sieht weiterhin keine Bildpixel und bewertet kein Motiv.
+Die aktuelle Oberfläche bietet keine Look-Erstellung oder Lookkarten mehr. **Assistent** führt einzelne textbasierte Bearbeitungsaufträge aus; die Bedienung steht unter [Lokaler Entwicklungsassistent](LOCAL-AI-ASSISTANT.md). Die interne Look-API, Validatoren, Karten-Caches und Tests aus [AI-04 / Issue #5](https://github.com/dr-dimitri/picedit/issues/5) bleiben vorerst ohne UI-Einstieg erhalten.
 
-## Bedienung
-
-**Drei Looks erstellen** fordert gemeinsam die Stile „Natürlich“, „Kontrastreich“ und „Entsättigt“ an. Ein zusätzlicher Wunsch ist optional und auf 2048 UTF-8-Bytes begrenzt. Die drei gleichartigen Karten bleiben in dieser Reihenfolge. Zunächst ist keine Variante ausgewählt. Ein Klick auf eine Karte aktiviert den Look sofort in der Bearbeitung; ein zusätzlicher Übernehmen-Button entfällt. Alle Reglerangaben und Deltas werden aus Ausgang und validiertem Ziel berechnet; Varianten bauen nicht aufeinander auf.
-
-Der Vergleich **Ausgangsstand / Aktive Bearbeitung** sowie **Importiertes Original anzeigen** und **Aktuelle Quelle ohne Regler** bleiben erreichbar. Die beiden Quellenvergleiche zeigen das importierte Original beziehungsweise die aktive Bildbasis ohne zusätzliche Regler. Jeder Wechsel zu einer anderen Karte speichert deren vollständiges Ziel als einen Undo-Schritt und ruft das Modell nicht erneut auf. Dadurch werden Änderungen der vorigen Variante zurückgesetzt, statt die Looks aufeinander zu stapeln. Raster, Filmstreifen und JPEG-Export verwenden sofort die aktiven Werte, auch während der ausdrücklich gewählten Ausgangsstandansicht.
-
-**Command-Z** geht die Lookwechsel einzeln rückwärts durch; weitere Aufrufe erreichen alle vorherigen Schritte derselben Funktion. Die Auswahl einer anderen Bearbeitungsfunktion beginnt eine neue Historie. Undo/Redo, externe Bild-/Reglerwechsel, Wartung/Restore und Schließen entwerten die Gruppe und geben ihre Bildreferenzen frei. Das automatische Speichern eines aktiven Looks entwertet die übrigen Karten nicht. **Ergebnis schließen** entfernt die Kartenanzeige; die aktiven Anpassungen und ihre Historie bleiben erhalten.
+Die folgenden Verträge und Prüfungen dokumentieren diesen erhaltenen Kompatibilitätsbestand. Die datierten Messungen beschreiben die damalige Oberfläche und belegen weder einen aktuellen Look-Bedienweg noch den neuen bildbezogenen Assistenten. Die früheren Varianten waren reine Textrezepte aus demselben Ausgangsstand; ihr Textprovider erhielt keine Bildpixel.
 
 ## Gemeinsamer Vertrag und Grenzen
 
@@ -26,7 +20,7 @@ Die Karten teilen `ImagePreviewPipeline` und `AdjustedPreviewPipeline` mit dem H
 
 Der gruppeneigene Kartenstore hält höchstens drei Bitmaps und insgesamt höchstens **8 MiB**, anhand der tatsächlichen `PreviewBitmap.byteCost`. Kartenansichten verwenden dessen Bildreferenzen ohne zusätzlichen eigenen Bitmapcache. Memory Pressure, Verwerfen und Kontextwechsel entfernen entbehrliche Kartenreferenzen. Die Gruppe hält keine drei großen Variantenbilder; die vorhandene Hauptansicht bleibt Besitzerin der einzigen aktiven großen Vorschau. Der globale Rendercache bleibt bei **32 MiB / 32 Einträgen**. Diese Grenzen beschreiben die ausdrücklich gehaltenen Bitmaps; interne Framework-/GPU-Speicher und der gesamte Prozess-RSS sind davon verschieden.
 
-## Prüfung
+## Prüfung des erhaltenen Kompatibilitätsbestands
 
 Normale Tests verwenden Fakes und synthetische Raster. Sie prüfen vollständige Gruppenvalidierung, einen Aufruf für drei Looks, Abbruchignorierung, gemeinsame Arbeit, Modustrennung, Quellen-/Revisionswechsel, direkte Aktivierung, Wechsel aus demselben Ausgang über eigene Speichervorgänge hinweg, schrittweises Undo und Byte-/Anzahlgrenzen. Der vorhandene Export- und Farb-/Transparenzvertrag gilt auch für Lookvorschläge.
 
