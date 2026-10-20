@@ -260,7 +260,7 @@ private final class DetailWorkspaceHost {
 
     private func captureLoupeRed() throws -> CGFloat {
         let loupe = try input("develop.detail-loupe")
-        // Capture the real SwiftUI image behind the transparent native loupe
+        // Capture the real image behind the transparent native loupe
         // surface, not the surface itself. Its center is away from all chrome.
         for view in nativeViews { view.needsDisplay = true }
         hosting.displayIfNeeded()
@@ -275,16 +275,31 @@ private final class DetailWorkspaceHost {
         var elapsedMilliseconds: [Double] = []
         elapsedMilliseconds.reserveCapacity(count)
         var firstRed: CGFloat?
+        var phaseTotals: [String: Double] = [:]
+        func milliseconds(from start: ContinuousClock.Instant, to end: ContinuousClock.Instant) -> Double {
+            let elapsed = start.duration(to: end).components
+            return Double(elapsed.seconds) * 1_000 + Double(elapsed.attoseconds) / 1e15
+        }
         for index in 0..<count {
             let point = photoPoint(x: index.isMultiple(of: 2) ? 0.75 : 0.25,
                 y: 0.2 + CGFloat(index % 11) * 0.06, on: canvas)
             let started = ContinuousClock.now
-            try move(canvas, to: point)
+            try requireHit(canvas, at: point)
+            let hitChecked = ContinuousClock.now
+            NSApplication.shared.sendEvent(try mouseEvent(.mouseMoved, canvas: canvas, point: point))
+            let moved = ContinuousClock.now
             hosting.layoutSubtreeIfNeeded()
+            let laidOut = ContinuousClock.now
             hosting.displayIfNeeded()
+            let displayed = ContinuousClock.now
             CATransaction.flush()
-            let elapsed = started.duration(to: ContinuousClock.now).components
-            elapsedMilliseconds.append(Double(elapsed.seconds) * 1_000 + Double(elapsed.attoseconds) / 1e15)
+            let flushed = ContinuousClock.now
+            elapsedMilliseconds.append(milliseconds(from: started, to: flushed))
+            phaseTotals["hit_check_mean_ms", default: 0] += milliseconds(from: started, to: hitChecked) / Double(count)
+            phaseTotals["event_mean_ms", default: 0] += milliseconds(from: hitChecked, to: moved) / Double(count)
+            phaseTotals["layout_mean_ms", default: 0] += milliseconds(from: moved, to: laidOut) / Double(count)
+            phaseTotals["display_mean_ms", default: 0] += milliseconds(from: laidOut, to: displayed) / Double(count)
+            phaseTotals["flush_mean_ms", default: 0] += milliseconds(from: displayed, to: flushed) / Double(count)
             // Validate actual rendered output at both ends without putting
             // screenshot allocation/copying in the reported event timings.
             if index == 0 { firstRed = try captureLoupeRed() }
@@ -295,7 +310,7 @@ private final class DetailWorkspaceHost {
                     "The measured series must really update the full workspace's visible loupe")
             }
         }
-        return DetailPointerMeasurements(milliseconds: elapsedMilliseconds)
+        return DetailPointerMeasurements(milliseconds: elapsedMilliseconds, phaseMeans: phaseTotals)
     }
 
     func element(_ identifier: String) throws -> WorkspaceAccessibilityElement {
@@ -361,6 +376,7 @@ private struct DetailWorkspaceTimeout: Error {}
 
 private struct DetailPointerMeasurements {
     let milliseconds: [Double]
+    let phaseMeans: [String: Double]
     var summary: [String: Double] {
         let sorted = milliseconds.sorted()
         let total = milliseconds.reduce(0, +)
@@ -370,6 +386,6 @@ private struct DetailPointerMeasurements {
             "p50_ms": sorted[Int((Double(sorted.count - 1) * 0.5).rounded())],
             "p95_ms": sorted[Int((Double(sorted.count - 1) * 0.95).rounded())],
             "max_ms": sorted.last ?? 0
-        ]
+        ].merging(phaseMeans, uniquingKeysWith: { current, _ in current })
     }
 }

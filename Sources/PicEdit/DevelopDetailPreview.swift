@@ -82,16 +82,9 @@ struct DevelopDetailLoupeInteraction {
 
 struct DevelopDetailPreview: View {
     @ObservedObject var workspace: DevelopWorkspace
-    @ObservedObject private var detailPosition: DevelopDetailPosition
     let isEnabled: Bool
     @Environment(\.displayScale) private var displayScale
     @ViewState private var interaction = DevelopDetailLoupeInteraction()
-
-    init(workspace: DevelopWorkspace, isEnabled: Bool) {
-        self.workspace = workspace
-        self.detailPosition = workspace.detailPosition
-        self.isEnabled = isEnabled
-    }
 
     private struct LoupeIdentity: Hashable {
         let source: AISourceIdentity?
@@ -143,24 +136,22 @@ struct DevelopDetailPreview: View {
                 ZStack(alignment: .topLeading) {
                     Color.black.opacity(0.3)
                     if let image = workspace.navigatorImage {
-                        let geometry = DevelopDetailGeometry(
-                            imageSize: CGSize(width: image.width, height: image.height),
-                            viewport: viewport.size, center: detailPosition.center,
-                            magnification: workspace.detailMagnification, displayScale: displayScale,
-                            fitsImage: workspace.detailFitsImage)
-                        // Reuse the immutable, accepted canvas frame. Clipping
-                        // an image layer avoids a second render/decode pipeline
-                        // and automatically follows coalesced slider updates.
-                        Image(decorative: image, scale: 1).resizable()
-                            .interpolation(workspace.detailFitsImage ? .high : .none)
-                            .allowedDynamicRange(workspace.hdrDisplayed ? .high : .standard)
-                            .frame(width: geometry.imageFrame.width, height: geometry.imageFrame.height)
-                            .offset(x: geometry.imageFrame.minX, y: geometry.imageFrame.minY)
-                            // The zoomed image extends beyond the loupe. Only
-                            // its bounded native surface should receive input.
+                        // Resolve the current position when input arrives. The
+                        // input surface no longer rebuilds for image movement.
+                        let geometry = {
+                            DevelopDetailGeometry(imageSize: CGSize(width: image.width, height: image.height),
+                                viewport: viewport.size, center: workspace.detailCenter,
+                                magnification: workspace.detailMagnification, displayScale: displayScale,
+                                fitsImage: workspace.detailFitsImage)
+                        }
+                        DevelopDetailImage(position: workspace.detailPosition, image: image,
+                            viewport: viewport.size, magnification: workspace.detailMagnification,
+                            displayScale: displayScale, fitsImage: workspace.detailFitsImage,
+                            hdr: workspace.hdrDisplayed)
+                            .frame(width: viewport.size.width, height: viewport.size.height)
                             .allowsHitTesting(false)
                         DevelopCropInputSurface(onInput: { event in
-                            guard let action = interaction.handle(event, imageFrame: geometry.imageFrame,
+                            guard let action = interaction.handle(event, imageFrame: geometry().imageFrame,
                                 viewport: viewport.size, fitsImage: workspace.detailFitsImage) else { return }
                             switch action {
                             case .pan(let point): workspace.detailCenter = point
@@ -176,7 +167,7 @@ struct DevelopDetailPreview: View {
                                 magnification: workspace.detailMagnification,
                                 viewportWidth: viewport.size.width, viewportHeight: viewport.size.height)),
                             cursor: { point in
-                                guard geometry.imageFrame.contains(point) else { return .arrow }
+                                guard geometry().imageFrame.contains(point) else { return .arrow }
                                 return workspace.detailFitsImage ? .crosshair : interaction.isDragging ? .closedHand : .openHand
                             },
                             canvasLabel: workspace.detailFitsImage
