@@ -159,7 +159,7 @@ struct ResettableSliderTests {
     }
 
     @Test @MainActor
-    func controlDoubleClickRequestsAutomaticValueWithoutPublishingItsFirstClick() throws {
+    func shiftDoubleClickRequestsAutomaticValueWithoutPublishingItsFirstClick() throws {
         let probe = SliderEditProbe(value: 9_000)
         let slider = nativeSlider(probe)
         slider.beginPointerTracking(at: NSPoint(x: 40, y: 10))
@@ -173,7 +173,7 @@ struct ResettableSliderTests {
             #expect(slider?.interaction.hasUncommittedClick == false)
         }
 
-        slider.mouseDown(with: try doubleClickEvent(modifiers: .control))
+        slider.mouseDown(with: try doubleClickEvent(modifiers: .shift))
         slider.interaction.commitClick()
         #expect(requestedValues == [9_000])
         #expect(probe.value == 9_000 && probe.history.isEmpty)
@@ -185,7 +185,7 @@ struct ResettableSliderTests {
     }
 
     @Test @MainActor
-    func controlDoubleClickFinishesTextEditingBeforeAutomaticValueCallback() throws {
+    func shiftDoubleClickFinishesTextEditingBeforeAutomaticValueCallback() throws {
         let probe = SliderEditProbe(value: 6_500)
         let slider = nativeSlider(probe)
         probe.begin()
@@ -195,7 +195,7 @@ struct ResettableSliderTests {
             probe.interaction.nativeValueChanged(8_000)
         }
 
-        slider.mouseDown(with: try doubleClickEvent(modifiers: .control))
+        slider.mouseDown(with: try doubleClickEvent(modifiers: .shift))
         #expect(probe.value == 8_000 && probe.history == [6_500, 7_500])
         probe.undo()
         #expect(probe.value == 7_500)
@@ -204,7 +204,7 @@ struct ResettableSliderTests {
     }
 
     @Test @MainActor
-    func controlDoubleClickFinishesNativeDraggingBeforeAutomaticValueCallback() throws {
+    func shiftDoubleClickFinishesNativeDraggingBeforeAutomaticValueCallback() throws {
         let probe = SliderEditProbe(value: 6_500)
         let slider = nativeSlider(probe)
         slider.beginPointerTracking(at: NSPoint(x: 40, y: 10))
@@ -224,8 +224,8 @@ struct ResettableSliderTests {
     }
 
     @Test @MainActor
-    func doubleClickWithoutControlStillResetsEvenWithAutomaticValueCallback() throws {
-        for modifiers in [NSEvent.ModifierFlags(), .option, .command, .shift] {
+    func doubleClickWithoutShiftStillResetsEvenWithAutomaticValueCallback() throws {
+        for modifiers in [NSEvent.ModifierFlags(), .option, .command, .control] {
             let probe = SliderEditProbe(value: 9_000)
             let slider = nativeSlider(probe)
             slider.resetNeutralValue = 6_500
@@ -244,12 +244,12 @@ struct ResettableSliderTests {
     }
 
     @Test @MainActor
-    func controlDoubleClickWithoutAutomaticValueCallbackRetainsResetBehavior() throws {
+    func shiftDoubleClickWithoutAutomaticValueCallbackRetainsResetBehavior() throws {
         let probe = SliderEditProbe(value: 9_000)
         let slider = nativeSlider(probe)
         slider.resetNeutralValue = 6_500
 
-        slider.mouseDown(with: try doubleClickEvent(modifiers: .control))
+        slider.mouseDown(with: try doubleClickEvent(modifiers: .shift))
         #expect(probe.value == 6_500 && slider.doubleValue == 6_500)
         #expect(probe.history == [9_000])
     }
@@ -264,7 +264,7 @@ struct ResettableSliderTests {
             if tornDown { slider.invalidate() }
             else { slider.isEnabled = false }
 
-            slider.mouseDown(with: try doubleClickEvent(modifiers: .control))
+            slider.mouseDown(with: try doubleClickEvent(modifiers: .shift))
             #expect(automaticRequests == 0)
             #expect(probe.value == 9_000 && probe.history.isEmpty)
         }

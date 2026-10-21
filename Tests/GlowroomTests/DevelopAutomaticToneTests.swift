@@ -159,6 +159,7 @@ struct DevelopAutomaticToneTests {
         fixture.workspace.clear()
         #expect(fixture.request(.shadows) == nil)
         #expect(fixture.workspace.errorMessage?.contains("Bildvorschau") == true)
+        #expect(fixture.workspace.errorMessage?.contains("Shift-Doppelklick") == true)
         #expect(fixture.settings == .neutral)
         #expect(await probe.calls() == 0)
         #expect(await fixture.editor.flush())
@@ -253,7 +254,7 @@ private func toneTestBitmap() throws -> PreviewBitmap {
 @Suite("Automatic tone native routing", .serialized)
 @MainActor
 struct DevelopAutomaticToneNativeTests {
-    @Test func labelRoutesControlDoubleClickToAutomaticAndPlainDoubleClickToReset() async throws {
+    @Test func labelRoutesShiftDoubleClickToAutomaticAndOtherDoubleClicksToReset() async throws {
         let host = ToneSliderHost()
         defer { host.close() }
         var value = 1.0
@@ -262,8 +263,8 @@ struct DevelopAutomaticToneNativeTests {
         try await host.mount(AdjustmentSlider(control: .exposure, value: Binding(get: { value }, set: { value = $0 }),
             onAutomaticValue: { requests += 1 }, onEditingChanged: { editingEvents.append($0) }))
 
-        try await host.doubleClickLabel("Belichtung", modifiers: .control, until: { requests > 0 || value != 1 })
-        #expect(requests == 1, "The label's routed Control-double-click must request an automatic value")
+        try await host.doubleClickLabel("Belichtung", modifiers: .shift, until: { requests > 0 || value != 1 })
+        #expect(requests == 1, "The label's routed Shift-double-click must request an automatic value")
         #expect(value == 1, "An automatic request must preserve the pre-calculation value")
         #expect(editingEvents == [false], "The preceding edit must finish before estimation")
 
@@ -271,17 +272,25 @@ struct DevelopAutomaticToneNativeTests {
         #expect(requests == 1, "A plain label double-click must not request automatic calculation")
         #expect(value == 0, "A plain label double-click must still reset when automatic calculation is available")
 
+        value = 1
+        try await host.doubleClickLabel("Belichtung", modifiers: .control, until: { value == 0 })
+        #expect(requests == 1, "Control without Shift must retain label reset behavior")
+        #expect(value == 0)
+
         value = 25
         try await host.mount(AdjustmentSlider(control: .texture, value: Binding(get: { value }, set: { value = $0 }),
                                               onEditingChanged: { _ in }))
-        try await host.doubleClickLabel("Struktur", modifiers: .control, until: { value == 0 })
+        try await host.doubleClickLabel("Struktur", modifiers: .shift, until: { value == 0 })
         #expect(value == 0, "The label retains reset behavior when no automatic callback is provided")
     }
 
-    @Test func everyToneAdjustmentForwardsItsAutomaticCallbackThroughTheNativeWindow() async throws {
-        let host = ToneSliderHost()
-        defer { host.close() }
+    @Test func everyToneAdjustmentForwardsShiftDoubleClickFromItsLabelAndNativeSlider() async throws {
         for control in AutomaticToneControl.allCases {
+            // Each native second-click probe starts in a fresh window. AppKit
+            // otherwise retains the preceding label's double-click hit target.
+            // First-click buffering/undo is covered by ResettableSliderTests.
+            let host = ToneSliderHost()
+            defer { host.close() }
             let adjustment = try #require(Adjustment(rawValue: control.rawValue))
             #expect(adjustment.automaticToneControl == control)
             var value = control == .exposure ? 1.0 : 25.0
@@ -291,17 +300,40 @@ struct DevelopAutomaticToneNativeTests {
                 onAutomaticValue: { requests += 1 }, onEditingChanged: { _ in }))
             let slider = try host.slider()
             #expect(slider.onAutomaticValue != nil)
-            try host.controlDoubleClick(slider)
-            #expect(requests == 1 && value == baseline)
+            try await host.shiftDoubleClick(slider)
+            #expect(requests == 1 && value == baseline, "Native Shift-double-click for \(control)")
+            try await host.doubleClickLabel(adjustment.label, modifiers: .shift, until: { requests > 1 || value != baseline })
+            #expect(requests == 2 && value == baseline)
         }
 
+        let host = ToneSliderHost()
+        defer { host.close() }
         var value = 25.0
         try await host.mount(AdjustmentSlider(control: .texture, value: Binding(get: { value }, set: { value = $0 }),
                                               onEditingChanged: { _ in }))
         let slider = try host.slider()
         #expect(Adjustment.texture.automaticToneControl == nil && slider.onAutomaticValue == nil)
-        try host.controlDoubleClick(slider)
+        try await host.shiftDoubleClick(slider)
         #expect(value == 0, "Controls without automatic estimation retain their double-click reset")
+    }
+
+    @Test func disabledAdjustmentRejectsShiftDoubleClickFromItsLabelAndNativeSlider() async throws {
+        let host = ToneSliderHost()
+        defer { host.close() }
+        var value = 1.0
+        var requests = 0
+        var editingEvents: [Bool] = []
+        try await host.mount(AdjustmentSlider(control: .exposure, value: Binding(get: { value }, set: { value = $0 }),
+            onAutomaticValue: { requests += 1 }, onEditingChanged: { editingEvents.append($0) }).disabled(true))
+        let slider = try host.slider()
+        #expect(!slider.isEnabled)
+        try await host.shiftDoubleClick(slider)
+        try await host.doubleClickLabel("Belichtung", modifiers: .shift, until: { true })
+        try await host.doubleClickLabel("Belichtung", modifiers: [], until: { true })
+        // SwiftUI may enqueue routed gestures after sendEvent returns. Let that
+        // work run before checking that neither automatic nor reset was applied.
+        try await Task.sleep(for: .milliseconds(100))
+        #expect(requests == 0 && value == 1 && editingEvents.isEmpty)
     }
 }
 
@@ -335,12 +367,14 @@ private final class ToneSliderHost {
         }
         return try #require(nil as ResettableNativeSlider?, "AdjustmentSlider did not mount its native slider")
     }
-    func controlDoubleClick(_ slider: ResettableNativeSlider) throws {
-        let event = try #require(NSEvent.mouseEvent(with: .leftMouseDown,
-            location: slider.convert(NSPoint(x: slider.bounds.midX, y: slider.bounds.midY), to: nil),
-            modifierFlags: .control, timestamp: ProcessInfo.processInfo.systemUptime,
-            windowNumber: window.windowNumber, context: nil, eventNumber: 2, clickCount: 2, pressure: 1))
-        window.sendEvent(event)
+    func shiftDoubleClick(_ slider: ResettableNativeSlider) async throws {
+        let location = slider.convert(NSPoint(x: slider.bounds.midX, y: slider.bounds.midY), to: nil)
+        let events = try await doubleClickEvents(at: location, modifiers: .shift)
+        // Probe the routed double-click completion without entering AppKit's
+        // synchronous single-click tracking loop inside the Swift Testing host.
+        // Balance the down with an up so no pointer input remains active.
+        window.sendEvent(events[2])
+        window.sendEvent(events[3])
     }
     func doubleClickLabel(_ text: String, modifiers: NSEvent.ModifierFlags,
                           until completed: @MainActor () -> Bool) async throws {
@@ -352,27 +386,30 @@ private final class ToneSliderHost {
         #expect(frame.width > 0 && frame.height > 0)
         let windowFrame = window.convertFromScreen(frame)
         let location = NSPoint(x: windowFrame.midX, y: windowFrame.midY)
-        if let lastGestureEventTimestamp {
-            let remaining = lastGestureEventTimestamp + 0.1 - ProcessInfo.processInfo.systemUptime
-            if remaining > 0 { try await Task.sleep(for: .seconds(remaining)) }
-        }
+        let events = try await doubleClickEvents(at: location, modifiers: modifiers)
         // Route one complete gesture without yielding the MainActor: unrelated
         // suite work must not stretch its clicks beyond AppKit's interval.
-        let start = ProcessInfo.processInfo.systemUptime - 0.1
-        lastGestureEventTimestamp = start + 0.075
-        for (index, type) in [NSEvent.EventType.leftMouseDown, .leftMouseUp, .leftMouseDown, .leftMouseUp].enumerated() {
-            let event = try #require(NSEvent.mouseEvent(with: type, location: location,
-                modifierFlags: modifiers, timestamp: start + Double(index) * 0.025,
-                windowNumber: window.windowNumber, context: nil, eventNumber: index,
-                clickCount: index < 2 ? 1 : 2, pressure: type == .leftMouseDown ? 1 : 0))
-            window.sendEvent(event)
-        }
+        for event in events { window.sendEvent(event) }
         let deadline = ContinuousClock.now + .seconds(4)
         while !completed() {
             guard ContinuousClock.now < deadline else {
                 throw TestSchedulingTimeout(operation: "routed adjustment label double-click", lastState: "gesture callback has not completed")
             }
             try await Task.sleep(for: .milliseconds(5))
+        }
+    }
+    private func doubleClickEvents(at location: NSPoint, modifiers: NSEvent.ModifierFlags) async throws -> [NSEvent] {
+        if let lastGestureEventTimestamp {
+            let remaining = lastGestureEventTimestamp + 0.1 - ProcessInfo.processInfo.systemUptime
+            if remaining > 0 { try await Task.sleep(for: .seconds(remaining)) }
+        }
+        let start = ProcessInfo.processInfo.systemUptime - 0.1
+        lastGestureEventTimestamp = start + 0.075
+        return try [NSEvent.EventType.leftMouseDown, .leftMouseUp, .leftMouseDown, .leftMouseUp].enumerated().map { index, type in
+            try #require(NSEvent.mouseEvent(with: type, location: location,
+                modifierFlags: modifiers, timestamp: start + Double(index) * 0.025,
+                windowNumber: window.windowNumber, context: nil, eventNumber: index,
+                clickCount: index < 2 ? 1 : 2, pressure: type == .leftMouseDown ? 1 : 0))
         }
     }
     func close() { window.close() }

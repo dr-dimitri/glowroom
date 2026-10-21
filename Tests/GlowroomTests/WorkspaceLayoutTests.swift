@@ -20,6 +20,29 @@ struct WorkspaceLayoutTests {
         #expect(restored.develop.openGroups == [.edit, .details])
     }
 
+    @Test(arguments: [false, true])
+    func detailsCanStayClosedAcrossRestartAndReopenInEachWorkspace(_ focused: Bool) throws {
+        let fixture = try Preferences()
+        defer { fixture.remove() }
+        let layout = WorkspaceLayoutModel(defaults: fixture.defaults)
+        if focused { layout.enterFocus() }
+        layout.update(developing: true) {
+            $0.singleGroup = true
+            $0.openGroups = [.details, .metadata]
+        }
+        layout.toggleGroup(.details, developing: true)
+
+        let restored = WorkspaceLayoutModel(defaults: fixture.defaults)
+        #expect(restored.panels(developing: true).openGroups == [.metadata])
+        #expect(restored.panels(developing: true).openAdjustmentGroups.contains("noise"),
+            "An open inner group must not reopen deliberately closed Details during decoding")
+        restored.toggleGroup(.details, developing: true)
+        #expect(restored.panels(developing: true).openGroups == [.details, .metadata])
+        #expect(WorkspaceLayoutModel(defaults: fixture.defaults).panels(developing: true) == restored.panels(developing: true))
+        restored.toggleGroup(.edit, developing: true)
+        #expect(restored.panels(developing: true).openGroups == [.edit, .metadata])
+    }
+
     @Test
     func sharpeningGroupCanBeOpenedClosedAndRestored() throws {
         let fixture = try Preferences()

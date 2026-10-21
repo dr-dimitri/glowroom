@@ -216,44 +216,30 @@ struct DevelopInspector: View {
     }
 
     private func toolGroup(_ tool: WorkspaceTool, asset: PhotoAsset) -> some View {
-        // Detail controls stay available even when an older workspace saved
-        // this group as closed or single-group mode opens another tool.
-        let collapsible = tool != .details
-        let expanded = !collapsible || panels.openGroups.contains(tool)
+        let expanded = panels.openGroups.contains(tool)
         let groupStatus = status(for: tool, assetID: asset.id)
         return VStack(alignment: .leading, spacing: 0) {
-            if collapsible {
-                Button {
+            Button {
+                toggleGroup(tool, assetID: asset.id)
+            } label: {
+                toolGroupHeading(tool, expanded: expanded, status: groupStatus)
+            }.buttonStyle(.plain)
+                .workspaceFocusTarget(focusedControl, equals: .group(tool)) {
                     toggleGroup(tool, assetID: asset.id)
-                } label: {
-                    toolGroupHeading(tool, expanded: expanded, status: groupStatus)
-                }.buttonStyle(.plain)
-                    .workspaceFocusTarget(focusedControl, equals: .group(tool)) {
-                        toggleGroup(tool, assetID: asset.id)
-                    }
-                    .accessibilityLabel(groupTitle(tool))
-                    .accessibilityIdentifier("workspace.group.\(tool.rawValue)")
-                    .accessibilityValue([expanded ? "Geöffnet" : "Geschlossen", groupStatus?.text].compactMap { $0 }.joined(separator: ", "))
-                    .accessibilityHint(expanded ? "Werkzeuggruppe zuklappen" : "Werkzeuggruppe aufklappen")
-                    .contextMenu {
-                        Toggle("Nur eine Gruppe geöffnet", isOn: Binding(
-                            get: { panels.singleGroup },
-                            set: { enabled in
-                                finishInput(assetID: asset.id)
-                                layout.update(developing: library.isDeveloping) { $0.singleGroup = enabled }
-                            }
-                        ))
-                    }
-            } else {
-                toolGroupHeading(tool, expanded: nil, status: groupStatus)
-                    .focusable(interactions: [.edit])
-                    .focused(focusedControl, equals: .group(tool))
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityAddTraits(.isHeader)
-                    .accessibilityLabel(groupTitle(tool))
-                    .accessibilityIdentifier("workspace.group.\(tool.rawValue)")
-                    .accessibilityValue(["Immer geöffnet", groupStatus?.text].compactMap { $0 }.joined(separator: ", "))
-            }
+                }
+                .accessibilityLabel(groupTitle(tool))
+                .accessibilityIdentifier("workspace.group.\(tool.rawValue)")
+                .accessibilityValue([expanded ? "Geöffnet" : "Geschlossen", groupStatus?.text].compactMap { $0 }.joined(separator: ", "))
+                .accessibilityHint(expanded ? "Werkzeuggruppe zuklappen" : "Werkzeuggruppe aufklappen")
+                .contextMenu {
+                    Toggle("Nur eine Gruppe geöffnet", isOn: Binding(
+                        get: { panels.singleGroup },
+                        set: { enabled in
+                            finishInput(assetID: asset.id)
+                            layout.update(developing: library.isDeveloping) { $0.singleGroup = enabled }
+                        }
+                    ))
+                }
             if expanded {
                 if column == .navigation, maskWorkspace.isPresented {
                     Text("Zum Wechseln die Gruppenüberschrift anklicken und den Maskenentwurf übernehmen.")
@@ -272,7 +258,7 @@ struct DevelopInspector: View {
         }.padding(.bottom, 2).id(tool)
     }
 
-    private func toolGroupHeading(_ tool: WorkspaceTool, expanded: Bool?,
+    private func toolGroupHeading(_ tool: WorkspaceTool, expanded: Bool,
                                  status: (text: String, symbol: String, isError: Bool)?) -> some View {
         HStack(spacing: 8) {
             Text(groupTitle(tool)).font(.system(size: 12, weight: .medium))
@@ -283,10 +269,8 @@ struct DevelopInspector: View {
                     .font(.system(size: 9)).foregroundStyle(status.isError ? Color.orange : Theme.muted)
                     .labelStyle(.iconOnly).help(status.text)
             }
-            if let expanded {
-                Image(systemName: expanded ? "chevron.down" : "chevron.left")
-                    .font(.system(size: 10, weight: .semibold)).foregroundStyle(Theme.muted)
-            }
+            Image(systemName: expanded ? "chevron.down" : "chevron.left")
+                .font(.system(size: 10, weight: .semibold)).foregroundStyle(Theme.muted)
         }.padding(.horizontal, 7).frame(maxWidth: .infinity, minHeight: 31, alignment: .leading)
             .background(Theme.panel).contentShape(Rectangle())
     }
@@ -637,6 +621,7 @@ struct AdjustmentSlider: View {
     @Binding var value: Double
     var onAutomaticValue: (() -> Void)? = nil
     let onEditingChanged: (Bool) -> Void
+    @Environment(\.isEnabled) private var isEnabled
     @FocusState private var valueFocused: Bool
 
     private var numericValue: Binding<Double> {
@@ -653,7 +638,8 @@ struct AdjustmentSlider: View {
             Text(control.label).font(.system(size: 10)).foregroundStyle(.white.opacity(0.7))
                 .frame(width: 76, alignment: .trailing)
                 .onTapGesture(count: 2, perform: resetValue)
-                .highPriorityGesture(TapGesture(count: 2).modifiers(.control).onEnded { _ in
+                .highPriorityGesture(TapGesture(count: 2).modifiers(.shift).onEnded { _ in
+                    guard isEnabled else { return }
                     if let onAutomaticValue { onEditingChanged(false); onAutomaticValue() }
                     else { resetValue() }
                 }).help(gestureHelp)
@@ -678,10 +664,11 @@ struct AdjustmentSlider: View {
 
     private var gestureHelp: String {
         onAutomaticValue == nil ? "Doppelklick setzt den Wert zurück" :
-            "Control-Doppelklick berechnet diesen Tonwert automatisch. Doppelklick setzt den Wert zurück."
+            "Shift-Doppelklick berechnet diesen Tonwert automatisch. Doppelklick setzt den Wert zurück."
     }
 
     private func resetValue() {
+        guard isEnabled else { return }
         onEditingChanged(false); onEditingChanged(true); value = control.neutralValue; onEditingChanged(false)
     }
 }
