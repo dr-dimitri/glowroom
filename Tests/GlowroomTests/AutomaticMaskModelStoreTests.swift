@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import Glowroom
 
-private struct SkyModelStoreFixture {
+private struct SkyModelStoreFixture: Sendable {
     let root: URL
     let directory: URL
     let data: [String: Data]
@@ -14,8 +14,9 @@ private struct SkyModelStoreFixture {
                 "Data/com.apple.CoreML/weights/weight.bin": Data("synthetic weights".utf8)]
         files = data.sorted { $0.key < $1.key }.map { .init(path: $0.key, bytes: Int64($0.value.count), sha256: SemanticInstallationIO.digest($0.value)) }
     }
-    func store(corrupt: Bool = false, compiler: SkyMaskModelStore.Compiler? = nil) -> SkyMaskModelStore {
-        SkyMaskModelStore(directory: directory, files: files, budget: AIResourceBudget(), downloader: { url, destination, maximum, progress in
+    func store(corrupt: Bool = false, compiler: SkyMaskModelStore.Compiler? = nil,
+               asyncCompiler: SkyMaskModelStore.AsyncCompiler? = nil, budget: AIResourceBudget = AIResourceBudget()) -> SkyMaskModelStore {
+        SkyMaskModelStore(directory: directory, files: files, budget: budget, downloader: { url, destination, maximum, progress in
             let file = try #require(files.first { url.path.hasSuffix($0.path) })
             var bytes = try #require(data[file.path])
             if corrupt { bytes[0] ^= 1 }
@@ -27,7 +28,7 @@ private struct SkyModelStoreFixture {
             try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
             try Data("synthetic compiled weights".utf8).write(to: out.appendingPathComponent("model.bin"))
             return out
-        })
+        }, asyncCompiler: asyncCompiler)
     }
     func clean() { try? FileManager.default.removeItem(at: root) }
 }
@@ -93,23 +94,46 @@ struct AutomaticMaskModelStoreTests {
     @Test func canceledNativeCompileCannotPublishReplacement() async throws {
         let fixture = try SkyModelStoreFixture(); defer { fixture.clean() }
         let original = try await fixture.store().install()
-        let entered = TestStateSignal(false)
-        let release = DispatchSemaphore(value: 0)
-        defer { release.signal() }
-        let store = fixture.store(compiler: { _ in
+        let entered = TestStateSignal(false), returned = TestStateSignal(false)
+        let release = TestAsyncLatch(), budget = AIResourceBudget()
+        defer { release.releaseAll() }
+        let store = fixture.store(asyncCompiler: { _ in
             entered.update { $0 = true }
-            release.wait() // Synchronous native compiler ignores cancellation.
+            await release.wait() // Native compiler ignores cancellation until actual return.
+            defer { returned.update { $0 = true } }
             let out = fixture.root.appendingPathComponent("cancelled-compiled")
             try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
             try Data([1, 2, 3]).write(to: out.appendingPathComponent("model.bin"))
             return out
-        })
+        }, budget: budget)
         let pending = Task { try await store.install() }
-        try await entered.wait("native compiler", until: { $0 })
-        pending.cancel(); release.signal()
-        do { _ = try await pending.value; Issue.record("Canceled compilation was published") }
-        catch { #expect(error is CancellationError) }
-        let preserved = try await fixture.store().installedModel()
-        #expect(preserved == original)
+        do {
+            try await entered.wait("native compiler", until: { $0 })
+            try await waitForTestState("sky compiler held at native-return latch", state: { release.waitingCount }) { $0 == 1 }
+            pending.cancel()
+            #expect(!returned.value)
+            var updates = await budget.stateUpdates().makeAsyncIterator()
+            let busy = await updates.next()
+            #expect(busy?.activeInferences == 1)
+            #expect(busy?.residentModelBytes == SkyMaskModelStore.maximumInstalledBytes)
+            await #expect(throws: AutomaticMaskError.setupInProgress) { try await store.remove() }
+            release.releaseAll()
+            await #expect(throws: CancellationError.self) { try await pending.value }
+            #expect(returned.value)
+            let preserved = try await fixture.store().installedModel()
+            #expect(preserved == original)
+            var finalUpdates = await budget.stateUpdates().makeAsyncIterator()
+            let finalState = await finalUpdates.next()
+            #expect(finalState?.activeInferences == 0)
+            #expect(finalState?.residentModelBytes == 0)
+            #expect(!FileManager.default.fileExists(atPath: fixture.root.appendingPathComponent("cancelled-compiled").path))
+            #expect(try !FileManager.default.contentsOfDirectory(atPath: fixture.directory.path).contains { $0.hasPrefix(".staging-") })
+        } catch {
+            pending.cancel(); release.releaseAll()
+            _ = await pending.result
+            throw error
+        }
+        release.releaseAll()
+        _ = await pending.result
     }
 }

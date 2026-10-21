@@ -186,9 +186,10 @@ final class DevelopCropNativeInputView: NSView {
     private var touchTracker = DevelopCropThreeFingerTracker()
     private var hoverTrackingArea: NSTrackingArea?
     private var inputMonitor: Any?
+    private let menuTracking = WorkspaceMenuTracking()
     private var windowObserver: NSObjectProtocol?
     private weak var mouseMovementWindow: NSWindow?
-    private final class MouseMovementRegistration {
+    @MainActor private final class MouseMovementRegistration {
         let previousValue: Bool
         var consumers = Set<ObjectIdentifier>()
         init(window: NSWindow) { previousValue = window.acceptsMouseMovedEvents }
@@ -371,6 +372,7 @@ final class DevelopCropNativeInputView: NSView {
     /// A one-shot canvas picker can opt in even before a pointer gesture starts.
     @discardableResult
     func cancelForEscape() -> Bool {
+        guard !menuTracking.isTracking else { return false }
         guard (capturesEscapeWhileIdle && onCancel != nil)
             || pointerStart != nil || touchStart != nil || pendingDoubleClick != nil else { return false }
         cancelInput()
@@ -380,6 +382,7 @@ final class DevelopCropNativeInputView: NSView {
     func invalidate() {
         guard !isInvalidated else { return }
         isInvalidated = true
+        menuTracking.stop()
         releaseMouseMovementRegistration()
         cancelInput()
         stopMonitoring()

@@ -811,11 +811,13 @@ private struct KeyboardHandler: NSViewRepresentable {
         nsView.processEvent = nil
         coordinator.stop()
     }
+    @MainActor
     final class Coordinator {
         weak var view: NSView?
         var action: (NSEvent) -> Bool
         var handlesTextUndo: () -> Bool
         var monitor: Any?
+        private let menus = WorkspaceMenuTracking()
         init(handlesTextUndo: @escaping () -> Bool, action: @escaping (NSEvent) -> Bool) {
             self.action = action
             self.handlesTextUndo = handlesTextUndo
@@ -827,6 +829,7 @@ private struct KeyboardHandler: NSViewRepresentable {
         func process(_ event: NSEvent) -> NSEvent? {
             guard let window = view?.window, event.window === window,
                   window.attachedSheet == nil, NSApp.modalWindow == nil,
+                  !menus.isTracking,
                   event.modifierFlags.intersection([.control, .option]).isEmpty else { return event }
             let historyKey = event.modifierFlags.contains(.command)
                 && event.charactersIgnoringModifiers?.lowercased() == "z"
@@ -835,7 +838,15 @@ private struct KeyboardHandler: NSViewRepresentable {
             } else if window.firstResponder is NSControl, !historyKey { return event }
             return action(event) ? nil : event
         }
-        func stop() { if let monitor { NSEvent.removeMonitor(monitor); self.monitor = nil } }
-        deinit { stop() }
+        func stop() {
+            if let monitor { NSEvent.removeMonitor(monitor); self.monitor = nil }
+            menus.stop()
+        }
+        deinit {
+            // The notification center removes the menu tracker's selector
+            // observers when it deallocates. Event monitors need explicit
+            // removal even if SwiftUI did not call dismantleNSView first.
+            if let monitor { NSEvent.removeMonitor(monitor) }
+        }
     }
 }

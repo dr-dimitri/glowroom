@@ -81,27 +81,48 @@ struct DevelopRepairAIModelStoreTests {
     func canceledCompilerRetainsAdmissionUntilNativeReturnAndDoesNotPublish() async throws {
         let fixture = try RepairAIStoreFixture()
         defer { fixture.remove() }
-        let entered = TestStateSignal(false), gate = DispatchSemaphore(value: 0)
-        defer { gate.signal() }
+        let entered = TestStateSignal(false), returned = TestStateSignal(false), gate = TestAsyncLatch()
+        let compiledURL = TestStateSignal<URL?>(nil)
+        defer { gate.releaseAll() }
         let budget = AIResourceBudget()
-        let store = DevelopRepairAIModelStore(directory: fixture.directory, budget: budget, compiler: { package in
+        let store = DevelopRepairAIModelStore(directory: fixture.directory, budget: budget,
+            compiler: { try RepairAIStoreFixture.compile($0) }, validator: { _ in }, asyncCompiler: { package in
             entered.update { $0 = true }
-            gate.wait()
-            return try RepairAIStoreFixture.compile(package)
-        }, validator: { _ in })
+            await gate.wait() // Native work ignores cancellation until actual return.
+            defer { returned.update { $0 = true } }
+            let compiled = try RepairAIStoreFixture.compile(package)
+            compiledURL.update { $0 = compiled }
+            return compiled
+        })
         let task = Task { try await store.importModel(from: fixture.package) }
-        try await entered.wait("repair model compiler entered", until: { $0 })
-        task.cancel()
-        var updates = await budget.stateUpdates().makeAsyncIterator()
-        let busy = await updates.next()
-        #expect(busy?.activeInferences == 1)
-        #expect(busy?.residentModelBytes == DevelopRepairAIService.residentBytes)
-        gate.signal()
-        await #expect(throws: CancellationError.self) { try await task.value }
-        #expect(try await store.installedModel() == nil)
-        var finalUpdates = await budget.stateUpdates().makeAsyncIterator()
-        let finalState = await finalUpdates.next()
-        #expect(finalState?.activeInferences == 0)
+        do {
+            try await entered.wait("repair model compiler entered", until: { $0 })
+            try await waitForTestState("repair compiler held at native-return latch", state: { gate.waitingCount }) { $0 == 1 }
+            task.cancel()
+            #expect(!returned.value)
+            var updates = await budget.stateUpdates().makeAsyncIterator()
+            let busy = await updates.next()
+            #expect(busy?.activeInferences == 1)
+            #expect(busy?.residentModelBytes == DevelopRepairAIService.residentBytes)
+            await #expect(throws: DevelopRepairAIError.importInProgress) { try await store.remove() }
+            gate.releaseAll()
+            await #expect(throws: CancellationError.self) { try await task.value }
+            #expect(returned.value)
+            #expect(try await store.installedModel() == nil)
+            var finalUpdates = await budget.stateUpdates().makeAsyncIterator()
+            let finalState = await finalUpdates.next()
+            #expect(finalState?.activeInferences == 0)
+            #expect(finalState?.residentModelBytes == 0)
+            let compiled = try #require(compiledURL.value)
+            #expect(!FileManager.default.fileExists(atPath: compiled.path))
+            #expect(try !FileManager.default.contentsOfDirectory(atPath: fixture.directory.path).contains { $0.hasPrefix(".staging-") })
+        } catch {
+            task.cancel(); gate.releaseAll()
+            _ = await task.result
+            throw error
+        }
+        gate.releaseAll()
+        _ = await task.result
     }
 }
 

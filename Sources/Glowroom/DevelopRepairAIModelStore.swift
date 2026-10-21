@@ -44,10 +44,12 @@ actor DevelopRepairAIModelStore {
     static let shared = DevelopRepairAIModelStore()
     static let maximumInstalledBytes: Int64 = 512 * 1_024 * 1_024
     typealias Compiler = @Sendable (URL) throws -> URL
+    typealias AsyncCompiler = @Sendable (URL) async throws -> URL
     typealias Validator = @Sendable (URL) throws -> Void
     private let directory: URL
     private let budget: AIResourceBudget
     private let compiler: Compiler
+    private let asyncCompiler: AsyncCompiler?
     private let validator: Validator
     private var importing = false
 
@@ -56,13 +58,16 @@ actor DevelopRepairAIModelStore {
             in: .userDomainMask)[0].appendingPathComponent("Glowroom/Models/Repair", isDirectory: true)
         self.budget = budget
         compiler = { try MLModel.compileModel(at: $0) }
+        asyncCompiler = nil
         validator = { _ = try DevelopRepairAIModelInterface.load($0) }
     }
 
     /// Synthetic compiler/validator hooks exercise publication and corruption
     /// without weights or Core ML in the ordinary test suite.
-    init(directory: URL, budget: AIResourceBudget, compiler: @escaping Compiler, validator: @escaping Validator) {
+    init(directory: URL, budget: AIResourceBudget, compiler: @escaping Compiler, validator: @escaping Validator,
+         asyncCompiler: AsyncCompiler? = nil) {
         self.directory = directory; self.budget = budget; self.compiler = compiler; self.validator = validator
+        self.asyncCompiler = asyncCompiler
     }
 
     func installedModel() async throws -> DevelopRepairAIInstallation? {
@@ -89,7 +94,7 @@ actor DevelopRepairAIModelStore {
         let previous = try? await installedModel()
         let lease = try await budget.acquireLocalInference(residentBytes: 6 * 1_024 * 1_024 * 1_024)
         do {
-            let result = try importAdmitted(source)
+            let result = try await importAdmitted(source)
             if let previous, previous.directory != result.directory {
                 // Publication has committed. Delete only a still verified,
                 // app-owned earlier generation; unfamiliar bytes are retained.
@@ -106,7 +111,7 @@ actor DevelopRepairAIModelStore {
         }
     }
 
-    private func importAdmitted(_ source: URL) throws -> DevelopRepairAIInstallation {
+    private func importAdmitted(_ source: URL) async throws -> DevelopRepairAIInstallation {
         try Task.checkCancellation()
         guard source.isFileURL, source.pathExtension.lowercased() == "mlpackage" else {
             throw DevelopRepairAIError.invalidModel
@@ -132,7 +137,14 @@ actor DevelopRepairAIModelStore {
             try SemanticInstallationIO.copyVerified(source.appendingPathComponent(file.path), to: destination, expected: file)
         }
         try SemanticInstallationIO.verifyTree(package, files: files)
-        let compiled = try autoreleasepool { try compiler(package) }
+        let compiled: URL
+        if let asyncCompiler {
+            // Test-native work suspends rather than occupying a cooperative
+            // thread. The importing flag and lease remain held until return.
+            compiled = try await asyncCompiler(package)
+        } else {
+            compiled = try autoreleasepool { try compiler(package) }
+        }
         defer { try? FileManager.default.removeItem(at: compiled) }
         try Task.checkCancellation()
         let runtime = stage.appendingPathComponent("runtime", isDirectory: true)

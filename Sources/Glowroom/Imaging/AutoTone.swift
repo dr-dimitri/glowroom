@@ -161,18 +161,24 @@ final class AutoToneAnalysisCache: @unchecked Sendable {
     private let condition = NSCondition()
     private let maximumEntries: Int
     private let analyzeImage: @Sendable (CGImage) throws -> AutoToneAnalysis
+    // A short internal test observation, called under condition before the
+    // first wait. It must not reenter the cache; production leaves it nil.
+    private let didJoinInFlight: (@Sendable () -> Void)?
     // All mutable state, including each entry, is protected by condition.
     private var entries: [ObjectIdentifier: Entry] = [:]
     private var access: UInt64 = 0
 
     init(maximumEntries: Int = 8,
+         didJoinInFlight: (@Sendable () -> Void)? = nil,
          analyze: @escaping @Sendable (CGImage) throws -> AutoToneAnalysis = { try AutoToneAnalysis.analyze($0) }) {
         self.maximumEntries = max(1, maximumEntries)
+        self.didJoinInFlight = didJoinInFlight
         self.analyzeImage = analyze
     }
 
     func analysis(for image: CGImage) throws -> AutoToneAnalysis {
         let identity = ObjectIdentifier(image)
+        var reportedJoin = false
         while true {
             try Task.checkCancellation()
             condition.lock()
@@ -188,6 +194,10 @@ final class AutoToneAnalysisCache: @unchecked Sendable {
                 // Joining a short CPU analysis does not schedule another worker.
                 // A timed wait lets a canceled preview leave promptly even while
                 // the shared producer is inside an uninterruptible bitmap draw.
+                if !reportedJoin {
+                    reportedJoin = true
+                    didJoinInFlight?()
+                }
                 _ = condition.wait(until: Date(timeIntervalSinceNow: 0.01))
                 condition.unlock()
                 continue

@@ -56,12 +56,14 @@ actor SubjectMattingModelStore {
     typealias SourceValidator = @Sendable (URL) throws -> [SemanticManifestFile]
     typealias SourceClassifier = @Sendable ([SemanticManifestFile]) throws -> SubjectMattingModelVersion
     typealias Compiler = @Sendable (URL) throws -> URL
+    typealias AsyncCompiler = @Sendable (URL) async throws -> URL
     typealias Validator = @Sendable (URL) throws -> Void
     private let directory: URL
     private let budget: AIResourceBudget
     private let sourceValidator: SourceValidator
     private let sourceClassifier: SourceClassifier
     private let compiler: Compiler
+    private let asyncCompiler: AsyncCompiler?
     private let validator: Validator
     private var changing = false
 
@@ -77,6 +79,7 @@ actor SubjectMattingModelStore {
             throw SubjectMattingError.invalidModel
         }
         compiler = { try MLModel.compileModel(at: $0) }
+        asyncCompiler = nil
         validator = { try SubjectMattingModelInterface.validateModel($0) }
     }
 
@@ -84,9 +87,11 @@ actor SubjectMattingModelStore {
     /// without downloading weights or invoking the native compiler in tests.
     init(directory: URL, budget: AIResourceBudget, sourceValidator: @escaping SourceValidator,
          compiler: @escaping Compiler, validator: @escaping Validator,
-         sourceClassifier: @escaping SourceClassifier = { _ in .current }) {
+         sourceClassifier: @escaping SourceClassifier = { _ in .current },
+         asyncCompiler: AsyncCompiler? = nil) {
         self.directory = directory; self.budget = budget; self.sourceValidator = sourceValidator
         self.compiler = compiler; self.validator = validator
+        self.asyncCompiler = asyncCompiler
         self.sourceClassifier = sourceClassifier
     }
 
@@ -130,7 +135,7 @@ actor SubjectMattingModelStore {
         defer { changing = false }
         let lease = try await budget.acquireLocalInference(priority: .interactive, residentBytes: Self.residentMemoryEstimate)
         do {
-            let installed = try installAdmitted(from: source, progress: progress)
+            let installed = try await installAdmitted(from: source, progress: progress)
             await budget.release(lease)
             return installed
         } catch {
@@ -140,7 +145,7 @@ actor SubjectMattingModelStore {
         }
     }
 
-    private func installAdmitted(from source: URL, progress: @Sendable (SubjectMattingSetupProgress) -> Void) throws -> SubjectMattingInstalledModel {
+    private func installAdmitted(from source: URL, progress: @Sendable (SubjectMattingSetupProgress) -> Void) async throws -> SubjectMattingInstalledModel {
         try Task.checkCancellation()
         guard source.isFileURL, source.pathExtension.lowercased() == "mlpackage" else { throw SubjectMattingError.invalidModel }
         try SemanticInstallationIO.requireDirectory(source)
@@ -178,7 +183,12 @@ actor SubjectMattingModelStore {
         try SemanticInstallationIO.verifyTree(package, files: sourceFiles)
         try Task.checkCancellation()
         progress(.init(text: "Modell wird lokal vorbereitet …", fraction: nil))
-        let compiled = try autoreleasepool { try compiler(package) }
+        let compiled: URL
+        if let asyncCompiler {
+            // Suspending test compilers keep the same setup guard and resource
+            // lease until actual return, including after caller cancellation.
+            compiled = try await asyncCompiler(package)
+        } else { compiled = try autoreleasepool { try compiler(package) } }
         defer { try? FileManager.default.removeItem(at: compiled) }
         try Task.checkCancellation()
         let runtime = stage.appendingPathComponent("runtime", isDirectory: true)

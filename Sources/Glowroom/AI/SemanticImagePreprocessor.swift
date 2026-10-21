@@ -1,6 +1,5 @@
 import CoreGraphics
 import CryptoKit
-import Darwin
 import Foundation
 import GlowroomCore
 
@@ -22,7 +21,7 @@ struct SemanticImagePreprocessor: SemanticImagePreprocessing {
         try Task.checkCancellation()
         // In this Swift 6.1-compatible, nonisolated async contract, the existing
         // TaskGroup stat workers use the generic executor, never MainActor.
-        // No awaits between files: one admission covers at most 64 opens/stats,
+        // No awaits between files: one admission covers at most 64 source checks,
         // with the original cancellation point and security scope per source.
         let result = try sources.map { source -> String? in
             do { return try Self.stamp(source: source) }
@@ -41,15 +40,11 @@ struct SemanticImagePreprocessor: SemanticImagePreprocessing {
         let url = URL(fileURLWithPath: source.standardizedPath, isDirectory: false)
         let access = url.startAccessingSecurityScopedResource()
         defer { if access { url.stopAccessingSecurityScopedResource() } }
-        let descriptor = open(url.path, O_RDONLY | O_CLOEXEC | O_NONBLOCK)
-        guard descriptor >= 0 else { throw SemanticEmbeddingError.staleSource }
-        defer { close(descriptor) }
-        var value = stat()
-        guard fstat(descriptor, &value) == 0, value.st_mode & S_IFMT == S_IFREG,
-              value.st_size == source.fileSize else { throw SemanticEmbeddingError.staleSource }
-        let date = Double(value.st_mtimespec.tv_sec) + Double(value.st_mtimespec.tv_nsec) / 1_000_000_000
+        guard let value = ImageAnalysisNativeSourceStamp.capture(url),
+              value.byteCount == source.fileSize else { throw SemanticEmbeddingError.staleSource }
+        let date = Double(value.modifiedSeconds) + Double(value.modifiedNanoseconds) / 1_000_000_000
         guard abs(date - source.modifiedAt.timeIntervalSince1970) <= 0.000_005 else { throw SemanticEmbeddingError.staleSource }
-        return "\(value.st_dev):\(value.st_ino):\(value.st_size):\(value.st_mtimespec.tv_sec):\(value.st_mtimespec.tv_nsec):\(value.st_ctimespec.tv_sec):\(value.st_ctimespec.tv_nsec)"
+        return value.cacheRevision
     }
 
     func prepare(source: AIOriginalSourceFingerprint, priority: PreviewPriority = .thumbnail) async throws -> SemanticImageInput {

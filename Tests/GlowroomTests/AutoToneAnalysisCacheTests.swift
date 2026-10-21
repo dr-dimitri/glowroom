@@ -3,7 +3,7 @@ import Foundation
 import Testing
 @testable import Glowroom
 
-@Suite("Reusable automatic tone analysis")
+@Suite("Reusable automatic tone analysis", .timeLimit(.minutes(1)))
 struct AutoToneAnalysisCacheTests {
     @Test
     func cachedCurvesMatchFreshAnalysisAcrossAmountsProfilesAndTransparency() throws {
@@ -51,63 +51,93 @@ struct AutoToneAnalysisCacheTests {
 
     @Test
     func concurrentRequestsShareAnalysisWhileIndependentSourcesProceed() async throws {
-        let probe = AnalysisProbe(blockFirst: true)
-        let cache = AutoToneAnalysisCache(maximumEntries: 1, analyze: { try probe.analyze($0) })
-        let first = try fixture(), second = try fixture()
-        let producer = Task.detached { try cache.analysis(for: first) }
-        defer { probe.release() }
-        try await waitUntil { probe.count == 1 }
-        let shared = Task.detached { try cache.analysis(for: first) }
-        let independent = Task.detached { try cache.analysis(for: second) }
-        let independentResult = try await independent.value
-        #expect(probe.count == 2, "The cache lock must not serialize independent image analysis")
-        probe.release()
-        let produced = try await producer.value
-        let joined = try await shared.value
-        #expect(produced.offsets == joined.offsets)
-        #expect(independentResult.offsets == produced.offsets)
-        #expect(probe.count == 2)
+        try await withBlockedAnalysis(maximumEntries: 1) { scenario in
+            let first = try fixture(), second = try fixture()
+            let producer = scenario.start(first)
+            try await scenario.probe.started.wait("first tone producer entered", until: { $0 == 1 })
+            let shared = scenario.start(first)
+            try await scenario.joined.wait("second tone caller joined the in-flight entry", until: { $0 == 1 })
+            let independent = scenario.start(second)
+            let independentResult = try await independent.value
+            #expect(scenario.probe.count == 2, "The cache lock must not serialize independent image analysis")
+            scenario.probe.release()
+            let produced = try await producer.value
+            let joined = try await shared.value
+            #expect(produced.offsets == joined.offsets)
+            #expect(independentResult.offsets == produced.offsets)
+            #expect(scenario.probe.count == 2)
+        }
     }
 
     @Test
     func cancelledWaiterDoesNotCancelOrRemoveTheSharedAnalysis() async throws {
-        let probe = AnalysisProbe(blockFirst: true)
-        let cache = AutoToneAnalysisCache(analyze: { try probe.analyze($0) })
-        let image = try fixture()
-        let producer = Task.detached { try cache.analysis(for: image) }
-        defer { probe.release() }
-        try await waitUntil { probe.count == 1 }
-        let waiter = Task.detached { try cache.analysis(for: image) }
-        // Give the second caller an opportunity to join the in-flight entry.
-        try await Task.sleep(for: .milliseconds(25))
-        waiter.cancel()
-        do { _ = try await waiter.value; Issue.record("Canceled waiter unexpectedly succeeded") }
-        catch is CancellationError { }
-        #expect(probe.count == 1)
-        probe.release()
-        let produced = try await producer.value
-        #expect(try cache.analysis(for: image).offsets == produced.offsets)
-        #expect(probe.count == 1)
+        try await withBlockedAnalysis { scenario in
+            let image = try fixture()
+            let producer = scenario.start(image)
+            try await scenario.probe.started.wait("tone producer entered before waiter cancellation", until: { $0 == 1 })
+            let waiter = scenario.start(image)
+            try await scenario.joined.wait("cancelled tone caller joined the in-flight entry", until: { $0 == 1 })
+            waiter.cancel()
+            do { _ = try await waiter.value; Issue.record("Canceled waiter unexpectedly succeeded") }
+            catch is CancellationError { }
+            #expect(scenario.probe.count == 1)
+            scenario.probe.release()
+            let produced = try await producer.value
+            #expect(try scenario.cache.analysis(for: image).offsets == produced.offsets)
+            #expect(scenario.probe.count == 1)
+        }
     }
 
     @Test
     func cancelledProducerLetsTheRemainingWaiterRetry() async throws {
-        let probe = AnalysisProbe(blockFirst: true)
-        let cache = AutoToneAnalysisCache(analyze: { try probe.analyze($0) })
-        let image = try fixture()
-        let producer = Task.detached { try cache.analysis(for: image) }
-        defer { probe.release() }
-        try await waitUntil { probe.count == 1 }
-        let waiter = Task.detached { try cache.analysis(for: image) }
-        producer.cancel()
-        probe.release()
-        do { _ = try await producer.value; Issue.record("Canceled producer unexpectedly succeeded") }
-        catch is CancellationError { }
-        let recovered = try await waiter.value
-        #expect(recovered.offsets.count == 7)
-        #expect(probe.count == 2)
-        _ = try cache.analysis(for: image)
-        #expect(probe.count == 2)
+        try await withBlockedAnalysis { scenario in
+            let image = try fixture()
+            let producer = scenario.start(image)
+            try await scenario.probe.started.wait("tone producer entered before producer cancellation", until: { $0 == 1 })
+            let waiter = scenario.start(image)
+            try await scenario.joined.wait("remaining tone caller joined the in-flight entry", until: { $0 == 1 })
+            producer.cancel()
+            scenario.probe.release()
+            do { _ = try await producer.value; Issue.record("Canceled producer unexpectedly succeeded") }
+            catch is CancellationError { }
+            let recovered = try await waiter.value
+            #expect(recovered.offsets.count == 7)
+            #expect(scenario.probe.count == 2)
+            _ = try scenario.cache.analysis(for: image)
+            #expect(scenario.probe.count == 2)
+        }
+    }
+
+    @Test
+    func fakeProducerStaysHeldPastItsFormerTimeoutUntilExplicitRelease() async throws {
+        try await withBlockedAnalysis { scenario in
+            let image = try fixture()
+            let producer = scenario.start(image)
+            try await scenario.probe.started.wait("delayed tone producer entered", until: { $0 == 1 })
+            let waiter = scenario.start(image)
+            try await scenario.joined.wait("delayed tone caller joined", until: { $0 == 1 })
+            // Intentionally exceed the old fake's five-second lifetime. This
+            // delay exercises the former failure, not an admission prerequisite.
+            try await Task.sleep(for: .milliseconds(5_100))
+            #expect(scenario.probe.count == 1)
+            #expect(!scenario.probe.returned.value)
+            scenario.probe.release()
+            let produced = try await producer.value
+            #expect(try await waiter.value.offsets == produced.offsets)
+            #expect(scenario.probe.count == 1)
+        }
+    }
+
+    private func withBlockedAnalysis(maximumEntries: Int = 8,
+        _ body: (BlockedAnalysisScenario) async throws -> Void) async throws {
+        let scenario = BlockedAnalysisScenario(maximumEntries: maximumEntries)
+        do {
+            try await body(scenario)
+            await scenario.finish()
+        } catch {
+            await scenario.finish()
+            throw error
+        }
     }
 
     @Test
@@ -139,14 +169,6 @@ struct AutoToneAnalysisCacheTests {
         print("AutoTone analysis benchmark 3072x2048 RGBA, \(iterations) iterations: first cached \(cold) ms, repeated fresh \(fresh) ms, repeated cached \(cached) ms")
     }
 
-    private func waitUntil(_ predicate: @escaping @Sendable () -> Bool) async throws {
-        let deadline = ContinuousClock.now.advanced(by: .seconds(5))
-        while !predicate() {
-            guard ContinuousClock.now < deadline else { throw AnalysisProbeError.timeout }
-            try await Task.sleep(for: .milliseconds(5))
-        }
-    }
-
     private func fixture(width: Int = 256, height: Int = 128,
                          space: CGColorSpace = CGColorSpace(name: CGColorSpace.sRGB)!) throws -> CGImage {
         var pixels = [UInt8](repeating: 0, count: width * height * 4)
@@ -169,35 +191,72 @@ struct AutoToneAnalysisCacheTests {
     }
 }
 
-private enum AnalysisProbeError: Error { case timeout, failed }
+private enum AnalysisProbeError: Error { case failed }
 
 private final class AnalysisProbe: @unchecked Sendable {
-    private let lock = NSLock()
-    private let gate = DispatchSemaphore(value: 0)
+    private let gate = NSCondition()
     private let blockFirst: Bool
     private let failFirst: Bool
     private var calls = 0
+    private var released = false
+    let started = TestStateSignal(0)
+    let returned = TestStateSignal(false)
 
     init(blockFirst: Bool = false, failFirst: Bool = false) {
         self.blockFirst = blockFirst
         self.failFirst = failFirst
     }
 
-    var count: Int {
-        lock.lock()
-        defer { lock.unlock() }
-        return calls
+    var count: Int { gate.withLock { calls } }
+
+    func release() {
+        gate.lock()
+        released = true
+        gate.broadcast()
+        gate.unlock()
     }
 
-    func release() { gate.signal() }
-
     func analyze(_ image: CGImage) throws -> AutoToneAnalysis {
-        lock.lock()
+        gate.lock()
         calls += 1
-        let first = calls == 1
-        lock.unlock()
-        if blockFirst && first, gate.wait(timeout: .now() + 5) == .timedOut { throw AnalysisProbeError.timeout }
-        if failFirst && first { throw AnalysisProbeError.failed }
+        let count = calls
+        gate.unlock()
+        started.update { $0 = count }
+        if blockFirst && count == 1 {
+            gate.lock()
+            while !released { gate.wait() }
+            gate.unlock()
+        }
+        defer { returned.update { $0 = true } }
+        if failFirst && count == 1 { throw AnalysisProbeError.failed }
         return try AutoToneAnalysis.analyze(image)
+    }
+}
+
+private final class BlockedAnalysisScenario {
+    let probe = AnalysisProbe(blockFirst: true)
+    let joined = TestStateSignal(0)
+    let cache: AutoToneAnalysisCache
+    private var tasks: [Task<AutoToneAnalysis, Error>] = []
+
+    init(maximumEntries: Int) {
+        let probe = probe, joined = joined
+        cache = AutoToneAnalysisCache(maximumEntries: maximumEntries,
+            didJoinInFlight: { joined.update { $0 += 1 } }, analyze: { try probe.analyze($0) })
+    }
+
+    func start(_ image: CGImage) -> Task<AutoToneAnalysis, Error> {
+        let worker = TestSynchronousWorker(), cache = cache
+        let task = Task { try await worker.run { try cache.analysis(for: image) } }
+        tasks.append(task)
+        return task
+    }
+
+    func finish() async {
+        // Release before draining even on a failed prerequisite. Cancellation
+        // alone deliberately cannot interrupt a held native producer.
+        tasks.forEach { $0.cancel() }
+        probe.release()
+        for task in tasks { _ = await task.result }
     }
 }
