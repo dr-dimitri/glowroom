@@ -21,17 +21,29 @@ extension EditingRepository {
     }
 
     public func createBackup(automatic:Bool = false) async throws -> URL {
+        try await createBackup(automatic:automatic,maintenance:{_ in})
+    }
+    public func createAutomaticBackup(maintenance:@escaping @Sendable(Bool) async throws -> Void) async throws -> URL {
+        try await createBackup(automatic:true,maintenance:maintenance)
+    }
+    private func createBackup(automatic:Bool,maintenance:@escaping @Sendable(Bool) async throws -> Void) async throws -> URL {
         try await gate.withRepositoryAccess(domain:.backupRestore) {
             if automatic,let reused = try await self.reusableAutomaticBackup() {return reused}
-            let maintenance = try await self.gate.promoteCurrentAcceptedWrite(to:.backup(UUID()))
+            // The MainActor acknowledgement precedes closing gate admission, so
+            // a synchronous UI edit cannot observe editable state then be refused.
             let prepared:PreparedEditingBackup
             do {
-                prepared = try await self.gate.withMaintenance(maintenance) {try await self.prepareUserBackup(kind:automatic ? .automatic : .manual)}
-                try await self.gate.finishMaintenance(maintenance)
-            } catch {try? await self.gate.finishMaintenance(maintenance);throw error}
+                try await maintenance(true)
+                let admission = try await self.gate.promoteCurrentAcceptedWrite(to:.backup(UUID()))
+                do {
+                    prepared = try await self.gate.withMaintenance(admission) {try await self.prepareUserBackup(kind:automatic ? .automatic : .manual)}
+                    try await self.gate.finishMaintenance(admission)
+                } catch {try? await self.gate.finishMaintenance(admission);throw error}
+                try await maintenance(false)
+            } catch {try? await maintenance(false);throw error}
             // The accepted task remains registered until actual I/O returns,
             // but immutable SQL+artifact leases no longer fence live editing.
-            return try await self.writePreparedBackup(prepared)
+            return try await self.writePreparedBackup(prepared,maintenance:maintenance)
         }
     }
     func reusableAutomaticBackup() async throws -> URL? {
@@ -57,20 +69,22 @@ extension EditingRepository {
         let destination = backupsDirectory.appendingPathComponent("\(prefix)-\(backupDay())-\(UUID().uuidString.lowercased()).glowroombackup",isDirectory:true)
         return .init(source:source,destination:destination)
     }
-    func writePreparedBackup(_ prepared:PreparedEditingBackup) async throws -> URL {
+    func writePreparedBackup(_ prepared:PreparedEditingBackup,maintenance:@escaping @Sendable(Bool) async throws -> Void = {_ in}) async throws -> URL {
         let published = try await packages.write(prepared.source,toNew:prepared.destination,limits:EditingPackageLimits())
         if prepared.source.kind == .automatic {
             do {
+                try await maintenance(true)
                 // Catalog mutations accepted during long immutable copy really
                 // drain before B checks fresh originals under its catalog lock.
-                let maintenance = try await gate.promoteCurrentAcceptedWrite(to:.backup(UUID()))
+                let admission = try await gate.promoteCurrentAcceptedWrite(to:.backup(UUID()))
                 do {
-                    try await gate.withMaintenance(maintenance) {try await self.packages.pruneAutomaticBackups(in:self.backupsDirectory,keepingNewest:7)}
-                    try await gate.finishMaintenance(maintenance)
-                }catch{try? await gate.finishMaintenance(maintenance);throw error}
+                    try await gate.withMaintenance(admission) {try await self.packages.pruneAutomaticBackups(in:self.backupsDirectory,keepingNewest:7)}
+                    try await gate.finishMaintenance(admission)
+                }catch{try? await gate.finishMaintenance(admission);throw error}
                 backupMaintenanceWarning = nil
             }
             catch {backupMaintenanceWarning = "Die Sicherung wurde erstellt. Ältere automatische Sicherungen konnten nicht sicher ausgedünnt werden."}
+            try? await maintenance(false)
         }
         return published.url
     }

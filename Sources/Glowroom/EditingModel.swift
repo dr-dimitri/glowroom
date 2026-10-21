@@ -38,6 +38,7 @@ final class EditingModel: ObservableObject, GeneratedArtifactAccepting {
     @Published private(set) var isCommitting = false { didSet { if oldValue != isCommitting { advanceAIEditGeneration() } } }
     @Published private(set) var isRestoring = false
     @Published private(set) var isBackingUp = false { didSet { if oldValue != isBackingUp { advanceAIEditGeneration() } } }
+    @Published private(set) var isAutomaticBackupMaintenance = false
     @Published private(set) var isReadOnly = false { didSet { if oldValue != isReadOnly { advanceAIEditGeneration() } } }
     @Published private(set) var isClosing = false { didSet { if oldValue != isClosing { advanceAIEditGeneration() } } }
     @Published private(set) var hasPendingChanges = false
@@ -117,7 +118,10 @@ final class EditingModel: ObservableObject, GeneratedArtifactAccepting {
         guard let directory else { return [] }
         return ["cloud-usage.sqlite", "cloud-usage.sqlite-journal", "cloud-usage.sqlite-wal", "cloud-usage.sqlite-shm"].map { directory.appendingPathComponent($0) }
     }
-    var canEdit: Bool { !isLoading && !isReadOnly && !isRestoring && !isBackingUp && !isClosing && !isCommitting && !commits.values.contains(where: \.failed) && library?.isUpdatingCatalog != true && library?.isLoading != true && library?.isReadOnly != true }
+    var canEdit: Bool { canRetainLocalEditingAnchor && !isAutomaticBackupMaintenance }
+    /// Brief automatic-backup admission fences preserve source-bound workspaces
+    /// and their generations; their inputs resume after the same state reopens.
+    var canRetainLocalEditingAnchor: Bool { !isLoading && !isReadOnly && !isRestoring && !isBackingUp && !isClosing && !isCommitting && !commits.values.contains(where: \.failed) && library?.isUpdatingCatalog != true && library?.isLoading != true && library?.isReadOnly != true }
     /// An unavailable store must not hide healthy imported originals. This is
     /// display-only and requires a successful shared startup recovery barrier;
     /// a failed/active catalog coordination never authorizes this fallback.
@@ -422,9 +426,12 @@ final class EditingModel: ObservableObject, GeneratedArtifactAccepting {
             automaticBackupTask = Task {
                 defer { self.automaticBackupTask = nil }
                 do {
+                    let maintenance: @Sendable (Bool) async throws -> Void = { [weak self] active in
+                        try await self?.setAutomaticBackupMaintenance(active)
+                    }
                     if let gate = self.gate, let admission {
-                        _ = try await gate.withAcceptedWrite(admission) { try await database.createBackup(automatic: true) }
-                    } else { _ = try await database.createBackup(automatic: true) }
+                        _ = try await gate.withAcceptedWrite(admission) { try await database.createAutomaticBackup(maintenance: maintenance) }
+                    } else { _ = try await database.createAutomaticBackup(maintenance: maintenance) }
                     self.automaticBackupDay = day
                     self.automaticBackupWarning = await database.backupWarning()
                     if !self.isReadOnly { self.errorMessage = self.automaticBackupWarning ?? self.artifactStoreWarning }
@@ -437,6 +444,14 @@ final class EditingModel: ObservableObject, GeneratedArtifactAccepting {
             automaticBackupWarning = "Das automatische Backup konnte noch nicht gestartet werden.\n\n" + error.localizedDescription
             if !isReadOnly { errorMessage = automaticBackupWarning }
         }
+    }
+
+    private func setAutomaticBackupMaintenance(_ active: Bool) async throws {
+        isAutomaticBackupMaintenance = active
+        // Drain accepted sliders too: disabling their controls can interrupt an
+        // active gesture before its usual idle callback releases pending work.
+        // This never waits for the automatic task while holding a flush slot.
+        if active, !(await flushPending()) { throw ArtifactContractError.staleSnapshot }
     }
 
     private func drainAutomaticBackup() async {

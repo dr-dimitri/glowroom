@@ -4,6 +4,45 @@ import Testing
 
 @Suite("Editing backup admission, daily reuse and artifact startup diagnosis")
 struct EditingRepositoryBackupIntegrationTests {
+    @Test func automaticBackupAcknowledgesBothExclusivePhasesWithOpenAdmission() async throws {
+        let f = try EditingFixture();_ = try await f.save(exposure:0.5)
+        let probe = try await AutomaticBackupMaintenanceProbe(gate:f.gate)
+        let abstract:any EditingPersistence = f.repository
+        let first = try await abstract.createAutomaticBackup {try await probe.observe($0)}
+        #expect(await probe.events == [true,false,true,false])
+        #expect(try await abstract.createAutomaticBackup {try await probe.observe($0)} == first)
+        // A verified daily backup is reused without closing UI acceptance.
+        #expect(await probe.events == [true,false,true,false])
+    }
+    @Test func automaticBackupDoesNotPromoteWhenTheUIDrainFails() async throws {
+        let f = try EditingFixture();let saved = try await f.save(exposure:0.5)
+        let probe = try await AutomaticBackupMaintenanceProbe(gate:f.gate,failOnEntry:1)
+        await #expect(throws:EditingRepositoryError.storageFailure) {
+            try await f.repository.createAutomaticBackup {try await probe.observe($0)}
+        }
+        #expect(await probe.events == [true,false])
+        #expect(await f.packages.kinds.isEmpty)
+        #expect(try await f.repository.loadState().byAsset[f.id] == saved)
+    }
+    @Test func automaticBackupReopensUIAfterPruneDrainFailureAndKeepsPublishedPackage() async throws {
+        let f = try EditingFixture();let saved = try await f.save(exposure:0.5)
+        let probe = try await AutomaticBackupMaintenanceProbe(gate:f.gate,failOnEntry:2)
+        let url = try await f.repository.createAutomaticBackup {try await probe.observe($0)}
+        #expect(await probe.events == [true,false,true,false])
+        #expect(await f.packages.saved[url] != nil)
+        #expect(await f.repository.backupWarning() != nil)
+        #expect(try await f.repository.loadState().byAsset[f.id] == saved)
+    }
+    @Test func automaticBackupCopyFailureLeavesAdmissionAndUIReopened() async throws {
+        let f = try EditingFixture();let saved = try await f.save(exposure:0.5)
+        let probe = try await AutomaticBackupMaintenanceProbe(gate:f.gate)
+        await f.packages.setFailWrites(true)
+        await #expect(throws:EditingRepositoryError.storageFailure) {
+            try await f.repository.createAutomaticBackup {try await probe.observe($0)}
+        }
+        #expect(await probe.events == [true,false])
+        #expect(try await f.repository.loadState().byAsset[f.id] == saved)
+    }
     @Test func automaticBackupReusesVerifiedDayBeforeAnyFurtherCopy() async throws {
         let f = try EditingFixture();_ = try await f.save(exposure:0.5)
         let first = try await f.repository.createBackup(automatic:true)
@@ -58,5 +97,27 @@ struct EditingRepositoryBackupIntegrationTests {
         #expect(await f.repository.artifactRecoveryReport?.retainedOrphans == report.retainedOrphans)
         #expect(await f.artifacts.wasPublished(orphan.artifact.id))
         #expect(try await f.repository.loadState().byAsset[f.id]?.snapshot == parent.snapshot)
+    }
+}
+
+private actor AutomaticBackupMaintenanceProbe {
+    let gate:CatalogLifecycleGate
+    let session:CatalogStartupAdmission
+    let failOnEntry:Int?
+    private var entries = 0
+    private(set) var events:[Bool] = []
+    init(gate:CatalogLifecycleGate,failOnEntry:Int? = nil) async throws {
+        self.gate = gate;session = try await gate.waitForStartup();self.failOnEntry = failOnEntry
+    }
+    func observe(_ active:Bool) throws {
+        // Both acknowledgements must happen outside the actual gate fence:
+        // true before promotion, false only after its completion/clean abort.
+        let admission = try gate.registerAcceptedWrite(domain:.editing,session:session)
+        withExtendedLifetime(admission) {}
+        events.append(active)
+        if active {
+            entries += 1
+            if entries == failOnEntry {throw EditingRepositoryError.storageFailure}
+        }
     }
 }
