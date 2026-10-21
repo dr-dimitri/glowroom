@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Build the one approved offline import package; no downloader or Python runtime in PicEdit."""
+"""Build the one approved offline import package; no downloader or Python runtime in Glowroom."""
 import argparse, concurrent.futures, hashlib, json, pathlib, shutil, tempfile
 
 REPO = pathlib.Path(__file__).resolve().parents[2]
-RESOURCES = REPO / 'Sources/PicEdit/AI/Resources'
+RESOURCES = REPO / 'Sources/Glowroom/AI/Resources'
 parser = argparse.ArgumentParser()
 parser.add_argument('--image', required=True, type=pathlib.Path, help='approved full-Float32 image .mlpackage')
 parser.add_argument('--text', required=True, type=pathlib.Path, help='approved Float16 text .mlpackage')

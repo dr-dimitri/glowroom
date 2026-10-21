@@ -4,7 +4,7 @@ Der interaktive KI-Assistent, Textbearbeitungsprovider, Lookvorschläge und der 
 
 ## Datenfluss und Quellenbezug
 
-`PicEditCore/AI` enthält gemeinsame `Sendable`-Werttypen, Quellenidentität, Bearbeitungssnapshots, Parameterzuordnung sowie die getrennten Analyse-, Such- und Bildgenerierungsverträge. Ein Modell erhält keine Schreibrechte auf Katalog, Bearbeitungsdatenbank, Originaldateien oder Shell. Bestätigte Metadaten und Bearbeitungen werden ausschließlich über die vorhandenen App- und Speicherpfade übernommen.
+`GlowroomCore/AI` enthält gemeinsame `Sendable`-Werttypen, Quellenidentität, Bearbeitungssnapshots, Parameterzuordnung sowie die getrennten Analyse-, Such- und Bildgenerierungsverträge. Ein Modell erhält keine Schreibrechte auf Katalog, Bearbeitungsdatenbank, Originaldateien oder Shell. Bestätigte Metadaten und Bearbeitungen werden ausschließlich über die vorhandenen App- und Speicherpfade übernommen.
 
 `AIEditingSnapshot` erfasst Foto, Quelle, Einstellungen, unabhängige Bearbeitungs-/Auswahltokens und gegebenenfalls die persistierte Bearbeitungsrevision. Die Originalidentität enthält standardisierten Dateipfad, Änderungszeit und Dateigröße aus dem Katalog. Das ist eine Änderungskennung, kein kryptografischer Beweis identischer Pixel. Ein Artefaktfingerprint ergänzt Store-ID, Artefakt-ID, Manifest-/Rasterhash und Geometrie.
 
@@ -39,8 +39,8 @@ Die Produktionsdeadline für Bildgenerierung beginnt mit dem Eintritt in `genera
 Gezielte Prüfungen und ein anschließender vollständiger Lauf verwenden denselben Test-Buildpfad nacheinander. Unabhängige Test-/Buildläufe benötigen getrennte Verzeichnisse und ein gemeinsames CPU-/Speicherbudget:
 
 ```sh
-PICEDIT_TEST_BUILD_PATH=/tmp/picedit-image-generation-tests ./scripts/test.sh --jobs 4 --filter ImageGenerationServiceTests/expirationDuringFinalCurrentTokenLookupCannotPublishAfterTimerWasCancelled
-PICEDIT_TEST_BUILD_PATH=/tmp/picedit-image-generation-tests ./scripts/test.sh --jobs 4
+GLOWROOM_TEST_BUILD_PATH=/tmp/glowroom-image-generation-tests ./scripts/test.sh --jobs 4 --filter ImageGenerationServiceTests/expirationDuringFinalCurrentTokenLookupCannotPublishAfterTimerWasCancelled
+GLOWROOM_TEST_BUILD_PATH=/tmp/glowroom-image-generation-tests ./scripts/test.sh --jobs 4
 ```
 
 Der erforderliche abschließende saubere App-Build und das Diffreview folgen `AGENTS.md` und dem Abschnitt „Entwickeln und prüfen“ im README.

@@ -11,7 +11,7 @@ zusätzlichen Worker oder GPU-Rücklesevorgänge.
 Temperatur reicht von 2000 bis 12000 K, Tönung von −150 bis +150. **6500 K und
 Tönung 0 sind die Neutralstellung.** Die Zahlen beschreiben einen relativen
 Weißpunkt auf dem bereits entwickelten Bild. Bei RAW hat ImageIO den
-kameraseitigen Weißabgleich schon angewendet. PicEdit zeigt deshalb keinen
+kameraseitigen Weißabgleich schon angewendet. Glowroom zeigt deshalb keinen
 vermeintlich ausgelesenen Kamera-Kelvinwert und behauptet keine erneute
 sensorseitige RAW-Entwicklung.
 
@@ -35,12 +35,12 @@ die Reglergrenzen angepasst und sind als begrenzte Berechnung erkennbar.
 
 ## Profile und Schwarzweiß
 
-- **PicEdit Farbe** erhält den vorhandenen Farbeindruck der entwickelten Quelle.
-- **PicEdit Lebendig** verstärkt Farbe und einen sanften Helligkeitskontrast.
-- **PicEdit Porträt** reduziert beide zurückhaltend. Dies ist ein fester kreativer
+- **Glowroom Farbe** erhält den vorhandenen Farbeindruck der entwickelten Quelle.
+- **Glowroom Lebendig** verstärkt Farbe und einen sanften Helligkeitskontrast.
+- **Glowroom Porträt** reduziert beide zurückhaltend. Dies ist ein fester kreativer
   Stil ohne Gesichtserkennung.
 
-Diese Profile sind PicEdit-Bildstile. Sie sind keine Adobe- oder
+Diese Profile sind Glowroom-Bildstile. Sie sind keine Adobe- oder
 herstellerspezifischen Kameraprofile. Das eingebettete Quellfarbprofil wird bei
 SDR-Vorschauen bewahrt; beim Export gelten die gewählten Ausgabefarbraumregeln.
 

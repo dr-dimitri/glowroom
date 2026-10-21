@@ -7,8 +7,8 @@ erhalten; die ursprünglichen Einzelartefakte stehen hier nicht mehr zur Verfüg
 Neue Läufe schreiben in ein ausdrücklich gewähltes externes Ergebnisverzeichnis,
 beispielsweise unter `/private/tmp/`.
 
-Vergleich zu [Issue #55](https://github.com/dr-dimitri/picedit/issues/55) nach
-[Roadmap #49](https://github.com/dr-dimitri/picedit/issues/49), begonnen auf
+Vergleich zu [Issue #55](https://github.com/dr-dimitri/glowroom/issues/55) nach
+[Roadmap #49](https://github.com/dr-dimitri/glowroom/issues/49), begonnen auf
 aktualisiertem `main` bei `f75a5e131e7de1c674b768c905dfeb9be6e03f43`.
 Luminanzverfahren, Chromaverfahren und native Skalierung erhalten getrennte
 Entscheidungen. Der Versuch führt weder einen KI-Denoiser noch ein RAW-Backend
@@ -26,7 +26,7 @@ fehlende Evidenz bleiben neben den Vetos unten zusammengefasst.
 ## Reproduktion und eingefrorene Referenz
 
 ```sh
-./scripts/evaluate-lightcraft.sh /private/tmp/picedit-lc06-run --candidate LC-06
+./scripts/evaluate-lightcraft.sh /private/tmp/glowroom-lc06-run --candidate LC-06
 python3 -m unittest discover -s tools/lightcraft-evaluation -p 'test_*.py'
 ```
 

@@ -2,7 +2,7 @@
 """Regenerate independent LC-03 numeric vectors from pinned, unchanged Rust functions.
 
 Only regeneration needs Python, rustc and an existing Lightcraft checkout. Neither
-Swift tests nor PicEdit builds execute this tool or depend on Rust/Lightcraft.
+Swift tests nor Glowroom builds execute this tool or depend on Rust/Lightcraft.
 """
 import argparse
 import hashlib
@@ -125,7 +125,7 @@ def main():
         }[op]
         program += [f"let output = {expression};", 'println!("{:?}", p.data);', 'println!("{:?}", output.data);']
     program.append("}")
-    with tempfile.TemporaryDirectory(prefix="picedit-lc03-oracle-") as directory:
+    with tempfile.TemporaryDirectory(prefix="glowroom-lc03-oracle-") as directory:
         root = pathlib.Path(directory)
         source = root / "oracle.rs"
         source.write_text(SHELL + modules + local + "\n".join(program))

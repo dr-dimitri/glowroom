@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Prepare PicEdit's pinned, fully local BiRefNet HR matting Core ML model.
+"""Prepare Glowroom's pinned, fully local BiRefNet HR matting Core ML model.
 
 Only the three checksum-pinned upstream files are downloaded/executed; model
 weights use safetensors, never pickle. No photograph or telemetry is uploaded.
-The Python environment is needed only by developers, never by PicEdit itself.
+The Python environment is needed only by developers, never by Glowroom itself.
 """
 from __future__ import annotations
 
@@ -47,6 +47,7 @@ def canonicalize_package(output: Path) -> None:
 
     manifest_path = output / "Manifest.json"
     manifest = json.loads(manifest_path.read_text())
+    # The UUID seed is part of the approved model bytes, not an app namespace.
     identifiers = {old: str(uuid.uuid5(uuid.NAMESPACE_URL, "picedit-subject-matting-v1:" + entry["path"]))
                    for old, entry in manifest["itemInfoEntries"].items()}
     manifest["itemInfoEntries"] = {identifiers[old]: entry for old, entry in manifest["itemInfoEntries"].items()}
@@ -200,6 +201,7 @@ def convert(directory: Path, output: Path, side: int = SIZE) -> None:
         compute_precision=ct.precision.FLOAT16, compute_units=ct.ComputeUnit.CPU_AND_GPU,
         pass_pipeline=pipeline, skip_model_load=True,
     )
+    # Preserve creator metadata and contract keys to reproduce the pinned graph.
     converted.short_description = "PicEdit BiRefNet HR matting, local foreground alpha"
     converted.author = "Peng Zheng et al.; PicEdit Core ML conversion"
     converted.license = "MIT"
@@ -213,7 +215,7 @@ def convert(directory: Path, output: Path, side: int = SIZE) -> None:
     })
     # MLModel.save removes existing destinations. Save only within an owned
     # private staging directory, then publish without replacing a racing path.
-    with tempfile.TemporaryDirectory(prefix=".picedit-subject-", dir=output.parent) as temporary:
+    with tempfile.TemporaryDirectory(prefix=".glowroom-subject-", dir=output.parent) as temporary:
         staged = Path(temporary) / output.name
         converted.save(str(staged))
         canonicalize_package(staged)

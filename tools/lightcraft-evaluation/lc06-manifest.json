@@ -154,7 +154,7 @@
     "variants": [
       "nativePixels",
       "unscaled",
-      "picedit"
+      "glowroom"
     ],
     "inputSampling": "areaAveraged",
     "distanceMetrics": {
@@ -174,7 +174,7 @@
       "edge_gradient_rmse",
       "chroma_fringing_rmse"
     ],
-    "rule": "Independent scaling factor on the same frozen Lightcraft formula/amount: nativePixels vs unscaled. Each control mean distance to area-downsampled native output improves >=10%, all rows stay <=.002 linear opponent/luminance units. Candidate residual reduction agrees with downsampled native reduction; quality guards relative to downsampled native against correctly area-averaged clean truth. PicEdit is a separate diagnostic, not a donor of matching or Go. These guards are engineering limits, not empirical perceptual thresholds."
+    "rule": "Independent scaling factor on the same frozen Lightcraft formula/amount: nativePixels vs unscaled. Each control mean distance to area-downsampled native output improves >=10%, all rows stay <=.002 linear opponent/luminance units. Candidate residual reduction agrees with downsampled native reduction; quality guards relative to downsampled native against correctly area-averaged clean truth. Glowroom is a separate diagnostic, not a donor of matching or Go. These guards are engineering limits, not empirical perceptual thresholds."
   },
   "requiredMissingUntilMeasured": [
     "Licensed real dark/bright RAW-developed photo rasters and source-regression originals (#1129/#815)",

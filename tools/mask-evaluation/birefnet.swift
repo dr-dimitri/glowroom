@@ -1,4 +1,4 @@
-// Native batch baseline, matching PicEdit's approved 1920 Core ML input.
+// Native batch baseline, matching Glowroom's approved 1920 Core ML input.
 // Usage: executable compiled.mlmodelc inputs-directory output-directory gpu|cpu
 import CoreGraphics
 import CoreML

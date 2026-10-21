@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Pinned official EfficientViT-SAM-L1 evaluation; no PicEdit app integration."""
+"""Pinned official EfficientViT-SAM-L1 evaluation; no Glowroom app integration."""
 import argparse
 import hashlib
 import importlib.metadata

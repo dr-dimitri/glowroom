@@ -7,8 +7,8 @@ erhalten; die ursprünglichen Einzelartefakte stehen hier nicht mehr zur Verfüg
 Neue Läufe schreiben in ein ausdrücklich gewähltes externes Ergebnisverzeichnis,
 beispielsweise unter `/private/tmp/`.
 
-Vergleich zu [Issue #53](https://github.com/dr-dimitri/picedit/issues/53) nach der
-[Roadmap #49](https://github.com/dr-dimitri/picedit/issues/49). Die isolierte
+Vergleich zu [Issue #53](https://github.com/dr-dimitri/glowroom/issues/53) nach der
+[Roadmap #49](https://github.com/dr-dimitri/glowroom/issues/49). Die isolierte
 Referenz ergänzt die [LC-01-Vergleichsgrundlage](LIGHTCRAFT-ALGORITHM-EVALUATION.md)
 und verwendet die reinen räumlichen Filter aus
 [LC-03](LIGHTCRAFT-TONE-EVALUATION.md). Ein gemeinsamer Filter bedeutet keine
@@ -24,7 +24,7 @@ LC-02 wird durch diesen Vergleich nicht ausgelöst.
 ## Reproduktion und Umfang
 
 ```sh
-./scripts/evaluate-lightcraft.sh /private/tmp/picedit-lc04-run --candidate LC-04
+./scripts/evaluate-lightcraft.sh /private/tmp/glowroom-lc04-run --candidate LC-04
 python3 -m unittest discover -s tools/lightcraft-evaluation -p 'test_*.py'
 ```
 
@@ -313,7 +313,7 @@ blockierten Metal-Geräteinitialisierung kontrolliert beendet. Der erfolgreiche
 Swift-Testlauf erfolgte mit normalem Core-Image-/Metal-Zugriff.
 
 Der abschließende vollständige Release-Build mit
-`PICEDIT_BUILD_JOBS=6 ./scripts/build-app.sh` bestand nach bestätigtem Ende
+`GLOWROOM_BUILD_JOBS=6 ./scripts/build-app.sh` bestand nach bestätigtem Ende
 aller Messungen/Tests und vollständiger Entfernung von `.build/`, `.build-app/`
 und `dist/PicEdit.app`. Es waren keine abweichenden Buildpfade gesetzt und
 kein aktiver Build-Lock vorhanden. Bundle-Plist und Signaturprüfung bestanden.

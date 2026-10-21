@@ -7,14 +7,14 @@ erhalten; die ursprünglichen Einzelartefakte stehen hier nicht mehr zur Verfüg
 Neue Läufe schreiben in ein ausdrücklich gewähltes externes Ergebnisverzeichnis,
 beispielsweise unter `/private/tmp/`.
 
-Stand: 17. Oktober 2026. Umsetzung von [LC-01 / #50](https://github.com/dr-dimitri/picedit/issues/50) aus der [selektiven Roadmap #49](https://github.com/dr-dimitri/picedit/issues/49).
+Stand: 17. Oktober 2026. Umsetzung von [LC-01 / #50](https://github.com/dr-dimitri/glowroom/issues/50) aus der [selektiven Roadmap #49](https://github.com/dr-dimitri/glowroom/issues/49).
 
 LC-01 stellt gemeinsame Eingaben, Kontrollvergleiche, Messgrößen, Rohdaten und ein konservatives Entscheidungsgate bereit. Es übernimmt keinen Lightcraft-Algorithmus in den Produktionsrenderer. Ein bestandener unveränderter oder neutraler Kontrollvergleich belegt die Integrität des Vergleichswegs; er belegt keinen Qualitätsgewinn. Am Ende von LC-01 waren die vier geplanten Algorithmusfamilien **blockiert wegen fehlender Evidenz**. Die nachfolgende LC-03-Evaluation ist unten separat fortgeschrieben; historische LC-01-Messwerte bleiben unverändert.
 
 ## Reproduktion und Ausgangsstand
 
 ```sh
-./scripts/evaluate-lightcraft.sh /private/tmp/picedit-lc01-run
+./scripts/evaluate-lightcraft.sh /private/tmp/glowroom-lc01-run
 ```
 
 Der Befehl baut den bestehenden `editing`-Developer-Harness optimiert und führt dessen Evaluationsmodus aus. Es gibt keinen zweiten allgemeinen Rendering-/Benchmark-Einstiegspunkt. `EditingBenchmark`, `EditRenderer` und der übrige App-Target werden mit denselben SwiftPM-Abhängigkeiten gebaut. Die Anwendung, der persönliche Katalog und RAW-Decoder werden dabei nicht gestartet. Die bisherigen Szenarien unter `scripts/benchmark-editing.sh` und die Arbeit aus #44 bleiben zuständig für allgemeine Vorschau-/Scheduling-Messungen.
@@ -25,7 +25,7 @@ Die historische Baseline benutzt `--scenario complex --width 2400 --height 1600 
 
 Fünf getrennte Prozesse lieferten fünf erste Aufrufe und je fünf warme Renderings. Die ersten Aufrufe hatten einen Median von 90,042 ms und eine Spannweite von 87,224–1810,105 ms. Die 25 warmen Werte hatten einen Median von 8,998 ms und eine Spannweite von 8,004–12,300 ms. Der höchste Prozess-Spitzen-RSS betrug 110.329.856 Byte. Die starke Streuung der ersten Aufrufe zeigt insbesondere, weshalb daraus kein stabiler kalter System-/Shadercache abgeleitet werden darf. Die neuen Float-Evaluationszeiten messen eine andere Konvertierungsstrecke und sind kein direkter Vorher-/Nachher-Geschwindigkeitsvergleich zu dieser 8-Bit-Baseline.
 
-Neue Ausgaben gehören in ein ausdrücklich gewähltes externes Ergebnisverzeichnis, beispielsweise `/private/tmp/picedit-lc01-run`. Die maschinenlesbaren Reports verknüpfen die verwendeten Manifeste, Fixtures und Ergebnisdateien mit Hashes. PNGs dienen der Ansicht; die Qualitätswerte werden aus dem gemeinsamen Float-Raster berechnet. Die ausführbaren Optionen und die Erweiterungsschnittstelle stehen in [`tools/lightcraft-evaluation/README.md`](../tools/lightcraft-evaluation/README.md).
+Neue Ausgaben gehören in ein ausdrücklich gewähltes externes Ergebnisverzeichnis, beispielsweise `/private/tmp/glowroom-lc01-run`. Die maschinenlesbaren Reports verknüpfen die verwendeten Manifeste, Fixtures und Ergebnisdateien mit Hashes. PNGs dienen der Ansicht; die Qualitätswerte werden aus dem gemeinsamen Float-Raster berechnet. Die ausführbaren Optionen und die Erweiterungsschnittstelle stehen in [`tools/lightcraft-evaluation/README.md`](../tools/lightcraft-evaluation/README.md).
 
 ## Gemeinsamer Pixelvertrag
 
@@ -106,7 +106,7 @@ Der Lauf erzeugte beschriftete und verblindete Paaransichten. Stichproben der Li
 
 ## Prüfung und Review
 
-Die abschließende gezielte Prüfung bestand mit **58 Tests in sieben Suites**, einschließlich der isoliert wiederholten bekannten Timeout-Prüfung. Der vollständige App-Testlauf umfasste 521 Tests in 68 Suites und scheiterte an genau der bereits erfassten, unabhängigen [Timeout-Regression unter paralleler Last #47](https://github.com/dr-dimitri/picedit/issues/47). Die 302 Core-Tests in 41 Suites bestanden. Damit wird der vollständige Lauf ausdrücklich nicht als vollständig grün ausgegeben. Die drei Python-Tests für Statistik, Timingphasen und reale Eingangsmanifeste sowie Shell-/Harness-Schutzprüfungen bestanden.
+Die abschließende gezielte Prüfung bestand mit **58 Tests in sieben Suites**, einschließlich der isoliert wiederholten bekannten Timeout-Prüfung. Der vollständige App-Testlauf umfasste 521 Tests in 68 Suites und scheiterte an genau der bereits erfassten, unabhängigen [Timeout-Regression unter paralleler Last #47](https://github.com/dr-dimitri/glowroom/issues/47). Die 302 Core-Tests in 41 Suites bestanden. Damit wird der vollständige Lauf ausdrücklich nicht als vollständig grün ausgegeben. Die drei Python-Tests für Statistik, Timingphasen und reale Eingangsmanifeste sowie Shell-/Harness-Schutzprüfungen bestanden.
 
 Das finale Review erfasste Fixtures, Metriken, Kandidatengate, Referenz-/Farbbrücken, den vorhandenen Benchmark-Einstiegspunkt, Orchestrierung, Tests und diese Dokumentation. Zugehörige Befunde wurden vor dem Messlauf behoben: Hautfarbabdeckung auch im Abnahmesplit, getrennte CPU-/CI-Kontrolltoleranzen, übereinstimmende Alphahintergründe, Float32-Verkleinerung, überprüfte Momentaufnahmen realer Eingaben und ausdrückliche Ablehnung nicht unterstützter Backendoptionen. Es wurde kein weiterer unabhängiger Bug gefunden; #47 wird wiederverwendet. Lokale Dokumentationslinks und `git diff --check` wurden geprüft.
 
@@ -120,10 +120,10 @@ Die abschließende LC-03-v2-Reihe umfasste zudem 40 gematchte Timingprozesse üb
 
 | Kandidat | Zuständiges Folgeissue | Aktueller Vergleichsstand |
 |---|---|---|
-| Lichter/Schatten, kantenbewusste Tonwertbasis | [LC-03 / #52](https://github.com/dr-dimitri/picedit/issues/52) | No-Go für den isolierten V2-Kandidaten: besserer Float-Linienkontrast, kritische Gamut-/Clippingregression bei gematchter Tonwirkung. |
-| Klarheit, gegebenenfalls Textur | [LC-04 / #53](https://github.com/dr-dimitri/picedit/issues/53) | Separates No-Go für beide isolierten Kandidaten: Klarheit verfehlt das Haloziel; Textur verbessert moderate Halos, beide überschreiten bei +60 das Überschwinglimit. |
-| Dynamik/Sättigung in OkLab | [LC-05 / #54](https://github.com/dr-dimitri/picedit/issues/54) | Separates No-Go für beide isolierten Kandidaten: moderate Hue-/Helligkeitsziele verbessern sich, aber kritische Clipping-/Abstufungsgrenzen und numerische Grauverträge scheitern. |
-| Klassische Luma-/Chroma-Entrauschung | [LC-06 / #55](https://github.com/dr-dimitri/picedit/issues/55) | Drei getrennte No-Gos: Luma verfehlt Detail-/Kantenziele, Chroma verletzt Detail-/Farbsäumgrenzen; native Skalierung verbessert die räumliche Konsistenz, hält aber die Rauschminderung nicht ausreichend konstant. |
+| Lichter/Schatten, kantenbewusste Tonwertbasis | [LC-03 / #52](https://github.com/dr-dimitri/glowroom/issues/52) | No-Go für den isolierten V2-Kandidaten: besserer Float-Linienkontrast, kritische Gamut-/Clippingregression bei gematchter Tonwirkung. |
+| Klarheit, gegebenenfalls Textur | [LC-04 / #53](https://github.com/dr-dimitri/glowroom/issues/53) | Separates No-Go für beide isolierten Kandidaten: Klarheit verfehlt das Haloziel; Textur verbessert moderate Halos, beide überschreiten bei +60 das Überschwinglimit. |
+| Dynamik/Sättigung in OkLab | [LC-05 / #54](https://github.com/dr-dimitri/glowroom/issues/54) | Separates No-Go für beide isolierten Kandidaten: moderate Hue-/Helligkeitsziele verbessern sich, aber kritische Clipping-/Abstufungsgrenzen und numerische Grauverträge scheitern. |
+| Klassische Luma-/Chroma-Entrauschung | [LC-06 / #55](https://github.com/dr-dimitri/glowroom/issues/55) | Drei getrennte No-Gos: Luma verfehlt Detail-/Kantenziele, Chroma verletzt Detail-/Farbsäumgrenzen; native Skalierung verbessert die räumliche Konsistenz, hält aber die Rauschminderung nicht ausreichend konstant. |
 
 Alle Lightcraft-Quellverweise beziehen sich auf `dr-dimitri/lightcraft@f9b0c8c8a12c8fa17b7afb5baa00f9ee1bbd7b15`: [`render_impl`/`StageCache`](https://github.com/dr-dimitri/lightcraft/blob/f9b0c8c8a12c8fa17b7afb5baa00f9ee1bbd7b15/crates/pipeline/src/lib.rs), [`tone_base`, Guided-Filter und NR](https://github.com/dr-dimitri/lightcraft/blob/f9b0c8c8a12c8fa17b7afb5baa00f9ee1bbd7b15/crates/pipeline/src/local.rs), [`ColorOps`](https://github.com/dr-dimitri/lightcraft/blob/f9b0c8c8a12c8fa17b7afb5baa00f9ee1bbd7b15/crates/pipeline/src/colorops.rs) und [`oklab_from_2020`/`oklab_to_2020`](https://github.com/dr-dimitri/lightcraft/blob/f9b0c8c8a12c8fa17b7afb5baa00f9ee1bbd7b15/crates/color/src/perceptual.rs). WGSL ist gegebenenfalls eine separat zu prüfende zweite Implementierung, kein automatisch fehlerfreier Maßstab.
 
@@ -137,4 +137,4 @@ Der [separate LC-05-Bericht](LIGHTCRAFT-COLOR-EVALUATION.md) untersucht Dynamik 
 
 Der [separate LC-06-Bericht](LIGHTCRAFT-DENOISE-EVALUATION.md) vergleicht klassische Luma-/Chroma-Entrauschung gegen saubere Ground Truth bei gleicher positiver Rauschminderung. Alle acht Primärfälle je Regler sind angeglichen, insgesamt 42 von 48 Qualitätsfällen. Luma verschlechtert den mittleren Detail-RMSE um 1,74 % und verbessert den Kanten-RMSE nur um 8,46 % statt der geforderten 10 %. Chroma verletzt Detail-/Farbsäumgrenzen auch außerhalb des im Original-Rust bestätigten negativen-Y-Problems. Beide Formeln erhalten No-Go. Die unabhängig bewertete Native-Pixel-Skalierung senkt die Distanz zur verkleinerten Vollauflösung um 76,24 % für Luma und 95,52 % für Chroma, verletzt aber in sieben Fällen die festgelegte Rauschminderungskonsistenz und erhält ebenfalls No-Go. 40 Rust-Referenzfälle, 54 Skalierungsdatensätze und 80 vollständige Timingprozesse sichern Herkunft und Umfang. Die Timingeffekte sind nicht angeglichen und belegen keinen Leistungsgewinn. Reale Foto-/Blindabnahme und Produktionsintegration bleiben offen; LC-02 wird durch diese negativen Ergebnisse nicht ausgelöst.
 
-Erst ein positiver Kandidat rechtfertigt den minimalen Produktionsvertrag aus [LC-02 / #51](https://github.com/dr-dimitri/picedit/issues/51). Bis dahin bleiben PicEdits Produktionsgraph, gespeicherte Looks, UI und Reglerumfang unverändert.
+Erst ein positiver Kandidat rechtfertigt den minimalen Produktionsvertrag aus [LC-02 / #51](https://github.com/dr-dimitri/glowroom/issues/51). Bis dahin bleiben PicEdits Produktionsgraph, gespeicherte Looks, UI und Reglerumfang unverändert.

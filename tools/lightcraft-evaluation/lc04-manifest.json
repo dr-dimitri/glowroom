@@ -107,7 +107,7 @@
   "ablations": {
     "clarity": "Guided log-luminance versus Gaussian log-luminance at identical sigma and finish formula.",
     "texture": "Identical Gaussian sigma/boundary treatment: existing gamma-2.2/additive domain after linear RGB Gaussian, unbounded log EV detail, and log detail limited to +/-1 EV with tame. Domain and limiter comparisons have independently matched signed effect targets.",
-    "textureAdoption": "Require primary gain over PicEdit and same-Gaussian existing-domain variant. Report incremental limiter gain over unlimited log separately; no automatic transfer of a clarity decision to texture."
+    "textureAdoption": "Require primary gain over Glowroom and same-Gaussian existing-domain variant. Report incremental limiter gain over unlimited log separately; no automatic transfer of a clarity decision to texture."
   },
   "criticalLimits": {
     "hueDeviationDegrees": 3.0,
@@ -117,7 +117,7 @@
     "edgeOvershootIncrease": 0.03,
     "noiseAmplificationRelativeIncrease": 0.02
   },
-  "criticalComparison": "Only matched production candidates can veto their own control. Hue/gamut/clipping/alpha and edge overshoot compare to PicEdit. Noise amplification uses an independent bottom-quarter noisy/clean residual; excluded from effect matching. No halo/noise credit from absent or empty ROIs.",
+  "criticalComparison": "Only matched production candidates can veto their own control. Hue/gamut/clipping/alpha and edge overshoot compare to Glowroom. Noise amplification uses an independent bottom-quarter noisy/clean residual; excluded from effect matching. No halo/noise credit from absent or empty ROIs.",
   "performanceBudgets": {
     "maximumColdLatencyRatio": 1.25,
     "maximumWarmLatencyRatio": 1.2,
@@ -155,7 +155,7 @@
     "Production cache, rapid slider/image changes, cancellation, undo and preview/export integration",
     "Accelerated path parity if an accelerated path is proposed"
   ],
-  "criticalLimitRationale": "Hue, gamut, clipping and alpha reuse LC01/LC03 limits. A 0.03 additional linear-Y edge overshoot is the predeclared maximum per-pixel halo regression against PicEdit. The independent noisy/clean residual may increase by at most 2% at matched fine-detail gain; this conservative non-regression guard is not a claimed perceptual just-noticeable difference. Thresholds are fixed before measurements.",
+  "criticalLimitRationale": "Hue, gamut, clipping and alpha reuse LC01/LC03 limits. A 0.03 additional linear-Y edge overshoot is the predeclared maximum per-pixel halo regression against Glowroom. The independent noisy/clean residual may increase by at most 2% at matched fine-detail gain; this conservative non-regression guard is not a claimed perceptual just-noticeable difference. Thresholds are fixed before measurements.",
   "neutralContract": "Every scene and variant emits -1/0/+1 diagnostics. Exactly zero must preserve the input raster hash; this identity contract is checked separately from nonzero effect matching. Missing transition records block acceptance; a verified candidate zero-identity regression rejects that control.",
   "primaryDetailProbe": {
     "reason": "V1 primary scenes had texture targets below the registered minimum and hard-edge area changes shifted the clarity fit. V2 changes only independent probe support; algorithms, matching/quality thresholds and decisions remain fixed.",

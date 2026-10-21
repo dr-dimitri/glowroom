@@ -1,6 +1,6 @@
 # AI-11: Entscheidung zum Bildgenerierungsbackend
 
-Entschieden am **17. Oktober 2026**, bezogen auf Issue #12: **No-Go für die evaluierte lokale Route; kein Cloud-Go.** PicEdit meldet keine Bildgenerierungsfähigkeit als verfügbar. `.inpaint` sowie darauf aufbauende Hintergrundbearbeitung und Canvas-Erweiterung bleiben gesperrt; die Folge-Issues #13, #14 und #15 erhalten dadurch keine Freigabe. Das Gate ist entschieden. Die Entscheidung behauptet weder die generelle Unfähigkeit lokaler Modelle noch die Unfähigkeit des geprüften Cloudanbieters.
+Entschieden am **17. Oktober 2026**, bezogen auf Issue #12: **No-Go für die evaluierte lokale Route; kein Cloud-Go.** Glowroom meldet keine Bildgenerierungsfähigkeit als verfügbar. `.inpaint` sowie darauf aufbauende Hintergrundbearbeitung und Canvas-Erweiterung bleiben gesperrt; die Folge-Issues #13, #14 und #15 erhalten dadurch keine Freigabe. Das Gate ist entschieden. Die Entscheidung behauptet weder die generelle Unfähigkeit lokaler Modelle noch die Unfähigkeit des geprüften Cloudanbieters.
 
 Der Grund ist nachgewiesene unzureichende Bildqualität: tatsächliches 9-Kanal-Inpainting erzeugt Bilder, entfernt die Testobjekte aber mit sichtbaren Texturgrenzen, ergänzt unerwünschte Motivkonturen oder erweitert den Canvas als gerahmtes Bild statt als fortlaufende Szene. Die Alpha-Fixture erzeugt einen auffälligen hellen Ersatzbereich. Fehlende Gewichte sind **nicht** der Grund: Alle drei installierten Gewichte wurden am 17. Oktober erneut byteweise gehasht und stimmen mit den veröffentlichten SHA256 überein.
 
@@ -36,9 +36,9 @@ Die drei FP16-Dateien benötigen zusammen **2.132.634.310 Bytes**, das vollstän
 | `text_encoder/model.fp16.safetensors` | 246.144.864 | `77795e2023adcf39bc29a884661950380bd093cf0750a966d473d1718dc9ef4e` |
 | `vae/diffusion_pytorch_model.fp16.safetensors` | 167.335.342 | `4fbcf0ebe55a0984f5a5e00d8c4521d52359af7229bb4d81890039d2aa16dd7c` |
 
-Die Gewichte stehen unter **CreativeML OpenRAIL-M**. Der vollständige Lizenztext liegt unter `tools/image-generation-evaluation/LICENSE-weights.txt`; diese Bedingungen müssen bei einer künftigen Installation oder Weitergabe mitgeführt werden. SDK und GGML stehen unter MIT; tatsächlich mitkompilierte Drittanbieterhinweise stehen unter `tools/image-generation-evaluation/THIRD-PARTY-NOTICES.txt`. PicEdit verteilt für dieses No-Go keine Gewichte, kein Modell-SDK und keinen generierenden Helper. Downloads bleiben ein eigener expliziter Evaluationsschritt. [Gewichtelizenz in fester Revision](https://huggingface.co/spaces/CompVis/stable-diffusion-license/blob/14d42d09bffd871b1666a084fc954a50cff72ac0/license.txt)
+Die Gewichte stehen unter **CreativeML OpenRAIL-M**. Der vollständige Lizenztext liegt unter `tools/image-generation-evaluation/LICENSE-weights.txt`; diese Bedingungen müssen bei einer künftigen Installation oder Weitergabe mitgeführt werden. SDK und GGML stehen unter MIT; tatsächlich mitkompilierte Drittanbieterhinweise stehen unter `tools/image-generation-evaluation/THIRD-PARTY-NOTICES.txt`. Glowroom verteilt für dieses No-Go keine Gewichte, kein Modell-SDK und keinen generierenden Helper. Downloads bleiben ein eigener expliziter Evaluationsschritt. [Gewichtelizenz in fester Revision](https://huggingface.co/spaces/CompVis/stable-diffusion-license/blob/14d42d09bffd871b1666a084fc954a50cff72ac0/license.txt)
 
-Die Referenz war ein **M2 Pro, 12 CPU-Kerne, 16 GiB gemeinsamer Speicher, macOS 27.0.1**, mit CLT/Swift 6.4 und SDK 27. Der Helper wurde für arm64 mit Deploymentziel macOS 14 gebaut. Das belegt keine Ausführung auf macOS 14, Intel oder Geräten unter 16 GiB; diese Kombinationen sind für die evaluierte Route nicht freigegeben. PicEdits Basisfunktionen behalten macOS 14 als Mindeststand.
+Die Referenz war ein **M2 Pro, 12 CPU-Kerne, 16 GiB gemeinsamer Speicher, macOS 27.0.1**, mit CLT/Swift 6.4 und SDK 27. Der Helper wurde für arm64 mit Deploymentziel macOS 14 gebaut. Das belegt keine Ausführung auf macOS 14, Intel oder Geräten unter 16 GiB; diese Kombinationen sind für die evaluierte Route nicht freigegeben. Glowrooms Basisfunktionen behalten macOS 14 als Mindeststand.
 
 ## Vor der Inferenz festgelegte Kriterien
 
@@ -49,7 +49,7 @@ Die Kriterien wurden am 16. Oktober vor der ersten Modellladung festgehalten und
 - Kalte Modellladung höchstens 45 s, kalte erste Gesamtgenerierung höchstens 240 s; warme 25-Schritt-Generierung höchstens 180 s. Kalt bezeichnet einen neuen Prozess/Modellkontext, keinen zwangsgeleerten Betriebssystem-Dateicache.
 - Abbruch bis zur tatsächlichen Beendigung höchstens 5 s; Ressourcen bleiben bis zum nativen Rücklauf beziehungsweise bestätigten Prozessende gebunden. Ein neuer schwerer Auftrag darf vorher nicht beginnen.
 - Promptziel erkennbar erfüllt, Maskenposition und Orientierung korrekt, keine neue sichtbare Naht oder Verzerrung; Quellenpixel außerhalb der finalen Maske und Originalalpha erhalten. Alle sechs Fixtures sowie beide Maskenkanten müssen bestehen.
-- Ein einzelner Core-Image-Vorschaurenderer läuft während der Inferenz weiter. Der historische Test ist ausdrücklich eine synthetische 256×256-Probe; er ist weder ein tatsächlicher PicEdit-UI-Test noch ein RAW-Benchmark.
+- Ein einzelner Core-Image-Vorschaurenderer läuft während der Inferenz weiter. Der historische Test ist ausdrücklich eine synthetische 256×256-Probe; er ist weder ein tatsächlicher Glowroom-UI-Test noch ein RAW-Benchmark.
 
 ## Echte Ergebnisse und Messgrenzen
 
@@ -117,7 +117,7 @@ Apples offizielles `ml-stable-diffusion` wurde am 17. Oktober live auf Commit **
 
 ## Konkreter optionaler Cloudkandidat
 
-Für den lokalen No-Go wurde **Stability AI Stable Image Edit / Inpaint**, `POST https://api.stability.ai/v2beta/stable-image/edit/inpaint`, anhand offizieller Dokumentation erneut am 17. Oktober geprüft. Der Vertrag beschreibt echtes Maskeninpainting mit Bearer-Authentifizierung und Multipart-Bild/Prompt/optionaler expliziter Maske; die Ausgabe wird als 4 Megapixel beschrieben. Das ist ein konkreter Kandidat, **keine nachgewiesene PicEdit-Route**. Die gewichtsgenaue Modellrevision ist über diesen Dienstvertrag nicht auswählbar. Die API-Serviceversion und tatsächliche Antwortprovenienz müssten separat geführt werden. [Offizielle API-Referenz](https://platform.stability.ai/docs/api-reference#tag/Edit/paths/~1v2beta~1stable-image~1edit~1inpaint/post)
+Für den lokalen No-Go wurde **Stability AI Stable Image Edit / Inpaint**, `POST https://api.stability.ai/v2beta/stable-image/edit/inpaint`, anhand offizieller Dokumentation erneut am 17. Oktober geprüft. Der Vertrag beschreibt echtes Maskeninpainting mit Bearer-Authentifizierung und Multipart-Bild/Prompt/optionaler expliziter Maske; die Ausgabe wird als 4 Megapixel beschrieben. Das ist ein konkreter Kandidat, **keine nachgewiesene Glowroom-Route**. Die gewichtsgenaue Modellrevision ist über diesen Dienstvertrag nicht auswählbar. Die API-Serviceversion und tatsächliche Antwortprovenienz müssten separat geführt werden. [Offizielle API-Referenz](https://platform.stability.ai/docs/api-reference#tag/Edit/paths/~1v2beta~1stable-image~1edit~1inpaint/post)
 
 Der aktuelle veröffentlichte Preis beträgt fünf Credits je erfolgreicher Inpaint-Generierung; ein Credit entspricht 0,01 USD. Preise können sich ändern. Es wurden keine authentifizierten Anfragen, Bildübertragungen oder Zahlungen durchgeführt und keine Credentials gesucht oder gelesen. Ein Timeout wäre kein Nachweis einer unberechneten Anfrage. [Offizielle Preise](https://platform.stability.ai/pricing)
 
@@ -125,20 +125,20 @@ Der damalige AI-08-Anthropic-Textprovider ist mit dem interaktiven KI-Assistente
 
 ## Aktuelle Reproduktion und normale Tests
 
-`./scripts/evaluate-image-generation.sh` zeigt ohne Argumente nur den Plan und baut oder lädt kein Modell. Das Swift-Werkzeug wird als isolierter Einstiegspunkt im tatsächlichen PicEdit-App-Target kompiliert; die normale App enthält keinen generierenden SDK-Adapter. Modelldownload und Inferenz bleiben getrennt. Der vorgelagerte SwiftPM-Build kann die bereits gepinnten Paketabhängigkeiten in seinen isolierten Cache laden; der Benchmark selbst greift nicht auf Modell- oder Clouddienste zu:
+`./scripts/evaluate-image-generation.sh` zeigt ohne Argumente nur den Plan und baut oder lädt kein Modell. Das Swift-Werkzeug wird als isolierter Einstiegspunkt im tatsächlichen Glowroom-App-Target kompiliert; die normale App enthält keinen generierenden SDK-Adapter. Modelldownload und Inferenz bleiben getrennt. Der vorgelagerte SwiftPM-Build kann die bereits gepinnten Paketabhängigkeiten in seinen isolierten Cache laden; der Benchmark selbst greift nicht auf Modell- oder Clouddienste zu:
 
 ```sh
 # Ohne Modelle: eigene Contract-Fixtures erzeugen; Replay benötigt externe Rohoutputs.
-./scripts/evaluate-image-generation.sh fixtures --out /private/tmp/picedit-contract-fixtures
-./scripts/evaluate-image-generation.sh replay --historical /private/tmp/picedit-historical-output --out /private/tmp/picedit-compositor-replay
+./scripts/evaluate-image-generation.sh fixtures --out /private/tmp/glowroom-contract-fixtures
+./scripts/evaluate-image-generation.sh replay --historical /private/tmp/glowroom-historical-output --out /private/tmp/glowroom-compositor-replay
 
 # Expliziter Download mit gepinnten Hashes, danach separater Offline-Build.
-python3 scripts/prepare-image-generation-evaluation.py --root /private/tmp/picedit-image-evaluation --download --fixture-archive /private/tmp/picedit-fixture-archive
-python3 scripts/prepare-image-generation-evaluation.py --root /private/tmp/picedit-image-evaluation --build --fixture-archive /private/tmp/picedit-fixture-archive
+python3 scripts/prepare-image-generation-evaluation.py --root /private/tmp/glowroom-image-evaluation --download --fixture-archive /private/tmp/glowroom-fixture-archive
+python3 scripts/prepare-image-generation-evaluation.py --root /private/tmp/glowroom-image-evaluation --build --fixture-archive /private/tmp/glowroom-fixture-archive
 
 # Explizite echte Inferenz: neuer Reportordner, kalt + drei identische warme
 # Läufe, synthetische gleichzeitige Preview, eigener Abbruchkontext.
-./scripts/evaluate-image-generation.sh benchmark --run --root /private/tmp/picedit-image-evaluation --out /private/tmp/picedit-image-measurement
+./scripts/evaluate-image-generation.sh benchmark --run --root /private/tmp/glowroom-image-evaluation --out /private/tmp/glowroom-image-measurement
 ```
 
 Der externe Fixture-Archivbaum muss `provenance/fixtures-manifest.json` und `fixtures/` mit den gepinnten Originalhashes enthalten. Er wird nicht mehr aus dem Repository bereitgestellt; neu erzeugte Contract-Fixtures ersetzen ihn nicht. `--all-fixtures` ergänzt die sechs weiteren Maskenfälle. Standardmäßig wird die erste Fixture zur kalten/warmspezifischen Messung wiederholt; die vollständige Qualitätsabdeckung bleibt separat referenziert. Jeder Benchmarklauf prüft vor dem Laden alle Modell-/Input-/Helperhashes, Apple Silicon, mindestens 16 GiB und normalen Speicherdruck. Größen, Prompt, Seed und die übrigen festen Parameter werden im protokollierten Request bzw. gepinnten Parametersatz geführt. Derselbe native Modellkontext bleibt durch die Serie resident. Die einzelne AI-01-Lease bleibt bis zum bestätigten Helperende belegt. Die Uhr `mach_continuous_time` schließt Systemschlaf ein; Abbruch, Fristen und Speicher werden beim Empfang sowie unmittelbar vor dem Verarbeiten eines Ereignisses geprüft. Alle Teilresultate bleiben bei Fehlern im gesonderten Bericht erhalten. Compositing und beschriftete Vergleiche laufen erst nach dem Modellprozess und zählen nicht zur Modellzeit. Ihre Ausgabe liegt im Geschwisterordner `<Messordner>-compositor`.

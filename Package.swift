@@ -2,29 +2,29 @@
 import PackageDescription
 import Foundation
 
-// PICEDIT_DEVELOPER_HARNESS_VERSION: 1
+// GLOWROOM_DEVELOPER_HARNESS_VERSION: 1
 // Developer harnesses compile inside the real app target, so their dependency
 // graph cannot drift from production. Only this target receives the flags.
 let developerTools = [
-    "image-pipeline": "PICEDIT_IMAGE_PIPELINE_SMOKE",
-    "editing": "PICEDIT_EDITING_BENCHMARK",
-    "library": "PICEDIT_LIBRARY_BENCHMARK",
-    "image-generation": "PICEDIT_IMAGE_GENERATION_EVALUATION"
+    "image-pipeline": "GLOWROOM_IMAGE_PIPELINE_SMOKE",
+    "editing": "GLOWROOM_EDITING_BENCHMARK",
+    "library": "GLOWROOM_LIBRARY_BENCHMARK",
+    "image-generation": "GLOWROOM_IMAGE_GENERATION_EVALUATION"
 ]
-let requestedTool = ProcessInfo.processInfo.environment["PICEDIT_DEVELOPER_TOOL"]
+let requestedTool = ProcessInfo.processInfo.environment["GLOWROOM_DEVELOPER_TOOL"]
 let toolFlag = requestedTool.flatMap { developerTools[$0] }
 if requestedTool != nil && toolFlag == nil {
-    fatalError("Unknown PICEDIT_DEVELOPER_TOOL; use image-pipeline, editing, library or image-generation")
+    fatalError("Unknown GLOWROOM_DEVELOPER_TOOL; use image-pipeline, editing, library or image-generation")
 }
-var appSettings: [SwiftSetting] = toolFlag.map { [.define("PICEDIT_DEVELOPER_HARNESS"), .define($0)] } ?? []
-if requestedTool == "editing", ProcessInfo.processInfo.environment["PICEDIT_BENCHMARK_SESSION_API"] == "1" {
+var appSettings: [SwiftSetting] = toolFlag.map { [.define("GLOWROOM_DEVELOPER_HARNESS"), .define($0)] } ?? []
+if requestedTool == "editing", ProcessInfo.processInfo.environment["GLOWROOM_BENCHMARK_SESSION_API"] == "1" {
     appSettings.append(.define("EDIT_RENDER_SESSIONS"))
 }
 
 let package = Package(
-    name: "PicEdit",
+    name: "Glowroom",
     platforms: [.macOS(.v14)],
-    products: [.executable(name: "PicEdit", targets: ["PicEdit"])],
+    products: [.executable(name: "Glowroom", targets: ["Glowroom"])],
     dependencies: [
         .package(url: "https://github.com/huggingface/swift-transformers.git", revision: "e37cacea74498bba66002bb83ecafee3e4ab8884"),
         // Newer Collections condition on compiler 6.4 APIs absent from SDK 26.5.
@@ -33,9 +33,9 @@ let package = Package(
     ],
     targets: [
         .systemLibrary(name: "CSQLite"),
-        .target(name: "PicEditCore", dependencies: ["CSQLite"]),
-        .executableTarget(name: "PicEdit", dependencies: ["PicEditCore", "CSQLite", .product(name: "Tokenizers", package: "swift-transformers"), .product(name: "Hub", package: "swift-transformers")], resources: [.process("AI/Resources"), .process("Resources")], swiftSettings: appSettings),
-        .testTarget(name: "PicEditCoreTests", dependencies: ["PicEditCore", "CSQLite"]),
-        .testTarget(name: "PicEditTests", dependencies: ["PicEdit", "PicEditCore"])
+        .target(name: "GlowroomCore", dependencies: ["CSQLite"]),
+        .executableTarget(name: "Glowroom", dependencies: ["GlowroomCore", "CSQLite", .product(name: "Tokenizers", package: "swift-transformers"), .product(name: "Hub", package: "swift-transformers")], resources: [.process("AI/Resources"), .process("Resources")], swiftSettings: appSettings),
+        .testTarget(name: "GlowroomCoreTests", dependencies: ["GlowroomCore", "CSQLite"]),
+        .testTarget(name: "GlowroomTests", dependencies: ["Glowroom", "GlowroomCore"])
     ]
 )

@@ -40,13 +40,13 @@ Vor jedem Versuch und nach der Kodierung liest der Hintergrundexport den aktuell
 
 Schon angenommene Imports werden vor dem Start ihres Scans registriert, einschließlich wartender Importbatches. Solange ein solcher Import oder eine Neuzuordnung von Originalpfaden läuft, veröffentlicht der Export keine Datei. Ein bereits offener Dialog bleibt erhalten und meldet, dass der Vorgang nach Abschluss wiederholt werden kann. Die Registrierung bleibt bei Abbruch bis zur tatsächlichen Rückkehr laufender Arbeit bestehen; noch nicht gestartete Batches geben sie frei. Eine kurze gemeinsame Sperre schützt die Generation dieser Registrierung bis zum finalen Dateicheck und Rename. Kataloglesen, Identitätsprüfung, Warten auf den nativen Lock und Rendering liegen außerhalb dieser Sperre und außerhalb des MainActors. Ein fehlerhaft geöffneter Katalog sperrt auch bereits offene Exportdialoge.
 
-Synchrones Systemrendering ist nicht jederzeit unterbrechbar. Der Dialog bleibt während eines angeforderten Abbruchs deshalb beschäftigt, bis der Export tatsächlich zurückgekehrt ist. PicEdit verhindert das Beenden während dieser Phase. Andere Programme sollten Quelle und Ziel während eines Exports nicht gleichzeitig umbenennen oder ersetzen; es besteht keine prozessübergreifende Schreibsperre für externe Anwendungen.
+Synchrones Systemrendering ist nicht jederzeit unterbrechbar. Der Dialog bleibt während eines angeforderten Abbruchs deshalb beschäftigt, bis der Export tatsächlich zurückgekehrt ist. Glowroom verhindert das Beenden während dieser Phase. Andere Programme sollten Quelle und Ziel während eines Exports nicht gleichzeitig umbenennen oder ersetzen; es besteht keine prozessübergreifende Schreibsperre für externe Anwendungen.
 
 ## Prüfung
 
 Neue synthetische Regressionen prüfen den tatsächlichen 10-Bit-HEIF-Datenstrom, HLG-Farbraum, HDR-Decodierung mit Werten oberhalb von SDR-Weiß, korrekte Freistellungs-/Drehmaße vor der Skalierung, unveränderte Originalbytes und erhaltene vorhandene Zieldateien bei Fehlern nach dem Encodieren für beide Formate. Controller-Tests prüfen Formatwechsel nach Dialogöffnung, passende Endungen, eindeutige HEIF-Stapelnamen und eingefrorene HDR-Aufträge bei einer Überschreibbestätigung. Der integrierte Test-/Buildbericht dokumentiert die Ergebnisse; ein HDR-Monitor ist für diese numerischen Bildprüfungen nicht erforderlich.
 
-Regressionen für [Issue #27](https://github.com/dr-dimitri/picedit/issues/27) verwenden ausschließlich synthetische Bilder und eigene temporäre Kataloge: verspätete Imports bei offenem Dialog und Überschreibbestätigung, ein noch blockierter Scanner nach der Kodierung, wartende und abgebrochene Importbatches, neue Originale und Hardlinks vor Start/nach Rendering/nach dem finalen Snapshot, zwischenzeitlich abgeschlossene Annahmen sowie neue Wiederherstellungs-Schutzpfade. Sie prüfen erhaltene Originalbytes, entfernte temporäre JPEGs und die Möglichkeit eines späteren erlaubten Exports. Build- und Laufergebnisse des integrierten Standes stehen in [REVIEW.md](REVIEW.md).
+Regressionen für [Issue #27](https://github.com/dr-dimitri/glowroom/issues/27) verwenden ausschließlich synthetische Bilder und eigene temporäre Kataloge: verspätete Imports bei offenem Dialog und Überschreibbestätigung, ein noch blockierter Scanner nach der Kodierung, wartende und abgebrochene Importbatches, neue Originale und Hardlinks vor Start/nach Rendering/nach dem finalen Snapshot, zwischenzeitlich abgeschlossene Annahmen sowie neue Wiederherstellungs-Schutzpfade. Sie prüfen erhaltene Originalbytes, entfernte temporäre JPEGs und die Möglichkeit eines späteren erlaubten Exports. Build- und Laufergebnisse des integrierten Standes stehen in [REVIEW.md](REVIEW.md).
 
 Geprüft am 16. Oktober 2026 in einer normalen macOS-Sitzung mit Core Image:
 
@@ -57,11 +57,11 @@ Geprüft am 16. Oktober 2026 in einer normalen macOS-Sitzung mit Core Image:
 - Mehrfachauswahl im isolierten Testkatalog: kurze ⌘-/⇧-Klicks, ⌘A, Doppelklick und Abwahl des letzten Bildes im Filmstreifen geprüft. Drei Bilder über das Kontextmenü exportiert; Anzahl, Dateinamen und Originalabmessungen der JPEGs bestätigt. Modifikatoren werden am Klickereignis erfasst, damit ein Loslassen während der Doppelklickerkennung die Auswahl nicht verändert.
 - Debug-Bundle erfolgreich erstellt und Signatur geprüft. Es bleiben die bereits vorhandenen Core-Image-Kernel- und lokalen Toolchain-Warnungen.
 
-Ein zusätzlicher Versuch mit einer vorhandenen CR3-Datei (6000 × 4000 Pixel) im Cloud-Ordner scheiterte bereits beim Lesen an macOS-Zugriffsrechten (`EPERM`). Eine erfolgreiche Kamera-RAW-Exportprüfung wird daher nicht behauptet. Der optionale Test kann mit einer zugänglichen Kamera-RAW-Datei über `PICEDIT_RAW_EXPORT_TEST_FILE` ausgeführt werden; er prüft Originalauflösung, bearbeitete P3-Ausgabe und unveränderte Quelldaten.
+Ein zusätzlicher Versuch mit einer vorhandenen CR3-Datei (6000 × 4000 Pixel) im Cloud-Ordner scheiterte bereits beim Lesen an macOS-Zugriffsrechten (`EPERM`). Eine erfolgreiche Kamera-RAW-Exportprüfung wird daher nicht behauptet. Der optionale Test kann mit einer zugänglichen Kamera-RAW-Datei über `GLOWROOM_RAW_EXPORT_TEST_FILE` ausgeführt werden; er prüft Originalauflösung, bearbeitete P3-Ausgabe und unveränderte Quelldaten.
 
 ```sh
-PICEDIT_TEST_BUILD_PATH=/private/tmp/picedit-export-backend-tests scripts/test.sh --jobs 3
-PICEDIT_BUILD_PATH=.build-app PICEDIT_BUILD_JOBS=4 scripts/build-app.sh
+GLOWROOM_TEST_BUILD_PATH=/private/tmp/glowroom-export-backend-tests scripts/test.sh --jobs 3
+GLOWROOM_BUILD_PATH=.build-app GLOWROOM_BUILD_JOBS=4 scripts/build-app.sh
 # Optional: zugängliche Kamera-RAW-Datei ausdrücklich angeben
-PICEDIT_RAW_EXPORT_TEST_FILE=/absoluter/pfad/Bild.CR3 scripts/test.sh --filter explicitlySuppliedCameraRAW
+GLOWROOM_RAW_EXPORT_TEST_FILE=/absoluter/pfad/Bild.CR3 scripts/test.sh --filter explicitlySuppliedCameraRAW
 ```

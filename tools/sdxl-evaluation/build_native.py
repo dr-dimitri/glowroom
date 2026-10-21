@@ -25,7 +25,7 @@ import tempfile
 TOOLS = Path(__file__).resolve().parent
 REPOSITORY = TOOLS.parent.parent
 _SPEC = importlib.util.spec_from_file_location(
-    "picedit_image_evaluation_preparation", REPOSITORY / "scripts/prepare-image-generation-evaluation.py")
+    "glowroom_image_evaluation_preparation", REPOSITORY / "scripts/prepare-image-generation-evaluation.py")
 PREPARATION = importlib.util.module_from_spec(_SPEC)
 _SPEC.loader.exec_module(PREPARATION)
 PreparationError = PREPARATION.PreparationError
@@ -217,7 +217,7 @@ def build(root, cmake=None, source_cache=None, mask_fixture=None):
         PREPARATION.run_checked(arguments + [str(metal_regression_source), *link_arguments, "-o", str(metal_regression_binary)], log)
         PREPARATION.run_checked([str(metal_regression_binary)], log)
         mask_regression_binary = stage / "sdxl-mask-patched"
-        PREPARATION.run_checked(arguments + ["-DPICEDIT_SDXL_MASK_PATCHED", str(mask_regression_source),
+        PREPARATION.run_checked(arguments + ["-DGLOWROOM_SDXL_MASK_PATCHED", str(mask_regression_source),
                                              *link_arguments, "-o", str(mask_regression_binary)], log)
         PREPARATION.run_checked([str(mask_regression_binary), str(mask_fixture)], log)
         regression_source = stage / "sdk_name_regression.cpp"

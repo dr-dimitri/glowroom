@@ -37,7 +37,7 @@ class DenoiseRunnerTests(unittest.TestCase):
                     distance = .0005 if variant == "nativePixels" else .001
                     self.scale["records"].append({"control": direction["control"], "direction": direction["id"],
                         "width": width, "height": height, "variant": variant,
-                        "parameter": direction["value"] if variant == "picedit" else 35., "finite": True,
+                        "parameter": direction["value"] if variant == "glowroom" else 35., "finite": True,
                         "sampling": "areaAveraged", "native_long": 4608, "pixels_per_long_edge": width,
                         "metrics": self.distances(distance), "identity_metrics": self.distances(.002),
                         "quality_metrics": self.metrics(improved=True), "full_quality_metrics": self.metrics(improved=True),
@@ -180,7 +180,7 @@ class DenoiseRunnerTests(unittest.TestCase):
         with self.assertRaises(ValueError): lc06.validate_calibration(self.calibration, self.manifest)
 
     @staticmethod
-    def timing(adapter="picedit", control="luminance"):
+    def timing(adapter="glowroom", control="luminance"):
         return {"width": 512, "height": 320, "adapter": f"{adapter}-{control}", "control": control,
                 "samples": [{"phase": phase, "total_ms": 1., "effect_strength": .2}
                             for phase in ["process-cold", "warmup"] + ["warm"] * 5],
@@ -243,8 +243,8 @@ class DenoiseRunnerTests(unittest.TestCase):
         row["metrics"]["distance_luma_rmse"] = .0021
         self.assertEqual(lc06.scaling_decision(self.scale, self.manifest)["decision"], "no-go")
 
-    def test_scaling_diagnostic_picedit_cannot_veto_native_scaling(self):
-        row = self.scale_row(variant="picedit")
+    def test_scaling_diagnostic_glowroom_cannot_veto_native_scaling(self):
+        row = self.scale_row(variant="glowroom")
         row["quality_metrics"].update(edge_gradient_rmse=1., alpha_error=1.)
         row["metrics"] = self.distances(1.)
         self.assertEqual(lc06.scaling_decision(self.scale, self.manifest)["decision"], "blocked")
@@ -259,7 +259,7 @@ class DenoiseRunnerTests(unittest.TestCase):
     def test_scaling_contract_failure_survives_missing_comparison_records(self):
         candidate = self.scale_row()
         candidate["quality_metrics"]["alpha_error"] = .002
-        self.scale["records"].remove(self.scale_row(variant="picedit"))
+        self.scale["records"].remove(self.scale_row(variant="glowroom"))
         result = lc06.scaling_decision(self.scale, self.manifest)
         self.assertEqual(result["decision"], "no-go")
         self.assertEqual(result["primary"]["luminance"]["status"], "blocked")

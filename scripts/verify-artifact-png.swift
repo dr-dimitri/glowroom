@@ -5,7 +5,7 @@ import UniformTypeIdentifiers
 import CryptoKit
 
 // Synthetic preflight for Issue 10. No original files or personal catalog.
-let run = URL(fileURLWithPath: "/private/tmp/picedit-artifact-codec-\(UUID().uuidString)")
+let run = URL(fileURLWithPath: "/private/tmp/glowroom-artifact-codec-\(UUID().uuidString)")
 try FileManager.default.createDirectory(at: run, withIntermediateDirectories: false)
 var reports: [[String: Any]] = []
 for name in [CGColorSpace.sRGB, CGColorSpace.displayP3] {

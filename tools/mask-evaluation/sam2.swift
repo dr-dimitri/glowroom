@@ -1,6 +1,6 @@
-// Standalone, image-only SAM 2.1 Tiny/Large evaluation; never linked into PicEdit.
+// Standalone, image-only SAM 2.1 Tiny/Large evaluation; never linked into Glowroom.
 // Reference interfaces: huggingface/sam2-studio @ 0dd708d0162e8e0b8c1e447123465b4b027e8b12.
-// swiftc -O tools/mask-evaluation/sam2.swift -o /tmp/picedit-sam2-evaluation
+// swiftc -O tools/mask-evaluation/sam2.swift -o /tmp/glowroom-sam2-evaluation
 // compile: BINARY compile MODEL_DIRECTORY COMPILED_DIRECTORY [tiny|large]
 // run: BINARY run COMPILED_DIRECTORY MANIFEST.json OUTPUT_DIRECTORY gpu|cpu [tiny|large]
 // Manifest: {"iterations":2,"images":[{"id":"photo1","path":"/absolute/image.png",

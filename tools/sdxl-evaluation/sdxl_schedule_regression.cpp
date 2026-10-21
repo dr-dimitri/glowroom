@@ -38,7 +38,7 @@ int main(int argc, char** argv) {
     try {
         const bool baseline = argc == 2 && std::string(argv[1]) == "--expect-baseline-mismatch";
         require(argc == 1 || baseline, "invalid arguments");
-        report["mode"] = baseline ? "expect-baseline-mismatch" : picedit_sdxl::schedule_variant;
+        report["mode"] = baseline ? "expect-baseline-mismatch" : glowroom_sdxl::schedule_variant;
         std::unique_ptr<ggml_backend, decltype(&ggml_backend_free)> cpu(
             ggml_backend_cpu_init(), &ggml_backend_free);
         require(cpu != nullptr, "CPU backend missing");
@@ -57,10 +57,10 @@ int main(int argc, char** argv) {
         parameters.seed = 1234; parameters.strength = 0.99f;
         parameters.sample_params.sample_method = EULER_SAMPLE_METHOD;
         parameters.sample_params.scheduler = DISCRETE_SCHEDULER;
-        parameters.sample_params.sample_steps = picedit_sdxl::configured_steps;
+        parameters.sample_params.sample_steps = glowroom_sdxl::configured_steps;
         parameters.sample_params.eta = 0.f;
         parameters.sample_params.guidance.txt_cfg = 8.f;
-        auto sigmas = picedit_sdxl::reference_sigmas();
+        auto sigmas = glowroom_sdxl::reference_sigmas();
         if (!baseline) {
             parameters.sample_params.custom_sigmas = sigmas.data();
             parameters.sample_params.custom_sigmas_count = static_cast<int>(sigmas.size());
@@ -68,7 +68,7 @@ int main(int argc, char** argv) {
         sd::pipeline::GenerationRequest request(&sdk, &parameters);
         sd::pipeline::SamplePlan plan(&sdk, &parameters, request);
         const auto effective = image_strength_slice(plan.sigmas, plan.sample_steps, request.strength);
-        const auto timesteps = picedit_sdxl::reference_timesteps();
+        const auto timesteps = glowroom_sdxl::reference_timesteps();
         report["planSampleSteps"] = plan.sample_steps;
         report["effectiveSampleSteps"] = effective.size() - 1;
         report["effectiveSigmas"] = effective;
@@ -82,7 +82,7 @@ int main(int argc, char** argv) {
                     "baseline first sigma must differ materially from the leading reference");
             report["baselineMismatchReproduced"] = true;
         } else {
-            require(plan.sample_steps == picedit_sdxl::actual_steps && plan.total_steps == 19,
+            require(plan.sample_steps == glowroom_sdxl::actual_steps && plan.total_steps == 19,
                     "actual SDK custom schedule did not set 19 steps");
             require(plan.sigmas == std::vector<float>(sigmas.begin(), sigmas.end()),
                     "actual SDK custom schedule values changed");

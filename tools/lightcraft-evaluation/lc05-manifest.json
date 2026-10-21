@@ -129,7 +129,7 @@
       }
     },
     "rule": "Separate saturation and vibrance. Equal-weight mean of four scenes and +/-20. Each informative mean (baseline > floor) must improve by >=10%; otherwise candidate must stay <= floor. At least one informative target must improve. All rows must match and retain complete input-defined hue support for both outputs.",
-    "target": "Hue and lightness drift measured against original input, not against PicEdit output. Compatibility is diagnostic only."
+    "target": "Hue and lightness drift measured against original input, not against Glowroom output. Compatibility is diagnostic only."
   },
   "criticalLimits": {
     "hueMaxIncreaseDegrees": 3,

@@ -104,7 +104,7 @@
     "unit": "linear sRGB Y",
     "limitRationale": "0.02 is the existing LC01 hard-edge critical limit, applied to tone-normalized edge residuals rather than intended global tone changes."
   },
-  "criticalComparison": "Hue, gamut, clipping and alpha compare against the PicEdit result at the matched effect, with LC01 evidence/finite-value checks. Global LC01 RGB, gradient and local-envelope metrics remain diagnostics, not standalone tone-quality gates.",
+  "criticalComparison": "Hue, gamut, clipping and alpha compare against the Glowroom result at the matched effect, with LC01 evidence/finite-value checks. Global LC01 RGB, gradient and local-envelope metrics remain diagnostics, not standalone tone-quality gates.",
   "performanceBudgets": {
     "maximumColdLatencyRatio": 1.25,
     "maximumWarmLatencyRatio": 1.2,

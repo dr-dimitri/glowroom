@@ -20,7 +20,7 @@ Natürlicher Bildausgleich wird über seine beiden manuellen Regler gesteuert un
 
 Dies ist eine begrenzte bildabhängige Korrektur, keine Rekonstruktion abgeschnittener Sensordaten und kein kalibrierter Weißabgleich. Motiverkennung kann fehlen oder falsch liegen; sie darf nur die begrenzte Wirkung beeinflussen. Ein einzelnes Prüffoto belegt keine allgemeine Qualitätssteigerung. Die manuell folgenden Regler können auch weiterhin übersteuern.
 
-Die Lightcraft-Quellen `crates/pipeline/src/auto.rs` und `colorops.rs` dienten als Vergleich für begrenzte Stichproben und die Schonung vorhandener Chromastärke/warmer Farben. Dessen an Sony-RAWs angepasste feste Auto-Tone-Werte wurden nicht übernommen: PicEdit arbeitet hier auf entwickelten, farbverwalteten Pixeln. Die früheren LC-03/LC-04-Bewertungen bleiben historische, separate Versuche.
+Die Lightcraft-Quellen `crates/pipeline/src/auto.rs` und `colorops.rs` dienten als Vergleich für begrenzte Stichproben und die Schonung vorhandener Chromastärke/warmer Farben. Dessen an Sony-RAWs angepasste feste Auto-Tone-Werte wurden nicht übernommen: Glowroom arbeitet hier auf entwickelten, farbverwalteten Pixeln. Die früheren LC-03/LC-04-Bewertungen bleiben historische, separate Versuche.
 
 ## Ausführung und Wiederverwendung
 
@@ -33,12 +33,12 @@ Ein synchronisierter Cache fasst gleiche Analysen zusammen, hält höchstens ach
 Die synthetischen Tests prüfen Aus/Altbestand, Tonwertreihenfolge, ungleiche helle/dunkle Bildanteile, Grenzen/Farbe/Hautfarbschutz, Transparenz/Farbraum, Cache und Abbruch, manuelle Nachbearbeitung, Persistenz, KI-Verträge und Export. Referenzadapter der historischen Lightcraft-Evaluation lehnen den neuen Effekt ausdrücklich ab.
 
 ```sh
-PICEDIT_TEST_BUILD_PATH=/tmp/picedit-natural-tests ./scripts/test.sh --jobs 4 \
+GLOWROOM_TEST_BUILD_PATH=/tmp/glowroom-natural-tests ./scripts/test.sh --jobs 4 \
   --filter 'NaturalBalance|AutoTone|EditRenderSession|EditingModel|JPEGExporter|Lightcraft.*Reference'
 
-PICEDIT_NATURAL_BALANCE_RAW="$PWD/IMG_8362.CR3" \
-PICEDIT_NATURAL_BALANCE_OUTPUT=/tmp/picedit-natural-balance-review \
-PICEDIT_TEST_BUILD_PATH=/tmp/picedit-natural-tests \
+GLOWROOM_NATURAL_BALANCE_RAW="$PWD/IMG_8362.CR3" \
+GLOWROOM_NATURAL_BALANCE_OUTPUT=/tmp/glowroom-natural-balance-review \
+GLOWROOM_TEST_BUILD_PATH=/tmp/glowroom-natural-tests \
   ./scripts/test.sh --filter NaturalBalanceRAWTests
 ```
 
@@ -46,7 +46,7 @@ Der optionale RAW-Test schreibt ausschließlich in ein neues temporäres Verzeic
 
 ### Lokale Prüfung am 18. Oktober 2026
 
-Der finale unabhängige Diff-Review fand keine offenen Befunde. Die vollständige Suite mit `--jobs 4 --no-parallel` bestand: 634 App-Tests und 307 Core-Tests. Die Kompilierung bleibt parallel. Die Testfälle wurden hier bewusst nacheinander ausgeführt, weil der vorherige gleichzeitige Gesamtlauf 17 vorhandene Scheduler-Tests mit 19 Timeout-/Folgebefunden überlastete. Diese separate Testproblematik ist in [Issue #62](https://github.com/dr-dimitri/picedit/issues/62) mit Reproduktion und erfolgreichem Vergleichslauf dokumentiert; die neuen Funktionstests bestanden auch im parallelen Lauf. Die Ursache der Timeouts ist damit noch nicht abschließend bewiesen.
+Der finale unabhängige Diff-Review fand keine offenen Befunde. Die vollständige Suite mit `--jobs 4 --no-parallel` bestand: 634 App-Tests und 307 Core-Tests. Die Kompilierung bleibt parallel. Die Testfälle wurden hier bewusst nacheinander ausgeführt, weil der vorherige gleichzeitige Gesamtlauf 17 vorhandene Scheduler-Tests mit 19 Timeout-/Folgebefunden überlastete. Diese separate Testproblematik ist in [Issue #62](https://github.com/dr-dimitri/glowroom/issues/62) mit Reproduktion und erfolgreichem Vergleichslauf dokumentiert; die neuen Funktionstests bestanden auch im parallelen Lauf. Die Ursache der Timeouts ist damit noch nicht abschließend bewiesen.
 
 Die separate finale RAW-Probe bestand ebenfalls. Zwei Gesichter wurden erkannt; die Vorher-/Nachher-Sichtprüfung zeigte eine zurückhaltende Öffnung des dunklen Motivs vor hellem Hintergrund. Das Original blieb bytegenau unverändert. Bei 24 Ereignissen im Abstand von 10 ms und 45 ms Zusammenfassung entstanden genau eine RAW-Decodierung, ein abschließender Renderauftrag und 23 abgebrochene veraltete Anfragen; das letzte Ergebnis entsprach den finalen Einstellungen.
 

@@ -6,7 +6,7 @@ Pinned commit: f9b0c8c8a12c8fa17b7afb5baa00f9ee1bbd7b15
 Copyright (c) 2026 ArtCraft Team and the LightCraft contributors
 
 The LC-03 developer-only CPU reference adapts the following source algorithms
-from the pinned Lightcraft source. PicEdit selects the upstream MIT license
+from the pinned Lightcraft source. Glowroom selects the upstream MIT license
 option for these portions. The complete upstream MIT license and NOTICE are
 preserved verbatim in licenses/lightcraft/LICENSE-MIT and
 licenses/lightcraft/NOTICE. The upstream NOTICE describes the entire upstream
@@ -33,7 +33,7 @@ crates/raster/src/resample.rs:
 crates/pipeline/src/tests_tone.rs and tests_local.rs:
   Median, fine-line, guided-filter, constant-field and edge fixture concepts.
 
-Modifications in PicEdit (2026): Swift/array adaptation; bounded execution and
+Modifications in Glowroom (2026): Swift/array adaptation; bounded execution and
 cancellation through the existing developer harness; explicit developed-pixel
 extended-linear-sRGB contract with an explicit RGB bridge into Rec.2020 before
 its original luminance weights are used; scalar gain applied to original sRGB
@@ -63,7 +63,7 @@ crates/color/src/lib.rs and crates/pipeline/src/tone.rs:
 
 LC-04 uses the common bounded Swift filters and adds coverage-normalized Gaussian
 convolution for alpha. Same-radius Gaussian clarity, unclamped log texture and
-the existing PicEdit gamma-domain texture formula are explicitly PicEdit
+the existing Glowroom gamma-domain texture formula are explicitly Glowroom
 ablations, not original Lightcraft algorithms. Strength is separate from
 immutable prepared planes. Upstream original bodies and unchanged finish
 statements are temporary oracle inputs only; hashes and results are preserved

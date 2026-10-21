@@ -2,7 +2,7 @@
 
 Der eigenständige Bereich **Bildanalyse** wurde aus der aktuellen Oberfläche entfernt. Die lokale Vision-Anbindung, Quellenprüfung und begrenzte Rastervorbereitung bleiben für **Bildinformationen** erhalten. Die folgenden datierten Nachweise betreffen Bildbeschreibung und Vorbereitung; sie belegen allein keine textgesteuerte Bildkorrektur.
 
-Stand: 16. Oktober 2026. Diese Entscheidung wurde vor der Adapterimplementierung für [AI-05 / Issue #6](https://github.com/dr-dimitri/picedit/issues/6) getroffen. Der damalige Textprovider ohne Bildzugriff ist mit dem interaktiven Assistenten entfernt. Eine getrennte Bildanalysefähigkeit darf nur nach SDK-, Laufzeit-, Sprach- und Modellprüfung angeboten werden.
+Stand: 16. Oktober 2026. Diese Entscheidung wurde vor der Adapterimplementierung für [AI-05 / Issue #6](https://github.com/dr-dimitri/glowroom/issues/6) getroffen. Der damalige Textprovider ohne Bildzugriff ist mit dem interaktiven Assistenten entfernt. Eine getrennte Bildanalysefähigkeit darf nur nach SDK-, Laufzeit-, Sprach- und Modellprüfung angeboten werden.
 
 ## Gebaute und geprüfte Grundlage
 
@@ -24,7 +24,7 @@ Unmittelbar vor der Probe meldete das Modell `available`, Deutschunterstützung 
 
 Das angehängte Raster hatte SHA-256 `98a798f6bf3684b15785d800f568bfceb016e386c04bc68aa21005a4e593cf17`. Die erfolgreiche lokale Probe dauerte 3,451 s. Das ist eine einzelne funktionale Stichprobe bei zuvor verwendetem Systemmodell, keine Qualitätsbewertung privater Fotos und keine Kaltcache-/Durchsatzmessung. Die Ausführung erfolgte außerhalb der restriktiven Ausführungssandbox, die den lokalen Modellservice sperrt. Es wurden keine persönlichen Bilder und keine Cloud verwendet.
 
-**Entscheidung:** Der native On-Device-Pfad ist auf dieser nachgewiesenen SDK-/Systemkombination für einen eigenen optionalen Adapter geeignet. Fehlende Modellbereitschaft, ungeeignete Hardware, deaktiviertes Apple Intelligence, fehlende Sprache oder Vision-Capability müssen trotzdem bei jedem Einsatz kontrolliert gemeldet werden. PicEdit startet keinen Modelldownload und schaltet niemals automatisch einen Cloudanbieter hinzu.
+**Entscheidung:** Der native On-Device-Pfad ist auf dieser nachgewiesenen SDK-/Systemkombination für einen eigenen optionalen Adapter geeignet. Fehlende Modellbereitschaft, ungeeignete Hardware, deaktiviertes Apple Intelligence, fehlende Sprache oder Vision-Capability müssen trotzdem bei jedem Einsatz kontrolliert gemeldet werden. Glowroom startet keinen Modelldownload und schaltet niemals automatisch einen Cloudanbieter hinzu.
 
 ## Vertrag für die anschließende Umsetzung
 
@@ -32,7 +32,7 @@ Der injizierbare Dienst verwendet die vorhandenen begrenzten Vorschau-/Renderpip
 
 Gleiche Analyseanfragen sollen ihre Arbeit teilen; Abbruch eines Beobachters darf andere nicht abbrechen. Cacheeinträge bleiben nach Anzahl/Bytes begrenzt und enthalten keine dauerhafte Foto-/Promptablage. Nach Bild-/Quellenwechsel dürfen verspätete Antworten nicht veröffentlicht werden. Regleränderungen ändern die Originalanalyse nicht; eine bearbeitete Eingabe muss dagegen auch nach Undo auf identische Zahlen durch ihren Revisionstoken vor alten Ergebnissen geschützt sein.
 
-Analyseergebnisse bleiben begrenzte Vorschläge. Sie sind keine bestätigten Metadaten und geben weder Auskunft über Identität oder Gesundheit von Personen noch über nicht belegte Aufnahmeorte. Metadatenpersistenz folgt separat in [AI-06 / Issue #7](https://github.com/dr-dimitri/picedit/issues/7).
+Analyseergebnisse bleiben begrenzte Vorschläge. Sie sind keine bestätigten Metadaten und geben weder Auskunft über Identität oder Gesundheit von Personen noch über nicht belegte Aufnahmeorte. Metadatenpersistenz folgt separat in [AI-06 / Issue #7](https://github.com/dr-dimitri/glowroom/issues/7).
 
 ## Erhaltene interne Implementierung
 
@@ -40,7 +40,7 @@ Der frühere eigenständige Analyse-Inspector samt Start-, Abbruch- und Verwerfe
 
 `ImageAnalysisRequest` bindet Sprache `de_DE`, Originalquelle, Eingabeart und getrennte Auswahl-/Bearbeitungs-/Lebenszyklusepochen. `ImageAnalysisResult` trennt den modellgelieferten Vorschlag von appseitiger Provenienz. `ImageAnalysisProviderDescriptor.capabilities` nennt ausdrücklich `imageUnderstanding`; die Modellbereitschaft allein genügt ohne diese Bildfähigkeit nicht. Die Systemmodellversion ist über die verwendete API nicht öffentlich verfügbar und bleibt deshalb `nil`, statt eine Version zu erfinden.
 
-`ImageAnalysisPreparer` verwendet die vorhandenen ausgewählten Decoder-/Renderpfade ohne eingebettete Kamera-Vorschau. Die Ausgabe ist hart auf **1024 Pixel lange Kante und 16 MiB tatsächliche Rasterbytes** beschränkt, auch wenn bereits eine größere Entwicklungsbasis im Cache liegt. Dies ist ein konservatives appseitiges Aufnahmebudget für die native Attachment-Schnittstelle, kein behauptetes internes Tensorformat des Systemmodells. Das Framework führt seine eigene Modellvorverarbeitung aus; PicEdit fügt keine zweite Farbkonvertierung hinzu. Die Bildorientierung ist zuvor durch ImageIO angewendet.
+`ImageAnalysisPreparer` verwendet die vorhandenen ausgewählten Decoder-/Renderpfade ohne eingebettete Kamera-Vorschau. Die Ausgabe ist hart auf **1024 Pixel lange Kante und 16 MiB tatsächliche Rasterbytes** beschränkt, auch wenn bereits eine größere Entwicklungsbasis im Cache liegt. Dies ist ein konservatives appseitiges Aufnahmebudget für die native Attachment-Schnittstelle, kein behauptetes internes Tensorformat des Systemmodells. Das Framework führt seine eigene Modellvorverarbeitung aus; Glowroom fügt keine zweite Farbkonvertierung hinzu. Die Bildorientierung ist zuvor durch ImageIO angewendet.
 
 Vor und nach Vorbereitung sowie nach Inferenz prüft der Dienst Dateityp, Größe, mtime, ctime, Device und Inode im Hintergrund. Die stärkere optionale `PreviewRequest.sourceRevision` gehört zu Decoder-, Disk- und Renderidentität. Damit kann ein Austausch bei unveränderter Kataloggröße und mtime keine alten Analysepixel aus dem Vorschaucache übernehmen. Die erste Analyse mit dieser stärkeren Revision kann eine vorhandene, nur kataloggebundene Basis nicht wiederverwenden; sie verwendet trotzdem dieselben begrenzten Worker und anschließend ihren eigenen gültigen Cacheeintrag. Die bisherigen Cache-Schlüssel ohne Revision bleiben kompatibel.
 
@@ -57,7 +57,7 @@ Die Standardtests verwenden ausschließlich Fakes und isolierte synthetische Dat
 Beim vollständigen Integrationslauf wurde eine zu strenge Testannahme korrigiert: Der verlustfreie PNG-Cache kann ein ARGB-Thumbnail als RGBA-Raster mit anderem Rendering-Intent wieder öffnen. Dessen native Interpretation und damit der exakte Digest dürfen sich unterscheiden. Der Regressionstest prüft stattdessen identische sichtbare Pixel und Profil sowie weiterhin neue Pixel nach Dateiaustausch. Direkte Tests sichern ignorierte X-Bytes für 8-/16-Bit-Komponenten mit unterschiedlichen Byteordnungen und gepackte 1-Bit-Zeilenenden ab. Der Befund betraf den neuen Analyse-/Hashvertrag und wurde in dieser Umsetzung geklärt.
 
 ```sh
-PICEDIT_TEST_BUILD_PATH=/tmp/picedit-image-analysis-tests ./scripts/test.sh --jobs 2 --filter ImageAnalysis
+GLOWROOM_TEST_BUILD_PATH=/tmp/glowroom-image-analysis-tests ./scripts/test.sh --jobs 2 --filter ImageAnalysis
 ```
 
 Die funktionale Bildprobe und die späteren Integrationsergebnisse sind voneinander getrennt: ein unterstütztes SDK allein belegt weder aktuelle Modellbereitschaft noch die Qualität beliebiger Fotobeschreibungen. Nicht verfügbar auf diesem Gerät sind echte Tests auf macOS 14/26 und Intel-Hardware. Ältere SDK-/Fallback-Builds prüfen die kompilierte Trennung; sie ersetzen keinen Betriebssystemtest. Reale Personen, private Fotobibliotheken und große Kamera-RAWs sind keine Testfixtures.
@@ -65,15 +65,15 @@ Die funktionale Bildprobe und die späteren Integrationsergebnisse sind voneinan
 Die integrierte native Smokeprüfung verwendet zwei getrennt erzeugte 512×320-sRGB-Bilder und neutrale Prompts: Rot/Kreis plus Blau/Quadrat sowie Grün/Dreieck plus Gelb/Kreis. Beide Antworten enthielten die erwarteten visuellen Informationen. Das Vorbereitungsraster und die Provenienz werden unabhängig gegengeprüft; zwei anschließende Cacheaufrufe verursachten keine weitere Inferenz. Die beiden echten Aufrufe dauerten 5,936 s und 4,783 s, die Cacheaufrufe 0,0005 s und 0,0004 s. High-Water-RSS des isolierten Testprozesses: 45 694 976 beziehungsweise 46 202 880 Bytes. Speicher des Systemmodellservice und GPU-Speicher sind darin nicht enthalten. Dies ist keine Messung einer kalten Fotobibliothek oder ein zugesagter Leistungswert.
 
 ```sh
-PICEDIT_RUN_IMAGE_ANALYSIS_EVALUATION=1 PICEDIT_TEST_BUILD_PATH=/tmp/picedit-image-analysis-tests \
+GLOWROOM_RUN_IMAGE_ANALYSIS_EVALUATION=1 GLOWROOM_TEST_BUILD_PATH=/tmp/glowroom-image-analysis-tests \
   ./scripts/test.sh --jobs 2 --filter LocalImageAnalysisEvaluationTests
-PICEDIT_RUN_IMAGE_ANALYSIS_RASTER_TESTS=1 PICEDIT_TEST_BUILD_PATH=/tmp/picedit-image-analysis-tests \
+GLOWROOM_RUN_IMAGE_ANALYSIS_RASTER_TESTS=1 GLOWROOM_TEST_BUILD_PATH=/tmp/glowroom-image-analysis-tests \
   ./scripts/test.sh --jobs 2 --filter actualLargerDecodedBaseIsClampedInsideExistingRenderWorker
 ```
 
 Diese opt-in-Prüfungen benötigen einen erreichbaren nativen Modell-/Core-Image-Dienst. Eine restriktive Entwicklungssandbox kann dessen Verbindung blockieren; das ist von einem Produktfehler getrennt zu prüfen. Beim Modelltest muss im Log eine tatsächliche Ausführung stehen: ein wegen fehlender Bereitschaft übersprungener Test ist kein Bildfähigkeitsnachweis.
 
-Der abschließende vollständige Standardlauf bestand mit 228 App- und 61 Core-Tests in 34 Suiten; acht ausdrücklich optionale Modell-/Raster-/Benchmark-/RAW-Prüfungen waren darin übersprungen. Die neue native Bildprobe und der echte Core-Image-Test wurden separat erfolgreich ausgeführt. Letzterer begrenzte eine gelieferte 2400×1600-Basis tatsächlich auf 1024 Pixel lange Kante, prüfte die Bytegrenze und unterschied Original von ausdrücklich bearbeiteter Eingabe. SDK 26.5 und der vollständige Fallbackbuild mit `PICEDIT_DISABLE_FOUNDATION_MODELS` kompilierten auch nach der Rasterhash-Korrektur erfolgreich. Eigenes Backendreview, unabhängiges UI-/Backendreview und abschließendes Integrationsreview fanden nach Korrektur der beschriebenen Cache-/Hashbefunde keine offenen umsetzungsbezogenen Fehler.
+Der abschließende vollständige Standardlauf bestand mit 228 App- und 61 Core-Tests in 34 Suiten; acht ausdrücklich optionale Modell-/Raster-/Benchmark-/RAW-Prüfungen waren darin übersprungen. Die neue native Bildprobe und der echte Core-Image-Test wurden separat erfolgreich ausgeführt. Letzterer begrenzte eine gelieferte 2400×1600-Basis tatsächlich auf 1024 Pixel lange Kante, prüfte die Bytegrenze und unterschied Original von ausdrücklich bearbeiteter Eingabe. SDK 26.5 und der vollständige Fallbackbuild mit `GLOWROOM_DISABLE_FOUNDATION_MODELS` kompilierten auch nach der Rasterhash-Korrektur erfolgreich. Eigenes Backendreview, unabhängiges UI-/Backendreview und abschließendes Integrationsreview fanden nach Korrektur der beschriebenen Cache-/Hashbefunde keine offenen umsetzungsbezogenen Fehler.
 
 ## Primärquellen
 

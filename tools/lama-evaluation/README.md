@@ -1,6 +1,6 @@
 # Separate LaMa-Evaluation für textfreies Entfernen
 
-Dieses Werkzeug untersucht in [Issue #74](https://github.com/dr-dimitri/picedit/issues/74) einen weiteren lokalen Kandidaten nach dem [No-Go aus Issue #12](../../docs/AI-IMAGE-BACKEND-DECISION.md). **V2 hat echte technische Inferenz nachgewiesen; das Produkt-No-Go bleibt bestehen.** Ein erforderlicher Qualitätsfall scheitert, weitere Produktnachweise fehlen. Das Werkzeug installiert keinen PicEdit-Bildprovider. Es verspricht weder Promptsteuerung noch Hintergrundersetzung oder Outpainting. Die [Roadmap](../../docs/AI-ROADMAP.md) erklärt die weiterhin blockierten Folgeissues.
+Dieses Werkzeug untersucht in [Issue #74](https://github.com/dr-dimitri/glowroom/issues/74) einen weiteren lokalen Kandidaten nach dem [No-Go aus Issue #12](../../docs/AI-IMAGE-BACKEND-DECISION.md). **V2 hat echte technische Inferenz nachgewiesen; das Produkt-No-Go bleibt bestehen.** Ein erforderlicher Qualitätsfall scheitert, weitere Produktnachweise fehlen. Das Werkzeug installiert keinen Glowroom-Bildprovider. Es verspricht weder Promptsteuerung noch Hintergrundersetzung oder Outpainting. Die [Roadmap](../../docs/AI-ROADMAP.md) erklärt die weiterhin blockierten Folgeissues.
 
 Historische Rohberichte, Vergleichsbilder und Quellsnapshots aus V1/V2 wurden mit dem Reportsordner entfernt. Die Messwerte unten sind eine historische Zusammenfassung. Neue Läufe benötigen einen extern vorhandenen Fixture-Archivbaum und schreiben ihre Ergebnisse in ein explizites externes Verzeichnis.
 
@@ -8,7 +8,7 @@ Historische Rohberichte, Vergleichsbilder und Quellsnapshots aus V1/V2 wurden mi
 
 `package.json` bindet die öffentlich angebotene [Core-ML-Konvertierung](https://huggingface.co/mlboydaisuke/LaMa-CoreML/tree/5ed76e3799ab4cad31381750d29880c267477e18) an Revision `5ed76e3799ab4cad31381750d29880c267477e18`. Die vier ungepackten Dateien umfassen **216.650.601 Byte**: Modellspezifikation, Gewichte, Paketmanifest und Modellkarte. Größen und vollständige SHA-256-Hashes sind festgelegt; der eigene Package-Hash ist zusätzlich im Installer und nativen Harness gepinnt. Manifest und Modellkarte wurden bei der Metadatenprüfung außerdem gegen ihre Git-Blob-SHA1-Werte geprüft. Diese Identität ist keine Herkunfts- oder Lizenzfreigabe.
 
-Die [gepinnt gelesene Modellkarte](https://huggingface.co/mlboydaisuke/LaMa-CoreML/blob/5ed76e3799ab4cad31381750d29880c267477e18/README.md) nennt [advimman/lama](https://github.com/advimman/lama) als Ursprung und john-rocky als Konvertierer; sie verweist auf [CoreML-Models](https://github.com/john-rocky/CoreML-Models) und dessen [Konversionsnotizen](https://github.com/john-rocky/CoreML-Models/blob/master/docs/coreml_conversion_notes.md). Der Lizenzwert `apache-2.0` in dieser Karte ist eine Angabe des Uploaders. Die vollständige Zuordnung der heruntergeladenen Gewichte zum ursprünglichen Checkpoint, zur tatsächlich verwendeten Konversionsrevision und zu den anwendbaren Weitergabebedingungen bleibt offen. PicEdit führt weder das fremde Konversionsskript aus noch leitet es aus dem Kartenlabel eine Verteilfreigabe ab. Fremde Geschwindigkeits- und Speicherangaben werden nicht als eigene Messwerte übernommen.
+Die [gepinnt gelesene Modellkarte](https://huggingface.co/mlboydaisuke/LaMa-CoreML/blob/5ed76e3799ab4cad31381750d29880c267477e18/README.md) nennt [advimman/lama](https://github.com/advimman/lama) als Ursprung und john-rocky als Konvertierer; sie verweist auf [CoreML-Models](https://github.com/john-rocky/CoreML-Models) und dessen [Konversionsnotizen](https://github.com/john-rocky/CoreML-Models/blob/master/docs/coreml_conversion_notes.md). Der Lizenzwert `apache-2.0` in dieser Karte ist eine Angabe des Uploaders. Die vollständige Zuordnung der heruntergeladenen Gewichte zum ursprünglichen Checkpoint, zur tatsächlich verwendeten Konversionsrevision und zu den anwendbaren Weitergabebedingungen bleibt offen. Glowroom führt weder das fremde Konversionsskript aus noch leitet es aus dem Kartenlabel eine Verteilfreigabe ab. Fremde Geschwindigkeits- und Speicherangaben werden nicht als eigene Messwerte übernommen.
 
 ## Explizite Vorbereitung
 
@@ -21,7 +21,7 @@ python3 tools/lama-evaluation/prepare.py
 Nur `--download` erlaubt den Download der gepinnten Dateien. Das Ziel muss außerhalb des Repositorys liegen; ein vorhandenes `model/` wird nicht ersetzt. Ein neuer Evaluationsroot wird mit privaten Rechten erstellt. Ein bestehender Root muss dem aktuellen Benutzer gehören und darf nicht für Gruppe oder andere Benutzer schreibbar sein.
 
 ```sh
-python3 tools/lama-evaluation/prepare.py --root /private/tmp/picedit-lama-install --download
+python3 tools/lama-evaluation/prepare.py --root /private/tmp/glowroom-lama-install --download
 ```
 
 Der Installer überlappt höchstens zwei Dateiübertragungen. Er verwendet einen privaten Stagingordner, prüft die vollständigen Größen und Hashes und veröffentlicht den fertigen Baum atomar unter `<root>/model/`. Dort liegen `LaMa.mlpackage`, `README.md` und `installation.json`. Es werden keine Archive entpackt, kein fremder Code ausgeführt und keine Appdateien verändert. Ein fehlgeschlagener Versuch entfernt nur seinen eigenen Stagingordner; ein fremder Installationslock und bereits vorhandene Daten bleiben erhalten.
@@ -29,7 +29,7 @@ Der Installer überlappt höchstens zwei Dateiübertragungen. Er verwendet einen
 Ein lokaler Cache spiegelt exakt die relativen Pfade aus `package.json`, einschließlich `LaMa.mlpackage/Data/com.apple.CoreML/weights/weight.bin`. Er lässt sich ohne jede Netzanfrage installieren:
 
 ```sh
-python3 tools/lama-evaluation/prepare.py --root /private/tmp/picedit-lama-offline --offline --source-cache /absolute/path/to/cache
+python3 tools/lama-evaluation/prepare.py --root /private/tmp/glowroom-lama-offline --offline --source-cache /absolute/path/to/cache
 ```
 
 Fehlende oder falsche Dateien scheitern ohne Downloadfallback. Symbolische Links, Hardlinks und besondere Dateitypen im Cache werden abgewiesen. Für einen neuen vollständigen Versuch einen neuen Evaluationsroot verwenden.
@@ -41,8 +41,8 @@ Der Swift-Harness benötigt Apple Silicon, macOS 14+, mindestens 16 GiB physisch
 Auch eine reine Paketinspektion benötigt das ausdrückliche `--run`: Sie prüft Hashes, kompiliert und lädt Core ML, liest die tatsächliche Schnittstelle, führt aber keine Bildvorhersage aus. Der Ausgabeordner muss neu sein.
 
 ```sh
-./scripts/evaluate-image-generation.sh lama --run --inspect --root /private/tmp/picedit-lama-install --out /private/tmp/picedit-lama-interface
-./scripts/evaluate-image-generation.sh lama --run --fixture-archive /private/tmp/picedit-fixture-archive --root /private/tmp/picedit-lama-install --out /private/tmp/picedit-lama-native
+./scripts/evaluate-image-generation.sh lama --run --inspect --root /private/tmp/glowroom-lama-install --out /private/tmp/glowroom-lama-interface
+./scripts/evaluate-image-generation.sh lama --run --fixture-archive /private/tmp/glowroom-fixture-archive --root /private/tmp/glowroom-lama-install --out /private/tmp/glowroom-lama-native
 ```
 
 Die vollständige Probe prüft zunächst die echte `image`-/`mask`-/Ausgabeschnittstelle des 800×800-Pakets; die separate Inspektion hat BGRA-RGB-Bufferschnittstellen und eine Gray8-Maske bestätigt. Kleinere native Fixturebilder werden ohne Skalierung durch eine zentrierte ganzzahlige Verschiebung eingebettet. V2 übergibt gerades, nicht mit Alpha multipliziertes RGB ohne vorgemischten Hintergrund. Der vierkanalige Modellbuffer trägt dabei vollständig deckendes Alpha; das ursprüngliche Quellalpha bleibt separat und wird vor dem finalen Compositing wiederhergestellt.
@@ -82,7 +82,7 @@ Dieses technische Programm misst bislang weder Abbruchlatenz noch interaktives P
 Ein gespeicherter nativer Ergebnisbaum lässt sich ohne erneute Inferenz durch den Compositor führen. Der Replay liest `lama-report.json.preprocessingVersion`: V2 erhält die Straight-RGB-Angabe, historische Berichte ohne Versionsfeld behalten ihre Vormatte-Angabe. Andere numerische Versionsstände werden abgewiesen.
 
 ```sh
-./scripts/evaluate-image-generation.sh replay --historical /private/tmp/picedit-lama-native --out /private/tmp/picedit-lama-replay
+./scripts/evaluate-image-generation.sh replay --historical /private/tmp/glowroom-lama-native --out /private/tmp/glowroom-lama-replay
 ```
 
 Offline-Tests mit kleinen selbst erzeugten Payloads benötigen keine Gewichte, Compiler oder Netzverbindung:

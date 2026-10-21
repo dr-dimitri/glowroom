@@ -4,7 +4,7 @@ set -euo pipefail
 # Exercise build orchestration without compiling Swift or replacing the user's app.
 # Fixtures have independent roots, caches, mock tools and publication directories.
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
-TEST_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/picedit-build-tests.XXXXXX")"
+TEST_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/glowroom-build-tests.XXXXXX")"
 ACTIVE_PID=""
 cleanup() {
     if [[ -n "$ACTIVE_PID" ]]; then
@@ -45,7 +45,7 @@ case "$tool" in
         esac
         ;;
     swift)
-        [[ -z "${PICEDIT_DEVELOPER_TOOL+x}" ]] || { echo "Developer harness leaked into app build" >&2; exit 1; }
+        [[ -z "${GLOWROOM_DEVELOPER_TOOL+x}" ]] || { echo "Developer harness leaked into app build" >&2; exit 1; }
         if [[ "${1:-}" == build ]]; then
             role=compile
             show_bin=0
@@ -91,9 +91,9 @@ case "$tool" in
         esac
         if [[ "$role" == compile ]]; then
             mkdir -p "$MOCK_ROOT/bin"
-            printf '#!/bin/sh\nexit 0\n' > "$MOCK_ROOT/bin/PicEdit"
-            mkdir -p "$MOCK_ROOT/bin/PicEdit_PicEdit.bundle/nested" "$MOCK_ROOT/bin/Tokenizer Resources.bundle"
-            printf 'approved manifest fixture\n' > "$MOCK_ROOT/bin/PicEdit_PicEdit.bundle/nested/manifest.json"
+            printf '#!/bin/sh\nexit 0\n' > "$MOCK_ROOT/bin/Glowroom"
+            mkdir -p "$MOCK_ROOT/bin/Glowroom_Glowroom.bundle/nested" "$MOCK_ROOT/bin/Tokenizer Resources.bundle"
+            printf 'approved manifest fixture\n' > "$MOCK_ROOT/bin/Glowroom_Glowroom.bundle/nested/manifest.json"
             printf 'dependency resource fixture\n' > "$MOCK_ROOT/bin/Tokenizer Resources.bundle/data.txt"
         else
             mkdir -p "${!#}"
@@ -120,7 +120,7 @@ case "$tool" in
         touch "$MOCK_ROOT/$tool.finished"
         ;;
     mv)
-        if [[ "$MOCK_MODE" == fail-publish && "${1:-}" == */dist/.picedit-build.*/PicEdit.app && "${2:-}" == */dist/PicEdit.app ]]; then
+        if [[ "$MOCK_MODE" == fail-publish && "${1:-}" == */dist/.glowroom-build.*/Glowroom.app && "${2:-}" == */dist/Glowroom.app ]]; then
             touch "$MOCK_ROOT/publish.failed"
             echo "Simulated failure publishing the new app" >&2
             exit 44
@@ -135,33 +135,33 @@ for tool in swift iconutil plutil codesign sysctl mv; do ln -s mock-tool "$MOCK_
 
 new_case() {
     CASE="$TEST_ROOT/$1"
-    mkdir -p "$CASE/scripts" "$CASE/dist/PicEdit.app"
+    mkdir -p "$CASE/scripts" "$CASE/dist/Glowroom.app"
     cp "$ROOT/scripts/build-app.sh" "$CASE/scripts/build-app.sh"
     touch "$CASE/scripts/make-app-icon.swift"
-    printf 'previous app\n' > "$CASE/dist/PicEdit.app/previous"
+    printf 'previous app\n' > "$CASE/dist/Glowroom.app/previous"
 }
 run_build() {
     env PATH="$MOCK_TOOLS:$PATH" MOCK_ROOT="$CASE" MOCK_MODE="$1" \
-        PICEDIT_DEVELOPER_TOOL=editing \
-        PICEDIT_BUILD_PATH="$CASE/cache" PICEDIT_BUILD_JOBS="$2" \
+        GLOWROOM_DEVELOPER_TOOL=editing \
+        GLOWROOM_BUILD_PATH="$CASE/cache" GLOWROOM_BUILD_JOBS="$2" \
         /bin/bash "$CASE/scripts/build-app.sh" > "$CASE/output.log" 2>&1
 }
 assert_clean() {
     local leftover
-    for leftover in "$CASE/dist"/.picedit-build.*; do
+    for leftover in "$CASE/dist"/.glowroom-build.*; do
         [[ ! -e "$leftover" && ! -L "$leftover" ]] || fail "Build left $leftover"
     done
 }
 assert_previous_app() {
-    [[ -f "$CASE/dist/PicEdit.app/previous" ]] || fail "Previous app lost in $CASE"
-    [[ "$(cat "$CASE/dist/PicEdit.app/previous")" == 'previous app' ]] || fail "Previous app changed"
+    [[ -f "$CASE/dist/Glowroom.app/previous" ]] || fail "Previous app lost in $CASE"
+    [[ "$(cat "$CASE/dist/Glowroom.app/previous")" == 'previous app' ]] || fail "Previous app changed"
 }
 assert_success() {
-    [[ -x "$CASE/dist/PicEdit.app/Contents/MacOS/PicEdit" ]] || fail "Missing executable"
-    [[ -f "$CASE/dist/PicEdit.app/Contents/Resources/AppIcon.icns" ]] || fail "Missing icon"
-    cmp "$CASE/bin/PicEdit_PicEdit.bundle/nested/manifest.json" "$CASE/dist/PicEdit.app/Contents/Resources/PicEdit_PicEdit.bundle/nested/manifest.json" || fail "Application resources changed or missing"
-    cmp "$CASE/bin/Tokenizer Resources.bundle/data.txt" "$CASE/dist/PicEdit.app/Contents/Resources/Tokenizer Resources.bundle/data.txt" || fail "Dependency resources changed or missing"
-    [[ ! -e "$CASE/dist/PicEdit.app/previous" ]] || fail "Previous app was not replaced"
+    [[ -x "$CASE/dist/Glowroom.app/Contents/MacOS/Glowroom" ]] || fail "Missing executable"
+    [[ -f "$CASE/dist/Glowroom.app/Contents/Resources/AppIcon.icns" ]] || fail "Missing icon"
+    cmp "$CASE/bin/Glowroom_Glowroom.bundle/nested/manifest.json" "$CASE/dist/Glowroom.app/Contents/Resources/Glowroom_Glowroom.bundle/nested/manifest.json" || fail "Application resources changed or missing"
+    cmp "$CASE/bin/Tokenizer Resources.bundle/data.txt" "$CASE/dist/Glowroom.app/Contents/Resources/Tokenizer Resources.bundle/data.txt" || fail "Dependency resources changed or missing"
+    [[ ! -e "$CASE/dist/Glowroom.app/previous" ]] || fail "Previous app was not replaced"
     [[ -f "$CASE/codesign.finished" ]] || fail "Signing was skipped"
     assert_clean
 }
@@ -191,8 +191,8 @@ assert_success
 pass "One-job budget keeps workers serial"
 
 new_case automatic
-env -u PICEDIT_BUILD_JOBS PATH="$MOCK_TOOLS:$PATH" MOCK_ROOT="$CASE" MOCK_MODE=parallel \
-    MOCK_CPU_COUNT=8 MOCK_MEMORY_BYTES=8589934592 PICEDIT_BUILD_PATH="$CASE/cache" \
+env -u GLOWROOM_BUILD_JOBS PATH="$MOCK_TOOLS:$PATH" MOCK_ROOT="$CASE" MOCK_MODE=parallel \
+    MOCK_CPU_COUNT=8 MOCK_MEMORY_BYTES=8589934592 GLOWROOM_BUILD_PATH="$CASE/cache" \
     /bin/bash "$CASE/scripts/build-app.sh" > "$CASE/output.log" 2>&1 || {
         cat "$CASE/output.log" >&2; fail "Automatic job selection failed"
     }
@@ -201,8 +201,8 @@ assert_success
 pass "Automatic job budget respects available CPU and memory"
 
 new_case fallback
-env -u PICEDIT_BUILD_JOBS PATH="$MOCK_TOOLS:$PATH" MOCK_ROOT="$CASE" MOCK_MODE=serial \
-    MOCK_SYSCTL_FAILURE=1 PICEDIT_BUILD_PATH="$CASE/cache" \
+env -u GLOWROOM_BUILD_JOBS PATH="$MOCK_TOOLS:$PATH" MOCK_ROOT="$CASE" MOCK_MODE=serial \
+    MOCK_SYSCTL_FAILURE=1 GLOWROOM_BUILD_PATH="$CASE/cache" \
     /bin/bash "$CASE/scripts/build-app.sh" > "$CASE/output.log" 2>&1 || {
         cat "$CASE/output.log" >&2; fail "Hardware-query fallback failed"
     }
@@ -239,13 +239,13 @@ pass "Publication failure restores the previous app and removes staging"
 
 new_case cancellation
 env PATH="$MOCK_TOOLS:$PATH" MOCK_ROOT="$CASE" MOCK_MODE=hold \
-    PICEDIT_BUILD_PATH="$CASE/cache" PICEDIT_BUILD_JOBS=4 \
+    GLOWROOM_BUILD_PATH="$CASE/cache" GLOWROOM_BUILD_JOBS=4 \
     /bin/bash "$CASE/scripts/build-app.sh" > "$CASE/output.log" 2>&1 &
 ACTIVE_PID=$!
 wait_for_file "$CASE/compile.child.pid"
 wait_for_file "$CASE/icon.child.pid"
 if run_build hold 4; then fail "A second invocation acquired the active build lock"; fi
-[[ -d "$CASE/dist/.picedit-build.lock" ]] || fail "Second invocation removed the first build's lock"
+[[ -d "$CASE/dist/.glowroom-build.lock" ]] || fail "Second invocation removed the first build's lock"
 kill -TERM "$ACTIVE_PID"
 status=0
 wait "$ACTIVE_PID" || status=$?

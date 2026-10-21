@@ -93,7 +93,7 @@ func embeddedICC(_ chunks: [Chunk]) throws -> Data {
 let conflictingColorChunks: Set<String> = ["iCCP", "sRGB", "gAMA", "cHRM", "cICP"]
 func explicitICC(_ source: Data, icc: Data) throws -> Data {
     let original = try parse(source)
-    var profile = Data("PicEdit ICC".utf8); profile.append(0); profile.append(0)
+    var profile = Data("Glowroom ICC".utf8); profile.append(0); profile.append(0)
     profile.append(try compressICC(icc))
     var result = pngSignature
     try append(original[0], to: &result)
@@ -107,7 +107,7 @@ func explicitICC(_ source: Data, icc: Data) throws -> Data {
     return result
 }
 
-let run = URL(fileURLWithPath: "/private/tmp/picedit-artifact-explicit-icc-\(UUID().uuidString)")
+let run = URL(fileURLWithPath: "/private/tmp/glowroom-artifact-explicit-icc-\(UUID().uuidString)")
 try FileManager.default.createDirectory(at: run, withIntermediateDirectories: false)
 var reports: [[String: Any]] = []
 for name in [CGColorSpace.sRGB, CGColorSpace.displayP3] {

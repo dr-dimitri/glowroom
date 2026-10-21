@@ -31,8 +31,8 @@
 @@ -0,0 +1,23 @@
 +// Local evaluation variant: match the SDXL Diffusers mask-channel sampling.
 +// This changes neither masked-image encoding nor the later denoise-mask blend.
-+#ifndef PICEDIT_SDXL_INPAINT_MASK_H
-+#define PICEDIT_SDXL_INPAINT_MASK_H
++#ifndef GLOWROOM_SDXL_INPAINT_MASK_H
++#define GLOWROOM_SDXL_INPAINT_MASK_H
 +
 +#include "core/tensor.hpp"
 +#include "model.h"

@@ -1,6 +1,6 @@
 # Parallele Scheduling-Tests
 
-Die Testkorrektur zu [Issue #62](https://github.com/dr-dimitri/picedit/issues/62) trennt das Warten auf eine kontrollierte Fake-Operation vom Blockieren eines Betriebssystemthreads. Ein synchrones `DispatchSemaphore.wait` innerhalb mehrerer `Task.detached`-Fakes kann die kooperativen Threads belegen, auf denen auch die Teststeuerung ihre Freigaben ausführen müsste. Ein längerer Timeout oder ein serieller Gesamtlauf behebt diese Abhängigkeit nicht.
+Die Testkorrektur zu [Issue #62](https://github.com/dr-dimitri/glowroom/issues/62) trennt das Warten auf eine kontrollierte Fake-Operation vom Blockieren eines Betriebssystemthreads. Ein synchrones `DispatchSemaphore.wait` innerhalb mehrerer `Task.detached`-Fakes kann die kooperativen Threads belegen, auf denen auch die Teststeuerung ihre Freigaben ausführen müsste. Ein längerer Timeout oder ein serieller Gesamtlauf behebt diese Abhängigkeit nicht.
 
 Die Preview- und Adjusted-Preview-Tests verwenden dafür suspendierende Fakes. `TestAsyncLatch` ignoriert bewusst den Abbruch der simulierten nativen Arbeit, bis der Test `releaseAll()` ausführt. Die Pipelines halten ihren Workerplatz weiterhin bis zur tatsächlichen Rückkehr. Die vorhandenen synchronen Decoder und Renderer laufen unverändert innerhalb derselben begrenzten Hintergrundworker; optionale interne `asyncDecoder`-/`asyncRenderer`-Abhängigkeiten ermöglichen die suspendierenden Testdoubles. Kurze separate Tests prüfen auch die synchronen Pfade, Fehler, Priorität und Ausführung außerhalb des MainActor.
 
@@ -15,20 +15,20 @@ Ein-/Ausreihen, gemeinsame Waiter, ausgewählte gegenüber Hintergrundarbeit, sc
 Die kleine Kontrollprobe startet in einem eigenen Prozess die doppelte Anzahl aktiver CPUs als Fake-Worker, begrenzt auf mindestens acht und höchstens 64, und lässt die Steuerung nach 20 ms wieder aufwachen. Auf Rechnern mit mindestens 64 aktiven CPUs liegt die begrenzte Anzahl deshalb nicht über der CPU-Anzahl. Der erste Modus reproduziert den alten synchronen Fünfsekunden-Semaphore-Fake, der zweite verwendet denselben suspendierenden Latch wie die Tests. Beide melden tatsächlich beobachtete Controller-Wartezeit, gestartete Worker und Fake-Timeouts als JSON. Sie messen keine Bildoperation und erlauben keine Aussage über die Laufzeit oder Threadzahl der Anwendung. Die Modi nacheinander ohne zusätzlichen Build oder Benchmark ausführen:
 
 ```sh
-swiftc -parse-as-library -module-cache-path /tmp/picedit-scheduling-modules \
-  Tests/PicEditTests/TestSchedulingGates.swift \
+swiftc -parse-as-library -module-cache-path /tmp/glowroom-scheduling-modules \
+  Tests/GlowroomTests/TestSchedulingGates.swift \
   tools/test-scheduling/cooperative-pool-probe.swift \
-  -o /tmp/picedit-cooperative-pool-probe
-/tmp/picedit-cooperative-pool-probe --blocking
-/tmp/picedit-cooperative-pool-probe --suspending
+  -o /tmp/glowroom-cooperative-pool-probe
+/tmp/glowroom-cooperative-pool-probe --blocking
+/tmp/glowroom-cooperative-pool-probe --suspending
 ```
 
 Die Regressionen und danach die vollständige parallele Suite verwenden denselben Test-Buildpfad nacheinander. Andere gleichzeitig laufende Builds benötigen getrennte Verzeichnisse und ein gemeinsames CPU-/Speicherbudget.
 
 ```sh
-PICEDIT_TEST_BUILD_PATH=/tmp/picedit-scheduling-tests ./scripts/test.sh --jobs 4 \
+GLOWROOM_TEST_BUILD_PATH=/tmp/glowroom-scheduling-tests ./scripts/test.sh --jobs 4 \
   --filter 'PreviewPipelineTests|SemanticSearchServiceTests|SemanticLibraryTests|TestSchedulingGatesTests'
-PICEDIT_TEST_BUILD_PATH=/tmp/picedit-scheduling-tests ./scripts/test.sh --jobs 4
+GLOWROOM_TEST_BUILD_PATH=/tmp/glowroom-scheduling-tests ./scripts/test.sh --jobs 4
 ```
 
 Die neuen Gate-Tests prüfen früh eingetroffene Ereignisse, Abbruch vor/nach Anmeldung, Timeout-Cleanup und absichtlich bis zur Freigabe weiterlaufende native Fakes. Vollständiger sauberer App-Build und finales Diffreview bleiben zusätzlich nach `AGENTS.md` erforderlich; konkrete Kontroll- und Testresultate stehen im jeweiligen Pull Request.

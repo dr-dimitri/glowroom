@@ -92,22 +92,22 @@ Unabhängige Code-Reviews prüften außerdem Synchronisierung, Fehlerzustände u
 
 ```sh
 # Gesamte Matrix einschließlich Konkurrenzlast mit einem/zwei Workern
-PICEDIT_BENCHMARK_SESSION_API=1 scripts/benchmark-editing.sh
+GLOWROOM_BENCHMARK_SESSION_API=1 scripts/benchmark-editing.sh
 
 # Gezielter Vergleich mit ausgeschaltetem Zwischenbild-/Präfix-Cache
-PICEDIT_BENCHMARK_SESSION_API=1 scripts/benchmark-editing.sh --scenario complex --backend cached --iterations 24
-PICEDIT_BENCHMARK_SESSION_API=1 scripts/benchmark-editing.sh --scenario complex --backend uncached --iterations 24
+GLOWROOM_BENCHMARK_SESSION_API=1 scripts/benchmark-editing.sh --scenario complex --backend cached --iterations 24
+GLOWROOM_BENCHMARK_SESSION_API=1 scripts/benchmark-editing.sh --scenario complex --backend uncached --iterations 24
 
 # Alle Tests; Grafiktests benötigen eine normale macOS-Grafiksitzung
-PICEDIT_TEST_BUILD_PATH=/tmp/picedit-editing-tests scripts/test.sh --jobs 4
+GLOWROOM_TEST_BUILD_PATH=/tmp/glowroom-editing-tests scripts/test.sh --jobs 4
 
 # Scheduling und Analyse unter Thread Sanitizer, getrenntes Build-Verzeichnis
-PICEDIT_TEST_BUILD_PATH=/tmp/picedit-editing-tsan scripts/test.sh --sanitize thread --jobs 3 --filter 'AutoToneAnalysisCacheTests|AdjustedPreviewPipelineTests'
+GLOWROOM_TEST_BUILD_PATH=/tmp/glowroom-editing-tsan scripts/test.sh --sanitize thread --jobs 3 --filter 'AutoToneAnalysisCacheTests|AdjustedPreviewPipelineTests'
 
 # Optionaler isolierter CPU-Analysebenchmark in Release-Konfiguration
-PICEDIT_AUTOTONE_BENCHMARK=1 PICEDIT_TEST_BUILD_PATH=/tmp/picedit-analysis-benchmark scripts/test.sh -c release --filter AutoToneAnalysisCacheTests.benchmarkRepeatedLargePreviewAnalysis
+GLOWROOM_AUTOTONE_BENCHMARK=1 GLOWROOM_TEST_BUILD_PATH=/tmp/glowroom-analysis-benchmark scripts/test.sh -c release --filter AutoToneAnalysisCacheTests.benchmarkRepeatedLargePreviewAnalysis
 ```
 
-Die Benchmark-Einstiegspunkte liegen unter `Sources/PicEdit/DeveloperTools` und werden mit dem vollständigen SwiftPM-App-Target in Release-Konfiguration gebaut. So bleiben Modulabhängigkeiten und Ressourcen mit der Anwendung synchron. Standardmäßig bleibt der Cache unter `.build-app/developer-tools/editing` erhalten. `PICEDIT_BENCHMARK_BUILD_PATH` (alternativ `PICEDIT_DEVELOPER_BUILD_PATH`) wählt einen anderen Build-Pfad; parallele Builds benötigen unterschiedliche Verzeichnisse. `PICEDIT_BUILD_JOBS` begrenzt die Compilerparallelität, die Messszenarien selbst laufen nacheinander.
+Die Benchmark-Einstiegspunkte liegen unter `Sources/Glowroom/DeveloperTools` und werden mit dem vollständigen SwiftPM-App-Target in Release-Konfiguration gebaut. So bleiben Modulabhängigkeiten und Ressourcen mit der Anwendung synchron. Standardmäßig bleibt der Cache unter `.build-app/developer-tools/editing` erhalten. `GLOWROOM_BENCHMARK_BUILD_PATH` (alternativ `GLOWROOM_DEVELOPER_BUILD_PATH`) wählt einen anderen Build-Pfad; parallele Builds benötigen unterschiedliche Verzeichnisse. `GLOWROOM_BUILD_JOBS` begrenzt die Compilerparallelität, die Messszenarien selbst laufen nacheinander.
 
-Für Vorhervergleiche kann `PICEDIT_BENCHMARK_SOURCE_ROOT` auf einen separaten Checkout mit derselben Developer-Harness-Unterstützung zeigen. Ältere Checkouts ohne diesen Vertrag werden vor dem Build abgewiesen, damit kein regulärer App-Einstiegspunkt mit persönlichen Katalogdaten gestartet wird. Für solche historischen Stände deren damalige Benchmark-Skripte verwenden. `PICEDIT_BENCHMARK_SESSION_API=1` aktiviert weiterhin die Session-Szenarien. Die Reparatur der Build-Skripte liefert keine neue Leistungsaussage zu den oben dokumentierten Messungen.
+Für Vorhervergleiche kann `GLOWROOM_BENCHMARK_SOURCE_ROOT` auf einen separaten Checkout mit derselben Developer-Harness-Unterstützung zeigen. Ältere Checkouts ohne diesen Vertrag werden vor dem Build abgewiesen, damit kein regulärer App-Einstiegspunkt mit persönlichen Katalogdaten gestartet wird. Für solche historischen Stände deren damalige Benchmark-Skripte verwenden. `GLOWROOM_BENCHMARK_SESSION_API=1` aktiviert weiterhin die Session-Szenarien. Die Reparatur der Build-Skripte liefert keine neue Leistungsaussage zu den oben dokumentierten Messungen.

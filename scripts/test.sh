@@ -1,10 +1,10 @@
 #!/bin/bash
 set -euo pipefail
 
-unset PICEDIT_DEVELOPER_TOOL
+unset GLOWROOM_DEVELOPER_TOOL
 
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
-BUILD_PATH="${PICEDIT_TEST_BUILD_PATH:-"$ROOT/.build"}"
+BUILD_PATH="${GLOWROOM_TEST_BUILD_PATH:-"$ROOT/.build"}"
 if [[ "$BUILD_PATH" != /* ]]; then
     BUILD_PATH="$ROOT/$BUILD_PATH"
 fi

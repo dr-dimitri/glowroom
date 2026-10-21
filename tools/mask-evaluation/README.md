@@ -1,6 +1,6 @@
 # Offline comparison of local masking models
 
-These standalone developer tools do not change PicEdit's model selection or app
+These standalone developer tools do not change Glowroom's model selection or app
 dependencies. Historical reports were removed with the `reports` directory.
 The product limitations remain documented in [Automatic masks](../../docs/AUTOMATIC-MASKS.md);
 use explicit local output directories for new measurements.
@@ -32,7 +32,7 @@ the initial narrower-box run remains separate in the local evaluation record.
 globs relative to ROOT, with `{id}` as the image identifier. It checks image
 dimensions and original hashes, writes mask statistics, and renders a -2 EV
 background change in linear sRGB. This is a diagnostic compositor, not an
-end-to-end PicEdit editing test. Coverage fractions are not accuracy scores.
+end-to-end Glowroom editing test. Coverage fractions are not accuracy scores.
 
 ## Measurements
 

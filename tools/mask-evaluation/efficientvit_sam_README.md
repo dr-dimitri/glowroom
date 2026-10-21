@@ -42,9 +42,9 @@ Die vollständigen tatsächlich installierten Versionen werden mit `pip freeze`
 bei den privaten Messergebnissen gesichert.
 
 ```sh
-python3.11 -m venv /private/tmp/picedit-efficientvit-sam-evaluation-20261020/venv
-/private/tmp/picedit-efficientvit-sam-evaluation-20261020/venv/bin/python -m pip install torch==2.14.1 torchvision==0.29.1 huggingface-hub==2.2.0 numpy==2.4.6 pillow==13.0.0 omegaconf==2.4.0 timm==1.0.30 einops==0.8.2 opencv-python-headless==5.0.0.93 tqdm==4.70.1 scipy==1.17.1 torchprofile==0.1.0
-/private/tmp/picedit-efficientvit-sam-evaluation-20261020/venv/bin/python -m pip install onnx==1.23.2 onnxsim==0.8.1 torchmetrics==1.9.0 torchdiffeq==0.2.5 torch-fidelity==0.4.0 matplotlib==3.11.2
+python3.11 -m venv /private/tmp/glowroom-efficientvit-sam-evaluation-20261020/venv
+/private/tmp/glowroom-efficientvit-sam-evaluation-20261020/venv/bin/python -m pip install torch==2.14.1 torchvision==0.29.1 huggingface-hub==2.2.0 numpy==2.4.6 pillow==13.0.0 omegaconf==2.4.0 timm==1.0.30 einops==0.8.2 opencv-python-headless==5.0.0.93 tqdm==4.70.1 scipy==1.17.1 torchprofile==0.1.0
+/private/tmp/glowroom-efficientvit-sam-evaluation-20261020/venv/bin/python -m pip install onnx==1.23.2 onnxsim==0.8.1 torchmetrics==1.9.0 torchdiffeq==0.2.5 torch-fidelity==0.4.0 matplotlib==3.11.2
 ```
 
 Die offiziellen Quellarchive müssen unter `sources/efficientvit` und
@@ -65,9 +65,9 @@ CUDA-, TensorRT- und Webdemo-Abhängigkeiten werden nicht eingebunden.
 ## Download und Ausführung
 
 ```sh
-env HF_HUB_DISABLE_TELEMETRY=1 HF_HOME=/private/tmp/picedit-efficientvit-sam-evaluation-20261020/hf-home /private/tmp/picedit-efficientvit-sam-evaluation-20261020/venv/bin/python tools/mask-evaluation/efficientvit_sam.py download /private/tmp/picedit-efficientvit-sam-evaluation-20261020
+env HF_HUB_DISABLE_TELEMETRY=1 HF_HOME=/private/tmp/glowroom-efficientvit-sam-evaluation-20261020/hf-home /private/tmp/glowroom-efficientvit-sam-evaluation-20261020/venv/bin/python tools/mask-evaluation/efficientvit_sam.py download /private/tmp/glowroom-efficientvit-sam-evaluation-20261020
 
-env PYTORCH_ENABLE_MPS_FALLBACK=0 HF_HUB_DISABLE_TELEMETRY=1 MPLCONFIGDIR=/private/tmp/picedit-efficientvit-sam-evaluation-20261020/mpl /private/tmp/picedit-efficientvit-sam-evaluation-20261020/venv/bin/python tools/mask-evaluation/efficientvit_sam.py run /private/tmp/picedit-efficientvit-sam-evaluation-20261020 /private/tmp/picedit-efficientvit-sam-evaluation-20261020/prompts.json /private/tmp/picedit-efficientvit-sam-evaluation-20261020/results-mps --device mps
+env PYTORCH_ENABLE_MPS_FALLBACK=0 HF_HUB_DISABLE_TELEMETRY=1 MPLCONFIGDIR=/private/tmp/glowroom-efficientvit-sam-evaluation-20261020/mpl /private/tmp/glowroom-efficientvit-sam-evaluation-20261020/venv/bin/python tools/mask-evaluation/efficientvit_sam.py run /private/tmp/glowroom-efficientvit-sam-evaluation-20261020 /private/tmp/glowroom-efficientvit-sam-evaluation-20261020/prompts.json /private/tmp/glowroom-efficientvit-sam-evaluation-20261020/results-mps --device mps
 ```
 
 Für explizite CPU-Prüfungen `--device cpu` und einen eigenen Ausgabeordner nutzen.

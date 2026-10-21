@@ -1,7 +1,7 @@
 # Additional offline mask candidates
 
 These developer harnesses evaluate optional candidates; they are not linked into
-PicEdit and do not change its model selection. Use the prepared, oriented sRGB
+Glowroom and do not change its model selection. Use the prepared, oriented sRGB
 PNGs and the private manifest made by `prepare.py`. Do not commit photographs,
 weights, or result masks. Run one model process at a time; contention would make
 latency and memory comparisons unreliable.
@@ -28,17 +28,17 @@ directory used for this evaluation:
 
 ```sh
 clang++ -std=c++20 -O3 tools/mask-evaluation/extra_gguf.cpp \
-  -I/private/tmp/picedit-mask-evaluation-20261020/extra/gguf/vision.cpp/include \
-  -I/private/tmp/picedit-mask-evaluation-20261020/extra/gguf/vision.cpp/depend/llama/ggml/include \
-  -L/private/tmp/picedit-mask-evaluation-20261020/extra/gguf/build/lib \
+  -I/private/tmp/glowroom-mask-evaluation-20261020/extra/gguf/vision.cpp/include \
+  -I/private/tmp/glowroom-mask-evaluation-20261020/extra/gguf/vision.cpp/depend/llama/ggml/include \
+  -L/private/tmp/glowroom-mask-evaluation-20261020/extra/gguf/build/lib \
   -lvisioncpp -lggml -lggml-base \
-  -Wl,-rpath,/private/tmp/picedit-mask-evaluation-20261020/extra/gguf/build/lib \
-  -o /private/tmp/picedit-mask-evaluation-20261020/extra/gguf/extra_gguf
+  -Wl,-rpath,/private/tmp/glowroom-mask-evaluation-20261020/extra/gguf/build/lib \
+  -o /private/tmp/glowroom-mask-evaluation-20261020/extra/gguf/extra_gguf
 
-VECLIB_MAXIMUM_THREADS=4 /private/tmp/picedit-mask-evaluation-20261020/extra/gguf/extra_gguf \
-  /private/tmp/picedit-mask-evaluation-20261020/extra/gguf/BiRefNet-F16.gguf \
-  /private/tmp/picedit-mask-evaluation-20261020/inputs \
-  /private/tmp/picedit-mask-evaluation-20261020/results/gguf-cpu 4
+VECLIB_MAXIMUM_THREADS=4 /private/tmp/glowroom-mask-evaluation-20261020/extra/gguf/extra_gguf \
+  /private/tmp/glowroom-mask-evaluation-20261020/extra/gguf/BiRefNet-F16.gguf \
+  /private/tmp/glowroom-mask-evaluation-20261020/inputs \
+  /private/tmp/glowroom-mask-evaluation-20261020/results/gguf-cpu 4
 ```
 
 The weights remain loaded for the complete run. The first photograph is repeated
@@ -69,12 +69,12 @@ for Python >=3.12 and its stage1 extra for torch >=2.7; using the older existing
 versions is a test accommodation and must be reported with results.
 
 ```sh
-/private/tmp/picedit-mask-evaluation-20261020/extra/efficientsam3/venv/bin/python \
+/private/tmp/glowroom-mask-evaluation-20261020/extra/efficientsam3/venv/bin/python \
   tools/mask-evaluation/extra_efficientsam3.py \
-  --repo /private/tmp/picedit-mask-evaluation-20261020/extra/efficientsam3/repo \
-  --checkpoint /private/tmp/picedit-mask-evaluation-20261020/extra/efficientsam3/efficientsam3_efficientvit.pt \
-  --manifest /private/tmp/picedit-mask-evaluation-20261020/prompts.json \
-  --output /private/tmp/picedit-mask-evaluation-20261020/results/efficientsam3-cpu \
+  --repo /private/tmp/glowroom-mask-evaluation-20261020/extra/efficientsam3/repo \
+  --checkpoint /private/tmp/glowroom-mask-evaluation-20261020/extra/efficientsam3/efficientsam3_efficientvit.pt \
+  --manifest /private/tmp/glowroom-mask-evaluation-20261020/prompts.json \
+  --output /private/tmp/glowroom-mask-evaluation-20261020/results/efficientsam3-cpu \
   --device cpu --threads 4
 ```
 

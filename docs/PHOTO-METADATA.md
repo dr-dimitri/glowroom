@@ -49,10 +49,10 @@ Die Tests verwenden isolierte Katalogverzeichnisse, synthetische Raster und Fake
 Die getrennten optionalen Prüfungen lassen sich so starten:
 
 ```sh
-PICEDIT_RUN_PHOTO_METADATA_EVALUATION=1 ./scripts/test.sh --filter LocalPhotoMetadataEvaluationTests
-PICEDIT_RUN_METADATA_LOAD_EVALUATION=1 ./scripts/test.sh --filter PhotoMetadataLoadEvaluationTests
+GLOWROOM_RUN_PHOTO_METADATA_EVALUATION=1 ./scripts/test.sh --filter LocalPhotoMetadataEvaluationTests
+GLOWROOM_RUN_METADATA_LOAD_EVALUATION=1 ./scripts/test.sh --filter PhotoMetadataLoadEvaluationTests
 ```
 
-Der native Lauf verwendet zwei anonym benannte synthetische Raster sowie eine explizite Neuanforderung. Ein bei ausdrücklicher Aktivierung nicht verfügbares Modell ist ein sichtbarer Fehler. Der Speicherlauf erzeugt einen eigenen UUID-Testordner (optional unter `PICEDIT_METADATA_EVALUATION_OUTPUT`) und bewahrt JSON-Bericht und synthetische Dateien zur Prüfung auf. Er misst 10.000 unzugeordnete Texte einschließlich tatsächlichem Import-/Export-Roundtrip, große Importprüfungen, Eintrags-/Bytegrenzen und den Byteerhalt eines bestehenden Ziels bei zu großem Export. Prozess-RSS ist ein kumulativer Höchststand des Testprozesses; dies ist kein Foto-, RAW-, GUI- oder Suchgeschwindigkeitsbenchmark. Beide Läufe bleiben im gewöhnlichen Testlauf ausdrücklich deaktiviert.
+Der native Lauf verwendet zwei anonym benannte synthetische Raster sowie eine explizite Neuanforderung. Ein bei ausdrücklicher Aktivierung nicht verfügbares Modell ist ein sichtbarer Fehler. Der Speicherlauf erzeugt einen eigenen UUID-Testordner (optional unter `GLOWROOM_METADATA_EVALUATION_OUTPUT`) und bewahrt JSON-Bericht und synthetische Dateien zur Prüfung auf. Er misst 10.000 unzugeordnete Texte einschließlich tatsächlichem Import-/Export-Roundtrip, große Importprüfungen, Eintrags-/Bytegrenzen und den Byteerhalt eines bestehenden Ziels bei zu großem Export. Prozess-RSS ist ein kumulativer Höchststand des Testprozesses; dies ist kein Foto-, RAW-, GUI- oder Suchgeschwindigkeitsbenchmark. Beide Läufe bleiben im gewöhnlichen Testlauf ausdrücklich deaktiviert.
 
 Der historische Prüfbericht auf M2 Pro wurde mit dem Ordner `reports` entfernt. Neue native Ausgaben und Speicher-/Lastmessungen werden mit den obigen optionalen Prüfungen in einem separat gewählten Ergebnisverzeichnis erzeugt.

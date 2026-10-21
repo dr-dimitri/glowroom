@@ -1,7 +1,7 @@
 --- pinned/src/core/ggml_runner.cpp
 +++ diagnostic-unbatched/src/core/ggml_runner.cpp
 @@ -1,3 +1,4 @@
-+#include "picedit_float_diagnostic-unbatched.h"
++#include "glowroom_float_diagnostic-unbatched.h"
  #include <algorithm>
  #include <exception>
  #include <map>
@@ -15,7 +15,7 @@
 +        const int64_t channels = shape.size() >= 3 ? shape[2] : -1;
 +        const char* stage = channels == 8 ? "vae-encode-raw-before-posterior" :
 +                            channels == 3 ? "vae-decode-raw-before-clamp" : "vae-raw-graph-output";
-+        if (!picedit_float_diagnostic(stage, *output)) {
++        if (!glowroom_float_diagnostic(stage, *output)) {
 +            last_compute_status_ = GGML_STATUS_FAILED;
 +            return std::nullopt;
 +        }
@@ -25,7 +25,7 @@
 --- pinned/src/pipeline/diffusion_engine.cpp
 +++ diagnostic-unbatched/src/pipeline/diffusion_engine.cpp
 @@ -1,6 +1,8 @@
-+#include "picedit_float_diagnostic-unbatched.h"
++#include "glowroom_float_diagnostic-unbatched.h"
  #include "diffusion_engine.h"
  
  #include <algorithm>
@@ -37,13 +37,13 @@
                                                          : sampling_init_latent;
      sd::Tensor<float> denoised                    = x_t;
  
-+    int picedit_denoise_calls = 0;
++    int glowroom_denoise_calls = 0;
      auto denoise = [&](const sd::Tensor<float>& x, float sigma, int step) -> sd::guidance::GuiderOutput {
-+        const int picedit_denoise_call = ++picedit_denoise_calls;
-+        if (picedit_denoise_call > 25) throw std::runtime_error("diagnostic-step-bound-exceeded");
++        const int glowroom_denoise_call = ++glowroom_denoise_calls;
++        if (glowroom_denoise_call > 25) throw std::runtime_error("diagnostic-step-bound-exceeded");
 +        {
-+            if (!picedit_float_diagnostic("diffusion-state", x, picedit_denoise_call) ||
-+                !picedit_float_diagnostic("diffusion-sigma", sd::Tensor<float>::from_vector({sigma}), picedit_denoise_call)) {
++            if (!glowroom_float_diagnostic("diffusion-state", x, glowroom_denoise_call) ||
++                !glowroom_float_diagnostic("diffusion-sigma", sd::Tensor<float>::from_vector({sigma}), glowroom_denoise_call)) {
 +                throw std::runtime_error("diagnostic-nonfinite-tensor");
 +            }
 +        }
@@ -55,10 +55,10 @@
          }
  
 +        {
-+            if (!picedit_float_diagnostic("diffusion-scaled-input", noised_input, picedit_denoise_call) ||
-+                !picedit_float_diagnostic("diffusion-c-in", sd::Tensor<float>::from_vector({c_in}), picedit_denoise_call) ||
-+                !picedit_float_diagnostic("diffusion-c-skip", sd::Tensor<float>::from_vector({c_skip}), picedit_denoise_call) ||
-+                !picedit_float_diagnostic("diffusion-c-out", sd::Tensor<float>::from_vector({c_out}), picedit_denoise_call)) {
++            if (!glowroom_float_diagnostic("diffusion-scaled-input", noised_input, glowroom_denoise_call) ||
++                !glowroom_float_diagnostic("diffusion-c-in", sd::Tensor<float>::from_vector({c_in}), glowroom_denoise_call) ||
++                !glowroom_float_diagnostic("diffusion-c-skip", sd::Tensor<float>::from_vector({c_skip}), glowroom_denoise_call) ||
++                !glowroom_float_diagnostic("diffusion-c-out", sd::Tensor<float>::from_vector({c_out}), glowroom_denoise_call)) {
 +                throw std::runtime_error("diagnostic-nonfinite-tensor");
 +            }
 +        }
@@ -70,12 +70,12 @@
          sd::Tensor<float> img_uncond_out;
          sd_sample::SampleStepCacheDispatcher step_cache(cache_runtime, step, sigma);
          std::vector<sd::Tensor<float>> controls;
-+        auto picedit_validate_actual_unet_inputs = [&](const DiffusionParams& actual) {
++        auto glowroom_validate_actual_unet_inputs = [&](const DiffusionParams& actual) {
 +            if (!actual.x || !actual.timesteps ||
-+                !picedit_float_diagnostic("unet-actual-x", *actual.x, picedit_denoise_call) ||
-+                !picedit_float_diagnostic("unet-actual-timesteps", *actual.timesteps, picedit_denoise_call) ||
-+                (actual.context && !picedit_float_diagnostic("unet-actual-text-context", *actual.context, picedit_denoise_call)) ||
-+                (actual.c_concat && !picedit_float_diagnostic("unet-actual-mask-and-source-latent", *actual.c_concat, picedit_denoise_call))) {
++                !glowroom_float_diagnostic("unet-actual-x", *actual.x, glowroom_denoise_call) ||
++                !glowroom_float_diagnostic("unet-actual-timesteps", *actual.timesteps, glowroom_denoise_call) ||
++                (actual.context && !glowroom_float_diagnostic("unet-actual-text-context", *actual.context, glowroom_denoise_call)) ||
++                (actual.c_concat && !glowroom_float_diagnostic("unet-actual-mask-and-source-latent", *actual.c_concat, glowroom_denoise_call))) {
 +                throw std::runtime_error("diagnostic-nonfinite-tensor");
 +            }
 +        };
@@ -86,16 +86,16 @@
                                            !ref_latents.empty() &&
                                            sd_version_supports_ref_latent_img_cfg(version);
  
-+        bool picedit_positive_branch_seen = false;
-+        bool picedit_negative_branch_seen = false;
++        bool glowroom_positive_branch_seen = false;
++        bool glowroom_negative_branch_seen = false;
          auto run_condition = [&](const SDCondition& condition,
                                   const sd::Tensor<float>* c_concat_override                 = nullptr,
                                   const std::vector<int>* local_skip_layers                  = nullptr,
                                   const std::vector<sd::Tensor<float>>* ref_latents_override = nullptr,
                                   bool use_uncond_ip                                         = false) -> sd::Tensor<float> {
-+            const bool picedit_negative_branch = &condition == &uncond;
-+            const bool picedit_positive_branch = &condition == &cond;
-+            if (!picedit_negative_branch && !picedit_positive_branch)
++            const bool glowroom_negative_branch = &condition == &uncond;
++            const bool glowroom_positive_branch = &condition == &cond;
++            if (!glowroom_negative_branch && !glowroom_positive_branch)
 +                throw std::runtime_error("diagnostic-unexpected-unet-branch");
              diffusion_params.context     = condition.c_crossattn.empty() ? nullptr : &condition.c_crossattn;
              diffusion_params.c_concat    = c_concat_override != nullptr ? c_concat_override : (condition.c_concat.empty() ? nullptr : &condition.c_concat);
@@ -104,21 +104,21 @@
                      }
                  }
              }
-+            picedit_validate_actual_unet_inputs(diffusion_params);
++            glowroom_validate_actual_unet_inputs(diffusion_params);
              auto output_opt = work_diffusion_model->compute(n_threads, diffusion_params);
 -            if (output_opt.empty()) {
 -                LOG_ERROR("diffusion model compute failed");
 -                return sd::Tensor<float>();
 -            }
 +            if (!output_opt.empty() &&
-+                !picedit_float_diagnostic(picedit_positive_branch ? "unet-positive-raw-output-before-guidance" : "unet-negative-raw-output-before-guidance", output_opt, picedit_denoise_call)) {
++                !glowroom_float_diagnostic(glowroom_positive_branch ? "unet-positive-raw-output-before-guidance" : "unet-negative-raw-output-before-guidance", output_opt, glowroom_denoise_call)) {
 +                throw std::runtime_error("diagnostic-nonfinite-tensor");
 +            }
 +            if (output_opt.empty()) throw std::runtime_error("diagnostic-empty-unet-output");
 +            if (output_opt.dim() != 4 || output_opt.shape()[3] != 1)
 +                throw std::runtime_error("diagnostic-batch-not-disabled");
-+            picedit_positive_branch_seen = picedit_positive_branch_seen || picedit_positive_branch;
-+            picedit_negative_branch_seen = picedit_negative_branch_seen || picedit_negative_branch;
++            glowroom_positive_branch_seen = glowroom_positive_branch_seen || glowroom_positive_branch;
++            glowroom_negative_branch_seen = glowroom_negative_branch_seen || glowroom_negative_branch;
  
              step_cache.after_condition(&condition, noised_input, output_opt);
              return output_opt;
@@ -126,13 +126,13 @@
              batched_params.ref_latents     = nullptr;
              batched_params.extra           = UNetDiffusionExtra{1, &batched_controls, control_strength};
  
-+            picedit_validate_actual_unet_inputs(batched_params);
++            glowroom_validate_actual_unet_inputs(batched_params);
              sd::Tensor<float> output = work_diffusion_model->compute(n_threads, batched_params);
 -            if (output.empty()) {
 -                LOG_ERROR("batched diffusion model compute failed");
 -            }
 +            if (!output.empty() &&
-+                !picedit_float_diagnostic("unet-raw-batched-output-before-guidance", output, picedit_denoise_call)) {
++                !glowroom_float_diagnostic("unet-raw-batched-output-before-guidance", output, glowroom_denoise_call)) {
 +                throw std::runtime_error("diagnostic-nonfinite-tensor");
 +            }
 +            if (output.empty()) throw std::runtime_error("diagnostic-empty-unet-output");
@@ -151,7 +151,7 @@
                  step_cache.invalidate_condition(&img_uncond);
              }
          }
-+        if (!picedit_positive_branch_seen || !picedit_negative_branch_seen ||
++        if (!glowroom_positive_branch_seen || !glowroom_negative_branch_seen ||
 +            cond_out.empty() || uncond_out.empty())
 +            throw std::runtime_error("diagnostic-unexpected-unet-branch");
          sd::guidance::GuidanceInput guidance_input;
@@ -161,9 +161,9 @@
          if (guided.pred.empty()) {
              return {};
          }
-+        if (!picedit_float_diagnostic("actual-cfg-guided-output", guided.pred, picedit_denoise_call))
++        if (!glowroom_float_diagnostic("actual-cfg-guided-output", guided.pred, glowroom_denoise_call))
 +            throw std::runtime_error("diagnostic-nonfinite-tensor");
-+        if (!picedit_cfg_diagnostic(cond_out, uncond_out, guided.pred, effective_guidance_scale, picedit_denoise_call))
++        if (!glowroom_cfg_diagnostic(cond_out, uncond_out, guided.pred, effective_guidance_scale, glowroom_denoise_call))
 +            throw std::runtime_error("diagnostic-guidance-mismatch");
  
          if (is_skiplayer_step && slg_scale != 0.0f) {
@@ -172,9 +172,9 @@
      if (latents.empty()) {
          return {};
      }
-+    if (!picedit_float_diagnostic("vae-encode-moments", latents)) return {};
++    if (!glowroom_float_diagnostic("vae-encode-moments", latents)) return {};
      latents = first_stage_model->vae_output_to_latents(latents, rng);
-+    if (!picedit_float_diagnostic("vae-encode-sampled-latent", latents)) return {};
++    if (!glowroom_float_diagnostic("vae-encode-sampled-latent", latents)) return {};
      return latents;
  }
  
@@ -182,14 +182,14 @@
  }
  
  sd::Tensor<float> StableDiffusionGGML::decode_first_stage(const sd::Tensor<float>& x, bool decode_video) {
-+    if (!picedit_float_diagnostic("diffusion-final-latent", x)) return {};
++    if (!glowroom_float_diagnostic("diffusion-final-latent", x)) return {};
      if (sd_version_is_pid(version) || sd_version_is_minit2i(version) || version == VERSION_IRIS) {
          return sd::ops::clamp((x + 1.f) * 0.5f, 0.0f, 1.0f);
      }
 --- pinned/src/pipeline/image.cpp
 +++ diagnostic-unbatched/src/pipeline/image.cpp
 @@ -1,3 +1,4 @@
-+#include "picedit_float_diagnostic-unbatched.h"
++#include "glowroom_float_diagnostic-unbatched.h"
  #include "generation.h"
  
  #include <algorithm>
@@ -198,7 +198,7 @@
              return std::nullopt;
          }
 +        // Stage2 diagnostic: reject invalid positive text conditioning before sampling.
-+        if (!picedit_float_diagnostic("positive-text-conditioning", cond.c_crossattn)) {
++        if (!glowroom_float_diagnostic("positive-text-conditioning", cond.c_crossattn)) {
 +            return std::nullopt;
 +        }
          if (cond.c_concat.empty() && ref_image_params.pass_to_dit) {
@@ -210,7 +210,7 @@
  
 +        // Fixed SD1/CFG7.5 fixture has an explicit negative conditioning pass.
 +        if (!uncond.c_crossattn.empty() &&
-+            !picedit_float_diagnostic("negative-text-conditioning", uncond.c_crossattn)) {
++            !glowroom_float_diagnostic("negative-text-conditioning", uncond.c_crossattn)) {
 +            return std::nullopt;
 +        }
          SDCondition img_uncond;

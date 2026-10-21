@@ -26,11 +26,11 @@ Die ergänzende Prüfung der GPU-Bearbeitung und des Analyse-Caches ist im [Bear
 118 Tests bestanden, verteilt auf 97 Bibliotheks-/Persistenz-/Scheduling-/Cache-Tests und 21 tatsächliche Render-/Auto-Tonwert-Tests. Neue Fälle prüfen begrenzte Überlappung, deterministische Metadaten, Abbruch und Fehler beim Scannen, überholte Filteranfragen, schnelle Metadatenänderungen, angenommene Ordnerentfernung beim Beenden, Priorisierung und unabhängigen Abbruch geteilter Render-/Decodier-Anfragen sowie parallelen Abschluss beider Speicherbereiche.
 
 ```sh
-PICEDIT_TEST_BUILD_PATH=/tmp/picedit-tests scripts/test.sh --jobs 4
+GLOWROOM_TEST_BUILD_PATH=/tmp/glowroom-tests scripts/test.sh --jobs 4
 scripts/test-image-pipeline.sh
 scripts/benchmark-library.sh
 scripts/benchmark-scanner.sh 120 5
-PICEDIT_BENCHMARK_SESSION_API=1 scripts/benchmark-editing.sh
+GLOWROOM_BENCHMARK_SESSION_API=1 scripts/benchmark-editing.sh
 ```
 
 Der separate Vorschau-Smoke-Test (unter anderem Orientierung, Cache-Grenzen und 40 Abbrüche) und der Release-Build von `dist/PicEdit.app` waren ebenfalls erfolgreich. Apples `dsymutil` benötigte für den Release-Build die Ausführung außerhalb der Sandbox.

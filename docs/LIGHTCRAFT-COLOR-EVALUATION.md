@@ -7,8 +7,8 @@ erhalten; die ursprünglichen Einzelartefakte stehen hier nicht mehr zur Verfüg
 Neue Läufe schreiben in ein ausdrücklich gewähltes externes Ergebnisverzeichnis,
 beispielsweise unter `/private/tmp/`.
 
-Vergleich zu [Issue #54](https://github.com/dr-dimitri/picedit/issues/54) nach
-[Roadmap #49](https://github.com/dr-dimitri/picedit/issues/49). Die Referenz
+Vergleich zu [Issue #54](https://github.com/dr-dimitri/glowroom/issues/54) nach
+[Roadmap #49](https://github.com/dr-dimitri/glowroom/issues/49). Die Referenz
 untersucht nur die vorhandenen Regler `vibrance` und `saturation`. Sie ist ein
 Entwicklerexperiment; Produktionsgraph, gespeicherte Bearbeitungen, UI,
 AutoTone und die bestehenden 14 Regler-IDs bleiben erhalten.
@@ -26,7 +26,7 @@ daraus nicht.
 ## Reproduktion und Referenzgrenze
 
 ```sh
-./scripts/evaluate-lightcraft.sh /private/tmp/picedit-lc05-run --candidate LC-05
+./scripts/evaluate-lightcraft.sh /private/tmp/glowroom-lc05-run --candidate LC-05
 python3 -m unittest discover -s tools/lightcraft-evaluation -p 'test_*.py'
 ```
 

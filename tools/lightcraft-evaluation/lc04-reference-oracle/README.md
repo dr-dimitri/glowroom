@@ -27,8 +27,8 @@ Das Oracle ist kein Vergleich mit Lightcrafts vollständigem Tonemapping.
 
 Die synthetischen Eingänge sind selbst erzeugt. Die Swift-Ablationen
 `clarityGaussianLog`, `textureGaussianExistingDomain` und `textureGaussianLog`
-sind Versuchsvarianten von PicEdit und werden nicht als upstream Original
-ausgegeben. Alpha-Abdeckung ist ebenfalls eine PicEdit-Erweiterung und wird
+sind Versuchsvarianten von Glowroom und werden nicht als upstream Original
+ausgegeben. Alpha-Abdeckung ist ebenfalls eine Glowroom-Erweiterung und wird
 durch eigene Swift-Vertragstests geprüft.
 
 Für die übernommenen Algorithmen gilt MIT; Copyright (c) 2026 ArtCraft Team and

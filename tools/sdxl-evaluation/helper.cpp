@@ -52,7 +52,7 @@ static void library_log(sd_log_level_t, const char* message, void*) {
     // Preserve every level during model loading, but bound the process total
     // even if the SDK reports a repeated failure from multiple worker threads.
     static constexpr size_t limit = 1024 * 1024;
-    static constexpr char marker[] = "\nPICEDIT_SDK_LOG_TRUNCATED\n";
+    static constexpr char marker[] = "\nGLOWROOM_SDK_LOG_TRUNCATED\n";
     static size_t written = 0;
     static bool truncated = false;
     std::lock_guard<std::mutex> lock(library_log_mutex);
@@ -379,11 +379,11 @@ static json requested_configuration() {
             {"paramsBackend", "diffusion=metal,te=disk,vae=metal"}, {"maxManagedVRAMGiB", 5},
             {"autoFit", false}, {"eagerLoad", false}, {"mmap", false}, {"batchedCFG", true}, {"latentMaskInterpolation", "nearest-v1"},
             {"flashAttention", "auto"}, {"linearScale", 0}, {"attentionScale", 0}, {"hostThreads", 4},
-            {"modelCanvas", {edge, edge}}, {"steps", picedit_sdxl::configured_steps},
-            {"effectiveSteps", picedit_sdxl::actual_steps}, {"strength", 0.99}, {"cfg", 8},
-            {"sampler", "euler"}, {"scheduler", picedit_sdxl::schedule_variant},
-            {"customSigmas", picedit_sdxl::reference_sigmas()},
-            {"referenceTimesteps", picedit_sdxl::reference_timesteps()}, {"rng", "cpu"},
+            {"modelCanvas", {edge, edge}}, {"steps", glowroom_sdxl::configured_steps},
+            {"effectiveSteps", glowroom_sdxl::actual_steps}, {"strength", 0.99}, {"cfg", 8},
+            {"sampler", "euler"}, {"scheduler", glowroom_sdxl::schedule_variant},
+            {"customSigmas", glowroom_sdxl::reference_sigmas()},
+            {"referenceTimesteps", glowroom_sdxl::reference_timesteps()}, {"rng", "cpu"},
             {"vaeTiling", {{"enabled", true}, {"tilePixels", {640, 640}}, {"overlap", 0.5}}},
             {"inspectionScope", "configuration describes requested public API parameters; optional diagnostic is reported separately; no private runner access"}};
 }
@@ -449,7 +449,7 @@ static void perform(const json& command) {
             // public custom schedule already selects strength 0.99's 19 steps;
             // the SDK's subsequent strength selection leaves this array intact.
             // Keep this small local array alive until synchronous generation ends.
-            auto sigmas = picedit_sdxl::reference_sigmas();
+            auto sigmas = glowroom_sdxl::reference_sigmas();
             params.sample_params.custom_sigmas = sigmas.data();
             params.sample_params.custom_sigmas_count = static_cast<int>(sigmas.size());
             params.vae_tiling_params.enabled = true;
@@ -549,7 +549,7 @@ int main(int argc, char** argv) {
         catch (...) { emit({{"event", "converted"}, {"status", "error"}, {"code", "conversion-failed"}, {"memory", stats()}}); return 2; }
     }
     sd_set_progress_callback(progress, nullptr);
-    emit({{"event", "ready"}, {"helperVersion", "picedit-sdxl-evaluation-1"}, {"memory", stats()}});
+    emit({{"event", "ready"}, {"helperVersion", "glowroom-sdxl-evaluation-1"}, {"memory", stats()}});
     std::thread worker;
     unsigned commands = 0;
     for (;;) {

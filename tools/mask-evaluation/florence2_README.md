@@ -1,6 +1,6 @@
 # Florence-2-large: lokaler Text-/Maskentest
 
-Dieses getrennte Messwerkzeug verändert PicEdit nicht. Es prüft genau
+Dieses getrennte Messwerkzeug verändert Glowroom nicht. Es prüft genau
 [`microsoft/Florence-2-large`](https://huggingface.co/microsoft/Florence-2-large/tree/21a599d414c4d928c9032694c424fb94458e3594),
 Revision `21a599d414c4d928c9032694c424fb94458e3594`. Die aktuelle Microsoft-Modellkarte
 beschreibt die weiter vortrainierte 4k-Version mit nur 0,1 Milliarden zusätzlichen
@@ -126,4 +126,4 @@ Keiner dieser Werte belegt semantisch korrekte Objektauswahl oder Maskengüte.
 Ohne annotierte Ground Truth sind Bildbefunde und Differenzen zu anderen Modellen
 qualitative Vergleiche, keine gemessene Segmentierungsgenauigkeit.
 
-Das Hilfswerkzeug ist nicht in die App eingebunden; dafür ist kein PicEdit-Build nötig.
+Das Hilfswerkzeug ist nicht in die App eingebunden; dafür ist kein Glowroom-Build nötig.

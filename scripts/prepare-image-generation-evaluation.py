@@ -28,7 +28,7 @@ TOOLS = REPOSITORY / "tools/image-generation-evaluation"
 BLOCK_BYTES = 1024 * 1024
 MINIMUM_RAM = 16 * 1024**3
 MINIMUM_DISK = 8 * 1024**3
-EXPECTED_PACKAGE_SHA256 = "7dbd04800b71a868442c99ad85e3daf1d2f4051658a65fb48a992ac0baf07ce8"
+EXPECTED_PACKAGE_SHA256 = "832801b46a076c7fee3fa895b1d0f369b8335b5a977849a7955a092fc0196db7"
 
 
 class PreparationError(Exception):
@@ -112,7 +112,7 @@ def download_file(entry, destination, cache=None, model=False, allow_network=Tru
     descriptor, name = tempfile.mkstemp(prefix=".download-", dir=destination.parent)
     temporary = Path(name)
     try:
-        request = urllib.request.Request(url, headers={"User-Agent": "PicEdit-Image-Evaluation/1"})
+        request = urllib.request.Request(url, headers={"User-Agent": "Glowroom-Image-Evaluation/1"})
         with os.fdopen(descriptor, "wb") as output, urllib.request.urlopen(request, timeout=60) as response:
             if not response.url.startswith("https://"):
                 raise PreparationError("insecure download redirect")

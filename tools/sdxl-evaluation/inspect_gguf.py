@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Read a bounded GGUF v3 header, without loading tensor data or running an SDK.
 
-Format/enum sources are ggml/include/{gguf.h,ggml.h} at PicEdit's pinned
+Format/enum sources are ggml/include/{gguf.h,ggml.h} at Glowroom's pinned
 d25b121ce1d6ae0c7e62ad080460d9fc1e46dd93 revision. Dimensions use GGML
 innermost-first order; convolution OIHW dimensions are their reverse.
 """
