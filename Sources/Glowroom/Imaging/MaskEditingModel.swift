@@ -65,7 +65,6 @@ final class MaskRasterCancellation: @unchecked Sendable {
 /// One shared, serial CPU worker bounds mask memory and avoids nested worker pools.
 /// The model retains at most one running request and one replacement per editor.
 actor MaskOverlayWorker {
-    typealias Resampler = @Sendable (MaskRaster, ArtifactPixelSize, @Sendable () throws -> Void) throws -> MaskRaster
     static let shared = MaskOverlayWorker()
     static let maximumDimension = 1_600
     private static let signpostLog = OSLog(subsystem: "com.glowroom.app", category: "MaskRaster")
@@ -89,16 +88,14 @@ actor MaskOverlayWorker {
     private let usesNativeCache: Bool
     private let usesOptimizedResampling: Bool
     private let maximumSampleEvaluations: Int
-    private let resampler: Resampler?
 
     /// Reference switches retain the former full-raster/resampling path for the
     /// developer comparison. Production uses the same bounded serial worker.
     init(usesNativeCache: Bool = true, usesOptimizedResampling: Bool = true,
-         maximumSampleEvaluations: Int = 268_435_456, resampler: Resampler? = nil) {
+         maximumSampleEvaluations: Int = 268_435_456) {
         self.usesNativeCache = usesNativeCache
         self.usesOptimizedResampling = usesOptimizedResampling
         self.maximumSampleEvaluations = maximumSampleEvaluations
-        self.resampler = resampler
     }
 
     func rasterize(_ request: MaskRasterRequest,
@@ -125,9 +122,6 @@ actor MaskOverlayWorker {
                                                      cancellation: { try request.cancellation.check() })
             }
             let raster = try measure(.resampling, observer: timingObserver) {
-                if let resampler {
-                    return try resampler(nativeRaster, output, { try request.cancellation.check() })
-                }
                 if usesOptimizedResampling {
                     return try nativeRaster.resampledOptimized(to: output, cancellation: { try request.cancellation.check() })
                 }

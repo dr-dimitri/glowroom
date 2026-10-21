@@ -2,6 +2,12 @@
 
 Stand: 21. Oktober 2026. Ausgangspunkt: `b195ef57b67e2560576cd38f20c09c381a2a3dfa` (aktualisierter `main`). Die historischen Ergebnisse in [EDITING-PERFORMANCE.md](EDITING-PERFORMANCE.md) bleiben eigenständige Messungen.
 
+## Aktueller Harness nach Entfernung des Rust-Prototyps
+
+Der Maskenbenchmark vergleicht im aktuellen Quellstand ausschließlich die vollständige Swift-Referenz mit dem optimierten Swift-Pfad. Nach dem No-Go wurde der ungenutzte Rust-Prototyp einschließlich FFI-Lader und Rust-Buildoptionen entfernt, um diesen zusätzlichen Entwickler- und Toolchainpfad nicht weiter zu pflegen. Die produktiven Swift-Optimierungen sowie die historischen Messwerte, Rohdaten und die No-Go-Entscheidung bleiben erhalten.
+
+Eine optionale Wiederholung des historischen Rust-Vergleichs benötigt den [damaligen Quellstand `f591933`](https://github.com/dr-dimitri/glowroom/tree/f591933) und dessen [Prototypvertrag](https://github.com/dr-dimitri/glowroom/blob/f591933/tools/mask-performance/README.md). Die folgenden Messergebnisse und Abschlussprüfungen dokumentieren #44; sie sind keine neuen Mess- oder Buildnachweise für die anschließende Entfernung. Aktuelle Swift-Befehle stehen unter „Reproduktion und Rohdaten“.
+
 ## Vor der Auswahl festgelegte Kriterien
 
 Die Entscheidung fällt anhand der gesamten jeweiligen Aktion, nicht eines isolierten Kernels. Für die Swift-Wiederverwendung werden wiederholbare Verbesserungen in Append-/Strichfolgen erwartet; unveränderte und vollständige Neuberechnungen werden separat ausgewiesen. Ein zusätzlicher Rust-Produktionspfad müsste gegenüber dem besten Swift-Pfad mindestens 15 % und 2 ms Median der tatsächlich verwendeten Benutzeraktion einsparen, auch beim p95 außerhalb der zwischen Läufen beobachteten Streuung liegen und dürfte kleine Lasten nicht um mehr als 10 % beziehungsweise 0,5 ms verschlechtern. Diese Hürde berücksichtigt den zusätzlichen Build-/Architektur-/FFI-Aufwand; sie wurde vor den Abnahmemessungen festgelegt.
@@ -64,7 +70,7 @@ Die getrennten `MallocStackLogging=1`-/`sample`-/`heap`-Läufe bestätigen die e
 
 **Rust wird nicht produktiv integriert.** Gegenüber optimiertem Swift beträgt der Vorteil im 16-MP-Gesamtaufruf der Matrix nur 0,77 ms beziehungsweise 5,3 %; der 8-MP-Fall spart 0,39 ms. Bei 1 MP ist das Resampling eine identische Größen-No-op und ruft keinen Rust-Kernel auf. Der anschließende eigenständige Wiederholungslauf bestätigt denselben Abstand. Nach zusätzlicher expliziter Absicherung der FFI-Kontextlebensdauer wurde der vollständige Vergleich nochmals geprüft (`repeat-safe-16mp-active`): Swift 14,08/14,39 ms und Rust 13,33/13,55 ms p50/p95, jeweils 160 Samples und exakte Bytes/Hashes. Der Vorteil von 0,75 ms/5,4 % unterschreitet die vorab gewählten 2 ms/15 % deutlich. Der heutige sichtbare lokale Editor benötigt diesen Resamplingkern ohnehin nicht.
 
-Der Rust-Prototyp verwendet denselben Algorithmus mit horizontaler Samplingtabelle wie optimiertes Swift; der große Gewinn durch inkrementelle Striche und die Tabelle wird Rust nicht zugerechnet. Der gesamte Swift→Rust→Swift-Aufruf einschließlich Ausgabe-/Tabellenallokation, Eigentumsrahmen und Abbruchcallbacks ist gemessen; `dlopen` geschieht einmal vor der Last. Keine Bildkopie oder JSON-/Dateiübergabe an der FFI-Grenze. Pointer, Größen/Strides, Rückgabecodes, Lebensdauer, Threadschutz, Panic-/Abbruchverhalten, Compilerpin, Lizenz und Hostarchitektur sind im [Prototypvertrag](../tools/mask-performance/README.md) dokumentiert. Produktionsbuild, Link, Bundle und Signatur benötigen Rust nicht; Swift bleibt vollständig funktionsfähig. Universeller Rust-Build, App-Link/Bundle/Signatur und zusätzliche Architekturprüfung wären unbegründete Integrationskosten.
+Der damals geprüfte Rust-Prototyp verwendete denselben Algorithmus mit horizontaler Samplingtabelle wie optimiertes Swift; der große Gewinn durch inkrementelle Striche und die Tabelle wird Rust nicht zugerechnet. Der gesamte Swift→Rust→Swift-Aufruf einschließlich Ausgabe-/Tabellenallokation, Eigentumsrahmen und Abbruchcallbacks wurde gemessen; `dlopen` geschah einmal vor der Last. Keine Bildkopie oder JSON-/Dateiübergabe an der FFI-Grenze. Pointer, Größen/Strides, Rückgabecodes, Lebensdauer, Threadschutz, Panic-/Abbruchverhalten, Compilerpin, Lizenz und Hostarchitektur sind im [historischen Prototypvertrag](https://github.com/dr-dimitri/glowroom/blob/f591933/tools/mask-performance/README.md) dokumentiert. Produktionsbuild, Link, Bundle und Signatur benötigen Rust nicht; Swift bleibt vollständig funktionsfähig. Universeller Rust-Build, App-Link/Bundle/Signatur und zusätzliche Architekturprüfung wären unbegründete Integrationskosten.
 
 
 ## Echte RAW-Vorschau und bestehende Interaktionslasten
@@ -91,14 +97,14 @@ Der bestehende Bibliotheksbenchmark mit 10.000 synthetischen Datensätzen bestan
 
 ## Reproduktion und Rohdaten
 
-Alle Befehle im Repository ausführen. Builds und Tests zuerst abschließen, danach die Messprozesse ohne konkurrierende Compiler oder Bildarbeit nacheinander starten. `GLOWROOM_MASK_RUST=1` ist ausschließlich ein Opt-in für den Entwicklerprototyp; die gepinnte Rust-Toolchain muss lokal vorhanden sein. Ohne diese Variable läuft der Vergleich vollständig mit Swift.
+Alle Befehle im aktuellen Repository ausführen. Builds und Tests zuerst abschließen, danach die Messprozesse ohne konkurrierende Compiler oder Bildarbeit nacheinander starten. Der aktuelle Maskenvergleich läuft vollständig mit Swift und benötigt keine Rust-Toolchain. Die früheren Rust-Opt-ins sind entfernt; für historische Rust-Läufe gilt ausschließlich der oben verlinkte alte Quellstand.
 
 ```sh
 # Tatsächliches Release-App-Target; getrenntes Developer-Buildverzeichnis.
-GLOWROOM_MASK_RUST=1 ./scripts/benchmark-masks.sh > /tmp/masks-all.jsonl
-GLOWROOM_MASK_RUST=1 ./scripts/benchmark-masks.sh --width 4096 --height 4096 \
+./scripts/benchmark-masks.sh > /tmp/swift-masks-all.jsonl
+./scripts/benchmark-masks.sh --width 4096 --height 4096 \
     --mask-fixture many-mixed --mask-workload active --iterations 20 \
-    > /tmp/repeat-16mp-active.jsonl
+    > /tmp/swift-repeat-16mp-active.jsonl
 
 # Harness einmal bauen, danach denselben Build für die lokalen Lasten verwenden.
 benchmark_binary="$(GLOWROOM_BENCHMARK_SESSION_API=1 GLOWROOM_BUILD_JOBS=4 ./scripts/build-developer-tool.sh editing)"
@@ -134,9 +140,9 @@ library_binary="$(GLOWROOM_BUILD_JOBS=4 ./scripts/build-developer-tool.sh librar
 "$library_binary" > /tmp/library.txt
 ```
 
-Die Bash-Schleife mit `read` erhält beide Dimensionen ohne `eval`. Bei getrennten Aufrufen des gemessenen Binaries lassen sich die Herkunftsfelder über `GLOWROOM_BENCHMARK_COMMIT`, `GLOWROOM_BENCHMARK_SWIFT_VERSION` und `GLOWROOM_BENCHMARK_RUST_VERSION` setzen; das Maskenskript setzt sie automatisch. Quelldateien, Compiler-/Binärfingerprints und Hostumgebung sind zusätzlich in diesem Bericht und den Manifesten festgehalten.
+Die Bash-Schleife mit `read` erhält beide Dimensionen ohne `eval`. Bei getrennten Aufrufen des gemessenen Binaries lassen sich die Herkunftsfelder über `GLOWROOM_BENCHMARK_COMMIT` und `GLOWROOM_BENCHMARK_SWIFT_VERSION` setzen; das Maskenskript setzt sie automatisch. Quelldateien, Compiler-/Binärfingerprints und Hostumgebung der historischen Messungen sind zusätzlich in diesem Bericht und den Manifesten festgehalten.
 
-Die eingecheckten [Rohdaten](../reports/performance/) sind gzip-komprimierte JSONL beziehungsweise Textausgaben. `summary.csv` lässt sich mit folgendem Befehl reproduzieren; die Anfangsmatrix und profilbegleitete Läufe werden absichtlich nicht mit den finalen Akzeptanzmessungen gemischt:
+Die eingecheckten historischen [Rohdaten](../reports/performance/) sind gzip-komprimierte JSONL beziehungsweise Textausgaben und enthalten weiterhin die damaligen Rust-Ergebnisse. Die unveränderte `summary.csv` lässt sich mit folgendem Befehl aus diesen Dateien reproduzieren; neue Swift-Messläufe ersetzen diese historischen Daten nicht. Die Anfangsmatrix und profilbegleitete Läufe werden absichtlich nicht mit den finalen Akzeptanzmessungen gemischt:
 
 ```sh
 python3 scripts/summarize-performance.py \
@@ -156,6 +162,8 @@ Getrennte native Profilierung verwendet beispielsweise `MallocStackLogging=1` be
 
 ## Korrektheit, Nebenläufigkeit und Review
 
+Dieser Abschnitt bewahrt die Prüfungen und den Buildabschluss von #44 im damaligen Quellstand. Er beschreibt keine erneute Ausführung im Rahmen der späteren Prototypentfernung.
+
 Die neuen Core-Tests vergleichen vollständige Bytes und kanonische Hashes gegen den unveränderten Vollrasterpfad: native und skalierte Raster, Crops, Brush/Erase, Invertieren, Append, Punkt→Kapsel, Undo, Canvaswechsel, Arbeitsbudgets sowie Abbruch nach Teilwrites. Grenzwerte an weichen Kanten werden mit `nextDown`, exakt und `nextUp` geprüft. App-Tests prüfen Quelle/Sitzung/Revision, vollständige Overlaybytes, fehlgeschlagene/abgebrochene Kandidaten, begrenzten lokalen Cache, materialisierte Brush-/Refinementgraphen und TaskLocal-Tracing. Bestehende Pipeline-Tests decken schnelle Änderungen, Bildwechsel, Priorität und ausstehende native Arbeit nach Abbruch ab.
 
 ```sh
@@ -163,8 +171,6 @@ Die neuen Core-Tests vergleichen vollständige Bytes und kanonische Hashes gegen
 GLOWROOM_TEST_BUILD_PATH="$(mktemp -d /private/tmp/glowroom-mask-tsan.XXXXXX)" \
     ./scripts/test.sh --sanitize thread --jobs 2 \
     --filter 'MaskRasterizationCacheTests|MaskOverlayWorkerTests|LocalMaskImageCacheTests|PipelineTraceTests|MaskEditingModelTests|AdjustedPreviewPipelineTests|JPEGExportModelTests|SemanticLibraryTests'
-CARGO_TARGET_DIR=/private/tmp/glowroom-mask-rust \
-    cargo test --manifest-path tools/mask-performance/Cargo.toml --release --locked --offline
 ```
 
 Der separate frische Thread-Sanitizer-Build hat 65 App-Tests in sieben Suites und neun Core-Tests ohne Race-Meldung bestanden; die Testbibliothek linkt nachweislich `libclang_rt.tsan_osx_dynamic.dylib`. Die vier Rust-ABI-/Strides-/Fehler-/Abbruchtests bestehen ebenfalls. Das ist eine Prüfung der ausgeführten Lasten, kein Beweis für jede mögliche Ausführungsreihenfolge.
@@ -176,3 +182,13 @@ Frühe Entwicklerbuilds scheiterten an inzwischen korrigierten Bezeichner-/`thro
 Das finale Diff einschließlich Core-/App-Schnittstellen, Tests, Dokumentation, Rust-Lebensdauer und Messdaten wurde unabhängig gegengeprüft. Gefundene Punkte (unter anderem FFI-Kontextlebensdauer, Seedvalidierung und die genaue Cache-Eintragszählung) sind korrigiert und erneut geprüft; es bestehen keine offenen Reviewbefunde. Die vollständige CSV lässt sich aus den 18 finalen Eingabedateien mit 286 Ergebnisgruppen reproduzieren.
 
 Da Laufzeitquellcode geändert wurde, war der vollständige saubere App-Build erforderlich. Vor der Bereinigung wurden laufende Compiler-/Testprozesse ausgeschlossen; `GLOWROOM_BUILD_PATH` und `PICEDIT_BUILD_PATH` waren ungesetzt. Alte generierte Ergebnisse einschließlich Modulcaches aus `.build/` und `.build-app/developer-tools/editing/` sowie `dist/Glowroom.app` wurden entfernt. Dependency-Checkouts, Repositories, heruntergeladene Artefakte und Lockdateien blieben erhalten. Danach bestand `GLOWROOM_BUILD_JOBS=4 ./scripts/build-app.sh` in Release-Konfiguration (117,45 s SwiftPM-Build, drei Compilerjobs plus parallele Iconerzeugung). Bundle-Metadaten und Ad-hoc-Signatur wurden erfolgreich geprüft. Das Produktionsbinary enthält weder den Rust-FFI-Einstiegspunkt noch eine Rust-Prototypbibliothek. Bereinigung und Build blieben wegen aktiver Pfadnutzung beziehungsweise ihrer Abhängigkeit geordnet.
+
+## Prüfung der anschließenden Prototypentfernung
+
+Nach Entfernung des Rust-Kerns, C-Headers, Cargo-/Toolchain-Dateien, FFI-Laders, austauschbaren Worker-Resamplers und Rust-CLI-/Buildoptionen bestanden 18 App-Tests sowie neun Core-Tests. Geprüft wurden `MaskOverlayWorkerTests`, `MaskEditingModelTests`, `LocalMaskImageCacheTests` und `MaskRasterizationCacheTests` mit `scripts/test.sh --jobs 2 --filter 'MaskRasterizationCacheTests|MaskOverlayWorkerTests|LocalMaskImageCacheTests|MaskEditingModelTests'` in einem frischen separaten Test-Buildverzeichnis. Die bestehenden Entwickler-Harness-Vertragstests und `bash -n scripts/benchmark-masks.sh` bestehen ebenfalls.
+
+Der aktualisierte Release-Harness und das tatsächlich geänderte `benchmark-masks.sh` bestanden zusätzlich die exakte Raster-/SHA-256-/Vorschau-/Overlayvalidierung aller 16 Fixture-/Bearbeitungsfolgen bei 4096 × 4096 Pixeln. Die vier aktuellen Modi `compare`, `reference`, `swift` und `validate` liefern die erwartete Swift-Auswahl; Metadaten enthalten keine Rust-Felder mehr. Die entfernte Library-Option und das Rust-Backend werden ausdrücklich abgewiesen. Diese Läufe prüfen Korrektheit und CLI-Verträge; aus ihnen wird kein neuer Performancegewinn abgeleitet.
+
+Der saubere vollständige Build war erneut erforderlich, weil die Worker-Schnittstelle und Developer-Sourcen geändert wurden. Nach Ausschluss aktiver Builds/Tests wurden alte generierte Ergebnisse der verwendeten `.build`-/`.build-app`-Verzeichnisse und das bisherige App-Bundle entfernt; Quell-/Dependency-Daten und Lockdateien blieben erhalten. `GLOWROOM_BUILD_JOBS=4 ./scripts/build-app.sh` bestand (125,60 s SwiftPM-Build), ebenso Bundle-/Signaturprüfung. App-Build und Tests liefen unabhängig mit getrennten Build-Verzeichnissen und insgesamt höchstens sechs geplanten Workern. Die Bereinigung lag vor beiden Builds; ihre abhängigen Schritte blieben geordnet.
+
+Das finale unabhängige Diffreview der Entfernung fand keine offenen Befunde. Aktuelle Dokumentationslinks sind gültig; der historische Prototypvertrag ist im verlinkten alten Commit vorhanden. Sämtliche Dateien unter `reports/performance/` bleiben unverändert, einschließlich historischer Rust-Ergebnisse und ihrer Zusammenfassung.

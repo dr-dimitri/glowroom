@@ -29,20 +29,16 @@ enum MaskBenchmark {
         guard options.width <= 16_777_216 / options.height,
               options.maskFixture == "all" || MaskBenchmarkFixtures.names.contains(options.maskFixture),
               options.maskWorkload == "all" || MaskBenchmarkFixtures.workloads.contains(options.maskWorkload),
-              ["compare", "reference", "swift", "rust", "validate"].contains(options.maskBackend) else {
-            throw Benchmark.failure("Use masks --mask-fixture all|few-soft|many-mixed|narrow|edges --mask-workload all|snapshot|append|active|history --mask-backend compare|reference|swift|rust|validate; native canvas <=16,777,216 pixels")
-        }
-        let rust = options.maskLibrary.isEmpty ? nil : try RustMaskResampler(path: options.maskLibrary)
-        if options.maskBackend == "rust", rust == nil {
-            throw Benchmark.failure("Rust comparison requires --mask-library /absolute/path/libglowroom_mask_performance.dylib")
+              ["compare", "reference", "swift", "validate"].contains(options.maskBackend) else {
+            throw Benchmark.failure("Use masks --mask-fixture all|few-soft|many-mixed|narrow|edges --mask-workload all|snapshot|append|active|history --mask-backend compare|reference|swift|validate; native canvas <=16,777,216 pixels")
         }
         let backends = options.maskBackend == "compare" || options.maskBackend == "validate"
-            ? ["reference", "swift"] + (rust == nil ? [] : ["rust"]) : [options.maskBackend]
+            ? ["reference", "swift"] : [options.maskBackend]
         let size = try ArtifactPixelSize(width: options.width, height: options.height)
         let fixtures = options.maskFixture == "all" ? MaskBenchmarkFixtures.names : [options.maskFixture]
         let workloads = options.maskWorkload == "all" ? MaskBenchmarkFixtures.workloads : [options.maskWorkload]
         let environment = ProcessInfo.processInfo.environment
-        try validateResamplers(rust: rust)
+        try validateResamplers()
         try emit(["event": "metadata", "scenario": "canonical-mask", "recipe": MaskBenchmarkFixtures.recipeVersion,
                   "seed": String(options.seed), "width": size.width, "height": size.height,
                   "iterations": options.iterations, "backends": backends,
@@ -51,13 +47,11 @@ enum MaskBenchmark {
                   "timing_scope": "actor call through native Gray8 raster, resample, complete SHA-256, CGImage overlay return; no UI presentation",
                   "peak_rss_scope": "whole comparison process including validation and all variants; not per-variant allocation",
                   "system_caches": "not cleared", "optimization": "SwiftPM release; app target",
-                  "rust_library": options.maskLibrary,
                   "operating_system": ProcessInfo.processInfo.operatingSystemVersionString,
                   "active_processors": ProcessInfo.processInfo.activeProcessorCount,
                   "physical_memory_bytes": ProcessInfo.processInfo.physicalMemory,
                   "commit": environment["GLOWROOM_BENCHMARK_COMMIT"] ?? "unspecified",
-                  "swift_version": environment["GLOWROOM_BENCHMARK_SWIFT_VERSION"] ?? "unspecified",
-                  "rust_version": environment["GLOWROOM_BENCHMARK_RUST_VERSION"] ?? "not loaded"])
+                  "swift_version": environment["GLOWROOM_BENCHMARK_SWIFT_VERSION"] ?? "unspecified"])
         for fixture in fixtures {
             for workload in workloads {
                 let sequence = try MaskBenchmarkFixtures.sequence(name: fixture, workload: workload, size: size, seed: options.seed)
@@ -69,7 +63,7 @@ enum MaskBenchmark {
                           "points": sequence.documents.map { $0.strokes.reduce(0) { $0 + $1.points.count } }])
                 // Exact bytes and complete canonical hashes are verified outside
                 // acceptance timing; only one pair of native rasters is retained.
-                try await validate(sequence: sequence, backends: backends, rust: rust)
+                try await validate(sequence: sequence, backends: backends)
                 try emit(["event": "validation", "fixture": fixture, "workload": workload,
                           "native_bytes": "exact", "canonical_sha256": "exact", "preview_bytes": "exact",
                           "overlay_bytes": "exact", "documents": sequence.documents.count])
@@ -81,7 +75,7 @@ enum MaskBenchmark {
                     let offset = iteration % backends.count
                     let order = Array(backends[offset...]) + Array(backends[..<offset])
                     for backend in order {
-                        let worker = try makeWorker(backend: backend, rust: rust)
+                        let worker = makeWorker(backend: backend)
                         let source = sourceIdentity()
                         let session = UUID()
                         if let initial = sequence.initial {
@@ -125,10 +119,10 @@ enum MaskBenchmark {
         }
     }
 
-    private static func validate(sequence: MaskBenchmarkFixtures.Sequence, backends: [String], rust: RustMaskResampler?) async throws {
+    private static func validate(sequence: MaskBenchmarkFixtures.Sequence, backends: [String]) async throws {
         var nativeCache = MaskRasterizationCache()
         let source = sourceIdentity(), session = UUID()
-        let workers = try backends.map { ($0, try makeWorker(backend: $0, rust: rust)) }
+        let workers = backends.map { ($0, makeWorker(backend: $0)) }
         let reference = MaskOverlayWorker(usesNativeCache: false, usesOptimizedResampling: false)
         if let initial = sequence.initial {
             let update = try nativeCache.rasterize(initial)
@@ -152,9 +146,6 @@ enum MaskBenchmark {
                     guard try full.resampledOptimized(to: output).bytes == expected.bytes else {
                         throw Benchmark.failure("Optimized Swift resample bytes differ")
                     }
-                    if let rust, try rust.resample(full, to: output).bytes != expected.bytes {
-                        throw Benchmark.failure("Rust resample bytes differ")
-                    }
                 }
             }
             let job = request(document, source: source, session: session, revision: UInt64(index + 2))
@@ -170,7 +161,7 @@ enum MaskBenchmark {
         }
     }
 
-    private static func validateResamplers(rust: RustMaskResampler?) throws {
+    private static func validateResamplers() throws {
         for source in [try ArtifactPixelSize(width: 1, height: 1), try .init(width: 3, height: 2), try .init(width: 7, height: 19)] {
             let pixels = Data((0..<(source.width * source.height)).map { UInt8(($0 * 71 + 23) % 256) })
             let input = try MaskRaster(size: source, bytes: pixels)
@@ -179,21 +170,12 @@ enum MaskBenchmark {
                 guard try input.resampledOptimized(to: output) == reference else {
                     throw Benchmark.failure("Swift resample contract differs for \(source) -> \(output)")
                 }
-                if let rust, try rust.resample(input, to: output) != reference {
-                    throw Benchmark.failure("Rust resample contract differs for \(source) -> \(output)")
-                }
             }
         }
     }
 
-    private static func makeWorker(backend: String, rust: RustMaskResampler?) throws -> MaskOverlayWorker {
+    private static func makeWorker(backend: String) -> MaskOverlayWorker {
         if backend == "reference" { return MaskOverlayWorker(usesNativeCache: false, usesOptimizedResampling: false) }
-        if backend == "rust" {
-            guard let rust else { throw Benchmark.failure("Missing Rust library") }
-            return MaskOverlayWorker(resampler: { raster, size, cancellation in
-                try rust.resample(raster, to: size, cancellation: cancellation)
-            })
-        }
         return MaskOverlayWorker()
     }
 
@@ -228,63 +210,4 @@ enum MaskBenchmark {
     }
 }
 
-/// dlopen is confined to this explicitly selected developer harness. Production
-/// app builds compile none of this code and have no Rust toolchain dependency.
-final class RustMaskResampler: @unchecked Sendable {
-    typealias Cancel = @convention(c) (UnsafeMutableRawPointer?) -> Int32
-    typealias Kernel = @convention(c) (UnsafePointer<UInt8>?, Int, Int, Int, Int,
-        UnsafeMutablePointer<UInt8>?, Int, Int, Int, Int, Cancel?, UnsafeMutableRawPointer?) -> Int32
-    private let library: UnsafeMutableRawPointer
-    private let kernel: Kernel
-
-    init(path: String) throws {
-        guard path.hasPrefix("/"), let handle = dlopen(path, RTLD_NOW | RTLD_LOCAL) else {
-            throw Benchmark.failure("Cannot open explicit Rust prototype library: \(path)")
-        }
-        guard let symbol = dlsym(handle, "glowroom_mask_resample_v1") else {
-            dlclose(handle); throw Benchmark.failure("Rust library lacks glowroom_mask_resample_v1")
-        }
-        library = handle; kernel = unsafeBitCast(symbol, to: Kernel.self)
-    }
-    deinit { dlclose(library) }
-
-    private final class Cancellation {
-        let check: @Sendable () throws -> Void
-        init(_ check: @escaping @Sendable () throws -> Void) { self.check = check }
-        func status() -> Int32 { do { try check(); return 0 } catch { return 1 } }
-    }
-
-    func resample(_ raster: MaskRaster, to size: ArtifactPixelSize,
-                  cancellation: @Sendable () throws -> Void = {}) throws -> MaskRaster {
-        try Task.checkCancellation(); try cancellation()
-        if raster.size == size { return raster }
-        // Swift allocation and the synchronous FFI invocation are inside the
-        // timed resampling phase, including the coordinate table allocation.
-        return try withoutActuallyEscaping(cancellation) { check in
-            let state = Cancellation(check)
-            let context = Unmanaged.passUnretained(state).toOpaque()
-            let count = size.width * size.height
-            var bytes = Data(count: count)
-            // The C context is unretained: keep its Swift owner alive through
-            // every callback, even when the optimizer shortens local lifetimes.
-            let code = withExtendedLifetime(state) {
-                bytes.withUnsafeMutableBytes { destination in
-                    raster.bytes.withUnsafeBytes { source in
-                        kernel(source.bindMemory(to: UInt8.self).baseAddress, raster.bytes.count,
-                               raster.size.width, raster.size.height, raster.size.width,
-                               destination.bindMemory(to: UInt8.self).baseAddress, count,
-                               size.width, size.height, size.width, { pointer in
-                                   guard let pointer else { return 1 }
-                                   return Unmanaged<Cancellation>.fromOpaque(pointer).takeUnretainedValue().status()
-                               }, context)
-                    }
-                }
-            }
-            if code == 2 { throw CancellationError() }
-            guard code == 0 else { throw Benchmark.failure("Rust resampling error code \(code)") }
-            try Task.checkCancellation(); try cancellation()
-            return try MaskRaster(size: size, bytes: bytes)
-        }
-    }
-}
 #endif
