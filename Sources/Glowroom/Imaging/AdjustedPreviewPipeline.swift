@@ -54,6 +54,8 @@ actor AdjustedPreviewPipeline {
         var access: UInt64
     }
     private struct Job {
+        let queueSpan: PipelineTrace.Span
+        let traceObserver: PipelineTrace.Observer?
         let key: Key
         let source: PreviewBitmap
         var priority: PreviewPriority
@@ -95,6 +97,8 @@ actor AdjustedPreviewPipeline {
         _ source: PreviewBitmap, request: PreviewRequest, settings: EditSettings,
         priority: PreviewPriority = .thumbnail, maximumOutputPixelSize: Int? = nil
     ) async throws -> PreviewBitmap {
+        let requestSpan = PipelineTrace.begin(.editedRequest)
+        defer { requestSpan.end() }
         try Task.checkCancellation()
         let normalized = settings.normalized
         // Small geometry calculations stay serial; another worker would cost
@@ -168,7 +172,7 @@ actor AdjustedPreviewPipeline {
             waiterJobs[waiterID] = jobID
         } else {
             let jobID = UUID()
-            jobs[jobID] = Job(key: key, source: source, priority: priority, waiters: [waiterID: continuation])
+            jobs[jobID] = Job(queueSpan: PipelineTrace.begin(.renderQueue), traceObserver: PipelineTrace.observer, key: key, source: source, priority: priority, waiters: [waiterID: continuation])
             currentJob[key] = jobID
             waiterJobs[waiterID] = jobID
             pending.append(jobID)
@@ -188,6 +192,7 @@ actor AdjustedPreviewPipeline {
                 // Retain its worker slot until it has actually returned.
                 task.cancel()
             } else {
+                job.queueSpan.end()
                 jobs.removeValue(forKey: jobID)
                 pending.removeAll { $0 == jobID }
             }
@@ -206,6 +211,8 @@ actor AdjustedPreviewPipeline {
             // Keep the originally assigned lane through cancellation and priority
             // upgrades: the synchronous renderer still occupies those resources.
             running[jobID] = job.priority
+            job.queueSpan.end()
+            let traceObserver = job.traceObserver
             let source = job.source
             let settings = job.key.settings
             let priority = job.priority
@@ -214,57 +221,59 @@ actor AdjustedPreviewPipeline {
             let outputWidth = job.key.outputWidth
             let outputHeight = job.key.outputHeight
             job.task = Task.detached(priority: priority == .selected ? .userInitiated : .utility) { [weak self] in
-                let result: Result<PreviewBitmap, Error>
-                do {
-                    try Task.checkCancellation()
-                    // Downsample the shared developed source, never a camera
-                    // thumbnail. It occupies this same bounded worker/CI lane.
-                    var phase: ArtifactResourceLease?
-                    if let resources = source.resourceOwner {
-                        let sourceBytes = Int64(source.byteCost).multipliedReportingOverflow(by: 4)
-                        let outputPixels = Int64(outputWidth).multipliedReportingOverflow(by: Int64(outputHeight))
-                        let outputBytes = outputPixels.partialValue.multipliedReportingOverflow(
-                            by: Int64(32 + DevelopSharpening.additionalBytesPerPixel(settings: settings)))
-                        let baseBytes = sourceBytes.partialValue.addingReportingOverflow(outputBytes.partialValue)
-                        guard !sourceBytes.overflow, !outputPixels.overflow, !outputBytes.overflow, !baseBytes.overflow,
-                              let local = LocalAdjustmentRenderer.estimatedAdditionalBytes(adjustments: settings.localAdjustments,
-                                width: outputWidth, height: outputHeight,
-                                additionalRenderCount: DevelopGeometryRenderer.replacementCount(in: settings.developGeometry)),
-                              let geometryBytes = DevelopGeometryRenderer.estimatedAdditionalBytes(geometry: settings.developGeometry,
-                                width: outputWidth, height: outputHeight,
-                                replacementColorBytesPerPixel: EditRenderer.replacementColorBytesPerPixel(settings: settings)) else {
-                            throw ArtifactResourceError.capacityExceeded
+                await PipelineTrace.$observer.withValue(traceObserver) {
+                    let result: Result<PreviewBitmap, Error>
+                    do {
+                        try Task.checkCancellation()
+                        // Downsample the shared developed source, never a camera
+                        // thumbnail. It occupies this same bounded worker/CI lane.
+                        var phase: ArtifactResourceLease?
+                        if let resources = source.resourceOwner {
+                            let sourceBytes = Int64(source.byteCost).multipliedReportingOverflow(by: 4)
+                            let outputPixels = Int64(outputWidth).multipliedReportingOverflow(by: Int64(outputHeight))
+                            let outputBytes = outputPixels.partialValue.multipliedReportingOverflow(
+                                by: Int64(32 + DevelopSharpening.additionalBytesPerPixel(settings: settings)))
+                            let baseBytes = sourceBytes.partialValue.addingReportingOverflow(outputBytes.partialValue)
+                            guard !sourceBytes.overflow, !outputPixels.overflow, !outputBytes.overflow, !baseBytes.overflow,
+                                  let local = LocalAdjustmentRenderer.estimatedAdditionalBytes(adjustments: settings.localAdjustments,
+                                    width: outputWidth, height: outputHeight,
+                                    additionalRenderCount: DevelopGeometryRenderer.replacementCount(in: settings.developGeometry)),
+                                  let geometryBytes = DevelopGeometryRenderer.estimatedAdditionalBytes(geometry: settings.developGeometry,
+                                    width: outputWidth, height: outputHeight,
+                                    replacementColorBytesPerPixel: EditRenderer.replacementColorBytesPerPixel(settings: settings)) else {
+                                throw ArtifactResourceError.capacityExceeded
+                            }
+                            let additionalBytes = local.addingReportingOverflow(geometryBytes)
+                            guard !additionalBytes.overflow, additionalBytes.partialValue <= UInt64(Int64.max) else { throw ArtifactResourceError.capacityExceeded }
+                            let plannedBytes = baseBytes.partialValue.addingReportingOverflow(Int64(additionalBytes.partialValue))
+                            guard !plannedBytes.overflow else { throw ArtifactResourceError.capacityExceeded }
+                            phase = try await resources.acquire(kind: .codec,
+                                bytes: plannedBytes.partialValue,
+                                priority: priority == .selected ? .interactive : .background,
+                                retaining: source.memoryOwnership.map { [$0] } ?? [])
                         }
-                        let additionalBytes = local.addingReportingOverflow(geometryBytes)
-                        guard !additionalBytes.overflow, additionalBytes.partialValue <= UInt64(Int64.max) else { throw ArtifactResourceError.capacityExceeded }
-                        let plannedBytes = baseBytes.partialValue.addingReportingOverflow(Int64(additionalBytes.partialValue))
-                        guard !plannedBytes.overflow else { throw ArtifactResourceError.capacityExceeded }
-                        phase = try await resources.acquire(kind: .codec,
-                            bytes: plannedBytes.partialValue,
-                            priority: priority == .selected ? .interactive : .background,
-                            retaining: source.memoryOwnership.map { [$0] } ?? [])
+                        var input = try EditRenderer.resized(source, width: outputWidth, height: outputHeight, priority: priority)
+                        if let resources = source.resourceOwner, input.resourceOwner == nil {
+                            // This temporary proxy belongs to the active phase, not
+                            // a retained reservation. Mark its owner so renderer
+                            // prefix/mask caches cannot keep scratch after the lease.
+                            input = PreviewBitmap(image: input.image, sourceLongEdge: input.sourceLongEdge, resourceOwner: resources)
+                        }
+                        var bitmap: PreviewBitmap
+                        if settings.isNeutral { bitmap = input }
+                        else if let asyncRenderer { bitmap = try await asyncRenderer(input, settings, priority) }
+                        else { bitmap = try renderer(input, settings, priority) }
+                        if let resources = source.resourceOwner, let phase {
+                            let memory = try await resources.retain(bytes: Int64(bitmap.byteCost) * 2, from: phase)
+                            bitmap = try bitmap.retainingArtifactMemory(memory, owner: resources)
+                        }
+                        try Task.checkCancellation()
+                        result = .success(bitmap)
+                    } catch {
+                        result = .failure(error)
                     }
-                    var input = try EditRenderer.resized(source, width: outputWidth, height: outputHeight, priority: priority)
-                    if let resources = source.resourceOwner, input.resourceOwner == nil {
-                        // This temporary proxy belongs to the active phase, not
-                        // a retained reservation. Mark its owner so renderer
-                        // prefix/mask caches cannot keep scratch after the lease.
-                        input = PreviewBitmap(image: input.image, sourceLongEdge: input.sourceLongEdge, resourceOwner: resources)
-                    }
-                    var bitmap: PreviewBitmap
-                    if settings.isNeutral { bitmap = input }
-                    else if let asyncRenderer { bitmap = try await asyncRenderer(input, settings, priority) }
-                    else { bitmap = try renderer(input, settings, priority) }
-                    if let resources = source.resourceOwner, let phase {
-                        let memory = try await resources.retain(bytes: Int64(bitmap.byteCost) * 2, from: phase)
-                        bitmap = try bitmap.retainingArtifactMemory(memory, owner: resources)
-                    }
-                    try Task.checkCancellation()
-                    result = .success(bitmap)
-                } catch {
-                    result = .failure(error)
+                    await self?.finish(jobID, result: result)
                 }
-                await self?.finish(jobID, result: result)
             }
             jobs[jobID] = job
         }

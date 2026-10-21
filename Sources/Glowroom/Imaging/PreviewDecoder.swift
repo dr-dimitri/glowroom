@@ -11,6 +11,9 @@ enum PreviewDecoder {
         try Task.checkCancellation()
         guard let url = request.url else { throw ArtifactContractError.invalidValue("original decoder source") }
         return try autoreleasepool {
+            let sourceSpan = PipelineTrace.begin(.sourceCheck)
+            var sourceSpanEnded = false
+            defer { if !sourceSpanEnded { sourceSpan.end() } }
             let accessed = url.startAccessingSecurityScopedResource()
             defer {
                 if accessed { url.stopAccessingSecurityScopedResource() }
@@ -33,6 +36,9 @@ enum PreviewDecoder {
                 sourceLongEdge = nil
             }
 
+            sourceSpan.end(); sourceSpanEnded = true
+            let decodeSpan = PipelineTrace.begin(.decode)
+            defer { decodeSpan.end() }
             var options: [CFString: Any] = [
                 kCGImageSourceCreateThumbnailWithTransform: true,
                 kCGImageSourceThumbnailMaxPixelSize: request.pixelSize,

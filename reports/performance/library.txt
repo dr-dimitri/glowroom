@@ -1,0 +1,8 @@
+Library projection benchmark: 10,000 synthetic records, no image decoding
+first visible projection (10k assets): 20.209292 ms
+12 selection/layout updates + visible/tree/count access: 0.1105 ms
+first subfolder projection: 14.565958 ms
+12 repeated subfolder + tree access: 0.055834 ms
+MainActor 1 ms heartbeat: max observed gap 3.094917 ms, 19 samples
+peak resident bytes: 80592896
+checksum 473849

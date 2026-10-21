@@ -1,0 +1,228 @@
+Process:         Glowroom [13879]
+Path:            /Users/USER/*/Glowroom
+Load Address:    0x104c98000
+Identifier:      Glowroom
+Version:         0
+Code Type:       ARM64
+Platform:        macOS
+Parent Process:  zsh [13877]
+Target Type:     live task
+
+Date/Time:       2026-10-21 09:18:00.839 +0200
+Launch Time:     2026-10-21 09:17:55.672 +0200
+OS Version:      macOS 27.0.1 (26A434)
+Report Version:  7
+Analysis Tool:   /usr/bin/heap
+
+Physical footprint:         101.3M
+Physical footprint (peak):  101.3M
+Idle exit:                  untracked
+----
+
+Process 13879: 4 zones
+
+All zones: 2394 nodes malloced - Sizes: 20496KB[1] 10KB[1] 8KB[2] 5KB[39] 3.5KB[1] 3KB[9] 2.5KB[1] 1.75KB[1] 1.5KB[2] 1.25KB[12] 1KB[9] 896[5] 768[6] 640[10] 512[3] 448[4] 384[6] 320[73] 256[6] 224[10] 192[128] 160[171] 128[255] 112[123] 96[51] 80[217] 64[207] 48[315] 32[399] 16[327]
+
+Found:  217 ObjC classes  99 Swift classes  7 C++ classes  75 CFTypes
+Derived 78 type names for non-objects from allocation backtraces
+
+-----------------------------------------------------------------------
+All zones: 2394 nodes (21492672 bytes)
+
+   COUNT      BYTES       AVG   CLASS_NAME                                        TYPE    BINARY
+   =====      =====       ===   ==========                                        ====    ======
+       1   20987904  20987904.0   __DataStorage._bytes (malloc)                             Foundation
+      27     138240    5120.0   NSConcreteData (Bytes Storage)                    C       Foundation
+     344      46528     135.3   xpc_dictionary_t (Storage)                        C       libxpc.dylib
+       9      46080    5120.0   Swift._ContiguousArrayStorage<GlowroomCore.MaskStroke>  Swift   libswiftCore.dylib
+     104      19424     186.8   Swift._ContiguousArrayStorage<GlowroomCore.MaskPoint>  Swift   libswiftCore.dylib
+       2      16384    8192.0   @autoreleasepool content                          C       libobjc.A.dylib
+     128      14400     112.5   Class.methodCache._buckets (bucket_t)             C       libobjc.A.dylib
+      24      14272     594.7   non-object in zone DefaultMallocZone_0x10648c000          <unknown>
+      32      13120     410.0   NSMutableDictionary (Storage)                     C       CoreFoundation
+      17      11200     658.8   non-object from libicucore.A.dylib                C       libicucore.A.dylib
+     144      10528      73.1   CFString                                          ObjC    CoreFoundation
+     118      10400      88.1   malloc_with_options_outlined in cache_t::insert(objc_selector*, void (*)(), objc_object*)  C++     libobjc.A.dylib
+     306       9792      32.0   Metaclass.data (metaclass_rw_v2_t)                C       libobjc.A.dylib
+       3       9216    3072.0   calloc in weak_resize(weak_table_t*, unsigned long)  C       libobjc.A.dylib
+       8       8960    1120.0   Task stack                                        Swift   libswift_Concurrency.dylib
+      27       8640     320.0   _NSJSONWriter.tempBuffer (char[])                 C       Foundation
+      58       7424     128.0   memalign in id2data(objc_object*, SyncKind, usage)  C       libobjc.A.dylib
+      35       6112     174.6   CFData                                            ObjC    CoreFoundation
+       2       5136    2568.0   calloc in nw::object::class_def::register_method_def(nw::object::class_def::method_def const&, void (nw::object::*)())  C++     Network
+       2       5136    2568.0   calloc in nw::object::class_def::setup(std::deque<void (nw::object::*)(), nw::c_allocator<void (nw::object::*)()>>&)  C++     Network
+      16       5120     320.0   Swift._DictionaryStorage<Swift.String, Swift.Double>  Swift   libswiftCore.dylib
+       1       5120    5120.0   calloc in __si_module_cache_byname_block_invoke   C       libsystem_info.dylib
+     306       4896      16.0   Class.data (class_rw_v2_t)                        C       libobjc.A.dylib
+       1       3584    3584.0   icu::UnicodeSet (list Storage)                    C       libicucore.A.dylib
+       1       3072    3072.0   CFRunLoop                                         CFType  CoreFoundation
+      27       3024     112.0   _NSJSONWriter                                     ObjC    Foundation
+      17       2896     170.4   Class.data.methods (method_array_t)               C       libobjc.A.dylib
+       2       2880    1440.0   malloc in swift::addImageProtocolsBlockCallbackUnsafe(void const*, void const*, unsigned long)  C++     libswiftCore.dylib
+      23       2816     122.4   NSMutableArray (Storage)                          C       CoreFoundation
+      35       2800      80.0   Class.data.readonly (class_ro_t)                  C       libobjc.A.dylib
+       2       2560    1280.0   Class.data.methods.lists (method_list_t)          C       libobjc.A.dylib
+       2       2560    1280.0   calloc in __CFTSDGetTable                         C       CoreFoundation
+      25       2128      85.1   Swift.StringStorage                               Swift   libswiftCore.dylib
+      22       2096      95.3   malloc in swift::ConcurrentReadableHashMap<swift::HashMapElementWrapper<swift::GenericCacheEntry>, swift::Mutex>::getOrInsertExternallyLocked<swift::MetadataCacheKey, std::pair<swift::GenericCacheEntry*, bool> swift::StableAddressConcurrentReadableHashMap<swift::GenericCacheEntry, swift::TaggedMetadataAllocator<(unsigned short)14>, swift::Mutex>::getOrInsert<swift::MetadataCacheKey, swift::MetadataWaitQueue::Worker&, swift::MetadataRequest&, swift::TargetTypeContextDescriptor<swift::InProcess> const*&, void const* const*&>(swift::MetadataCacheKey, swift::MetadataWaitQueue::Worker&, swift::MetadataRequest&, swift::TargetTypeContextDescriptor<swift::InProcess> const*&, void const* const*&)::'lambda'(swift::HashMapElementWrapper<swift::GenericCacheEntry>*, bool)>(swift::MetadataCacheKey, std::pair<swift::GenericCacheEntry*, bool> swift::StableAddressConcurrentReadableHashMap<swift::GenericCacheEntry, swift::TaggedMetadataAllocator<(unsigned short)14>, swift::Mutex>::getOrInsert<swift::MetadataCacheKey, swift::MetadataWaitQueue::Worker&, swift::MetadataRequest&, swift::TargetTypeContextDescriptor<swift::InProcess> const*&, void const* const*&>(swift::MetadataCacheKey, swift::MetadataWaitQueue::Worker&, swift::MetadataRequest&, swift::TargetTypeContextDescriptor<swift::InProcess> const*&, void const* const*&)::'lambda'(swift::HashMapElementWrapper<swift::GenericCacheEntry>*, bool) const&)  C++     libswiftCore.dylib
+       2       1792     896.0   icu::CollationSettings                            C++     libicucore.A.dylib
+      18       1776      98.7   non-object from libsystem_notify.dylib            C       libsystem_notify.dylib
+      35       1680      48.0   NSMutableDictionary                               ObjC    CoreFoundation
+       8       1680     210.0   CFDictionary (Value Storage)                      C       CoreFoundation
+       7       1648     235.4   CFDictionary (Key Storage)                        C       CoreFoundation
+      24       1536      64.0   NSMutableArray                                    ObjC    CoreFoundation
+       2       1536     768.0   _LocaleICU                                        Swift   Foundation
+       6       1456     242.7   xpc_string_t (Storage)                            C       libxpc.dylib
+      23       1344      58.4   Class.data.extended (class_rw_ext_t)              C       libobjc.A.dylib
+       7       1344     192.0   Swift._ContiguousArrayStorage<Swift.Optional<Foundation._CharacterSet>>  Swift   libswiftCore.dylib
+      27       1296      48.0   NSConcreteData                                    ObjC    Foundation
+       3       1280     426.7   ColorSyncProfile                                  CFType  ColorSync
+       1       1280    1280.0   malloc in atexit_register                         C       libsystem_c.dylib
+       1       1280    1280.0   malloc in cache_t::collect_free(bucket_t*, unsigned int)  C++     libobjc.A.dylib
+      15       1200      80.0   OS_os_log                                         ObjC    libsystem_trace.dylib
+       9        960     106.7   calloc in _dispatch_unote_create                  C       libdispatch.dylib
+       7        960     137.1   Swift._ContiguousArrayStorage<Swift.String>       Swift   libswiftCore.dylib
+       6        960     160.0   CFPrefsPlistSource                                ObjC    CoreFoundation
+       3        960     320.0   calloc in os_set_32_ptr_init                      C       libsystem_collections.dylib
+       1        896     896.0   icu::BMPSet                                       C++     libicucore.A.dylib
+       1        896     896.0   malloc in __CGColorSpaceCreateWithName_block_invoke  C       CoreGraphics
+      11        768      69.8   malloc in _addToStatCache                         C       Foundation
+       1        768     768.0   Swift._ContiguousArrayStorage<Glowroom.MaskBenchmark.Sample>  Swift   libswiftCore.dylib
+       1        768     768.0   malloc in swift::ConcurrentReadableHashMap<(anonymous namespace)::ConformanceCacheEntry, swift::LazyMutex>::resize(swift::ConcurrentReadableHashMap<(anonymous namespace)::ConformanceCacheEntry, swift::LazyMutex>::ElementStorage*, unsigned long)  C++     libswiftCore.dylib
+       9        720      80.0   CFDictionary                                      ObjC    CoreFoundation
+       9        720      80.0   _CharacterSet                                     Swift   Foundation
+       4        640     160.0   dispatch_source_t                                 ObjC    libdispatch.dylib
+       2        640     320.0   calloc in os_set_64_ptr_init                      C       libsystem_collections.dylib
+       2        640     320.0   calloc in os_set_str_ptr_init                     C       libsystem_collections.dylib
+       2        640     320.0   xpc_connection_t                                  ObjC    libxpc.dylib
+       1        640     640.0   calloc in os_map_64_init                          C       libsystem_collections.dylib
+       1        640     640.0   malloc in _CFRuntimeRegisterClass                 C       CoreFoundation
+      16        608      38.0   malloc in swift::_getWitnessTable(swift::TargetProtocolConformanceDescriptor<swift::InProcess> const*, swift::TargetMetadata<swift::InProcess> const*, void const* const*)  C++     libswiftCore.dylib
+       4        608     152.0   dispatch_queue_t (serial)                         ObjC    libdispatch.dylib
+       8        592      74.0   CFArray                                           ObjC    CoreFoundation
+       4        576     144.0   calloc in color_space_state_create_icc_with_profile  C       CoreGraphics
+       5        560     112.0   malloc in __CGTypeRegisterInternal                C       CoreGraphics
+       6        512      85.3   NSURL                                             ObjC    CoreFoundation
+       2        512     256.0   CFBundle                                          CFType  CoreFoundation
+       1        512     512.0   MaskOverlayWorker                                 Swift   Glowroom
+       1        512     512.0   malloc in __ColorSyncProfileCreateWithName_block_invoke  C       ColorSync
+       4        480     120.0   CGColor                                           CFType  CoreGraphics
+       3        480     160.0   CFPrefsManagedSource                              ObjC    CoreFoundation
+       3        480     160.0   dispatch_mach_t                                   ObjC    libdispatch.dylib
+       7        448      64.0   malloc in UDataMemory_createNewInstance           C       libicucore.A.dylib
+       4        448     112.0   CGColorSpace                                      CFType  CoreGraphics
+       1        448     448.0   calloc in __si_module_static_search_block_invoke  C       libsystem_info.dylib
+       7        432      61.7   malloc in __Balloc_D2A                            C       libsystem_c.dylib
+       5        400      80.0   calloc in _dispatch_source_set_handler            C       libdispatch.dylib
+       1        384     384.0   Swift._ContiguousArrayStorage<GlowroomCore.MaskDocument>  Swift   libswiftCore.dylib
+       7        336      48.0   _NSSwiftCharacterSet                              Swift   Foundation
+       5        336      67.2   calloc in swift::ConcurrentReadableHashMap<swift::HashMapElementWrapper<swift::GenericCacheEntry>, swift::Mutex>::resize(swift::ConcurrentReadableHashMap<swift::HashMapElementWrapper<swift::GenericCacheEntry>, swift::Mutex>::IndexStorage, unsigned char, swift::HashMapElementWrapper<swift::GenericCacheEntry>*)  C++     libswiftCore.dylib
+      10        320      32.0   malloc in swift_getSingletonMetadata              C       libswiftCore.dylib
+       2        320     160.0   CFPrefsSuiteSearchListSource                      ObjC    CoreFoundation
+       2        320     160.0   NSMapTable                                        ObjC    Foundation
+       1        320     320.0   Task stack                                        Swift   libswift_Concurrency.dylib
+       1        320     320.0   malloc in __CFBasicHashGetPtrIndex_block_invoke   C       CoreFoundation
+       1        320     320.0   malloc in swift::ConcurrentReadableArray<(anonymous namespace)::ConformanceSection>::push_back((anonymous namespace)::ConformanceSection const&)  C++     libswiftCore.dylib
+       6        288      48.0   xpc_string_t                                      ObjC    libxpc.dylib
+       5        288      57.6   __NSMallocBlock__                                 ObjC    libsystem_blocks.dylib
+       3        288      96.0   NSHashTable                                       ObjC    Foundation
+       4        256      64.0   Swift._ContiguousArrayStorage<Swift.UInt8>        Swift   libswiftCore.dylib
+       4        256      64.0   _NSStateMarker                                    ObjC    AppKit
+       1        256     256.0   NSPathStore2                                      ObjC    Foundation
+       5        240      48.0   NSNumber                                          ObjC    CoreFoundation
+       3        240      80.0   calloc in fetch_cache(bool)                       C       libobjc.A.dylib
+       2        224     112.0   NSLock                                            ObjC    Foundation
+       1        224     224.0   CFRunLoopMode                                     CFType  CoreFoundation
+       1        224     224.0   icu::CollationTailoring                           C++     libicucore.A.dylib
+       1        224     224.0   icu::UnicodeSet                                   C++     libicucore.A.dylib
+       4        192      48.0   NSDictionary                                      ObjC    CoreFoundation
+       3        192      64.0   CFSet                                             ObjC    CoreFoundation
+       2        192      96.0   CFPrefsSource                                     ObjC    CoreFoundation
+       2        192      96.0   xpc_dictionary_t                                  ObjC    libxpc.dylib
+       1        192     192.0   CFXNotificationRegistrar                          CFType  CoreFoundation
+       1        192     192.0   _NSThreadData                                     ObjC    Foundation
+       1        192     192.0   malloc in LI_ils_create                           C       libsystem_info.dylib
+       3        176      58.7   CFSet (Value Storage)                             C       CoreFoundation
+       2        176      88.0   xpc_pipe_t                                        ObjC    libxpc.dylib
+       4        160      40.0   calloc in _fetchInitializingClassList(bool)       C       libobjc.A.dylib
+       2        160      80.0   calloc in _dispatch_apply_with_attr_f             C       libdispatch.dylib
+       2        160      80.0   malloc in _CFBundleIngestResultForBundleCache     C       CoreFoundation
+       2        160      80.0   malloc in _fetchInitializingClassList(bool)       C       libobjc.A.dylib
+       1        160     160.0   CFPrefsSearchListSource                           ObjC    CoreFoundation
+       1        160     160.0   OS_dispatch_queue_runloop                         ObjC    libdispatch.dylib
+       1        160     160.0   Swift.BridgingBufferStorage                       Swift   libswiftCore.dylib
+       1        160     160.0   _NSSwiftProcessInfo                               Swift   Foundation
+       1        160     160.0   calloc in icu::CollationTailoring::ensureOwnedData(UErrorCode&)  C++     libicucore.A.dylib
+       1        160     160.0   malloc in mach_msg_overwrite                      C       libsystem_kernel.dylib
+       3        144      48.0   NSHashTable (Weak Object Storage)                 C       Foundation
+       3        144      48.0   __NSArrayReverseEnumerator                        ObjC    CoreFoundation
+       1        128     128.0   _CFXPreferences                                   ObjC    CoreFoundation
+       1        128     128.0   _NSStdIOFileHandle                                ObjC    Foundation
+       1        128     128.0   calloc in _dispatch_source_timer_create           C       libdispatch.dylib
+       1        128     128.0   calloc in color_space_state_create_device_gray    C       CoreGraphics
+       1        128     128.0   calloc in color_space_state_create_device_rgb     C       CoreGraphics
+       1        128     128.0   malloc in _CFProcessPath                          C       CoreFoundation
+       7        112      16.0   NSMutableDictionary.cow (struct __cow_state_t)    C       CoreFoundation
+       1        112     112.0   CGNotificationCenter                              CFType  CoreGraphics
+       2         96      48.0   NSMapTable (Key Storage)                          C       Foundation
+       2         96      48.0   NSMapTable (Weak Value Storage)                   C       Foundation
+       2         96      48.0   _NSSwiftLocale                                    Swift   Foundation
+       2         96      48.0   malloc in color_space_state_create_icc_with_profile  C       CoreGraphics
+       1         96      96.0   NSBundle                                          ObjC    Foundation
+       1         96      96.0   NSPointerArray                                    ObjC    Foundation
+       1         96      96.0   _NSBPlistMappedData                               ObjC    Foundation
+       1         96      96.0   calloc in __si_module_static_file_block_invoke    C       libsystem_info.dylib
+       1         96      96.0   icu::Normalizer2Impl                              C++     libicucore.A.dylib
+       1         96      96.0   icu::RuleBasedCollator                            C++     libicucore.A.dylib
+       1         96      96.0   malloc in google::protobuf::internal::OnShutdownRun(void (*)(void const*), void const*)  C++     MLAssetIO
+       1         96      96.0   malloc in google::protobuf::internal::OnShutdownRun(void (*)(void const*), void const*)  C++     CoreML
+       1         96      96.0   malloc in utrie2_openFromSerialized               C       libicucore.A.dylib
+       2         80      40.0   calloc in si_module_config_modules_for_category   C       libsystem_info.dylib
+       2         80      40.0   malloc in _CFXNotificationRegistrarAddName        C       CoreFoundation
+       1         80      80.0   _CFXPreferencesHandle                             ObjC    CoreFoundation
+       1         80      80.0   _NSMainThread                                     ObjC    Foundation
+       1         80      80.0   _ProcessInfo                                      Swift   Foundation
+       1         80      80.0   __DataStorage                                     Swift   Foundation
+       1         80      80.0   __NSBundleTables                                  ObjC    Foundation
+       1         80      80.0   calloc in swift::ConcurrentReadableHashMap<(anonymous namespace)::ConformanceCacheEntry, swift::LazyMutex>::resize(swift::ConcurrentReadableHashMap<(anonymous namespace)::ConformanceCacheEntry, swift::LazyMutex>::IndexStorage, unsigned char, (anonymous namespace)::ConformanceCacheEntry*)  C++     libswiftCore.dylib
+       1         80      80.0   icu::CollationCacheEntry                          C++     libicucore.A.dylib
+       1         80      80.0   malloc in objc_object::sidetable_addExtraRC_nolock(unsigned long)  C++     libobjc.A.dylib
+       1         80      80.0   malloc in swift_getExistentialTypeMetadata        C       libswiftCore.dylib
+       1         80      80.0   malloc in swift_getObjCClassMetadata              C       libswiftCore.dylib
+       2         64      32.0   NSArray                                           ObjC    CoreFoundation
+       2         64      32.0   _NSSwiftImmortalCharacterSetBridge                Swift   Foundation
+       2         64      32.0   calloc in LI_get_thread_info                      C       libsystem_info.dylib
+       1         64      64.0   CFError                                           ObjC    CoreFoundation
+       1         64      64.0   CFNotificationCenter                              CFType  CoreFoundation
+       1         64      64.0   Swift._ContiguousArrayStorage<Swift.Array<Swift.UInt8>>  Swift   libswiftCore.dylib
+       1         64      64.0   malloc in _CFArrayReplaceValues                   C       CoreFoundation
+       1         64      64.0   malloc in _CFXNotificationRegistrarAddObserver    C       CoreFoundation
+       1         64      64.0   malloc in swift::LockingConcurrentMap<(anonymous namespace)::TupleCacheEntry, (anonymous namespace)::TupleCacheStorage>::getOrInsert<(anonymous namespace)::TupleCacheEntry::Key, swift::MetadataRequest&, swift::TargetValueWitnessTable<swift::InProcess> const*&>((anonymous namespace)::TupleCacheEntry::Key, swift::MetadataRequest&, swift::TargetValueWitnessTable<swift::InProcess> const*&)  C++     libswiftCore.dylib
+       1         48      48.0   MaskRasterCancellation                            Swift   Glowroom
+       1         48      48.0   NSFileManager                                     ObjC    Foundation
+       1         48      48.0   NSPointerArray (Object Storage)                   C       Foundation
+       1         48      48.0   Swift.SwiftDeferredNSArray                        Swift   libswiftCore.dylib
+       1         48      48.0   __NSExactBlockVariable__                          ObjC    libsystem_blocks.dylib
+       1         48      48.0   icu::Locale                                       C++     libicucore.A.dylib
+       1         48      48.0   malloc in cacheCanonicalSpecializedMetadata(swift::TargetTypeContextDescriptor<swift::InProcess> const*, long*)::$_0::__invoke(void*)  C++     libswiftCore.dylib
+       1         48      48.0   xpc_array_t                                       ObjC    libxpc.dylib
+       2         32      16.0   malloc in LI_get_thread_info                      C       libsystem_info.dylib
+       1         32      32.0   CFDictionary (Weak Key Storage)                   C       CoreFoundation
+       1         32      32.0   CFMainExecutor                                    Swift   libswift_Concurrency.dylib
+       1         32      32.0   CFTaskExecutor                                    Swift   libswift_Concurrency.dylib
+       1         32      32.0   NSSet                                             ObjC    CoreFoundation
+       1         32      32.0   _NSFileManagerBridge                              Swift   Foundation
+       1         32      32.0   calloc in __si_module_static_ds_block_invoke      C       libsystem_info.dylib
+       1         32      32.0   malloc in CGPropertiesCreate                      C       CoreGraphics
+       1         32      32.0   malloc in __si_module_static_darwin_directory_block_invoke  C       libsystem_info.dylib
+       1         32      32.0   malloc in std::pair<void (*)(void const*), void const*>* std::vector<std::pair<void (*)(void const*), void const*>>::__emplace_back_slow_path<std::pair<void (*)(void const*), void const*>>(std::pair<void (*)(void const*), void const*>&&)  C++     MLAssetIO
+       1         32      32.0   malloc in std::pair<void (*)(void const*), void const*>* std::vector<std::pair<void (*)(void const*), void const*>>::__emplace_back_slow_path<std::pair<void (*)(void const*), void const*>>(std::pair<void (*)(void const*), void const*>&&)  C++     CoreML
+       1         32      32.0   malloc in swift_getForeignTypeMetadata            C       libswiftCore.dylib
+       1         32      32.0   malloc in u_setDataDirectory                      C       libicucore.A.dylib
+       1         32      32.0   malloc in uprv_getDefaultLocaleID                 C       libicucore.A.dylib
+       1         16      16.0   malloc in __si_module_cache_byname_block_invoke   C       libsystem_info.dylib
+       1         16      16.0   malloc in __si_module_static_ds_block_invoke      C       libsystem_info.dylib
+       1         16      16.0   malloc in __si_module_static_file_block_invoke    C       libsystem_info.dylib
+       1         16      16.0   malloc in __si_module_static_mdns_block_invoke    C       libsystem_info.dylib
+       1         16      16.0   malloc in __si_module_static_search_block_invoke  C       libsystem_info.dylib
+       1         16      16.0   malloc in look_up_class                           C       libobjc.A.dylib

@@ -32,6 +32,11 @@ final class Counts: @unchecked Sendable {
         var input = ""
         var calibration = ""
         var adapter = "glowroom"
+        var maskWorkload = "all"
+        var maskFixture = "all"
+        var maskBackend = "compare"
+        var maskLibrary = ""
+        var seed: UInt64 = 44
 
         init() throws {
             let args = Array(CommandLine.arguments.dropFirst())
@@ -52,22 +57,43 @@ final class Counts: @unchecked Sendable {
                 case "--input": input = value
                 case "--calibration": calibration = value
                 case "--adapter": adapter = value
+                case "--mask-workload": maskWorkload = value
+                case "--mask-fixture": maskFixture = value
+                case "--mask-backend": maskBackend = value
+                case "--mask-library": maskLibrary = value
+                case "--seed":
+                    guard let parsed = UInt64(value) else {
+                        throw failure("--seed requires an unsigned 64-bit integer (0...18446744073709551615)")
+                    }
+                    seed = parsed
                 default: throw failure("Unknown option: \(args[index])")
                 }
             }
-            guard ["simple", "complex", "alternating", "burst", "contention", "evaluation"].contains(scenario),
+            guard ["simple", "complex", "alternating", "burst", "contention", "evaluation", "masks", "local-masks", "preview"].contains(scenario),
                   ["default", "cached", "uncached", "software-request"].contains(backend),
                   (1...2).contains(workers),
-                  (1...(scenario == "evaluation" ? 8_192 : 4_096)).contains(width),
-                  (1...(scenario == "evaluation" ? 8_192 : 4_096)).contains(height),
+                  (1...(["evaluation", "preview"].contains(scenario) ? 8_192 : 4_096)).contains(width),
+                  (1...(["evaluation", "preview"].contains(scenario) ? 8_192 : 4_096)).contains(height),
                   (1...100).contains(iterations) else {
-                throw failure("Use --scenario simple|complex|alternating|burst|contention --backend default|cached|uncached|software-request --workers 1|2 --width 1...4096 --height 1...4096 --iterations 1...100")
+                throw failure("Use --scenario simple|complex|alternating|burst|contention|evaluation|masks|local-masks|preview --backend default|cached|uncached|software-request --workers 1|2 --width 1...4096 --height 1...4096 (evaluation/preview: up to 8192) --iterations 1...100")
             }
         }
     }
 
     static func main() async throws {
         let options = try Options()
+        if options.scenario == "masks" {
+            try await MaskBenchmark.run(options)
+            return
+        }
+        if options.scenario == "preview" {
+            try await PreviewPerformanceBenchmark.run(options)
+            return
+        }
+        if options.scenario == "local-masks" {
+            try await LocalMaskPerformanceBenchmark.run(options)
+            return
+        }
         if options.scenario == "evaluation" {
             try AlgorithmEvaluation.run(options)
             return

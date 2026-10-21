@@ -48,7 +48,7 @@ struct DevelopSharpeningWorkspaceTests {
         #expect(host.sliders.contains { $0.minValue == 0 && $0.maxValue == 150 })
         #expect(host.accessibilityElements.contains { $0.accessibilityIdentifier() == "develop.adjustment-group.noise" })
         #expect(await fixture.library.finishSaving())
-        #expect(await fixture.editor.flush())
+        #expect(await fixture.editor.finishSaving())
     }
 
     @Test func amountSliderEnablesControlsAndRadiusResetParticipatesInWorkspaceHistory() async throws {
@@ -65,7 +65,7 @@ struct DevelopSharpeningWorkspaceTests {
         try await host.settle()
 
         let amount = try #require(host.sliders.first { $0.minValue == 0 && $0.maxValue == 150 } as? ResettableNativeSlider)
-        let radius = try #require(host.sliders.first { $0.minValue == 0.5 && $0.maxValue == 3 } as? ResettableNativeSlider)
+        var radius = try #require(host.sliders.first { $0.minValue == 0.5 && $0.maxValue == 3 } as? ResettableNativeSlider)
         let detail = try #require(host.sliders.compactMap { $0 as? ResettableNativeSlider }.first { $0.resetNeutralValue == 25 })
         let masking = try sharpeningSlider(identifier: "develop.adjustment.sharpeningMasking",
             label: "Maskieren", root: amount.window?.contentView)
@@ -86,6 +86,10 @@ struct DevelopSharpeningWorkspaceTests {
             fixture.settings.sharpeningAmount == 40
         }
         try await host.settle()
+        try await waitForSharpeningWorkspace(operation: "editable radius increments") {
+            fixture.editor.canEdit && host.sliders.contains { $0.minValue == 0.5 && $0.maxValue == 3 && $0.isEnabled }
+        }
+        radius = try sharpeningSlider(identifier: "develop.adjustment.sharpeningRadius", label: "Radius", root: host.sliders.first?.window?.contentView)
         #expect(radius.isEnabled && detail.isEnabled && masking.isEnabled)
         #expect(fixture.settings.exposure == 0.75)
 
@@ -96,6 +100,13 @@ struct DevelopSharpeningWorkspaceTests {
             abs(fixture.settings.sharpeningRadius - 2.2) < 0.000_001
         }
         try await host.settle()
+        // Accepted edits can briefly disable native controls during automatic
+        // backup maintenance. Dispatch the next input only to an enabled,
+        // currently mounted control; real clicks obey the same native gate.
+        try await waitForSharpeningWorkspace(operation: "editable radius double-click reset") {
+            fixture.editor.canEdit && host.sliders.contains { $0.minValue == 0.5 && $0.maxValue == 3 && $0.isEnabled }
+        }
+        radius = try sharpeningSlider(identifier: "develop.adjustment.sharpeningRadius", label: "Radius", root: host.sliders.first?.window?.contentView)
         let radiusWindow = try #require(radius.window)
         let resetEvent = try #require(NSEvent.mouseEvent(with: .leftMouseDown,
             location: radius.convert(NSPoint(x: radius.bounds.midX, y: radius.bounds.midY), to: nil),
@@ -107,10 +118,19 @@ struct DevelopSharpeningWorkspaceTests {
         #expect(fixture.settings.sharpeningAmount == 40)
         #expect(host.focus(radius))
         try host.sendHistoryKey()
+        #expect(host.focus(nil))
         try await waitForSharpeningWorkspace(operation: "workspace undo radius reset") {
             abs(fixture.settings.sharpeningRadius - 2.2) < 0.000_001
         }
+        try await waitForSharpeningWorkspace(operation: "editable radius redo") {
+            fixture.editor.canEdit && host.sliders.contains { $0.minValue == 0.5 && $0.maxValue == 3 && $0.isEnabled }
+        }
+        radius = try sharpeningSlider(identifier: "develop.adjustment.sharpeningRadius", label: "Radius", root: host.sliders.first?.window?.contentView)
+        #expect(host.focus(radius))
         try host.sendHistoryKey(redo: true)
+        // Keep focus during native shortcut routing, then release it before
+        // SwiftUI applies enabled-state changes or forced snapshot layout.
+        #expect(host.focus(nil))
         try await waitForSharpeningWorkspace(operation: "workspace redo radius reset") { fixture.settings.sharpeningRadius == 1 }
         try await host.settle()
 
@@ -128,7 +148,7 @@ struct DevelopSharpeningWorkspaceTests {
         #expect(inspector.accessibilityFrame().width >= 280)
         try host.snapshot(to: URL(fileURLWithPath: "/tmp/glowroom-sharpening-inspector.png"))
         #expect(await fixture.library.finishSaving())
-        #expect(await fixture.editor.flush())
+        #expect(await fixture.editor.finishSaving())
     }
 }
 
@@ -187,6 +207,10 @@ private struct SharpeningWorkspaceFixture {
         }
         library.select(asset); library.isDeveloping = true; library.showsDetail = true
         editor.setSettings(.init(exposure: 0.75), for: asset.id)
+        // Complete the fixture's first save and daily automatic backup before
+        // mounting native controls. flush() alone does not drain that backup's
+        // intentional temporary editing fence.
+        try #require(await editor.finishSaving())
         return Self(directory: directory, preferenceSuite: preferenceSuite, asset: asset,
             library: library, editor: editor, layout: layout, metadata: metadata,
             exporter: JPEGExportModel(preferences: nil))

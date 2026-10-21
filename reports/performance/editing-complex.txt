@@ -1,0 +1,25 @@
+Synthetic complex editing benchmark: 2400x1600, backend=default, optimized binary, generated sRGB input; no RAW/ImageIO or disk I/O.
+First call includes renderer initialization; warm calls use the same source with unique edits, not cached edited output. OS/GPU caches are not cleared.
+End-to-end timings include a synchronous full-size CGContext draw, forcing pixel materialization. Peak RSS covers the entire process.
+sample=0, exposure=0.25, render_ms=87.642, materialize_ms=1.430, total_ms=89.072, checksum=12686863347738941208
+sample=1, exposure=0.28500000000000003, render_ms=9.952, materialize_ms=0.477, total_ms=10.429, checksum=3589496049369834412
+sample=2, exposure=0.32, render_ms=8.856, materialize_ms=0.472, total_ms=9.328, checksum=2701676077945315784
+sample=3, exposure=0.355, render_ms=8.069, materialize_ms=0.503, total_ms=8.573, checksum=14051318243765782567
+sample=4, exposure=0.39, render_ms=8.149, materialize_ms=0.480, total_ms=8.629, checksum=10829413244130527568
+sample=5, exposure=0.42500000000000004, render_ms=7.564, materialize_ms=0.477, total_ms=8.042, checksum=13073347878201578152
+sample=6, exposure=0.46, render_ms=7.679, materialize_ms=0.481, total_ms=8.160, checksum=10021853030076370001
+sample=7, exposure=0.495, render_ms=7.732, materialize_ms=0.549, total_ms=8.281, checksum=6343477242007038048
+sample=8, exposure=0.53, render_ms=7.846, materialize_ms=0.450, total_ms=8.296, checksum=6360113353318566808
+sample=9, exposure=0.5650000000000001, render_ms=9.736, materialize_ms=0.535, total_ms=10.272, checksum=2360957125183753849
+sample=10, exposure=0.6000000000000001, render_ms=8.127, materialize_ms=0.442, total_ms=8.570, checksum=17326471083113530112
+sample=11, exposure=0.635, render_ms=7.797, materialize_ms=0.480, total_ms=8.277, checksum=10368845911937298324
+sample=12, exposure=0.67, render_ms=8.066, materialize_ms=0.471, total_ms=8.538, checksum=5825598490546986960
+sample=13, exposure=0.7050000000000001, render_ms=7.687, materialize_ms=0.484, total_ms=8.172, checksum=16572393198121042834
+sample=14, exposure=0.74, render_ms=7.748, materialize_ms=0.478, total_ms=8.226, checksum=8850678668016371226
+sample=15, exposure=0.775, render_ms=7.714, materialize_ms=0.474, total_ms=8.187, checksum=16564318291364557915
+sample=16, exposure=0.81, render_ms=7.754, materialize_ms=0.444, total_ms=8.198, checksum=985002779164330497
+sample=17, exposure=0.8450000000000001, render_ms=7.464, materialize_ms=0.493, total_ms=7.958, checksum=12469994572036328929
+sample=18, exposure=0.8800000000000001, render_ms=7.711, materialize_ms=0.458, total_ms=8.169, checksum=16572857383680419412
+sample=19, exposure=0.915, render_ms=7.583, materialize_ms=0.384, total_ms=7.967, checksum=16105629533371817950
+sample=20, exposure=0.9500000000000001, render_ms=8.065, materialize_ms=0.450, total_ms=8.515, checksum=3807911176635878785
+RESULT scenario=complex, size=2400x1600, warm_samples=20, warm_median_ms=8.279, warm_render_median_ms=7.775, warm_materialize_median_ms=0.477, warm_min_ms=7.958, warm_max_ms=10.429, warm_fps=117.107, peak_rss_bytes=113541120, checksum=2499394698418556895

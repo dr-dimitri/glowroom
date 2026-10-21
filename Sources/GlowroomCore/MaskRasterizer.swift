@@ -14,16 +14,18 @@ public struct MaskRaster: Hashable, Sendable {
     }
     /// Dimensions are part of identity; identical bytes with a different shape
     /// cannot alias. Hashing is linear work and belongs off the MainActor.
-    public func canonicalSHA256() throws -> ArtifactDigest {
-        try Task.checkCancellation()
+    public func canonicalSHA256(cancellation: @Sendable () throws -> Void = {}) throws -> ArtifactDigest {
+        try Task.checkCancellation(); try cancellation()
         var hash = SHA256()
         hash.update(data: Data("Glowroom.Mask.Gray8.v1/\(size.width)/\(size.height)\n".utf8))
         let chunkSize = 65_536
         for start in stride(from: 0, to: bytes.count, by: chunkSize) {
-            try Task.checkCancellation()
+            try Task.checkCancellation(); try cancellation()
             hash.update(data: bytes[start..<min(start + chunkSize, bytes.count)])
         }
-        return try .init(sha256: hash.finalize().map { String(format: "%02x", $0) }.joined())
+        let digest = try ArtifactDigest(sha256: hash.finalize().map { String(format: "%02x", $0) }.joined())
+        try Task.checkCancellation(); try cancellation()
+        return digest
     }
 
     /// Bilinear sampling at pixel centers. A crop is in this raster's native
@@ -56,6 +58,48 @@ public struct MaskRaster: Hashable, Sendable {
                 }
             }
         }
+        return try .init(size: outputSize, bytes: output)
+    }
+
+    /// Same pixel-center math and floating-point operation order as `resampled`.
+    /// The horizontal sampling grid is shared by rows instead of recomputed per
+    /// pixel. Temporary storage is bounded by the validated output width.
+    public func resampledOptimized(to outputSize: ArtifactPixelSize, crop: ArtifactPixelRect? = nil,
+                                   cancellation: @Sendable () throws -> Void = {}) throws -> Self {
+        let region = try MaskRasterizer.region(canvas: size, crop: crop)
+        try Task.checkCancellation(); try cancellation()
+        if region.x == 0, region.y == 0, region.size == size, outputSize == size { return self }
+        let scaleX = Double(region.size.width) / Double(outputSize.width)
+        let scaleY = Double(region.size.height) / Double(outputSize.height)
+        struct Sample { let left: Int; let right: Int; let fraction: Double }
+        var horizontal: [Sample] = []
+        horizontal.reserveCapacity(outputSize.width)
+        for x in 0..<outputSize.width {
+            if x.isMultiple(of: 256) { try Task.checkCancellation(); try cancellation() }
+            let sx = max(Double(region.x), min(Double(region.x + region.size.width - 1), Double(region.x) + (Double(x) + 0.5) * scaleX - 0.5))
+            let x0 = Int(sx.rounded(.down)), x1 = min(x0 + 1, region.x + region.size.width - 1)
+            horizontal.append(.init(left: x0, right: x1, fraction: sx - Double(x0)))
+        }
+        var output = Data(count: outputSize.width * outputSize.height)
+        try output.withUnsafeMutableBytes { destination in
+            try bytes.withUnsafeBytes { source in
+                let dst = destination.bindMemory(to: UInt8.self)
+                let src = source.bindMemory(to: UInt8.self)
+                for y in 0..<outputSize.height {
+                    if y.isMultiple(of: 16) { try Task.checkCancellation(); try cancellation() }
+                    let sy = max(Double(region.y), min(Double(region.y + region.size.height - 1), Double(region.y) + (Double(y) + 0.5) * scaleY - 0.5))
+                    let y0 = Int(sy.rounded(.down)), y1 = min(y0 + 1, region.y + region.size.height - 1)
+                    let fy = sy - Double(y0)
+                    for x in horizontal.indices {
+                        let sample = horizontal[x], fx = sample.fraction
+                        let top = Double(src[y0 * size.width + sample.left]) * (1 - fx) + Double(src[y0 * size.width + sample.right]) * fx
+                        let bottom = Double(src[y1 * size.width + sample.left]) * (1 - fx) + Double(src[y1 * size.width + sample.right]) * fx
+                        dst[y * outputSize.width + x] = UInt8((top * (1 - fy) + bottom * fy).rounded())
+                    }
+                }
+            }
+        }
+        try Task.checkCancellation(); try cancellation()
         return try .init(size: outputSize, bytes: output)
     }
 }

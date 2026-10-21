@@ -1,0 +1,24 @@
+Synthetic contention editing benchmark: 2400x1600, backend=default, optimized binary, generated sRGB input; no RAW/ImageIO or disk I/O.
+First call includes renderer initialization; warm calls use the same source with unique edits, not cached edited output. OS/GPU caches are not cleared.
+End-to-end timings include a synchronous full-size CGContext draw, forcing pixel materialization. Peak RSS covers the entire process.
+sample=1, workers=2, selected_latency_ms=5.730, pair_total_ms=7.785
+sample=2, workers=2, selected_latency_ms=5.811, pair_total_ms=7.807
+sample=3, workers=2, selected_latency_ms=6.145, pair_total_ms=8.387
+sample=4, workers=2, selected_latency_ms=6.137, pair_total_ms=8.243
+sample=5, workers=2, selected_latency_ms=6.018, pair_total_ms=7.646
+sample=6, workers=2, selected_latency_ms=6.215, pair_total_ms=8.160
+sample=7, workers=2, selected_latency_ms=5.767, pair_total_ms=7.686
+sample=8, workers=2, selected_latency_ms=5.904, pair_total_ms=7.500
+sample=9, workers=2, selected_latency_ms=5.739, pair_total_ms=7.417
+sample=10, workers=2, selected_latency_ms=5.962, pair_total_ms=7.857
+sample=11, workers=2, selected_latency_ms=6.009, pair_total_ms=7.665
+sample=12, workers=2, selected_latency_ms=5.908, pair_total_ms=8.142
+sample=13, workers=2, selected_latency_ms=6.019, pair_total_ms=7.809
+sample=14, workers=2, selected_latency_ms=5.737, pair_total_ms=7.633
+sample=15, workers=2, selected_latency_ms=5.979, pair_total_ms=7.623
+sample=16, workers=2, selected_latency_ms=5.677, pair_total_ms=7.379
+sample=17, workers=2, selected_latency_ms=5.769, pair_total_ms=7.112
+sample=18, workers=2, selected_latency_ms=6.105, pair_total_ms=8.097
+sample=19, workers=2, selected_latency_ms=6.093, pair_total_ms=8.268
+sample=20, workers=2, selected_latency_ms=6.440, pair_total_ms=8.612
+RESULT scenario=contention, workers=2, selected_size=2400x1600, background_size=1536x1024, samples=20, selected_median_ms=5.970, pair_median_ms=7.796, pairs_per_second=127.530, peak_rss_bytes=174489600, checksum=11511649791442381860

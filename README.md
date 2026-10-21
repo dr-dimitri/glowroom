@@ -92,7 +92,7 @@ Metadaten werden mit höchstens vier, an CPU und Speicher angepassten Lesern ein
 
 Decodierung, Cache-Zugriffe und Bearbeitungsrendering können sich überlappen. Ausgewählte Bilder werden bevorzugt; gleiche Anfragen teilen ihre Arbeit, größere laufende Decodierungen bedienen auch kleinere Vorschauen. Auf Rechnern mit mindestens vier aktiven CPU-Kernen und 8 GiB RAM können eine ausgewählte Bearbeitung und eine Hintergrundvorschau gleichzeitig rendern; sonst bleibt es bei einem Worker. Separate Core-Image-Kontexte geben dem ausgewählten Bild Vorrang. Datenbanktransaktionen und Backups bleiben geordnet; beim Beenden werden Katalog, Bearbeitungsdatenbank und angenommene Bildinformationen-Speichervorgänge gemeinsam abgewartet.
 
-[Zuständigkeiten, Grenzen, Testergebnisse und reproduzierbare Benchmarks](docs/PARALLELISM.md) dokumentieren die Umsetzung. Details zur GPU-Nutzung, wiederverwendeten Filterstufen und Messungen der nicht destruktiven Bearbeitung stehen im [Bearbeitungs-Performancebericht](docs/EDITING-PERFORMANCE.md). Die gemessene Beschleunigung beim Metadatenimport gilt für synthetische JPEG-Testdaten; große Kamera-RAWs wurden nicht vermessen.
+[Zuständigkeiten, Grenzen, Testergebnisse und reproduzierbare Benchmarks](docs/PARALLELISM.md) dokumentieren die Umsetzung. Details zur GPU-Nutzung, wiederverwendeten Filterstufen und Messungen der nicht destruktiven Bearbeitung stehen im [Bearbeitungs-Performancebericht](docs/EDITING-PERFORMANCE.md). Die gemessene Beschleunigung beim Metadatenimport gilt für synthetische JPEG-Testdaten; der neue [Performancebericht zu Masken und RAW-Vorschauen](docs/PERFORMANCE.md) dokumentiert zusätzliche Release-Messungen und deren Grenzen.
 
 ### RAW-Vorschauen und Performance
 
@@ -197,6 +197,15 @@ Die Bibliotheksberechnungen lassen sich unabhängig vom RAW-Decoder mit 10.000 s
 ```
 
 Das Skript verwendet einen eigenen temporären Katalog; seine Zeiten messen Filterung, Sortierung und Ordnerbäume, nicht das Laden von Bildern.
+
+Die native Maskenberechnung besitzt einen reproduzierbaren Vergleich mit byteidentischer Referenz, inkrementellem Swift-Pfad und optionalem Rust-Experiment:
+
+```sh
+./scripts/benchmark-masks.sh
+GLOWROOM_MASK_RUST=1 ./scripts/benchmark-masks.sh --width 4096 --height 4096 --iterations 20
+```
+
+Der sichtbare lokale Maskenpfad und ausdrücklich freigegebene ImageIO-Quellen lassen sich über `scripts/benchmark-editing.sh --scenario local-masks` beziehungsweise `--scenario preview --input /Pfad/zum/Bild.CR3 --width 2400` messen. Quellenbilder werden nicht kopiert oder hochgeladen. Rust ist ausschließlich ein optionaler Entwicklerprototyp und keine App-Abhängigkeit. Messbefehle, Cachezustände, Auswertung und Ergebnisse stehen in [PERFORMANCE.md](docs/PERFORMANCE.md).
 
 Für einen Vergleich der ImageIO-Ladewege mit ausdrücklich angegebenen, lokal verfügbaren RAW-Dateien:
 

@@ -2,6 +2,7 @@ import AppKit
 import Foundation
 import Darwin
 import ImageIO
+import os
 import GlowroomCore
 
 /// A job is bound to the immutable oriented source, not a progressive preview bitmap.
@@ -25,6 +26,29 @@ struct MaskRasterResult: @unchecked Sendable {
     let token: MaskRasterToken
     let raster: MaskRaster
     let overlay: CGImage
+    let nativeRasterReuse: MaskRasterizationReuse
+}
+
+/// Native Instruments intervals and the developer benchmark observe identical
+/// production stages. A failed/cancelled stage reports its spent work as well.
+enum MaskRasterPhase: String, CaseIterable, Sendable {
+    case nativeRasterization, resampling, hashing, overlay, total
+
+    fileprivate var signpostName: StaticString {
+        switch self {
+        case .nativeRasterization: return "Mask Native Raster"
+        case .resampling: return "Mask Resample"
+        case .hashing: return "Mask Canonical Hash"
+        case .overlay: return "Mask Overlay"
+        case .total: return "Mask Total"
+        }
+    }
+}
+
+struct MaskRasterTiming: Sendable {
+    let phase: MaskRasterPhase
+    let elapsedNanoseconds: UInt64
+    let completed: Bool
 }
 
 final class MaskRasterCancellation: @unchecked Sendable {
@@ -41,21 +65,95 @@ final class MaskRasterCancellation: @unchecked Sendable {
 /// One shared, serial CPU worker bounds mask memory and avoids nested worker pools.
 /// The model retains at most one running request and one replacement per editor.
 actor MaskOverlayWorker {
+    typealias Resampler = @Sendable (MaskRaster, ArtifactPixelSize, @Sendable () throws -> Void) throws -> MaskRaster
     static let shared = MaskOverlayWorker()
     static let maximumDimension = 1_600
+    private static let signpostLog = OSLog(subsystem: "com.glowroom.app", category: "MaskRaster")
 
-    func rasterize(_ request: MaskRasterRequest) throws -> MaskRasterResult {
-        try request.cancellation.check()
-        let native = request.document.canvasSize
-        let scale = min(1, Double(Self.maximumDimension) / Double(max(native.width, native.height)))
-        let output = try ArtifactPixelSize(width: max(1, Int((Double(native.width) * scale).rounded())),
-                                           height: max(1, Int((Double(native.height) * scale).rounded())))
-        // Native Gray8 is authoritative. Preview and model rasters use the same
-        // pixel-centre resampling, including narrow marks and soft boundaries.
-        let nativeRaster = try MaskRasterizer.rasterize(request.document, cancellation: { try request.cancellation.check() })
-        let raster = try nativeRaster.resampled(to: output, cancellation: { try request.cancellation.check() })
-        try request.cancellation.check()
-        let hash = try nativeRaster.canonicalSHA256().sha256
+    /// Exactly one successful native state is retained. Data uses copy-on-write;
+    /// a candidate remains private until all dependent stages have succeeded.
+    private struct NativeState {
+        let source: AISourceIdentity
+        let session: UUID
+        let revision: UInt64
+        let document: MaskDocument
+        let cache: MaskRasterizationCache
+
+        func accepts(_ request: MaskRasterRequest) -> Bool {
+            source == request.source && session == request.session &&
+            document.canvasSize == request.document.canvasSize &&
+            (request.revision > revision || (request.revision == revision && request.document == document))
+        }
+    }
+    private var nativeState: NativeState?
+    private let usesNativeCache: Bool
+    private let usesOptimizedResampling: Bool
+    private let maximumSampleEvaluations: Int
+    private let resampler: Resampler?
+
+    /// Reference switches retain the former full-raster/resampling path for the
+    /// developer comparison. Production uses the same bounded serial worker.
+    init(usesNativeCache: Bool = true, usesOptimizedResampling: Bool = true,
+         maximumSampleEvaluations: Int = 268_435_456, resampler: Resampler? = nil) {
+        self.usesNativeCache = usesNativeCache
+        self.usesOptimizedResampling = usesOptimizedResampling
+        self.maximumSampleEvaluations = maximumSampleEvaluations
+        self.resampler = resampler
+    }
+
+    func rasterize(_ request: MaskRasterRequest,
+                   timingObserver: (@Sendable (MaskRasterTiming) -> Void)? = nil) throws -> MaskRasterResult {
+        try measure(.total, observer: timingObserver) {
+            try request.cancellation.check()
+            let native = request.document.canvasSize
+            let scale = min(1, Double(Self.maximumDimension) / Double(max(native.width, native.height)))
+            let output = try ArtifactPixelSize(width: max(1, Int((Double(native.width) * scale).rounded())),
+                                               height: max(1, Int((Double(native.height) * scale).rounded())))
+            // Native Gray8 stays authoritative. Identity is checked before the
+            // core examines exact document/prefix compatibility; a revision
+            // rollback or conflicting same-revision draft starts a fresh basis.
+            var candidate: MaskRasterizationUpdate?
+            let nativeRaster = try measure(.nativeRasterization, observer: timingObserver) {
+                if usesNativeCache {
+                    let base = nativeState.flatMap { $0.accepts(request) ? $0.cache : nil } ?? MaskRasterizationCache()
+                    let update = try base.rasterize(request.document, maximumSampleEvaluations: maximumSampleEvaluations,
+                                                    cancellation: { try request.cancellation.check() })
+                    candidate = update
+                    return update.raster
+                }
+                return try MaskRasterizer.rasterize(request.document, maximumSampleEvaluations: maximumSampleEvaluations,
+                                                     cancellation: { try request.cancellation.check() })
+            }
+            let raster = try measure(.resampling, observer: timingObserver) {
+                if let resampler {
+                    return try resampler(nativeRaster, output, { try request.cancellation.check() })
+                }
+                if usesOptimizedResampling {
+                    return try nativeRaster.resampledOptimized(to: output, cancellation: { try request.cancellation.check() })
+                }
+                return try nativeRaster.resampled(to: output, cancellation: { try request.cancellation.check() })
+            }
+            let hash = try measure(.hashing, observer: timingObserver) {
+                try nativeRaster.canonicalSHA256(cancellation: { try request.cancellation.check() }).sha256
+            }
+            let overlay = try measure(.overlay, observer: timingObserver) {
+                try Self.makeOverlay(from: raster, cancellation: { try request.cancellation.check() })
+            }
+            try request.cancellation.check()
+            if let candidate {
+                nativeState = NativeState(source: request.source, session: request.session, revision: request.revision,
+                                          document: request.document, cache: candidate.cache)
+            }
+            return MaskRasterResult(token: MaskRasterToken(source: request.source, session: request.session,
+                revision: request.revision, canvasSize: native, maskSHA256: hash), raster: raster, overlay: overlay,
+                nativeRasterReuse: candidate?.reuse ?? .full)
+        }
+    }
+
+    static func makeOverlay(from raster: MaskRaster,
+                            cancellation: @Sendable () throws -> Void = {}) throws -> CGImage {
+        try Task.checkCancellation(); try cancellation()
+        let output = raster.size
         // The UI image carries the data weight only in alpha. Standard CGImage
         // construction requires a color space, so use a bounded premultiplied RGBA
         // overlay rather than assigning an image color profile to the Gray8 mask.
@@ -65,7 +163,7 @@ actor MaskOverlayWorker {
                 let dst = destination.bindMemory(to: UInt8.self)
                 let src = source.bindMemory(to: UInt8.self)
                 for index in 0..<src.count {
-                    if index.isMultiple(of: 65_536) { try request.cancellation.check() }
+                    if index.isMultiple(of: 65_536) { try Task.checkCancellation(); try cancellation() }
                     dst[index * 4] = src[index]
                     dst[index * 4 + 3] = src[index]
                 }
@@ -78,8 +176,24 @@ actor MaskOverlayWorker {
                                     bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
                                     provider: provider, decode: nil, shouldInterpolate: true, intent: .defaultIntent)
         else { throw ArtifactContractError.invalidValue("Maskenoverlay") }
-        return MaskRasterResult(token: MaskRasterToken(source: request.source, session: request.session,
-            revision: request.revision, canvasSize: native, maskSHA256: hash), raster: raster, overlay: overlay)
+        try Task.checkCancellation(); try cancellation()
+        return overlay
+    }
+
+    private func measure<T>(_ phase: MaskRasterPhase, observer: (@Sendable (MaskRasterTiming) -> Void)?,
+                            operation: () throws -> T) rethrows -> T {
+        let id = OSSignpostID(log: Self.signpostLog)
+        os_signpost(.begin, log: Self.signpostLog, name: phase.signpostName, signpostID: id)
+        let start = DispatchTime.now().uptimeNanoseconds
+        var completed = false
+        defer {
+            let elapsed = DispatchTime.now().uptimeNanoseconds - start
+            os_signpost(.end, log: Self.signpostLog, name: phase.signpostName, signpostID: id)
+            observer?(MaskRasterTiming(phase: phase, elapsedNanoseconds: elapsed, completed: completed))
+        }
+        let result = try operation()
+        completed = true
+        return result
     }
 }
 
