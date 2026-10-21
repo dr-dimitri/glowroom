@@ -2,8 +2,15 @@ import GlowroomCore
 
 extension EditingModel {
     func aiSnapshot(in library: LibraryModel, intent: EditingRenderIntent = .currentEditing) -> AIEditingSnapshot? {
+        editingSnapshot(in: library, intent: intent, permitsAutomaticBackupMaintenance: false)
+    }
+    func localEditingAnchorSnapshot(in library: LibraryModel) -> AIEditingSnapshot? {
+        editingSnapshot(in: library, intent: .currentEditing, permitsAutomaticBackupMaintenance: true)
+    }
+    private func editingSnapshot(in library: LibraryModel, intent: EditingRenderIntent, permitsAutomaticBackupMaintenance: Bool) -> AIEditingSnapshot? {
         self.library = library
-        guard canEdit, library.canModify, !library.isImporting, !library.isProjecting,
+        guard (permitsAutomaticBackupMaintenance ? canRetainLocalEditingAnchor : canEdit),
+              library.canModify, !library.isImporting, !library.isProjecting,
               let asset = library.selectedAsset, !asset.id.isEmpty,
               let resolved = try? resolvedSource(for: asset, intent: intent) else { return nil }
         return AIEditingSnapshot(assetID: asset.id, source: resolved.identity, settings: resolved.settings,

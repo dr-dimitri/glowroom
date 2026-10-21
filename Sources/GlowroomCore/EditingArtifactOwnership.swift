@@ -207,6 +207,12 @@ public protocol EditingPersistence: Actor {
     func committed(_ commitID: EditingCommitID) async throws -> ArtifactCommitReceipt?
     func variants(for assetID: String) async throws -> [EditingVariant]
     func createBackup(automatic: Bool) async throws -> URL
+    /// Stores with exclusive backup maintenance must await `maintenance(true)`
+    /// before closing gate admission and `maintenance(false)` after finishing or
+    /// safely aborting that phase, including errors. A failed true acknowledgement
+    /// aborts before promotion. Immutable package copy stays editable. Stores
+    /// without exclusive phases may use the forwarding default implementation.
+    func createAutomaticBackup(maintenance: @escaping @Sendable (Bool) async throws -> Void) async throws -> URL
     func exportBackup(from source: URL, toNew destination: URL) async throws -> URL
     /// A backup warning never changes an already durable SQL-save result.
     func backupWarning() async -> String?
@@ -241,6 +247,9 @@ public protocol EditingPersistence: Actor {
 }
 
 public extension EditingPersistence {
+    func createAutomaticBackup(maintenance: @escaping @Sendable (Bool) async throws -> Void) async throws -> URL {
+        try await createBackup(automatic: true)
+    }
     func exportBackup(from source: URL, toNew destination: URL) async throws -> URL { throw ArtifactContractError.unsupportedFormat }
     func backupWarning() async -> String? { nil }
 }

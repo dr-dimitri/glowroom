@@ -1,4 +1,5 @@
 import Foundation
+import CoreGraphics
 import Testing
 @testable import Glowroom
 @testable import GlowroomCore
@@ -203,6 +204,109 @@ struct ArtifactEditingControllerTests {
         #expect(try await store.loadState().byAsset["B"]?.snapshot.settings.exposure == 3)
     }
 
+    @Test func automaticBackupFencesSnapshotAndPruneAndPreservesTheMaskWorkspace() async throws {
+        let gate = CatalogLifecycleGate(requiresRecovery: false)
+        let f = try await fixture(gate: gate)
+        do {
+            await f.store.blockAutomaticSnapshotAndPrune()
+            let asset = f.assets[0]
+            f.editor.setSettings(EditSettings(exposure: 1), for: asset.id)
+            let image = try #require(CGImage(width: 2, height: 2, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: 8,
+                space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
+                provider: CGDataProvider(data: Data(repeating: 255, count: 16) as CFData)!, decode: nil, shouldInterpolate: false, intent: .defaultIntent))
+            let bitmap = PreviewBitmap(image: image)
+            let masks = LocalAdjustmentEditorModel(settings: f.editor.settings(for: asset.id), loader: { _ in bitmap })
+            let workspace = InlineMaskWorkspace()
+            #expect(workspace.open(asset: asset, source: try f.editor.resolvedSource(for: asset).identity,
+                settings: f.editor.settings(for: asset.id), editor: f.editor, library: f.library, model: masks))
+            try await wait { workspace.canvasSize != nil }
+            #expect(await f.editor.flush())
+            try await wait { await f.store.automaticSnapshotWaiting }
+            #expect(f.editor.isAutomaticBackupMaintenance && !f.editor.canEdit)
+            workspace.reconcile()
+            #expect(workspace.isPresented && !workspace.isCurrent)
+            f.editor.setSettings(EditSettings(exposure: 4), for: asset.id)
+            #expect(f.editor.settings(for: asset.id).exposure == 1)
+            let session = try await gate.waitForStartup()
+            #expect(throws: CatalogLifecycleError.maintenanceAlreadyPending) {
+                try gate.registerAcceptedWrite(domain: .editing, session: session)
+            }
+
+            await f.store.releaseAutomaticSnapshot()
+            try await wait { await f.store.automaticCopyStarted }
+            #expect(f.editor.canEdit && workspace.isCurrent)
+            masks.add(.radial)
+            #expect(await f.editor.flush())
+            // A live slider intentionally leaves its admitted row unsaved. The
+            // pre-prune UI fence must drain it without waiting for gesture teardown.
+            let input = f.editor.sliderPersistenceSession.begin()
+            defer { f.editor.sliderPersistenceSession.end(input); workspace.cancel() }
+            masks.updateSelected { $0.settings.exposure = 2 }
+            #expect(f.editor.hasPendingChanges)
+            await f.store.releaseAutomaticCopy()
+            try await wait { await f.store.automaticPruneWaiting }
+            #expect(f.editor.isAutomaticBackupMaintenance && !f.editor.canEdit)
+            #expect(!f.editor.hasPendingChanges)
+            #expect(try await f.store.loadState().byAsset[asset.id]?.snapshot.settings.localAdjustments.first?.settings.exposure == 2)
+            workspace.reconcile()
+            #expect(workspace.isPresented && !workspace.isCurrent)
+            masks.updateSelected { $0.settings.exposure = 4 }
+            f.editor.undo(assetID: asset.id)
+            #expect(f.editor.settings(for: asset.id).localAdjustments.first?.settings.exposure == 2)
+
+            await f.store.releaseAutomaticPrune()
+            try await wait { await f.store.automaticPruneFinished && !f.editor.isAutomaticBackupMaintenance }
+            workspace.reconcile()
+            #expect(f.editor.canEdit && workspace.isCurrent)
+            masks.updateSelected { $0.settings.exposure = 3 }
+            f.editor.sliderPersistenceSession.end(input)
+            #expect(await f.editor.flush())
+            #expect(await f.editor.finishSaving())
+            #expect(await f.store.automaticBackupCount == 1)
+            #expect(try await f.store.loadState().byAsset[asset.id]?.snapshot.settings.localAdjustments.first?.settings.exposure == 3)
+        } catch {
+            await f.store.releaseAutomaticSnapshot()
+            await f.store.releaseAutomaticCopy()
+            await f.store.releaseAutomaticPrune()
+            _ = await f.editor.finishSaving()
+            try? FileManager.default.removeItem(at: f.directory)
+            throw error
+        }
+        try? FileManager.default.removeItem(at: f.directory)
+    }
+
+    @Test func failedPrePruneSliderDrainPreservesThePendingEditAndReleasesTheUIFence() async throws {
+        let gate = CatalogLifecycleGate(requiresRecovery: false), store = ControllerEditingStore()
+        await store.configureAutomaticBackup(gate: gate)
+        let editor = EditingModel(loader: { EditingModelDependencies(database: store, gate: gate) })
+        do {
+            try await wait { !editor.isLoading }
+            editor.setSettings(EditSettings(exposure: 1), for: "A")
+            #expect(await editor.flush())
+            try await wait { await store.automaticCopyStarted }
+            let input = editor.sliderPersistenceSession.begin()
+            defer { editor.sliderPersistenceSession.end(input) }
+            editor.setSettings(EditSettings(exposure: 2), for: "A")
+            await store.failNextSnapshotSave()
+            await store.releaseAutomaticCopy()
+            try await wait { editor.isReadOnly && !editor.isAutomaticBackupMaintenance }
+            #expect(editor.hasPendingChanges && editor.settings(for: "A").exposure == 2)
+            #expect(try await store.loadState().byAsset["A"]?.snapshot.settings.exposure == 1)
+            #expect(!(await store.automaticPruneFinished))
+            let session = try await gate.waitForStartup()
+            _ = try gate.registerAcceptedWrite(domain: .editing, session: session)
+            editor.sliderPersistenceSession.end(input)
+            #expect(await editor.flush())
+            #expect(await editor.finishSaving())
+            #expect(editor.canEdit && !editor.hasPendingChanges)
+            #expect(try await store.loadState().byAsset["A"]?.snapshot.settings.exposure == 2)
+        } catch {
+            await store.releaseAutomaticCopy()
+            _ = await editor.finishSaving()
+            throw error
+        }
+    }
+
     @Test func expandedVariantsReloadAfterRestoreAndIgnoreThePreviousEpochRead() async throws {
         let f = try await fixture(); defer { try? FileManager.default.removeItem(at: f.directory) }
         defer { Task { await f.store.releaseVariantReads() } }
@@ -279,7 +383,7 @@ struct ArtifactEditingControllerTests {
         #expect(f.editor.variants.map(\.id) == [next.id])
     }
 
-    private func fixture() async throws -> ControllerFixture {
+    private func fixture(gate: CatalogLifecycleGate? = nil) async throws -> ControllerFixture {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("Glowroom-Artifact-Controller-" + UUID().uuidString)
         let photos = directory.appendingPathComponent("Photos"); try FileManager.default.createDirectory(at: photos, withIntermediateDirectories: true)
         let folder = LibraryFolder(url: photos)
@@ -290,7 +394,8 @@ struct ArtifactEditingControllerTests {
         }
         let repository = CatalogRepository(directory: directory.appendingPathComponent("Catalog")); try repository.save(.init(folders: [folder], assets: assets))
         let library = LibraryModel(repository: repository), store = ControllerEditingStore(), artifacts = ControllerArtifactStore()
-        let editor = EditingModel(loader: { EditingModelDependencies(database: store, artifacts: artifacts) })
+        if let gate { await store.configureAutomaticBackup(gate: gate) }
+        let editor = EditingModel(loader: { EditingModelDependencies(database: store, artifacts: artifacts, gate: gate) })
         try await wait { !library.isLoading && !library.isProjecting && !editor.isLoading }
         library.selectedID = assets[0].id; editor.library = library
         return ControllerFixture(directory: directory, assets: assets, library: library, editor: editor, store: store, artifacts: artifacts)
@@ -329,8 +434,14 @@ private actor ControllerEditingStore: EditingPersistence {
     private(set) var recoveryCount = 0, restoreCount = 0
     private var automaticGate: CatalogLifecycleGate?
     private var automaticCopyContinuation: CheckedContinuation<Void, Never>?
+    private var automaticCopyReleased = false
+    private var automaticSnapshotContinuation: CheckedContinuation<Void, Never>?
+    private var automaticPruneContinuation: CheckedContinuation<Void, Never>?
+    private var shouldBlockAutomaticSnapshot = false, shouldBlockAutomaticPrune = false
+    private(set) var automaticSnapshotWaiting = false, automaticPruneWaiting = false
     private var snapshotSaveContinuation: CheckedContinuation<Void, Never>?
     private var shouldBlockSnapshotSave = false
+    private var shouldFailSnapshotSave = false
     private(set) var automaticCopyStarted = false, automaticPruneRequested = false, automaticPruneFinished = false
     private(set) var automaticBackupCount = 0, snapshotSaveWaiting = false
     private var variantsByAsset: [String: [EditingVariant]] = [:]
@@ -362,6 +473,7 @@ private actor ControllerEditingStore: EditingPersistence {
         return try loadState()
     }
     func saveSnapshot(_ snapshot: EditingSnapshot, for assetID: String, expected: EditingExpectedState, revision: Int64) async throws -> StoredEditingState {
+        if shouldFailSnapshotSave { shouldFailSnapshotSave = false; throw EditingRepositoryError.storageFailure }
         if shouldBlockSnapshotSave {
             shouldBlockSnapshotSave = false; snapshotSaveWaiting = true
             await withCheckedContinuation { snapshotSaveContinuation = $0 }
@@ -403,21 +515,52 @@ private actor ControllerEditingStore: EditingPersistence {
     }
     func configureAutomaticBackup(gate: CatalogLifecycleGate) { automaticGate = gate }
     func blockNextSnapshotSave() { shouldBlockSnapshotSave = true }
+    func failNextSnapshotSave() { shouldFailSnapshotSave = true }
     func releaseSnapshotSave() { snapshotSaveContinuation?.resume(); snapshotSaveContinuation = nil }
-    func releaseAutomaticCopy() { automaticCopyContinuation?.resume(); automaticCopyContinuation = nil }
+    func releaseAutomaticCopy() { automaticCopyReleased = true; automaticCopyContinuation?.resume(); automaticCopyContinuation = nil }
+    func blockAutomaticSnapshotAndPrune() { shouldBlockAutomaticSnapshot = true; shouldBlockAutomaticPrune = true }
+    func releaseAutomaticSnapshot() { shouldBlockAutomaticSnapshot = false; automaticSnapshotContinuation?.resume(); automaticSnapshotContinuation = nil }
+    func releaseAutomaticPrune() { shouldBlockAutomaticPrune = false; automaticPruneContinuation?.resume(); automaticPruneContinuation = nil }
+    private func waitForAutomaticSnapshot() async {
+        guard shouldBlockAutomaticSnapshot else { return }
+        shouldBlockAutomaticSnapshot = false; automaticSnapshotWaiting = true
+        await withCheckedContinuation { automaticSnapshotContinuation = $0 }
+        automaticSnapshotWaiting = false
+    }
+    private func waitForAutomaticPrune() async {
+        guard shouldBlockAutomaticPrune else { return }
+        shouldBlockAutomaticPrune = false; automaticPruneWaiting = true
+        await withCheckedContinuation { automaticPruneContinuation = $0 }
+        automaticPruneWaiting = false
+    }
     func createBackup(automatic: Bool) async throws -> URL {
+        try await createBackup(automatic: automatic, maintenance: { _ in })
+    }
+    func createAutomaticBackup(maintenance: @escaping @Sendable (Bool) async throws -> Void) async throws -> URL {
+        try await createBackup(automatic: true, maintenance: maintenance)
+    }
+    private func createBackup(automatic: Bool, maintenance: @escaping @Sendable (Bool) async throws -> Void) async throws -> URL {
         if automatic {
             automaticBackupCount += 1
             if let gate = automaticGate {
-                // Model the real Core phase split: long immutable copy leaves
-                // normal editing open; only the final prune promotes/drains.
-                automaticCopyStarted = true
-                await withCheckedContinuation { automaticCopyContinuation = $0 }
-                automaticPruneRequested = true
-                let maintenance = try await gate.promoteCurrentAcceptedWrite(to: .backup(UUID()))
-                try await gate.withMaintenance(maintenance) { }
-                automaticPruneFinished = true
-                try await gate.finishMaintenance(maintenance)
+                do {
+                    try await maintenance(true)
+                    let snapshot = try await gate.promoteCurrentAcceptedWrite(to: .backup(UUID()))
+                    try await gate.withMaintenance(snapshot) { await self.waitForAutomaticSnapshot() }
+                    try await gate.finishMaintenance(snapshot)
+                    try await maintenance(false)
+                    // Model the real Core phase split: long immutable copy leaves
+                    // normal editing open; only the final prune promotes/drains.
+                    automaticCopyStarted = true
+                    if !automaticCopyReleased { await withCheckedContinuation { automaticCopyContinuation = $0 } }
+                    automaticPruneRequested = true
+                    try await maintenance(true)
+                    let prune = try await gate.promoteCurrentAcceptedWrite(to: .backup(UUID()))
+                    try await gate.withMaintenance(prune) { await self.waitForAutomaticPrune() }
+                    try await gate.finishMaintenance(prune)
+                    automaticPruneFinished = true
+                    try await maintenance(false)
+                } catch { try? await maintenance(false); throw error }
             }
         }
         return URL(fileURLWithPath: "/synthetic-controller.glowroombackup")

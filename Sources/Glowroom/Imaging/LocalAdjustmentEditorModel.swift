@@ -8,11 +8,11 @@ struct LocalMaskEditingAnchor {
     let snapshot: AIEditingSnapshot
     let localRevision: Int64
     @MainActor init?(editor: EditingModel, library: LibraryModel) {
-        guard let snapshot = editor.aiSnapshot(in: library) else { return nil }
+        guard let snapshot = editor.localEditingAnchorSnapshot(in: library) else { return nil }
         self.snapshot = snapshot; localRevision = editor.localRevision(for: snapshot.assetID)
     }
     @MainActor func isCurrent(editor: EditingModel, library: LibraryModel) -> Bool {
-        guard let current = editor.aiSnapshot(in: library) else { return false }
+        guard let current = editor.localEditingAnchorSnapshot(in: library) else { return false }
         return current.assetID == snapshot.assetID && current.source == snapshot.source && current.settings == snapshot.settings
             && current.token == snapshot.token && editor.localRevision(for: snapshot.assetID) == localRevision
             && current.persistedVersion?.storeEpoch == snapshot.persistedVersion?.storeEpoch

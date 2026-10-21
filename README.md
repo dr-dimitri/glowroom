@@ -290,4 +290,6 @@ Vorhandene manuelle/automatische Backups, Recoveryarchive und unveränderliche v
 
 Die Sicherung verwendet die SQLite Online Backup API und Ressourcen-Leases für alle transitiv referenzierten Artefakte. Nach dem konsistenten SQL-Snapshot kann die unveränderliche Paketkopie mit weiterer Bearbeitung überlappen. Die Veröffentlichung erfolgt erst nach vollständiger Prüfung. Der separate [Speichervertrag](docs/ARTIFACT-STORAGE.md) beschreibt Format, Grenzen und Wiederanlauf.
 
+Während die automatische Sicherung ihren konsistenten Snapshot erstellt oder alte Pakete sicher ausdünnt, sind neue Bearbeitungen kurz gesperrt. Bereits angenommene Änderungen werden vorher geordnet gespeichert; eine offene Maskenpalette bleibt erhalten. Nach der jeweiligen Wartungsphase werden die Regler wieder freigegeben. Während der unveränderlichen Paketkopie kann weiter bearbeitet werden.
+
 Die Renderer-Tests prüfen mit synthetischen Bildern Richtung und Wirkung der Regler, Rauschvarianz, Tonwertverläufe, Transparenz und Farbprofile. Datenbank-/Controller-Tests decken unter anderem Neustart, Schreibkonflikte, schnelle Bildwechsel, gleichzeitige Speicherversuche, fehlgeschlagene Writes, Backup-Rotation, beschädigte Sicherungen und Wiederherstellung ab. Core Image benötigt für diese Tests eine normale macOS-Sitzung; eine restriktive Ausführungssandbox kann den Renderer blockieren.
