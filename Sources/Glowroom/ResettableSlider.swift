@@ -34,7 +34,7 @@ extension EnvironmentValues {
 
 /// A native slider with the shared detail-panel appearance whose double click
 /// restores the control's semantic default.
-/// Control-double-click can request an automatically calculated value instead.
+/// Shift-double-click can request an automatically calculated value instead.
 /// A plain click is held until AppKit's double-click interval has elapsed. This
 /// prevents the first click of a reset from becoming an unwanted undo entry;
 /// dragging and keyboard input still publish their values immediately.
@@ -250,7 +250,7 @@ final class ResettableNativeSlider: NSSlider {
         clickWork?.cancel()
         clickWork = nil
         if event.clickCount == 2 {
-            if event.modifierFlags.contains(.control), let onAutomaticValue {
+            if event.modifierFlags.contains(.shift), let onAutomaticValue {
                 initialPoint = nil
                 ignoresNativeChangesUntilNewInput = true
                 interaction.prepareForAutomaticValue()

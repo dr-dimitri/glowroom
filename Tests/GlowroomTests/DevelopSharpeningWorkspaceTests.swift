@@ -11,7 +11,7 @@ import Testing
 @Suite("Sharpening workspace native interaction", .serialized, .timeLimit(.minutes(2)))
 @MainActor
 struct DevelopSharpeningWorkspaceTests {
-    @Test func detailControlsIgnoreClosedWorkspaceGroupsAndHaveNoCollapseAction() async throws {
+    @Test func detailsCollapseAndReopenWhileSharpeningAndNoiseRemainExpanded() async throws {
         let fixture = try await SharpeningWorkspaceFixture.make()
         fixture.layout.update(developing: true) {
             $0.openGroups = []; $0.openAdjustmentGroups = []; $0.singleGroup = true
@@ -22,13 +22,19 @@ struct DevelopSharpeningWorkspaceTests {
             .environmentObject(fixture.editor).environmentObject(fixture.layout)
             .environmentObject(fixture.metadata).environmentObject(fixture.exporter)
             .environment(\.displayScale, 2).preferredColorScheme(.dark))
-        try await waitForSharpeningWorkspace(operation: "detail sliders despite closed saved groups") {
-            host.sliders.count == 6
+        try await waitForSharpeningWorkspace(operation: "closed saved Details heading") {
+            host.accessibilityElements.contains { $0.accessibilityIdentifier() == "workspace.group.details" }
         }
         try await host.settle()
+        #expect(host.sliders.isEmpty, "Closed Details must hide its loupe and all six detail sliders")
+        var details = try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == "workspace.group.details" })
+        #expect(details.accessibilityRole() == .button)
+        #expect((details.accessibilityValue() as? String)?.hasPrefix("Geschlossen") == true)
+        #expect(details.accessibilityPerformPress(), "Details must reopen through its production header")
+        try await waitForSharpeningWorkspace(operation: "reopened detail sliders") { host.sliders.count == 6 }
+        try await host.settle()
 
-        for (identifier, label) in [("workspace.group.details", "Details"),
-                                    ("develop.adjustment-group.sharpening", "Schärfen"),
+        for (identifier, label) in [("develop.adjustment-group.sharpening", "Schärfen"),
                                     ("develop.adjustment-group.noise", "Entrauschen")] {
             let header = try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == identifier })
             #expect(header.accessibilityLabel() == label || header.accessibilityValue() as? String == label)
@@ -41,12 +47,43 @@ struct DevelopSharpeningWorkspaceTests {
             _ = try sharpeningSlider(identifier: "develop.adjustment.\(identifier)", label: label, root: sliderRoot)
         }
 
-        // Single-group mode can replace the saved Details state when another
-        // tool opens; these controls must remain mounted regardless.
-        fixture.layout.toggleGroup(.edit, developing: true)
+        // Closing the outer group also cancels its active detail picker.
+        try await waitForSharpeningWorkspace(operation: "available detail picker") {
+            host.accessibilityElements.contains {
+                $0.accessibilityIdentifier() == "develop.detail-picker" && $0.isAccessibilityEnabled()
+            }
+        }
+        let picker = try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == "develop.detail-picker" })
+        #expect(picker.accessibilityPerformPress())
+        try await waitForSharpeningWorkspace(operation: "active detail picker") {
+            host.accessibilityElements.contains {
+                $0.accessibilityIdentifier() == "develop.detail-picker" && $0.accessibilityValue() as? String == "Aktiv"
+            }
+        }
+        details = try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == "workspace.group.details" })
+        #expect(details.accessibilityPerformPress())
+        try await waitForSharpeningWorkspace(operation: "collapsed detail controls") { host.sliders.isEmpty }
         try await host.settle()
-        #expect(host.sliders.contains { $0.minValue == 0 && $0.maxValue == 150 })
-        #expect(host.accessibilityElements.contains { $0.accessibilityIdentifier() == "develop.adjustment-group.noise" })
+        #expect(!fixture.layout.develop.openGroups.contains(.details))
+        let defaults = try #require(UserDefaults(suiteName: fixture.preferenceSuite))
+        #expect(!WorkspaceLayoutModel(defaults: defaults).develop.openGroups.contains(.details))
+
+        details = try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == "workspace.group.details" })
+        #expect(details.accessibilityPerformPress())
+        try await waitForSharpeningWorkspace(operation: "detail controls reopened after collapse") { host.sliders.count == 6 }
+        try await host.settle()
+        let reopenedPicker = try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == "develop.detail-picker" })
+        #expect(reopenedPicker.accessibilityValue() as? String == "Inaktiv")
+
+        // The outer Details group participates in the column's solo mode.
+        let basics = try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == "workspace.group.edit" })
+        #expect(basics.accessibilityPerformPress())
+        try await waitForSharpeningWorkspace(operation: "solo mode hides Details") {
+            !fixture.layout.develop.openGroups.contains(.details)
+                && !host.sliders.contains { $0.minValue == 0 && $0.maxValue == 150 }
+        }
+        #expect(fixture.layout.develop.openGroups == [.edit])
+        #expect(!host.accessibilityElements.contains { $0.accessibilityIdentifier() == "develop.adjustment-group.noise" })
         #expect(await fixture.library.finishSaving())
         #expect(await fixture.editor.finishSaving())
     }

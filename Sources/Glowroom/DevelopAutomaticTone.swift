@@ -10,7 +10,7 @@ extension DevelopWorkspace {
         cancelAutomaticTone()
         guard editor.canEdit, tool == .basic, isCurrent() else { return nil }
         guard let bitmap = originalBitmap, let source = sourceIdentity else {
-            errorMessage = "Die Bildvorschau wird noch geladen. Versuche Control-Doppelklick erneut, sobald sie sichtbar ist."
+            errorMessage = "Die Bildvorschau wird noch geladen. Versuche Shift-Doppelklick erneut, sobald sie sichtbar ist."
             return nil
         }
         editor.selectEditingFunction(.adjustments, assetID: assetID)
