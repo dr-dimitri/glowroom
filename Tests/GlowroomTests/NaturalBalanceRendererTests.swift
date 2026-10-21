@@ -284,59 +284,62 @@ struct NaturalBalanceRendererTests {
     }
 
     @Test func concurrentAnalysisSharesRecognitionWhileAnotherSourceProceeds() async throws {
-        let probe = NaturalBalanceAnalysisProbe(blockFirst: true)
-        let cache = NaturalBalanceAnalysisCache(maximumEntries: 1, analyze: { try probe.analyze($0) })
-        let first = try fixture { x, _ in (UInt8(x), UInt8(x), UInt8(x), 255) }
-        let second = try fixture { x, _ in (UInt8(x), UInt8(x), UInt8(x), 255) }
-        let producer = Task.detached { try cache.analysis(for: first.image) }
-        defer { probe.release() }
-        try await waitUntil { probe.count == 1 }
-        let shared = Task.detached { try cache.analysis(for: first.image) }
-        let independent = Task.detached { try cache.analysis(for: second.image) }
-        _ = try await independent.value
-        #expect(probe.count == 2, "A full cache must not serialize independent source analysis")
-        probe.release()
-        let original = try await producer.value
-        let reused = try await shared.value
-        #expect(original.offsets == reused.offsets && original.faceCount == reused.faceCount)
-        #expect(probe.count == 2)
+        try await withBlockedBalance(maximumEntries: 1) { scenario in
+            let first = try fixture { x, _ in (UInt8(x), UInt8(x), UInt8(x), 255) }
+            let second = try fixture { x, _ in (UInt8(x), UInt8(x), UInt8(x), 255) }
+            let producer = scenario.start(first.image)
+            try await scenario.probe.started.wait("natural balance producer entered", until: { $0 == 1 })
+            let shared = scenario.start(first.image)
+            try await scenario.joined.wait("natural balance caller joined", until: { $0 == 1 })
+            let independent = scenario.start(second.image)
+            _ = try await independent.value
+            #expect(scenario.probe.count == 2, "A full cache must not serialize independent source analysis")
+            scenario.probe.release()
+            let original = try await producer.value
+            let reused = try await shared.value
+            #expect(original.offsets == reused.offsets && original.faceCount == reused.faceCount)
+            #expect(scenario.probe.count == 2)
+        }
     }
 
     @Test func cancelledWaiterKeepsSharedAnalysisAndCancelledProducerCanBeRetried() async throws {
         for cancelProducer in [false, true] {
-            let probe = NaturalBalanceAnalysisProbe(blockFirst: true)
-            let cache = NaturalBalanceAnalysisCache(analyze: { try probe.analyze($0) })
-            let source = try fixture { x, _ in (UInt8(x), UInt8(x), UInt8(x), 255) }
-            let producer = Task.detached { try cache.analysis(for: source.image) }
-            defer { probe.release() }
-            try await waitUntil { probe.count == 1 }
-            let waiter = Task.detached { try cache.analysis(for: source.image) }
-            if cancelProducer {
-                producer.cancel()
-                probe.release()
-                do { _ = try await producer.value; Issue.record("Cancelled producer unexpectedly succeeded") }
-                catch is CancellationError { }
-                _ = try await waiter.value
-                #expect(probe.count == 2)
-            } else {
-                try await Task.sleep(for: .milliseconds(25))
-                waiter.cancel()
-                do { _ = try await waiter.value; Issue.record("Cancelled waiter unexpectedly succeeded") }
-                catch is CancellationError { }
-                #expect(probe.count == 1)
-                probe.release()
-                _ = try await producer.value
+            try await withBlockedBalance { scenario in
+                let source = try fixture { x, _ in (UInt8(x), UInt8(x), UInt8(x), 255) }
+                let producer = scenario.start(source.image)
+                try await scenario.probe.started.wait("cancellable natural balance producer entered", until: { $0 == 1 })
+                let waiter = scenario.start(source.image)
+                try await scenario.joined.wait("cancellable natural balance caller joined", until: { $0 == 1 })
+                if cancelProducer {
+                    producer.cancel()
+                    scenario.probe.release()
+                    do { _ = try await producer.value; Issue.record("Cancelled producer unexpectedly succeeded") }
+                    catch is CancellationError { }
+                    _ = try await waiter.value
+                    #expect(scenario.probe.count == 2)
+                } else {
+                    waiter.cancel()
+                    do { _ = try await waiter.value; Issue.record("Cancelled waiter unexpectedly succeeded") }
+                    catch is CancellationError { }
+                    #expect(scenario.probe.count == 1)
+                    scenario.probe.release()
+                    _ = try await producer.value
+                }
+                _ = try scenario.cache.analysis(for: source.image)
+                #expect(scenario.probe.count == (cancelProducer ? 2 : 1))
             }
-            _ = try cache.analysis(for: source.image)
-            #expect(probe.count == (cancelProducer ? 2 : 1))
         }
     }
 
-    private func waitUntil(_ predicate: @escaping @Sendable () -> Bool) async throws {
-        let deadline = ContinuousClock.now.advanced(by: .seconds(5))
-        while !predicate() {
-            guard ContinuousClock.now < deadline else { throw NaturalBalanceAnalysisProbeError.timeout }
-            try await Task.sleep(for: .milliseconds(5))
+    private func withBlockedBalance(maximumEntries: Int = 8,
+        _ body: (BlockedBalanceScenario) async throws -> Void) async throws {
+        let scenario = BlockedBalanceScenario(maximumEntries: maximumEntries)
+        do {
+            try await body(scenario)
+            await scenario.finish()
+        } catch {
+            await scenario.finish()
+            throw error
         }
     }
 
@@ -378,23 +381,53 @@ struct NaturalBalanceRendererTests {
     }
 }
 
-private enum NaturalBalanceAnalysisProbeError: Error { case timeout }
-
 private final class NaturalBalanceAnalysisProbe: @unchecked Sendable {
-    private let lock = NSLock()
-    private let gate = DispatchSemaphore(value: 0)
+    private let gate = NSCondition()
     private let blockFirst: Bool
     private var calls = 0
+    private var released = false
+    let started = TestStateSignal(0)
 
     init(blockFirst: Bool = false) { self.blockFirst = blockFirst }
-    var count: Int { lock.lock(); defer { lock.unlock() }; return calls }
-    func release() { gate.signal() }
+    var count: Int { gate.withLock { calls } }
+    func release() {
+        gate.lock(); released = true; gate.broadcast(); gate.unlock()
+    }
     func analyze(_ image: CGImage) throws -> NaturalBalanceAnalysis {
-        lock.lock()
+        gate.lock()
         calls += 1
-        let first = calls == 1
-        lock.unlock()
-        if first && blockFirst && gate.wait(timeout: .now() + 5) == .timedOut { throw NaturalBalanceAnalysisProbeError.timeout }
+        let count = calls
+        gate.unlock()
+        started.update { $0 = count }
+        if count == 1 && blockFirst {
+            gate.lock()
+            while !released { gate.wait() }
+            gate.unlock()
+        }
         return NaturalBalanceAnalysis(offsets: Array(repeating: 0, count: 7), colorBoost: 0.1, faceCount: 1)
+    }
+}
+
+private final class BlockedBalanceScenario {
+    let probe = NaturalBalanceAnalysisProbe(blockFirst: true)
+    let joined = TestStateSignal(0)
+    let cache: NaturalBalanceAnalysisCache
+    private var tasks: [Task<NaturalBalanceAnalysis, Error>] = []
+
+    init(maximumEntries: Int) {
+        let probe = probe, joined = joined
+        cache = NaturalBalanceAnalysisCache(maximumEntries: maximumEntries,
+            didJoinInFlight: { joined.update { $0 += 1 } }, analyze: { try probe.analyze($0) })
+    }
+    func start(_ image: CGImage) -> Task<NaturalBalanceAnalysis, Error> {
+        let worker = TestSynchronousWorker(), cache = cache
+        let task = Task { try await worker.run { try cache.analysis(for: image) } }
+        tasks.append(task)
+        return task
+    }
+    func finish() async {
+        tasks.forEach { $0.cancel() }
+        probe.release()
+        for task in tasks { _ = await task.result }
     }
 }

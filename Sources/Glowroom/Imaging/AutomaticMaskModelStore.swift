@@ -46,10 +46,12 @@ actor SkyMaskModelStore {
     static let maximumInstalledBytes: Int64 = 384 * 1_024 * 1_024
     typealias Downloader = @Sendable (URL, URL, Int64, @escaping @Sendable (Int64) -> Void) async throws -> Void
     typealias Compiler = @Sendable (URL) throws -> URL
+    typealias AsyncCompiler = @Sendable (URL) async throws -> URL
     private let directory: URL
     private let files: [SemanticManifestFile]
     private let downloader: Downloader
     private let compiler: Compiler
+    private let asyncCompiler: AsyncCompiler?
     private let budget: AIResourceBudget
     private var installing = false
 
@@ -61,13 +63,15 @@ actor SkyMaskModelStore {
             try await SkyMaskPackageDownloader(destination: destination, maximumBytes: maximumBytes, progress: progress).download(source)
         }
         compiler = { try MLModel.compileModel(at: $0) }
+        asyncCompiler = nil
     }
 
     /// Small synthetic fixtures avoid downloads and Core ML in ordinary tests.
     init(directory: URL, files: [SemanticManifestFile], budget: AIResourceBudget,
-         downloader: @escaping Downloader, compiler: @escaping Compiler) {
+         downloader: @escaping Downloader, compiler: @escaping Compiler, asyncCompiler: AsyncCompiler? = nil) {
         self.directory = directory; self.files = files; self.budget = budget
         self.downloader = downloader; self.compiler = compiler
+        self.asyncCompiler = asyncCompiler
     }
 
     func installedModel() throws -> SkyMaskInstalledModel? {
@@ -142,7 +146,14 @@ actor SkyMaskModelStore {
         progress(.init(text: "Modell wird lokal vorbereitet …", fraction: nil))
         // The synchronous compiler remains on this background actor and owns the
         // shared lease until it really returns, even after UI cancellation.
-        let compiled = try autoreleasepool { try compiler(package) }
+        let compiled: URL
+        if let asyncCompiler {
+            // A synthetic native compiler can suspend without occupying the
+            // cooperative pool. Admission remains owned until actual return.
+            compiled = try await asyncCompiler(package)
+        } else {
+            compiled = try autoreleasepool { try compiler(package) }
+        }
         defer { try? FileManager.default.removeItem(at: compiled) }
         try Task.checkCancellation()
         let runtime = stage.appendingPathComponent("runtime")

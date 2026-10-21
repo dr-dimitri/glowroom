@@ -3,70 +3,165 @@ import Foundation
 struct TestSchedulingTimeout: Error, CustomStringConvertible {
     let operation: String
     let lastState: String
-    var description: String { "Timed out waiting for \(operation); last state: \(lastState)" }
+    let lastPublicationRelativeToDeadline: Duration?
+    let decisionRelativeToDeadline: Duration?
+
+    init(operation: String, lastState: String,
+         lastPublicationRelativeToDeadline: Duration? = nil,
+         decisionRelativeToDeadline: Duration? = nil) {
+        self.operation = operation
+        self.lastState = lastState
+        self.lastPublicationRelativeToDeadline = lastPublicationRelativeToDeadline
+        self.decisionRelativeToDeadline = decisionRelativeToDeadline
+    }
+
+    var description: String {
+        var diagnostic = "Timed out waiting for \(operation); last state: \(lastState)"
+        if let lastPublicationRelativeToDeadline, let decisionRelativeToDeadline {
+            diagnostic += "; state publication relative to deadline: \(lastPublicationRelativeToDeadline)"
+            diagnostic += "; decision relative to deadline: \(decisionRelativeToDeadline)"
+        }
+        return diagnostic
+    }
 }
 
 /// Latched fake events suspend the test instead of occupying a cooperative
-/// executor thread. Registration, publication and cancellation share one lock;
-/// continuations always resume after leaving that short critical section.
+/// executor thread. Registration, publication, timeout and cancellation decide
+/// each waiter exactly once under one lock. Delivery happens outside the lock;
+/// a delayed continuation cannot turn an already published success into timeout.
 final class TestStateSignal<Value: Sendable>: @unchecked Sendable {
+    typealias Delivery = @Sendable (@escaping @Sendable () -> Void) -> Void
+
     private struct Waiter {
+        let operation: String
+        let deadline: ContinuousClock.Instant
         let predicate: @Sendable (Value) -> Bool
         let continuation: CheckedContinuation<Value, Error>
+        var timeoutTask: Task<Void, Never>?
+    }
+    private struct Completion {
+        let waiter: Waiter
+        let result: Result<Value, Error>
     }
     private let lock = NSLock()
+    private let now: @Sendable () -> ContinuousClock.Instant
+    private let sleepUntil: @Sendable (ContinuousClock.Instant) async throws -> Void
+    private let deliver: Delivery
     private var stored: Value
+    private var lastPublication: ContinuousClock.Instant
     private var waiters: [UUID: Waiter] = [:]
 
-    init(_ initialValue: Value) { stored = initialValue }
+    // Scheduling dependencies are only for deterministic gate regressions.
+    // Every application fake uses the continuous clock and immediate delivery.
+    init(_ initialValue: Value,
+         now: @escaping @Sendable () -> ContinuousClock.Instant = { .now },
+         sleepUntil: @escaping @Sendable (ContinuousClock.Instant) async throws -> Void = {
+             try await ContinuousClock().sleep(until: $0)
+         },
+         deliver: @escaping Delivery = { $0() }) {
+        stored = initialValue
+        self.now = now
+        self.sleepUntil = sleepUntil
+        self.deliver = deliver
+        lastPublication = now()
+    }
     var value: Value { lock.withLock { stored } }
     var waiterCount: Int { lock.withLock { waiters.count } }
 
     func update(_ mutation: (inout Value) -> Void) {
-        let ready: (Value, [Waiter]) = lock.withLock {
+        let ready: [Completion] = lock.withLock {
             mutation(&stored)
-            let matched = waiters.filter { $0.value.predicate(stored) }
-            for id in matched.keys { waiters.removeValue(forKey: id) }
-            return (stored, Array(matched.values))
+            lastPublication = now()
+            var ready: [Completion] = []
+            var completedIDs: [UUID] = []
+            for (id, waiter) in waiters {
+                if waiter.predicate(stored) {
+                    ready.append(Completion(waiter: waiter, result: .success(stored)))
+                } else {
+                    continue
+                }
+                completedIDs.append(id)
+            }
+            for id in completedIDs { waiters.removeValue(forKey: id) }
+            return ready
         }
-        for waiter in ready.1 { waiter.continuation.resume(returning: ready.0) }
+        for completion in ready { complete(completion) }
     }
 
     @discardableResult
     func wait(_ description: String, timeout: Duration = .seconds(4),
               until predicate: @escaping @Sendable (Value) -> Bool) async throws -> Value {
         try Task.checkCancellation()
-        let current = value
-        if predicate(current) { return current }
-        return try await withThrowingTaskGroup(of: Value.self) { group in
-            group.addTask { try await self.waitUntil(predicate) }
-            group.addTask {
-                try await Task.sleep(for: timeout)
-                throw TestSchedulingTimeout(operation: description, lastState: String(describing: self.value))
-            }
-            defer { group.cancelAll() }
-            guard let result = try await group.next() else { throw CancellationError() }
-            return result
-        }
-    }
-
-    private func waitUntil(_ predicate: @escaping @Sendable (Value) -> Bool) async throws -> Value {
         let id = UUID()
+        let deadline = now().advanced(by: timeout)
         return try await withTaskCancellationHandler {
             try Task.checkCancellation()
             return try await withCheckedThrowingContinuation { continuation in
-                let immediate: Result<Value, Error>? = lock.withLock {
-                    if Task.isCancelled { return .failure(CancellationError()) }
-                    if predicate(stored) { return .success(stored) }
-                    waiters[id] = Waiter(predicate: predicate, continuation: continuation)
+                let immediate: Completion? = lock.withLock {
+                    let waiter = Waiter(operation: description, deadline: deadline,
+                                        predicate: predicate, continuation: continuation)
+                    if Task.isCancelled { return Completion(waiter: waiter, result: .failure(CancellationError())) }
+                    if predicate(stored) {
+                        return Completion(waiter: waiter, result: .success(stored))
+                    }
+                    waiters[id] = waiter
                     return nil
                 }
-                if let immediate { continuation.resume(with: immediate) }
+                if let immediate {
+                    complete(immediate)
+                    return
+                }
+                let timeoutTask = Task {
+                    do {
+                        try await self.sleepUntil(deadline)
+                        try Task.checkCancellation()
+                        self.expire(id)
+                    } catch {
+                        // The winning event or caller cancellation reaps this
+                        // watchdog; it never competes through a second result.
+                    }
+                }
+                let installed = lock.withLock {
+                    guard waiters[id] != nil else { return false }
+                    waiters[id]?.timeoutTask = timeoutTask
+                    return true
+                }
+                if !installed { timeoutTask.cancel() }
             }
         } onCancel: {
-            let waiter = self.lock.withLock { self.waiters.removeValue(forKey: id) }
-            waiter?.continuation.resume(throwing: CancellationError())
+            let completion = self.lock.withLock { () -> Completion? in
+                guard let waiter = self.waiters.removeValue(forKey: id) else { return nil }
+                return Completion(waiter: waiter, result: .failure(CancellationError()))
+            }
+            if let completion { self.complete(completion) }
         }
+    }
+
+    private func expire(_ id: UUID) {
+        let completion = lock.withLock { () -> Completion? in
+            guard let waiter = waiters.removeValue(forKey: id) else { return nil }
+            // This is a diagnostic hang guard, not an application deadline.
+            // An event published before this atomic decision wins even if the
+            // executor resumed both contenders after the nominal sleep ended.
+            let result: Result<Value, Error> = waiter.predicate(stored)
+                ? .success(stored) : .failure(timeout(for: waiter, at: now()))
+            return Completion(waiter: waiter, result: result)
+        }
+        if let completion { complete(completion) }
+    }
+
+    // Caller holds lock so the state and publication timestamp describe the
+    // same timeout decision. Offsets reveal a delayed watchdog independently
+    // of whether the required event has actually been published.
+    private func timeout(for waiter: Waiter, at instant: ContinuousClock.Instant) -> TestSchedulingTimeout {
+        TestSchedulingTimeout(operation: waiter.operation, lastState: String(describing: stored),
+                              lastPublicationRelativeToDeadline: waiter.deadline.duration(to: lastPublication),
+                              decisionRelativeToDeadline: waiter.deadline.duration(to: instant))
+    }
+
+    private func complete(_ completion: Completion) {
+        completion.waiter.timeoutTask?.cancel()
+        deliver { completion.waiter.continuation.resume(with: completion.result) }
     }
 }
 

@@ -30,6 +30,7 @@ private struct SubjectMattingStoreFixture: Sendable {
     func store(budget: AIResourceBudget = AIResourceBudget(),
                sourceValidator: SubjectMattingModelStore.SourceValidator? = nil,
                compiler: SubjectMattingModelStore.Compiler? = nil,
+               asyncCompiler: SubjectMattingModelStore.AsyncCompiler? = nil,
                validator: @escaping SubjectMattingModelStore.Validator = { _ in },
                sourceClassifier: @escaping SubjectMattingModelStore.SourceClassifier = { _ in .current }) -> SubjectMattingModelStore {
         SubjectMattingModelStore(directory: directory, budget: budget, sourceValidator: sourceValidator ?? { _ in files },
@@ -38,7 +39,7 @@ private struct SubjectMattingStoreFixture: Sendable {
                 try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
                 try Data("synthetic compiled matting weights".utf8).write(to: out.appendingPathComponent("model.bin"))
                 return out
-            }, validator: validator, sourceClassifier: sourceClassifier)
+            }, validator: validator, sourceClassifier: sourceClassifier, asyncCompiler: asyncCompiler)
     }
 
     func clean() { try? FileManager.default.removeItem(at: root) }
@@ -59,9 +60,10 @@ private struct SubjectMattingUpgradeFixture: Sendable {
     }
 
     func store(compiler: SubjectMattingModelStore.Compiler? = nil,
+               asyncCompiler: SubjectMattingModelStore.AsyncCompiler? = nil,
                validator: @escaping SubjectMattingModelStore.Validator = { _ in },
                recognizesLegacy: Bool = true) -> SubjectMattingModelStore {
-        previous.store(sourceValidator: { _ in files }, compiler: compiler, validator: validator,
+        previous.store(sourceValidator: { _ in files }, compiler: compiler, asyncCompiler: asyncCompiler, validator: validator,
             sourceClassifier: { candidate in
                 if Set(candidate) == Set(files) { return .current }
                 if recognizesLegacy, Set(candidate) == Set(previous.files) { return .legacy }
@@ -116,25 +118,34 @@ struct SubjectMattingModelStoreTests {
         let pointer = fixture.previous.directory.appendingPathComponent("current.json")
         let originalPointer = try Data(contentsOf: pointer)
         let entered = TestStateSignal(false)
-        let release = DispatchSemaphore(value: 0)
-        defer { release.signal() }
-        let store = fixture.store(compiler: { _ in
+        let release = TestAsyncLatch()
+        defer { release.releaseAll() }
+        let store = fixture.store(asyncCompiler: { _ in
             entered.update { $0 = true }
-            release.wait()
+            await release.wait()
             let output = fixture.previous.root.appendingPathComponent("cancelled-upgrade")
             try FileManager.default.createDirectory(at: output, withIntermediateDirectories: false)
             try Data("compiled replacement".utf8).write(to: output.appendingPathComponent("model.bin"))
             return output
         })
         let pending = Task { try await store.install(from: fixture.source) }
-        try await entered.wait("legacy replacement compiler", until: { $0 })
-        pending.cancel(); release.signal()
-        do { _ = try await pending.value; Issue.record("Canceled upgrade was published") }
-        catch { #expect(error is CancellationError) }
-        #expect(try Data(contentsOf: pointer) == originalPointer)
-        #expect(try SubjectMattingModelStore.verifyInstallation(previous).count == 2)
-        await #expect(throws: SubjectMattingError.updateRequired) { try await store.installedModel() }
-        #expect(try !FileManager.default.contentsOfDirectory(atPath: fixture.previous.directory.path).contains { $0.hasPrefix(".staging-") })
+        do {
+            try await entered.wait("legacy replacement compiler", until: { $0 })
+            pending.cancel(); release.releaseAll()
+            do { _ = try await pending.value; Issue.record("Canceled upgrade was published") }
+            catch { #expect(error is CancellationError) }
+            #expect(try Data(contentsOf: pointer) == originalPointer)
+            #expect(try SubjectMattingModelStore.verifyInstallation(previous).count == 2)
+            await #expect(throws: SubjectMattingError.updateRequired) { try await store.installedModel() }
+            #expect(try !FileManager.default.contentsOfDirectory(atPath: fixture.previous.directory.path).contains { $0.hasPrefix(".staging-") })
+        } catch {
+            // A failed prerequisite/assertion must not race fixture removal
+            // against a still-running, cancellation-ignoring native compiler.
+            pending.cancel()
+            release.releaseAll()
+            _ = await pending.result
+            throw error
+        }
     }
 
     @Test func unknownAndMutatedLegacyGenerationsAreNeverRemovedDuringUpgrade() async throws {
@@ -299,31 +310,41 @@ struct SubjectMattingModelStoreTests {
         let fixture = try SubjectMattingStoreFixture(); defer { fixture.clean() }
         let original = try await fixture.store().install(from: fixture.source)
         let entered = TestStateSignal(false)
-        let release = DispatchSemaphore(value: 0)
-        defer { release.signal() }
+        let release = TestAsyncLatch()
+        defer { release.releaseAll() }
         let budget = AIResourceBudget()
-        let store = fixture.store(budget: budget, compiler: { _ in
+        let store = fixture.store(budget: budget, asyncCompiler: { _ in
             entered.update { $0 = true }
-            release.wait() // Native compiler may ignore task cancellation.
+            await release.wait() // Native compiler may ignore task cancellation.
             let out = fixture.root.appendingPathComponent("cancelled-compiled")
             try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
             try Data([1, 2, 3]).write(to: out.appendingPathComponent("model.bin"))
             return out
         })
         let pending = Task { try await store.install(from: fixture.source) }
-        try await entered.wait("native matting compiler", until: { $0 })
-        pending.cancel()
-        var states = await budget.stateUpdates().makeAsyncIterator()
-        let beforeReturn = try #require(await states.next())
-        #expect(beforeReturn.activeInferences == 1)
-        #expect(beforeReturn.residentModelBytes == SubjectMattingModelStore.residentMemoryEstimate)
-        release.signal()
-        do { _ = try await pending.value; Issue.record("Canceled compilation was published") }
-        catch { #expect(error is CancellationError) }
-        #expect(try await fixture.store().installedModel() == original)
-        let afterReturn = try #require(await states.next())
-        #expect(afterReturn.activeInferences == 0)
-        #expect(afterReturn.residentModelBytes == 0)
+        do {
+            try await entered.wait("native matting compiler", until: { $0 })
+            pending.cancel()
+            var states = await budget.stateUpdates().makeAsyncIterator()
+            let beforeReturn = try #require(await states.next())
+            #expect(beforeReturn.activeInferences == 1)
+            #expect(beforeReturn.residentModelBytes == SubjectMattingModelStore.residentMemoryEstimate)
+            await #expect(throws: SubjectMattingError.setupInProgress) { try await store.remove() }
+            release.releaseAll()
+            do { _ = try await pending.value; Issue.record("Canceled compilation was published") }
+            catch { #expect(error is CancellationError) }
+            #expect(try await fixture.store().installedModel() == original)
+            let afterReturn = try #require(await states.next())
+            #expect(afterReturn.activeInferences == 0)
+            #expect(afterReturn.residentModelBytes == 0)
+        } catch {
+            // A failed prerequisite/assertion must not race fixture removal
+            // against a still-running, cancellation-ignoring native compiler.
+            pending.cancel()
+            release.releaseAll()
+            _ = await pending.result
+            throw error
+        }
     }
 
     @Test func queuedSetupRejectsConcurrentRemovalAndCancellationReleasesGuard() async throws {

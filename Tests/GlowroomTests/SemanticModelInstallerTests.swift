@@ -4,16 +4,20 @@ import Testing
 import GlowroomCore
 
 private final class SemanticCompilerControl: @unchecked Sendable {
-    let entered = DispatchSemaphore(value: 0)
+    private let entered = TestStateSignal(false)
     let proceed = DispatchSemaphore(value: 0)
     private let lock = NSLock()
     private var blocks = false
     func blockNext() { lock.lock(); blocks = true; lock.unlock() }
-    // Deliberately block only the detached test worker, never an async caller.
-    func waitUntilEntered() -> DispatchTimeoutResult { entered.wait(timeout: .now() + 10) }
+    // The single compiler stays synchronous to preserve the installer's
+    // nonreentrant actor semantics. Its controller suspends instead of taking
+    // another cooperative thread; the suite permits only one such native fake.
+    func waitUntilEntered() async throws {
+        try await entered.wait("semantic native compiler entered", timeout: .seconds(10), until: { $0 })
+    }
     func compile(_ url: URL) throws -> URL {
         lock.lock(); let shouldBlock = blocks; blocks = false; lock.unlock()
-        if shouldBlock { entered.signal(); proceed.wait() }
+        if shouldBlock { entered.update { $0 = true }; proceed.wait() }
         let out = FileManager.default.temporaryDirectory.appendingPathComponent("semantic-fake-" + UUID().uuidString)
         try FileManager.default.createDirectory(at: out, withIntermediateDirectories: false)
         try Data(url.lastPathComponent.utf8).write(to: out.appendingPathComponent("model.bin"))
@@ -157,8 +161,16 @@ struct SemanticModelInstallerTests {
         let first = try await installer.install(review)
         fixture.control.blockNext()
         let task = Task { try await installer.install(review) }
-        let entered = await Task.detached { fixture.control.waitUntilEntered() }.value
-        #expect(entered == .success)
+        do {
+            try await fixture.control.waitUntilEntered()
+        } catch {
+            // Even a failed prerequisite must release and drain the native
+            // fake before fixture cleanup can remove the compilation source.
+            task.cancel()
+            fixture.control.proceed.signal()
+            _ = await task.result
+            throw error
+        }
         task.cancel()
         fixture.control.proceed.signal()
         do { _ = try await task.value; Issue.record("Cancelled compile unexpectedly published") }

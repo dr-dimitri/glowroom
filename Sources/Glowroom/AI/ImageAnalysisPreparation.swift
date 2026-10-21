@@ -1,6 +1,5 @@
 import CoreGraphics
 import CryptoKit
-import Darwin
 import Foundation
 import GlowroomCore
 
@@ -15,6 +14,18 @@ struct ImageAnalysisNativeSourceStamp: Hashable, Sendable {
 
     var cacheRevision: String {
         "\(device):\(inode):\(byteCount):\(modifiedSeconds):\(modifiedNanoseconds):\(changedSeconds):\(changedNanoseconds)"
+    }
+
+    static func capture(_ url: URL) -> Self? {
+        // MetadataCatalogSourceReader uses descriptor-free fstatat. Opening and
+        // closing even a rejected SQLite alias here could drop this process's
+        // existing SQLite locks. The dependent before/after reads stay serial
+        // and reject a source that changes during this metadata-only check.
+        guard let before = MetadataCatalogSourceReader.nativeStamp(url),
+              before == MetadataCatalogSourceReader.nativeStamp(url) else { return nil }
+        return Self(device: Int32(before.identity.device), inode: before.identity.inode, byteCount: before.byteCount,
+            modifiedSeconds: before.modifiedAt.seconds, modifiedNanoseconds: Int64(before.modifiedAt.nanoseconds),
+            changedSeconds: before.changedAt.seconds, changedNanoseconds: Int64(before.changedAt.nanoseconds))
     }
 }
 
@@ -71,21 +82,15 @@ struct ImageAnalysisPreparer: ImageAnalysisPreparing {
         let url = URL(fileURLWithPath: fingerprint.standardizedPath)
         let access = url.startAccessingSecurityScopedResource()
         defer { if access { url.stopAccessingSecurityScopedResource() } }
-        let descriptor = open(url.path, O_RDONLY | O_CLOEXEC | O_NONBLOCK)
-        guard descriptor >= 0 else { throw ImageAnalysisError.staleSource }
-        defer { close(descriptor) }
-        var value = stat()
-        guard fstat(descriptor, &value) == 0, value.st_mode & S_IFMT == S_IFREG,
-              value.st_size == fingerprint.fileSize else { throw ImageAnalysisError.staleSource }
-        let modified = Double(value.st_mtimespec.tv_sec) + Double(value.st_mtimespec.tv_nsec) / 1_000_000_000
+        guard let value = ImageAnalysisNativeSourceStamp.capture(url),
+              value.byteCount == fingerprint.fileSize else { throw ImageAnalysisError.staleSource }
+        let modified = Double(value.modifiedSeconds) + Double(value.modifiedNanoseconds) / 1_000_000_000
         // Catalog dates come through Foundation; tolerate only floating-point
         // conversion rounding, not a normal filesystem modification interval.
         guard abs(modified - fingerprint.modifiedAt.timeIntervalSince1970) <= 0.000_005 else {
             throw ImageAnalysisError.staleSource
         }
-        return ImageAnalysisSourceStamp(device: value.st_dev, inode: UInt64(value.st_ino), byteCount: value.st_size,
-            modifiedSeconds: Int64(value.st_mtimespec.tv_sec), modifiedNanoseconds: Int64(value.st_mtimespec.tv_nsec),
-            changedSeconds: Int64(value.st_ctimespec.tv_sec), changedNanoseconds: Int64(value.st_ctimespec.tv_nsec))
+        return .original(value)
     }
 
     func prepare(_ request: ImageAnalysisRequest) async throws -> PreparedImageAnalysisInput {

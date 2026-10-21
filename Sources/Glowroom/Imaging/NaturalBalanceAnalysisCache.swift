@@ -22,18 +22,23 @@ final class NaturalBalanceAnalysisCache: @unchecked Sendable {
     private let condition = NSCondition()
     private let maximumEntries: Int
     private let analyzeImage: @Sendable (CGImage) throws -> NaturalBalanceAnalysis
+    // Short test observation under condition; must not reenter the cache.
+    private let didJoinInFlight: (@Sendable () -> Void)?
     // All mutable state, including each entry, is protected by condition.
     private var entries: [ObjectIdentifier: Entry] = [:]
     private var access: UInt64 = 0
 
     init(maximumEntries: Int = 8,
+         didJoinInFlight: (@Sendable () -> Void)? = nil,
          analyze: @escaping @Sendable (CGImage) throws -> NaturalBalanceAnalysis = { try NaturalBalanceAnalysis.analyze($0) }) {
         self.maximumEntries = max(1, maximumEntries)
+        self.didJoinInFlight = didJoinInFlight
         self.analyzeImage = analyze
     }
 
     func analysis(for image: CGImage) throws -> NaturalBalanceAnalysis {
         let identity = ObjectIdentifier(image)
+        var reportedJoin = false
         while true {
             try Task.checkCancellation()
             condition.lock()
@@ -49,6 +54,10 @@ final class NaturalBalanceAnalysisCache: @unchecked Sendable {
                 // Joining the bounded scene analysis does not schedule another worker.
                 // A timed wait lets a canceled preview leave promptly even while
                 // the shared producer is inside a native bitmap draw or Vision request.
+                if !reportedJoin {
+                    reportedJoin = true
+                    didJoinInFlight?()
+                }
                 _ = condition.wait(until: Date(timeIntervalSinceNow: 0.01))
                 condition.unlock()
                 continue

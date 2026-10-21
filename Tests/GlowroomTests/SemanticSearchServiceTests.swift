@@ -341,30 +341,97 @@ struct SemanticSearchServiceTests {
         #expect(try await f.store.records(in: f.generation!).count == 2)
     }
 
-    @Test func changedDuringNativeImageWorkCannotCommit() async throws {
+    @Test(.timeLimit(.minutes(1))) func delayedFirstImageEntryIsAnEventAndCancelledObserversAreReaped() async throws {
+        let f = try await SearchFixture.make(seed: false)
+        let start = TestAsyncLatch(), nativeGate = await f.provider.block(image: true)
+        let observed = TestStateSignal(false)
+        let waiting = Task {
+            try await f.provider.waitForFirstImageCall()
+            observed.update { $0 = true }
+        }
+        let cancelled = Task { try await f.provider.waitForFirstImageCall() }
+        let indexing = Task {
+            await start.wait()
+            try Task.checkCancellation()
+            try await f.service.prepareIndex(scope: [f.photos[0]], rebuild: false)
+        }
+        defer { waiting.cancel(); cancelled.cancel(); indexing.cancel(); start.releaseAll(); nativeGate.releaseAll() }
+        do {
+            try await waitForTestState("both first-image observers registered", state: {
+                await f.provider.firstImageCallWaiterCount
+            }, until: { $0 == 2 })
+            cancelled.cancel()
+            await #expect(throws: CancellationError.self) { try await cancelled.value }
+            #expect(await f.provider.firstImageCallWaiterCount == 1)
+            // Deliberately exceed the old three-second prerequisite timeout.
+            // The closed start barrier, not elapsed time, proves no image job
+            // has entered; the outer test limit supplies the hang guard.
+            try await Task.sleep(for: .milliseconds(3_100))
+            #expect(!observed.value)
+            #expect(await f.provider.imageCalls == 0)
+            #expect(await f.provider.firstImageCallWaiterCount == 1)
+            start.releaseAll()
+            // Keep the parent's hang-guard cancellation on a cancellable
+            // event, rather than awaiting only an unstructured child's value.
+            try await f.provider.waitForFirstImageCall()
+            try await waiting.value
+            #expect(observed.value)
+            #expect(await f.provider.imageCalls == 1)
+            #expect(await f.provider.firstImageCallWaiterCount == 0)
+            #expect(await searchBudgetState(f.budget).activeInferences == 1)
+            await f.provider.unblock()
+            try await indexing.value
+            // The first entry remains latched for observers arriving afterward.
+            try await f.provider.waitForFirstImageCall()
+            #expect(await f.provider.firstImageCallWaiterCount == 0)
+        } catch {
+            waiting.cancel(); cancelled.cancel(); indexing.cancel()
+            start.releaseAll(); nativeGate.releaseAll()
+            _ = await waiting.result
+            _ = await cancelled.result
+            _ = await indexing.result
+            throw error
+        }
+    }
+
+    @Test(.timeLimit(.minutes(1))) func changedDuringNativeImageWorkCannotCommit() async throws {
         let f = try await SearchFixture.make(seed: false); let nativeGate = await f.provider.block(image: true)
         let indexing = Task { try await f.service.prepareIndex(scope: [f.photos[0]], rebuild: false) }
         defer { indexing.cancel(); nativeGate.releaseAll() }
-        try await f.provider.waitForImageCalls(1)
-        await f.preparer.change(f.photos[0].fileURL.path)
-        await f.provider.unblock()
-        try await indexing.value
-        let active = try #require(await f.store.activeGeneration())
-        #expect(try await f.store.records(in: active).isEmpty)
+        do {
+            try await f.provider.waitForFirstImageCall()
+            await f.preparer.change(f.photos[0].fileURL.path)
+            await f.provider.unblock()
+            try await indexing.value
+            let active = try #require(await f.store.activeGeneration())
+            #expect(try await f.store.records(in: active).isEmpty)
+        } catch {
+            indexing.cancel()
+            nativeGate.releaseAll()
+            _ = await indexing.result
+            throw error
+        }
     }
 
-    @Test func cancelledRebuildPreservesOldGenerationAndLeaseUntilNativeReturn() async throws {
+    @Test(.timeLimit(.minutes(1))) func cancelledRebuildPreservesOldGenerationAndLeaseUntilNativeReturn() async throws {
         let f = try await SearchFixture.make(); let nativeGate = await f.provider.block(image: true)
         let indexing = Task { try await f.service.prepareIndex(scope: f.photos, rebuild: true) }
         defer { indexing.cancel(); nativeGate.releaseAll() }
-        try await f.provider.waitForImageCalls(1)
-        await f.service.cancelIndexing()
-        #expect(await searchBudgetState(f.budget).activeInferences == 1)
-        #expect(try await f.store.activeGeneration() == f.generation)
-        await f.provider.unblock()
-        await searchErrorAny([.cancelled, .superseded]) { try await indexing.value }
-        #expect(try await f.store.activeGeneration() == f.generation)
-        #expect(try await f.store.records(in: f.generation!).count == 2)
+        do {
+            try await f.provider.waitForFirstImageCall()
+            await f.service.cancelIndexing()
+            #expect(await searchBudgetState(f.budget).activeInferences == 1)
+            #expect(try await f.store.activeGeneration() == f.generation)
+            await f.provider.unblock()
+            await searchErrorAny([.cancelled, .superseded]) { try await indexing.value }
+            #expect(try await f.store.activeGeneration() == f.generation)
+            #expect(try await f.store.records(in: f.generation!).count == 2)
+        } catch {
+            indexing.cancel()
+            nativeGate.releaseAll()
+            _ = await indexing.result
+            throw error
+        }
     }
 
     @Test func deleteAndShutdownWaitForNativeReturnAndShutdownIsReusable() async throws {
@@ -631,11 +698,9 @@ private actor SearchProviderFake: SemanticEmbeddingProviding {
     func waitForTextCalls(_ count: Int) async throws {
         _ = try await progress.wait("semantic provider entered text call \(count)", timeout: .seconds(3), until: { $0.texts >= count })
     }
-    func waitForImageCalls(_ count: Int) async throws {
-        _ = try await progress.wait("semantic provider entered image call \(count)", timeout: .seconds(3), until: { $0.images >= count })
-    }
-    // The catalog-removal regression already used the enclosing test's time
-    // limit rather than a short watchdog; retain that cancellation-aware event.
+    var firstImageCallWaiterCount: Int { firstImageCallWaiters.count }
+    // Native image-entry prerequisites use this event and the enclosing test's
+    // time limit: executor queueing time is not evidence of a missing entry.
     func waitForFirstImageCall() async throws {
         try Task.checkCancellation()
         if imageCalls > 0 { return }

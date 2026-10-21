@@ -169,6 +169,9 @@ struct CompactMaskLayoutTests {
         let replacement = try #require(fixture.library.assets.first { $0.id != fixture.workspace.asset?.id })
         fixture.library.selectedID = replacement.id
         #expect(!fixture.workspace.showsCalculationStatus, "A changed source hides its status before reconciliation closes the old session")
+        // Layout settling does not synchronize the separately scheduled
+        // MainActor reconciliation triggered by objectWillChange.
+        try await compactMaskWait { !fixture.workspace.isPresented }
         try await host.settle()
         #expect(!fixture.workspace.isPresented)
         #expect(fixture.workspace.open(asset: replacement, source: try fixture.editor.resolvedSource(for: replacement).identity,

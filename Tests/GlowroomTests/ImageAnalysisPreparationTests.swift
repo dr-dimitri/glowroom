@@ -80,6 +80,31 @@ final class ImageAnalysisPreparationTests {
         await expectAnalysisPreparationError(.staleSource) { _ = try await preparer.sourceStamp(for: request) }
     }
 
+    @Test(arguments: [false, true])
+    func replacementDuringDecodeRejectsStaleRaster(semantic: Bool) async throws {
+        let url = directory.appendingPathComponent("replaced-during-decode.png")
+        try Data([1, 2, 3, 4]).write(to: url)
+        let request = try analysisFileRequest(url)
+        guard case .original(let fingerprint) = request.snapshot.source else { Issue.record("Missing original source"); return }
+        let pixels = try analysisRaster(red: true)
+        let pipeline = ImagePreviewPipeline(decoder: { _ in
+            // Preserve coarse catalog metadata but replace the actual inode
+            // after admission. Neither service may publish the stale raster.
+            try Data([4, 3, 2, 1]).write(to: url, options: .atomic)
+            try FileManager.default.setAttributes([.modificationDate: fingerprint.modifiedAt], ofItemAtPath: url.path)
+            return pixels
+        })
+        let render = AdjustedPreviewPipeline(renderer: { source, _ in source })
+        if semantic {
+            let preparer = SemanticImagePreprocessor(imagePipeline: pipeline, renderPipeline: render)
+            await #expect(throws: SemanticEmbeddingError.staleSource) { try await preparer.prepare(source: fingerprint) }
+        } else {
+            let preparer = ImageAnalysisPreparer(imagePipeline: pipeline, renderPipeline: render)
+            await expectAnalysisPreparationError(.staleSource) { _ = try await preparer.prepare(request) }
+        }
+        #expect(try Data(contentsOf: url) == Data([4, 3, 2, 1]))
+    }
+
     @Test
     func orientationAndProfileDescribeActualPixelsWithoutEXIFPayload() async throws {
         let url = directory.appendingPathComponent("secret-location-and-camera.jpg")
