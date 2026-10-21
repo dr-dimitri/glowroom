@@ -198,14 +198,14 @@ Die Bibliotheksberechnungen lassen sich unabhängig vom RAW-Decoder mit 10.000 s
 
 Das Skript verwendet einen eigenen temporären Katalog; seine Zeiten messen Filterung, Sortierung und Ordnerbäume, nicht das Laden von Bildern.
 
-Die native Maskenberechnung besitzt einen reproduzierbaren Vergleich mit byteidentischer Referenz, inkrementellem Swift-Pfad und optionalem Rust-Experiment:
+Die native Maskenberechnung besitzt einen reproduzierbaren Swift-Vergleich mit byteidentischer Vollreferenz und inkrementellem Pfad:
 
 ```sh
 ./scripts/benchmark-masks.sh
-GLOWROOM_MASK_RUST=1 ./scripts/benchmark-masks.sh --width 4096 --height 4096 --iterations 20
+./scripts/benchmark-masks.sh --width 4096 --height 4096 --iterations 20
 ```
 
-Der sichtbare lokale Maskenpfad und ausdrücklich freigegebene ImageIO-Quellen lassen sich über `scripts/benchmark-editing.sh --scenario local-masks` beziehungsweise `--scenario preview --input /Pfad/zum/Bild.CR3 --width 2400` messen. Quellenbilder werden nicht kopiert oder hochgeladen. Rust ist ausschließlich ein optionaler Entwicklerprototyp und keine App-Abhängigkeit. Messbefehle, Cachezustände, Auswertung und Ergebnisse stehen in [PERFORMANCE.md](docs/PERFORMANCE.md).
+Der sichtbare lokale Maskenpfad und ausdrücklich freigegebene ImageIO-Quellen lassen sich über `scripts/benchmark-editing.sh --scenario local-masks` beziehungsweise `--scenario preview --input /Pfad/zum/Bild.CR3 --width 2400` messen. Quellenbilder werden nicht kopiert oder hochgeladen. Der nach dem No-Go nicht benötigte Masken-Rust-Prototyp wurde entfernt. Historische Messungen, die Entscheidung und der damalige Quellstand bleiben im [Performancebericht](docs/PERFORMANCE.md) dokumentiert; dort stehen auch die aktuellen Swift-Messbefehle und die Auswertung.
 
 Für einen Vergleich der ImageIO-Ladewege mit ausdrücklich angegebenen, lokal verfügbaren RAW-Dateien:
 

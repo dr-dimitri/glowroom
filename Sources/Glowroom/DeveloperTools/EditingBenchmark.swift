@@ -35,7 +35,6 @@ final class Counts: @unchecked Sendable {
         var maskWorkload = "all"
         var maskFixture = "all"
         var maskBackend = "compare"
-        var maskLibrary = ""
         var seed: UInt64 = 44
 
         init() throws {
@@ -60,7 +59,6 @@ final class Counts: @unchecked Sendable {
                 case "--mask-workload": maskWorkload = value
                 case "--mask-fixture": maskFixture = value
                 case "--mask-backend": maskBackend = value
-                case "--mask-library": maskLibrary = value
                 case "--seed":
                     guard let parsed = UInt64(value) else {
                         throw failure("--seed requires an unsigned 64-bit integer (0...18446744073709551615)")
