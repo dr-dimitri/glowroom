@@ -548,21 +548,34 @@ private enum LocalMaskControlGroup: String, CaseIterable, Identifiable {
     }
 }
 
-private actor LocalMaskOverlayWorker {
+actor LocalMaskOverlayWorker {
     static let shared = LocalMaskOverlayWorker()
     private let context = CIContext(options: [.cacheIntermediates: false])
+    private let maskCache: LocalMaskImageCache?
     private let alphaKernel = CIColorKernel(source: """
         kernel vec4 maskOverlay(__sample mask) {
             float weight = clamp(mask.r, 0.0, 1.0);
             return vec4(weight, 0.0, 0.0, weight);
         }
         """)
+
+    init(enableIncrementalCaching: Bool = true) {
+        maskCache = enableIncrementalCaching ? LocalMaskImageCache() : nil
+    }
+
     func image(_ mask: LocalAdjustmentMask, size: ArtifactPixelSize) throws -> CGImage {
         try Task.checkCancellation()
         let extent = CGRect(x: 0, y: 0, width: size.width, height: size.height)
-        let scalar = try LocalAdjustmentRenderer.maskImage(mask, extent: extent)
-        guard let image = alphaKernel?.apply(extent: extent, arguments: [scalar]),
-              let bitmap = context.createCGImage(image, from: extent) else { throw EditRenderError.unavailable }
+        let image = try PipelineTrace.measure(.maskOverlayGraph) {
+            let scalar = try LocalAdjustmentRenderer.maskImage(mask, extent: extent, cache: maskCache)
+            guard let image = alphaKernel?.apply(extent: extent, arguments: [scalar]) else { throw EditRenderError.unavailable }
+            return image
+        }
+        let bitmap = try PipelineTrace.measure(.maskOverlayImage) {
+            guard let bitmap = context.createCGImage(image, from: extent) else { throw EditRenderError.unavailable }
+            return bitmap
+        }
+        try Task.checkCancellation()
         return bitmap
     }
 }

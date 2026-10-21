@@ -172,8 +172,10 @@ private struct AsyncPhotoView: View {
                     settings: identity.settings, priority: priority, maximumOutputPixelSize: request.pixelSize)
                 try Task.checkCancellation()
                 guard renderIdentity == identity else { return }
-                displayed = Displayed(identity: identity, image: NSImage(cgImage: bitmap.image,
-                                      size: NSSize(width: bitmap.image.width, height: bitmap.image.height)))
+                PipelineTrace.measure(.uiHandoff) {
+                    displayed = Displayed(identity: identity, image: NSImage(cgImage: bitmap.image,
+                                          size: NSSize(width: bitmap.image.width, height: bitmap.image.height)))
+                }
                 if priority == .selected, showsFailureDescription { previewSink?(request, identity.settings, bitmap, sourceBitmap) }
             } catch is CancellationError {
                 // A newer parameter value, photo or source resolution supersedes this result.

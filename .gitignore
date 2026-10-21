@@ -9,8 +9,18 @@ __pycache__/
 # Local, user-supplied RAW validation image; never distribute with the sources.
 /IMG_8362.CR3
 /IMG_8724.CR3
+/IMG_8477.CR3
 # Local test images; never commit or push these user-supplied resources to GitHub.
 /Fixtures/LocalTestImages/
 
-# Historical reports were removed; keep newly generated local reports out of Git.
-/reports/
+# Keep local reports private; only synthetic/content-free performance metrics
+# are review artifacts. Never put source images or image metadata here.
+/reports/*
+!/reports/performance/
+/reports/performance/*
+!/reports/performance/*.json
+!/reports/performance/*.jsonl
+!/reports/performance/*.jsonl.gz
+!/reports/performance/*.csv
+!/reports/performance/*.txt
+!/reports/performance/*.md

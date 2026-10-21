@@ -96,6 +96,8 @@ actor ImagePreviewPipeline {
     }
 
     private struct Job {
+        let queueSpan: PipelineTrace.Span
+        let traceObserver: PipelineTrace.Observer?
         let request: PreviewRequest
         var priority: PreviewPriority
         var waiters: [UUID: CheckedContinuation<PreviewBitmap, Error>]
@@ -134,6 +136,8 @@ actor ImagePreviewPipeline {
     }
 
     func image(for request: PreviewRequest, priority: PreviewPriority = .thumbnail) async throws -> PreviewBitmap {
+        let requestSpan = PipelineTrace.begin(.previewRequest)
+        defer { requestSpan.end() }
         try Task.checkCancellation()
         if case .original = request.source, let bitmap = cachedImage(for: request) { return bitmap }
 
@@ -189,7 +193,7 @@ actor ImagePreviewPipeline {
             waiterJobs[waiterID] = jobID
         } else {
             let jobID = UUID()
-            jobs[jobID] = Job(request: request, priority: priority, waiters: [waiterID: continuation])
+            jobs[jobID] = Job(queueSpan: PipelineTrace.begin(.decodeQueue), traceObserver: PipelineTrace.observer, request: request, priority: priority, waiters: [waiterID: continuation])
             currentJob[request] = jobID
             waiterJobs[waiterID] = jobID
             pending.append(jobID)
@@ -207,6 +211,7 @@ actor ImagePreviewPipeline {
                 jobs[jobID] = job
                 task.cancel()
             } else {
+                job.queueSpan.end()
                 jobs.removeValue(forKey: jobID)
                 pending.removeAll { $0 == jobID }
             }
@@ -224,6 +229,8 @@ actor ImagePreviewPipeline {
             guard let index = selectedIndex ?? (runningThumbnails < max(1, concurrencyLimit - 1) ? 0 : nil) else { break }
             let jobID = pending.remove(at: index)
             guard var job = jobs[jobID] else { continue }
+            job.queueSpan.end()
+            let traceObserver = job.traceObserver
             let request = job.request
             let diskCache = self.diskCache
             let decoder = self.decoder
@@ -232,72 +239,74 @@ actor ImagePreviewPipeline {
             job.startedAsThumbnail = job.priority == .thumbnail
             if job.startedAsThumbnail { runningThumbnails += 1 }
             job.task = Task.detached(priority: job.priority == .selected ? .userInitiated : .utility) { [weak self] in
-                var shouldStore = false
-                var cachedAs = request
-                let result: Result<PreviewBitmap, Error>
-                do {
-                    try Task.checkCancellation()
-                    var persisted: PreviewBitmap?
-                    if let diskCache, case .original = request.source {
-                        // A previous session may have cached only a larger grid
-                        // or loupe rendition. Reuse it before opening the RAW.
-                        let sizes = [request.pixelSize] + [256, 512, 1_024, 1_536, 2_400, 4_096].filter { $0 > request.pixelSize }
-                        for size in sizes {
-                            try Task.checkCancellation()
-                            let candidate = request.resized(to: size)
-                            if let bitmap = await diskCache.image(for: candidate) {
-                                persisted = bitmap
-                                cachedAs = candidate
-                                break
+                await PipelineTrace.$observer.withValue(traceObserver) {
+                    var shouldStore = false
+                    var cachedAs = request
+                    let result: Result<PreviewBitmap, Error>
+                    do {
+                        try Task.checkCancellation()
+                        var persisted: PreviewBitmap?
+                        if let diskCache, case .original = request.source {
+                            // A previous session may have cached only a larger grid
+                            // or loupe rendition. Reuse it before opening the RAW.
+                            let sizes = [request.pixelSize] + [256, 512, 1_024, 1_536, 2_400, 4_096].filter { $0 > request.pixelSize }
+                            for size in sizes {
+                                try Task.checkCancellation()
+                                let candidate = request.resized(to: size)
+                                if let bitmap = await diskCache.image(for: candidate) {
+                                    persisted = bitmap
+                                    cachedAs = candidate
+                                    break
+                                }
                             }
                         }
-                    }
-                    if let bitmap = persisted {
-                        try Task.checkCancellation()
-                        result = .success(bitmap)
-                    } else {
-                        try Task.checkCancellation()
-                        let bitmap: PreviewBitmap
-                        if case .artifact(let fingerprint) = request.source {
-                            let budget = try ArtifactPreviewBudget(format: fingerprint.raster.format, pixelSize: request.pixelSize)
-                            let retire: @Sendable () async -> Void = { [weak self] in
-                                await self?.retireArtifactCaches(for: request)
-                                await AdjustedPreviewPipeline.shared.retireArtifactCaches()
-                            }
-                            if budget.retiresOtherCaches { await retire() }
-                            let opened = try await ArtifactPreviewAdmission.perform(retireCaches: retire) {
-                                try await ArtifactPreviewAccess.shared.open(fingerprint)
-                            }
-                            if let cached = await self?.cachedImage(for: request) { bitmap = cached }
-                            else {
-                                let lease = try await ArtifactPreviewAdmission.perform(retireCaches: retire) {
-                                    try await opened.resources.acquire(kind: .codec, bytes: budget.peakBytes,
-                                        priority: .interactive, retaining: [])
+                        if let bitmap = persisted {
+                            try Task.checkCancellation()
+                            result = .success(bitmap)
+                        } else {
+                            try Task.checkCancellation()
+                            let bitmap: PreviewBitmap
+                            if case .artifact(let fingerprint) = request.source {
+                                let budget = try ArtifactPreviewBudget(format: fingerprint.raster.format, pixelSize: request.pixelSize)
+                                let retire: @Sendable () async -> Void = { [weak self] in
+                                    await self?.retireArtifactCaches(for: request)
+                                    await AdjustedPreviewPipeline.shared.retireArtifactCaches()
                                 }
-                                let decoded = try PreviewDecoder.decodeArtifact(opened.handle, expected: fingerprint, pixelSize: request.pixelSize)
-                                try budget.validate(decoded)
-                                let ownership = try await opened.resources.retain(bytes: Int64(decoded.byteCost) * 2, from: lease)
-                                bitmap = try decoded.retainingArtifactMemory(ownership, owner: opened.resources)
-                                withExtendedLifetime(lease) {}
-                            }
-                        } else if let asyncDecoder {
-                            // Suspending test doubles retain this same worker
-                            // until return, including after caller cancellation.
-                            bitmap = try await asyncDecoder(request)
-                        } else { bitmap = try decoder(request) }
-                        try Task.checkCancellation()
-                        if case .original = request.source { shouldStore = true }
-                        result = .success(bitmap)
+                                if budget.retiresOtherCaches { await retire() }
+                                let opened = try await ArtifactPreviewAdmission.perform(retireCaches: retire) {
+                                    try await ArtifactPreviewAccess.shared.open(fingerprint)
+                                }
+                                if let cached = await self?.cachedImage(for: request) { bitmap = cached }
+                                else {
+                                    let lease = try await ArtifactPreviewAdmission.perform(retireCaches: retire) {
+                                        try await opened.resources.acquire(kind: .codec, bytes: budget.peakBytes,
+                                            priority: .interactive, retaining: [])
+                                    }
+                                    let decoded = try PreviewDecoder.decodeArtifact(opened.handle, expected: fingerprint, pixelSize: request.pixelSize)
+                                    try budget.validate(decoded)
+                                    let ownership = try await opened.resources.retain(bytes: Int64(decoded.byteCost) * 2, from: lease)
+                                    bitmap = try decoded.retainingArtifactMemory(ownership, owner: opened.resources)
+                                    withExtendedLifetime(lease) {}
+                                }
+                            } else if let asyncDecoder {
+                                // Suspending test doubles retain this same worker
+                                // until return, including after caller cancellation.
+                                bitmap = try await asyncDecoder(request)
+                            } else { bitmap = try decoder(request) }
+                            try Task.checkCancellation()
+                            if case .original = request.source { shouldStore = true }
+                            result = .success(bitmap)
+                        }
+                    } catch {
+                        result = .failure(error)
                     }
-                } catch {
-                    result = .failure(error)
+                    let wasNeeded = await self?.complete(jobID, result: result, cachedAs: cachedAs) ?? false
+                    // Display immediately; compression and disk I/O follow off-main.
+                    if shouldStore, wasNeeded, case let .success(bitmap) = result {
+                        await diskCache?.store(bitmap, for: request)
+                    }
+                    await self?.finish(jobID)
                 }
-                let wasNeeded = await self?.complete(jobID, result: result, cachedAs: cachedAs) ?? false
-                // Display immediately; compression and disk I/O follow off-main.
-                if shouldStore, wasNeeded, case let .success(bitmap) = result {
-                    await diskCache?.store(bitmap, for: request)
-                }
-                await self?.finish(jobID)
             }
             jobs[jobID] = job
         }

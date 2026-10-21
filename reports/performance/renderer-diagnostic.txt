@@ -1,0 +1,131 @@
+Synthetic complex editing benchmark: 2400x1600, backend=default, optimized binary, generated sRGB input; no RAW/ImageIO or disk I/O.
+First call includes renderer initialization; warm calls use the same source with unique edits, not cached edited output. OS/GPU caches are not cleared.
+End-to-end timings include a synchronous full-size CGContext draw, forcing pixel materialization. Peak RSS covers the entire process.
+CI_PRINT_TREE options flags:
+  1  initial graph (set)
+  2  optimized graph
+  4  program graph
+ dump-inputs
+ dump-intermediates
+ dump-raw-intermediates
+ dump-bmtl-intermediates
+ dump-outputs
+ dump-timing
+ context==<name|number>
+ context!=<name|number>
+ frame-<number>
+ <dot|pdf|png>
+
+initial graph get_bitmap 0x1326c8000 2400x1600 (metal context 1:Glowroom interactive frame 1) format=RGBA8 workingspace=ExtendedLinearSRGB roi=[0 0 2400 1600] =
+  convert_RGBA8_to_RGBA8 roi=[0 0 2400 1600] extent=[0 0 2400 1600] recipe=5197279C
+    clamp_to_alpha roi=[0 0 2400 1600] extent=[0 0 2400 1600] recipe=09E15129
+      colormatch workingspace_to_sRGB roi=[0 0 2400 1600] extent=[0 0 2400 1600] recipe=7B6F0BF8
+        affine [1 0 0 -1 0 1600] roi=[0 0 2400 1600] extent=[0 0 2400 1600] recipe=FB6AE00E
+          colorkernel localPresence( original, fineBlur, broadBlur, texture=0.25, clarity=0.15, hdr=0) roi=[0 0 2400 1600] extent=[0 0 2400 1600] recipe=EE6A1DF4
+          ├─colorkernel toneAndColor( original, exposure=0.25, contrast=0, highlights=0, shadows=0, whites=0, blacks=0, dehaze=0, vibrance=0, saturation=0, hdr=0) roi=[-1 -1 2402 1602] extent=[0 0 2400 1600] recipe=62F43B65 <2>
+          │   colorkernel automaticTone( original, c0=[-7.10785e-05 -2.64183e-05 0.0605902 0], c1=[0.000343013 -0.00109561 0.191026 0.0604927], c2=[0.000631289 -0.00121888 0.249821 0.250766], c3=[0.00047699 -0.000433277 0.249277 0.5], c4=[0.0003042 5.85684e-05 0.18988 0.749321], c5=[-6.29047e-05 0.000212186 0.0602872 0.939564]) roi=[-1 -1 2402 1602] extent=[0 0 2400 1600] recipe=50F72131
+          │     colorkernel separateNoise( original, lumaBlur, chromaBlur, lumaAmount=0, chromaAmount=0.2, hdr=0) roi=[-1 -1 2402 1602] extent=[0 0 2400 1600] recipe=AF575EEA
+          │     ├─affine [1 0 0 -1 0 1600] roi=[-1 -1 2402 1602] extent=[0 0 2400 1600] recipe=54D1B663 <0>
+          │     │   colormatch sRGB_to_workingspace roi=[-1 -1 2402 1602] extent=[0 0 2400 1600] recipe=59BAF9E1
+          │     │     CGImageRef 0x1021a1b30(1) RGBA8 2400x1600 roi=[-1 -1 2402 1602] extent=[0 0 2400 1600] recipe=15F37DE6
+          │     ├─<0>
+          │     ╰─crop [0 0 2400 1600] roi=[-1 -1 2402 1602] extent=[0 0 2400 1600] recipe=F3E6FC7D
+          │         switch roi=[0 0 2400 1600] extent=[infinite] recipe=7AA593F9
+          │         ├─kernel _cubicUpsample10( src, scale=[0.25 0.25]) roi=[0 0 2400 1600] extent=[infinite] recipe=DB5C4C70
+          │         │   kernel _gaussianBlur3( src, offset0=[0 0.107813 0 0]) roi=[-2 -2 604 404] extent=[infinite] recipe=DEB2660B
+          │         │     kernel _gaussianBlur3( src, offset0=[0.107813 0 0 0]) roi=[-2 -3 604 406] extent=[infinite] recipe=07350677
+          │         │       kernel _gaussianReduce4( src, scale=[1 4 0 1]) roi=[-3 -3 606 406] extent=[infinite] recipe=5DF9797B
+          │         │         kernel _gaussianReduce4( src, scale=[4 1 1 0]) roi=[-3 -19 606 1638] extent=[infinite] recipe=601B37D6
+          │         │           clampRect [0 0 2400 1600] roi=[-1 -1 2402 1602] extent=[infinite][0 0 2400 1600] recipe=A4213E19 <1>
+          │         │             <0>
+          │         ╰─affine [1 0 0 -1 0 0] roi=[0 0 2400 1600] extent=[infinite] recipe=37419C0F
+          │             processor CIBlurProcessor-4.200 argsDigest=6E3B5CE7 canReduceChannels supportsCompressed roi=[0 -1600 2400 1600] extent=[infinite] recipe=40A91C90
+          │               affine [1 0 0 -1 0 1600] roi=[-13 -13 2426 1626] extent=[infinite][0 0 2400 1600] recipe=98E0F8F9
+          │                 <1>
+          ├─crop [0 0 2400 1600] roi=[0 0 2400 1600] extent=[0 0 2400 1600] recipe=01DBFCE5
+          │   switch roi=[0 0 2400 1600] extent=[infinite] recipe=F1F5B94A
+          │   ├─kernel _cubicUpsample10( src, scale=[0.5 0.5]) roi=[0 0 2400 1600] extent=[infinite] recipe=73C3B71E
+          │   │   kernel _gaussianBlur9( image, delta=[0 1], w=[0.257952 0.209293 0.111789 0.0393078]) roi=[-2 -2 1204 804] extent=[infinite] recipe=E61D0546
+          │   │     kernel _gaussianBlur9( image, delta=[1 0], w=[0.257952 0.209293 0.111789 0.0393078]) roi=[-2 -6 1204 812] extent=[infinite] recipe=76A0FC7C
+          │   │       kernel _gaussianReduce2( src, scale=[1 2 0 1]) roi=[-6 -6 1212 812] extent=[infinite] recipe=A5C2E3C6
+          │   │         kernel _gaussianReduce2( src, scale=[2 1 1 0]) roi=[-6 -16 1212 1632] extent=[infinite] recipe=3091229A
+          │   │           clampRect [0 0 2400 1600] roi=[-1 -1 2402 1602] extent=[infinite][0 0 2400 1600] recipe=9AC5682D <3>
+          │   │             <2>
+          │   ╰─affine [1 0 0 -1 0 0] roi=[0 0 2400 1600] extent=[infinite] recipe=A24EC565
+          │       processor CIBlurProcessor-3.750 argsDigest=69430B28 canReduceChannels supportsCompressed roi=[0 -1600 2400 1600] extent=[infinite] recipe=1C001BFA
+          │         affine [1 0 0 -1 0 1600] roi=[-81 -81 2562 1762] extent=[infinite][0 0 2400 1600] recipe=3DE7218E
+          │           <3>
+          ╰─crop [0 0 2400 1600] roi=[0 0 2400 1600] extent=[0 0 2400 1600] recipe=821819D8
+              switch roi=[0 0 2400 1600] extent=[infinite] recipe=36365DDF
+              ├─kernel _cubicUpsample10( src, scale=[0.0625 0.0625]) roi=[0 0 2400 1600] extent=[infinite] recipe=45F728D3
+              │   kernel _gaussianBlur9( image, delta=[0 1], w=[0.294855 0.224383 0.0988863 0.0252374]) roi=[-2 -2 154 104] extent=[infinite] recipe=66719176
+              │     kernel _gaussianBlur9( image, delta=[1 0], w=[0.294855 0.224383 0.0988863 0.0252374]) roi=[-2 -6 154 112] extent=[infinite] recipe=75BD24F8
+              │       kernel _gaussianReduce4( src, scale=[1 4 0 1]) roi=[-6 -6 162 112] extent=[infinite] recipe=B19C91A8
+              │         kernel _gaussianReduce4( src, scale=[4 1 1 0]) roi=[-6 -31 162 462] extent=[infinite] recipe=C9068C44
+              │           kernel _gaussianReduce4( src, scale=[1 4 0 1]) roi=[-31 -31 662 462] extent=[infinite] recipe=8A861AC5
+              │             kernel _gaussianReduce4( src, scale=[4 1 1 0]) roi=[-31 -131 662 1862] extent=[infinite] recipe=F5D32F37
+              │               clampRect [0 0 2400 1600] roi=[-1 -1 2402 1602] extent=[infinite][0 0 2400 1600] recipe=9AC5682D <4>
+              │                 <2>
+              ╰─affine [1 0 0 -1 0 0] roi=[0 0 2400 1600] extent=[infinite] recipe=63FF1665
+                  processor CIBlurProcessor-27.000 argsDigest=2E8DDBF7 canReduceChannels supportsCompressed roi=[0 -1600 2400 1600] extent=[infinite] recipe=1CB762E4
+                    affine [1 0 0 -1 0 1600] roi=[-81 -81 2562 1762] extent=[infinite][0 0 2400 1600] recipe=3DE7218E
+                      <4>
+
+sample=0, exposure=0.25, render_ms=91.150, materialize_ms=1.338, total_ms=92.487, checksum=12686863347738941208
+initial graph get_bitmap 0x1326c8000 2400x1600 (metal context 1:Glowroom interactive frame 2) format=RGBA8 workingspace=ExtendedLinearSRGB roi=[0 0 2400 1600] =
+  convert_RGBA8_to_RGBA8 roi=[0 0 2400 1600] extent=[0 0 2400 1600] recipe=03D7FCB6
+    clamp_to_alpha roi=[0 0 2400 1600] extent=[0 0 2400 1600] recipe=B3452959
+      colormatch workingspace_to_sRGB roi=[0 0 2400 1600] extent=[0 0 2400 1600] recipe=D3D32542
+        affine [1 0 0 -1 0 1600] roi=[0 0 2400 1600] extent=[0 0 2400 1600] recipe=B9CCA23C
+          colorkernel localPresence( original, fineBlur, broadBlur, texture=0.25, clarity=0.15, hdr=0) roi=[0 0 2400 1600] extent=[0 0 2400 1600] recipe=74C0C07E
+          ├─colorkernel toneAndColor( original, exposure=0.285, contrast=0, highlights=0, shadows=0, whites=0, blacks=0, dehaze=0, vibrance=0, saturation=0, hdr=0) roi=[-1 -1 2402 1602] extent=[0 0 2400 1600] recipe=58A519D9 <2>
+          │   colorkernel automaticTone( original, c0=[-7.10785e-05 -2.64183e-05 0.0605902 0], c1=[0.000343013 -0.00109561 0.191026 0.0604927], c2=[0.000631289 -0.00121888 0.249821 0.250766], c3=[0.00047699 -0.000433277 0.249277 0.5], c4=[0.0003042 5.85684e-05 0.18988 0.749321], c5=[-6.29047e-05 0.000212186 0.0602872 0.939564]) roi=[-1 -1 2402 1602] extent=[0 0 2400 1600] recipe=50F72131
+          │     colorkernel separateNoise( original, lumaBlur, chromaBlur, lumaAmount=0, chromaAmount=0.2, hdr=0) roi=[-1 -1 2402 1602] extent=[0 0 2400 1600] recipe=AF575EEA
+          │     ├─affine [1 0 0 -1 0 1600] roi=[-1 -1 2402 1602] extent=[0 0 2400 1600] recipe=54D1B663 <0>
+          │     │   colormatch sRGB_to_workingspace roi=[-1 -1 2402 1602] extent=[0 0 2400 1600] recipe=59BAF9E1
+          │     │     CGImageRef 0x1021a1b30(1) RGBA8 2400x1600 roi=[-1 -1 2402 1602] extent=[0 0 2400 1600] recipe=15F37DE6
+          │     ├─<0>
+          │     ╰─crop [0 0 2400 1600] roi=[-1 -1 2402 1602] extent=[0 0 2400 1600] recipe=F3E6FC7D
+          │         switch roi=[0 0 2400 1600] extent=[infinite] recipe=7AA593F9
+          │         ├─kernel _cubicUpsample10( src, scale=[0.25 0.25]) roi=[0 0 2400 1600] extent=[infinite] recipe=DB5C4C70
+          │         │   kernel _gaussianBlur3( src, offset0=[0 0.107813 0 0]) roi=[-2 -2 604 404] extent=[infinite] recipe=DEB2660B
+          │         │     kernel _gaussianBlur3( src, offset0=[0.107813 0 0 0]) roi=[-2 -3 604 406] extent=[infinite] recipe=07350677
+          │         │       kernel _gaussianReduce4( src, scale=[1 4 0 1]) roi=[-3 -3 606 406] extent=[infinite] recipe=5DF9797B
+          │         │         kernel _gaussianReduce4( src, scale=[4 1 1 0]) roi=[-3 -19 606 1638] extent=[infinite] recipe=601B37D6
+          │         │           clampRect [0 0 2400 1600] roi=[-1 -1 2402 1602] extent=[infinite][0 0 2400 1600] recipe=A4213E19 <1>
+          │         │             <0>
+          │         ╰─affine [1 0 0 -1 0 0] roi=[0 0 2400 1600] extent=[infinite] recipe=37419C0F
+          │             processor CIBlurProcessor-4.200 argsDigest=6E3B5CE7 canReduceChannels supportsCompressed roi=[0 -1600 2400 1600] extent=[infinite] recipe=40A91C90
+          │               affine [1 0 0 -1 0 1600] roi=[-13 -13 2426 1626] extent=[infinite][0 0 2400 1600] recipe=98E0F8F9
+          │                 <1>
+          ├─crop [0 0 2400 1600] roi=[0 0 2400 1600] extent=[0 0 2400 1600] recipe=13D150B5
+          │   switch roi=[0 0 2400 1600] extent=[infinite] recipe=387EFD11
+          │   ├─kernel _cubicUpsample10( src, scale=[0.5 0.5]) roi=[0 0 2400 1600] extent=[infinite] recipe=30A6573B
+          │   │   kernel _gaussianBlur9( image, delta=[0 1], w=[0.257952 0.209293 0.111789 0.0393078]) roi=[-2 -2 1204 804] extent=[infinite] recipe=5B093867
+          │   │     kernel _gaussianBlur9( image, delta=[1 0], w=[0.257952 0.209293 0.111789 0.0393078]) roi=[-2 -6 1204 812] extent=[infinite] recipe=93A29033
+          │   │       kernel _gaussianReduce2( src, scale=[1 2 0 1]) roi=[-6 -6 1212 812] extent=[infinite] recipe=B55D741E
+          │   │         kernel _gaussianReduce2( src, scale=[2 1 1 0]) roi=[-6 -16 1212 1632] extent=[infinite] recipe=E8B19044
+          │   │           clampRect [0 0 2400 1600] roi=[-1 -1 2402 1602] extent=[infinite][0 0 2400 1600] recipe=9C22251B <3>
+          │   │             <2>
+          │   ╰─affine [1 0 0 -1 0 0] roi=[0 0 2400 1600] extent=[infinite] recipe=E82E68CE
+          │       processor CIBlurProcessor-3.750 argsDigest=69430B28 canReduceChannels supportsCompressed roi=[0 -1600 2400 1600] extent=[infinite] recipe=9FC38A07
+          │         affine [1 0 0 -1 0 1600] roi=[-81 -81 2562 1762] extent=[infinite][0 0 2400 1600] recipe=6EE752A2
+          │           <3>
+          ╰─crop [0 0 2400 1600] roi=[0 0 2400 1600] extent=[0 0 2400 1600] recipe=EAD4E93F
+              switch roi=[0 0 2400 1600] extent=[infinite] recipe=9268BC7D
+              ├─kernel _cubicUpsample10( src, scale=[0.0625 0.0625]) roi=[0 0 2400 1600] extent=[infinite] recipe=C651C518
+              │   kernel _gaussianBlur9( image, delta=[0 1], w=[0.294855 0.224383 0.0988863 0.0252374]) roi=[-2 -2 154 104] extent=[infinite] recipe=6A35A4B8
+              │     kernel _gaussianBlur9( image, delta=[1 0], w=[0.294855 0.224383 0.0988863 0.0252374]) roi=[-2 -6 154 112] extent=[infinite] recipe=E28CDF49
+              │       kernel _gaussianReduce4( src, scale=[1 4 0 1]) roi=[-6 -6 162 112] extent=[infinite] recipe=9F649EA8
+              │         kernel _gaussianReduce4( src, scale=[4 1 1 0]) roi=[-6 -31 162 462] extent=[infinite] recipe=B503856D
+              │           kernel _gaussianReduce4( src, scale=[1 4 0 1]) roi=[-31 -31 662 462] extent=[infinite] recipe=6C9BCE52
+              │             kernel _gaussianReduce4( src, scale=[4 1 1 0]) roi=[-31 -131 662 1862] extent=[infinite] recipe=D30421E6
+              │               clampRect [0 0 2400 1600] roi=[-1 -1 2402 1602] extent=[infinite][0 0 2400 1600] recipe=9C22251B <4>
+              │                 <2>
+              ╰─affine [1 0 0 -1 0 0] roi=[0 0 2400 1600] extent=[infinite] recipe=BAB128FA
+                  processor CIBlurProcessor-27.000 argsDigest=2E8DDBF7 canReduceChannels supportsCompressed roi=[0 -1600 2400 1600] extent=[infinite] recipe=40B6FB60
+                    affine [1 0 0 -1 0 1600] roi=[-81 -81 2562 1762] extent=[infinite][0 0 2400 1600] recipe=6EE752A2
+                      <4>
+
+sample=1, exposure=0.28500000000000003, render_ms=9.098, materialize_ms=0.611, total_ms=9.709, checksum=3589496049369834412
+RESULT scenario=complex, size=2400x1600, warm_samples=1, warm_median_ms=9.709, warm_render_median_ms=9.098, warm_materialize_median_ms=0.611, warm_min_ms=9.709, warm_max_ms=9.709, warm_fps=102.999, peak_rss_bytes=112590848, checksum=1761757885166139748

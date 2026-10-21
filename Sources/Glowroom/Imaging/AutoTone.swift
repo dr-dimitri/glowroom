@@ -58,6 +58,8 @@ struct AutoToneAnalysis: Sendable {
     let offsets: [Double]
 
     static func analyze(_ image: CGImage) throws -> Self {
+        let analysisSpan = PipelineTrace.begin(.analysis)
+        defer { analysisSpan.end() }
         try Task.checkCancellation()
         // The workload is bounded independently of RAW dimensions. The same
         // sampling scale is used for the small and large progressive previews.

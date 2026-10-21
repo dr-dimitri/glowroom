@@ -1,0 +1,180 @@
+Synthetic burst editing benchmark: 2400x1600, backend=default, optimized binary, generated sRGB input; no RAW/ImageIO or disk I/O.
+First call includes renderer initialization; warm calls use the same source with unique edits, not cached edited output. OS/GPU caches are not cleared.
+End-to-end timings include a synchronous full-size CGContext draw, forcing pixel materialization. Peak RSS covers the entire process.
+Starting cold-output-cache: 24 slider events at 10 ms, 45 ms UI debounce
+RESULT scenario=burst, cache=cold-output-cache, size=2400x1600, final_latency_ms=181.488, total_ms=451.342, new_decodes=0, renders=1, total_decodes=1, peak_rss_bytes=112738304, checksum=14843232827349678576
+Starting warm-output-cache: 24 slider events at 10 ms, 45 ms UI debounce
+RESULT scenario=burst, cache=warm-output-cache, size=2400x1600, final_latency_ms=51.445, total_ms=324.480, new_decodes=0, renders=0, total_decodes=1, peak_rss_bytes=112738304, checksum=14843232827349678576
+Starting warm-renderer-new-settings: 24 slider events at 10 ms, 45 ms UI debounce
+RESULT scenario=burst, cache=warm-renderer-new-settings, size=2400x1600, final_latency_ms=63.520, total_ms=336.215, new_decodes=0, renders=1, total_decodes=1, peak_rss_bytes=128335872, checksum=6935937898188894869
+Synthetic burst editing benchmark: 2400x1600, backend=default, optimized binary, generated sRGB input; no RAW/ImageIO or disk I/O.
+First call includes renderer initialization; warm calls use the same source with unique edits, not cached edited output. OS/GPU caches are not cleared.
+End-to-end timings include a synchronous full-size CGContext draw, forcing pixel materialization. Peak RSS covers the entire process.
+Starting cold-output-cache: 24 slider events at 10 ms, 45 ms UI debounce
+RESULT scenario=burst, cache=cold-output-cache, size=2400x1600, final_latency_ms=167.432, total_ms=439.020, new_decodes=0, renders=1, total_decodes=1, peak_rss_bytes=112754688, checksum=14843232827349678576
+Starting warm-output-cache: 24 slider events at 10 ms, 45 ms UI debounce
+RESULT scenario=burst, cache=warm-output-cache, size=2400x1600, final_latency_ms=51.945, total_ms=324.652, new_decodes=0, renders=0, total_decodes=1, peak_rss_bytes=112754688, checksum=14843232827349678576
+Starting warm-renderer-new-settings: 24 slider events at 10 ms, 45 ms UI debounce
+RESULT scenario=burst, cache=warm-renderer-new-settings, size=2400x1600, final_latency_ms=62.394, total_ms=332.160, new_decodes=0, renders=1, total_decodes=1, peak_rss_bytes=128237568, checksum=6935937898188894869
+Synthetic burst editing benchmark: 2400x1600, backend=default, optimized binary, generated sRGB input; no RAW/ImageIO or disk I/O.
+First call includes renderer initialization; warm calls use the same source with unique edits, not cached edited output. OS/GPU caches are not cleared.
+End-to-end timings include a synchronous full-size CGContext draw, forcing pixel materialization. Peak RSS covers the entire process.
+Starting cold-output-cache: 24 slider events at 10 ms, 45 ms UI debounce
+RESULT scenario=burst, cache=cold-output-cache, size=2400x1600, final_latency_ms=167.726, total_ms=438.537, new_decodes=0, renders=1, total_decodes=1, peak_rss_bytes=112705536, checksum=14843232827349678576
+Starting warm-output-cache: 24 slider events at 10 ms, 45 ms UI debounce
+RESULT scenario=burst, cache=warm-output-cache, size=2400x1600, final_latency_ms=51.862, total_ms=323.755, new_decodes=0, renders=0, total_decodes=1, peak_rss_bytes=112705536, checksum=14843232827349678576
+Starting warm-renderer-new-settings: 24 slider events at 10 ms, 45 ms UI debounce
+RESULT scenario=burst, cache=warm-renderer-new-settings, size=2400x1600, final_latency_ms=64.283, total_ms=334.108, new_decodes=0, renders=1, total_decodes=1, peak_rss_bytes=128155648, checksum=6935937898188894869
+Synthetic burst editing benchmark: 2400x1600, backend=default, optimized binary, generated sRGB input; no RAW/ImageIO or disk I/O.
+First call includes renderer initialization; warm calls use the same source with unique edits, not cached edited output. OS/GPU caches are not cleared.
+End-to-end timings include a synchronous full-size CGContext draw, forcing pixel materialization. Peak RSS covers the entire process.
+Starting cold-output-cache: 24 slider events at 10 ms, 45 ms UI debounce
+RESULT scenario=burst, cache=cold-output-cache, size=2400x1600, final_latency_ms=175.857, total_ms=447.416, new_decodes=0, renders=1, total_decodes=1, peak_rss_bytes=112689152, checksum=14843232827349678576
+Starting warm-output-cache: 24 slider events at 10 ms, 45 ms UI debounce
+RESULT scenario=burst, cache=warm-output-cache, size=2400x1600, final_latency_ms=50.856, total_ms=320.230, new_decodes=0, renders=0, total_decodes=1, peak_rss_bytes=112689152, checksum=14843232827349678576
+Starting warm-renderer-new-settings: 24 slider events at 10 ms, 45 ms UI debounce
+RESULT scenario=burst, cache=warm-renderer-new-settings, size=2400x1600, final_latency_ms=63.924, total_ms=332.718, new_decodes=0, renders=1, total_decodes=1, peak_rss_bytes=128237568, checksum=6935937898188894869
+Synthetic burst editing benchmark: 2400x1600, backend=default, optimized binary, generated sRGB input; no RAW/ImageIO or disk I/O.
+First call includes renderer initialization; warm calls use the same source with unique edits, not cached edited output. OS/GPU caches are not cleared.
+End-to-end timings include a synchronous full-size CGContext draw, forcing pixel materialization. Peak RSS covers the entire process.
+Starting cold-output-cache: 24 slider events at 10 ms, 45 ms UI debounce
+RESULT scenario=burst, cache=cold-output-cache, size=2400x1600, final_latency_ms=178.105, total_ms=446.137, new_decodes=0, renders=1, total_decodes=1, peak_rss_bytes=112689152, checksum=14843232827349678576
+Starting warm-output-cache: 24 slider events at 10 ms, 45 ms UI debounce
+RESULT scenario=burst, cache=warm-output-cache, size=2400x1600, final_latency_ms=49.064, total_ms=320.321, new_decodes=0, renders=0, total_decodes=1, peak_rss_bytes=112705536, checksum=14843232827349678576
+Starting warm-renderer-new-settings: 24 slider events at 10 ms, 45 ms UI debounce
+RESULT scenario=burst, cache=warm-renderer-new-settings, size=2400x1600, final_latency_ms=63.732, total_ms=334.635, new_decodes=0, renders=1, total_decodes=1, peak_rss_bytes=128122880, checksum=6935937898188894869
+Synthetic burst editing benchmark: 2400x1600, backend=default, optimized binary, generated sRGB input; no RAW/ImageIO or disk I/O.
+First call includes renderer initialization; warm calls use the same source with unique edits, not cached edited output. OS/GPU caches are not cleared.
+End-to-end timings include a synchronous full-size CGContext draw, forcing pixel materialization. Peak RSS covers the entire process.
+Starting cold-output-cache: 24 slider events at 10 ms, 45 ms UI debounce
+RESULT scenario=burst, cache=cold-output-cache, size=2400x1600, final_latency_ms=170.578, total_ms=440.221, new_decodes=0, renders=1, total_decodes=1, peak_rss_bytes=112771072, checksum=14843232827349678576
+Starting warm-output-cache: 24 slider events at 10 ms, 45 ms UI debounce
+RESULT scenario=burst, cache=warm-output-cache, size=2400x1600, final_latency_ms=49.525, total_ms=318.862, new_decodes=0, renders=0, total_decodes=1, peak_rss_bytes=112787456, checksum=14843232827349678576
+Starting warm-renderer-new-settings: 24 slider events at 10 ms, 45 ms UI debounce
+RESULT scenario=burst, cache=warm-renderer-new-settings, size=2400x1600, final_latency_ms=63.338, total_ms=331.378, new_decodes=0, renders=1, total_decodes=1, peak_rss_bytes=128172032, checksum=6935937898188894869
+Synthetic burst editing benchmark: 2400x1600, backend=default, optimized binary, generated sRGB input; no RAW/ImageIO or disk I/O.
+First call includes renderer initialization; warm calls use the same source with unique edits, not cached edited output. OS/GPU caches are not cleared.
+End-to-end timings include a synchronous full-size CGContext draw, forcing pixel materialization. Peak RSS covers the entire process.
+Starting cold-output-cache: 24 slider events at 10 ms, 45 ms UI debounce
+RESULT scenario=burst, cache=cold-output-cache, size=2400x1600, final_latency_ms=169.595, total_ms=435.340, new_decodes=0, renders=1, total_decodes=1, peak_rss_bytes=112771072, checksum=14843232827349678576
+Starting warm-output-cache: 24 slider events at 10 ms, 45 ms UI debounce
+RESULT scenario=burst, cache=warm-output-cache, size=2400x1600, final_latency_ms=51.252, total_ms=320.137, new_decodes=0, renders=0, total_decodes=1, peak_rss_bytes=112787456, checksum=14843232827349678576
+Starting warm-renderer-new-settings: 24 slider events at 10 ms, 45 ms UI debounce
+RESULT scenario=burst, cache=warm-renderer-new-settings, size=2400x1600, final_latency_ms=65.102, total_ms=335.515, new_decodes=0, renders=1, total_decodes=1, peak_rss_bytes=128188416, checksum=6935937898188894869
+Synthetic burst editing benchmark: 2400x1600, backend=default, optimized binary, generated sRGB input; no RAW/ImageIO or disk I/O.
+First call includes renderer initialization; warm calls use the same source with unique edits, not cached edited output. OS/GPU caches are not cleared.
+End-to-end timings include a synchronous full-size CGContext draw, forcing pixel materialization. Peak RSS covers the entire process.
+Starting cold-output-cache: 24 slider events at 10 ms, 45 ms UI debounce
+RESULT scenario=burst, cache=cold-output-cache, size=2400x1600, final_latency_ms=165.570, total_ms=436.284, new_decodes=0, renders=1, total_decodes=1, peak_rss_bytes=112623616, checksum=14843232827349678576
+Starting warm-output-cache: 24 slider events at 10 ms, 45 ms UI debounce
+RESULT scenario=burst, cache=warm-output-cache, size=2400x1600, final_latency_ms=50.912, total_ms=322.799, new_decodes=0, renders=0, total_decodes=1, peak_rss_bytes=112640000, checksum=14843232827349678576
+Starting warm-renderer-new-settings: 24 slider events at 10 ms, 45 ms UI debounce
+RESULT scenario=burst, cache=warm-renderer-new-settings, size=2400x1600, final_latency_ms=63.418, total_ms=334.199, new_decodes=0, renders=1, total_decodes=1, peak_rss_bytes=128106496, checksum=6935937898188894869
+Synthetic burst editing benchmark: 2400x1600, backend=default, optimized binary, generated sRGB input; no RAW/ImageIO or disk I/O.
+First call includes renderer initialization; warm calls use the same source with unique edits, not cached edited output. OS/GPU caches are not cleared.
+End-to-end timings include a synchronous full-size CGContext draw, forcing pixel materialization. Peak RSS covers the entire process.
+Starting cold-output-cache: 24 slider events at 10 ms, 45 ms UI debounce
+RESULT scenario=burst, cache=cold-output-cache, size=2400x1600, final_latency_ms=165.697, total_ms=433.925, new_decodes=0, renders=1, total_decodes=1, peak_rss_bytes=112787456, checksum=14843232827349678576
+Starting warm-output-cache: 24 slider events at 10 ms, 45 ms UI debounce
+RESULT scenario=burst, cache=warm-output-cache, size=2400x1600, final_latency_ms=49.091, total_ms=319.947, new_decodes=0, renders=0, total_decodes=1, peak_rss_bytes=112787456, checksum=14843232827349678576
+Starting warm-renderer-new-settings: 24 slider events at 10 ms, 45 ms UI debounce
+RESULT scenario=burst, cache=warm-renderer-new-settings, size=2400x1600, final_latency_ms=62.569, total_ms=332.192, new_decodes=0, renders=1, total_decodes=1, peak_rss_bytes=128237568, checksum=6935937898188894869
+Synthetic burst editing benchmark: 2400x1600, backend=default, optimized binary, generated sRGB input; no RAW/ImageIO or disk I/O.
+First call includes renderer initialization; warm calls use the same source with unique edits, not cached edited output. OS/GPU caches are not cleared.
+End-to-end timings include a synchronous full-size CGContext draw, forcing pixel materialization. Peak RSS covers the entire process.
+Starting cold-output-cache: 24 slider events at 10 ms, 45 ms UI debounce
+RESULT scenario=burst, cache=cold-output-cache, size=2400x1600, final_latency_ms=162.692, total_ms=430.830, new_decodes=0, renders=1, total_decodes=1, peak_rss_bytes=112738304, checksum=14843232827349678576
+Starting warm-output-cache: 24 slider events at 10 ms, 45 ms UI debounce
+RESULT scenario=burst, cache=warm-output-cache, size=2400x1600, final_latency_ms=49.378, total_ms=321.362, new_decodes=0, renders=0, total_decodes=1, peak_rss_bytes=112738304, checksum=14843232827349678576
+Starting warm-renderer-new-settings: 24 slider events at 10 ms, 45 ms UI debounce
+RESULT scenario=burst, cache=warm-renderer-new-settings, size=2400x1600, final_latency_ms=64.990, total_ms=334.951, new_decodes=0, renders=1, total_decodes=1, peak_rss_bytes=128221184, checksum=6935937898188894869
+Synthetic burst editing benchmark: 2400x1600, backend=default, optimized binary, generated sRGB input; no RAW/ImageIO or disk I/O.
+First call includes renderer initialization; warm calls use the same source with unique edits, not cached edited output. OS/GPU caches are not cleared.
+End-to-end timings include a synchronous full-size CGContext draw, forcing pixel materialization. Peak RSS covers the entire process.
+Starting cold-output-cache: 24 slider events at 10 ms, 45 ms UI debounce
+RESULT scenario=burst, cache=cold-output-cache, size=2400x1600, final_latency_ms=143.373, total_ms=415.155, new_decodes=0, renders=1, total_decodes=1, peak_rss_bytes=113213440, checksum=14843232827349678576
+Starting warm-output-cache: 24 slider events at 10 ms, 45 ms UI debounce
+RESULT scenario=burst, cache=warm-output-cache, size=2400x1600, final_latency_ms=49.505, total_ms=321.002, new_decodes=0, renders=0, total_decodes=1, peak_rss_bytes=113213440, checksum=14843232827349678576
+Starting warm-renderer-new-settings: 24 slider events at 10 ms, 45 ms UI debounce
+RESULT scenario=burst, cache=warm-renderer-new-settings, size=2400x1600, final_latency_ms=62.574, total_ms=329.444, new_decodes=0, renders=1, total_decodes=1, peak_rss_bytes=128630784, checksum=6935937898188894869
+Synthetic burst editing benchmark: 2400x1600, backend=default, optimized binary, generated sRGB input; no RAW/ImageIO or disk I/O.
+First call includes renderer initialization; warm calls use the same source with unique edits, not cached edited output. OS/GPU caches are not cleared.
+End-to-end timings include a synchronous full-size CGContext draw, forcing pixel materialization. Peak RSS covers the entire process.
+Starting cold-output-cache: 24 slider events at 10 ms, 45 ms UI debounce
+RESULT scenario=burst, cache=cold-output-cache, size=2400x1600, final_latency_ms=165.688, total_ms=435.127, new_decodes=0, renders=1, total_decodes=1, peak_rss_bytes=112607232, checksum=14843232827349678576
+Starting warm-output-cache: 24 slider events at 10 ms, 45 ms UI debounce
+RESULT scenario=burst, cache=warm-output-cache, size=2400x1600, final_latency_ms=51.839, total_ms=317.645, new_decodes=0, renders=0, total_decodes=1, peak_rss_bytes=112623616, checksum=14843232827349678576
+Starting warm-renderer-new-settings: 24 slider events at 10 ms, 45 ms UI debounce
+RESULT scenario=burst, cache=warm-renderer-new-settings, size=2400x1600, final_latency_ms=63.203, total_ms=334.306, new_decodes=0, renders=1, total_decodes=1, peak_rss_bytes=128106496, checksum=6935937898188894869
+Synthetic burst editing benchmark: 2400x1600, backend=default, optimized binary, generated sRGB input; no RAW/ImageIO or disk I/O.
+First call includes renderer initialization; warm calls use the same source with unique edits, not cached edited output. OS/GPU caches are not cleared.
+End-to-end timings include a synchronous full-size CGContext draw, forcing pixel materialization. Peak RSS covers the entire process.
+Starting cold-output-cache: 24 slider events at 10 ms, 45 ms UI debounce
+RESULT scenario=burst, cache=cold-output-cache, size=2400x1600, final_latency_ms=168.190, total_ms=438.233, new_decodes=0, renders=1, total_decodes=1, peak_rss_bytes=112607232, checksum=14843232827349678576
+Starting warm-output-cache: 24 slider events at 10 ms, 45 ms UI debounce
+RESULT scenario=burst, cache=warm-output-cache, size=2400x1600, final_latency_ms=51.896, total_ms=321.561, new_decodes=0, renders=0, total_decodes=1, peak_rss_bytes=112607232, checksum=14843232827349678576
+Starting warm-renderer-new-settings: 24 slider events at 10 ms, 45 ms UI debounce
+RESULT scenario=burst, cache=warm-renderer-new-settings, size=2400x1600, final_latency_ms=59.939, total_ms=330.902, new_decodes=0, renders=1, total_decodes=1, peak_rss_bytes=128057344, checksum=6935937898188894869
+Synthetic burst editing benchmark: 2400x1600, backend=default, optimized binary, generated sRGB input; no RAW/ImageIO or disk I/O.
+First call includes renderer initialization; warm calls use the same source with unique edits, not cached edited output. OS/GPU caches are not cleared.
+End-to-end timings include a synchronous full-size CGContext draw, forcing pixel materialization. Peak RSS covers the entire process.
+Starting cold-output-cache: 24 slider events at 10 ms, 45 ms UI debounce
+RESULT scenario=burst, cache=cold-output-cache, size=2400x1600, final_latency_ms=172.119, total_ms=442.996, new_decodes=0, renders=1, total_decodes=1, peak_rss_bytes=112787456, checksum=14843232827349678576
+Starting warm-output-cache: 24 slider events at 10 ms, 45 ms UI debounce
+RESULT scenario=burst, cache=warm-output-cache, size=2400x1600, final_latency_ms=48.381, total_ms=319.611, new_decodes=0, renders=0, total_decodes=1, peak_rss_bytes=112787456, checksum=14843232827349678576
+Starting warm-renderer-new-settings: 24 slider events at 10 ms, 45 ms UI debounce
+RESULT scenario=burst, cache=warm-renderer-new-settings, size=2400x1600, final_latency_ms=62.406, total_ms=331.488, new_decodes=0, renders=1, total_decodes=1, peak_rss_bytes=128172032, checksum=6935937898188894869
+Synthetic burst editing benchmark: 2400x1600, backend=default, optimized binary, generated sRGB input; no RAW/ImageIO or disk I/O.
+First call includes renderer initialization; warm calls use the same source with unique edits, not cached edited output. OS/GPU caches are not cleared.
+End-to-end timings include a synchronous full-size CGContext draw, forcing pixel materialization. Peak RSS covers the entire process.
+Starting cold-output-cache: 24 slider events at 10 ms, 45 ms UI debounce
+RESULT scenario=burst, cache=cold-output-cache, size=2400x1600, final_latency_ms=167.965, total_ms=437.870, new_decodes=0, renders=1, total_decodes=1, peak_rss_bytes=112754688, checksum=14843232827349678576
+Starting warm-output-cache: 24 slider events at 10 ms, 45 ms UI debounce
+RESULT scenario=burst, cache=warm-output-cache, size=2400x1600, final_latency_ms=49.727, total_ms=318.267, new_decodes=0, renders=0, total_decodes=1, peak_rss_bytes=112754688, checksum=14843232827349678576
+Starting warm-renderer-new-settings: 24 slider events at 10 ms, 45 ms UI debounce
+RESULT scenario=burst, cache=warm-renderer-new-settings, size=2400x1600, final_latency_ms=64.498, total_ms=332.242, new_decodes=0, renders=1, total_decodes=1, peak_rss_bytes=128221184, checksum=6935937898188894869
+Synthetic burst editing benchmark: 2400x1600, backend=default, optimized binary, generated sRGB input; no RAW/ImageIO or disk I/O.
+First call includes renderer initialization; warm calls use the same source with unique edits, not cached edited output. OS/GPU caches are not cleared.
+End-to-end timings include a synchronous full-size CGContext draw, forcing pixel materialization. Peak RSS covers the entire process.
+Starting cold-output-cache: 24 slider events at 10 ms, 45 ms UI debounce
+RESULT scenario=burst, cache=cold-output-cache, size=2400x1600, final_latency_ms=169.642, total_ms=440.278, new_decodes=0, renders=1, total_decodes=1, peak_rss_bytes=113442816, checksum=14843232827349678576
+Starting warm-output-cache: 24 slider events at 10 ms, 45 ms UI debounce
+RESULT scenario=burst, cache=warm-output-cache, size=2400x1600, final_latency_ms=49.183, total_ms=318.197, new_decodes=0, renders=0, total_decodes=1, peak_rss_bytes=113442816, checksum=14843232827349678576
+Starting warm-renderer-new-settings: 24 slider events at 10 ms, 45 ms UI debounce
+RESULT scenario=burst, cache=warm-renderer-new-settings, size=2400x1600, final_latency_ms=59.347, total_ms=331.087, new_decodes=0, renders=1, total_decodes=1, peak_rss_bytes=128876544, checksum=6935937898188894869
+Synthetic burst editing benchmark: 2400x1600, backend=default, optimized binary, generated sRGB input; no RAW/ImageIO or disk I/O.
+First call includes renderer initialization; warm calls use the same source with unique edits, not cached edited output. OS/GPU caches are not cleared.
+End-to-end timings include a synchronous full-size CGContext draw, forcing pixel materialization. Peak RSS covers the entire process.
+Starting cold-output-cache: 24 slider events at 10 ms, 45 ms UI debounce
+RESULT scenario=burst, cache=cold-output-cache, size=2400x1600, final_latency_ms=169.471, total_ms=439.025, new_decodes=0, renders=1, total_decodes=1, peak_rss_bytes=112951296, checksum=14843232827349678576
+Starting warm-output-cache: 24 slider events at 10 ms, 45 ms UI debounce
+RESULT scenario=burst, cache=warm-output-cache, size=2400x1600, final_latency_ms=49.178, total_ms=320.907, new_decodes=0, renders=0, total_decodes=1, peak_rss_bytes=112967680, checksum=14843232827349678576
+Starting warm-renderer-new-settings: 24 slider events at 10 ms, 45 ms UI debounce
+RESULT scenario=burst, cache=warm-renderer-new-settings, size=2400x1600, final_latency_ms=60.158, total_ms=330.268, new_decodes=0, renders=1, total_decodes=1, peak_rss_bytes=128352256, checksum=6935937898188894869
+Synthetic burst editing benchmark: 2400x1600, backend=default, optimized binary, generated sRGB input; no RAW/ImageIO or disk I/O.
+First call includes renderer initialization; warm calls use the same source with unique edits, not cached edited output. OS/GPU caches are not cleared.
+End-to-end timings include a synchronous full-size CGContext draw, forcing pixel materialization. Peak RSS covers the entire process.
+Starting cold-output-cache: 24 slider events at 10 ms, 45 ms UI debounce
+RESULT scenario=burst, cache=cold-output-cache, size=2400x1600, final_latency_ms=162.857, total_ms=434.537, new_decodes=0, renders=1, total_decodes=1, peak_rss_bytes=112918528, checksum=14843232827349678576
+Starting warm-output-cache: 24 slider events at 10 ms, 45 ms UI debounce
+RESULT scenario=burst, cache=warm-output-cache, size=2400x1600, final_latency_ms=46.979, total_ms=317.817, new_decodes=0, renders=0, total_decodes=1, peak_rss_bytes=112918528, checksum=14843232827349678576
+Starting warm-renderer-new-settings: 24 slider events at 10 ms, 45 ms UI debounce
+RESULT scenario=burst, cache=warm-renderer-new-settings, size=2400x1600, final_latency_ms=59.844, total_ms=328.952, new_decodes=0, renders=1, total_decodes=1, peak_rss_bytes=128303104, checksum=6935937898188894869
+Synthetic burst editing benchmark: 2400x1600, backend=default, optimized binary, generated sRGB input; no RAW/ImageIO or disk I/O.
+First call includes renderer initialization; warm calls use the same source with unique edits, not cached edited output. OS/GPU caches are not cleared.
+End-to-end timings include a synchronous full-size CGContext draw, forcing pixel materialization. Peak RSS covers the entire process.
+Starting cold-output-cache: 24 slider events at 10 ms, 45 ms UI debounce
+RESULT scenario=burst, cache=cold-output-cache, size=2400x1600, final_latency_ms=168.091, total_ms=434.700, new_decodes=0, renders=1, total_decodes=1, peak_rss_bytes=112640000, checksum=14843232827349678576
+Starting warm-output-cache: 24 slider events at 10 ms, 45 ms UI debounce
+RESULT scenario=burst, cache=warm-output-cache, size=2400x1600, final_latency_ms=49.547, total_ms=317.829, new_decodes=0, renders=0, total_decodes=1, peak_rss_bytes=112640000, checksum=14843232827349678576
+Starting warm-renderer-new-settings: 24 slider events at 10 ms, 45 ms UI debounce
+RESULT scenario=burst, cache=warm-renderer-new-settings, size=2400x1600, final_latency_ms=66.334, total_ms=333.353, new_decodes=0, renders=1, total_decodes=1, peak_rss_bytes=128057344, checksum=6935937898188894869
+Synthetic burst editing benchmark: 2400x1600, backend=default, optimized binary, generated sRGB input; no RAW/ImageIO or disk I/O.
+First call includes renderer initialization; warm calls use the same source with unique edits, not cached edited output. OS/GPU caches are not cleared.
+End-to-end timings include a synchronous full-size CGContext draw, forcing pixel materialization. Peak RSS covers the entire process.
+Starting cold-output-cache: 24 slider events at 10 ms, 45 ms UI debounce
+RESULT scenario=burst, cache=cold-output-cache, size=2400x1600, final_latency_ms=171.084, total_ms=443.633, new_decodes=0, renders=1, total_decodes=1, peak_rss_bytes=112721920, checksum=14843232827349678576
+Starting warm-output-cache: 24 slider events at 10 ms, 45 ms UI debounce
+RESULT scenario=burst, cache=warm-output-cache, size=2400x1600, final_latency_ms=47.184, total_ms=316.197, new_decodes=0, renders=0, total_decodes=1, peak_rss_bytes=112721920, checksum=14843232827349678576
+Starting warm-renderer-new-settings: 24 slider events at 10 ms, 45 ms UI debounce
+RESULT scenario=burst, cache=warm-renderer-new-settings, size=2400x1600, final_latency_ms=64.115, total_ms=336.428, new_decodes=0, renders=1, total_decodes=1, peak_rss_bytes=128172032, checksum=6935937898188894869

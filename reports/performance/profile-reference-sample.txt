@@ -1,0 +1,1314 @@
+Analysis of sampling Glowroom (pid 13879) every 1 millisecond
+Process:         Glowroom [13879]
+Path:            /Users/USER/*/Glowroom
+Load Address:    0x104c98000
+Identifier:      Glowroom
+Version:         ???
+Code Type:       ARM64
+Parent Process:  zsh [13877]
+Target Type:     live task
+
+Date/Time:       2026-10-21 09:17:55.729 +0200
+Launch Time:     2026-10-21 09:17:55.672 +0200
+OS Version:      macOS 27.0.1 (26A434)
+Report Version:  7
+Analysis Tool:   /usr/bin/sample
+
+Physical footprint:         101.2M
+Physical footprint (peak):  101.2M
+Idle exit:                  untracked
+----
+
+Call graph:
+    329 Thread_14298560: Main Thread
+    + 229 _dyld_start  (in dyld) + 0  [0x1061a0bf0]
+    + 95 start  (in dyld) + 6596  [0x197c0be24]
+    + ! 95 dyld4::start(dyld4::KernelArgs*, void*, void*, unsigned long long)::$_1::operator()() const  (in dyld) + 320  [0x197c0ca84]
+    + !   86 dyld4::prepare(dyld4::APIs&, mach_o::UnsafeHeader const*)  (in dyld) + 4500  [0x197c0dc34]
+    + !   : 86 dyld4::RuntimeState::notifyDebuggerLoad(std::span<dyld4::Loader const*, 18446744073709551615ul> const&)  (in dyld) + 592  [0x197c1e4cc]
+    + !   :   86 dyld4::ExternallyViewableState::addImages(lsl::Allocator&, lsl::Allocator&, std::span<dyld4::ExternallyViewableState::ImageInfo, 18446744073709551615ul> const&)  (in dyld) + 1280  [0x197c29ef8]
+    + !   :     86 dyld4::ExternallyViewableState::triggerNotifications(dyld_image_mode, unsigned int, dyld_image_info const*)  (in dyld) + 304  [0x197c29704]
+    + !   :       86 dyld4::RemoteNotificationResponder::blockOnSynchronousEvent(unsigned int)  (in dyld) + 48  [0x197c4e20c]
+    + !   :         86 dyld4::RemoteNotificationResponder::sendMessage(int, unsigned int, mach_msg_header_t*)  (in dyld) + 244  [0x197c4de54]
+    + !   :           86 mach_msg_overwrite  (in dyld) + 244  [0x197c5a7e8]
+    + !   :             86 mach_msg2_internal  (in dyld) + 76  [0x197c5a640]
+    + !   :               86 mach_msg2_trap  (in dyld) + 8  [0x197bdb72c]
+    + !   7 dyld4::prepare(dyld4::APIs&, mach_o::UnsafeHeader const*)  (in dyld) + 2508  [0x197c0d46c]
+    + !   : 7 dyld4::JustInTimeLoader::applyFixups(Diagnostics&, dyld4::RuntimeState&, dyld4::DyldCacheDataConstLazyScopedWriter&, bool, lsl::Vector<std::pair<dyld4::Loader const*, char const*>>*) const  (in dyld) + 616  [0x197c2f8cc]
+    + !   :   7 dyld4::Loader::forEachBindTarget(Diagnostics&, dyld4::RuntimeState&, void (unsigned int, unsigned int, dyld4::Loader::ResolvedSymbol const&) block_pointer, bool, void (dyld4::Loader::ResolvedSymbol const&, bool&) block_pointer, void (dyld4::Loader::ResolvedSymbol const&, bool&) block_pointer) const  (in dyld) + 308  [0x197c39014]
+    + !   :     7 mach_o::Image::forEachBindTarget(void (mach_o::Fixup::BindTarget const&, bool&) block_pointer, void (mach_o::Fixup::BindTarget const&, bool&) block_pointer) const  (in dyld) + 72  [0x197c6fc70]
+    + !   :       7 mach_o::ChainedFixups::forEachBindTarget(void (mach_o::Fixup::BindTarget const&, bool&) block_pointer, mach_o::Error*) const  (in dyld) + 224  [0x197c5f884]
+    + !   :         7 invocation function for block in dyld4::Loader::forEachBindTarget(Diagnostics&, dyld4::RuntimeState&, void (unsigned int, unsigned int, dyld4::Loader::ResolvedSymbol const&) block_pointer, bool, void (dyld4::Loader::ResolvedSymbol const&, bool&) block_pointer, void (dyld4::Loader::ResolvedSymbol const&, bool&) block_pointer) const  (in dyld) + 180  [0x197c390e4]
+    + !   :           7 dyld4::Loader::resolveSymbol(Diagnostics&, dyld4::RuntimeState&, int, char const*, bool, bool, void (unsigned int, unsigned int, dyld4::Loader::ResolvedSymbol const&) block_pointer, bool) const  (in dyld) + 552  [0x197c374ec]
+    + !   :             4 dyld4::Loader::hasExportedSymbol(Diagnostics&, dyld4::RuntimeState&, char const*, dyld4::Loader::ExportedSymbolMode, dyld4::Loader::ResolverMode, dyld4::Loader::ResolvedSymbol*, bool, dyld3::Array<dyld4::Loader const*>*) const  (in dyld) + 644  [0x197c39c6c]
+    + !   :             | 4 mach_o::ExportsTrie::hasExportedSymbol(CString, mach_o::Symbol&, bool) const  (in dyld) + 48  [0x197c6320c]
+    + !   :             |   4 mach_o::GenericTrie::find(CString, bool) const  (in dyld) + 96,336  [0x197c62b18,0x197c62c08]
+    + !   :             3 dyld4::Loader::hasExportedSymbol(Diagnostics&, dyld4::RuntimeState&, char const*, dyld4::Loader::ExportedSymbolMode, dyld4::Loader::ResolverMode, dyld4::Loader::ResolvedSymbol*, bool, dyld3::Array<dyld4::Loader const*>*) const  (in dyld) + 1672  [0x197c3a070]
+    + !   :               3 dyld4::Loader::hasExportedSymbol(Diagnostics&, dyld4::RuntimeState&, char const*, dyld4::Loader::ExportedSymbolMode, dyld4::Loader::ResolverMode, dyld4::Loader::ResolvedSymbol*, bool, dyld3::Array<dyld4::Loader const*>*) const  (in dyld) + 644  [0x197c39c6c]
+    + !   :                 3 mach_o::ExportsTrie::hasExportedSymbol(CString, mach_o::Symbol&, bool) const  (in dyld) + 48  [0x197c6320c]
+    + !   :                   3 mach_o::GenericTrie::find(CString, bool) const  (in dyld) + 96  [0x197c62b18]
+    + !   1 dyld4::prepare(dyld4::APIs&, mach_o::UnsafeHeader const*)  (in dyld) + 1428  [0x197c0d034]
+    + !   : 1 dyld4::JustInTimeLoader::loadDependents(Diagnostics&, dyld4::RuntimeState&, dyld4::Loader::LoadOptions const&)  (in dyld) + 256  [0x197c2ec1c]
+    + !   :   1 mach_o::Header::forEachLinkedDylib(void (mach_o::Header::DylibInfo const&, bool, bool&) block_pointer) const  (in dyld) + 196  [0x197c68af8]
+    + !   :     1 mach_o::Header::forEachLoadCommand(void (mach_o::Header::LoadCommandInfo const&, bool&) block_pointer, mach_o::Error*) const  (in dyld) + 228  [0x197c67004]
+    + !   :       1 invocation function for block in mach_o::Header::forEachLinkedDylib(void (mach_o::Header::DylibInfo const&, bool, bool&) block_pointer) const  (in dyld) + 112  [0x197c6bfe0]
+    + !   :         1 invocation function for block in dyld4::JustInTimeLoader::loadDependents(Diagnostics&, dyld4::RuntimeState&, dyld4::Loader::LoadOptions const&)  (in dyld) + 684  [0x197c2f0b0]
+    + !   :           1 dyld4::Loader::getLoader(Diagnostics&, dyld4::RuntimeState&, char const*, dyld4::Loader::LoadOptions const&, bool)  (in dyld) + 1116  [0x197c33db0]
+    + !   :             1 dyld4::Loader::forEachPath(Diagnostics&, dyld4::RuntimeState&, char const*, dyld4::Loader::LoadOptions const&, void (char const*, dyld4::ProcessConfig::PathOverrides::Type, bool&) block_pointer)  (in dyld) + 332  [0x197c3342c]
+    + !   :               1 dyld4::ProcessConfig::PathOverrides::forEachPathVariant(CString, mach_o::Platform, bool, bool, bool&, void (char const*, dyld4::ProcessConfig::PathOverrides::Type, bool&) block_pointer) const  (in dyld) + 1700  [0x197c150bc]
+    + !   :                 1 dyld4::Loader::forEachResolvedAtPathVar(dyld4::RuntimeState&, char const*, dyld4::Loader::LoadOptions const&, dyld4::ProcessConfig::PathOverrides::Type, bool&, void (char const*, dyld4::ProcessConfig::PathOverrides::Type, bool&) block_pointer)  (in dyld) + 800  [0x197c33914]
+    + !   :                   1 invocation function for block in dyld4::Loader::getLoader(Diagnostics&, dyld4::RuntimeState&, char const*, dyld4::Loader::LoadOptions const&, bool)  (in dyld) + 2000  [0x197c3499c]
+    + !   :                     1 dyld4::SyscallDelegate::fileExists(char const*, dyld4::FileID*, int*) const  (in dyld) + 40  [0x197c09360]
+    + !   :                       1 dyld4::stat(char const*, stat*)  (in dyld) + 40  [0x197bf3a20]
+    + !   :                         1 stat_with_subsystem  (in dyld) + 56  [0x197c519a0]
+    + !   :                           1 <deduplicated_symbol>  (in dyld) + 8  [0x197bdd094]
+    + !   1 dyld4::prepare(dyld4::APIs&, mach_o::UnsafeHeader const*)  (in dyld) + 4596  [0x197c0dc94]
+    + !     1 dyld4::RuntimeState::notifyDtrace(std::span<dyld4::Loader const*, 18446744073709551615ul> const&)  (in dyld) + 296  [0x197c1e098]
+    + !       1 mach_o::UnsafeHeader::forEachSection(void (mach_o::UnsafeHeader::SectionInfo const&, bool&) block_pointer) const  (in dyld) + 128  [0x197c79238]
+    + !         1 mach_o::UnsafeHeader::forEachLoadCommand(void (load_command const*, bool&) block_pointer) const  (in dyld) + 208  [0x197c77d00]
+    + !           1 invocation function for block in mach_o::UnsafeHeader::forEachSection(void (mach_o::UnsafeHeader::SectionInfo const&, bool&) block_pointer) const  (in dyld) + 192  [0x197c7ad88]
+    + !             1 <deduplicated_symbol>  (in dyld) + 80  [0x197bdbe90]
+    + 3 start  (in dyld) + 6112  [0x1061cdc40]
+    + ! 3 dyld4::ExternallyViewableState::createMinimalInfo(lsl::Allocator&, unsigned long long, char const*, unsigned long long, char const*, DyldSharedCache const*)  (in dyld) + 1528  [0x1061eae70]
+    + !   3 dyld4::ExternallyViewableState::triggerNotifications(dyld_image_mode, unsigned int, dyld_image_info const*)  (in dyld) + 304  [0x1061eb704]
+    + !     3 dyld4::RemoteNotificationResponder::blockOnSynchronousEvent(unsigned int)  (in dyld) + 48  [0x10621020c]
+    + !       3 dyld4::RemoteNotificationResponder::sendMessage(int, unsigned int, mach_msg_header_t*)  (in dyld) + 244  [0x10620fe54]
+    + !         3 mach_msg_overwrite  (in dyld) + 244  [0x10621c7e8]
+    + !           3 mach_msg2_internal  (in dyld) + 76  [0x10621c640]
+    + !             3 mach_msg2_trap  (in dyld) + 8  [0x10619d72c]
+    + 1 start  (in dyld) + 1496  [0x1061cca38]
+    + ! 1 FileIdTuple::getPath(char*) const  (in dyld) + 32  [0x1061a9694]
+    + !   1 fsgetpath  (in dyld) + 8  [0x1061a273c]
+    + 1 start  (in dyld) + 2560  [0x197c0ae60]
+    +   1 dyld4::ExternallyViewableState::createMinimalInfo(lsl::Allocator&, unsigned long long, char const*, unsigned long long, char const*, DyldSharedCache const*)  (in dyld) + 1528  [0x197c28e70]
+    +     1 dyld4::ExternallyViewableState::triggerNotifications(dyld_image_mode, unsigned int, dyld_image_info const*)  (in dyld) + 304  [0x197c29704]
+    +       1 dyld4::RemoteNotificationResponder::blockOnSynchronousEvent(unsigned int)  (in dyld) + 48  [0x197c4e20c]
+    +         1 dyld4::RemoteNotificationResponder::sendMessage(int, unsigned int, mach_msg_header_t*)  (in dyld) + 244  [0x197c4de54]
+    +           1 mach_msg_overwrite  (in dyld) + 244  [0x197c5a7e8]
+    +             1 mach_msg2_internal  (in dyld) + 76  [0x197c5a640]
+    +               1 mach_msg2_trap  (in dyld) + 8  [0x197bdb72c]
+    3243 Thread_14298560   DispatchQueue_1: com.apple.main-thread  (serial)
+    + 3235 start  (in dyld) + 6688  [0x197c0be80]
+    + ! 3234 main  (in Glowroom) + 84  [0x104d7ed34]  EditingBenchmark.swift:0
+    + ! : 3234 swift_task_asyncMainDrainQueue  (in libswift_Concurrency.dylib) + 92  [0x2c48ddc98]
+    + ! :   3234 swift_task_asyncMainDrainQueueImpl  (in libswift_Concurrency.dylib) + 140  [0x2c4933c18]
+    + ! :     3234 protocol witness for RunLoopExecutor.run() in conformance DispatchMainExecutor  (in libswift_Concurrency.dylib) + 40  [0x2c49335ec]
+    + ! :       3234 CFMainExecutor.run()  (in libswift_Concurrency.dylib) + 48  [0x2c49333e8]
+    + ! :         3234 CFRunLoopRun  (in CoreFoundation) + 64  [0x1981194c4]
+    + ! :           3234 _CFRunLoopRunSpecificWithOptions  (in CoreFoundation) + 536  [0x19817b82c]
+    + ! :             3234 __CFRunLoopRun  (in CoreFoundation) + 1172  [0x1980a1334]
+    + ! :               3234 __CFRunLoopServiceMachPort  (in CoreFoundation) + 160  [0x1980a2aec]
+    + ! :                 3234 mach_msg  (in libsystem_kernel.dylib) + 24  [0x197f9cfac]
+    + ! :                   3234 mach_msg_overwrite  (in libsystem_kernel.dylib) + 480  [0x197fa5a28]
+    + ! :                     3234 mach_msg2_internal  (in libsystem_kernel.dylib) + 76  [0x197faf8e0]
+    + ! :                       3234 mach_msg2_trap  (in libsystem_kernel.dylib) + 8  [0x197f9cc20]
+    + ! 1 main  (in Glowroom) + 48  [0x104d7ed10]  EditingBenchmark.swift:0
+    + !   1 swift_task_create_commonImpl(unsigned long, swift::TaskOptionRecord*, swift::TargetMetadata<swift::InProcess> const*, void (swift::AsyncContext* swift_async_context) swiftasynccall*, void*, unsigned long)  (in libswift_Concurrency.dylib) + 1892  [0x2c48dc4a8]
+    + !     1 swift::concurrency::trace::task_create(swift::AsyncTask*, swift::AsyncTask*, swift::TaskGroup*, swift::AsyncLet*, unsigned char, bool, bool, bool, bool, bool, bool, char const*)  (in libswift_Concurrency.dylib) + 712  [0x2c48df1a8]
+    + !       1 _dispatch_once_callout  (in libdispatch.dylib) + 32  [0x197e23624]
+    + !         1 _dispatch_client_callout  (in libdispatch.dylib) + 16  [0x197e3a5a0]
+    + !           1 swift::concurrency::trace::setupLogs(void*)  (in libswift_Concurrency.dylib) + 72  [0x2c48e89d8]
+    + !             1 os_log_create  (in libsystem_trace.dylib) + 888  [0x197cf812c]
+    + !               1 _dispatch_once_callout  (in libdispatch.dylib) + 32  [0x197e23624]
+    + !                 1 _dispatch_client_callout  (in libdispatch.dylib) + 16  [0x197e3a5a0]
+    + !                   1 _os_trace_init_slow  (in libsystem_trace.dylib) + 424  [0x197cf5f1c]
+    + !                     1 voucher_activity_get_metadata_buffer  (in libdispatch.dylib) + 108  [0x197e47dac]
+    + !                       1 _dispatch_once_callout  (in libdispatch.dylib) + 32  [0x197e23624]
+    + !                         1 _dispatch_client_callout  (in libdispatch.dylib) + 16  [0x197e3a5a0]
+    + !                           1 _firehose_task_buffer_init  (in libdispatch.dylib) + 140  [0x197e4942c]
+    + !                             1 _os_trace_get_logd_port  (in libsystem_trace.dylib) + 132  [0x197cf63b0]
+    + !                               1 bootstrap_look_up2  (in libxpc.dylib) + 48  [0x197ca6184]
+    + !                                 1 bootstrap_look_up3  (in libxpc.dylib) + 324  [0x197ca62f0]
+    + !                                   1 _xpc_interface_routine  (in libxpc.dylib) + 248  [0x197ca37dc]
+    + !                                     1 _xpc_pipe_routine  (in libxpc.dylib) + 420  [0x197cd5670]
+    + !                                       1 _xpc_pipe_mach_msg  (in libxpc.dylib) + 56  [0x197cd6288]
+    + !                                         1 mach_msg  (in libsystem_kernel.dylib) + 24  [0x197f9cfac]
+    + !                                           1 mach_msg_overwrite  (in libsystem_kernel.dylib) + 480  [0x197fa5a28]
+    + !                                             1 mach_msg2_internal  (in libsystem_kernel.dylib) + 76  [0x197faf8e0]
+    + !                                               1 mach_msg2_trap  (in libsystem_kernel.dylib) + 8  [0x197f9cc20]
+    + 8 start  (in dyld) + 6596  [0x197c0be24]
+    +   8 dyld4::start(dyld4::KernelArgs*, void*, void*, unsigned long long)::$_1::operator()() const  (in dyld) + 320  [0x197c0ca84]
+    +     8 dyld4::prepare(dyld4::APIs&, mach_o::UnsafeHeader const*)  (in dyld) + 4724  [0x197c0dd14]
+    +       7 dyld4::APIs::runAllInitializersForMain()  (in dyld) + 100  [0x197c00e30]
+    +       : 7 dyld4::PrebuiltLoader::runInitializers(dyld4::RuntimeState&) const  (in dyld) + 44  [0x197c405a8]
+    +       :   7 dyld4::Loader::findAndRunAllInitializers(dyld4::RuntimeState&) const  (in dyld) + 680  [0x197c38614]
+    +       :     7 mach_o::Image::forEachInitializer(void (unsigned int) block_pointer) const  (in dyld) + 244  [0x197c70f9c]
+    +       :       7 mach_o::Header::forEachSection(void (mach_o::Header::SectionInfo const&, bool&) block_pointer) const  (in dyld) + 128  [0x197c6b07c]
+    +       :         7 mach_o::Header::forEachLoadCommand(void (mach_o::Header::LoadCommandInfo const&, bool&) block_pointer, mach_o::Error*) const  (in dyld) + 228  [0x197c67004]
+    +       :           7 invocation function for block in mach_o::Header::forEachSection(void (mach_o::Header::SectionInfo const&, bool&) block_pointer) const  (in dyld) + 156  [0x197c6d974]
+    +       :             7 mach_o::Header::parse_segment_command<true>(mach_o::Header::LoadCommandInfo const&, unsigned short, void (mach_o::Header::SegmentInfo const&, mach_o::Header::SectionInfo const&) block_pointer, mach_o::Error*) const  (in dyld) + 580  [0x197c68508]
+    +       :               7 invocation function for block in mach_o::Image::forEachInitializer(void (unsigned int) block_pointer) const  (in dyld) + 84  [0x197c7106c]
+    +       :                 7 invocation function for block in dyld4::Loader::findAndRunAllInitializers(dyld4::RuntimeState&) const::$_0::operator()() const  (in dyld) + 360  [0x197c3d758]
+    +       :                   6 libSystem_initializer  (in libSystem.B.dylib) + 244  [0x1a8bf3358]
+    +       :                   | 6 libdispatch_init  (in libdispatch.dylib) + 480  [0x197e5742c]
+    +       :                   |   6 _os_object_init  (in libdispatch.dylib) + 24  [0x197e21788]
+    +       :                   |     6 _objc_init  (in libobjc.A.dylib) + 2212  [0x197b59b40]
+    +       :                   |       6 _dyld_objc_register_callbacks  (in libdyld.dylib) + 344  [0x197bb91e4]
+    +       :                   |         6 dyld4::APIs::_dyld_objc_register_callbacks(dyld4::ObjCCallbacks const*)  (in dyld) + 128  [0x197bf6558]
+    +       :                   |           6 dyld4::RuntimeState::setObjCNotifiers(dyld4::ReadOnlyCallback<void (*)(char const*, mach_header const*)>, dyld4::ReadOnlyCallback<void (*)(mach_header const*, void*, mach_header const*, void const*)>, dyld4::ReadOnlyCallback<void (*)(_dyld_objc_notify_mapped_info const*)>, dyld4::ReadOnlyCallback<void (*)(unsigned int, _dyld_objc_notify_mapped_info const*, void (unsigned int) block_pointer)>)  (in dyld) + 540  [0x197c200fc]
+    +       :                   |             6 dyld4::RuntimeLocks::withLoadersReadLock(void () block_pointer)  (in dyld) + 84  [0x197c1703c]
+    +       :                   |               6 invocation function for block in dyld4::RuntimeState::setObjCNotifiers(dyld4::ReadOnlyCallback<void (*)(char const*, mach_header const*)>, dyld4::ReadOnlyCallback<void (*)(mach_header const*, void*, mach_header const*, void const*)>, dyld4::ReadOnlyCallback<void (*)(_dyld_objc_notify_mapped_info const*)>, dyld4::ReadOnlyCallback<void (*)(unsigned int, _dyld_objc_notify_mapped_info const*, void (unsigned int) block_pointer)>)::$_0::operator()() const  (in dyld) + 1120  [0x197c26bec]
+    +       :                   |                 6 map_images  (in libobjc.A.dylib) + 112  [0x197b59e20]
+    +       :                   |                   4 map_images_nolock  (in libobjc.A.dylib) + 3868  [0x197b5adc8]
+    +       :                   |                   + 4 __sel_registerName(char const*, bool, bool)  (in libobjc.A.dylib) + 48  [0x197b5c27c]
+    +       :                   |                   +   4 dyld4::APIs::_dyld_get_objc_selector(char const*)  (in dyld) + 56  [0x197bfb330]
+    +       :                   |                   +     4 objc::StringHashTable::tryGetIndex(char const*) const  (in dyld) + 152  [0x197c02e68]
+    +       :                   |                   +       4 _platform_strcmp_noMTE  (in dyld) + 12  [0x197bdcd10]
+    +       :                   |                   1 map_images_nolock  (in libobjc.A.dylib) + 4648  [0x197b5b0d4]
+    +       :                   |                   + 1 readClass(objc_class*, bool, bool)  (in libobjc.A.dylib) + 1420  [0x197b6eef0]
+    +       :                   |                   +   1 addNamedClass(objc_class*, char const*, objc_class*)  (in libobjc.A.dylib) + 56  [0x197b63f34]
+    +       :                   |                   +     1 getClassExceptSomeSwift(char const*)  (in libobjc.A.dylib) + 36  [0x197b62b38]
+    +       :                   |                   +       1 getPreoptimizedClass  (in libobjc.A.dylib) + 132  [0x197b62c20]
+    +       :                   |                   +         1 dyld4::APIs::_dyld_for_each_objc_class(char const*, dyld4::ReadOnlyCallback<void (void*, bool, bool*) block_pointer>)  (in dyld) + 320  [0x197bfb51c]
+    +       :                   |                   +           1 objc::ObjectHashTable::forEachObject(char const*, void (unsigned long long, unsigned short, bool&) block_pointer) const  (in dyld) + 40  [0x197c02ec8]
+    +       :                   |                   +             1 objc::StringHashTable::tryGetIndex(char const*) const  (in dyld) + 152  [0x197c02e68]
+    +       :                   |                   +               1 _platform_strcmp_noMTE  (in dyld) + 64  [0x197bdcd44]
+    +       :                   |                   1 map_images_nolock  (in libobjc.A.dylib) + 3900  [0x197b5ade8]
+    +       :                   1 libSystem_initializer  (in libSystem.B.dylib) + 256  [0x1a8bf3364]
+    +       :                     1 _libxpc_initializer  (in libxpc.dylib) + 1912  [0x197c9fad8]
+    +       :                       1 _xpc_collect_images  (in libxpc.dylib) + 124  [0x197ca0810]
+    +       :                         1 xpc_bundle_copy_services  (in libxpc.dylib) + 24  [0x197cd8d60]
+    +       :                           1 _xpc_bundle_resolve  (in libxpc.dylib) + 124  [0x197cd8c10]
+    +       :                             1 _dispatch_once_callout  (in libdispatch.dylib) + 32  [0x197e23624]
+    +       :                               1 _dispatch_client_callout  (in libdispatch.dylib) + 16  [0x197e3a5a0]
+    +       :                                 1 ___xpc_bundle_resolve_block_invoke  (in libxpc.dylib) + 68  [0x197ca2940]
+    +       :                                   1 _xpc_bundle_resolve_sync  (in libxpc.dylib) + 464  [0x197cd9068]
+    +       :                                     1 _xpc_bundle_resolve_root  (in libxpc.dylib) + 232  [0x197ca2cec]
+    +       :                                       1 _resolve_and_stat_path  (in libxpc.dylib) + 72  [0x197ca2edc]
+    +       :                                         1 open  (in libsystem_kernel.dylib) + 64  [0x197fa8960]
+    +       :                                           1 __open  (in libsystem_kernel.dylib) + 8  [0x197f9d680]
+    +       1 dyld4::Loader::runInitializersBottomUpPlusUpwardLinks(dyld4::RuntimeState&) const  (in dyld) + 196  [0x197c38d58]
+    +         1 dyld4::Loader::runInitializersBottomUpPlusUpwardLinks(dyld4::RuntimeState&) const::$_0::operator()() const  (in dyld) + 124  [0x197c3d7f8]
+    +           1 dyld4::Loader::runInitializersBottomUp(dyld4::RuntimeState&, lsl::Vector<AuthenticatedValue<dyld4::Loader const*>>&, lsl::Vector<AuthenticatedValue<dyld4::Loader const*>>&) const  (in dyld) + 336  [0x197c38b70]
+    +             1 dyld4::Loader::runInitializersBottomUp(dyld4::RuntimeState&, lsl::Vector<AuthenticatedValue<dyld4::Loader const*>>&, lsl::Vector<AuthenticatedValue<dyld4::Loader const*>>&) const  (in dyld) + 336  [0x197c38b70]
+    +               1 dyld4::Loader::runInitializersBottomUp(dyld4::RuntimeState&, lsl::Vector<AuthenticatedValue<dyld4::Loader const*>>&, lsl::Vector<AuthenticatedValue<dyld4::Loader const*>>&) const  (in dyld) + 488  [0x197c38c08]
+    +                 1 dyld4::PrebuiltLoader::runInitializers(dyld4::RuntimeState&) const  (in dyld) + 44  [0x197c405a8]
+    +                   1 dyld4::Loader::findAndRunAllInitializers(dyld4::RuntimeState&) const  (in dyld) + 680  [0x197c38614]
+    +                     1 mach_o::Image::forEachInitializer(void (unsigned int) block_pointer) const  (in dyld) + 244  [0x197c70f9c]
+    +                       1 mach_o::Header::forEachSection(void (mach_o::Header::SectionInfo const&, bool&) block_pointer) const  (in dyld) + 128  [0x197c6b07c]
+    +                         1 mach_o::Header::forEachLoadCommand(void (mach_o::Header::LoadCommandInfo const&, bool&) block_pointer, mach_o::Error*) const  (in dyld) + 228  [0x197c67004]
+    +                           1 invocation function for block in mach_o::Header::forEachSection(void (mach_o::Header::SectionInfo const&, bool&) block_pointer) const  (in dyld) + 156  [0x197c6d974]
+    +                             1 mach_o::Header::parse_segment_command<true>(mach_o::Header::LoadCommandInfo const&, unsigned short, void (mach_o::Header::SegmentInfo const&, mach_o::Header::SectionInfo const&) block_pointer, mach_o::Error*) const  (in dyld) + 580  [0x197c68508]
+    +                               1 invocation function for block in mach_o::Image::forEachInitializer(void (unsigned int) block_pointer) const  (in dyld) + 84  [0x197c7106c]
+    +                                 1 invocation function for block in dyld4::Loader::findAndRunAllInitializers(dyld4::RuntimeState&) const::$_0::operator()() const  (in dyld) + 328  [0x197c3d738]
+    +                                   1 dyld4::LibSystemHelpers::callInitializer(int, char const* const*, char const* const*, char const* const*, dyld4::ProgramVars const*, void (*)(int, char const* const*, char const* const*, char const* const*, dyld4::ProgramVars const*)) const  (in libdyld.dylib) + 40  [0x197bbadf0]
+    +                                     1 __CFInitialize  (in CoreFoundation) + 208  [0x198022820]
+    +                                       1 _CFStringGetUserDefaultEncoding  (in CoreFoundation) + 60  [0x198022d70]
+    +                                         1 _CFGetEUID  (in CoreFoundation) + 48  [0x19802301c]
+    +                                           1 __CFGetUGIDs  (in CoreFoundation) + 260  [0x198131bcc]
+    +                                             1 _dispatch_once_callout  (in libdispatch.dylib) + 32  [0x197e23624]
+    +                                               1 _dispatch_client_callout  (in libdispatch.dylib) + 16  [0x197e3a5a0]
+    +                                                 1 ___CFCanChangeEUIDs_block_invoke  (in CoreFoundation) + 204  [0x198023118]
+    +                                                   1 sysctl  (in libsystem_c.dylib) + 120  [0x197e6eaf8]
+    +                                                     1 __sysctl  (in libsystem_kernel.dylib) + 8  [0x197f9e458]
+    3234 Thread_14298593   DispatchQueue_15: com.apple.root.default-qos.cooperative  (concurrent)
+    + 3234 completeTaskAndRelease(swift::AsyncContext*, swift::SwiftError*)  (in libswift_Concurrency.dylib) + 1  [0x2c48dee69]
+    +   3234 specialized thunk for @escaping @convention(thin) @async () -> ()  (in Glowroom) + 1  [0x104d7eda9]  /<compiler-generated>:0
+    +     3234 specialized static Benchmark.main()  (in Glowroom) + 1  [0x104d89451]  EditingBenchmark.swift:79
+    +       1715 specialized static MaskBenchmark.run(_:)  (in Glowroom) + 1  [0x104e0ee6d]  MaskBenchmark.swift:28
+    +       ! 516 specialized static MaskBenchmark.validate(sequence:backends:rust:)  (in Glowroom) + 52  [0x104e0bc18]  MaskBenchmark.swift:163
+    +       ! : 516 MaskOverlayWorker.rasterize(_:timingObserver:)  (in Glowroom) + 360  [0x104e90e84]  MaskEditingModel.swift:106
+    +       ! :   377 closure #1 in MaskOverlayWorker.rasterize(_:timingObserver:)  (in Glowroom) + 996  [0x104e91394]  MaskEditingModel.swift:116
+    +       ! :   | 377 closure #1 in closure #1 in MaskOverlayWorker.rasterize(_:timingObserver:)  (in Glowroom) + 592  [0x104e92098]  MaskEditingModel.swift:124
+    +       ! :   |   377 static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 12  [0x105125c74]  /<compiler-generated>:0
+    +       ! :   |     377 specialized static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 4556  [0x1051329d0]  MaskRasterizer.swift:123
+    +       ! :   |       374 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 868  [0x10512ebc8]  MaskRasterizer.swift:141
+    +       ! :   |       + 101 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1052,1056,...  [0x10512ec80,0x10512ec84,...]  MaskRasterizer.swift:145
+    +       ! :   |       + 101 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1112,1092,...  [0x10512ecbc,0x10512eca8,...]  MaskRasterizer.swift:146
+    +       ! :   |       + 49 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1012,1016,...  [0x10512ec58,0x10512ec5c,...]  /<compiler-generated>:0
+    +       ! :   |       + 32 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1180,1160,...  [0x10512ed00,0x10512ecec,...]  MaskRasterizer.swift:151
+    +       ! :   |       + 24 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1128,1132  [0x10512eccc,0x10512ecd0]  MaskRasterizer.swift:148
+    +       ! :   |       + 19 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1120,1116,...  [0x10512ecc4,0x10512ecc0,...]  MaskRasterizer.swift:147
+    +       ! :   |       + 12 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1224  [0x10512ed2c]  MaskRasterizer.swift:152
+    +       ! :   |       + 11 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1148,1204  [0x10512ece0,0x10512ed18]  MaskRasterizer.swift:0
+    +       ! :   |       + 11 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1136  [0x10512ecd4]  MaskRasterizer.swift:150
+    +       ! :   |       + 6 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1036,1032  [0x10512ec70,0x10512ec6c]  MaskRasterizer.swift:144
+    +       ! :   |       + 4 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1232  [0x10512ed34]  MaskRasterizer.swift:153
+    +       ! :   |       + 2 partial apply for closure #3 in closure #1 in closure #1 in MaskOverlayWorker.rasterize(_:timingObserver:)  (in Glowroom) + 12  [0x104e975d0]
+    +       ! :   |       + ! 2 partial apply for closure #2 in closure #2 in closure #1 in MaskOverlayWorker.rasterize(_:timingObserver:)  (in Glowroom) + 16  [0x104e97480]  /<compiler-generated>:0
+    +       ! :   |       + !   1 closure #2 in closure #1 in closure #1 in MaskOverlayWorker.rasterize(_:timingObserver:)  (in Glowroom) + 60  [0x104e922c0]
+    +       ! :   |       + !   : 1 -[NSLock unlock]  (in Foundation) + 28  [0x19974f4f0]
+    +       ! :   |       + !   1 closure #2 in closure #1 in closure #1 in MaskOverlayWorker.rasterize(_:timingObserver:)  (in Glowroom) + 164  [0x104e92328]
+    +       ! :   |       + !     1 static Task<>.checkCancellation()  (in libswift_Concurrency.dylib) + 64  [0x2c492c61c]
+    +       ! :   |       + !       1 ???  (in <unknown binary>)  [0x1af860c88]
+    +       ! :   |       + 1 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 840  [0x10512ebac]  MaskRasterizer.swift:141
+    +       ! :   |       + 1 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1020  [0x10512ec60]  MaskRasterizer.swift:143
+    +       ! :   |       3 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 212  [0x10512e938]  MaskRasterizer.swift:126
+    +       ! :   |         3 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1112  [0x10512ecbc]  MaskRasterizer.swift:146
+    +       ! :   67 closure #1 in MaskOverlayWorker.rasterize(_:timingObserver:)  (in Glowroom) + 1612  [0x104e915fc]  MaskEditingModel.swift:127
+    +       ! :   | 67 MaskRaster.resampled(to:crop:cancellation:)  (in Glowroom) + 8056  [0x10512a7c4]  MaskRasterizer.swift:39
+    +       ! :   |   67 closure #1 in closure #1 in MaskRaster.resampled(to:crop:cancellation:)  (in Glowroom) + 280  [0x10512b0d8]  MaskRasterizer.swift:46
+    +       ! :   |     29 closure #1 in closure #1 in MaskRaster.resampled(to:crop:cancellation:)  (in Glowroom) + 584,540,...  [0x10512b208,0x10512b1dc,...]  MaskRasterizer.swift:52
+    +       ! :   |     24 closure #1 in closure #1 in MaskRaster.resampled(to:crop:cancellation:)  (in Glowroom) + 740,624,...  [0x10512b2a4,0x10512b230,...]  MaskRasterizer.swift:56
+    +       ! :   |     9 closure #1 in closure #1 in MaskRaster.resampled(to:crop:cancellation:)  (in Glowroom) + 608,616,...  [0x10512b220,0x10512b228,...]  MaskRasterizer.swift:55
+    +       ! :   |     2 closure #1 in closure #1 in MaskRaster.resampled(to:crop:cancellation:)  (in Glowroom) + 524,528  [0x10512b1cc,0x10512b1d0]  MaskRasterizer.swift:51
+    +       ! :   |     2 closure #1 in closure #1 in MaskRaster.resampled(to:crop:cancellation:)  (in Glowroom) + 592,600  [0x10512b210,0x10512b218]  MaskRasterizer.swift:54
+    +       ! :   |     1 closure #1 in closure #1 in MaskRaster.resampled(to:crop:cancellation:)  (in Glowroom) + 240  [0x10512b0b0]  /<compiler-generated>:0
+    +       ! :   43 closure #1 in MaskOverlayWorker.rasterize(_:timingObserver:)  (in Glowroom) + 2028  [0x104e9179c]  MaskEditingModel.swift:136
+    +       ! :   | 42 MaskRaster.canonicalSHA256(cancellation:)  (in Glowroom) + 804  [0x105126400]  MaskRasterizer.swift:24
+    +       ! :   | + 42 specialized HashFunction.update<A>(data:)  (in Glowroom) + 480  [0x104f2ee1c]  /<compiler-generated>:0
+    +       ! :   | +   41 ccdigest_update  (in libcorecrypto.dylib) + 68  [0x197d15ed4]
+    +       ! :   | +   ! 41 ccdigest_update_internal  (in libcorecrypto.dylib) + 288  [0x197d7611c]
+    +       ! :   | +   !   41 AccelerateCrypto_SHA256_compress  (in libcorecrypto.dylib) + 448,456,...  [0x197d179f0,0x197d179f8,...]
+    +       ! :   | +   1 ???  (in CryptoKit)  load address 0x1f31ff000 + 0x10dc0  [0x1f320fdc0]
+    +       ! :   | +     1 swift_isUniquelyReferenced_nonNull_native  (in libswiftCore.dylib) + 0  [0x1ac553998]
+    +       ! :   | 1 MaskRaster.canonicalSHA256(cancellation:)  (in Glowroom) + 880  [0x10512644c]  MaskRasterizer.swift:26
+    +       ! :   |   1 specialized Sequence.map<A, B>(_:)  (in Glowroom) + 652  [0x105125bc0]  /<compiler-generated>:0
+    +       ! :   |     1 String.init(format:_:)  (in Foundation) + 44  [0x19a465ad8]
+    +       ! :   |       1 specialized String.init(format:locale:arguments:)  (in Foundation) + 444  [0x19a46f41c]
+    +       ! :   |         1 closure #1 in String.init(format:locale:arguments:)  (in Foundation) + 1476  [0x19a4660f4]
+    +       ! :   |           1 +[NSString _stringWithValidatedFormat:validFormatSpecifiers:locale:arguments:error:]  (in Foundation) + 72  [0x199954570]
+    +       ! :   |             1 -[NSPlaceholderString initWithValidatedFormat:validFormatSpecifiers:locale:arguments:error:]  (in Foundation) + 104  [0x199955e90]
+    +       ! :   |               1 _CFStringCreateStringWithValidatedFormatAuxWithDesc  (in CoreFoundation) + 160  [0x19818fbd0]
+    +       ! :   |                 1 __CFStringAppendFormatCore  (in CoreFoundation) + 7000  [0x19804dde4]
+    +       ! :   |                   1 _malloc_type_calloc_outlined  (in libsystem_malloc.dylib) + 88  [0x197de7e38]
+    +       ! :   |                     1 _malloc_zone_calloc_instrumented_or_legacy  (in libsystem_malloc.dylib) + 132  [0x197e08820]
+    +       ! :   |                       1 stack_logging_lite_calloc  (in MallocStackLogging) + 240  [0x1c8adb548]
+    +       ! :   |                         1 add_stack_to_ptr  (in MallocStackLogging) + 92  [0x1c8adbefc]
+    +       ! :   |                           1 msl_payload_set_in_lite_zone_ptr  (in MallocStackLogging) + 56  [0x1c8ae0c70]
+    +       ! :   29 closure #1 in MaskOverlayWorker.rasterize(_:timingObserver:)  (in Glowroom) + 2480  [0x104e91960]  MaskEditingModel.swift:139
+    +       ! :     18 specialized static MaskOverlayWorker.makeOverlay(from:cancellation:)  (in Glowroom) + 140  [0x104e9638c]  MaskEditingModel.swift:160
+    +       ! :     + 18 specialized Data._Representation.init(count:)  (in Glowroom) + 84  [0x104ea5cd8]  /<compiler-generated>:0
+    +       ! :     +   18 __DataStorage.init(length:)  (in Foundation) + 208  [0x199c10578]
+    +       ! :     +     18 _malloc_type_calloc_outlined  (in libsystem_malloc.dylib) + 88  [0x197de7e38]
+    +       ! :     +       18 _malloc_zone_calloc_instrumented_or_legacy  (in libsystem_malloc.dylib) + 132  [0x197e08820]
+    +       ! :     +         17 stack_logging_lite_calloc  (in MallocStackLogging) + 208  [0x1c8adb528]
+    +       ! :     +         ! 17 _xzm_malloc_large_huge  (in libsystem_malloc.dylib) + 968  [0x197dfc4ac]
+    +       ! :     +         !   17 xzm_segment_group_alloc_chunk  (in libsystem_malloc.dylib) + 1492  [0x197ddcccc]
+    +       ! :     +         !     17 __bzero  (in libsystem_platform.dylib) + 64  [0x197feba70]
+    +       ! :     +         1 stack_logging_lite_calloc  (in MallocStackLogging) + 240  [0x1c8adb548]
+    +       ! :     +           1 add_stack_to_ptr  (in MallocStackLogging) + 92  [0x1c8adbefc]
+    +       ! :     +             1 __bzero  (in libsystem_platform.dylib) + 68  [0x197feba74]
+    +       ! :     11 specialized static MaskOverlayWorker.makeOverlay(from:cancellation:)  (in Glowroom) + 2900,2880  [0x104e96e54,0x104e96e40]  MaskEditingModel.swift:161
+    +       ! 498 specialized static MaskBenchmark.validate(sequence:backends:rust:)  (in Glowroom) + 52  [0x104e0b7b8]  MaskBenchmark.swift:161
+    +       ! : 498 MaskOverlayWorker.rasterize(_:timingObserver:)  (in Glowroom) + 360  [0x104e90e84]  MaskEditingModel.swift:106
+    +       ! :   378 closure #1 in MaskOverlayWorker.rasterize(_:timingObserver:)  (in Glowroom) + 996  [0x104e91394]  MaskEditingModel.swift:116
+    +       ! :   | 378 closure #1 in closure #1 in MaskOverlayWorker.rasterize(_:timingObserver:)  (in Glowroom) + 592  [0x104e92098]  MaskEditingModel.swift:124
+    +       ! :   |   378 static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 12  [0x105125c74]  /<compiler-generated>:0
+    +       ! :   |     377 specialized static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 4556  [0x1051329d0]  MaskRasterizer.swift:123
+    +       ! :   |     + 376 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 868  [0x10512ebc8]  MaskRasterizer.swift:141
+    +       ! :   |     + ! 99 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1112,1092,...  [0x10512ecbc,0x10512eca8,...]  MaskRasterizer.swift:146
+    +       ! :   |     + ! 94 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1052,1056,...  [0x10512ec80,0x10512ec84,...]  MaskRasterizer.swift:145
+    +       ! :   |     + ! 36 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1012,1016,...  [0x10512ec58,0x10512ec5c,...]  /<compiler-generated>:0
+    +       ! :   |     + ! 33 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1180,1160,...  [0x10512ed00,0x10512ecec,...]  MaskRasterizer.swift:151
+    +       ! :   |     + ! 26 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1148,1204  [0x10512ece0,0x10512ed18]  MaskRasterizer.swift:0
+    +       ! :   |     + ! 25 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1120,1116,...  [0x10512ecc4,0x10512ecc0,...]  MaskRasterizer.swift:147
+    +       ! :   |     + ! 25 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1136  [0x10512ecd4]  MaskRasterizer.swift:150
+    +       ! :   |     + ! 17 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1224  [0x10512ed2c]  MaskRasterizer.swift:152
+    +       ! :   |     + ! 13 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1132,1128  [0x10512ecd0,0x10512eccc]  MaskRasterizer.swift:148
+    +       ! :   |     + ! 5 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1036,1040  [0x10512ec70,0x10512ec74]  MaskRasterizer.swift:144
+    +       ! :   |     + ! 2 partial apply for closure #3 in closure #1 in closure #1 in MaskOverlayWorker.rasterize(_:timingObserver:)  (in Glowroom) + 12  [0x104e975d0]
+    +       ! :   |     + ! : 2 partial apply for closure #2 in closure #2 in closure #1 in MaskOverlayWorker.rasterize(_:timingObserver:)  (in Glowroom) + 16  [0x104e97480]  /<compiler-generated>:0
+    +       ! :   |     + ! :   2 closure #2 in closure #1 in closure #1 in MaskOverlayWorker.rasterize(_:timingObserver:)  (in Glowroom) + 164  [0x104e92328]
+    +       ! :   |     + ! :     1 static Task<>.checkCancellation()  (in libswift_Concurrency.dylib) + 28  [0x2c492c5f8]
+    +       ! :   |     + ! :     | 1 swift_task_getCurrent  (in libswift_Concurrency.dylib) + 4  [0x2c48d4260]
+    +       ! :   |     + ! :     1 static Task<>.checkCancellation()  (in libswift_Concurrency.dylib) + 64  [0x2c492c61c]
+    +       ! :   |     + ! :       1 __isPlatformOrVariantPlatformVersionAtLeast  (in libswiftCore.dylib) + 116  [0x1ac560890]
+    +       ! :   |     + ! :         1 dispatch_once_f  (in libdispatch.dylib) + 0  [0x197e2359c]
+    +       ! :   |     + ! 1 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1232  [0x10512ed34]  MaskRasterizer.swift:153
+    +       ! :   |     + 1 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 212  [0x10512e938]  MaskRasterizer.swift:126
+    +       ! :   |     +   1 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1132  [0x10512ecd0]  MaskRasterizer.swift:148
+    +       ! :   |     1 specialized static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 252  [0x105131900]  MaskRasterizer.swift:121
+    +       ! :   |       1 specialized Data.init(repeating:count:)  (in Glowroom) + 56  [0x10512fca4]  /<compiler-generated>:0
+    +       ! :   |         1 specialized Data._Representation.init(count:)  (in Glowroom) + 84  [0x104f79764]  /<compiler-generated>:0
+    +       ! :   |           1 __DataStorage.init(length:)  (in Foundation) + 208  [0x199c10578]
+    +       ! :   |             1 _malloc_type_calloc_outlined  (in libsystem_malloc.dylib) + 88  [0x197de7e38]
+    +       ! :   |               1 _malloc_zone_calloc_instrumented_or_legacy  (in libsystem_malloc.dylib) + 132  [0x197e08820]
+    +       ! :   |                 1 stack_logging_lite_calloc  (in MallocStackLogging) + 208  [0x1c8adb528]
+    +       ! :   |                   1 _xzm_malloc_large_huge  (in libsystem_malloc.dylib) + 968  [0x197dfc4ac]
+    +       ! :   |                     1 xzm_segment_group_alloc_chunk  (in libsystem_malloc.dylib) + 1492  [0x197ddcccc]
+    +       ! :   |                       1 __bzero  (in libsystem_platform.dylib) + 68  [0x197feba74]
+    +       ! :   65 closure #1 in MaskOverlayWorker.rasterize(_:timingObserver:)  (in Glowroom) + 1612  [0x104e915fc]  MaskEditingModel.swift:127
+    +       ! :   | 65 MaskRaster.resampled(to:crop:cancellation:)  (in Glowroom) + 8056  [0x10512a7c4]  MaskRasterizer.swift:39
+    +       ! :   |   65 closure #1 in closure #1 in MaskRaster.resampled(to:crop:cancellation:)  (in Glowroom) + 280  [0x10512b0d8]  MaskRasterizer.swift:46
+    +       ! :   |     34 closure #1 in closure #1 in MaskRaster.resampled(to:crop:cancellation:)  (in Glowroom) + 584,540,...  [0x10512b208,0x10512b1dc,...]  MaskRasterizer.swift:52
+    +       ! :   |     18 closure #1 in closure #1 in MaskRaster.resampled(to:crop:cancellation:)  (in Glowroom) + 716,624,...  [0x10512b28c,0x10512b230,...]  MaskRasterizer.swift:56
+    +       ! :   |     7 closure #1 in closure #1 in MaskRaster.resampled(to:crop:cancellation:)  (in Glowroom) + 608,616,...  [0x10512b220,0x10512b228,...]  MaskRasterizer.swift:55
+    +       ! :   |     5 closure #1 in closure #1 in MaskRaster.resampled(to:crop:cancellation:)  (in Glowroom) + 600,592  [0x10512b218,0x10512b210]  MaskRasterizer.swift:54
+    +       ! :   |     1 closure #1 in closure #1 in MaskRaster.resampled(to:crop:cancellation:)  (in Glowroom) + 640  [0x10512b240]  MaskRasterizer.swift:0
+    +       ! :   46 closure #1 in MaskOverlayWorker.rasterize(_:timingObserver:)  (in Glowroom) + 2028  [0x104e9179c]  MaskEditingModel.swift:136
+    +       ! :   | 42 MaskRaster.canonicalSHA256(cancellation:)  (in Glowroom) + 804  [0x105126400]  MaskRasterizer.swift:24
+    +       ! :   | + 42 specialized HashFunction.update<A>(data:)  (in Glowroom) + 480  [0x104f2ee1c]  /<compiler-generated>:0
+    +       ! :   | +   42 ccdigest_update  (in libcorecrypto.dylib) + 68  [0x197d15ed4]
+    +       ! :   | +     42 ccdigest_update_internal  (in libcorecrypto.dylib) + 288  [0x197d7611c]
+    +       ! :   | +       42 AccelerateCrypto_SHA256_compress  (in libcorecrypto.dylib) + 560,600,...  [0x197d17a60,0x197d17a88,...]
+    +       ! :   | 2 MaskRaster.canonicalSHA256(cancellation:)  (in Glowroom) + 880  [0x10512644c]  MaskRasterizer.swift:26
+    +       ! :   | + 2 specialized Sequence.map<A, B>(_:)  (in Glowroom) + 652  [0x105125bc0]  /<compiler-generated>:0
+    +       ! :   | +   2 String.init(format:_:)  (in Foundation) + 44  [0x19a465ad8]
+    +       ! :   | +     2 specialized String.init(format:locale:arguments:)  (in Foundation) + 444  [0x19a46f41c]
+    +       ! :   | +       1 closure #1 in String.init(format:locale:arguments:)  (in Foundation) + 132  [0x19a465bb4]
+    +       ! :   | +       ! 1 specialized ContiguousArray._createNewBuffer(bufferIsUnique:minimumCapacity:growForAppend:)  (in Foundation) + 20  [0x199ab22ec]
+    +       ! :   | +       !   1 specialized _ContiguousArrayBuffer._consumeAndCreateNew(bufferIsUnique:minimumCapacity:growForAppend:)  (in Foundation) + 132  [0x19a0251fc]
+    +       ! :   | +       !     1 swift_allocObject  (in libswiftCore.dylib) + 136  [0x1ac550ed4]
+    +       ! :   | +       !       1 swift::swift_slowAllocTyped(unsigned long, unsigned long, unsigned long long)  (in libswiftCore.dylib) + 64  [0x1ac5bb26c]
+    +       ! :   | +       !         1 _malloc_type_malloc_outlined  (in libsystem_malloc.dylib) + 96  [0x197de7dd0]
+    +       ! :   | +       !           1 _malloc_zone_malloc_instrumented_or_legacy  (in libsystem_malloc.dylib) + 152  [0x197e08630]
+    +       ! :   | +       !             1 stack_logging_lite_malloc  (in MallocStackLogging) + 140  [0x1c8adb400]
+    +       ! :   | +       !               1 add_stack_to_ptr  (in MallocStackLogging) + 312  [0x1c8adbfd8]
+    +       ! :   | +       !                 1 uniquing_table_stack_retain  (in MallocStackLogging) + 88  [0x1c8ada300]
+    +       ! :   | +       !                   1 thread_stack_pcs  (in libsystem_c.dylib) + 28  [0x197e7794c]
+    +       ! :   | +       !                     1 __thread_stack_pcs  (in libsystem_c.dylib) + 352  [0x197ea4cfc]
+    +       ! :   | +       1 closure #1 in String.init(format:locale:arguments:)  (in Foundation) + 1476  [0x19a4660f4]
+    +       ! :   | +         1 +[NSString _stringWithValidatedFormat:validFormatSpecifiers:locale:arguments:error:]  (in Foundation) + 72  [0x199954570]
+    +       ! :   | +           1 -[NSPlaceholderString initWithValidatedFormat:validFormatSpecifiers:locale:arguments:error:]  (in Foundation) + 104  [0x199955e90]
+    +       ! :   | +             1 _CFStringCreateStringWithValidatedFormatAuxWithDesc  (in CoreFoundation) + 160  [0x19818fbd0]
+    +       ! :   | +               1 __CFStringAppendFormatCore  (in CoreFoundation) + 9412  [0x19804e750]
+    +       ! :   | +                 1 __CFStringAppendBytes  (in CoreFoundation) + 628  [0x19804fad0]
+    +       ! :   | +                   1 __CFStringChangeSizeMultiple  (in CoreFoundation) + 708  [0x19803323c]
+    +       ! :   | +                     1 __CFStrAllocateMutableContents  (in CoreFoundation) + 108  [0x198033994]
+    +       ! :   | +                       1 _malloc_type_zone_malloc_outlined  (in libsystem_malloc.dylib) + 64  [0x197de7fbc]
+    +       ! :   | +                         1 _malloc_zone_malloc_instrumented_or_legacy  (in libsystem_malloc.dylib) + 152  [0x197e08630]
+    +       ! :   | +                           1 stack_logging_lite_malloc  (in MallocStackLogging) + 140  [0x1c8adb400]
+    +       ! :   | +                             1 add_stack_to_ptr  (in MallocStackLogging) + 312  [0x1c8adbfd8]
+    +       ! :   | +                               1 uniquing_table_stack_retain  (in MallocStackLogging) + 88  [0x1c8ada300]
+    +       ! :   | +                                 1 thread_stack_pcs  (in libsystem_c.dylib) + 28  [0x197e7794c]
+    +       ! :   | +                                   1 __thread_stack_pcs  (in libsystem_c.dylib) + 400  [0x197ea4d2c]
+    +       ! :   | +                                     1 pthread_stack_frame_decode_np  (in libsystem_pthread.dylib) + 32  [0x197fe01ac]
+    +       ! :   | 1 MaskRaster.canonicalSHA256(cancellation:)  (in Glowroom) + 316  [0x105126218]  MaskRasterizer.swift:20
+    +       ! :   | + 1 _StringGuts.append(_:)  (in libswiftCore.dylib) + 180  [0x1ac565cd0]
+    +       ! :   | +   1 _StringGuts.prepareForAppendInPlace(totalCount:otherUTF8Count:)  (in libswiftCore.dylib) + 252  [0x1ac874614]
+    +       ! :   | +     1 _allocateStringStorage(codeUnitCapacity:precalculatedUTF16Count:)  (in libswiftCore.dylib) + 116  [0x1ac8867b0]
+    +       ! :   | +       1 swift_allocObject  (in libswiftCore.dylib) + 136  [0x1ac550ed4]
+    +       ! :   | +         1 swift::swift_slowAllocTyped(unsigned long, unsigned long, unsigned long long)  (in libswiftCore.dylib) + 64  [0x1ac5bb26c]
+    +       ! :   | +           1 _malloc_type_malloc_outlined  (in libsystem_malloc.dylib) + 96  [0x197de7dd0]
+    +       ! :   | +             1 _malloc_zone_malloc_instrumented_or_legacy  (in libsystem_malloc.dylib) + 152  [0x197e08630]
+    +       ! :   | +               1 stack_logging_lite_malloc  (in MallocStackLogging) + 140  [0x1c8adb400]
+    +       ! :   | +                 1 add_stack_to_ptr  (in MallocStackLogging) + 312  [0x1c8adbfd8]
+    +       ! :   | +                   1 uniquing_table_stack_retain  (in MallocStackLogging) + 128  [0x1c8ada328]
+    +       ! :   | +                     1 uniquing_table_stack_retain_internal  (in MallocStackLogging) + 844  [0x1c8ada794]
+    +       ! :   | 1 MaskRaster.canonicalSHA256(cancellation:)  (in Glowroom) + 676  [0x105126380]  MaskRasterizer.swift:23
+    +       ! :   |   1 static Task<>.checkCancellation()  (in libswift_Concurrency.dylib) + 64  [0x2c492c61c]
+    +       ! :   |     1 __isPlatformOrVariantPlatformVersionAtLeast  (in libswiftCore.dylib) + 116  [0x1ac560890]
+    +       ! :   |       1 dispatch_once_f  (in libdispatch.dylib) + 0  [0x197e2359c]
+    +       ! :   9 closure #1 in MaskOverlayWorker.rasterize(_:timingObserver:)  (in Glowroom) + 2480  [0x104e91960]  MaskEditingModel.swift:139
+    +       ! :     8 specialized static MaskOverlayWorker.makeOverlay(from:cancellation:)  (in Glowroom) + 2880,2900  [0x104e96e40,0x104e96e54]  MaskEditingModel.swift:161
+    +       ! :     1 specialized static MaskOverlayWorker.makeOverlay(from:cancellation:)  (in Glowroom) + 140  [0x104e9638c]  MaskEditingModel.swift:160
+    +       ! :       1 specialized Data._Representation.init(count:)  (in Glowroom) + 84  [0x104ea5cd8]  /<compiler-generated>:0
+    +       ! :         1 __DataStorage.init(length:)  (in Foundation) + 208  [0x199c10578]
+    +       ! :           1 _malloc_type_calloc_outlined  (in libsystem_malloc.dylib) + 88  [0x197de7e38]
+    +       ! :             1 _malloc_zone_calloc_instrumented_or_legacy  (in libsystem_malloc.dylib) + 132  [0x197e08820]
+    +       ! :               1 stack_logging_lite_calloc  (in MallocStackLogging) + 208  [0x1c8adb528]
+    +       ! :                 1 _xzm_malloc_large_huge  (in libsystem_malloc.dylib) + 968  [0x197dfc4ac]
+    +       ! :                   1 xzm_segment_group_alloc_chunk  (in libsystem_malloc.dylib) + 1492  [0x197ddcccc]
+    +       ! :                     1 __bzero  (in libsystem_platform.dylib) + 64  [0x197feba70]
+    +       ! 462 specialized static MaskBenchmark.validate(sequence:backends:rust:)  (in Glowroom) + 1664  [0x104e0c2d8]  MaskBenchmark.swift:140
+    +       ! : 330 closure #2 in static MaskBenchmark.validate(sequence:backends:rust:)  (in Glowroom) + 104  [0x104e06dc8]  MaskBenchmark.swift:141
+    +       ! : | 330 static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 12  [0x105125c74]  /<compiler-generated>:0
+    +       ! : |   330 specialized static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 4556  [0x1051329d0]  MaskRasterizer.swift:123
+    +       ! : |     328 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 868  [0x10512ebc8]  MaskRasterizer.swift:141
+    +       ! : |     + 88 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1052,1056,...  [0x10512ec80,0x10512ec84,...]  MaskRasterizer.swift:145
+    +       ! : |     + 86 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1112,1092,...  [0x10512ecbc,0x10512eca8,...]  MaskRasterizer.swift:146
+    +       ! : |     + 30 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1120,1116,...  [0x10512ecc4,0x10512ecc0,...]  MaskRasterizer.swift:147
+    +       ! : |     + 28 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1012,1016  [0x10512ec58,0x10512ec5c]  /<compiler-generated>:0
+    +       ! : |     + 25 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1180,1192,...  [0x10512ed00,0x10512ed0c,...]  MaskRasterizer.swift:151
+    +       ! : |     + 21 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1136  [0x10512ecd4]  MaskRasterizer.swift:150
+    +       ! : |     + 18 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1148,1204,...  [0x10512ece0,0x10512ed18,...]  MaskRasterizer.swift:0
+    +       ! : |     + 15 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1128,1132  [0x10512eccc,0x10512ecd0]  MaskRasterizer.swift:148
+    +       ! : |     + 9 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1224  [0x10512ed2c]  MaskRasterizer.swift:152
+    +       ! : |     + 5 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1024  [0x10512ec64]  MaskRasterizer.swift:143
+    +       ! : |     + 2 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1232  [0x10512ed34]  MaskRasterizer.swift:153
+    +       ! : |     + 1 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1032  [0x10512ec6c]  MaskRasterizer.swift:144
+    +       ! : |     2 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 212  [0x10512e938]  MaskRasterizer.swift:126
+    +       ! : |       1 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1056  [0x10512ec84]  MaskRasterizer.swift:145
+    +       ! : |       1 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1132  [0x10512ecd0]  MaskRasterizer.swift:148
+    +       ! : 50 closure #2 in static MaskBenchmark.validate(sequence:backends:rust:)  (in Glowroom) + 220  [0x104e06e3c]  MaskBenchmark.swift:142
+    +       ! : | 47 MaskRasterizationCache.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 648  [0x1051227ac]  MaskRasterizationCache.swift:41
+    +       ! : | + 46 specialized static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 4556  [0x1051329d0]  MaskRasterizer.swift:123
+    +       ! : | + ! 46 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 868  [0x10512ebc8]  MaskRasterizer.swift:141
+    +       ! : | + !   15 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1052,1056,...  [0x10512ec80,0x10512ec84,...]  MaskRasterizer.swift:145
+    +       ! : | + !   9 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1112  [0x10512ecbc]  MaskRasterizer.swift:146
+    +       ! : | + !   6 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1012,1016  [0x10512ec58,0x10512ec5c]  /<compiler-generated>:0
+    +       ! : | + !   4 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1148,1204  [0x10512ece0,0x10512ed18]  MaskRasterizer.swift:0
+    +       ! : | + !   4 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1180  [0x10512ed00]  MaskRasterizer.swift:151
+    +       ! : | + !   3 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1116,1124  [0x10512ecc0,0x10512ecc8]  MaskRasterizer.swift:147
+    +       ! : | + !   2 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1132  [0x10512ecd0]  MaskRasterizer.swift:148
+    +       ! : | + !   1 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1136  [0x10512ecd4]  MaskRasterizer.swift:150
+    +       ! : | + !   1 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1224  [0x10512ed2c]  MaskRasterizer.swift:152
+    +       ! : | + !   1 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1232  [0x10512ed34]  MaskRasterizer.swift:153
+    +       ! : | + 1 specialized static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 252  [0x105131900]  MaskRasterizer.swift:121
+    +       ! : | +   1 specialized Data.init(repeating:count:)  (in Glowroom) + 544  [0x10512fe8c]  /<compiler-generated>:0
+    +       ! : | +     1 __bzero  (in libsystem_platform.dylib) + 68  [0x197feba74]
+    +       ! : | 2 MaskRasterizationCache.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 3256  [0x1051231dc]  MaskRasterizationCache.swift:58
+    +       ! : | + 2 closure #1 in MaskRasterizationCache.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1076  [0x10512444c]  MaskRasterizationCache.swift:80
+    +       ! : | +   2 closure #1 in MaskRasterizationCache.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1320  [0x105124540]  MaskRasterizationCache.swift:85
+    +       ! : | 1 MaskRasterizationCache.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 3100  [0x105123140]  MaskRasterizationCache.swift:58
+    +       ! : |   1 __DataStorage.init(bytes:length:copy:deallocator:offset:)  (in Foundation) + 340  [0x199c109bc]
+    +       ! : |     1 specialized static __DataStorage.move(_:_:_:)  (in Foundation) + 184  [0x199c10cb8]
+    +       ! : |       1 vm_copy  (in libsystem_kernel.dylib) + 116  [0x197f9fe28]
+    +       ! : |         1 mach_msg2_internal  (in libsystem_kernel.dylib) + 76  [0x197faf8e0]
+    +       ! : |           1 mach_msg2_trap  (in libsystem_kernel.dylib) + 8  [0x197f9cc20]
+    +       ! : 37 closure #2 in static MaskBenchmark.validate(sequence:backends:rust:)  (in Glowroom) + 468  [0x104e06f34]  MaskBenchmark.swift:144
+    +       ! : | 35 MaskRaster.canonicalSHA256(cancellation:)  (in Glowroom) + 804  [0x105126400]  MaskRasterizer.swift:24
+    +       ! : | + 35 specialized HashFunction.update<A>(data:)  (in Glowroom) + 480  [0x104f2ee1c]  /<compiler-generated>:0
+    +       ! : | +   35 ccdigest_update  (in libcorecrypto.dylib) + 68  [0x197d15ed4]
+    +       ! : | +     35 ccdigest_update_internal  (in libcorecrypto.dylib) + 288  [0x197d7611c]
+    +       ! : | +       35 AccelerateCrypto_SHA256_compress  (in libcorecrypto.dylib) + 504,296,...  [0x197d17a28,0x197d17958,...]
+    +       ! : | 1 MaskRaster.canonicalSHA256(cancellation:)  (in Glowroom) + 880  [0x10512644c]  MaskRasterizer.swift:26
+    +       ! : | + 1 specialized Sequence.map<A, B>(_:)  (in Glowroom) + 652  [0x105125bc0]  /<compiler-generated>:0
+    +       ! : | +   1 String.init(format:_:)  (in Foundation) + 44  [0x19a465ad8]
+    +       ! : | +     1 specialized String.init(format:locale:arguments:)  (in Foundation) + 444  [0x19a46f41c]
+    +       ! : | +       1 closure #1 in String.init(format:locale:arguments:)  (in Foundation) + 132  [0x19a465bb4]
+    +       ! : | +         1 specialized ContiguousArray._createNewBuffer(bufferIsUnique:minimumCapacity:growForAppend:)  (in Foundation) + 20  [0x199ab22ec]
+    +       ! : | +           1 specialized _ContiguousArrayBuffer._consumeAndCreateNew(bufferIsUnique:minimumCapacity:growForAppend:)  (in Foundation) + 132  [0x19a0251fc]
+    +       ! : | +             1 swift_allocObject  (in libswiftCore.dylib) + 136  [0x1ac550ed4]
+    +       ! : | +               1 swift::swift_slowAllocTyped(unsigned long, unsigned long, unsigned long long)  (in libswiftCore.dylib) + 64  [0x1ac5bb26c]
+    +       ! : | +                 1 _malloc_type_malloc_outlined  (in libsystem_malloc.dylib) + 96  [0x197de7dd0]
+    +       ! : | +                   1 _malloc_zone_malloc_instrumented_or_legacy  (in libsystem_malloc.dylib) + 152  [0x197e08630]
+    +       ! : | +                     1 stack_logging_lite_malloc  (in MallocStackLogging) + 140  [0x1c8adb400]
+    +       ! : | +                       1 add_stack_to_ptr  (in MallocStackLogging) + 312  [0x1c8adbfd8]
+    +       ! : | +                         1 uniquing_table_stack_retain  (in MallocStackLogging) + 128  [0x1c8ada328]
+    +       ! : | +                           1 uniquing_table_stack_retain_internal  (in MallocStackLogging) + 1208  [0x1c8ada900]
+    +       ! : | 1 MaskRaster.canonicalSHA256(cancellation:)  (in Glowroom) + 960  [0x10512649c]  MaskRasterizer.swift:26
+    +       ! : |   1 specialized BidirectionalCollection<>.joined(separator:)  (in libswiftCore.dylib) + 1152  [0x1ac6bf420]
+    +       ! : 35 closure #2 in static MaskBenchmark.validate(sequence:backends:rust:)  (in Glowroom) + 392  [0x104e06ee8]  MaskBenchmark.swift:144
+    +       ! : | 35 MaskRaster.canonicalSHA256(cancellation:)  (in Glowroom) + 804  [0x105126400]  MaskRasterizer.swift:24
+    +       ! : |   35 specialized HashFunction.update<A>(data:)  (in Glowroom) + 480  [0x104f2ee1c]  /<compiler-generated>:0
+    +       ! : |     35 ccdigest_update  (in libcorecrypto.dylib) + 68  [0x197d15ed4]
+    +       ! : |       35 ccdigest_update_internal  (in libcorecrypto.dylib) + 288  [0x197d7611c]
+    +       ! : |         35 AccelerateCrypto_SHA256_compress  (in libcorecrypto.dylib) + 448,532,...  [0x197d179f0,0x197d17a44,...]
+    +       ! : 9 closure #2 in static MaskBenchmark.validate(sequence:backends:rust:)  (in Glowroom) + 320  [0x104e06ea0]  MaskBenchmark.swift:143
+    +       ! : | 9 specialized static Data.== infix(_:_:)  (in Glowroom) + 1760  [0x104d61870]  /<compiler-generated>:0
+    +       ! : |   9 _platform_memcmp  (in libsystem_platform.dylib) + 32,48,...  [0x197fe9190,0x197fe91a0,...]
+    +       ! : 1 closure #2 in static MaskBenchmark.validate(sequence:backends:rust:)  (in Glowroom) + 1152  [0x104e071e0]  MaskBenchmark.swift:151
+    +       ! :   1 MaskRaster.resampled(to:crop:cancellation:)  (in Glowroom) + 8056  [0x10512a7c4]  MaskRasterizer.swift:39
+    +       ! :     1 closure #1 in closure #1 in MaskRaster.resampled(to:crop:cancellation:)  (in Glowroom) + 280  [0x10512b0d8]  MaskRasterizer.swift:46
+    +       ! :       1 closure #1 in closure #1 in MaskRaster.resampled(to:crop:cancellation:)  (in Glowroom) + 540  [0x10512b1dc]  MaskRasterizer.swift:52
+    +       ! 63 specialized static MaskBenchmark.validate(sequence:backends:rust:)  (in Glowroom) + 52  [0x104e0adc0]  MaskBenchmark.swift:136
+    +       ! : 63 MaskOverlayWorker.rasterize(_:timingObserver:)  (in Glowroom) + 360  [0x104e90e84]  MaskEditingModel.swift:106
+    +       ! :   47 closure #1 in MaskOverlayWorker.rasterize(_:timingObserver:)  (in Glowroom) + 996  [0x104e91394]  MaskEditingModel.swift:116
+    +       ! :   | 47 closure #1 in closure #1 in MaskOverlayWorker.rasterize(_:timingObserver:)  (in Glowroom) + 592  [0x104e92098]  MaskEditingModel.swift:124
+    +       ! :   |   47 static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 12  [0x105125c74]  /<compiler-generated>:0
+    +       ! :   |     46 specialized static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 4556  [0x1051329d0]  MaskRasterizer.swift:123
+    +       ! :   |     + 46 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 868  [0x10512ebc8]  MaskRasterizer.swift:141
+    +       ! :   |     +   12 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1112,1092  [0x10512ecbc,0x10512eca8]  MaskRasterizer.swift:146
+    +       ! :   |     +   7 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1052,1056,...  [0x10512ec80,0x10512ec84,...]  MaskRasterizer.swift:145
+    +       ! :   |     +   5 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1012,1016  [0x10512ec58,0x10512ec5c]  /<compiler-generated>:0
+    +       ! :   |     +   5 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1136  [0x10512ecd4]  MaskRasterizer.swift:150
+    +       ! :   |     +   3 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1148,1204  [0x10512ece0,0x10512ed18]  MaskRasterizer.swift:0
+    +       ! :   |     +   3 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1036  [0x10512ec70]  MaskRasterizer.swift:144
+    +       ! :   |     +   3 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1160,1180,...  [0x10512ecec,0x10512ed00,...]  MaskRasterizer.swift:151
+    +       ! :   |     +   3 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1224  [0x10512ed2c]  MaskRasterizer.swift:152
+    +       ! :   |     +   2 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1116,1120  [0x10512ecc0,0x10512ecc4]  MaskRasterizer.swift:147
+    +       ! :   |     +   1 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1024  [0x10512ec64]  MaskRasterizer.swift:143
+    +       ! :   |     +   1 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1132  [0x10512ecd0]  MaskRasterizer.swift:148
+    +       ! :   |     +   1 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1232  [0x10512ed34]  MaskRasterizer.swift:153
+    +       ! :   |     1 specialized static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 252  [0x105131900]  MaskRasterizer.swift:121
+    +       ! :   |       1 specialized Data.init(repeating:count:)  (in Glowroom) + 544  [0x10512fe8c]  /<compiler-generated>:0
+    +       ! :   |         1 __bzero  (in libsystem_platform.dylib) + 64  [0x197feba70]
+    +       ! :   8 closure #1 in MaskOverlayWorker.rasterize(_:timingObserver:)  (in Glowroom) + 1612  [0x104e915fc]  MaskEditingModel.swift:127
+    +       ! :   | 8 MaskRaster.resampled(to:crop:cancellation:)  (in Glowroom) + 8056  [0x10512a7c4]  MaskRasterizer.swift:39
+    +       ! :   |   8 closure #1 in closure #1 in MaskRaster.resampled(to:crop:cancellation:)  (in Glowroom) + 280  [0x10512b0d8]  MaskRasterizer.swift:46
+    +       ! :   |     6 closure #1 in closure #1 in MaskRaster.resampled(to:crop:cancellation:)  (in Glowroom) + 540,584  [0x10512b1dc,0x10512b208]  MaskRasterizer.swift:52
+    +       ! :   |     1 closure #1 in closure #1 in MaskRaster.resampled(to:crop:cancellation:)  (in Glowroom) + 608  [0x10512b220]  MaskRasterizer.swift:55
+    +       ! :   |     1 closure #1 in closure #1 in MaskRaster.resampled(to:crop:cancellation:)  (in Glowroom) + 732  [0x10512b29c]  MaskRasterizer.swift:56
+    +       ! :   6 closure #1 in MaskOverlayWorker.rasterize(_:timingObserver:)  (in Glowroom) + 2028  [0x104e9179c]  MaskEditingModel.swift:136
+    +       ! :   | 6 MaskRaster.canonicalSHA256(cancellation:)  (in Glowroom) + 804  [0x105126400]  MaskRasterizer.swift:24
+    +       ! :   |   6 specialized HashFunction.update<A>(data:)  (in Glowroom) + 480  [0x104f2ee1c]  /<compiler-generated>:0
+    +       ! :   |     6 ccdigest_update  (in libcorecrypto.dylib) + 68  [0x197d15ed4]
+    +       ! :   |       6 ccdigest_update_internal  (in libcorecrypto.dylib) + 288  [0x197d7611c]
+    +       ! :   |         6 AccelerateCrypto_SHA256_compress  (in libcorecrypto.dylib) + 344,480,...  [0x197d17988,0x197d17a10,...]
+    +       ! :   2 closure #1 in MaskOverlayWorker.rasterize(_:timingObserver:)  (in Glowroom) + 2480  [0x104e91960]  MaskEditingModel.swift:139
+    +       ! :     1 specialized static MaskOverlayWorker.makeOverlay(from:cancellation:)  (in Glowroom) + 2900  [0x104e96e54]  MaskEditingModel.swift:161
+    +       ! :     1 specialized static MaskOverlayWorker.makeOverlay(from:cancellation:)  (in Glowroom) + 3336  [0x104e97008]  MaskEditingModel.swift:173
+    +       ! :       1 CGImageCreate  (in CoreGraphics) + 136  [0x19ee5373c]
+    +       ! :         1 verify_image_parameters  (in CoreGraphics) + 1384  [0x19efc2c08]
+    +       ! :           1 _CSCheckFix  (in CarbonCore) + 912  [0x19c1558b8]
+    +       ! :             1 <deduplicated_symbol>  (in CarbonCore) + 16  [0x19c239ec4]
+    +       ! :               1 _dispatch_once_callout  (in libdispatch.dylib) + 32  [0x197e23624]
+    +       ! :                 1 _dispatch_client_callout  (in libdispatch.dylib) + 16  [0x197e3a5a0]
+    +       ! :                   1 invocation function for block in initializeOurBundleInformation()  (in CarbonCore) + 200  [0x19c1d4648]
+    +       ! :                     1 CFBundleGetValueForInfoDictionaryKey  (in CoreFoundation) + 208  [0x198068430]
+    +       ! :                       1 CFBundleGetLocalInfoDictionary  (in CoreFoundation) + 348  [0x1980685ec]
+    +       ! :                         1 _CFBundleGetStringsSources  (in CoreFoundation) + 272  [0x1981e9bb8]
+    +       ! :                           1 CFBundleCopyResourceURL  (in CoreFoundation) + 268  [0x1980688e8]
+    +       ! :                             1 _CFBundleCopyFindResources  (in CoreFoundation) + 1420  [0x198068f28]
+    +       ! :                               1 _copyResourceURLsFromBundle  (in CoreFoundation) + 384  [0x198069b58]
+    +       ! :                                 1 _copyQueryTable  (in CoreFoundation) + 60  [0x19806a18c]
+    +       ! :                                   1 _CFBundleCopyLanguageSearchListInBundle  (in CoreFoundation) + 616  [0x19806a584]
+    +       ! 62 specialized static MaskBenchmark.validate(sequence:backends:rust:)  (in Glowroom) + 52  [0x104e0b29c]  MaskBenchmark.swift:137
+    +       ! : 62 MaskOverlayWorker.rasterize(_:timingObserver:)  (in Glowroom) + 360  [0x104e90e84]  MaskEditingModel.swift:106
+    +       ! :   46 closure #1 in MaskOverlayWorker.rasterize(_:timingObserver:)  (in Glowroom) + 996  [0x104e91394]  MaskEditingModel.swift:116
+    +       ! :   | 46 closure #1 in closure #1 in MaskOverlayWorker.rasterize(_:timingObserver:)  (in Glowroom) + 592  [0x104e92098]  MaskEditingModel.swift:124
+    +       ! :   |   46 static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 12  [0x105125c74]  /<compiler-generated>:0
+    +       ! :   |     46 specialized static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 4556  [0x1051329d0]  MaskRasterizer.swift:123
+    +       ! :   |       44 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 868  [0x10512ebc8]  MaskRasterizer.swift:141
+    +       ! :   |       + 15 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1112,1092  [0x10512ecbc,0x10512eca8]  MaskRasterizer.swift:146
+    +       ! :   |       + 9 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1056,1052,...  [0x10512ec84,0x10512ec80,...]  MaskRasterizer.swift:145
+    +       ! :   |       + 4 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1204,1148  [0x10512ed18,0x10512ece0]  MaskRasterizer.swift:0
+    +       ! :   |       + 4 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1136  [0x10512ecd4]  MaskRasterizer.swift:150
+    +       ! :   |       + 3 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1012,1016  [0x10512ec58,0x10512ec5c]  /<compiler-generated>:0
+    +       ! :   |       + 2 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1116,1120  [0x10512ecc0,0x10512ecc4]  MaskRasterizer.swift:147
+    +       ! :   |       + 2 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1128,1132  [0x10512eccc,0x10512ecd0]  MaskRasterizer.swift:148
+    +       ! :   |       + 2 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1192  [0x10512ed0c]  MaskRasterizer.swift:151
+    +       ! :   |       + 1 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1020  [0x10512ec60]  MaskRasterizer.swift:143
+    +       ! :   |       + 1 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1224  [0x10512ed2c]  MaskRasterizer.swift:152
+    +       ! :   |       + 1 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1232  [0x10512ed34]  MaskRasterizer.swift:153
+    +       ! :   |       2 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 212  [0x10512e938]  MaskRasterizer.swift:126
+    +       ! :   |         1 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1112  [0x10512ecbc]  MaskRasterizer.swift:146
+    +       ! :   |         1 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1132  [0x10512ecd0]  MaskRasterizer.swift:148
+    +       ! :   9 closure #1 in MaskOverlayWorker.rasterize(_:timingObserver:)  (in Glowroom) + 1612  [0x104e915fc]  MaskEditingModel.swift:127
+    +       ! :   | 9 MaskRaster.resampled(to:crop:cancellation:)  (in Glowroom) + 8056  [0x10512a7c4]  MaskRasterizer.swift:39
+    +       ! :   |   9 closure #1 in closure #1 in MaskRaster.resampled(to:crop:cancellation:)  (in Glowroom) + 280  [0x10512b0d8]  MaskRasterizer.swift:46
+    +       ! :   |     4 closure #1 in closure #1 in MaskRaster.resampled(to:crop:cancellation:)  (in Glowroom) + 624,716,...  [0x10512b230,0x10512b28c,...]  MaskRasterizer.swift:56
+    +       ! :   |     3 closure #1 in closure #1 in MaskRaster.resampled(to:crop:cancellation:)  (in Glowroom) + 536,540,...  [0x10512b1d8,0x10512b1dc,...]  MaskRasterizer.swift:52
+    +       ! :   |     2 closure #1 in closure #1 in MaskRaster.resampled(to:crop:cancellation:)  (in Glowroom) + 592,600  [0x10512b210,0x10512b218]  MaskRasterizer.swift:54
+    +       ! :   5 closure #1 in MaskOverlayWorker.rasterize(_:timingObserver:)  (in Glowroom) + 2028  [0x104e9179c]  MaskEditingModel.swift:136
+    +       ! :   | 5 MaskRaster.canonicalSHA256(cancellation:)  (in Glowroom) + 804  [0x105126400]  MaskRasterizer.swift:24
+    +       ! :   |   5 specialized HashFunction.update<A>(data:)  (in Glowroom) + 480  [0x104f2ee1c]  /<compiler-generated>:0
+    +       ! :   |     5 ccdigest_update  (in libcorecrypto.dylib) + 68  [0x197d15ed4]
+    +       ! :   |       5 ccdigest_update_internal  (in libcorecrypto.dylib) + 288  [0x197d7611c]
+    +       ! :   |         5 AccelerateCrypto_SHA256_compress  (in libcorecrypto.dylib) + 324,448,...  [0x197d17974,0x197d179f0,...]
+    +       ! :   2 closure #1 in MaskOverlayWorker.rasterize(_:timingObserver:)  (in Glowroom) + 2480  [0x104e91960]  MaskEditingModel.swift:139
+    +       ! :     1 specialized static MaskOverlayWorker.makeOverlay(from:cancellation:)  (in Glowroom) + 140  [0x104e9638c]  MaskEditingModel.swift:160
+    +       ! :     + 1 specialized Data._Representation.init(count:)  (in Glowroom) + 84  [0x104ea5cd8]  /<compiler-generated>:0
+    +       ! :     +   1 __DataStorage.init(length:)  (in Foundation) + 208  [0x199c10578]
+    +       ! :     +     1 _malloc_type_calloc_outlined  (in libsystem_malloc.dylib) + 88  [0x197de7e38]
+    +       ! :     +       1 _malloc_zone_calloc_instrumented_or_legacy  (in libsystem_malloc.dylib) + 132  [0x197e08820]
+    +       ! :     +         1 stack_logging_lite_calloc  (in MallocStackLogging) + 208  [0x1c8adb528]
+    +       ! :     +           1 _xzm_malloc_large_huge  (in libsystem_malloc.dylib) + 968  [0x197dfc4ac]
+    +       ! :     +             1 xzm_segment_group_alloc_chunk  (in libsystem_malloc.dylib) + 1492  [0x197ddcccc]
+    +       ! :     +               1 __bzero  (in libsystem_platform.dylib) + 68  [0x197feba74]
+    +       ! :     1 specialized static MaskOverlayWorker.makeOverlay(from:cancellation:)  (in Glowroom) + 2900  [0x104e96e54]  MaskEditingModel.swift:161
+    +       ! 58 specialized static MaskBenchmark.validate(sequence:backends:rust:)  (in Glowroom) + 204  [0x104e0b3b0]  MaskBenchmark.swift:140
+    +       ! : 46 closure #2 in static MaskBenchmark.validate(sequence:backends:rust:)  (in Glowroom) + 104  [0x104e06dc8]  MaskBenchmark.swift:141
+    +       ! : | 46 static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 12  [0x105125c74]  /<compiler-generated>:0
+    +       ! : |   46 specialized static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 4556  [0x1051329d0]  MaskRasterizer.swift:123
+    +       ! : |     46 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 868  [0x10512ebc8]  MaskRasterizer.swift:141
+    +       ! : |       11 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1056,1052  [0x10512ec84,0x10512ec80]  MaskRasterizer.swift:145
+    +       ! : |       9 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1180,1196,...  [0x10512ed00,0x10512ed10,...]  MaskRasterizer.swift:151
+    +       ! : |       7 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1112  [0x10512ecbc]  MaskRasterizer.swift:146
+    +       ! : |       6 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1148,1204  [0x10512ece0,0x10512ed18]  MaskRasterizer.swift:0
+    +       ! : |       5 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1116,1120  [0x10512ecc0,0x10512ecc4]  MaskRasterizer.swift:147
+    +       ! : |       3 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1016,1012  [0x10512ec5c,0x10512ec58]  /<compiler-generated>:0
+    +       ! : |       1 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1032  [0x10512ec6c]  MaskRasterizer.swift:144
+    +       ! : |       1 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1128  [0x10512eccc]  MaskRasterizer.swift:148
+    +       ! : |       1 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1136  [0x10512ecd4]  MaskRasterizer.swift:150
+    +       ! : |       1 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1224  [0x10512ed2c]  MaskRasterizer.swift:152
+    +       ! : |       1 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1232  [0x10512ed34]  MaskRasterizer.swift:153
+    +       ! : 6 closure #2 in static MaskBenchmark.validate(sequence:backends:rust:)  (in Glowroom) + 392  [0x104e06ee8]  MaskBenchmark.swift:144
+    +       ! : | 5 MaskRaster.canonicalSHA256(cancellation:)  (in Glowroom) + 804  [0x105126400]  MaskRasterizer.swift:24
+    +       ! : | + 5 specialized HashFunction.update<A>(data:)  (in Glowroom) + 480  [0x104f2ee1c]  /<compiler-generated>:0
+    +       ! : | +   5 ccdigest_update  (in libcorecrypto.dylib) + 68  [0x197d15ed4]
+    +       ! : | +     5 ccdigest_update_internal  (in libcorecrypto.dylib) + 288  [0x197d7611c]
+    +       ! : | +       5 AccelerateCrypto_SHA256_compress  (in libcorecrypto.dylib) + 448,384,...  [0x197d179f0,0x197d179b0,...]
+    +       ! : | 1 MaskRaster.canonicalSHA256(cancellation:)  (in Glowroom) + 880  [0x10512644c]  MaskRasterizer.swift:26
+    +       ! : |   1 specialized Sequence.map<A, B>(_:)  (in Glowroom) + 652  [0x105125bc0]  /<compiler-generated>:0
+    +       ! : |     1 String.init(format:_:)  (in Foundation) + 44  [0x19a465ad8]
+    +       ! : |       1 specialized String.init(format:locale:arguments:)  (in Foundation) + 444  [0x19a46f41c]
+    +       ! : |         1 closure #1 in String.init(format:locale:arguments:)  (in Foundation) + 1476  [0x19a4660f4]
+    +       ! : |           1 +[NSString _stringWithValidatedFormat:validFormatSpecifiers:locale:arguments:error:]  (in Foundation) + 72  [0x199954570]
+    +       ! : |             1 -[NSPlaceholderString initWithValidatedFormat:validFormatSpecifiers:locale:arguments:error:]  (in Foundation) + 104  [0x199955e90]
+    +       ! : |               1 _CFStringCreateStringWithValidatedFormatAuxWithDesc  (in CoreFoundation) + 92  [0x19818fb8c]
+    +       ! : |                 1 CFStringCreateMutable  (in CoreFoundation) + 192  [0x1980326a4]
+    +       ! : 5 closure #2 in static MaskBenchmark.validate(sequence:backends:rust:)  (in Glowroom) + 468  [0x104e06f34]  MaskBenchmark.swift:144
+    +       ! : | 5 MaskRaster.canonicalSHA256(cancellation:)  (in Glowroom) + 804  [0x105126400]  MaskRasterizer.swift:24
+    +       ! : |   5 specialized HashFunction.update<A>(data:)  (in Glowroom) + 480  [0x104f2ee1c]  /<compiler-generated>:0
+    +       ! : |     5 ccdigest_update  (in libcorecrypto.dylib) + 68  [0x197d15ed4]
+    +       ! : |       5 ccdigest_update_internal  (in libcorecrypto.dylib) + 288  [0x197d7611c]
+    +       ! : |         5 AccelerateCrypto_SHA256_compress  (in libcorecrypto.dylib) + 448,504,...  [0x197d179f0,0x197d17a28,...]
+    +       ! : 1 closure #2 in static MaskBenchmark.validate(sequence:backends:rust:)  (in Glowroom) + 320  [0x104e06ea0]  MaskBenchmark.swift:143
+    +       ! :   1 specialized static Data.== infix(_:_:)  (in Glowroom) + 1760  [0x104d61870]  /<compiler-generated>:0
+    +       ! :     1 _platform_memcmp  (in libsystem_platform.dylib) + 32  [0x197fe9190]
+    +       ! 48 specialized static MaskBenchmark.validate(sequence:backends:rust:)  (in Glowroom) + 1260  [0x104e0a870]  MaskBenchmark.swift:134
+    +       ! : 48 MaskRasterizationCache.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 648  [0x1051227ac]  MaskRasterizationCache.swift:41
+    +       ! :   47 specialized static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 4556  [0x1051329d0]  MaskRasterizer.swift:123
+    +       ! :   | 45 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 868  [0x10512ebc8]  MaskRasterizer.swift:141
+    +       ! :   | + 12 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1052,1056,...  [0x10512ec80,0x10512ec84,...]  MaskRasterizer.swift:145
+    +       ! :   | + 11 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1112  [0x10512ecbc]  MaskRasterizer.swift:146
+    +       ! :   | + 7 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1180,1192,...  [0x10512ed00,0x10512ed0c,...]  MaskRasterizer.swift:151
+    +       ! :   | + 3 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1136  [0x10512ecd4]  MaskRasterizer.swift:150
+    +       ! :   | + 2 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1016  [0x10512ec5c]  /<compiler-generated>:0
+    +       ! :   | + 2 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1116,1120  [0x10512ecc0,0x10512ecc4]  MaskRasterizer.swift:147
+    +       ! :   | + 2 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1128,1132  [0x10512eccc,0x10512ecd0]  MaskRasterizer.swift:148
+    +       ! :   | + 2 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1224  [0x10512ed2c]  MaskRasterizer.swift:152
+    +       ! :   | + 2 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 996,1000  [0x10512ec48,0x10512ec4c]  MaskRasterizer.swift:154
+    +       ! :   | + 1 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1024  [0x10512ec64]  MaskRasterizer.swift:143
+    +       ! :   | + 1 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1236  [0x10512ed38]  MaskRasterizer.swift:153
+    +       ! :   | 2 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 212  [0x10512e938]  MaskRasterizer.swift:126
+    +       ! :   |   1 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1056  [0x10512ec84]  MaskRasterizer.swift:145
+    +       ! :   |   1 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1112  [0x10512ecbc]  MaskRasterizer.swift:146
+    +       ! :   1 specialized static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 252  [0x105131900]  MaskRasterizer.swift:121
+    +       ! :     1 specialized Data.init(repeating:count:)  (in Glowroom) + 544  [0x10512fe8c]  /<compiler-generated>:0
+    +       ! :       1 __bzero  (in libsystem_platform.dylib) + 64  [0x197feba70]
+    +       ! 6 specialized static MaskBenchmark.validate(sequence:backends:rust:)  (in Glowroom) + 1048  [0x104e0c070]  MaskBenchmark.swift:166
+    +       ! : 6 specialized static Data.== infix(_:_:)  (in Glowroom) + 1760  [0x104d61870]  /<compiler-generated>:0
+    +       ! :   6 _platform_memcmp  (in libsystem_platform.dylib) + 56,48,...  [0x197fe91a8,0x197fe91a0,...]
+    +       ! 1 specialized static MaskBenchmark.validate(sequence:backends:rust:)  (in Glowroom) + 1208  [0x104e0c110]  /<compiler-generated>:0
+    +       ! : 1 outlined destroy of MaskRasterRequest  (in Glowroom) + 44  [0x104e17c6c]
+    +       ! :   1 _CFRelease  (in CoreFoundation) + 308  [0x19817d5c4]
+    +       ! :     1 image_finalize  (in CoreGraphics) + 100  [0x19ee83648]
+    +       ! :       1 _CFRelease  (in CoreFoundation) + 1320  [0x19817d9b8]
+    +       ! :         1 data_provider_retain_count  (in CoreGraphics) + 96  [0x19ee2efa8]
+    +       ! :           1 data_provider_finalize  (in CoreGraphics) + 64  [0x19ee64a80]
+    +       ! :             1 stack_logging_lite_free  (in MallocStackLogging) + 96  [0x1c8adb6ac]
+    +       ! :               1 uniquing_table_stack_release  (in MallocStackLogging) + 60  [0x1c8ae1abc]
+    +       ! :                 1 uniquing_table_node_release_internal  (in MallocStackLogging) + 156  [0x1c8adaf5c]
+    +       ! 1 specialized static MaskBenchmark.validate(sequence:backends:rust:)  (in Glowroom) + 212  [0x104e0bd2c]  MaskBenchmark.swift:166
+    +       !   1 specialized static Data._unconditionallyBridgeFromObjectiveC(_:)  (in Foundation) + 88  [0x19a25e9d8]
+    +       !     1 -[__NSCFData _bridgingCopy:length:]  (in CoreFoundation) + 88  [0x198161998]
+    +       !       1 _platform_memmove  (in libsystem_platform.dylib) + 88  [0x197febdb8]
+    +       1293 specialized static MaskBenchmark.run(_:)  (in Glowroom) + 76  [0x104e14728]  MaskBenchmark.swift:94
+    +       ! 1293 MaskOverlayWorker.rasterize(_:timingObserver:)  (in Glowroom) + 360  [0x104e90e84]  MaskEditingModel.swift:106
+    +       !   986 closure #1 in MaskOverlayWorker.rasterize(_:timingObserver:)  (in Glowroom) + 996  [0x104e91394]  MaskEditingModel.swift:116
+    +       !   : 986 closure #1 in closure #1 in MaskOverlayWorker.rasterize(_:timingObserver:)  (in Glowroom) + 592  [0x104e92098]  MaskEditingModel.swift:124
+    +       !   :   986 static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 12  [0x105125c74]  /<compiler-generated>:0
+    +       !   :     979 specialized static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 4556  [0x1051329d0]  MaskRasterizer.swift:123
+    +       !   :     | 968 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 868  [0x10512ebc8]  MaskRasterizer.swift:141
+    +       !   :     | + 241 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1052,1056,...  [0x10512ec80,0x10512ec84,...]  MaskRasterizer.swift:145
+    +       !   :     | + 240 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1112,1092,...  [0x10512ecbc,0x10512eca8,...]  MaskRasterizer.swift:146
+    +       !   :     | + 111 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1012,1016,...  [0x10512ec58,0x10512ec5c,...]  /<compiler-generated>:0
+    +       !   :     | + 79 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1116,1120,...  [0x10512ecc0,0x10512ecc4,...]  MaskRasterizer.swift:147
+    +       !   :     | + 61 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1180,1160,...  [0x10512ed00,0x10512ecec,...]  MaskRasterizer.swift:151
+    +       !   :     | + 53 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1204,1148,...  [0x10512ed18,0x10512ece0,...]  MaskRasterizer.swift:0
+    +       !   :     | + 52 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1128,1132  [0x10512eccc,0x10512ecd0]  MaskRasterizer.swift:148
+    +       !   :     | + 50 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1136,1140  [0x10512ecd4,0x10512ecd8]  MaskRasterizer.swift:150
+    +       !   :     | + 32 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1224  [0x10512ed2c]  MaskRasterizer.swift:152
+    +       !   :     | + 18 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1036,1040,...  [0x10512ec70,0x10512ec74,...]  MaskRasterizer.swift:144
+    +       !   :     | + 17 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1232  [0x10512ed34]  MaskRasterizer.swift:153
+    +       !   :     | + 9 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1024  [0x10512ec64]  MaskRasterizer.swift:143
+    +       !   :     | + 3 partial apply for closure #3 in closure #1 in closure #1 in MaskOverlayWorker.rasterize(_:timingObserver:)  (in Glowroom) + 12  [0x104e975d0]
+    +       !   :     | + ! 3 partial apply for closure #2 in closure #2 in closure #1 in MaskOverlayWorker.rasterize(_:timingObserver:)  (in Glowroom) + 16  [0x104e97480]  /<compiler-generated>:0
+    +       !   :     | + !   1 closure #2 in closure #1 in closure #1 in MaskOverlayWorker.rasterize(_:timingObserver:)  (in Glowroom) + 48  [0x104e922b4]
+    +       !   :     | + !   : 1 objc_msgSend  (in libobjcMsgSend.dylib) + 80  [0x19f754850]
+    +       !   :     | + !   1 closure #2 in closure #1 in closure #1 in MaskOverlayWorker.rasterize(_:timingObserver:)  (in Glowroom) + 164  [0x104e92328]
+    +       !   :     | + !   : 1 DYLD-STUB$$static Task<>.checkCancellation()  (in Glowroom) + 4  [0x1054682b0]
+    +       !   :     | + !   1 closure #2 in closure #1 in closure #1 in MaskOverlayWorker.rasterize(_:timingObserver:)  (in Glowroom) + 36  [0x104e922a8]
+    +       !   :     | + 1 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 840  [0x10512ebac]  MaskRasterizer.swift:141
+    +       !   :     | + 1 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 996  [0x10512ec48]  MaskRasterizer.swift:154
+    +       !   :     | 10 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 212  [0x10512e938]  MaskRasterizer.swift:126
+    +       !   :     | + 3 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1112  [0x10512ecbc]  MaskRasterizer.swift:146
+    +       !   :     | + 2 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1052  [0x10512ec80]  MaskRasterizer.swift:145
+    +       !   :     | + 1 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1016  [0x10512ec5c]  /<compiler-generated>:0
+    +       !   :     | + 1 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1204  [0x10512ed18]  MaskRasterizer.swift:0
+    +       !   :     | + 1 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1120  [0x10512ecc4]  MaskRasterizer.swift:147
+    +       !   :     | + 1 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1136  [0x10512ecd4]  MaskRasterizer.swift:150
+    +       !   :     | + 1 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1180  [0x10512ed00]  MaskRasterizer.swift:151
+    +       !   :     | 1 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 856  [0x10512ebbc]  MaskRasterizer.swift:141
+    +       !   :     |   1 static Task<>.checkCancellation()  (in libswift_Concurrency.dylib) + 76  [0x2c492c628]
+    +       !   :     |     1 swift_retain  (in libswiftCore.dylib) + 0  [0x1ac553458]
+    +       !   :     7 specialized static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 252  [0x105131900]  MaskRasterizer.swift:121
+    +       !   :       5 specialized Data.init(repeating:count:)  (in Glowroom) + 544  [0x10512fe8c]  /<compiler-generated>:0
+    +       !   :       + 5 __bzero  (in libsystem_platform.dylib) + 68  [0x197feba74]
+    +       !   :       2 specialized Data.init(repeating:count:)  (in Glowroom) + 56  [0x10512fca4]  /<compiler-generated>:0
+    +       !   :         2 specialized Data._Representation.init(count:)  (in Glowroom) + 84  [0x104f79764]  /<compiler-generated>:0
+    +       !   :           2 __DataStorage.init(length:)  (in Foundation) + 208  [0x199c10578]
+    +       !   :             2 _malloc_type_calloc_outlined  (in libsystem_malloc.dylib) + 88  [0x197de7e38]
+    +       !   :               2 _malloc_zone_calloc_instrumented_or_legacy  (in libsystem_malloc.dylib) + 132  [0x197e08820]
+    +       !   :                 2 stack_logging_lite_calloc  (in MallocStackLogging) + 208  [0x1c8adb528]
+    +       !   :                   2 _xzm_malloc_large_huge  (in libsystem_malloc.dylib) + 968  [0x197dfc4ac]
+    +       !   :                     2 xzm_segment_group_alloc_chunk  (in libsystem_malloc.dylib) + 1492  [0x197ddcccc]
+    +       !   :                       2 __bzero  (in libsystem_platform.dylib) + 68  [0x197feba74]
+    +       !   177 closure #1 in MaskOverlayWorker.rasterize(_:timingObserver:)  (in Glowroom) + 1612  [0x104e915fc]  MaskEditingModel.swift:127
+    +       !   : 176 MaskRaster.resampled(to:crop:cancellation:)  (in Glowroom) + 8056  [0x10512a7c4]  MaskRasterizer.swift:39
+    +       !   : | 176 closure #1 in closure #1 in MaskRaster.resampled(to:crop:cancellation:)  (in Glowroom) + 280  [0x10512b0d8]  MaskRasterizer.swift:46
+    +       !   : |   86 closure #1 in closure #1 in MaskRaster.resampled(to:crop:cancellation:)  (in Glowroom) + 540,584,...  [0x10512b1dc,0x10512b208,...]  MaskRasterizer.swift:52
+    +       !   : |   58 closure #1 in closure #1 in MaskRaster.resampled(to:crop:cancellation:)  (in Glowroom) + 716,740,...  [0x10512b28c,0x10512b2a4,...]  MaskRasterizer.swift:56
+    +       !   : |   15 closure #1 in closure #1 in MaskRaster.resampled(to:crop:cancellation:)  (in Glowroom) + 608,616,...  [0x10512b220,0x10512b228,...]  MaskRasterizer.swift:55
+    +       !   : |   9 closure #1 in closure #1 in MaskRaster.resampled(to:crop:cancellation:)  (in Glowroom) + 600,592  [0x10512b218,0x10512b210]  MaskRasterizer.swift:54
+    +       !   : |   8 closure #1 in closure #1 in MaskRaster.resampled(to:crop:cancellation:)  (in Glowroom) + 524  [0x10512b1cc]  MaskRasterizer.swift:51
+    +       !   : 1 MaskRaster.resampled(to:crop:cancellation:)  (in Glowroom) + 320  [0x10512898c]  MaskRasterizer.swift:38
+    +       !   :   1 specialized Data._Representation.init(count:)  (in Glowroom) + 84  [0x104f79764]  /<compiler-generated>:0
+    +       !   :     1 __DataStorage.init(length:)  (in Foundation) + 208  [0x199c10578]
+    +       !   :       1 _malloc_type_calloc_outlined  (in libsystem_malloc.dylib) + 88  [0x197de7e38]
+    +       !   :         1 _malloc_zone_calloc_instrumented_or_legacy  (in libsystem_malloc.dylib) + 132  [0x197e08820]
+    +       !   :           1 stack_logging_lite_calloc  (in MallocStackLogging) + 208  [0x1c8adb528]
+    +       !   :             1 _xzm_malloc_large_huge  (in libsystem_malloc.dylib) + 968  [0x197dfc4ac]
+    +       !   :               1 xzm_segment_group_alloc_chunk  (in libsystem_malloc.dylib) + 1492  [0x197ddcccc]
+    +       !   :                 1 __bzero  (in libsystem_platform.dylib) + 68  [0x197feba74]
+    +       !   105 closure #1 in MaskOverlayWorker.rasterize(_:timingObserver:)  (in Glowroom) + 2028  [0x104e9179c]  MaskEditingModel.swift:136
+    +       !   : 103 MaskRaster.canonicalSHA256(cancellation:)  (in Glowroom) + 804  [0x105126400]  MaskRasterizer.swift:24
+    +       !   : | 103 specialized HashFunction.update<A>(data:)  (in Glowroom) + 480  [0x104f2ee1c]  /<compiler-generated>:0
+    +       !   : |   102 ccdigest_update  (in libcorecrypto.dylib) + 68  [0x197d15ed4]
+    +       !   : |   + 102 ccdigest_update_internal  (in libcorecrypto.dylib) + 288  [0x197d7611c]
+    +       !   : |   +   102 AccelerateCrypto_SHA256_compress  (in libcorecrypto.dylib) + 532,560,...  [0x197d17a44,0x197d17a60,...]
+    +       !   : |   1 ccdigest_update  (in libcorecrypto.dylib) + 76  [0x197d15edc]
+    +       !   : |     1 timingsafe_restore_if_supported  (in libcorecrypto.dylib) + 20  [0x197d72eac]
+    +       !   : 2 MaskRaster.canonicalSHA256(cancellation:)  (in Glowroom) + 880  [0x10512644c]  MaskRasterizer.swift:26
+    +       !   :   2 specialized Sequence.map<A, B>(_:)  (in Glowroom) + 652  [0x105125bc0]  /<compiler-generated>:0
+    +       !   :     2 String.init(format:_:)  (in Foundation) + 44  [0x19a465ad8]
+    +       !   :       1 specialized String.init(format:locale:arguments:)  (in Foundation) + 180  [0x19a46f314]
+    +       !   :       + 1 protocol witness for CVarArg._cVarArgEncoding.getter in conformance UInt8  (in libswiftCore.dylib) + 32  [0x1ac8e7368]
+    +       !   :       +   1 specialized Array.init(repeating:count:)  (in libswiftCore.dylib) + 44  [0x1ac6965ec]
+    +       !   :       +     1 specialized static Array._allocateBufferUninitialized(minimumCapacity:)  (in libswiftCore.dylib) + 52  [0x1ac696910]
+    +       !   :       +       1 swift_allocObject  (in libswiftCore.dylib) + 136  [0x1ac550ed4]
+    +       !   :       +         1 swift::swift_slowAllocTyped(unsigned long, unsigned long, unsigned long long)  (in libswiftCore.dylib) + 64  [0x1ac5bb26c]
+    +       !   :       +           1 _malloc_type_malloc_outlined  (in libsystem_malloc.dylib) + 96  [0x197de7dd0]
+    +       !   :       +             1 _malloc_zone_malloc_instrumented_or_legacy  (in libsystem_malloc.dylib) + 152  [0x197e08630]
+    +       !   :       +               1 stack_logging_lite_malloc  (in MallocStackLogging) + 140  [0x1c8adb400]
+    +       !   :       +                 1 add_stack_to_ptr  (in MallocStackLogging) + 312  [0x1c8adbfd8]
+    +       !   :       +                   1 uniquing_table_stack_retain  (in MallocStackLogging) + 88  [0x1c8ada300]
+    +       !   :       +                     1 thread_stack_pcs  (in libsystem_c.dylib) + 28  [0x197e7794c]
+    +       !   :       +                       1 __thread_stack_pcs  (in libsystem_c.dylib) + 400  [0x197ea4d2c]
+    +       !   :       +                         1 pthread_stack_frame_decode_np  (in libsystem_pthread.dylib) + 32  [0x197fe01ac]
+    +       !   :       1 specialized String.init(format:locale:arguments:)  (in Foundation) + 444  [0x19a46f41c]
+    +       !   :         1 closure #1 in String.init(format:locale:arguments:)  (in Foundation) + 1476  [0x19a4660f4]
+    +       !   :           1 +[NSString _stringWithValidatedFormat:validFormatSpecifiers:locale:arguments:error:]  (in Foundation) + 72  [0x199954570]
+    +       !   :             1 -[NSPlaceholderString initWithValidatedFormat:validFormatSpecifiers:locale:arguments:error:]  (in Foundation) + 104  [0x199955e90]
+    +       !   :               1 _CFStringCreateStringWithValidatedFormatAuxWithDesc  (in CoreFoundation) + 0  [0x19818fb30]
+    +       !   25 closure #1 in MaskOverlayWorker.rasterize(_:timingObserver:)  (in Glowroom) + 2480  [0x104e91960]  MaskEditingModel.swift:139
+    +       !     25 specialized static MaskOverlayWorker.makeOverlay(from:cancellation:)  (in Glowroom) + 2880,2900  [0x104e96e40,0x104e96e54]  MaskEditingModel.swift:161
+    +       186 specialized static MaskBenchmark.run(_:)  (in Glowroom) + 72  [0x104e11dd0]  MaskBenchmark.swift:88
+    +       ! 186 MaskOverlayWorker.rasterize(_:timingObserver:)  (in Glowroom) + 360  [0x104e90e84]  MaskEditingModel.swift:106
+    +       !   140 closure #1 in MaskOverlayWorker.rasterize(_:timingObserver:)  (in Glowroom) + 996  [0x104e91394]  MaskEditingModel.swift:116
+    +       !   : 140 closure #1 in closure #1 in MaskOverlayWorker.rasterize(_:timingObserver:)  (in Glowroom) + 592  [0x104e92098]  MaskEditingModel.swift:124
+    +       !   :   140 static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 12  [0x105125c74]  /<compiler-generated>:0
+    +       !   :     137 specialized static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 4556  [0x1051329d0]  MaskRasterizer.swift:123
+    +       !   :     | 136 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 868  [0x10512ebc8]  MaskRasterizer.swift:141
+    +       !   :     | + 37 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1052,1056,...  [0x10512ec80,0x10512ec84,...]  MaskRasterizer.swift:145
+    +       !   :     | + 36 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1112,1092  [0x10512ecbc,0x10512eca8]  MaskRasterizer.swift:146
+    +       !   :     | + 13 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1012,1016,...  [0x10512ec58,0x10512ec5c,...]  /<compiler-generated>:0
+    +       !   :     | + 11 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1148,1204  [0x10512ece0,0x10512ed18]  MaskRasterizer.swift:0
+    +       !   :     | + 9 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1180,1160  [0x10512ed00,0x10512ecec]  MaskRasterizer.swift:151
+    +       !   :     | + 7 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1120,1116,...  [0x10512ecc4,0x10512ecc0,...]  MaskRasterizer.swift:147
+    +       !   :     | + 7 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1128,1132  [0x10512eccc,0x10512ecd0]  MaskRasterizer.swift:148
+    +       !   :     | + 4 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1136  [0x10512ecd4]  MaskRasterizer.swift:150
+    +       !   :     | + 4 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1232  [0x10512ed34]  MaskRasterizer.swift:153
+    +       !   :     | + 3 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1224  [0x10512ed2c]  MaskRasterizer.swift:152
+    +       !   :     | + 2 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 1032,1040  [0x10512ec6c,0x10512ec74]  MaskRasterizer.swift:144
+    +       !   :     | + 2 partial apply for closure #3 in closure #1 in closure #1 in MaskOverlayWorker.rasterize(_:timingObserver:)  (in Glowroom) + 12  [0x104e975d0]
+    +       !   :     | + ! 2 partial apply for closure #2 in closure #2 in closure #1 in MaskOverlayWorker.rasterize(_:timingObserver:)  (in Glowroom) + 16  [0x104e97480]  /<compiler-generated>:0
+    +       !   :     | + !   2 closure #2 in closure #1 in closure #1 in MaskOverlayWorker.rasterize(_:timingObserver:)  (in Glowroom) + 164  [0x104e92328]
+    +       !   :     | + !     2 static Task<>.checkCancellation()  (in libswift_Concurrency.dylib) + 64  [0x2c492c61c]
+    +       !   :     | + !       1 __isPlatformOrVariantPlatformVersionAtLeast  (in libswiftCore.dylib) + 116  [0x1ac560890]
+    +       !   :     | + !       : 1 dispatch_once_f  (in libdispatch.dylib) + 0  [0x197e2359c]
+    +       !   :     | + !       1 __isPlatformOrVariantPlatformVersionAtLeast  (in libswiftCore.dylib) + 168  [0x1ac5608c4]
+    +       !   :     | + !         1 _availability_version_check  (in libxpc.dylib) + 184  [0x197cb7dbc]
+    +       !   :     | + 1 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 996  [0x10512ec48]  MaskRasterizer.swift:154
+    +       !   :     | 1 closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 856  [0x10512ebbc]  MaskRasterizer.swift:141
+    +       !   :     |   1 static Task<>.checkCancellation()  (in libswift_Concurrency.dylib) + 64  [0x2c492c61c]
+    +       !   :     |     1 __isPlatformOrVariantPlatformVersionAtLeast  (in libswiftCore.dylib) + 168  [0x1ac5608c4]
+    +       !   :     |       1 _availability_version_check  (in libxpc.dylib) + 0  [0x197cb7d04]
+    +       !   :     3 specialized static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 252  [0x105131900]  MaskRasterizer.swift:121
+    +       !   :       2 specialized Data.init(repeating:count:)  (in Glowroom) + 56  [0x10512fca4]  /<compiler-generated>:0
+    +       !   :       + 2 specialized Data._Representation.init(count:)  (in Glowroom) + 84  [0x104f79764]  /<compiler-generated>:0
+    +       !   :       +   2 __DataStorage.init(length:)  (in Foundation) + 208  [0x199c10578]
+    +       !   :       +     2 _malloc_type_calloc_outlined  (in libsystem_malloc.dylib) + 88  [0x197de7e38]
+    +       !   :       +       2 _malloc_zone_calloc_instrumented_or_legacy  (in libsystem_malloc.dylib) + 132  [0x197e08820]
+    +       !   :       +         2 stack_logging_lite_calloc  (in MallocStackLogging) + 208  [0x1c8adb528]
+    +       !   :       +           2 _xzm_malloc_large_huge  (in libsystem_malloc.dylib) + 968  [0x197dfc4ac]
+    +       !   :       +             2 xzm_segment_group_alloc_chunk  (in libsystem_malloc.dylib) + 1492  [0x197ddcccc]
+    +       !   :       +               2 __bzero  (in libsystem_platform.dylib) + 64  [0x197feba70]
+    +       !   :       1 specialized Data.init(repeating:count:)  (in Glowroom) + 544  [0x10512fe8c]  /<compiler-generated>:0
+    +       !   :         1 __bzero  (in libsystem_platform.dylib) + 68  [0x197feba74]
+    +       !   26 closure #1 in MaskOverlayWorker.rasterize(_:timingObserver:)  (in Glowroom) + 1612  [0x104e915fc]  MaskEditingModel.swift:127
+    +       !   : 26 MaskRaster.resampled(to:crop:cancellation:)  (in Glowroom) + 8056  [0x10512a7c4]  MaskRasterizer.swift:39
+    +       !   :   26 closure #1 in closure #1 in MaskRaster.resampled(to:crop:cancellation:)  (in Glowroom) + 280  [0x10512b0d8]  MaskRasterizer.swift:46
+    +       !   :     16 closure #1 in closure #1 in MaskRaster.resampled(to:crop:cancellation:)  (in Glowroom) + 540,564,...  [0x10512b1dc,0x10512b1f4,...]  MaskRasterizer.swift:52
+    +       !   :     5 closure #1 in closure #1 in MaskRaster.resampled(to:crop:cancellation:)  (in Glowroom) + 712,716,...  [0x10512b288,0x10512b28c,...]  MaskRasterizer.swift:56
+    +       !   :     3 closure #1 in closure #1 in MaskRaster.resampled(to:crop:cancellation:)  (in Glowroom) + 608,616  [0x10512b220,0x10512b228]  MaskRasterizer.swift:55
+    +       !   :     1 closure #1 in closure #1 in MaskRaster.resampled(to:crop:cancellation:)  (in Glowroom) + 532  [0x10512b1d4]  MaskRasterizer.swift:51
+    +       !   :     1 closure #1 in closure #1 in MaskRaster.resampled(to:crop:cancellation:)  (in Glowroom) + 592  [0x10512b210]  MaskRasterizer.swift:54
+    +       !   16 closure #1 in MaskOverlayWorker.rasterize(_:timingObserver:)  (in Glowroom) + 2028  [0x104e9179c]  MaskEditingModel.swift:136
+    +       !   : 15 MaskRaster.canonicalSHA256(cancellation:)  (in Glowroom) + 804  [0x105126400]  MaskRasterizer.swift:24
+    +       !   : | 15 specialized HashFunction.update<A>(data:)  (in Glowroom) + 480  [0x104f2ee1c]  /<compiler-generated>:0
+    +       !   : |   15 ccdigest_update  (in libcorecrypto.dylib) + 68  [0x197d15ed4]
+    +       !   : |     15 ccdigest_update_internal  (in libcorecrypto.dylib) + 288  [0x197d7611c]
+    +       !   : |       15 AccelerateCrypto_SHA256_compress  (in libcorecrypto.dylib) + 672,364,...  [0x197d17ad0,0x197d1799c,...]
+    +       !   : 1 MaskRaster.canonicalSHA256(cancellation:)  (in Glowroom) + 880  [0x10512644c]  MaskRasterizer.swift:26
+    +       !   :   1 specialized Sequence.map<A, B>(_:)  (in Glowroom) + 652  [0x105125bc0]  /<compiler-generated>:0
+    +       !   :     1 String.init(format:_:)  (in Foundation) + 44  [0x19a465ad8]
+    +       !   :       1 specialized String.init(format:locale:arguments:)  (in Foundation) + 444  [0x19a46f41c]
+    +       !   :         1 closure #1 in String.init(format:locale:arguments:)  (in Foundation) + 1476  [0x19a4660f4]
+    +       !   :           1 +[NSString _stringWithValidatedFormat:validFormatSpecifiers:locale:arguments:error:]  (in Foundation) + 72  [0x199954570]
+    +       !   :             1 -[NSPlaceholderString initWithValidatedFormat:validFormatSpecifiers:locale:arguments:error:]  (in Foundation) + 104  [0x199955e90]
+    +       !   :               1 _CFStringCreateStringWithValidatedFormatAuxWithDesc  (in CoreFoundation) + 92  [0x19818fb8c]
+    +       !   :                 1 CFStringCreateMutable  (in CoreFoundation) + 80  [0x198032634]
+    +       !   :                   1 _CFRuntimeCreateInstance  (in CoreFoundation) + 248  [0x1980245d4]
+    +       !   4 closure #1 in MaskOverlayWorker.rasterize(_:timingObserver:)  (in Glowroom) + 2480  [0x104e91960]  MaskEditingModel.swift:139
+    +       !     4 specialized static MaskOverlayWorker.makeOverlay(from:cancellation:)  (in Glowroom) + 2880,2900  [0x104e96e40,0x104e96e54]  MaskEditingModel.swift:161
+    +       30 specialized static MaskBenchmark.run(_:)  (in Glowroom) + 4808  [0x104e0e200]  MaskBenchmark.swift:64
+    +       ! 30 MaskDocument.canonicalData()  (in Glowroom) + 88  [0x10511e1e8]  MaskDocument.swift:89
+    +       !   30 dispatch thunk of JSONEncoder.encode<A>(_:)  (in Foundation) + 48  [0x199d90144]
+    +       !     28 JSONEncoder.encode<A>(_:)  (in Foundation) + 304  [0x199d7c848]
+    +       !     : 28 specialized __JSONEncoder.wrapGeneric<A, B>(_:for:)  (in Foundation) + 4460  [0x199d7e7c0]
+    +       !     :   28 dispatch thunk of Encodable.encode(to:)  (in libswiftCore.dylib) + 32  [0x1ac9b6cbc]
+    +       !     :     28 protocol witness for Encodable.encode(to:) in conformance MaskDocument  (in Glowroom) + 40  [0x10512008c]  /<compiler-generated>:0
+    +       !     :       28 MaskDocument.encode(to:)  (in Glowroom) + 420  [0x10511fef4]  /<compiler-generated>:0
+    +       !     :         28 KeyedEncodingContainer.encode<A>(_:forKey:)  (in libswiftCore.dylib) + 60  [0x1ac57bd84]
+    +       !     :           28 _KeyedEncodingContainerBox.encode<A, B>(_:forKey:)  (in libswiftCore.dylib) + 376  [0x1ac6d461c]
+    +       !     :             28 protocol witness for KeyedEncodingContainerProtocol.encode<A>(_:forKey:) in conformance _JSONKeyedEncodingContainer<A>  (in Foundation) + 32  [0x199d8875c]
+    +       !     :               28 _JSONKeyedEncodingContainer.encode<A>(_:forKey:)  (in Foundation) + 332  [0x199d86b2c]
+    +       !     :                 28 __JSONEncoder.wrapGeneric<A, B>(_:for:)  (in Foundation) + 4296  [0x199d7f9bc]
+    +       !     :                   28 dispatch thunk of Encodable.encode(to:)  (in libswiftCore.dylib) + 32  [0x1ac9b6cbc]
+    +       !     :                     28 protocol witness for Encodable.encode(to:) in conformance <A> [A]  (in libswiftCore.dylib) + 32  [0x1ac6ecb48]
+    +       !     :                       28 Array<A>.encode(to:)  (in libswiftCore.dylib) + 600  [0x1ac57d0c8]
+    +       !     :                         28 protocol witness for UnkeyedEncodingContainer.encode<A>(_:) in conformance _JSONUnkeyedEncodingContainer  (in Foundation) + 16  [0x199d89b68]
+    +       !     :                           28 _JSONUnkeyedEncodingContainer.encode<A>(_:)  (in Foundation) + 68  [0x199d891b4]
+    +       !     :                             26 specialized __JSONEncoder.wrapGeneric<A, B>(_:for:)  (in Foundation) + 4460  [0x199d7e7c0]
+    +       !     :                             | 26 dispatch thunk of Encodable.encode(to:)  (in libswiftCore.dylib) + 32  [0x1ac9b6cbc]
+    +       !     :                             |   26 protocol witness for Encodable.encode(to:) in conformance MaskStroke  (in Glowroom) + 24  [0x10511f314]  /<compiler-generated>:0
+    +       !     :                             |     22 MaskStroke.encode(to:)  (in Glowroom) + 280  [0x10511f088]  /<compiler-generated>:0
+    +       !     :                             |     + 22 KeyedEncodingContainer.encode<A>(_:forKey:)  (in libswiftCore.dylib) + 60  [0x1ac57bd84]
+    +       !     :                             |     +   22 _KeyedEncodingContainerBox.encode<A, B>(_:forKey:)  (in libswiftCore.dylib) + 376  [0x1ac6d461c]
+    +       !     :                             |     +     22 protocol witness for KeyedEncodingContainerProtocol.encode<A>(_:forKey:) in conformance _JSONKeyedEncodingContainer<A>  (in Foundation) + 32  [0x199d8875c]
+    +       !     :                             |     +       22 _JSONKeyedEncodingContainer.encode<A>(_:forKey:)  (in Foundation) + 332  [0x199d86b2c]
+    +       !     :                             |     +         21 __JSONEncoder.wrapGeneric<A, B>(_:for:)  (in Foundation) + 4296  [0x199d7f9bc]
+    +       !     :                             |     +         ! 21 dispatch thunk of Encodable.encode(to:)  (in libswiftCore.dylib) + 32  [0x1ac9b6cbc]
+    +       !     :                             |     +         !   21 protocol witness for Encodable.encode(to:) in conformance <A> [A]  (in libswiftCore.dylib) + 32  [0x1ac6ecb48]
+    +       !     :                             |     +         !     21 Array<A>.encode(to:)  (in libswiftCore.dylib) + 600  [0x1ac57d0c8]
+    +       !     :                             |     +         !       21 protocol witness for UnkeyedEncodingContainer.encode<A>(_:) in conformance _JSONUnkeyedEncodingContainer  (in Foundation) + 16  [0x199d89b68]
+    +       !     :                             |     +         !         21 _JSONUnkeyedEncodingContainer.encode<A>(_:)  (in Foundation) + 68  [0x199d891b4]
+    +       !     :                             |     +         !           15 specialized __JSONEncoder.wrapGeneric<A, B>(_:for:)  (in Foundation) + 4460  [0x199d7e7c0]
+    +       !     :                             |     +         !           : 15 dispatch thunk of Encodable.encode(to:)  (in libswiftCore.dylib) + 32  [0x1ac9b6cbc]
+    +       !     :                             |     +         !           :   15 protocol witness for Encodable.encode(to:) in conformance MaskPoint  (in Glowroom) + 16  [0x10511e71c]  /<compiler-generated>:0
+    +       !     :                             |     +         !           :     8 MaskPoint.encode(to:)  (in Glowroom) + 164  [0x10511e590]  /<compiler-generated>:0
+    +       !     :                             |     +         !           :     | 8 protocol witness for Encoder.container<A>(keyedBy:) in conformance __JSONEncoder  (in Foundation) + 24  [0x199d81d04]
+    +       !     :                             |     +         !           :     |   4 __JSONEncoder.container<A>(keyedBy:)  (in Foundation) + 304  [0x199d817a0]
+    +       !     :                             |     +         !           :     |   + 4 swift_allocObject  (in libswiftCore.dylib) + 136  [0x1ac550ed4]
+    +       !     :                             |     +         !           :     |   +   4 swift::swift_slowAllocTyped(unsigned long, unsigned long, unsigned long long)  (in libswiftCore.dylib) + 64  [0x1ac5bb26c]
+    +       !     :                             |     +         !           :     |   +     4 _malloc_type_malloc_outlined  (in libsystem_malloc.dylib) + 96  [0x197de7dd0]
+    +       !     :                             |     +         !           :     |   +       4 _malloc_zone_malloc_instrumented_or_legacy  (in libsystem_malloc.dylib) + 152  [0x197e08630]
+    +       !     :                             |     +         !           :     |   +         4 stack_logging_lite_malloc  (in MallocStackLogging) + 140  [0x1c8adb400]
+    +       !     :                             |     +         !           :     |   +           3 add_stack_to_ptr  (in MallocStackLogging) + 312  [0x1c8adbfd8]
+    +       !     :                             |     +         !           :     |   +           ! 2 uniquing_table_stack_retain  (in MallocStackLogging) + 88  [0x1c8ada300]
+    +       !     :                             |     +         !           :     |   +           ! : 2 thread_stack_pcs  (in libsystem_c.dylib) + 28  [0x197e7794c]
+    +       !     :                             |     +         !           :     |   +           ! :   1 __thread_stack_pcs  (in libsystem_c.dylib) + 400  [0x197ea4d2c]
+    +       !     :                             |     +         !           :     |   +           ! :   | 1 pthread_stack_frame_decode_np  (in libsystem_pthread.dylib) + 32  [0x197fe01ac]
+    +       !     :                             |     +         !           :     |   +           ! :   1 __thread_stack_pcs  (in libsystem_c.dylib) + 352  [0x197ea4cfc]
+    +       !     :                             |     +         !           :     |   +           ! 1 uniquing_table_stack_retain  (in MallocStackLogging) + 128  [0x1c8ada328]
+    +       !     :                             |     +         !           :     |   +           !   1 uniquing_table_stack_retain_internal  (in MallocStackLogging) + 1164  [0x1c8ada8d4]
+    +       !     :                             |     +         !           :     |   +           1 add_stack_to_ptr  (in MallocStackLogging) + 140  [0x1c8adbf2c]
+    +       !     :                             |     +         !           :     |   +             1 xzm_malloc_zone_size  (in libsystem_malloc.dylib) + 364  [0x197df8470]
+    +       !     :                             |     +         !           :     |   3 __JSONEncoder.container<A>(keyedBy:)  (in Foundation) + 692  [0x199d81924]
+    +       !     :                             |     +         !           :     |   + 3 KeyedEncodingContainer.init<A>(_:)  (in libswiftCore.dylib) + 60  [0x1ac6c3774]
+    +       !     :                             |     +         !           :     |   +   3 swift_allocObject  (in libswiftCore.dylib) + 136  [0x1ac550ed4]
+    +       !     :                             |     +         !           :     |   +     3 swift::swift_slowAllocTyped(unsigned long, unsigned long, unsigned long long)  (in libswiftCore.dylib) + 64  [0x1ac5bb26c]
+    +       !     :                             |     +         !           :     |   +       3 _malloc_type_malloc_outlined  (in libsystem_malloc.dylib) + 96  [0x197de7dd0]
+    +       !     :                             |     +         !           :     |   +         3 _malloc_zone_malloc_instrumented_or_legacy  (in libsystem_malloc.dylib) + 152  [0x197e08630]
+    +       !     :                             |     +         !           :     |   +           3 stack_logging_lite_malloc  (in MallocStackLogging) + 140  [0x1c8adb400]
+    +       !     :                             |     +         !           :     |   +             3 add_stack_to_ptr  (in MallocStackLogging) + 312  [0x1c8adbfd8]
+    +       !     :                             |     +         !           :     |   +               3 uniquing_table_stack_retain  (in MallocStackLogging) + 88  [0x1c8ada300]
+    +       !     :                             |     +         !           :     |   +                 3 thread_stack_pcs  (in libsystem_c.dylib) + 28  [0x197e7794c]
+    +       !     :                             |     +         !           :     |   +                   2 __thread_stack_pcs  (in libsystem_c.dylib) + 400  [0x197ea4d2c]
+    +       !     :                             |     +         !           :     |   +                   ! 2 pthread_stack_frame_decode_np  (in libsystem_pthread.dylib) + 0,32  [0x197fe018c,0x197fe01ac]
+    +       !     :                             |     +         !           :     |   +                   1 __thread_stack_pcs  (in libsystem_c.dylib) + 72  [0x197ea4be4]
+    +       !     :                             |     +         !           :     |   +                     1 pthread_get_stackaddr_np  (in libsystem_pthread.dylib) + 32  [0x197fdee38]
+    +       !     :                             |     +         !           :     |   1 __JSONEncoder.container<A>(keyedBy:)  (in Foundation) + 356  [0x199d817d4]
+    +       !     :                             |     +         !           :     |     1 Dictionary._Variant.reserveCapacity(_:)  (in libswiftCore.dylib) + 248  [0x1ac730204]
+    +       !     :                             |     +         !           :     |       1 _NativeDictionary._copyOrMoveAndResize(capacity:moveElements:)  (in libswiftCore.dylib) + 316  [0x1ac7f050c]
+    +       !     :                             |     +         !           :     |         1 __swift_instantiateCanonicalPrespecializedGenericMetadata  (in libswiftCore.dylib) + 40  [0x1ac9dcaf4]
+    +       !     :                             |     +         !           :     |           1 _swift_getGenericMetadata(swift::MetadataRequest, void const* const*, swift::TargetTypeContextDescriptor<swift::InProcess> const*)  (in libswiftCore.dylib) + 40  [0x1ac5c78ac]
+    +       !     :                             |     +         !           :     |             1 getCache(swift::TargetTypeContextDescriptor<swift::InProcess> const&)  (in libswiftCore.dylib) + 664  [0x1ac5c6ff4]
+    +       !     :                             |     +         !           :     |               1 swift::TargetContextDescriptor<swift::InProcess>::getGenericContext() const  (in libswiftCore.dylib) + 48  [0x1ac5a1ec8]
+    +       !     :                             |     +         !           :     4 MaskPoint.encode(to:)  (in Glowroom) + 252  [0x10511e5e8]  /<compiler-generated>:0
+    +       !     :                             |     +         !           :     | 4 KeyedEncodingContainer.encode(_:forKey:)  (in libswiftCore.dylib) + 56  [0x1ac6c38c8]
+    +       !     :                             |     +         !           :     |   4 _KeyedEncodingContainerBox.encode<A>(_:forKey:)  (in libswiftCore.dylib) + 368  [0x1ac6d2a24]
+    +       !     :                             |     +         !           :     |     4 protocol witness for KeyedEncodingContainerProtocol.encode(_:forKey:) in conformance _JSONKeyedEncodingContainer<A>  (in Foundation) + 16  [0x199d8853c]
+    +       !     :                             |     +         !           :     |       3 _JSONKeyedEncodingContainer.encode(_:forKey:)  (in Foundation) + 428  [0x199d86604]
+    +       !     :                             |     +         !           :     |       + 2 Double.description.getter  (in libswiftCore.dylib) + 88  [0x1ac8d31b8]
+    +       !     :                             |     +         !           :     |       + ! 2 _Float64ToASCII(value:buffer:)  (in libswiftCore.dylib) + 1664  [0x1ac79d068]
+    +       !     :                             |     +         !           :     |       + !   2 _Float64ToASCII(value:buffer:)  (in libswiftCore.dylib) + 2120  [0x1ac79d230]
+    +       !     :                             |     +         !           :     |       + 1 Double.description.getter  (in libswiftCore.dylib) + 156  [0x1ac8d31fc]
+    +       !     :                             |     +         !           :     |       +   1 _allocateStringStorage(codeUnitCapacity:precalculatedUTF16Count:)  (in libswiftCore.dylib) + 116  [0x1ac8867b0]
+    +       !     :                             |     +         !           :     |       +     1 swift_allocObject  (in libswiftCore.dylib) + 136  [0x1ac550ed4]
+    +       !     :                             |     +         !           :     |       +       1 swift::swift_slowAllocTyped(unsigned long, unsigned long, unsigned long long)  (in libswiftCore.dylib) + 64  [0x1ac5bb26c]
+    +       !     :                             |     +         !           :     |       +         1 _malloc_type_malloc_outlined  (in libsystem_malloc.dylib) + 96  [0x197de7dd0]
+    +       !     :                             |     +         !           :     |       +           1 _malloc_zone_malloc_instrumented_or_legacy  (in libsystem_malloc.dylib) + 152  [0x197e08630]
+    +       !     :                             |     +         !           :     |       +             1 stack_logging_lite_malloc  (in MallocStackLogging) + 140  [0x1c8adb400]
+    +       !     :                             |     +         !           :     |       +               1 add_stack_to_ptr  (in MallocStackLogging) + 312  [0x1c8adbfd8]
+    +       !     :                             |     +         !           :     |       +                 1 uniquing_table_stack_retain  (in MallocStackLogging) + 88  [0x1c8ada300]
+    +       !     :                             |     +         !           :     |       +                   1 thread_stack_pcs  (in libsystem_c.dylib) + 28  [0x197e7794c]
+    +       !     :                             |     +         !           :     |       +                     1 __thread_stack_pcs  (in libsystem_c.dylib) + 336  [0x197ea4cec]
+    +       !     :                             |     +         !           :     |       1 _JSONKeyedEncodingContainer.encode(_:forKey:)  (in Foundation) + 76  [0x199d864a4]
+    +       !     :                             |     +         !           :     |         1 __swift_instantiateCanonicalPrespecializedGenericMetadata  (in libswiftCore.dylib) + 40  [0x1ac9dcaf4]
+    +       !     :                             |     +         !           :     |           1 _swift_getGenericMetadata(swift::MetadataRequest, void const* const*, swift::TargetTypeContextDescriptor<swift::InProcess> const*)  (in libswiftCore.dylib) + 40  [0x1ac5c78ac]
+    +       !     :                             |     +         !           :     |             1 getCache(swift::TargetTypeContextDescriptor<swift::InProcess> const&)  (in libswiftCore.dylib) + 8  [0x1ac5c6d64]
+    +       !     :                             |     +         !           :     3 MaskPoint.encode(to:)  (in Glowroom) + 192  [0x10511e5ac]  /<compiler-generated>:0
+    +       !     :                             |     +         !           :       3 KeyedEncodingContainer.encode(_:forKey:)  (in libswiftCore.dylib) + 56  [0x1ac6c38c8]
+    +       !     :                             |     +         !           :         3 _KeyedEncodingContainerBox.encode<A>(_:forKey:)  (in libswiftCore.dylib) + 368  [0x1ac6d2a24]
+    +       !     :                             |     +         !           :           2 protocol witness for KeyedEncodingContainerProtocol.encode(_:forKey:) in conformance _JSONKeyedEncodingContainer<A>  (in Foundation) + 16  [0x199d8853c]
+    +       !     :                             |     +         !           :           + 2 _JSONKeyedEncodingContainer.encode(_:forKey:)  (in Foundation) + 428  [0x199d86604]
+    +       !     :                             |     +         !           :           +   2 Double.description.getter  (in libswiftCore.dylib) + 156  [0x1ac8d31fc]
+    +       !     :                             |     +         !           :           +     2 _allocateStringStorage(codeUnitCapacity:precalculatedUTF16Count:)  (in libswiftCore.dylib) + 116  [0x1ac8867b0]
+    +       !     :                             |     +         !           :           +       2 swift_allocObject  (in libswiftCore.dylib) + 136  [0x1ac550ed4]
+    +       !     :                             |     +         !           :           +         2 swift::swift_slowAllocTyped(unsigned long, unsigned long, unsigned long long)  (in libswiftCore.dylib) + 64  [0x1ac5bb26c]
+    +       !     :                             |     +         !           :           +           2 _malloc_type_malloc_outlined  (in libsystem_malloc.dylib) + 96  [0x197de7dd0]
+    +       !     :                             |     +         !           :           +             2 _malloc_zone_malloc_instrumented_or_legacy  (in libsystem_malloc.dylib) + 152  [0x197e08630]
+    +       !     :                             |     +         !           :           +               1 stack_logging_lite_malloc  (in MallocStackLogging) + 80  [0x1c8adb3c4]
+    +       !     :                             |     +         !           :           +               ! 1 required_allocation_size  (in MallocStackLogging) + 92  [0x1c8adbdfc]
+    +       !     :                             |     +         !           :           +               1 stack_logging_lite_malloc  (in MallocStackLogging) + 140  [0x1c8adb400]
+    +       !     :                             |     +         !           :           +                 1 add_stack_to_ptr  (in MallocStackLogging) + 312  [0x1c8adbfd8]
+    +       !     :                             |     +         !           :           +                   1 uniquing_table_stack_retain  (in MallocStackLogging) + 88  [0x1c8ada300]
+    +       !     :                             |     +         !           :           +                     1 thread_stack_pcs  (in libsystem_c.dylib) + 28  [0x197e7794c]
+    +       !     :                             |     +         !           :           +                       1 ???  (in <unknown binary>)  [0x19f8331c8]
+    +       !     :                             |     +         !           :           1 _JSONKeyedEncodingContainer.encode(_:forKey:)  (in Foundation) + 1392  [0x199d869c8]
+    +       !     :                             |     +         !           4 specialized __JSONEncoder.wrapGeneric<A, B>(_:for:)  (in Foundation) + 4516  [0x199d7e7f8]
+    +       !     :                             |     +         !           : 2 __JSONEncoder.takeValue()  (in Foundation) + 40  [0x199d80e18]
+    +       !     :                             |     +         !           : | 2 JSONFuture.RefObject.values.getter  (in Foundation) + 72  [0x199d81fa0]
+    +       !     :                             |     +         !           : |   2 static _DictionaryStorage.allocate(scale:age:seed:)  (in libswiftCore.dylib) + 268  [0x1ac7376d8]
+    +       !     :                             |     +         !           : |     2 swift_allocObject  (in libswiftCore.dylib) + 136  [0x1ac550ed4]
+    +       !     :                             |     +         !           : |       2 swift::swift_slowAllocTyped(unsigned long, unsigned long, unsigned long long)  (in libswiftCore.dylib) + 64  [0x1ac5bb26c]
+    +       !     :                             |     +         !           : |         2 _malloc_type_malloc_outlined  (in libsystem_malloc.dylib) + 96  [0x197de7dd0]
+    +       !     :                             |     +         !           : |           2 _malloc_zone_malloc_instrumented_or_legacy  (in libsystem_malloc.dylib) + 152  [0x197e08630]
+    +       !     :                             |     +         !           : |             2 stack_logging_lite_malloc  (in MallocStackLogging) + 140  [0x1c8adb400]
+    +       !     :                             |     +         !           : |               2 add_stack_to_ptr  (in MallocStackLogging) + 312  [0x1c8adbfd8]
+    +       !     :                             |     +         !           : |                 2 uniquing_table_stack_retain  (in MallocStackLogging) + 88  [0x1c8ada300]
+    +       !     :                             |     +         !           : |                   2 thread_stack_pcs  (in libsystem_c.dylib) + 28  [0x197e7794c]
+    +       !     :                             |     +         !           : |                     2 __thread_stack_pcs  (in libsystem_c.dylib) + 400  [0x197ea4d2c]
+    +       !     :                             |     +         !           : |                       2 pthread_stack_frame_decode_np  (in libsystem_pthread.dylib) + 32  [0x197fe01ac]
+    +       !     :                             |     +         !           : 2 __JSONEncoder.takeValue()  (in Foundation) + 52  [0x199d80e24]
+    +       !     :                             |     +         !           :   2 swift::RefCounts<swift::RefCountBitsT<(swift::RefCountInlinedness)1>>::doDecrementSlow<(swift::PerformDeinit)1>(swift::RefCountBitsT<(swift::RefCountInlinedness)1>, unsigned int)  (in libswiftCore.dylib) + 168  [0x1ac5bdae4]
+    +       !     :                             |     +         !           :     2 _swift_release_dealloc  (in libswiftCore.dylib) + 64  [0x1ac5572a4]
+    +       !     :                             |     +         !           :       1 JSONFuture.RefArray.__deallocating_deinit  (in Foundation) + 20  [0x199d81f34]
+    +       !     :                             |     +         !           :       + 1 swift::RefCounts<swift::RefCountBitsT<(swift::RefCountInlinedness)1>>::doDecrementSlow<(swift::PerformDeinit)1>(swift::RefCountBitsT<(swift::RefCountInlinedness)1>, unsigned int)  (in libswiftCore.dylib) + 168  [0x1ac5bdae4]
+    +       !     :                             |     +         !           :       +   1 _swift_release_dealloc  (in libswiftCore.dylib) + 64  [0x1ac5572a4]
+    +       !     :                             |     +         !           :       +     1 _DictionaryStorage.__deallocating_deinit  (in libswiftCore.dylib) + 16  [0x1ac7355cc]
+    +       !     :                             |     +         !           :       +       1 _DictionaryStorage.deinit  (in libswiftCore.dylib) + 152  [0x1ac55d52c]
+    +       !     :                             |     +         !           :       1 stack_logging_lite_free  (in MallocStackLogging) + 96  [0x1c8adb6ac]
+    +       !     :                             |     +         !           :         1 uniquing_table_stack_release  (in MallocStackLogging) + 60  [0x1c8ae1abc]
+    +       !     :                             |     +         !           :           1 uniquing_table_node_release_internal  (in MallocStackLogging) + 4  [0x1c8adaec4]
+    +       !     :                             |     +         !           1 specialized __JSONEncoder.wrapGeneric<A, B>(_:for:)  (in Foundation) + 520  [0x199d7d85c]
+    +       !     :                             |     +         !           : 1 tryCast(swift::OpaqueValue*, swift::TargetMetadata<swift::InProcess> const*, swift::OpaqueValue*, swift::TargetMetadata<swift::InProcess> const*, swift::TargetMetadata<swift::InProcess> const*&, swift::TargetMetadata<swift::InProcess> const*&, bool, bool, bool)  (in libswiftCore.dylib) + 1032  [0x1ac5ac9ec]
+    +       !     :                             |     +         !           1 specialized __JSONEncoder.wrapGeneric<A, B>(_:for:)  (in Foundation) + 3816  [0x199d7e53c]
+    +       !     :                             |     +         !             1 swift_allocObject  (in libswiftCore.dylib) + 136  [0x1ac550ed4]
+    +       !     :                             |     +         !               1 swift::swift_slowAllocTyped(unsigned long, unsigned long, unsigned long long)  (in libswiftCore.dylib) + 64  [0x1ac5bb26c]
+    +       !     :                             |     +         !                 1 _malloc_type_malloc_outlined  (in libsystem_malloc.dylib) + 96  [0x197de7dd0]
+    +       !     :                             |     +         !                   1 _malloc_zone_malloc_instrumented_or_legacy  (in libsystem_malloc.dylib) + 152  [0x197e08630]
+    +       !     :                             |     +         !                     1 stack_logging_lite_malloc  (in MallocStackLogging) + 140  [0x1c8adb400]
+    +       !     :                             |     +         !                       1 add_stack_to_ptr  (in MallocStackLogging) + 312  [0x1c8adbfd8]
+    +       !     :                             |     +         !                         1 uniquing_table_stack_retain  (in MallocStackLogging) + 88  [0x1c8ada300]
+    +       !     :                             |     +         !                           1 thread_stack_pcs  (in libsystem_c.dylib) + 28  [0x197e7794c]
+    +       !     :                             |     +         !                             1 __thread_stack_pcs  (in libsystem_c.dylib) + 508  [0x197ea4d98]
+    +       !     :                             |     +         1 __JSONEncoder.wrapGeneric<A, B>(_:for:)  (in Foundation) + 3856  [0x199d7f804]
+    +       !     :                             |     +           1 outlined assign with take of CodingKey?  (in Foundation) + 88  [0x199d8fb78]
+    +       !     :                             |     +             1 assignWithTake for ClosedRange<>.Index  (in libswiftCore.dylib) + 124  [0x1ac9d38b8]
+    +       !     :                             |     2 MaskStroke.encode(to:)  (in Glowroom) + 180  [0x10511f024]  /<compiler-generated>:0
+    +       !     :                             |     + 2 protocol witness for Encoder.container<A>(keyedBy:) in conformance __JSONEncoder  (in Foundation) + 24  [0x199d81d04]
+    +       !     :                             |     +   2 __JSONEncoder.container<A>(keyedBy:)  (in Foundation) + 356  [0x199d817d4]
+    +       !     :                             |     +     2 Dictionary._Variant.reserveCapacity(_:)  (in libswiftCore.dylib) + 248  [0x1ac730204]
+    +       !     :                             |     +       1 _NativeDictionary._copyOrMoveAndResize(capacity:moveElements:)  (in libswiftCore.dylib) + 352  [0x1ac7f0530]
+    +       !     :                             |     +       ! 1 static _DictionaryStorage.allocate(scale:age:seed:)  (in libswiftCore.dylib) + 268  [0x1ac7376d8]
+    +       !     :                             |     +       !   1 swift_allocObject  (in libswiftCore.dylib) + 136  [0x1ac550ed4]
+    +       !     :                             |     +       !     1 swift::swift_slowAllocTyped(unsigned long, unsigned long, unsigned long long)  (in libswiftCore.dylib) + 64  [0x1ac5bb26c]
+    +       !     :                             |     +       !       1 _malloc_type_malloc_outlined  (in libsystem_malloc.dylib) + 96  [0x197de7dd0]
+    +       !     :                             |     +       !         1 _malloc_zone_malloc_instrumented_or_legacy  (in libsystem_malloc.dylib) + 152  [0x197e08630]
+    +       !     :                             |     +       !           1 stack_logging_lite_malloc  (in MallocStackLogging) + 140  [0x1c8adb400]
+    +       !     :                             |     +       !             1 add_stack_to_ptr  (in MallocStackLogging) + 312  [0x1c8adbfd8]
+    +       !     :                             |     +       !               1 uniquing_table_stack_retain  (in MallocStackLogging) + 88  [0x1c8ada300]
+    +       !     :                             |     +       !                 1 thread_stack_pcs  (in libsystem_c.dylib) + 28  [0x197e7794c]
+    +       !     :                             |     +       !                   1 __thread_stack_pcs  (in libsystem_c.dylib) + 440  [0x197ea4d54]
+    +       !     :                             |     +       1 _NativeDictionary._copyOrMoveAndResize(capacity:moveElements:)  (in libswiftCore.dylib) + 72  [0x1ac7f0418]
+    +       !     :                             |     1 MaskStroke.encode(to:)  (in Glowroom) + 396  [0x10511f0fc]  /<compiler-generated>:0
+    +       !     :                             |     + 1 KeyedEncodingContainer.encode(_:forKey:)  (in libswiftCore.dylib) + 56  [0x1ac6c38c8]
+    +       !     :                             |     +   1 _KeyedEncodingContainerBox.encode<A>(_:forKey:)  (in libswiftCore.dylib) + 368  [0x1ac6d2a24]
+    +       !     :                             |     +     1 protocol witness for KeyedEncodingContainerProtocol.encode(_:forKey:) in conformance _JSONKeyedEncodingContainer<A>  (in Foundation) + 0  [0x199d8852c]
+    +       !     :                             |     1 MaskStroke.encode(to:)  (in Glowroom) + 456  [0x10511f138]  /<compiler-generated>:0
+    +       !     :                             |       1 KeyedEncodingContainer.encode<A>(_:forKey:)  (in libswiftCore.dylib) + 60  [0x1ac57bd84]
+    +       !     :                             |         1 _KeyedEncodingContainerBox.encode<A, B>(_:forKey:)  (in libswiftCore.dylib) + 376  [0x1ac6d461c]
+    +       !     :                             |           1 protocol witness for KeyedEncodingContainerProtocol.encode<A>(_:forKey:) in conformance _JSONKeyedEncodingContainer<A>  (in Foundation) + 32  [0x199d8875c]
+    +       !     :                             |             1 _JSONKeyedEncodingContainer.encode<A>(_:forKey:)  (in Foundation) + 332  [0x199d86b2c]
+    +       !     :                             |               1 __JSONEncoder.wrapGeneric<A, B>(_:for:)  (in Foundation) + 1340  [0x199d7ee30]
+    +       !     :                             |                 1 swift_dynamicCast  (in libswiftCore.dylib) + 96  [0x1ac553c34]
+    +       !     :                             |                   1 tryCast(swift::OpaqueValue*, swift::TargetMetadata<swift::InProcess> const*, swift::OpaqueValue*, swift::TargetMetadata<swift::InProcess> const*, swift::TargetMetadata<swift::InProcess> const*&, swift::TargetMetadata<swift::InProcess> const*&, bool, bool, bool)  (in libswiftCore.dylib) + 800  [0x1ac5ac904]
+    +       !     :                             1 ???  (in <unknown binary>)  [0x19f83e768]
+    +       !     :                             1 specialized __JSONEncoder.wrapGeneric<A, B>(_:for:)  (in Foundation) + 3816  [0x199d7e53c]
+    +       !     :                               1 swift_allocObject  (in libswiftCore.dylib) + 136  [0x1ac550ed4]
+    +       !     :                                 1 swift::swift_slowAllocTyped(unsigned long, unsigned long, unsigned long long)  (in libswiftCore.dylib) + 64  [0x1ac5bb26c]
+    +       !     :                                   1 _malloc_type_malloc_outlined  (in libsystem_malloc.dylib) + 96  [0x197de7dd0]
+    +       !     :                                     1 _malloc_zone_malloc_instrumented_or_legacy  (in libsystem_malloc.dylib) + 152  [0x197e08630]
+    +       !     :                                       1 stack_logging_lite_malloc  (in MallocStackLogging) + 140  [0x1c8adb400]
+    +       !     :                                         1 add_stack_to_ptr  (in MallocStackLogging) + 312  [0x1c8adbfd8]
+    +       !     :                                           1 uniquing_table_stack_retain  (in MallocStackLogging) + 128  [0x1c8ada328]
+    +       !     :                                             1 uniquing_table_stack_retain_internal  (in MallocStackLogging) + 776  [0x1c8ada750]
+    +       !     2 JSONEncoder.encode<A>(_:)  (in Foundation) + 580  [0x199d7c95c]
+    +       !       2 JSONWriter.serializeJSON(_:depth:)  (in Foundation) + 84  [0x199d96eb8]
+    +       !         2 JSONWriter.serializeObject(_:depth:)  (in Foundation) + 2284  [0x199d99528]
+    +       !           2 specialized serializeObjectElement #1 (key:value:depth:) in JSONWriter.serializeObject(_:depth:)  (in Foundation) + 6652  [0x199d9b2f0]
+    +       !             1 specialized serializeObjectElement #1 (key:value:depth:) in JSONWriter.serializeObject(_:depth:)  (in Foundation) + 6508  [0x199d9b260]
+    +       !             | 1 specialized _copyCollectionToContiguousArray<A>(_:)  (in Foundation) + 72  [0x199c1e8cc]
+    +       !             |   1 specialized _ContiguousArrayBuffer.init(_uninitializedCount:minimumCapacity:)  (in Foundation) + 64  [0x199fda3b0]
+    +       !             |     1 swift_allocObject  (in libswiftCore.dylib) + 136  [0x1ac550ed4]
+    +       !             |       1 swift::swift_slowAllocTyped(unsigned long, unsigned long, unsigned long long)  (in libswiftCore.dylib) + 64  [0x1ac5bb26c]
+    +       !             |         1 _malloc_type_malloc_outlined  (in libsystem_malloc.dylib) + 96  [0x197de7dd0]
+    +       !             |           1 _malloc_zone_malloc_instrumented_or_legacy  (in libsystem_malloc.dylib) + 152  [0x197e08630]
+    +       !             |             1 stack_logging_lite_malloc  (in MallocStackLogging) + 140  [0x1c8adb400]
+    +       !             |               1 add_stack_to_ptr  (in MallocStackLogging) + 312  [0x1c8adbfd8]
+    +       !             |                 1 uniquing_table_stack_retain  (in MallocStackLogging) + 88  [0x1c8ada300]
+    +       !             |                   1 thread_stack_pcs  (in libsystem_c.dylib) + 28  [0x197e7794c]
+    +       !             |                     1 __thread_stack_pcs  (in libsystem_c.dylib) + 400  [0x197ea4d2c]
+    +       !             |                       1 pthread_stack_frame_decode_np  (in libsystem_pthread.dylib) + 32  [0x197fe01ac]
+    +       !             1 specialized serializeObjectElement #1 (key:value:depth:) in JSONWriter.serializeObject(_:depth:)  (in Foundation) + 6524  [0x199d9b270]
+    +       !               1 specialized MutableCollection<>.sort(by:)  (in Foundation) + 208  [0x199d9be34]
+    +       !                 1 specialized Sequence<>.lexicographicallyPrecedes<A>(_:)  (in Foundation) + 28  [0x199d9b9c4]
+    +       4 specialized static MaskBenchmark.run(_:)  (in Glowroom) + 6276  [0x104e0e7bc]  MaskBenchmark.swift:67
+    +       ! 4 MaskDocument.canonicalData()  (in Glowroom) + 88  [0x10511e1e8]  MaskDocument.swift:89
+    +       !   4 dispatch thunk of JSONEncoder.encode<A>(_:)  (in Foundation) + 48  [0x199d90144]
+    +       !     4 JSONEncoder.encode<A>(_:)  (in Foundation) + 304  [0x199d7c848]
+    +       !       4 specialized __JSONEncoder.wrapGeneric<A, B>(_:for:)  (in Foundation) + 4460  [0x199d7e7c0]
+    +       !         4 dispatch thunk of Encodable.encode(to:)  (in libswiftCore.dylib) + 32  [0x1ac9b6cbc]
+    +       !           4 protocol witness for Encodable.encode(to:) in conformance MaskDocument  (in Glowroom) + 40  [0x10512008c]  /<compiler-generated>:0
+    +       !             4 MaskDocument.encode(to:)  (in Glowroom) + 420  [0x10511fef4]  /<compiler-generated>:0
+    +       !               4 KeyedEncodingContainer.encode<A>(_:forKey:)  (in libswiftCore.dylib) + 60  [0x1ac57bd84]
+    +       !                 4 _KeyedEncodingContainerBox.encode<A, B>(_:forKey:)  (in libswiftCore.dylib) + 376  [0x1ac6d461c]
+    +       !                   4 protocol witness for KeyedEncodingContainerProtocol.encode<A>(_:forKey:) in conformance _JSONKeyedEncodingContainer<A>  (in Foundation) + 32  [0x199d8875c]
+    +       !                     4 _JSONKeyedEncodingContainer.encode<A>(_:forKey:)  (in Foundation) + 332  [0x199d86b2c]
+    +       !                       4 __JSONEncoder.wrapGeneric<A, B>(_:for:)  (in Foundation) + 4296  [0x199d7f9bc]
+    +       !                         4 dispatch thunk of Encodable.encode(to:)  (in libswiftCore.dylib) + 32  [0x1ac9b6cbc]
+    +       !                           4 protocol witness for Encodable.encode(to:) in conformance <A> [A]  (in libswiftCore.dylib) + 32  [0x1ac6ecb48]
+    +       !                             4 Array<A>.encode(to:)  (in libswiftCore.dylib) + 600  [0x1ac57d0c8]
+    +       !                               4 protocol witness for UnkeyedEncodingContainer.encode<A>(_:) in conformance _JSONUnkeyedEncodingContainer  (in Foundation) + 16  [0x199d89b68]
+    +       !                                 4 _JSONUnkeyedEncodingContainer.encode<A>(_:)  (in Foundation) + 68  [0x199d891b4]
+    +       !                                   4 specialized __JSONEncoder.wrapGeneric<A, B>(_:for:)  (in Foundation) + 4460  [0x199d7e7c0]
+    +       !                                     4 dispatch thunk of Encodable.encode(to:)  (in libswiftCore.dylib) + 32  [0x1ac9b6cbc]
+    +       !                                       4 protocol witness for Encodable.encode(to:) in conformance MaskStroke  (in Glowroom) + 24  [0x10511f314]  /<compiler-generated>:0
+    +       !                                         4 MaskStroke.encode(to:)  (in Glowroom) + 280  [0x10511f088]  /<compiler-generated>:0
+    +       !                                           4 KeyedEncodingContainer.encode<A>(_:forKey:)  (in libswiftCore.dylib) + 60  [0x1ac57bd84]
+    +       !                                             4 _KeyedEncodingContainerBox.encode<A, B>(_:forKey:)  (in libswiftCore.dylib) + 376  [0x1ac6d461c]
+    +       !                                               4 protocol witness for KeyedEncodingContainerProtocol.encode<A>(_:forKey:) in conformance _JSONKeyedEncodingContainer<A>  (in Foundation) + 32  [0x199d8875c]
+    +       !                                                 4 _JSONKeyedEncodingContainer.encode<A>(_:forKey:)  (in Foundation) + 332  [0x199d86b2c]
+    +       !                                                   3 __JSONEncoder.wrapGeneric<A, B>(_:for:)  (in Foundation) + 4296  [0x199d7f9bc]
+    +       !                                                   : 3 dispatch thunk of Encodable.encode(to:)  (in libswiftCore.dylib) + 32  [0x1ac9b6cbc]
+    +       !                                                   :   3 protocol witness for Encodable.encode(to:) in conformance <A> [A]  (in libswiftCore.dylib) + 32  [0x1ac6ecb48]
+    +       !                                                   :     3 Array<A>.encode(to:)  (in libswiftCore.dylib) + 600  [0x1ac57d0c8]
+    +       !                                                   :       3 protocol witness for UnkeyedEncodingContainer.encode<A>(_:) in conformance _JSONUnkeyedEncodingContainer  (in Foundation) + 16  [0x199d89b68]
+    +       !                                                   :         3 _JSONUnkeyedEncodingContainer.encode<A>(_:)  (in Foundation) + 68  [0x199d891b4]
+    +       !                                                   :           2 specialized __JSONEncoder.wrapGeneric<A, B>(_:for:)  (in Foundation) + 4460  [0x199d7e7c0]
+    +       !                                                   :           | 2 dispatch thunk of Encodable.encode(to:)  (in libswiftCore.dylib) + 32  [0x1ac9b6cbc]
+    +       !                                                   :           |   2 protocol witness for Encodable.encode(to:) in conformance MaskPoint  (in Glowroom) + 16  [0x10511e71c]  /<compiler-generated>:0
+    +       !                                                   :           |     1 MaskPoint.encode(to:)  (in Glowroom) + 164  [0x10511e590]  /<compiler-generated>:0
+    +       !                                                   :           |     + 1 protocol witness for Encoder.container<A>(keyedBy:) in conformance __JSONEncoder  (in Foundation) + 24  [0x199d81d04]
+    +       !                                                   :           |     +   1 __JSONEncoder.container<A>(keyedBy:)  (in Foundation) + 356  [0x199d817d4]
+    +       !                                                   :           |     +     1 Dictionary._Variant.reserveCapacity(_:)  (in libswiftCore.dylib) + 248  [0x1ac730204]
+    +       !                                                   :           |     +       1 _NativeDictionary._copyOrMoveAndResize(capacity:moveElements:)  (in libswiftCore.dylib) + 352  [0x1ac7f0530]
+    +       !                                                   :           |     +         1 static _DictionaryStorage.allocate(scale:age:seed:)  (in libswiftCore.dylib) + 268  [0x1ac7376d8]
+    +       !                                                   :           |     +           1 swift_allocObject  (in libswiftCore.dylib) + 136  [0x1ac550ed4]
+    +       !                                                   :           |     +             1 swift::swift_slowAllocTyped(unsigned long, unsigned long, unsigned long long)  (in libswiftCore.dylib) + 64  [0x1ac5bb26c]
+    +       !                                                   :           |     +               1 _malloc_type_malloc_outlined  (in libsystem_malloc.dylib) + 96  [0x197de7dd0]
+    +       !                                                   :           |     +                 1 _malloc_zone_malloc_instrumented_or_legacy  (in libsystem_malloc.dylib) + 152  [0x197e08630]
+    +       !                                                   :           |     +                   1 stack_logging_lite_malloc  (in MallocStackLogging) + 140  [0x1c8adb400]
+    +       !                                                   :           |     +                     1 add_stack_to_ptr  (in MallocStackLogging) + 312  [0x1c8adbfd8]
+    +       !                                                   :           |     +                       1 uniquing_table_stack_retain  (in MallocStackLogging) + 88  [0x1c8ada300]
+    +       !                                                   :           |     +                         1 thread_stack_pcs  (in libsystem_c.dylib) + 28  [0x197e7794c]
+    +       !                                                   :           |     +                           1 __thread_stack_pcs  (in libsystem_c.dylib) + 412  [0x197ea4d38]
+    +       !                                                   :           |     1 MaskPoint.encode(to:)  (in Glowroom) + 192  [0x10511e5ac]  /<compiler-generated>:0
+    +       !                                                   :           |       1 KeyedEncodingContainer.encode(_:forKey:)  (in libswiftCore.dylib) + 56  [0x1ac6c38c8]
+    +       !                                                   :           |         1 _KeyedEncodingContainerBox.encode<A>(_:forKey:)  (in libswiftCore.dylib) + 368  [0x1ac6d2a24]
+    +       !                                                   :           |           1 protocol witness for KeyedEncodingContainerProtocol.encode(_:forKey:) in conformance _JSONKeyedEncodingContainer<A>  (in Foundation) + 16  [0x199d8853c]
+    +       !                                                   :           |             1 _JSONKeyedEncodingContainer.encode(_:forKey:)  (in Foundation) + 428  [0x199d86604]
+    +       !                                                   :           |               1 Double.description.getter  (in libswiftCore.dylib) + 156  [0x1ac8d31fc]
+    +       !                                                   :           |                 1 _allocateStringStorage(codeUnitCapacity:precalculatedUTF16Count:)  (in libswiftCore.dylib) + 116  [0x1ac8867b0]
+    +       !                                                   :           |                   1 swift_allocObject  (in libswiftCore.dylib) + 136  [0x1ac550ed4]
+    +       !                                                   :           |                     1 swift::swift_slowAllocTyped(unsigned long, unsigned long, unsigned long long)  (in libswiftCore.dylib) + 64  [0x1ac5bb26c]
+    +       !                                                   :           |                       1 _malloc_type_malloc_outlined  (in libsystem_malloc.dylib) + 96  [0x197de7dd0]
+    +       !                                                   :           |                         1 _malloc_zone_malloc_instrumented_or_legacy  (in libsystem_malloc.dylib) + 152  [0x197e08630]
+    +       !                                                   :           |                           1 stack_logging_lite_malloc  (in MallocStackLogging) + 140  [0x1c8adb400]
+    +       !                                                   :           |                             1 add_stack_to_ptr  (in MallocStackLogging) + 312  [0x1c8adbfd8]
+    +       !                                                   :           |                               1 uniquing_table_stack_retain  (in MallocStackLogging) + 88  [0x1c8ada300]
+    +       !                                                   :           |                                 1 thread_stack_pcs  (in libsystem_c.dylib) + 28  [0x197e7794c]
+    +       !                                                   :           |                                   1 __thread_stack_pcs  (in libsystem_c.dylib) + 400  [0x197ea4d2c]
+    +       !                                                   :           |                                     1 pthread_stack_frame_decode_np  (in libsystem_pthread.dylib) + 32  [0x197fe01ac]
+    +       !                                                   :           1 specialized __JSONEncoder.wrapGeneric<A, B>(_:for:)  (in Foundation) + 3816  [0x199d7e53c]
+    +       !                                                   :             1 swift_allocObject  (in libswiftCore.dylib) + 136  [0x1ac550ed4]
+    +       !                                                   :               1 swift::swift_slowAllocTyped(unsigned long, unsigned long, unsigned long long)  (in libswiftCore.dylib) + 64  [0x1ac5bb26c]
+    +       !                                                   :                 1 _malloc_type_malloc_outlined  (in libsystem_malloc.dylib) + 96  [0x197de7dd0]
+    +       !                                                   :                   1 _malloc_zone_malloc_instrumented_or_legacy  (in libsystem_malloc.dylib) + 152  [0x197e08630]
+    +       !                                                   :                     1 stack_logging_lite_malloc  (in MallocStackLogging) + 140  [0x1c8adb400]
+    +       !                                                   :                       1 add_stack_to_ptr  (in MallocStackLogging) + 312  [0x1c8adbfd8]
+    +       !                                                   :                         1 uniquing_table_stack_retain  (in MallocStackLogging) + 88  [0x1c8ada300]
+    +       !                                                   :                           1 thread_stack_pcs  (in libsystem_c.dylib) + 28  [0x197e7794c]
+    +       !                                                   :                             1 __thread_stack_pcs  (in libsystem_c.dylib) + 428  [0x197ea4d48]
+    +       !                                                   1 __JSONEncoder.wrapGeneric<A, B>(_:for:)  (in Foundation) + 4348  [0x199d7f9f0]
+    +       !                                                     1 __JSONEncoder.takeValue()  (in Foundation) + 84  [0x199d80e44]
+    +       !                                                       1 JSONFuture.RefArray.values.getter  (in Foundation) + 88  [0x199d81e28]
+    +       !                                                         1 specialized ContiguousArray._createNewBuffer(bufferIsUnique:minimumCapacity:growForAppend:)  (in Foundation) + 20  [0x199ab25ac]
+    +       !                                                           1 specialized _ContiguousArrayBuffer._consumeAndCreateNew(bufferIsUnique:minimumCapacity:growForAppend:)  (in Foundation) + 136  [0x19a026098]
+    +       !                                                             1 swift_allocObject  (in libswiftCore.dylib) + 136  [0x1ac550ed4]
+    +       !                                                               1 swift::swift_slowAllocTyped(unsigned long, unsigned long, unsigned long long)  (in libswiftCore.dylib) + 64  [0x1ac5bb26c]
+    +       !                                                                 1 _malloc_type_malloc_outlined  (in libsystem_malloc.dylib) + 96  [0x197de7dd0]
+    +       !                                                                   1 _malloc_zone_malloc_instrumented_or_legacy  (in libsystem_malloc.dylib) + 152  [0x197e08630]
+    +       !                                                                     1 stack_logging_lite_malloc  (in MallocStackLogging) + 140  [0x1c8adb400]
+    +       !                                                                       1 add_stack_to_ptr  (in MallocStackLogging) + 312  [0x1c8adbfd8]
+    +       !                                                                         1 uniquing_table_stack_retain  (in MallocStackLogging) + 88  [0x1c8ada300]
+    +       !                                                                           1 thread_stack_pcs  (in libsystem_c.dylib) + 28  [0x197e7794c]
+    +       !                                                                             1 __thread_stack_pcs  (in libsystem_c.dylib) + 440  [0x197ea4d54]
+    +       3 specialized static MaskBenchmark.run(_:)  (in Glowroom) + 2704  [0x104e0d9c8]  MaskBenchmark.swift:55
+    +       ! 3 @objc _NSSwiftProcessInfo.operatingSystemVersionString.getter  (in Foundation) + 32  [0x199e4cfe8]
+    +       !   3 CFCopySystemVersionString  (in CoreFoundation) + 20  [0x19811a6b8]
+    +       !     3 _CFCopySupplementalVersionDictionary  (in CoreFoundation) + 64  [0x1981a8050]
+    +       !       3 _dispatch_once_callout  (in libdispatch.dylib) + 32  [0x197e23624]
+    +       !         3 _dispatch_client_callout  (in libdispatch.dylib) + 16  [0x197e3a5a0]
+    +       !           3 ___CFCopySupplementalVersionDictionary_block_invoke  (in CoreFoundation) + 48  [0x1981a8134]
+    +       !             2 _CFCopyVersionDictionary  (in CoreFoundation) + 196  [0x198088938]
+    +       !             : 2 _CFCopyLocalizedVersionKey  (in CoreFoundation) + 64  [0x198088bac]
+    +       !             :   2 CFBundleCopyLocalizedStringForLocalization  (in CoreFoundation) + 220  [0x198088d34]
+    +       !             :     2 _CFBundleCopyLocalizedStringForLocalizationTableURLAndMarkdownOption  (in CoreFoundation) + 384  [0x1981eab68]
+    +       !             :       2 _copyStringTable  (in CoreFoundation) + 624  [0x1981eb3dc]
+    +       !             :         2 _CFBundleGetStringsSources  (in CoreFoundation) + 272  [0x1981e9bb8]
+    +       !             :           2 CFBundleCopyResourceURL  (in CoreFoundation) + 268  [0x1980688e8]
+    +       !             :             2 _CFBundleCopyFindResources  (in CoreFoundation) + 1420  [0x198068f28]
+    +       !             :               2 _copyResourceURLsFromBundle  (in CoreFoundation) + 384  [0x198069b58]
+    +       !             :                 2 _copyQueryTable  (in CoreFoundation) + 60  [0x19806a18c]
+    +       !             :                   2 _CFBundleCopyLanguageSearchListInBundle  (in CoreFoundation) + 68  [0x19806a360]
+    +       !             :                     2 _CFBundleCopyUserLanguages  (in CoreFoundation) + 212  [0x19806a684]
+    +       !             :                       2 _CFPreferencesCopyAppValueWithContainerAndConfiguration  (in CoreFoundation) + 112  [0x19804b7d4]
+    +       !             :                         2 -[_CFXPreferences copyAppValueForKey:identifier:container:configurationURL:]  (in CoreFoundation) + 156  [0x19804b89c]
+    +       !             :                           2 -[_CFXPreferences withSearchListForIdentifier:container:cloudConfigurationURL:perform:]  (in CoreFoundation) + 432  [0x1981e26f4]
+    +       !             :                             1 __108-[_CFXPreferences(SearchListAdditions) withSearchListForIdentifier:container:cloudConfigurationURL:perform:]_block_invoke  (in CoreFoundation) + 300  [0x19804bf94]
+    +       !             :                             | 1 -[_CFXPreferences withSearchLists:]  (in CoreFoundation) + 72  [0x198222378]
+    +       !             :                             |   1 __108-[_CFXPreferences(SearchListAdditions) withSearchListForIdentifier:container:cloudConfigurationURL:perform:]_block_invoke.157  (in CoreFoundation) + 560  [0x1981e29a8]
+    +       !             :                             |     1 -[CFPrefsSearchListSource addSourceForIdentifier:user:byHost:container:]  (in CoreFoundation) + 88  [0x198050eec]
+    +       !             :                             |       1 -[_CFXPreferences withSourceForIdentifier:user:byHost:container:cloud:perform:]  (in CoreFoundation) + 768  [0x19819ea54]
+    +       !             :                             |         1 __96-[_CFXPreferences(SourceAdditions) withSourceForIdentifier:user:byHost:container:cloud:perform:]_block_invoke.228  (in CoreFoundation) + 324  [0x19819ece0]
+    +       !             :                             |           1 _CFCopyHomeDirURLForUser  (in CoreFoundation) + 392  [0x19805211c]
+    +       !             :                             |             1 getpwuid  (in libsystem_info.dylib) + 272  [0x197ff3f14]
+    +       !             :                             |               1 <deduplicated_symbol>  (in libsystem_info.dylib) + 96  [0x197ff4874]
+    +       !             :                             |                 1 ds_user_byuid  (in libsystem_info.dylib) + 172  [0x197ff4b94]
+    +       !             :                             |                   1 _ds_item  (in libsystem_info.dylib) + 80  [0x197ff4e50]
+    +       !             :                             |                     1 _od_rpc_call  (in libsystem_info.dylib) + 148  [0x197ff3c70]
+    +       !             :                             |                       1 _xpc_pipe_routine  (in libxpc.dylib) + 420  [0x197cd5670]
+    +       !             :                             |                         1 _xpc_pipe_mach_msg  (in libxpc.dylib) + 56  [0x197cd6288]
+    +       !             :                             |                           1 mach_msg  (in libsystem_kernel.dylib) + 24  [0x197f9cfac]
+    +       !             :                             |                             1 mach_msg_overwrite  (in libsystem_kernel.dylib) + 480  [0x197fa5a28]
+    +       !             :                             |                               1 mach_msg2_internal  (in libsystem_kernel.dylib) + 76  [0x197faf8e0]
+    +       !             :                             |                                 1 mach_msg2_trap  (in libsystem_kernel.dylib) + 8  [0x197f9cc20]
+    +       !             :                             1 __108-[_CFXPreferences(SearchListAdditions) withSearchListForIdentifier:container:cloudConfigurationURL:perform:]_block_invoke  (in CoreFoundation) + 384  [0x19804bfe8]
+    +       !             :                               1 __76-[_CFXPreferences copyAppValueForKey:identifier:container:configurationURL:]_block_invoke  (in CoreFoundation) + 32  [0x198052888]
+    +       !             :                                 1 -[CFPrefsSource copyValueForKey:]  (in CoreFoundation) + 44  [0x1980528cc]
+    +       !             :                                   1 -[CFPrefsSearchListSource alreadylocked_copyValueForKey:]  (in CoreFoundation) + 176  [0x198052998]
+    +       !             :                                     1 -[CFPrefsSearchListSource alreadylocked_getDictionary:]  (in CoreFoundation) + 684  [0x198052eb4]
+    +       !             :                                       1 -[CFPrefsSource mergeIntoDictionary:sourceDictionary:cloudKeyEvaluator:]  (in CoreFoundation) + 160  [0x198059278]
+    +       !             :                                         1 -[__NSFrozenDictionaryM __apply:context:]  (in CoreFoundation) + 136  [0x198059928]
+    +       !             :                                           1 -[__NSDictionaryM __setObject:forKey:]  (in CoreFoundation) + 636  [0x198040b3c]
+    +       !             :                                             1 objc_msgSend  (in libobjcMsgSend.dylib) + 0  [0x19f754800]
+    +       !             1 _CFCopyVersionDictionary  (in CoreFoundation) + 124  [0x1980888f0]
+    +       !               1 CFURLCreateDataAndPropertiesFromResource  (in CoreFoundation) + 324  [0x19803bd30]
+    +       !                 1 _CFReadBytesFromFile  (in CoreFoundation) + 364  [0x19803c75c]
+    +       !                   1 read  (in libsystem_kernel.dylib) + 8  [0x197f9d910]
+    +       1 specialized static MaskBenchmark.run(_:)  (in Glowroom) + 3576  [0x104e0dd30]  MaskBenchmark.swift:46
+    +       ! 1 +[NSJSONSerialization dataWithJSONObject:options:error:]  (in Foundation) + 112  [0x1997eaec0]
+    +       !   1 -[_NSJSONWriter dataWithRootObject:options:]  (in Foundation) + 104  [0x1999aaf4c]
+    +       !     1 _writeJSONObject  (in Foundation) + 892  [0x1997eb6a4]
+    +       !       1 CFSortIndexes  (in CoreFoundation) + 260  [0x198085fd0]
+    +       !         1 __CFSimpleMergeSort  (in CoreFoundation) + 248  [0x198086220]
+    +       !           1 __CFSimpleMergeSort  (in CoreFoundation) + 248  [0x198086220]
+    +       !             1 __CFSimpleMergeSort  (in CoreFoundation) + 248  [0x198086220]
+    +       !               1 __CFSimpleMergeSort  (in CoreFoundation) + 100  [0x19808618c]
+    +       !                 1 -[NSIndirectTaggedPointerString compare:options:range:locale:]  (in CoreFoundation) + 280  [0x19818d640]
+    +       !                   1 CFStringCompareWithOptionsAndLocale  (in CoreFoundation) + 7556  [0x19803adbc]
+    +       !                     1 _CFCompareStringsWithLocale  (in CoreFoundation) + 576  [0x1980b01dc]
+    +       !                       1 __CFStringCreateCollator  (in CoreFoundation) + 100  [0x1980b0c50]
+    +       !                         1 ucol_open  (in libicucore.A.dylib) + 76  [0x19be72db4]
+    +       !                           1 icu::Collator::createInstance(icu::Locale const&, UErrorCode&)  (in libicucore.A.dylib) + 84  [0x19be72e4c]
+    +       !                             1 icu::Collator::makeInstance(icu::Locale const&, UErrorCode&)  (in libicucore.A.dylib) + 28  [0x19be72ec8]
+    +       !                               1 ???  (in libicucore.A.dylib)  load address 0x19be67000 + 0x23d050  [0x19c0a4050]
+    +       !                                 1 icu::CollationRoot::getRootCacheEntry(UErrorCode&)  (in libicucore.A.dylib) + 56  [0x19be72f64]
+    +       !                                   1 ???  (in libicucore.A.dylib)  load address 0x19be67000 + 0x7434c  [0x19bedb34c]
+    +       !                                     1 icu::CollationRoot::load(char const*, UErrorCode&)  (in libicucore.A.dylib) + 244  [0x19bfbc2c8]
+    +       !                                       1 icu::CollationDataReader::read(icu::CollationTailoring const*, unsigned char const*, int, icu::CollationTailoring&, UErrorCode&)  (in libicucore.A.dylib) + 1092  [0x19be736bc]
+    +       1 specialized static MaskBenchmark.run(_:)  (in Glowroom) + 5464  [0x104e0e490]  MaskBenchmark.swift:64
+    +       ! 1 String.init(format:_:)  (in Foundation) + 44  [0x19a465ad8]
+    +       !   1 specialized String.init(format:locale:arguments:)  (in Foundation) + 272  [0x19a46f370]
+    +       !     1 swift_slowAlloc  (in libswiftCore.dylib) + 60  [0x1ac550d90]
+    +       !       1 _malloc_type_malloc_outlined  (in libsystem_malloc.dylib) + 96  [0x197de7dd0]
+    +       !         1 _malloc_zone_malloc_instrumented_or_legacy  (in libsystem_malloc.dylib) + 152  [0x197e08630]
+    +       !           1 stack_logging_lite_malloc  (in MallocStackLogging) + 140  [0x1c8adb400]
+    +       !             1 add_stack_to_ptr  (in MallocStackLogging) + 312  [0x1c8adbfd8]
+    +       !               1 uniquing_table_stack_retain  (in MallocStackLogging) + 128  [0x1c8ada328]
+    +       !                 1 uniquing_table_stack_retain_internal  (in MallocStackLogging) + 188  [0x1c8ada504]
+    +       1 specialized static MaskBenchmark.run(_:)  (in Glowroom) + 1280  [0x104e14d10]  MaskBenchmark.swift:99
+    +         1 -[NSConcreteFileHandle writeData:]  (in Foundation) + 188  [0x19979762c]
+    +           1 -[NSData(NSData) enumerateByteRangesUsingBlock:]  (in Foundation) + 120  [0x19978b4e8]
+    +             1 __34-[NSConcreteFileHandle writeData:]_block_invoke  (in Foundation) + 72  [0x1997976f8]
+    +               1 _NSWriteToFileDescriptorWithProgress  (in Foundation) + 184  [0x19978b5f0]
+    +                 1 write  (in libsystem_kernel.dylib) + 8  [0x197fa0838]
+    3232 Thread_14298594
+    + 3232 start_wqthread  (in libsystem_pthread.dylib) + 8  [0x197fdcce0]
+    +   3232 _pthread_wqthread  (in libsystem_pthread.dylib) + 368  [0x197fddfe8]
+    +     3232 __workq_kernreturn  (in libsystem_kernel.dylib) + 8  [0x197f9e9ec]
+    3232 Thread_14298595
+      3232 start_wqthread  (in libsystem_pthread.dylib) + 8  [0x197fdcce0]
+        3232 _pthread_wqthread  (in libsystem_pthread.dylib) + 368  [0x197fddfe8]
+          3232 __workq_kernreturn  (in libsystem_kernel.dylib) + 8  [0x197f9e9ec]
+
+Total number in stack (recursive counted multiple, when >=5):
+        19       _malloc_zone_malloc_instrumented_or_legacy  (in libsystem_malloc.dylib) + 152  [0x197e08630]
+        19       add_stack_to_ptr  (in MallocStackLogging) + 312  [0x1c8adbfd8]
+        19       stack_logging_lite_malloc  (in MallocStackLogging) + 140  [0x1c8adb400]
+        18       _malloc_type_malloc_outlined  (in libsystem_malloc.dylib) + 96  [0x197de7dd0]
+        17       swift::swift_slowAllocTyped(unsigned long, unsigned long, unsigned long long)  (in libswiftCore.dylib) + 64  [0x1ac5bb26c]
+        17       swift_allocObject  (in libswiftCore.dylib) + 136  [0x1ac550ed4]
+        15       thread_stack_pcs  (in libsystem_c.dylib) + 28  [0x197e7794c]
+        15       uniquing_table_stack_retain  (in MallocStackLogging) + 88  [0x1c8ada300]
+        14       closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 0  [0x10512e864]  MaskRasterizer.swift:146
+        13       __bzero  (in libsystem_platform.dylib) + 0  [0x197feba30]
+        13       closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 0  [0x10512e864]  MaskRasterizer.swift:145
+        13       closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 0  [0x10512e864]  MaskRasterizer.swift:148
+        11       closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 0  [0x10512e864]  /<compiler-generated>:0
+        11       closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 0  [0x10512e864]  MaskRasterizer.swift:147
+        11       closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 0  [0x10512e864]  MaskRasterizer.swift:150
+        11       closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 0  [0x10512e864]  MaskRasterizer.swift:151
+        10       AccelerateCrypto_SHA256_compress  (in libcorecrypto.dylib) + 0  [0x197d17830]
+        10       MaskRaster.canonicalSHA256(cancellation:)  (in Glowroom) + 804  [0x105126400]  MaskRasterizer.swift:24
+        10       ccdigest_update  (in libcorecrypto.dylib) + 68  [0x197d15ed4]
+        10       ccdigest_update_internal  (in libcorecrypto.dylib) + 288  [0x197d7611c]
+        10       closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 0  [0x10512e864]  MaskRasterizer.swift:0
+        10       closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 0  [0x10512e864]  MaskRasterizer.swift:152
+        10       closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 0  [0x10512e864]  MaskRasterizer.swift:153
+        10       closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 868  [0x10512ebc8]  MaskRasterizer.swift:141
+        10       dispatch thunk of Encodable.encode(to:)  (in libswiftCore.dylib) + 32  [0x1ac9b6cbc]
+        10       specialized HashFunction.update<A>(data:)  (in Glowroom) + 480  [0x104f2ee1c]  /<compiler-generated>:0
+        10       specialized static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 4556  [0x1051329d0]  MaskRasterizer.swift:123
+        8       __thread_stack_pcs  (in libsystem_c.dylib) + 0  [0x197ea4b9c]
+        8       _malloc_type_calloc_outlined  (in libsystem_malloc.dylib) + 88  [0x197de7e38]
+        8       _malloc_zone_calloc_instrumented_or_legacy  (in libsystem_malloc.dylib) + 132  [0x197e08820]
+        8       static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 12  [0x105125c74]  /<compiler-generated>:0
+        7       MaskRaster.resampled(to:crop:cancellation:)  (in Glowroom) + 8056  [0x10512a7c4]  MaskRasterizer.swift:39
+        7       String.init(format:_:)  (in Foundation) + 44  [0x19a465ad8]
+        7       __DataStorage.init(length:)  (in Foundation) + 208  [0x199c10578]
+        7       __thread_stack_pcs  (in libsystem_c.dylib) + 400  [0x197ea4d2c]
+        7       _dispatch_client_callout  (in libdispatch.dylib) + 16  [0x197e3a5a0]
+        7       _dispatch_once_callout  (in libdispatch.dylib) + 32  [0x197e23624]
+        7       _xzm_malloc_large_huge  (in libsystem_malloc.dylib) + 968  [0x197dfc4ac]
+        7       closure #1 in closure #1 in MaskRaster.resampled(to:crop:cancellation:)  (in Glowroom) + 0  [0x10512afc0]  MaskRasterizer.swift:52
+        7       closure #1 in closure #1 in MaskRaster.resampled(to:crop:cancellation:)  (in Glowroom) + 280  [0x10512b0d8]  MaskRasterizer.swift:46
+        7       closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 0  [0x10512e864]  MaskRasterizer.swift:144
+        7       pthread_stack_frame_decode_np  (in libsystem_pthread.dylib) + 0  [0x197fe018c]
+        7       stack_logging_lite_calloc  (in MallocStackLogging) + 208  [0x1c8adb528]
+        7       xzm_segment_group_alloc_chunk  (in libsystem_malloc.dylib) + 1492  [0x197ddcccc]
+        6       MaskOverlayWorker.rasterize(_:timingObserver:)  (in Glowroom) + 360  [0x104e90e84]  MaskEditingModel.swift:106
+        6       MaskRaster.canonicalSHA256(cancellation:)  (in Glowroom) + 880  [0x10512644c]  MaskRasterizer.swift:26
+        6       closure #1 in MaskOverlayWorker.rasterize(_:timingObserver:)  (in Glowroom) + 1612  [0x104e915fc]  MaskEditingModel.swift:127
+        6       closure #1 in MaskOverlayWorker.rasterize(_:timingObserver:)  (in Glowroom) + 2028  [0x104e9179c]  MaskEditingModel.swift:136
+        6       closure #1 in MaskOverlayWorker.rasterize(_:timingObserver:)  (in Glowroom) + 2480  [0x104e91960]  MaskEditingModel.swift:139
+        6       closure #1 in MaskOverlayWorker.rasterize(_:timingObserver:)  (in Glowroom) + 996  [0x104e91394]  MaskEditingModel.swift:116
+        6       closure #1 in closure #1 in MaskOverlayWorker.rasterize(_:timingObserver:)  (in Glowroom) + 592  [0x104e92098]  MaskEditingModel.swift:124
+        6       closure #1 in closure #1 in MaskRaster.resampled(to:crop:cancellation:)  (in Glowroom) + 0  [0x10512afc0]  MaskRasterizer.swift:56
+        6       closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 0  [0x10512e864]  MaskRasterizer.swift:143
+        6       closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 212  [0x10512e938]  MaskRasterizer.swift:126
+        6       specialized Sequence.map<A, B>(_:)  (in Glowroom) + 652  [0x105125bc0]  /<compiler-generated>:0
+        6       specialized String.init(format:locale:arguments:)  (in Foundation) + 444  [0x19a46f41c]
+        6       specialized __JSONEncoder.wrapGeneric<A, B>(_:for:)  (in Foundation) + 4460  [0x199d7e7c0]
+        6       specialized static MaskOverlayWorker.makeOverlay(from:cancellation:)  (in Glowroom) + 0  [0x104e96300]  MaskEditingModel.swift:161
+        6       specialized static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom) + 252  [0x105131900]  MaskRasterizer.swift:121
+        5       +[NSString _stringWithValidatedFormat:validFormatSpecifiers:locale:arguments:error:]  (in Foundation) + 72  [0x199954570]
+        5       -[NSPlaceholderString initWithValidatedFormat:validFormatSpecifiers:locale:arguments:error:]  (in Foundation) + 104  [0x199955e90]
+        5       KeyedEncodingContainer.encode<A>(_:forKey:)  (in libswiftCore.dylib) + 60  [0x1ac57bd84]
+        5       _JSONKeyedEncodingContainer.encode<A>(_:forKey:)  (in Foundation) + 332  [0x199d86b2c]
+        5       _KeyedEncodingContainerBox.encode<A, B>(_:forKey:)  (in libswiftCore.dylib) + 376  [0x1ac6d461c]
+        5       closure #1 in String.init(format:locale:arguments:)  (in Foundation) + 1476  [0x19a4660f4]
+        5       closure #1 in closure #1 in MaskRaster.resampled(to:crop:cancellation:)  (in Glowroom) + 0  [0x10512afc0]  MaskRasterizer.swift:54
+        5       closure #1 in closure #1 in MaskRaster.resampled(to:crop:cancellation:)  (in Glowroom) + 0  [0x10512afc0]  MaskRasterizer.swift:55
+        5       protocol witness for KeyedEncodingContainerProtocol.encode<A>(_:forKey:) in conformance _JSONKeyedEncodingContainer<A>  (in Foundation) + 32  [0x199d8875c]
+        5       specialized Data.init(repeating:count:)  (in Glowroom) + 544  [0x10512fe8c]  /<compiler-generated>:0
+        5       static Task<>.checkCancellation()  (in libswift_Concurrency.dylib) + 64  [0x2c492c61c]
+        5       uniquing_table_stack_retain  (in MallocStackLogging) + 128  [0x1c8ada328]
+        5       uniquing_table_stack_retain_internal  (in MallocStackLogging) + 0  [0x1c8ada448]
+
+Sort by top of stack, same collapsed (when >= 5):
+        __workq_kernreturn  (in libsystem_kernel.dylib)        6464
+        mach_msg2_trap  (in libsystem_kernel.dylib)        3237
+        closure #1 in static MaskRasterizer.rasterize(_:outputSize:crop:maximumSampleEvaluations:cancellation:)  (in Glowroom)        2420
+        closure #1 in closure #1 in MaskRaster.resampled(to:crop:cancellation:)  (in Glowroom)        352
+        AccelerateCrypto_SHA256_compress  (in libcorecrypto.dylib)        291
+        _dyld_start  (in dyld)        229
+        mach_msg2_trap  (in dyld)        90
+        specialized static MaskOverlayWorker.makeOverlay(from:cancellation:)  (in Glowroom)        50
+        __bzero  (in libsystem_platform.dylib)        35
+        _platform_memcmp  (in libsystem_platform.dylib)        16
+        pthread_stack_frame_decode_np  (in libsystem_pthread.dylib)        9
+        __thread_stack_pcs  (in libsystem_c.dylib)        8
+        mach_o::GenericTrie::find(CString, bool) const  (in dyld)        7
+        _platform_strcmp_noMTE  (in dyld)        5
+        uniquing_table_stack_retain_internal  (in MallocStackLogging)        5
+
+Binary images description not available

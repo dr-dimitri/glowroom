@@ -140,8 +140,8 @@ enum LocalAdjustmentRenderer {
         try maskImage(mask, extent: extent, cache: nil)
     }
 
-    private static func maskImage(_ mask: LocalAdjustmentMask, extent: CGRect,
-                                  cache: LocalMaskImageCache?) throws -> CIImage {
+    static func maskImage(_ mask: LocalAdjustmentMask, extent: CGRect,
+                          cache: LocalMaskImageCache?) throws -> CIImage {
         try Task.checkCancellation()
         let mask = mask.normalized
         try mask.shape.validate()
@@ -201,7 +201,14 @@ enum LocalAdjustmentRenderer {
 
     fileprivate static func brushImage(_ document: MaskDocument, extent: CGRect) throws -> CIImage {
         let size = try brushSize(extent)
-        let raster = try MaskRasterizer.rasterize(document, outputSize: size)
+        let raster = try PipelineTrace.measure(.maskRasterization) {
+            try MaskRasterizer.rasterize(document, outputSize: size)
+        }
+        return try brushImage(raster, extent: extent)
+    }
+
+    fileprivate static func brushImage(_ raster: MaskRaster, extent: CGRect) throws -> CIImage {
+        let size = raster.size
         let image = try scalarImage(bytes: raster.bytes, width: size.width, height: size.height)
         return image.clampedToExtent().transformed(by: CGAffineTransform(
             scaleX: extent.width / CGFloat(size.width), y: extent.height / CGFloat(size.height)))
@@ -285,43 +292,104 @@ enum LocalAdjustmentRenderer {
         """)
 }
 
-/// Geometry caching avoids rerasterizing brush paths while a correction slider
-/// moves. A lane retains at most 16 MiB; in-flight immutable CI graphs keep only
-/// their own references after eviction. The renderer already bounds concurrency.
+/// Geometry is a pure function of document and output size; it has no source or
+/// editor-session input. The existing preview token checks guard UI publication.
+/// One incremental raster basis and exact images together retain at most 16 MiB
+/// per lane. Ordered brush writes use the existing bounded render workers.
 final class LocalMaskImageCache: @unchecked Sendable {
+    static let maximumEntries = 64
     private struct Key: Hashable {
         let document: MaskDocument
         let size: ArtifactPixelSize
+        var retentionCost: Int {
+            // Count document arrays independently for every historical entry.
+            // Swift may share their immutable storage, making this conservative.
+            size.width * size.height + MemoryLayout<Self>.stride + 128 +
+                document.strokes.reduce(0) {
+                    $0 + MemoryLayout<MaskStroke>.stride + $1.points.count * MemoryLayout<MaskPoint>.stride
+                }
+        }
+    }
+    private struct Entry {
+        let image: CIImage
+        let retentionCost: Int
     }
     private let lock = NSLock()
-    private var entries: [Key: CIImage] = [:]
+    private var entries: [Key: Entry] = [:]
     private var order: [Key] = []
     private var retainedBytes = 0
-    private let byteLimit = 16 * 1_024 * 1_024
+    private let byteLimit: Int
+    private let incrementalEnabled: Bool
+    private let maximumSampleEvaluations: Int
+    private var rasterizationCache = MaskRasterizationCache()
+    private var basisBytes = 0
+    private var lastReuse: MaskRasterizationReuse?
+
+    init(incrementalEnabled: Bool = true, byteLimit: Int = 16 * 1_024 * 1_024,
+         maximumSampleEvaluations: Int = 268_435_456) {
+        self.incrementalEnabled = incrementalEnabled
+        self.byteLimit = max(0, byteLimit)
+        self.maximumSampleEvaluations = maximumSampleEvaluations
+    }
+
+    struct Diagnostics: Sendable {
+        let retainedBytes: Int
+        let imageCount: Int
+        let basisBytes: Int
+        let lastRasterReuse: MaskRasterizationReuse?
+    }
+
+    func diagnostics() -> Diagnostics {
+        lock.lock(); defer { lock.unlock() }
+        return Diagnostics(retainedBytes: retainedBytes + basisBytes, imageCount: entries.count,
+                           basisBytes: basisBytes, lastRasterReuse: lastReuse)
+    }
 
     func image(_ document: MaskDocument, extent: CGRect) throws -> CIImage {
         let key = Key(document: document, size: try LocalAdjustmentRenderer.brushSize(extent))
         lock.lock()
         defer { lock.unlock() }
         try Task.checkCancellation()
-        if let image = entries[key] {
+        if let entry = entries[key] {
             order.removeAll { $0 == key }
             order.append(key)
-            return image.clampedToExtent().transformed(by: CGAffineTransform(
+            lastReuse = .unchanged
+            return entry.image.clampedToExtent().transformed(by: CGAffineTransform(
                 scaleX: extent.width / CGFloat(key.size.width), y: extent.height / CGFloat(key.size.height)))
                 .cropped(to: extent)
         }
-        let rasterExtent = CGRect(x: 0, y: 0, width: key.size.width, height: key.size.height)
-        let image = try LocalAdjustmentRenderer.brushImage(document, extent: rasterExtent)
-        let cost = key.size.width * key.size.height
-        while retainedBytes + cost > byteLimit, let oldest = order.first {
-            entries.removeValue(forKey: oldest)
-            retainedBytes -= oldest.size.width * oldest.size.height
+        let (raster, update) = try PipelineTrace.measure(.maskRasterization) { () throws -> (MaskRaster, MaskRasterizationUpdate?) in
+            if incrementalEnabled {
+                let update = try rasterizationCache.rasterize(document, outputSize: key.size,
+                    maximumSampleEvaluations: maximumSampleEvaluations)
+                return (update.raster, update)
+            }
+            return (try MaskRasterizer.rasterize(document, outputSize: key.size,
+                maximumSampleEvaluations: maximumSampleEvaluations), nil)
+        }
+        let image = try LocalAdjustmentRenderer.brushImage(raster,
+            extent: CGRect(x: 0, y: 0, width: key.size.width, height: key.size.height))
+        try Task.checkCancellation()
+        let cost = key.retentionCost
+        // Account the basis separately even when its immutable bytes are shared
+        // with a CI provider. This conservatively bounds retained cache payloads.
+        let nextBasisBytes = update == nil ? 0 : cost
+        while retainedBytes + cost + nextBasisBytes > byteLimit || entries.count >= Self.maximumEntries,
+              let oldest = order.first {
+            if let removed = entries.removeValue(forKey: oldest) { retainedBytes -= removed.retentionCost }
             order.removeFirst()
         }
-        entries[key] = image
-        order.append(key)
-        retainedBytes += cost
+        if cost + nextBasisBytes <= byteLimit {
+            entries[key] = Entry(image: image, retentionCost: cost)
+            order.append(key)
+            retainedBytes += cost
+            if let update { rasterizationCache = update.cache }
+            basisBytes = nextBasisBytes
+        } else {
+            // A small custom budget must not silently retain an oversized basis.
+            rasterizationCache = MaskRasterizationCache(); basisBytes = 0
+        }
+        lastReuse = update?.reuse ?? .full
         return image.clampedToExtent().transformed(by: CGAffineTransform(
             scaleX: extent.width / CGFloat(key.size.width), y: extent.height / CGFloat(key.size.height)))
             .cropped(to: extent)

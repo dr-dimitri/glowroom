@@ -165,6 +165,8 @@ enum EditRenderer {
             default: throw EditRenderError.unavailable
             }
             let session = priority == .selected ? interactive : background
+            let renderSpan = PipelineTrace.begin(.render)
+            defer { renderSpan.end() }
             guard let result = session.context.createCGImage(image.cropped(to: extent), from: extent,
                                                              format: format, colorSpace: colorSpace, deferred: false)
             else { throw EditRenderError.unavailable }
@@ -207,6 +209,9 @@ enum EditRenderer {
         }
 
         return try autoreleasepool {
+            let graphSpan = PipelineTrace.begin(.filterGraph)
+            var graphEnded = false
+            defer { if !graphEnded { graphSpan.end() } }
             let extent = CGRect(x: 0, y: 0, width: original.width, height: original.height)
             // Keep spatial effects comparable at progressive preview sizes.
             let scale = max(0.25, Double(max(original.width, original.height)) / 1_600)
@@ -235,6 +240,9 @@ enum EditRenderer {
             default: throw EditRenderError.unavailable
             }
             let outputExtent = developed.extent
+            graphSpan.end(); graphEnded = true
+            let renderSpan = PipelineTrace.begin(.render)
+            defer { renderSpan.end() }
             guard let rendered = session.context.createCGImage(developed, from: outputExtent, format: format, colorSpace: colorSpace, deferred: false) else {
                 throw EditRenderError.unavailable
             }

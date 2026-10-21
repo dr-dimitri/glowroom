@@ -360,7 +360,8 @@ final class SemanticLibraryTests {
         #expect(await service.statusCount == 0)
         #expect(await service.calls.isEmpty)
         model.semanticControlsExpanded = true
-        try await wait { model.semanticScopeIsReady }
+        try await waitForAcceptedSemanticStatus(model)
+        #expect(model.semanticScopeIsReady)
         #expect(await service.statusCount > 0)
         let count = await service.statusCount
         model.semanticControlsExpanded = false
@@ -396,6 +397,23 @@ final class SemanticLibraryTests {
         try await readiness.wait("semantic library fixture ready", timeout: .seconds(5), until: { $0.ready })
         return (model, service, [a,b], photos)
     }
+    /// Scope readiness precedes the service's asynchronous status call. Observe
+    /// its accepted version instead; Published immediately supplies an already
+    /// completed reply, and buffering preserves one arriving before iteration.
+    private func waitForAcceptedSemanticStatus(_ model: LibraryModel) async throws {
+        var observation: AnyCancellable?
+        let changes = AsyncStream<SemanticSearchState>(bufferingPolicy: .bufferingNewest(1)) { continuation in
+            observation = model.$semanticState.sink { continuation.yield($0) }
+        }
+        defer { observation?.cancel() }
+        for await state in changes {
+            try Task.checkCancellation()
+            if state.version >= 1 { return }
+        }
+        try Task.checkCancellation()
+        throw TestSchedulingTimeout(operation: "accepted semantic status", lastState: "state observation ended")
+    }
+
     private func wait(_ condition: @escaping @MainActor () async -> Bool) async throws {
         let deadline = ContinuousClock.now.advanced(by: .seconds(5))
         while !(await condition()) {
