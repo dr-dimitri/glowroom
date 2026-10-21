@@ -182,7 +182,13 @@ internal enum CatalogFileIO {
         }
         try beforeOpen()
         let ownership = try EditingDatabaseAccess.reserveNativeFile()
-        let lock = openat(root, lockName, O_RDWR | O_CREAT | O_CLOEXEC | O_NOFOLLOW, 0o600)
+        // Concurrent O_CREAT | O_NOFOLLOW opens can return ENOENT on macOS
+        // while another participant creates this leaf. Elect one creator;
+        // other participants open the existing leaf without creating it.
+        var lock = openat(root, lockName, O_RDWR | O_CREAT | O_EXCL | O_CLOEXEC | O_NOFOLLOW, 0o600)
+        if lock < 0 && errno == EEXIST {
+            lock = openat(root, lockName, O_RDWR | O_CLOEXEC | O_NOFOLLOW)
+        }
         guard lock >= 0 else { throw CatalogRepositoryError.concurrentModification }
         ownership.own(lock)
         defer { ownership.close() }

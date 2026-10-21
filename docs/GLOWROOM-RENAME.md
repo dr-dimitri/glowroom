@@ -38,6 +38,10 @@ Der aktuelle Produktstand enthält keine Anthropic-/Cloud-Einstellungen, keinen 
 
 5. Den bestätigten Merge auf dem aktualisierten `main` und die kanonischen GitHub-URLs prüfen. Den abgeschlossenen Aufgabenbranch lokal sicher und auf dem Remote löschen; `main` bleibt erhalten. Ein bestehender lokaler Checkoutordner darf seinen früheren Namen behalten: Build- und Testskripte bestimmen den Stamm aus ihrem eigenen Pfad.
 
+## Erststart mit leerem Datenbereich
+
+Die Abnahme der neuen Datenablage deckte den bereits vorhandenen Erststartfehler [#138](https://github.com/dr-dimitri/glowroom/issues/138) auf: Gleichzeitig beginnende Editing- und Metadatenbereinigung konnten beim ersten Anlegen der Katalogsperrdatei einen falschen Katalogkonflikt auslösen. Die direkt beauftragte Korrektur ist Bestandteil desselben Pull Requests. Exklusives Anlegen mit anschließendem Öffnen einer bereits angelegten Datei erhält die bestehende Sperr- und Schutzlogik; Details und Regressionen stehen unter [Artefaktspeicherung](ARTIFACT-STORAGE.md).
+
 ## Absichtlich erhaltene historische Namen
 
 Historische Prüfberichte und gemessene Ergebnisse bezeichnen den tatsächlich geprüften PicEdit-Stand weiterhin als PicEdit. Das betrifft insbesondere die eingefrorenen LC-01–LC-06-Berichte und Vergleichstabellen in `docs/LIGHTCRAFT-*.md`, frühere Review-/Buildnachweise sowie die drei Messdateien `tools/subject-matting/qualification.json`, `deployment-1920.json` und `resolution-experiments.json`. Diese Zahlen sind keine neuen Glowroom-Messungen. Aktuelle Reproduktionsbefehle, Quellpfade und GitHub-Links verwenden Glowroom.
@@ -51,3 +55,12 @@ Der lokale Core-ML-Konverter für das freigegebene Motivmodell erhält den kanon
 ## Abschlussnachweis
 
 Commit, Pull Request, Review, Tests, sauberer App-Build, bestätigter Merge, Repository-Umbenennung, Weiterleitungen und Einstellungsprüfung werden im zugehörigen Pull Request und im Arbeitsbericht festgehalten. Historische Testergebnisse in anderen Dokumenten ersetzen diese Prüfung der Umbenennung nicht.
+
+Prüfung des integrierten Stands am 21. Oktober 2026:
+
+- Unabhängige Reviews der Umbenennung sowie der Erststartkorrektur ohne offene Befunde; Paket- und Modellprovenienz separat geprüft.
+- Sauberer vollständiger Release-Build mit `GLOWROOM_BUILD_JOBS=4 ./scripts/build-app.sh` nach Prüfung auf aktive Builds und Entfernen der alten generierten Ergebnisse erfolgreich; Plist und Signatur gültig. Der erste frühere Sandboxversuch war am Netzwerkzugriff beim Abhängigkeitsdownload gescheitert.
+- 46 gezielte Erststart-, Katalog-, SQLite-Schutz- und Backup-Tests erfolgreich, einschließlich vier fehlender App-Datenverzeichnisse und 32 Runden paralleler erster Sperröffnungen. Die echte Release-Oberfläche startete ebenfalls mit einem zuvor fehlenden Testkatalog und aktivem Ordnerimport.
+- Volltest: 359 Core-Tests erfolgreich; 1.024 App-Tests meldeten acht Issues in den bereits erfassten Scheduling-Fällen #75, #91, #108, #109 und #136. Alle 83 Tests der betroffenen Suites bestanden im gezielten Nachlauf; das behebt die vorhandene Flakiness nicht. Die neuen Erststarttests bestanden in beiden Läufen.
+- Zusätzlich bestanden 129 gezielte Rename-Regressionen, 156 Python-Werkzeugtests, Build-/Harness-Shellprüfungen und alle vier tatsächlichen Developer-Harnesses. Diese Prüfungen verwenden synthetische Daten; lokale Modelle und Cloudzugriffe sind nicht erforderlich.
+- Native Persistenzprüfung mit den sieben ausdrücklich lokal vorhandenen JPEGs: Katalog, Bildinformationen und Belichtung nach Neustart erhalten; neues `.glowroombackup` exportiert und wiederhergestellt. Alle sieben Originalprüfsummen und die Metadaten der vorhandenen PicEdit-Daten blieben unverändert. Diese lokalen JPEGs sind keine Voraussetzung der automatischen Tests und werden nicht verteilt.
