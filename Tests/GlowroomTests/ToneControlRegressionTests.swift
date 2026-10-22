@@ -69,6 +69,86 @@ struct ToneControlRegressionTests {
         }
     }
 
+    @Test func sourceToneRangesRemainAdjustableAfterStrongExposureChanges() throws {
+        let cases: [(Control, Double)] = [
+            (.highlights, -5), (.whites, -5),
+            (.shadows, 2), (.blacks, 2), (.shadows, 5), (.blacks, 5)
+        ]
+        for (control, exposure) in cases {
+            let source = try fixture(width: 1, height: 1) { _, _ in
+                (control.sample, control.sample, control.sample, 1)
+            }
+            // Positive exposure can exceed SDR white. Floating HDR readback
+            // distinguishes an inactive tone range from output clipping.
+            var exposed = LocalAdjustmentSettings(exposure: exposure).editSettings
+            exposed.developColor.hdrEnabled = true
+            let baseline = try values(EditRenderer.render(source, settings: exposed).image)[0]
+            for direction in [-1.0, 1.0] {
+                var correction = control.settings(direction * 100)
+                correction.exposure = exposure
+                var global = correction.editSettings
+                global.developColor.hdrEnabled = true
+                var local = try masked(correction)
+                local.developColor.hdrEnabled = true
+                let direct = try values(EditRenderer.render(source, settings: global).image)
+                let selected = try values(EditRenderer.render(source, settings: local).image)
+                #expect(maximumDifference(direct, selected) < max(0.002, abs(direct[0]) * 0.002))
+                // A meaningful signed change is required, not just different
+                // rounding: the former post-exposure thresholds failed here.
+                #expect((selected[0] - baseline) * Float(direction) > baseline * 0.05,
+                    "\(control) must still affect its source tones at \(exposure) EV, direction \(direction)")
+            }
+        }
+    }
+
+    @Test func exposureAloneRetainsItsLinearGainAndAlpha() throws {
+        let source = try fixture(width: 1, height: 1) { _, _ in (0.08, 0.2, 1.1, 0.65) }
+        let baseline = try values(source.image)
+        for exposure in [-5.0, -2, 2, 5] {
+            var settings = LocalAdjustmentSettings(exposure: exposure).editSettings
+            settings.developColor.hdrEnabled = true
+            let output = try values(EditRenderer.render(source, settings: settings).image)
+            let gain = Float(exp2(exposure))
+            for channel in 0..<3 {
+                let expected = baseline[channel] * gain
+                #expect(abs(output[channel] - expected) < max(0.000_1, abs(expected) * 0.003),
+                    "Exposure alone must remain a linear-light EV gain in every RGB channel")
+            }
+            #expect(abs(output[3] - baseline[3]) < 0.002)
+        }
+    }
+
+    @Test func exposureAndAllToneRangeSignCombinationsPreserveGradientOrder() throws {
+        let source = try fixture(width: 256, height: 1) { x, _ in
+            // Include extended source highlights to catch premature clamping
+            // before a later negative exposure brings them back into SDR.
+            let value = Float(x) / 255 * 2
+            return (value, value, value, 1)
+        }
+        // Tiny independent render graphs use Core Image's parallel backend.
+        // Keep this parameter sweep serial to avoid 128 competing render jobs.
+        for signs in 0..<16 {
+            func amount(_ bit: Int) -> Double { signs & (1 << bit) == 0 ? -100 : 100 }
+            for contrast in [-100.0, 100] {
+                for exposure in [-5.0, 5] {
+                    let correction = LocalAdjustmentSettings(exposure: exposure, contrast: contrast,
+                        highlights: amount(0), shadows: amount(1), whites: amount(2), blacks: amount(3))
+                    for hdr in [false, true] {
+                        var settings = correction.editSettings
+                        settings.developColor.hdrEnabled = hdr
+                        let output = try values(EditRenderer.render(source, settings: settings).image)
+                        #expect(output.allSatisfy { $0.isFinite })
+                        for x in 1..<256 {
+                            let previous = output[(x - 1) * 4], next = output[x * 4]
+                            #expect(next >= previous - max(0.000_03, previous * 0.002),
+                                "Tone signs \(signs), contrast \(contrast), exposure \(exposure), HDR \(hdr) reversed a gradient at \(x)")
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     @Test func contrastPreservesBlackWhiteAndGradientOrderAtBothExtremes() throws {
         let source = try fixture(width: 256) { x, _ in
             let value = Float(x) / 255
@@ -128,7 +208,7 @@ struct ToneControlRegressionTests {
     @Test func maskStrengthBlendsEveryToneControlInLinearLight() throws {
         let source = try fixture { _, _ in (0.7, 0.3, 0.06, 1) }
         let baseline = try values(source.image)
-        for correction in Control.allCases.map({ $0.settings(-$0.maximum) }) + [allMinimum] {
+        for correction in Control.allCases.map({ $0.settings(-$0.maximum) }) + [allMinimum] + exposureCombinations {
             let full = try values(EditRenderer.render(source, settings: masked(correction)).image)
             let partial = try values(EditRenderer.render(source, settings: masked(correction, opacity: 0.77)).image)
             for channel in 0..<4 {
@@ -162,7 +242,7 @@ struct ToneControlRegressionTests {
         let baseline = try values(source.image)
         let automatic = EditRenderer.Session(lowPriority: true)
         let software = EditRenderer.Session(lowPriority: true, softwareRenderer: true)
-        for correction in [LocalAdjustmentSettings(contrast: -100), .init(contrast: 100), allMinimum] {
+        for correction in [LocalAdjustmentSettings(contrast: -100), .init(contrast: 100), allMinimum] + exposureCombinations {
             let edits = try masked(correction, opacity: 0.77)
             let output = try EditRenderer.render(source, settings: edits, session: automatic)
             let reference = try EditRenderer.render(source, settings: edits, session: software)
@@ -208,21 +288,38 @@ struct ToneControlRegressionTests {
             return (value, value * 0.7, value * 0.4, 1)
         }
         let session = EditRenderer.Session(lowPriority: true)
-        for correction in [LocalAdjustmentSettings(contrast: -100), .init(contrast: 100), allMinimum] {
-            for settings in [correction.editSettings, try masked(correction, opacity: 0.77)] {
-                let preview = try EditRenderer.render(source, settings: settings, session: session)
-                let graph = try EditRenderer.filterGraph(source.image, settings: settings)
-                // Match the high-precision SDR preview format so the comparison
-                // isolates graph behavior from JPEG encoding and quantization.
-                let exported = try #require(session.context.createCGImage(graph, from: graph.extent,
-                    format: .RGBA16, colorSpace: source.image.colorSpace!, deferred: false))
-                #expect(maximumDifference(try values(preview.image), try values(exported)) < 0.002)
+        for correction in [LocalAdjustmentSettings(contrast: -100), .init(contrast: 100), allMinimum] + exposureCombinations {
+            for hdr in [false, true] {
+                var global = correction.editSettings
+                global.developColor.hdrEnabled = hdr
+                var full = try masked(correction)
+                full.developColor.hdrEnabled = hdr
+                let direct = try values(EditRenderer.render(source, settings: global, session: session).image)
+                let selected = try values(EditRenderer.render(source, settings: full, session: session).image)
+                #expect(withinRenderTolerance(direct, selected, hdr: hdr))
+                for var settings in [global, try masked(correction, opacity: 0.77)] {
+                    settings.developColor.hdrEnabled = hdr
+                    let preview = try EditRenderer.render(source, settings: settings, session: session)
+                    let graph = try EditRenderer.filterGraph(source.image, settings: settings)
+                    // Match the preview's precision and transfer function so
+                    // this comparison isolates graph ordering, including HDR.
+                    let exported = try #require(session.context.createCGImage(graph, from: graph.extent,
+                        format: hdr ? .RGBAh : .RGBA16, colorSpace: source.image.colorSpace!, deferred: false))
+                    #expect(withinRenderTolerance(try values(preview.image), try values(exported), hdr: hdr))
+                }
             }
         }
     }
 
     private var allMinimum: LocalAdjustmentSettings {
         .init(exposure: -5, contrast: -100, highlights: -100, shadows: -100, whites: -100, blacks: -100)
+    }
+
+    private var exposureCombinations: [LocalAdjustmentSettings] {
+        [.init(exposure: -5, highlights: -100), .init(exposure: -5, highlights: 100),
+         .init(exposure: -5, whites: -100), .init(exposure: -5, whites: 100),
+         .init(exposure: 2, shadows: -100), .init(exposure: 2, shadows: 100),
+         .init(exposure: 5, blacks: -100), .init(exposure: 5, blacks: 100)]
     }
 
     private func masked(_ correction: LocalAdjustmentSettings, opacity: Double = 1,
@@ -263,5 +360,13 @@ struct ToneControlRegressionTests {
 
     private func maximumDifference(_ lhs: [Float], _ rhs: [Float]) -> Float {
         zip(lhs, rhs).map { abs($0 - $1) }.max() ?? 0
+    }
+
+    private func withinRenderTolerance(_ lhs: [Float], _ rhs: [Float], hdr: Bool) -> Bool {
+        // Half-float HDR precision scales with magnitude; dark pixels retain
+        // the same strict absolute tolerance used for the SDR graph checks.
+        lhs.count == rhs.count && zip(lhs, rhs).allSatisfy {
+            abs($0 - $1) < max(0.002, hdr ? abs($0) * 0.002 : 0)
+        }
     }
 }

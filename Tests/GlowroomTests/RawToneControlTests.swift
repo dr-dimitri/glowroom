@@ -140,6 +140,16 @@ struct RawToneControlTests {
                 try compare(settings, name: name + (sign < 0 ? "-min" : "-max"))
             }
         }
+        // Exercise the interaction reported on this RAW, independently of
+        // contrast and the other tone controls. Reuse the same decode/mask.
+        for (name, keyPath) in [("highlights", \LocalAdjustmentSettings.highlights),
+                                ("whites", \LocalAdjustmentSettings.whites)] {
+            for sign in [-1.0, 1.0] {
+                var settings = LocalAdjustmentSettings(exposure: -5)
+                settings[keyPath: keyPath] = sign * 100
+                try compare(settings, name: "exposure-min-" + name + (sign < 0 ? "-min" : "-max"))
+            }
+        }
         let minimum = LocalAdjustmentSettings(exposure: -5, contrast: -100, highlights: -100,
                                               shadows: -100, whites: -100, blacks: -100)
         try compare(minimum, name: "all-min")
