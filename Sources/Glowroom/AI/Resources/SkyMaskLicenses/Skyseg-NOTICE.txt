@@ -1,0 +1,14 @@
+Additional sky model download: JianyuanWang/skyseg
+
+Model: skyseg.onnx, sky-trained U²-Net
+Mirror: https://huggingface.co/JianyuanWang/skyseg
+Revision: 3ba8c6df1d9ba9ff26f637c7ba9568ac11a9aa7f
+SHA-256: ab9c34c64c3d821220a2886a4a06da4642ffa14d5b30e8d5339056a089aa1d39
+Original project: https://github.com/xiongzhu666/Sky-Segmentation-and-Post-processing
+Original license source revision: 1f7811b32b64ddc957269defff84bc87a3f0b74f
+
+The mirror's model card identifies the model as MIT-licensed and credits the
+original project. The complete original license is included in Skyseg-MIT.txt.
+Glowroom downloads this public ONNX file only when explicitly requested.
+The weights are not bundled, and this additional download does not activate
+Skyseg as Glowroom's sky-recognition backend.

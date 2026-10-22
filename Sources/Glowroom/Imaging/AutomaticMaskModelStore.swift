@@ -245,7 +245,7 @@ actor SkyMaskModelStore {
 
 /// URLSession writes to its temporary file, bounded by the app-owned size. Only
 /// a complete HTTP 200 response of the expected length reaches the private stage.
-private final class SkyMaskPackageDownloader: NSObject, URLSessionDownloadDelegate, @unchecked Sendable {
+final class SkyMaskPackageDownloader: NSObject, URLSessionDownloadDelegate, @unchecked Sendable {
     private let destination: URL
     private let maximumBytes: Int64
     private let progress: @Sendable (Int64) -> Void

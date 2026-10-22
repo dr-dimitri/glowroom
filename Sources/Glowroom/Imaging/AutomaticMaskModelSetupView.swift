@@ -11,7 +11,10 @@ private final class SkyMaskModelSetupState: ObservableObject {
 
     func refresh() async {
         do { installed = try await SkyMaskModelStore.shared.installedModel() != nil }
-        catch { errorMessage = error.localizedDescription }
+        catch {
+            guard !Task.isCancelled else { return }
+            installed = false; errorMessage = error.localizedDescription
+        }
     }
 
     func install() {
@@ -43,7 +46,13 @@ private final class SkyMaskModelSetupState: ObservableObject {
             guard let self else { return }
             defer { isBusy = false; task = nil }
             do { try await SkyMaskModelStore.shared.remove(); installed = false; progress = nil }
-            catch { errorMessage = error.localizedDescription }
+            catch is CancellationError { }
+            catch {
+                guard !Task.isCancelled else { return }
+                installed = (try? await SkyMaskModelStore.shared.installedModel()) != nil
+                progress = nil
+                errorMessage = error.localizedDescription
+            }
         }
     }
     func cancel() { task?.cancel() }
@@ -55,6 +64,21 @@ struct SkyMaskModelSetupView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var state = SkyMaskModelSetupState()
     var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            ScrollView {
+                setupContent
+            }
+            HStack {
+                Spacer()
+                Button("Fertig") { dismiss() }.keyboardShortcut(.defaultAction).disabled(state.isBusy)
+            }
+        }
+        .padding(24).frame(width: 510).frame(maxHeight: 700)
+        .task { await state.refresh() }
+        .onDisappear { state.cancel() }
+    }
+
+    private var setupContent: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Lokale Himmelserkennung").font(.title2.bold())
             Text("Glowroom erkennt den Himmel mit Apples DETR-Segmentierungsmodell direkt auf deinem Mac. Deine Fotos bleiben auf dem Gerät.")
@@ -78,12 +102,10 @@ struct SkyMaskModelSetupView: View {
                 } else {
                     Button("Modell laden und einrichten") { state.install() }.buttonStyle(.borderedProminent)
                 }
-                Spacer()
-                Button("Fertig") { dismiss() }.keyboardShortcut(.defaultAction).disabled(state.isBusy)
             }
+            Divider()
+            SkySegModelDownloadView()
         }
-        .padding(24).frame(width: 510)
-        .task { await state.refresh() }
-        .onDisappear { state.cancel() }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
