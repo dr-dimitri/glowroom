@@ -1,0 +1,288 @@
+{
+  "date": "2026-10-22",
+  "hardware": {
+    "chip": "Apple M2 Pro",
+    "cpuCores": 12,
+    "gpuCores": 19,
+    "memoryGiB": 16,
+    "os": "macOS 27.0.1 arm64"
+  },
+  "images": 7,
+  "passes": 2,
+  "scope": "Local private oriented sRGB JPEG proxies bounded to 2048 pixels; no ground truth; no image bytes, source image hashes or private paths in this summary.",
+  "runs": {
+    "detr-all": {
+      "status": "complete",
+      "records": 14,
+      "initialModelLoadSeconds": 3.6177371666999534,
+      "firstInferenceSeconds": 0.5105652083875611,
+      "secondPassMedianSeconds": {
+        "decodeSeconds": 0.00021795835345983505,
+        "encodeSeconds": 0.049036666634492576,
+        "inferenceSeconds": 0.08369212492834777,
+        "modelLoadSeconds": 0,
+        "preprocessSeconds": 0.0410597916925326,
+        "refineSeconds": 0.04182945832144469,
+        "requestSeconds": 0.1834149167407304,
+        "restoreSeconds": 0.01388429175131023,
+        "totalSeconds": 0.2355930833145976
+      },
+      "peakProcessRSSBytes": 216203264,
+      "secondPassInferenceSecondsByImage": {
+        "test_picture1": 0.09086833335459232,
+        "test_picture2": 0.08188829163555056,
+        "test_picture3": 0.07732008339371532,
+        "test_picture4": 0.09175675001461059,
+        "test_picture5": 0.08369212492834777,
+        "test_picture6": 0.070371791603975,
+        "test_picture7": 0.0856462917290628
+      },
+      "repeatedRawMasksByteIdentical": true
+    },
+    "detr-cpu-isolated": {
+      "status": "complete",
+      "records": 14,
+      "initialModelLoadSeconds": 0.005561166675761342,
+      "firstInferenceSeconds": 0.12745166674721986,
+      "secondPassMedianSeconds": {
+        "decodeSeconds": 0.0002527916803956032,
+        "encodeSeconds": 0.048187416745349765,
+        "inferenceSeconds": 0.10123770835343748,
+        "modelLoadSeconds": 0,
+        "preprocessSeconds": 0.04050204157829285,
+        "refineSeconds": 0.04173858335707337,
+        "requestSeconds": 0.19529979163780808,
+        "restoreSeconds": 0.013418666669167578,
+        "totalSeconds": 0.24348720838315785
+      },
+      "peakProcessRSSBytes": 443449344,
+      "secondPassInferenceSecondsByImage": {
+        "test_picture1": 0.10110054176766425,
+        "test_picture2": 0.10097270831465721,
+        "test_picture3": 0.10302387492265552,
+        "test_picture4": 0.10123770835343748,
+        "test_picture5": 0.09975833329372108,
+        "test_picture6": 0.10172716667875648,
+        "test_picture7": 0.10131433338392526
+      },
+      "repeatedRawMasksByteIdentical": true
+    },
+    "skywater-coreml": {
+      "status": "complete",
+      "records": 14,
+      "initialModelLoadSeconds": 3.75542541698087,
+      "firstInferenceSeconds": 0.12007870792876929,
+      "secondPassMedianSeconds": {
+        "inputReadSeconds": 0.03815995901823044,
+        "preprocessSeconds": 0.002661708975210786,
+        "inferenceSeconds": 0.1094045409699902,
+        "postprocessSeconds": 0.061551625025458634,
+        "encodeAndWriteSeconds": 0.005601624958217144,
+        "outputVerificationSeconds": 0.0042772500310093164,
+        "requestSecondsExcludingLoadAndWrites": 0.21208349999506027
+      },
+      "peakProcessRSSBytes": 1061273600,
+      "secondPassInferenceSecondsByImage": {
+        "test_picture1": 0.11096362490206957,
+        "test_picture2": 0.10868279100395739,
+        "test_picture3": 0.11051970906555653,
+        "test_picture4": 0.10873612493742257,
+        "test_picture5": 0.1094045409699902,
+        "test_picture6": 0.10934358404483646,
+        "test_picture7": 0.11270679102744907
+      },
+      "repeatedRawMasksByteIdentical": true
+    },
+    "skywater-cpu": {
+      "status": "complete",
+      "records": 14,
+      "initialModelLoadSeconds": 0.21764470799826086,
+      "firstInferenceSeconds": 0.08965233294293284,
+      "secondPassMedianSeconds": {
+        "inputReadSeconds": 0.03788916708435863,
+        "preprocessSeconds": 0.0023892500903457403,
+        "inferenceSeconds": 0.08284579101018608,
+        "postprocessSeconds": 0.0618193750269711,
+        "encodeAndWriteSeconds": 0.005479582934640348,
+        "outputVerificationSeconds": 0.00411600002553314,
+        "requestSecondsExcludingLoadAndWrites": 0.18593279097694904
+      },
+      "peakProcessRSSBytes": 1007845376,
+      "secondPassInferenceSecondsByImage": {
+        "test_picture1": 0.08219987503252923,
+        "test_picture2": 0.08284579101018608,
+        "test_picture3": 0.0826258750166744,
+        "test_picture4": 0.08279783301986754,
+        "test_picture5": 0.08332324994262308,
+        "test_picture6": 0.08332279196474701,
+        "test_picture7": 0.0830277920467779
+      },
+      "repeatedRawMasksByteIdentical": true
+    },
+    "detr-oneshot": {
+      "status": "complete",
+      "records": 14,
+      "initialModelLoadSeconds": 1.6670674085617065e-07,
+      "firstInferenceSeconds": 0.2158922499511391,
+      "secondPassMedianSeconds": {
+        "decodeSeconds": 0.0002230833051726222,
+        "encodeSeconds": 0.04848237498663366,
+        "inferenceSeconds": 0.18623145832680166,
+        "modelLoadSeconds": 0.04571916663553566,
+        "preprocessSeconds": 0.04147933330386877,
+        "refineSeconds": 0.0407227500109002,
+        "requestSeconds": 0.34460820839740336,
+        "restoreSeconds": 0.028017916716635227,
+        "totalSeconds": 0.3981970417080447
+      },
+      "peakProcessRSSBytes": 186171392,
+      "secondPassInferenceSecondsByImage": {
+        "test_picture1": 0.18424791668076068,
+        "test_picture2": 0.18623145832680166,
+        "test_picture3": 0.18760187504813075,
+        "test_picture4": 0.18616441660560668,
+        "test_picture5": 0.1856605833163485,
+        "test_picture6": 0.18950404168572277,
+        "test_picture7": 0.18844629172235727
+      },
+      "repeatedRawMasksByteIdentical": true
+    },
+    "skywater-refined": {
+      "status": "complete",
+      "records": 14,
+      "initialModelLoadSeconds": null,
+      "firstInferenceSeconds": null,
+      "secondPassMedianSeconds": {
+        "decodeSeconds": 0.003203916596248746,
+        "encodeSeconds": 0.024854708346538246,
+        "refineSeconds": 0.06306225003208965,
+        "totalSeconds": 0.09086991671938449
+      },
+      "peakProcessRSSBytes": 167280640,
+      "secondPassInferenceSecondsByImage": {}
+    }
+  },
+  "cpuControls": {
+    "detr": [
+      {
+        "id": "test_picture1",
+        "binaryDisagreementFractionAtHalf": 0.0,
+        "meanAbsoluteGray8Difference": 0.0
+      },
+      {
+        "id": "test_picture2",
+        "binaryDisagreementFractionAtHalf": 0.0003184546136534134,
+        "meanAbsoluteGray8Difference": 0.07997561890472618
+      },
+      {
+        "id": "test_picture3",
+        "binaryDisagreementFractionAtHalf": 0.0008212121212121212,
+        "meanAbsoluteGray8Difference": 0.20951900826446282
+      },
+      {
+        "id": "test_picture4",
+        "binaryDisagreementFractionAtHalf": 0.005053009575923393,
+        "meanAbsoluteGray8Difference": 1.2877527359781122
+      },
+      {
+        "id": "test_picture5",
+        "binaryDisagreementFractionAtHalf": 0.00018604651162790697,
+        "meanAbsoluteGray8Difference": 0.04711552888222056
+      },
+      {
+        "id": "test_picture6",
+        "binaryDisagreementFractionAtHalf": 5.36384096024006e-05,
+        "meanAbsoluteGray8Difference": 0.013980495123780945
+      },
+      {
+        "id": "test_picture7",
+        "binaryDisagreementFractionAtHalf": 0.0,
+        "meanAbsoluteGray8Difference": 0.0
+      }
+    ],
+    "skywaterFP16CoreML_vs_FP32CPU": [
+      {
+        "id": "test_picture1",
+        "binaryDisagreementFractionAtHalf": 0.0,
+        "meanAbsoluteGray8Difference": 0.0
+      },
+      {
+        "id": "test_picture2",
+        "binaryDisagreementFractionAtHalf": 4.876219054763691e-06,
+        "meanAbsoluteGray8Difference": 0.0012434358589647411
+      },
+      {
+        "id": "test_picture3",
+        "binaryDisagreementFractionAtHalf": 3.8292011019283744e-05,
+        "meanAbsoluteGray8Difference": 0.009764462809917355
+      },
+      {
+        "id": "test_picture4",
+        "binaryDisagreementFractionAtHalf": 4.6853625170998635e-05,
+        "meanAbsoluteGray8Difference": 0.011947674418604651
+      },
+      {
+        "id": "test_picture5",
+        "binaryDisagreementFractionAtHalf": 2.4381095273818456e-05,
+        "meanAbsoluteGray8Difference": 0.006217179294823706
+      },
+      {
+        "id": "test_picture6",
+        "binaryDisagreementFractionAtHalf": 4.876219054763691e-06,
+        "meanAbsoluteGray8Difference": 0.0012434358589647411
+      },
+      {
+        "id": "test_picture7",
+        "binaryDisagreementFractionAtHalf": 0.0,
+        "meanAbsoluteGray8Difference": 0.0
+      }
+    ]
+  },
+  "skywaterProviderControl": {
+    "status": "complete",
+    "profileNodeEventCountsByProvider": {
+      "CPUExecutionProvider": 17416,
+      "CoreMLExecutionProvider": 1036
+    },
+    "cpuNodeExecutionObserved": true,
+    "coreMLNodeExecutionObserved": true
+  },
+  "models": {
+    "detr": {
+      "source": "apple/coreml-detr-semantic-segmentation",
+      "revision": "bfcb6e4210d7289310082d7c93bf9a1417b3699f",
+      "packageBytes": 85468610,
+      "input": [
+        448,
+        448
+      ]
+    },
+    "skywater": {
+      "source": "Realcat/skywater_seg",
+      "revision": "dac255883ec5faf508561a47172096bfd8708db0",
+      "fp16Bytes": 49867699,
+      "fp32Bytes": 99310780,
+      "input": [
+        384,
+        384
+      ]
+    }
+  },
+  "excludedRuns": [
+    {
+      "name": "detr-cpu",
+      "reason": "Overlapped visual gallery generation; excluded from performance conclusions and replaced by detr-cpu-isolated."
+    }
+  ],
+  "limitations": [
+    "One machine and one serial two-pass series per condition; no cache purge or statistical speed claim from small differences.",
+    "Native Core ML and Python/ORT timing/memory scopes differ. RSS omits some GPU/driver allocations.",
+    "Resident model comparison is not the app lifecycle. DETR oneshot includes reload per image but excludes receipt verification/UI/preview creation.",
+    "Refinement is a separate process for SkyWater; its latency must not be added to medians as if measured end-to-end.",
+    "Native ImageIO decoding can be deferred into CGContext drawing, so decode/preprocess components are not directly comparable across runtimes.",
+    "Official SkyWater uses resized logits then argmax; controlled guided-filter comparison uses native argmax then app-equivalent bilinear Gray8 restoration.",
+    "No bit-exact PyTorch interpolation validation; synthetic Float32 and app-restoration oracles passed.",
+    "Profile event counts include Core ML partitions and CPU kernels; they do not identify underlying GPU/ANE execution or comparable original-op percentages."
+  ],
+  "originalsUnchanged": true
+}
