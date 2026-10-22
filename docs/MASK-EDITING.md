@@ -31,6 +31,51 @@ Die interaktive rote Überlagerung verwendet einen eigenen Bitmap. Ihr aktueller
 
 Bei vielen aktiven Korrekturen verringert die Vorschau ihre tatsächliche Renderauflösung unterhalb der angeforderten Obergrenze. Pro Worker gilt für zusätzliche Maskenarbeit ein konservatives Planungsbudget von höchstens 512 MiB beziehungsweise einem Sechzehntel des physischen Speichers. Bei Artefaktquellen gehen zusätzlich Basisbild, bestehende Speicherreservierung und Ausgabe in deren gemeinsames Budget ein. Gespeicherte Geometrie und entwickelte Quelle bleiben erhalten; weitere Reglerbewegungen lösen kein neues Decode aus. Der Vollauflösungsexport verwendet seine eigene Speicherzulassung und verkleinert einen zu großen Auftrag nicht still. Diese Zulassungsschätzungen sind keine Messung oder harte Grenze für den gesamten Prozess-/GPU-Speicher.
 
+### Tonwertregler und Maskenstärke
+
+Globale und lokale Tonwerte verwenden denselben Filter. Lokale Korrekturen wirken auf den bereits global entwickelten Bildstand, bei mehreren Masken zusätzlich auf die vorherigen Masken. Bei neutralen globalen Einstellungen entspricht eine vollständig deckende Maske mit Stärke 1 denselben globalen Reglerwerten. Vorschau und Export verwenden diese gemeinsame Berechnung.
+
+| Regler | Nach links | Nach rechts |
+|---|---|---|
+| Belichtung | Dunkler, bis −5 EV | Heller, bis +5 EV |
+| Kontrast | Geringere Tonwertspreizung; dunkle Mitteltöne können heller werden | Größere Tonwertspreizung |
+| Lichter | Helle Tonwerte abdunkeln | Helle Tonwerte aufhellen |
+| Tiefen | Dunkle Tonwerte abdunkeln | Dunkle Tonwerte aufhellen |
+| Weiß | Obersten Helligkeitsbereich absenken | Obersten Helligkeitsbereich anheben |
+| Schwarz | Untersten Helligkeitsbereich absenken | Untersten Helligkeitsbereich anheben |
+
+Lichter/Tiefen und Weiß/Schwarz greifen in unterschiedliche, weich überlappende Helligkeitsbereiche ein. Ihre Wirkung hängt vom Bild und den vorangehenden Reglern ab: Nach starker negativer Belichtung liegen kaum noch Pixel im Wirkbereich von Lichter/Weiß. Alle Regler nach links bedeutet daher nicht, dass jeder davon das gesamte Bild abdunkelt.
+
+Die bisherige affine Kontrastkurve hob bei −100 selbst Schwarz auf Grau und schwächte dadurch −5 EV erheblich ab. Seit der Korrektur vom 22. Oktober 2026 erhält die Kontrastkurve Schwarz und Weiß. Für den normierten Kontrastwert `c` und gamma-kodiertes RGB `x` lautet die Stufe `x + c·u·(1−u)·(2u−1)`, mit `u = clamp(x, 0, 1)`. Ihre Ableitung im SDR-Bereich ist `1 + c·(−6u² + 6u − 1)` und bleibt für alle zulässigen Werte nichtnegativ. Die Stufe erhält HDR-Werte über 1. Belichtung bleibt davor, die übrigen Tonwertkorrekturen danach; es entsteht kein weiterer Renderpass oder RAW-Decode. Bestehende gespeicherte Kontrastwerte werden beim erneuten Rendern mit der korrigierten Kurve dargestellt; ihre Zahlenwerte werden nicht umgeschrieben.
+
+**Maskenstärke** mischt das vollständig korrigierte Ergebnis mit dem Bildstand vor der betreffenden Maske in linearem Licht. Bei Stärke **0,77** bleiben in voll ausgewählten Pixeln **23 % des vorherigen Bildstands** erhalten, selbst wenn die Korrektur selbst Schwarz erzeugt. Für volle Abdunklung Stärke **1,00** verwenden. Weiche Kanten oder nur teilweise ausgewählte Pixel wirken auch dann anteilig. Die Hilfe am Regler erläutert diesen Zusammenhang. Die Stärke und die Auswahlberechnung bleiben unverändert.
+
+Die synthetischen `ToneControlRegressionTests` prüfen alle sechs Einzelregler in beide Richtungen, volle und teilweise Masken, unveränderte Auswahlaußenbereiche, Kontrastendpunkte, monotone Grauverläufe, kombinierte Minimalwerte, P3/Alpha, HDR und Vorschau-/Exportparität. Der Vergleich automatischer Core-Image-Auswahl mit Softwarepräferenz ist kein Nachweis eines bestimmten tatsächlich verwendeten CPU-/GPU-Backends. Der Kontrastfix bleibt im bestehenden pixelparallelen Kernel; es gibt keinen zusätzlichen Workerpool und keine neue Leistungsbehauptung.
+
+`RawToneControlTests` ist ausdrücklich optional. Er benötigt eine lokal bereitgestellte RAW-Datei und ein neues temporäres Ausgabeverzeichnis unter einem bereits vorhandenen Elternordner; in CI werden keine privaten Fotos vorausgesetzt. Beispiel:
+
+```sh
+GLOWROOM_TEST_BUILD_PATH=/private/tmp/glowroom-tone-controls-tests \
+GLOWROOM_TONE_TEST_RAW="$PWD/IMG_8724.CR3" \
+GLOWROOM_TONE_TEST_OUTPUT=/private/tmp/glowroom-tone-comparison \
+./scripts/test.sh --jobs 4 --filter RawToneControlTests
+```
+
+Der Test decodiert einmal mit 2048 Pixeln langer Kante ohne eingebettete Kameravorschau, verwendet den produktiven Maskendienst und speichert die umgekehrte Motivauswahl. `GLOWROOM_TONE_TEST_MASK=/private/tmp/glowroom-tone-comparison/frozen-mask.json` verwendet für einen weiteren Lauf exakt dieselbe Auswahl; Quellhash und Bildmaße müssen passen. Einzelregler in beide Richtungen und alle Minimalwerte werden global, mit Hintergrundmaske sowie als Vollmaskenvergleich gerendert. Der Bericht enthält lineare Helligkeit in vollständig beziehungsweise fast vollständig ausgewählten Bereichen und den Pixelunterschied Vollmaske/global. Die Testbilder, Maskendaten und Berichte bleiben lokal im temporären Ordner. Der Originalhash wird vor und nach dem Lauf geprüft. Die Bildfolge läuft zur Speicherbegrenzung seriell, die unabhängigen synthetischen Tests bleiben parallel.
+
+Die lokale Prüfung vom 22. Oktober 2026 verwendete `IMG_8724.CR3`, die produktive Vision-Motiverkennung mit Kantennachführung und eine zwischen beiden Läufen bytegleiche Auswahl. Auch die decodierten Ausgangs-PNGs waren bytegleich; das Original blieb unverändert. Bei Auswahlgewicht ≥ 0,99 ergaben alle sechs Minimalwerte folgende mittlere lineare sRGB-Helligkeit Y:
+
+| Maskenstärke | Bisher | Korrigiert |
+|---|---:|---:|
+| 1,00 | 0,047750 | 0,001234 |
+| 0,77 | 0,085677 | 0,049905 |
+
+Die Ausgangshelligkeit dieser Pixel betrug 0,212822. Die neue Kurve senkt die mittlere Helligkeit bei voller Stärke um 97,4 % gegenüber dem alten Ergebnis. Das beschreibt dieses Foto und diese Auswahl, keine universelle Abdunklungs- oder Segmentierungsqualität. Bei 0,77 bleibt der erwartete Anteil des Ausgangsbilds erhalten. Die Sichtprüfung bestätigt den deutlich dunkleren ausgewählten Hintergrund; nur teilweise ausgewählte Ränder bleiben anteilig. Die zwölf Einzelreglerfälle und die Kombination unterscheiden sich zwischen globaler Korrektur und Vollmaske um höchstens einen sRGB-8-Bit-Codewert. Die Abnahme erlaubt höchstens zwei Codewerte nach expliziter sRGB-Konvertierung; Float-Messwerte werden zusätzlich protokolliert.
+
+Der alte Kernel fiel in drei neuen Regressionen für Kontrastendpunkte, kombinierte Minimalwerte und HDR-Kontrast durch. Der abschließende native Lauf bestand mit **122 App-Tests in zwölf Suites und elf Core-Tests**, einschließlich aller neun neuen synthetischen Regressionen, RAW-Vergleich, automatischer Tonwertvorschläge, Render-Sitzungen, Maskeneditor, Graustufen, Bildausgleich, HDR, Export und Maskenpersistenz. Im Diagnoseharness wurden zuvor die Normalisierung des noch nicht vorhandenen temporären Zielpfads und die zur tatsächlichen 8-Bit-Ausgabe passende Paritätsprüfung korrigiert; diese anfänglichen Diagnoseläufe waren keine bestandenen Abnahmen.
+
+Ein sauberer vollständiger App-Build war wegen des geänderten Renderers und der Reglerhilfe erforderlich. Nach Prüfung laufender Prozesse und Locks wurden die generierten Ergebnisse unter `.build/` sowie das alte `dist/Glowroom.app` entfernt; `.build-app/navigation-tests/` enthielt bereits keine generierten Ergebnisse mehr. Abhängigkeitsquellen und Lockdateien blieben erhalten. **`GLOWROOM_BUILD_JOBS=4 ./scripts/build-app.sh` bestand** einschließlich Paketierung und Signaturprüfung (Swift-Build: 130,18 Sekunden). Tests verwendeten getrennt `/private/tmp/glowroom-tone-controls-tests`. Unabhängiges finales Review von Renderer, Aufrufern, Cache-Verträgen, Tests und Dokumentation sowie `git diff --check` ergaben keine offenen Befunde. Der persistente Vorschau-Cache speichert unveränderte decodierte Basen; die nur im Speicher gehaltenen bearbeiteten Vorschauen benötigen beim App-Neustart keine Cachemigration.
+
 ### Prüfung der interaktiven Überlagerung vom 22. Oktober 2026
 
 Regressionen prüfen neue Masken aller sechs Typen, Duplikate, beide Ausgangszustände der Überlagerung, Maskenstärke/Weichheit, Tonwert/Farbe/Effekte, zusammenhängendes Undo und veraltete Reglereingaben. Gesteuerte Renderfortsetzungen belegen: 100 schnell eintreffende Änderungen erzeugen während eines belegten Workers nur den neuesten Folgeauftrag; trotzdem erscheint der erste fertige Frame bereits während der Eingabe. Quellen-, Layer-, Canvas- und Sichtbarkeitswechsel verwerfen verspätete Ergebnisse, Fehler sind nach erfolgreichem Rendern wieder aufgehoben. Grafiktests vergleichen die Alphaabdeckung aller Formen mit dem gemeinsamen Korrekturrenderer, prüfen Grenzen und weisen Rasterisierung sowie Bitmap-Materialisierung außerhalb des Main Threads nach.
