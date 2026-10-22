@@ -8,17 +8,18 @@ import GlowroomCore
 @MainActor
 struct InlineMaskCanvas: View {
     @ObservedObject var workspace: InlineMaskWorkspace
-    @ViewState private var overlay: CGImage?
+    @StateObject private var overlay = LocalMaskOverlayModel()
     @ViewState private var cursor: CGPoint?
     @ViewState private var gesture: GradientGesture?
     @ViewState private var inputIdentity: InputIdentity?
     @ViewState private var interruptsUntilMouseUp = false
     @GestureState private var pointerIsDown = false
     private struct InputIdentity { let source: AISourceIdentity; let layerID: UUID }
-    private struct OverlayIdentity: Hashable {
-        let source: AISourceIdentity?
-        let canvas: ArtifactPixelSize?
-        let mask: LocalAdjustmentMask?
+    private var overlayRequest: LocalMaskOverlayRequest? {
+        guard workspace.isPresented, workspace.showsOverlay, !workspace.comparesBefore,
+              let source = workspace.source, let canvas = workspace.canvasSize,
+              let layerID = workspace.selected?.id, let mask = workspace.displayMask else { return nil }
+        return .init(source: source, canvas: canvas, layerID: layerID, mask: mask)
     }
     private enum Handle { case start, end, center, radiusX, radiusY, new }
     private struct GradientGesture {
@@ -47,8 +48,9 @@ struct InlineMaskCanvas: View {
                     .onChange(of: viewport.size) { _, _ in cancelGesture() }
             }
         }
-        .task(id: OverlayIdentity(source: workspace.source, canvas: workspace.canvasSize, mask: workspace.displayMask)) {
-            await updateOverlay()
+        .onChange(of: overlayRequest, initial: true) { _, request in overlay.update(request) }
+        .onChange(of: overlay.errorMessage) { previous, message in
+            if message != nil || workspace.errorMessage == previous { workspace.errorMessage = message }
         }
         .onChange(of: workspace.model?.selectedID) { _, _ in cancelGesture() }
         .onChange(of: workspace.selected?.mask.isInverted) { _, _ in cancelGesture() }
@@ -60,14 +62,14 @@ struct InlineMaskCanvas: View {
             // inference; the next real pointer down must remain usable.
             if !down { cancelGesture(); interruptsUntilMouseUp = false }
         }
-        .onDisappear { cancelGesture() }
+        .onDisappear { cancelGesture(); overlay.update(nil) }
     }
 
     private func maskImage(geometry: CanvasGeometry) -> some View {
         let width = Double(geometry.canvasSize.width) * geometry.scale
         let height = Double(geometry.canvasSize.height) * geometry.scale
         return ZStack {
-            if workspace.showsOverlay, let overlay { Color.red.mask { Image(decorative: overlay, scale: 1).resizable() }.opacity(0.45) }
+            if workspace.showsOverlay, let image = overlay.image { Color.red.mask { Image(decorative: image, scale: 1).resizable() }.opacity(0.45) }
             if !workspace.usesBrush { gradientHandles }
         }.frame(width: width, height: height)
             .position(x: geometry.originX + width / 2, y: geometry.originY + height / 2)
@@ -123,6 +125,9 @@ struct InlineMaskCanvas: View {
 
     private func drag(_ geometry: CanvasGeometry) -> some Gesture {
         DragGesture(minimumDistance: 0).updating($pointerIsDown) { _, down, _ in down = true }.onChanged { value in
+            // Hover callbacks pause during a drag on macOS. Follow the actual
+            // input event independently of the asynchronous mask bitmap.
+            cursor = value.location
             guard !interruptsUntilMouseUp, workspace.isCurrent, !workspace.comparesBefore,
                   let model = workspace.model, !model.isGenerating,
                   let source = workspace.source, let selected = workspace.selected else { return }
@@ -206,15 +211,6 @@ struct InlineMaskCanvas: View {
         if inputIdentity != nil { interruptsUntilMouseUp = true }
         workspace.brush.cancelStroke(); workspace.model?.endChange()
         gesture = nil; inputIdentity = nil; cursor = nil
-    }
-    private func updateOverlay() async {
-        overlay = nil
-        guard let mask = workspace.displayMask, let canvas = workspace.canvasSize else { return }
-        do {
-            let image = try await LocalMaskOverlayWorker.shared.image(mask, size: canvas)
-            try Task.checkCancellation(); overlay = image
-        } catch is CancellationError { }
-        catch { workspace.errorMessage = error.localizedDescription }
     }
 }
 
@@ -478,7 +474,7 @@ struct InlineMaskInspector: View {
                 ForEach(group.controls) { control in
                     valueSlider(control.title, value: Binding(get: { workspace.selected?.settings[keyPath: control.keyPath] ?? 0 },
                         set: { value in model.updateSelected { $0.settings[keyPath: control.keyPath] = value } }), range: control.range, model: model,
-                        accessibilityID: "local-mask.correction.\(control.rawValue)")
+                        target: .correction, accessibilityID: "local-mask.correction.\(control.rawValue)")
                 }
             }
         }
@@ -490,8 +486,9 @@ struct InlineMaskInspector: View {
     }
 
     private func valueSlider(_ title: String, value: Binding<Double>, range: ClosedRange<Double>, neutral: Double = 0,
-                             model: LocalAdjustmentEditorModel, accessibilityID: String? = nil) -> some View {
-        let input = LocalMaskSliderInput(value: value, model: model, workspace: workspace)
+                             model: LocalAdjustmentEditorModel, target: LocalMaskSliderTarget = .mask,
+                             accessibilityID: String? = nil) -> some View {
+        let input = LocalMaskSliderInput(value: value, model: model, workspace: workspace, target: target)
         return HStack(spacing: 7) {
             Text(title).font(.system(size: 10)).foregroundStyle(Theme.muted)
                 .frame(width: 77, alignment: .trailing).lineLimit(1).minimumScaleFactor(0.8)
@@ -506,6 +503,10 @@ struct InlineMaskInspector: View {
     }
 }
 
+enum LocalMaskSliderTarget {
+    case mask, correction
+}
+
 /// A native click may finish before SwiftUI dismantles controls after selection
 /// changes. Bind the action and the native view to the same editing context,
 /// including when selection or undo later returns to the same layer UUID.
@@ -514,7 +515,8 @@ struct LocalMaskSliderInput {
     let value: Binding<Double>
     let onEditingChanged: (Bool) -> Void
 
-    init(value: Binding<Double>, model: LocalAdjustmentEditorModel, workspace: InlineMaskWorkspace? = nil) {
+    init(value: Binding<Double>, model: LocalAdjustmentEditorModel, workspace: InlineMaskWorkspace? = nil,
+         target: LocalMaskSliderTarget = .correction) {
         let inputContextID = model.inputContextID
         self.value = Binding(get: { value.wrappedValue }, set: { newValue in
             guard model.inputContextID == inputContextID else { return }
@@ -523,11 +525,10 @@ struct LocalMaskSliderInput {
         onEditingChanged = { editing in
             guard model.inputContextID == inputContextID else { return }
             if editing {
-                workspace?.beginSliderAdjustment(contextID: inputContextID)
+                workspace?.beginSliderAdjustment(contextID: inputContextID, target: target)
                 model.beginChange()
             } else {
                 model.endChange()
-                workspace?.endSliderAdjustment(contextID: inputContextID)
             }
         }
     }
@@ -548,37 +549,6 @@ private enum LocalMaskControlGroup: String, CaseIterable, Identifiable {
     }
 }
 
-actor LocalMaskOverlayWorker {
-    static let shared = LocalMaskOverlayWorker()
-    private let context = CIContext(options: [.cacheIntermediates: false])
-    private let maskCache: LocalMaskImageCache?
-    private let alphaKernel = CIColorKernel(source: """
-        kernel vec4 maskOverlay(__sample mask) {
-            float weight = clamp(mask.r, 0.0, 1.0);
-            return vec4(weight, 0.0, 0.0, weight);
-        }
-        """)
-
-    init(enableIncrementalCaching: Bool = true) {
-        maskCache = enableIncrementalCaching ? LocalMaskImageCache() : nil
-    }
-
-    func image(_ mask: LocalAdjustmentMask, size: ArtifactPixelSize) throws -> CGImage {
-        try Task.checkCancellation()
-        let extent = CGRect(x: 0, y: 0, width: size.width, height: size.height)
-        let image = try PipelineTrace.measure(.maskOverlayGraph) {
-            let scalar = try LocalAdjustmentRenderer.maskImage(mask, extent: extent, cache: maskCache)
-            guard let image = alphaKernel?.apply(extent: extent, arguments: [scalar]) else { throw EditRenderError.unavailable }
-            return image
-        }
-        let bitmap = try PipelineTrace.measure(.maskOverlayImage) {
-            guard let bitmap = context.createCGImage(image, from: extent) else { throw EditRenderError.unavailable }
-            return bitmap
-        }
-        try Task.checkCancellation()
-        return bitmap
-    }
-}
 
 private enum LocalMaskControl: String, CaseIterable, Identifiable {
     case exposure, contrast, highlights, shadows, whites, blacks, texture, clarity, dehaze, vibrance, saturation
