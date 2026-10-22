@@ -85,6 +85,8 @@ Der Motiv-Worker behält genau ein Ergebnis für dasselbe unveränderliche Vorsc
 
 ## Grenzen und Verifikation
 
+Der [Folgevergleich mit der großen U²-Net-Sky-Variante](../tools/mask-evaluation/u2net_sky_README.md) vom 22. Oktober 2026 zeigt bei den geprüften Baumkronen mehr erkennbare Himmelszwischenräume als Apple-DETR, aber weiterhin helle Restsäume und eine fragmentierte Auswahl im stark unscharfen Hintergrund. U²-Net benötigt in dieser lokalen Messreihe rund 183 ms beschleunigte Inferenz gegenüber 76 ms bei DETR. Beide erhalten dieselbe Kantennachführung; weiche Ausgaben und die Min-/Max-Streckung der Hersteller-Demo bleiben separat ausgewertet. Die App verwendet weiterhin das bisherige Apple-Modell.
+
 Der [lokale Vergleich von DETR und SkyWater vom 22. Oktober 2026](../tools/mask-evaluation/sky_comparison_README.md) verwendet dieselben sieben Testbilder und die echte Kantennachführung der App. SkyWater folgt Teilen der Baumkronen-Kontur besser, beseitigt aber ebenso wenig alle Himmelslücken zwischen feinen Ästen. Seine CPU-Inferenz liegt in dieser Messreihe ungefähr auf dem Niveau des beschleunigten DETR; SkyWater über ONNX/Core ML ist langsamer. Die unterschiedlichen Laufzeitumgebungen und der fehlende Referenzmaskensatz begrenzen die Aussage. Der Vergleich ändert das in der App verwendete Modell nicht.
 
 Die folgenden Modellvergleiche beschreiben historische Messungen. Ihre Berichte

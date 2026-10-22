@@ -1,0 +1,350 @@
+{
+  "date": "2026-10-22",
+  "hardware": {
+    "chip": "Apple M2 Pro",
+    "cpuCores": 12,
+    "gpuCores": 19,
+    "memoryGiB": 16,
+    "os": "macOS 27.0.1 arm64"
+  },
+  "images": 7,
+  "passes": 2,
+  "scope": "Exact prior oriented sRGB proxies bounded to 2048 pixels, reverified with originals; no ground truth. Private image bytes/hashes/paths omitted.",
+  "runs": {
+    "detr-all": {
+      "status": "complete",
+      "records": 14,
+      "initialModelLoadSeconds": 0.14427787496242672,
+      "firstInferenceSeconds": 0.31843049998860806,
+      "secondPassMedianSeconds": {
+        "decodeSeconds": 0.00021804170683026314,
+        "encodeSeconds": 0.04977875004988164,
+        "inferenceSeconds": 0.07624358334578574,
+        "modelLoadSeconds": 0,
+        "preprocessSeconds": 0.04101179167628288,
+        "refineSeconds": 0.03572129167150706,
+        "requestSeconds": 0.16563287493772805,
+        "restoreSeconds": 0.014158500009216368,
+        "totalSeconds": 0.21401570842135698
+      },
+      "peakProcessRSSBytes": 185974784,
+      "secondPassInferenceSecondsByImage": {
+        "test_picture1": 0.07574837503489107,
+        "test_picture2": 0.074021041742526,
+        "test_picture3": 0.07273537502624094,
+        "test_picture4": 0.07624358334578574,
+        "test_picture5": 0.08106929168570787,
+        "test_picture6": 0.08111983328126371,
+        "test_picture7": 0.07805187499616295
+      },
+      "repeatedRawMasksByteIdentical": true
+    },
+    "detr-cpu": {
+      "status": "complete",
+      "records": 14,
+      "initialModelLoadSeconds": 0.016789125045761466,
+      "firstInferenceSeconds": 0.21522270829882473,
+      "secondPassMedianSeconds": {
+        "decodeSeconds": 0.0002425833372399211,
+        "encodeSeconds": 0.04914199991617352,
+        "inferenceSeconds": 0.10388129157945514,
+        "modelLoadSeconds": 0,
+        "preprocessSeconds": 0.04167779162526131,
+        "refineSeconds": 0.03154704160988331,
+        "requestSeconds": 0.19017758325207978,
+        "restoreSeconds": 0.01382866664789617,
+        "totalSeconds": 0.24149983329698443
+      },
+      "peakProcessRSSBytes": 442859520,
+      "secondPassInferenceSecondsByImage": {
+        "test_picture1": 0.11698929162230343,
+        "test_picture2": 0.10346004168968648,
+        "test_picture3": 0.1040787500096485,
+        "test_picture4": 0.11127054167445749,
+        "test_picture5": 0.10176966665312648,
+        "test_picture6": 0.10388129157945514,
+        "test_picture7": 0.10239612509030849
+      },
+      "repeatedRawMasksByteIdentical": true
+    },
+    "u2net-cpu": {
+      "status": "complete",
+      "records": 14,
+      "initialModelLoadSeconds": 0.08658875001128763,
+      "firstInferenceSeconds": 0.3090077090309933,
+      "secondPassMedianSeconds": {
+        "inputReadSeconds": 0.03870041703339666,
+        "preprocessSeconds": 0.0018325831042602658,
+        "inferenceSeconds": 0.29354183294344693,
+        "postprocessSeconds": 0.04105291701853275,
+        "encodeAndWriteSeconds": 0.018831708002835512,
+        "outputVerificationSeconds": 0.011192666017450392,
+        "requestSecondsExcludingLoadAndWrites": 0.37554416700731963
+      },
+      "peakProcessRSSBytes": 1043120128,
+      "secondPassInferenceSecondsByImage": {
+        "test_picture1": 0.2944292080355808,
+        "test_picture2": 0.2934520000126213,
+        "test_picture3": 0.29324795899447054,
+        "test_picture4": 0.2933361670002341,
+        "test_picture5": 0.29647099995054305,
+        "test_picture6": 0.29695187497418374,
+        "test_picture7": 0.29354183294344693
+      },
+      "repeatedRawMasksByteIdentical": true
+    },
+    "u2net-coreml": {
+      "status": "complete",
+      "records": 14,
+      "initialModelLoadSeconds": 1.24318404099904,
+      "firstInferenceSeconds": 2.142804375034757,
+      "secondPassMedianSeconds": {
+        "inputReadSeconds": 0.0396437079180032,
+        "preprocessSeconds": 0.001786417094990611,
+        "inferenceSeconds": 0.1827327919891104,
+        "postprocessSeconds": 0.04102979099843651,
+        "encodeAndWriteSeconds": 0.01921458391007036,
+        "outputVerificationSeconds": 0.011176290921866894,
+        "requestSecondsExcludingLoadAndWrites": 0.2706564160762355
+      },
+      "peakProcessRSSBytes": 720961536,
+      "secondPassInferenceSecondsByImage": {
+        "test_picture1": 0.1827327919891104,
+        "test_picture2": 0.17038379202131182,
+        "test_picture3": 0.16852058400399983,
+        "test_picture4": 0.18271429208107293,
+        "test_picture5": 0.19728658290114254,
+        "test_picture6": 0.19525004096794873,
+        "test_picture7": 0.1900965420063585
+      },
+      "repeatedRawMasksByteIdentical": true
+    },
+    "u2net-refined": {
+      "status": "complete",
+      "records": 14,
+      "initialModelLoadSeconds": null,
+      "firstInferenceSeconds": null,
+      "secondPassMedianSeconds": {
+        "decodeSeconds": 0.0029877499910071492,
+        "encodeSeconds": 0.02549795841332525,
+        "refineSeconds": 0.06287879159208387,
+        "totalSeconds": 0.09108054160606116
+      },
+      "peakProcessRSSBytes": 160776192,
+      "secondPassInferenceSecondsByImage": {}
+    },
+    "u2net-soft-refined": {
+      "status": "complete",
+      "records": 14,
+      "initialModelLoadSeconds": null,
+      "firstInferenceSeconds": null,
+      "secondPassMedianSeconds": {
+        "decodeSeconds": 0.0033355416962876916,
+        "encodeSeconds": 0.025351749965921044,
+        "refineSeconds": 0.06401524995453656,
+        "totalSeconds": 0.08931362500879914
+      },
+      "peakProcessRSSBytes": 169558016,
+      "secondPassInferenceSecondsByImage": {}
+    }
+  },
+  "cpuControls": {
+    "detr": [
+      {
+        "id": "test_picture1",
+        "binaryDisagreementFractionAtHalf": 0.0,
+        "meanAbsoluteGray8Difference": 0.0
+      },
+      {
+        "id": "test_picture2",
+        "binaryDisagreementFractionAtHalf": 0.0003184546136534134,
+        "meanAbsoluteGray8Difference": 0.07997561890472618
+      },
+      {
+        "id": "test_picture3",
+        "binaryDisagreementFractionAtHalf": 0.0008212121212121212,
+        "meanAbsoluteGray8Difference": 0.20951900826446282
+      },
+      {
+        "id": "test_picture4",
+        "binaryDisagreementFractionAtHalf": 0.005053009575923393,
+        "meanAbsoluteGray8Difference": 1.2877527359781122
+      },
+      {
+        "id": "test_picture5",
+        "binaryDisagreementFractionAtHalf": 0.00018604651162790697,
+        "meanAbsoluteGray8Difference": 0.04711552888222056
+      },
+      {
+        "id": "test_picture6",
+        "binaryDisagreementFractionAtHalf": 5.36384096024006e-05,
+        "meanAbsoluteGray8Difference": 0.013980495123780945
+      },
+      {
+        "id": "test_picture7",
+        "binaryDisagreementFractionAtHalf": 0.0,
+        "meanAbsoluteGray8Difference": 0.0
+      }
+    ],
+    "u2net": [
+      {
+        "id": "test_picture1",
+        "binaryDisagreementFractionAtHalf": 0.0,
+        "meanAbsoluteGray8Difference": 0.0,
+        "nativeProbabilityMeanAbsoluteDifference": 2.1127970484258185e-08,
+        "nativeProbabilityMaximumAbsoluteDifference": 1.3783574104309082e-07
+      },
+      {
+        "id": "test_picture2",
+        "binaryDisagreementFractionAtHalf": 0.0,
+        "meanAbsoluteGray8Difference": 0.0,
+        "nativeProbabilityMeanAbsoluteDifference": 8.410292906546601e-09,
+        "nativeProbabilityMaximumAbsoluteDifference": 1.7285346984863281e-06
+      },
+      {
+        "id": "test_picture3",
+        "binaryDisagreementFractionAtHalf": 0.0,
+        "meanAbsoluteGray8Difference": 0.0,
+        "nativeProbabilityMeanAbsoluteDifference": 3.590680819343106e-08,
+        "nativeProbabilityMaximumAbsoluteDifference": 4.172325134277344e-06
+      },
+      {
+        "id": "test_picture4",
+        "binaryDisagreementFractionAtHalf": 0.0,
+        "meanAbsoluteGray8Difference": 0.0,
+        "nativeProbabilityMeanAbsoluteDifference": 2.005850241459939e-08,
+        "nativeProbabilityMaximumAbsoluteDifference": 1.386392654012525e-07
+      },
+      {
+        "id": "test_picture5",
+        "binaryDisagreementFractionAtHalf": 0.0,
+        "meanAbsoluteGray8Difference": 0.0,
+        "nativeProbabilityMeanAbsoluteDifference": 1.6773164190908574e-08,
+        "nativeProbabilityMaximumAbsoluteDifference": 5.960464477539062e-07
+      },
+      {
+        "id": "test_picture6",
+        "binaryDisagreementFractionAtHalf": 0.0,
+        "meanAbsoluteGray8Difference": 0.0,
+        "nativeProbabilityMeanAbsoluteDifference": 3.2901933622042634e-08,
+        "nativeProbabilityMaximumAbsoluteDifference": 1.0132789611816406e-06
+      },
+      {
+        "id": "test_picture7",
+        "binaryDisagreementFractionAtHalf": 0.0,
+        "meanAbsoluteGray8Difference": 0.0,
+        "nativeProbabilityMeanAbsoluteDifference": 1.8121305345175642e-08,
+        "nativeProbabilityMaximumAbsoluteDifference": 1.825392246246338e-07
+      }
+    ]
+  },
+  "u2netProviderControl": {
+    "status": "complete",
+    "profileNodeEventCountsByProvider": {
+      "CoreMLExecutionProvider": 14
+    },
+    "cpuNodeExecutionObserved": false,
+    "coreMLNodeExecutionObserved": true
+  },
+  "u2netRawAndProducerDiagnostics": [
+    {
+      "id": "test_picture1",
+      "rawSigmoidMinimum": 2.4044353747615377e-12,
+      "rawSigmoidMaximum": 0.053912289440631866,
+      "selectedImageFractionAtFixedThreshold": 0.0,
+      "producerMinMaxDefined": true,
+      "producerMinMaxImageFractionAboveHalf": 0.00023593398349587398
+    },
+    {
+      "id": "test_picture2",
+      "rawSigmoidMinimum": 2.5750707921784292e-15,
+      "rawSigmoidMaximum": 1.0,
+      "selectedImageFractionAtFixedThreshold": 0.3860581395348837,
+      "producerMinMaxDefined": true,
+      "producerMinMaxImageFractionAboveHalf": 0.38596136534133535
+    },
+    {
+      "id": "test_picture3",
+      "rawSigmoidMinimum": 1.6771894745422344e-13,
+      "rawSigmoidMaximum": 1.0,
+      "selectedImageFractionAtFixedThreshold": 0.09238953168044077,
+      "producerMinMaxDefined": true,
+      "producerMinMaxImageFractionAboveHalf": 0.09231157024793389
+    },
+    {
+      "id": "test_picture4",
+      "rawSigmoidMinimum": 8.823450867515015e-13,
+      "rawSigmoidMaximum": 0.041199881583452225,
+      "selectedImageFractionAtFixedThreshold": 0.0,
+      "producerMinMaxDefined": true,
+      "producerMinMaxImageFractionAboveHalf": 0.0009534883720930232
+    },
+    {
+      "id": "test_picture5",
+      "rawSigmoidMinimum": 3.1548399418053485e-14,
+      "rawSigmoidMaximum": 1.0,
+      "selectedImageFractionAtFixedThreshold": 0.13922018004501124,
+      "producerMinMaxDefined": true,
+      "producerMinMaxImageFractionAboveHalf": 0.13881695423855964
+    },
+    {
+      "id": "test_picture6",
+      "rawSigmoidMinimum": 6.927855424748719e-12,
+      "rawSigmoidMaximum": 0.9554294943809509,
+      "selectedImageFractionAtFixedThreshold": 0.016894223555888974,
+      "producerMinMaxDefined": true,
+      "producerMinMaxImageFractionAboveHalf": 0.017909227306826706
+    },
+    {
+      "id": "test_picture7",
+      "rawSigmoidMinimum": 2.3514911941463837e-14,
+      "rawSigmoidMaximum": 0.16111670434474945,
+      "selectedImageFractionAtFixedThreshold": 0.0,
+      "producerMinMaxDefined": true,
+      "producerMinMaxImageFractionAboveHalf": 7.655105311355311e-05
+    }
+  ],
+  "models": {
+    "detr": {
+      "source": "apple/coreml-detr-semantic-segmentation",
+      "revision": "bfcb6e4210d7289310082d7c93bf9a1417b3699f",
+      "packageBytes": 85468610,
+      "input": [
+        448,
+        448
+      ],
+      "sourceWeightPrecision": "FP16"
+    },
+    "u2net": {
+      "source": "JianyuanWang/skyseg",
+      "revision": "3ba8c6df1d9ba9ff26f637c7ba9568ac11a9aa7f",
+      "onnxBytes": 175997079,
+      "sha256": "ab9c34c64c3d821220a2886a4a06da4642ffa14d5b30e8d5339056a089aa1d39",
+      "input": [
+        320,
+        320
+      ],
+      "sourceWeightPrecision": "FP32",
+      "initializerElements": 43981069,
+      "outputCount": 7,
+      "selectedOutput": "1959",
+      "selectedOutputOperation": "Sigmoid",
+      "graphChecker": "passed"
+    }
+  },
+  "publicSourceSHA256": {
+    "tools/mask-evaluation/u2net_sky.py": "79f06a327145f9e50195dcde927ddb98df930adfb50a687eec851315e2cddccc",
+    "tools/mask-evaluation/skywater.py": "283904d3e421c50513afab2767c439fc0bcd6b0293edcfca4855ad178f9f2c81"
+  },
+  "limitations": [
+    "Single serial two-pass series per condition, no cache purge; pure warm inference is not editor request latency.",
+    "Apple native Swift and U2Net Python/ORT RSS and timing scopes differ; GPU/driver memory may be absent.",
+    "U2Net main native sigmoid threshold0.5 is fixed and unoptimized, not a calibrated alpha; soft and producer min-max exported separately.",
+    "Same app raster restore/refiner; independent refinement process for U2Net; medians cannot be added into an end-to-end latency claim.",
+    "Optional probability and min-max exports add postprocessing/I/O; pure inference excludes these.",
+    "Producer pyrDown demonstration loop omitted to preserve shared input proxies; upstream run_inference preprocessing preserved.",
+    "CoreML profile delegation does not identify CPU/GPU/ANE execution inside CoreML.",
+    "No ground truth, inter-model agreement and mask area do not measure accuracy."
+  ],
+  "originalsAndProxiesUnchanged": true
+}
