@@ -71,7 +71,8 @@ struct PhotoMetadataSection: View {
                 Button("Neu erstellen") { model.suggest(refresh: true) }.disabled(!model.canSuggest)
             }
             if let draft = model.record?.draft {
-                Text(state(draft.state)).foregroundStyle(draft.state == .outdated ? .orange : Theme.muted)
+                let draftState = model.proposalState ?? draft.state
+                Text(state(draftState)).foregroundStyle(draftState == .outdated ? .orange : Theme.muted)
                 MetadataTextFieldsEditor(fields: Binding(get: { model.proposalFields }, set: { model.editProposalFields($0) }),
                     selection: $model.proposalSelection,
                     tagText: Binding(get: { model.proposalTagEditor.text }, set: { model.editProposalTags($0) }))
@@ -82,7 +83,7 @@ struct PhotoMetadataSection: View {
                     Button("Übernehmen") { model.acceptProposal() }.disabled(!model.canConfirmProposal)
                     Button("Verwerfen") { model.discardProposal() }.disabled(!model.canRejectProposal)
                 }
-                if draft.state == .accepted || draft.state == .rejected || draft.state == .outdated {
+                if draftState == .accepted || draftState == .rejected || draftState == .outdated {
                     Button("Als manuelle Angaben bearbeiten") { model.useProposalAsManual() }.disabled(!model.canUseProposalAsManual)
                 }
                 if let analysis = draft.source.analyzedRaster {
@@ -119,7 +120,7 @@ struct PhotoMetadataSection: View {
         case .edited: return "Vorschlag manuell korrigiert"
         case .accepted: return "Vorschlag bereits teilweise oder vollständig übernommen"
         case .rejected: return "Vorschlag verworfen"
-        case .outdated: return "Vorschlag veraltet: Quelle geändert"
+        case .outdated: return "Vorschlag veraltet: Quelle oder bestätigte Angaben geändert"
         }
     }
 }

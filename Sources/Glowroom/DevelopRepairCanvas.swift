@@ -10,11 +10,9 @@ struct DevelopRepairCanvas: View {
     @EnvironmentObject private var editor: EditingModel
     @ViewState private var path: [LocalMaskPoint] = []
     @ViewState private var hover: CGPoint?
-    @ViewState private var revision: Int64?
-    @ViewState private var session: UUID?
-    @ViewState private var gestureRequest: UUID?
     @ViewState private var picksSource = false
-    @ViewState private var pendingClick: Task<Void, Never>?
+    @ViewState private var replacesCanvasForZoom = false
+    private var inputQueue: DevelopRepairInputQueue { workspace.repairInputQueue }
 
     private struct InputIdentity: Hashable {
         let asset: String
@@ -86,35 +84,39 @@ struct DevelopRepairCanvas: View {
                     isEnabled: editor.canEdit && workspace.isOriginalCanvasReady,
                     inputIdentity: AnyHashable(InputIdentity(asset: asset.id, source: workspace.sourceIdentity, mode: workspace.repairMode)),
                     cursor: { rect.contains($0) ? .crosshair : .arrow }, onDoubleClick: {
-                        finish(); onDoubleClick?()
+                        finishPointer(); inputQueue.cancelPending()
+                        // DetailView replaces its native canvas when zooming.
+                        // Keep earlier independent commands in the workspace.
+                        replacesCanvasForZoom = onDoubleClick != nil; onDoubleClick?()
                     },
                     canvasLabel: "Reparieren auf dem Bild", onCancel: {
                         finish(); workspace.cancelRepairWork(clearCandidates: false)
-                    }, onDoubleClickBegan: { finish() })
-            }.onChange(of: viewport.size) { _, _ in finish() }
+                    }, onDoubleClickBegan: { finishPointer(); inputQueue.cancelPending() },
+                    onTeardown: { teardown() })
+            }.onChange(of: viewport.size) { _, _ in teardown() }
         }.opacity(workspace.isOriginalCanvasReady ? 1 : 0)
             .onChange(of: asset.id) { _, _ in finish() }
             .onChange(of: workspace.sourceIdentity) { _, _ in finish() }
             .onChange(of: workspace.repairMode) { _, _ in finish() }
-            .onChange(of: editor.localRevision(for: asset.id)) { _, _ in finish() }
-            .onDisappear { finish() }
+            .onChange(of: editor.localRevision(for: asset.id)) { _, _ in invalidateIfNeeded() }
+            .onChange(of: workspace.repairRequest) { _, _ in invalidateIfNeeded() }
+            .onDisappear { teardown() }
     }
 
     private func input(_ event: DevelopCropInputEvent, in rect: CGRect) {
         if event.phase == .cancelled { finish(); return }
         guard event.kind == .pointer, editor.canEdit, workspace.isOriginalCanvasReady,
-              !workspace.repairBusy else { return }
+              (!workspace.repairBusy || inputQueue.isProcessing) else { return }
         if event.phase == .began {
             guard rect.contains(event.startLocation), let point = normalized(event.startLocation, in: rect) else { return }
-            finish()
-            revision = editor.localRevision(for: asset.id); session = editor.aiEditSessionID
-            gestureRequest = workspace.repairRequest
+            finishPointer()
+            guard inputQueue.begin(asset: asset, workspace: workspace, editor: editor) else { return }
             let usesAI = workspace.repairMode == .remove && workspace.repairUsesAI
-            picksSource = (!usesAI && NSEvent.modifierFlags.contains(.option)) || (workspace.repairMode == .clone && workspace.repairSource == nil)
+            picksSource = (!usesAI && NSEvent.modifierFlags.contains(.option)) || (workspace.repairMode == .clone && workspace.repairSource == nil && !inputQueue.hasScheduledSource)
             path = [point]
         }
-        guard let revision, let session, let gestureRequest, gestureRequest == workspace.repairRequest,
-              revision == editor.localRevision(for: asset.id), session == editor.aiEditSessionID else { finish(); return }
+        guard !path.isEmpty else { return }
+        guard inputQueue.isCurrent(asset: asset, workspace: workspace, editor: editor) else { finish(); return }
         if !picksSource, let point = normalized(event.location, in: rect) {
             if let last = path.last {
                 let distance = hypot((point.x - last.x) * rect.width, (point.y - last.y) * rect.height)
@@ -132,34 +134,24 @@ struct DevelopRepairCanvas: View {
                 guard let first else { return true }
                 return hypot((point.x - first.x) * rect.width, (point.y - first.y) * rect.height) < 3
             }
-            let sourceIdentity = workspace.sourceIdentity
-            let request = workspace.repairRequest
-            finish()
-            let apply = {
-                guard workspace.tool == .repair, workspace.sourceIdentity == sourceIdentity,
-                      workspace.repairRequest == request,
-                      editor.canEdit, workspace.isOriginalCanvasReady,
-                      editor.localRevision(for: asset.id) == revision, editor.aiEditSessionID == session else { return }
-                if selectsSource {
-                    if let point = completed.first { workspace.repairSource = point; workspace.errorMessage = nil }
-                } else {
-                    workspace.applyRepair(path: completed, asset: asset, editor: editor, expectedRevision: revision, expectedSession: session)
-                }
-            }
-            if pointClick {
-                // Wait out the native second click, so zoom never commits the
-                // first click as a repair. Dragged strokes need no such delay.
-                pendingClick = Task {
-                    do { try await Task.sleep(for: .seconds(NSEvent.doubleClickInterval)); try Task.checkCancellation(); apply() }
-                    catch { }
-                }
-            } else { apply() }
+            finishPointer()
+            inputQueue.submit(path: completed, selectsSource: selectsSource,
+                brush: DevelopRepairBrush(workspace), pointClick: pointClick)
         }
     }
 
+    private func invalidateIfNeeded() {
+        if !inputQueue.isCurrent(asset: asset, workspace: workspace, editor: editor) { finish() }
+    }
     private func finish() {
-        pendingClick?.cancel(); pendingClick = nil
-        path = []; revision = nil; session = nil; gestureRequest = nil; picksSource = false
+        inputQueue.cancel(); finishPointer()
+    }
+    private func teardown() {
+        if replacesCanvasForZoom { finishPointer(); inputQueue.cancelPending() }
+        else { finish() }
+    }
+    private func finishPointer() {
+        path = []; picksSource = false
     }
     private func normalized(_ point: CGPoint, in rect: CGRect) -> LocalMaskPoint? {
         guard rect.width > 0, rect.height > 0 else { return nil }

@@ -53,19 +53,18 @@ actor LibraryCatalogWorker {
             } else { added += 1 }
             imported.append(asset)
         }
-        let prefix = LibraryProjectionWorker.directoryPrefix(original.url)
-        let skippedPaths = Set(result.skippedURLs.map { LibraryProjectionWorker.filePath($0) })
+        let importedIDs = Set(imported.map(\.id))
         var next = catalog
         next.assets = []
-        var retained: [PhotoAsset] = []
         for (index, asset) in catalog.assets.enumerated() {
             if index % 256 == 0 { try Task.checkCancellation() }
-            if !LibraryProjectionWorker.filePath(asset.fileURL).hasPrefix(prefix) { next.assets.append(asset) }
-            // Temporarily undecodable originals retain their saved metadata.
-            else if skippedPaths.contains(LibraryProjectionWorker.filePath(asset.fileURL)) { retained.append(asset) }
+            // A scan observes availability, not an authorized removal. Retain
+            // every identity it cannot refresh, including absent originals and
+            // subfolders. Persisting these entries also protects their editing
+            // and text records from the next startup's orphan cleanup.
+            if !importedIDs.contains(asset.id) { next.assets.append(asset) }
         }
         next.assets.append(contentsOf: imported)
-        next.assets.append(contentsOf: retained)
         var folder = original
         folder.lastScannedAt = Date()
         folder.subdirectoryPaths = result.subdirectoryPaths

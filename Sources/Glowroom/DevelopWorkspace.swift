@@ -78,6 +78,7 @@ final class DevelopWorkspace: ObservableObject {
     var repairTask: Task<Void, Never>?
     var repairSpotTask: Task<Void, Never>?
     var repairRequest = UUID()
+    let repairInputQueue = DevelopRepairInputQueue()
     var repairDisplayBitmap: PreviewBitmap?
     let repairServices: DevelopRepairServices
     let repairAIStore: DevelopRepairAIModelStore

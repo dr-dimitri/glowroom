@@ -9,6 +9,165 @@ import Testing
 @Suite("Repair canvas native gestures", .serialized)
 @MainActor
 struct DevelopRepairCanvasInputTests {
+    @Test(arguments: [0.25, 1.25])
+    func independentPointClicksKeepTheirOrderAndUndoSteps(interval: Double) async throws {
+        let fixture = try await RepairCanvasFixture.make()
+        let host = RepairCanvasHost()
+        defer { host.close(); fixture.workspace.clear() }
+        try await host.mount(fixture)
+        for point in [CGPoint(x: 0.3, y: 0.35), CGPoint(x: 0.7, y: 0.65)] {
+            try host.send(.leftMouseDown, at: point)
+            try host.send(.leftMouseUp, at: point)
+            try await Task.sleep(for: .seconds(NSEvent.doubleClickInterval * interval))
+        }
+        try await fixture.waitForRepairs(2)
+        let settings = fixture.editor.settings(for: fixture.asset.id)
+        #expect(settings.developGeometry.retouchStrokes.map(\.target) == [
+            try LocalMaskPoint(x: 0.3, y: 0.35), try LocalMaskPoint(x: 0.7, y: 0.65)])
+        #expect(host.doubleClicks == 0)
+        fixture.editor.undo(assetID: fixture.asset.id)
+        #expect(fixture.editor.settings(for: fixture.asset.id).developGeometry.retouchStrokes.count == 1)
+        fixture.editor.undo(assetID: fixture.asset.id)
+        #expect(fixture.editor.settings(for: fixture.asset.id) == .neutral)
+        fixture.editor.redo(assetID: fixture.asset.id); fixture.editor.redo(assetID: fixture.asset.id)
+        #expect(fixture.editor.settings(for: fixture.asset.id) == settings)
+        #expect(await fixture.editor.flush())
+        #expect(await fixture.store.loadAll()[fixture.asset.id] == settings)
+    }
+
+    @Test func threeRapidClicksAndADragRemainOrderedWhileAnalysisIsRunning() async throws {
+        let gate = RepairCanvasSourceGate()
+        let fixture = try await RepairCanvasFixture.make(source: { _, _, _, _ in try await gate.source() })
+        let host = RepairCanvasHost()
+        defer { host.close(); fixture.workspace.clear() }
+        try await host.mount(fixture)
+        for point in [CGPoint(x: 0.25, y: 0.3), CGPoint(x: 0.5, y: 0.4), CGPoint(x: 0.75, y: 0.6)] {
+            try host.send(.leftMouseDown, at: point); try host.send(.leftMouseUp, at: point)
+            try await Task.sleep(for: .seconds(NSEvent.doubleClickInterval * 0.25))
+        }
+        try host.send(.leftMouseDown, at: CGPoint(x: 0.4, y: 0.7))
+        try host.send(.leftMouseDragged, at: CGPoint(x: 0.6, y: 0.75))
+        try host.send(.leftMouseUp, at: CGPoint(x: 0.6, y: 0.75))
+        #expect(fixture.workspace.repairBusy)
+        await gate.release()
+        try await fixture.waitForRepairs(4)
+        let strokes = fixture.editor.settings(for: fixture.asset.id).developGeometry.retouchStrokes
+        #expect(strokes.map(\.target) == [try LocalMaskPoint(x: 0.25, y: 0.3),
+            try LocalMaskPoint(x: 0.5, y: 0.4), try LocalMaskPoint(x: 0.75, y: 0.6), try LocalMaskPoint(x: 0.4, y: 0.7)])
+        #expect(strokes.last!.path.count >= 2)
+        #expect(host.doubleClicks == 0)
+        for count in (0..<4).reversed() {
+            fixture.editor.undo(assetID: fixture.asset.id)
+            #expect(fixture.editor.settings(for: fixture.asset.id).developGeometry.retouchStrokes.count == count)
+        }
+        #expect(await fixture.editor.flush())
+    }
+
+    @Test func rapidCloneSourceAndTargetKeepTheChosenSource() async throws {
+        let fixture = try await RepairCanvasFixture.make()
+        fixture.workspace.repairMode = .clone
+        let host = RepairCanvasHost()
+        defer { host.close(); fixture.workspace.clear() }
+        try await host.mount(fixture)
+        for point in [CGPoint(x: 0.2, y: 0.25), CGPoint(x: 0.7, y: 0.65)] {
+            try host.send(.leftMouseDown, at: point); try host.send(.leftMouseUp, at: point)
+            try await Task.sleep(for: .seconds(NSEvent.doubleClickInterval * 0.25))
+        }
+        try await fixture.waitForRepairs(1)
+        let stroke = try #require(fixture.editor.settings(for: fixture.asset.id).developGeometry.retouchStrokes.first)
+        #expect(stroke.source == (try LocalMaskPoint(x: 0.2, y: 0.25)))
+        #expect(stroke.target == (try LocalMaskPoint(x: 0.7, y: 0.65)))
+        #expect(host.doubleClicks == 0)
+        #expect(await fixture.editor.flush())
+    }
+
+    @Test func realZoomCanvasReplacementKeepsEarlierIndependentRepairs() async throws {
+        let gate = RepairCanvasSourceGate()
+        let fixture = try await RepairCanvasFixture.make(source: { _, _, _, _ in try await gate.source() })
+        let host = RepairCanvasHost()
+        host.replacesCanvasOnDoubleClick = true
+        defer { host.close(); fixture.workspace.clear() }
+        try await host.mount(fixture)
+        let first = CGPoint(x: 0.3, y: 0.35), zoom = CGPoint(x: 0.7, y: 0.65)
+        try host.send(.leftMouseDown, at: first); try host.send(.leftMouseUp, at: first)
+        try host.send(.leftMouseDown, at: zoom); try host.send(.leftMouseUp, at: zoom)
+        let operation = try #require(fixture.workspace.repairTask)
+        try host.send(.leftMouseDown, at: zoom, clickCount: 2)
+        try host.send(.leftMouseUp, at: zoom, clickCount: 2)
+        try await Task.sleep(for: .milliseconds(80))
+        #expect(host.doubleClicks == 1 && host.didReplaceCanvas)
+        #expect(fixture.workspace.repairBusy)
+        await gate.release(); await operation.value
+        try await fixture.waitForRepairs(1)
+        try await Task.sleep(for: .seconds(NSEvent.doubleClickInterval + 0.1))
+        let strokes = fixture.editor.settings(for: fixture.asset.id).developGeometry.retouchStrokes
+        let expectedTarget = try LocalMaskPoint(x: 0.3, y: 0.35)
+        #expect(strokes.count == 1 && strokes.first?.target == expectedTarget)
+        fixture.editor.undo(assetID: fixture.asset.id)
+        #expect(fixture.editor.settings(for: fixture.asset.id) == .neutral)
+        #expect(await fixture.editor.flush())
+    }
+
+    @Test(arguments: ["cancel", "reset", "undo", "source"])
+    func cancellationInvalidatesQueuedAndInFlightRepairs(reason: String) async throws {
+        let gate = RepairCanvasSourceGate()
+        let fixture = try await RepairCanvasFixture.make(source: { _, _, _, _ in try await gate.source() })
+        let host = RepairCanvasHost()
+        defer { host.close(); fixture.workspace.clear() }
+        try await host.mount(fixture)
+        // Establish an accepted undo step before suspending the repair worker.
+        fixture.editor.setSettings(EditSettings(exposure: 0.5), for: fixture.asset.id)
+        try await Task.sleep(for: .milliseconds(30))
+        for point in [CGPoint(x: 0.25, y: 0.3), CGPoint(x: 0.75, y: 0.6)] {
+            try host.send(.leftMouseDown, at: point); try host.send(.leftMouseUp, at: point)
+        }
+        let operation = try #require(fixture.workspace.repairTask)
+        switch reason {
+        case "reset": fixture.workspace.resetRepairs(asset: fixture.asset, editor: fixture.editor)
+        case "undo": fixture.editor.undo(assetID: fixture.asset.id)
+        case "source": fixture.workspace.bind(source: nil)
+        default: try host.cancel("cancel")
+        }
+        await gate.release(); await operation.value
+        try await Task.sleep(for: .seconds(NSEvent.doubleClickInterval + 0.1))
+        #expect(fixture.editor.settings(for: fixture.asset.id).developGeometry.retouchStrokes.isEmpty)
+        #expect(fixture.editor.settings(for: fixture.asset.id).exposure == (reason == "undo" ? 0 : 0.5))
+        #expect(await fixture.editor.flush())
+    }
+
+    @Test func queueCapacityRejectsExtraInputWithAnExplanation() async throws {
+        let gate = RepairCanvasSourceGate()
+        let fixture = try await RepairCanvasFixture.make(source: { _, _, _, _ in try await gate.source() })
+        let queue = DevelopRepairInputQueue()
+        defer { queue.cancel(); fixture.workspace.clear() }
+        for _ in 0...DevelopRepairInputQueue.maximumCommands {
+            #expect(queue.begin(asset: fixture.asset, workspace: fixture.workspace, editor: fixture.editor))
+            queue.submit(path: [try LocalMaskPoint(x: 0.5, y: 0.5)], selectsSource: false,
+                brush: DevelopRepairBrush(fixture.workspace), pointClick: false)
+        }
+        #expect(fixture.workspace.errorMessage?.contains("Reparaturwarteschlange ist voll") == true)
+        queue.cancel(); await gate.release()
+        #expect(await fixture.editor.flush())
+    }
+
+    @Test func dragStartingOutsideTheImageCannotReuseThePreviousGesture() async throws {
+        let fixture = try await RepairCanvasFixture.make()
+        let host = RepairCanvasHost()
+        defer { host.close(); fixture.workspace.clear() }
+        try await host.mount(fixture)
+        try host.send(.leftMouseDown, at: CGPoint(x: 0.4, y: 0.4))
+        try host.send(.leftMouseDragged, at: CGPoint(x: 0.6, y: 0.5))
+        try host.send(.leftMouseUp, at: CGPoint(x: 0.6, y: 0.5))
+        try await fixture.waitForRepairs(1)
+        let accepted = fixture.editor.settings(for: fixture.asset.id)
+        try host.send(.leftMouseDown, at: CGPoint(x: -0.1, y: 0.5))
+        try host.send(.leftMouseDragged, at: CGPoint(x: 0.4, y: 0.5))
+        try host.send(.leftMouseUp, at: CGPoint(x: 0.4, y: 0.5))
+        try await Task.sleep(for: .seconds(NSEvent.doubleClickInterval + 0.1))
+        #expect(fixture.editor.settings(for: fixture.asset.id) == accepted)
+        #expect(await fixture.editor.flush())
+    }
+
     @Test func nativeDragActivatesTheWholeGestureAsOneUndoStep() async throws {
         let fixture = try await RepairCanvasFixture.make()
         let host = RepairCanvasHost()
@@ -172,14 +331,16 @@ private struct RepairCanvasFixture {
     let asset: PhotoAsset
     let editor: EditingModel
     let workspace: DevelopWorkspace
+    let store: RepairCanvasSnapshotStore
 
-    static func make() async throws -> Self {
+    static func make(source: (@Sendable (PreviewBitmap, [LocalMaskPoint], Double, LocalMaskRaster?) async throws -> LocalMaskPoint)? = nil) async throws -> Self {
         let sourcePoint = try LocalMaskPoint(x: 0.15, y: 0.2)
-        let services = DevelopRepairServices(source: { _, _, _, _ in sourcePoint },
+        let services = DevelopRepairServices(source: source ?? { _, _, _, _ in sourcePoint },
             object: { _, _, _ in throw DevelopRepairAnalysisError.noObject }, candidates: { _, _, _ in [] })
         let asset = PhotoAsset(folderID: UUID(), fileURL: URL(fileURLWithPath: "/tmp/glowroom-repair-canvas-\(UUID().uuidString).png"),
             pixelWidth: 120, pixelHeight: 80)
-        let editor = EditingModel(database: LegacySnapshotTestAdapter(RepairCanvasSnapshotStore()))
+        let store = RepairCanvasSnapshotStore()
+        let editor = EditingModel(database: LegacySnapshotTestAdapter(store))
         let deadline = ContinuousClock.now + .seconds(10)
         while editor.isLoading {
             guard ContinuousClock.now < deadline else { throw TestSchedulingTimeout(operation: "repair canvas fixture", lastState: "editor is loading") }
@@ -199,7 +360,29 @@ private struct RepairCanvasFixture {
         workspace.bind(source: source); workspace.receive(bitmap, sourceBitmap: bitmap)
         workspace.markDisplayed(source: source, settings: .neutral)
         workspace.tool = .repair; workspace.repairObjectDetection = false
-        return Self(asset: asset, editor: editor, workspace: workspace)
+        return Self(asset: asset, editor: editor, workspace: workspace, store: store)
+    }
+
+    func waitForRepairs(_ count: Int) async throws {
+        let deadline = ContinuousClock.now + .seconds(10)
+        while editor.settings(for: asset.id).developGeometry.retouchStrokes.count != count || workspace.repairBusy {
+            guard ContinuousClock.now < deadline else { throw TestSchedulingTimeout(operation: "queued repairs", lastState: "expected \(count) repairs") }
+            try await Task.sleep(for: .milliseconds(5))
+        }
+    }
+}
+
+private actor RepairCanvasSourceGate {
+    private var isReleased = false
+    private var waiters: [CheckedContinuation<Void, Never>] = []
+    func source() async throws -> LocalMaskPoint {
+        if !isReleased { await withCheckedContinuation { waiters.append($0) } }
+        return try LocalMaskPoint(x: 0.15, y: 0.2)
+    }
+    func release() {
+        isReleased = true
+        let waiting = waiters; waiters = []
+        for waiter in waiting { waiter.resume() }
     }
 }
 
@@ -209,6 +392,8 @@ private final class RepairCanvasHost {
     private let window: NSWindow
     private let hosting = NSHostingView(rootView: AnyView(EmptyView()))
     var doubleClicks = 0
+    var replacesCanvasOnDoubleClick = false
+    private(set) var didReplaceCanvas = false
 
     init() {
         _ = NSApplication.shared
@@ -221,7 +406,10 @@ private final class RepairCanvasHost {
 
     func mount(_ fixture: RepairCanvasFixture, withInspector: Bool = false) async throws {
         let canvas = DevelopRepairCanvas(asset: fixture.asset, workspace: fixture.workspace,
-            onDoubleClick: { self.doubleClicks += 1 })
+            onDoubleClick: {
+                self.doubleClicks += 1
+                if self.replacesCanvasOnDoubleClick { self.replaceCanvasForZoom(fixture) }
+            })
             .frame(width: size.width, height: size.height)
         if withInspector {
             window.setContentSize(NSSize(width: 880, height: 760))
@@ -237,6 +425,19 @@ private final class RepairCanvasHost {
         try await Task.sleep(for: .milliseconds(40))
         hosting.layoutSubtreeIfNeeded(); hosting.displayIfNeeded()
         #expect(try inputView().inputEnabled)
+    }
+
+    private func replaceCanvasForZoom(_ fixture: RepairCanvasFixture) {
+        // Match DetailView's structural change: the old native surface is
+        // dismantled and a new, larger canvas mounts inside a ScrollView.
+        hosting.rootView = AnyView(ScrollView([.horizontal, .vertical]) {
+            DevelopRepairCanvas(asset: fixture.asset, workspace: fixture.workspace,
+                onDoubleClick: { self.doubleClicks += 1 })
+                .frame(width: size.width * 2, height: size.height * 2)
+                .environment(\.photoCanvasPanning, true)
+        }.environmentObject(fixture.editor).preferredColorScheme(.dark))
+        hosting.layoutSubtreeIfNeeded(); hosting.displayIfNeeded()
+        didReplaceCanvas = true
     }
 
     func pressInspectorControl(_ identifier: String) throws -> Bool {

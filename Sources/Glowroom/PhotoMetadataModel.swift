@@ -154,8 +154,15 @@ final class PhotoMetadataModel: ObservableObject {
         canAdmitAction && currentMatchesContext() && !isLoading && !manualDirty && record?.draft != nil
     }
     var canEditManual: Bool { editable(proposalID: nil) }
+    var proposalState: MetadataDraftState? {
+        guard let record, let draft = record.draft else { return nil }
+        // Older stores can contain open proposals whose reviewed confirmation
+        // has since changed. Display them consistently without rewriting history.
+        if [.pending, .edited].contains(draft.state), draft.baseConfirmedRevision != record.confirmedRevision { return .outdated }
+        return draft.state
+    }
     var canEditProposal: Bool {
-        guard let draft = record?.draft, draft.state == .pending || draft.state == .edited else { return false }
+        guard let draft = record?.draft, proposalState == .pending || proposalState == .edited else { return false }
         return editable(proposalID: draft.id)
     }
     var canSuggest: Bool { canManage && currentMatchesContext() && availability == .available && !isLoading && !isAnalyzing }
@@ -169,10 +176,11 @@ final class PhotoMetadataModel: ObservableObject {
     }
     var canConfirmProposal: Bool {
         canAdmitAction && !manualDirty && currentMatchesContext() && !isLoading && !proposalSelection.isEmpty &&
-        record?.draft.map { $0.state == .pending || $0.state == .edited } == true
+        (proposalState == .pending || proposalState == .edited)
     }
     var canRejectProposal: Bool {
-        canAdmitAction && !manualDirty && currentMatchesContext() && record?.draft.map { $0.state == .pending || $0.state == .edited || $0.state == .outdated } == true
+        canAdmitAction && !manualDirty && currentMatchesContext() &&
+        (proposalState == .pending || proposalState == .edited || proposalState == .outdated)
     }
 
     func refreshAvailability() async {

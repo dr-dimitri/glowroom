@@ -92,6 +92,88 @@ struct PhotoMetadataRepositoryTests {
         if case .confirmedAI(let origin) = accepted.currentRecord?.confirmedProvenance.title { #expect(!origin.wasHumanEdited) } else { Issue.record("Missing AI provenance") }
         await metadataError(.validation(.invalidDraftTransition)) { _ = try await f.repository.setDraftState(.init(header:.init(assetID:f.id,expectedVersion:accepted.currentRecord!.version),draftID:d.id,expectedDraftRevision:accepted.currentRecord!.draft!.revision)) }
     }
+    @Test(arguments: [false, true], [false, true])
+    func manualConfirmationInvalidatesOpenProposalAtomically(edited: Bool, partial: Bool) async throws {
+        let f = try MetadataFixture(); try await f.bind()
+        var saved = try await f.repository.saveAIDraft(.init(header: .init(assetID: f.id, expectedVersion: .absent),
+            mutation: .createSuggested(draftID: UUID(), fields: .init(title: "AI title", description: "AI description", tags: ["AI"]), source: try f.analysisSource())))
+        if edited {
+            saved = try await f.repository.saveAIDraft(.init(header: .init(assetID: f.id, expectedVersion: saved.currentRecord!.version),
+                mutation: .editExisting(draftID: saved.currentRecord!.draft!.id, fields: .init(title: "Corrected AI title", description: "AI description", tags: ["AI"]))))
+        }
+        let original = try #require(saved.currentRecord?.draft)
+        let manual = try await f.repository.saveManualDraft(.init(header: .init(assetID: f.id, expectedVersion: saved.currentRecord!.version),
+            mutation: .save(fields: .init(title: "Manual title", description: "Manual description"), baseConfirmedRevision: 0)))
+        let before = try #require(manual.currentRecord)
+        let operation = MetadataConfirmOperation(header: .init(assetID: f.id, expectedVersion: before.version),
+            values: before.manualDraft!.fields, fields: partial ? [.title] : Set(PhotoMetadataField.allCases), source: try f.source(),
+            origin: .manual(expectedManualDraftRevision: before.manualDraft!.revision, reviewedConfirmedRevision: 0))
+        let result = try await f.repository.confirm(operation)
+        let after = try #require(result.currentRecord), draft = try #require(after.draft)
+        #expect(after.confirmed.title == "Manual title")
+        #expect(after.confirmed.description == (partial ? "" : "Manual description"))
+        #expect(after.confirmedProvenance.title == .manual)
+        #expect(draft.state == .outdated && draft.baseConfirmedRevision == 0)
+        #expect(draft.id == original.id && draft.fields == original.fields && draft.source == original.source)
+        #expect(draft.createdAt == original.createdAt && draft.editedFields == original.editedFields)
+        #expect(after.version.recordRevision == before.version.recordRevision + 1)
+        #expect(after.confirmedRevision == 1 && after.version.aiDraftRevision == before.version.aiDraftRevision + 1)
+        #expect(after.version.manualDraftRevision == before.version.manualDraftRevision + (partial ? 0 : 1))
+        #expect((after.manualDraft != nil) == partial)
+        let replay = try await f.repository.confirm(operation)
+        #expect(replay.receipt.disposition == .replayed && replay.currentRecord == after)
+        let restart = PhotoMetadataRepository(directory: f.directory)
+        #expect(try await restart.record(assetID: f.id) == after)
+        await metadataError(.revisionConflict) {
+            _ = try await f.repository.confirm(.init(header: .init(assetID: f.id, expectedVersion: after.version),
+                values: draft.fields, fields: [.title], source: draft.source,
+                origin: .proposal(draftID: draft.id, expectedDraftRevision: draft.revision)))
+        }
+        await metadataError(.revisionConflict) {
+            _ = try await f.repository.saveAIDraft(.init(header: .init(assetID: f.id, expectedVersion: before.version),
+                mutation: .editExisting(draftID: original.id, fields: original.fields)))
+        }
+        let fresh = try await f.repository.saveAIDraft(.init(header: .init(assetID: f.id, expectedVersion: after.version),
+            mutation: .createSuggested(draftID: UUID(), fields: .init(title: "Fresh analysis"), source: try f.analysisSource())))
+        let newDraft = try #require(fresh.currentRecord?.draft)
+        #expect(newDraft.baseConfirmedRevision == after.confirmedRevision)
+        let accepted = try await f.repository.confirm(.init(header: .init(assetID: f.id, expectedVersion: fresh.currentRecord!.version),
+            values: newDraft.fields, fields: [.title], source: newDraft.source,
+            origin: .proposal(draftID: newDraft.id, expectedDraftRevision: newDraft.revision)))
+        #expect(accepted.currentRecord?.confirmed.title == "Fresh analysis")
+        #expect(accepted.currentRecord?.draft?.state == .accepted)
+    }
+    @Test(arguments: [MetadataDraftState.accepted, .rejected, .outdated])
+    func laterManualConfirmationPreservesClosedProposal(state: MetadataDraftState) async throws {
+        let f = try MetadataFixture(); try await f.bind()
+        let saved = try await f.repository.saveAIDraft(.init(header: .init(assetID: f.id, expectedVersion: .absent),
+            mutation: .createSuggested(draftID: UUID(), fields: .init(title: "AI title"), source: try f.analysisSource())))
+        let draft = try #require(saved.currentRecord?.draft)
+        if state == .accepted {
+            _ = try await f.repository.confirm(.init(header: .init(assetID: f.id, expectedVersion: saved.currentRecord!.version),
+                values: draft.fields, fields: [.title], source: draft.source,
+                origin: .proposal(draftID: draft.id, expectedDraftRevision: draft.revision)))
+        } else if state == .rejected {
+            _ = try await f.repository.setDraftState(.init(header: .init(assetID: f.id, expectedVersion: saved.currentRecord!.version),
+                draftID: draft.id, expectedDraftRevision: draft.revision))
+        } else { _ = try await f.confirm(.init(title: "First manual confirmation")) }
+        let before = try #require(try await f.repository.record(assetID: f.id))
+        let after = try #require(try await f.confirm(.init(title: "Later manual confirmation")).currentRecord)
+        #expect(before.draft?.state == state && after.draft == before.draft)
+        #expect(after.version.aiDraftRevision == before.version.aiDraftRevision)
+        #expect(after.confirmedRevision == before.confirmedRevision + 1)
+    }
+    @Test func failedManualConfirmationRollsBackProposalInvalidation() async throws {
+        let failure = MetadataFailureSwitch(), directory = MetadataFixture.directory()
+        var hooks = PhotoMetadataRepositoryHooks(); hooks.beforeCommit = { try failure.check() }
+        let repository = PhotoMetadataRepository(directory: directory, hooks: hooks)
+        let f = try MetadataFixture(directory: directory, repository: repository); try await f.bind()
+        let saved = try await repository.saveAIDraft(.init(header: .init(assetID: f.id, expectedVersion: .absent),
+            mutation: .createSuggested(draftID: UUID(), fields: .init(title: "AI title"), source: try f.analysisSource())))
+        failure.enabled = true
+        await metadataError(.storageFailure) { _ = try await f.confirm(.init(title: "Uncommitted manual title")) }
+        #expect(try await repository.record(assetID: f.id) == saved.currentRecord)
+    }
     @Test func optionalCatalogBirthEvidenceDoesNotRejectSuggestorSource() async throws {
         let f = try MetadataFixture(); let full = try f.source(); try await f.bind(source:full)
         let draftSource = try f.analysisSource(includeExtendedNative:false)

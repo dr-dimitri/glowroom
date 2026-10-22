@@ -186,11 +186,11 @@ final class LibraryProjectionTests {
         try await waitUntilIdle(model)
         let refreshed = try #require(model.folders.first)
         await model.waitForProjection()
-        #expect(model.visibleAssets.map(\.fileName) == ["new.png"])
-        #expect(model.selectedAsset?.fileName == "new.png")
-        #expect(model.favoriteCount == 0)
+        #expect(Set(model.visibleAssets.map(\.fileName)) == ["old.png", "new.png"])
+        #expect(model.selectedAsset?.id == old.id)
+        #expect(model.favoriteCount == 1)
         #expect(model.folderTree(for: refreshed).contains(relativePath: "New"))
-        #expect(!model.folderTree(for: refreshed).contains(relativePath: "Trip"))
+        #expect(model.folderTree(for: refreshed).contains(relativePath: "Trip"))
         #expect(await model.finishSaving())
     }
 
