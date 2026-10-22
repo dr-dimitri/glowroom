@@ -191,10 +191,10 @@ struct InlineMaskWorkspaceTests {
         model.updateSelected { $0.mask.feather = 0.25 }
         #expect(workspace.showsOverlay)
         model.updateSelected { $0.mask.opacity = 0.5 }
-        #expect(!workspace.showsOverlay)
+        #expect(workspace.showsOverlay)
         workspace.select(firstID)
         model.updateSelected { $0.isEnabled = false }
-        #expect(!workspace.showsOverlay)
+        #expect(workspace.showsOverlay, "Enabling or disabling a layer must not hide its area")
         model.add(.radial)
         #expect(workspace.showsOverlay)
         workspace.select(firstID)
@@ -234,7 +234,8 @@ struct InlineMaskWorkspaceTests {
         #expect(await f.library.finishSaving())
     }
 
-    @Test func sliderStartHidesTheOverlayBeforePublishingAndMaskShapeChangesDoNotRestoreIt() async throws {
+    @Test(arguments: ["opacity", "feather"], [true, false])
+    func maskSlidersShowTheOverlayFromBothInitialStatesAndKeepSharedUndo(_ control: String, _ initiallyVisible: Bool) async throws {
         let f = try await fixture(nativeStore: false)
         defer { try? FileManager.default.removeItem(at: f.directory) }
         let workspace = InlineMaskWorkspace(), model = try model()
@@ -243,25 +244,97 @@ struct InlineMaskWorkspaceTests {
         try await wait { workspace.canvasSize != nil }
         model.add(.linear)
         let initial = model.settings
-        let input = LocalMaskSliderInput(value: Binding(get: { model.selected?.mask.feather ?? 0 },
-            set: { value in model.updateSelected { $0.mask.feather = value } }), model: model, workspace: workspace)
+        let keyPath: WritableKeyPath<LocalAdjustmentMask, Double> = control == "opacity" ? \.opacity : \.feather
+        let input = LocalMaskSliderInput(value: Binding(get: { model.selected?.mask[keyPath: keyPath] ?? 0 },
+            set: { value in model.updateSelected { $0.mask[keyPath: keyPath] = value } }), model: model,
+            workspace: workspace, target: .mask)
         let slider = ResettableSliderInteraction()
         slider.readValue = { input.value.wrappedValue }
         slider.writeValue = { input.value.wrappedValue = $0 }
         slider.onEditingChanged = input.onEditingChanged
+        workspace.showsOverlay = initiallyVisible
         slider.beginPointer()
-        #expect(workspace.showsOverlay)
+        #expect(workspace.showsOverlay == initiallyVisible)
         slider.beginDragging()
-        #expect(!workspace.showsOverlay, "Beginning native slider movement hides the overlay before any numeric change")
+        #expect(workspace.showsOverlay, "Moving a mask slider must immediately show the selected area")
         #expect(model.settings == initial)
         slider.nativeValueChanged(0.2)
-        #expect(!workspace.showsOverlay, "Feather changes from a slider must preserve the photo preview")
+        #expect(workspace.showsOverlay)
+        slider.nativeValueChanged(0.4)
         slider.endPointer()
-        #expect(!workspace.showsOverlay)
-        workspace.showsOverlay = true
-        #expect(workspace.showsOverlay, "The overlay checkbox can still inspect the accepted mask")
+        #expect(workspace.showsOverlay)
         workspace.undo()
         #expect(model.settings == initial, "The slider gesture remains one shared undo step")
+        workspace.showsOverlay = false
+        let resetInput = LocalMaskSliderInput(value: Binding(get: { model.selected?.mask[keyPath: keyPath] ?? 0 },
+            set: { value in model.updateSelected { $0.mask[keyPath: keyPath] = value } }), model: model,
+            workspace: workspace, target: .mask)
+        slider.readValue = { resetInput.value.wrappedValue }
+        slider.writeValue = { resetInput.value.wrappedValue = $0 }
+        slider.onEditingChanged = resetInput.onEditingChanged
+        slider.reset(to: 0.25)
+        #expect(workspace.showsOverlay, "A double-click reset also inspects mask coverage")
+        workspace.cancel()
+        #expect(await f.library.finishSaving())
+    }
+
+    @Test func onlyToneColorAndEffectSlidersHideTheOverlayAndStaleInputCannotChangeIt() async throws {
+        let f = try await fixture(nativeStore: false)
+        defer { try? FileManager.default.removeItem(at: f.directory) }
+        let workspace = InlineMaskWorkspace(), model = try model()
+        #expect(workspace.open(asset: f.asset, source: f.source, settings: .neutral,
+            editor: f.editor, library: f.library, model: model))
+        try await wait { workspace.canvasSize != nil }
+        model.add(.linear)
+        for keyPath in [\LocalAdjustmentSettings.exposure, \.saturation, \.clarity] {
+            workspace.showsOverlay = true
+            let initial = model.settings
+            let input = LocalMaskSliderInput(value: Binding(get: { model.selected?.settings[keyPath: keyPath] ?? 0 },
+                set: { value in model.updateSelected { $0.settings[keyPath: keyPath] = value } }), model: model,
+                workspace: workspace, target: .correction)
+            let slider = ResettableSliderInteraction()
+            slider.readValue = { input.value.wrappedValue }
+            slider.writeValue = { input.value.wrappedValue = $0 }
+            slider.onEditingChanged = input.onEditingChanged
+            slider.beginPointer(); slider.beginDragging()
+            #expect(!workspace.showsOverlay, "Correction input shows the photo before its first numeric change")
+            #expect(model.settings == initial)
+            slider.nativeValueChanged(0.5); slider.nativeValueChanged(1); slider.endPointer()
+            #expect(!workspace.showsOverlay)
+            workspace.showsOverlay = true
+            #expect(workspace.showsOverlay, "The checkbox remains available after correcting the photo")
+            workspace.undo()
+            #expect(model.settings == initial)
+            #expect(!workspace.showsOverlay, "Undoing a correction also shows the resulting photo")
+            workspace.showsOverlay = true
+            input.onEditingChanged(true)
+            input.value.wrappedValue = 2
+            input.onEditingChanged(false)
+            #expect(workspace.showsOverlay && model.settings == initial, "Undo invalidates queued slider input")
+        }
+        workspace.cancel()
+        #expect(await f.library.finishSaving())
+    }
+
+    @Test func everyNewMaskAndDuplicateShowsItsOverlayAfterThePreviousMaskWasHidden() async throws {
+        let f = try await fixture(nativeStore: false)
+        defer { try? FileManager.default.removeItem(at: f.directory) }
+        let workspace = InlineMaskWorkspace()
+        let model = try model(generator: { _, _, _ in try LocalMaskRaster(width: 2, height: 1, bytes: Data([0, 255])) })
+        #expect(workspace.open(asset: f.asset, source: f.source, settings: .neutral,
+            editor: f.editor, library: f.library, model: model))
+        try await wait { workspace.canvasSize != nil }
+        for kind in LocalMaskCreation.allCases {
+            workspace.showsOverlay = false
+            let previousID = model.selectedID
+            model.add(kind)
+            await model.waitForInference()
+            #expect(model.selectedID != nil && model.selectedID != previousID)
+            #expect(workspace.showsOverlay, "New \(kind.title) masks must always show their selected area")
+        }
+        workspace.showsOverlay = false
+        model.duplicateSelected()
+        #expect(workspace.showsOverlay, "A duplicated mask is a new selection too")
         workspace.cancel()
         #expect(await f.library.finishSaving())
     }
@@ -507,13 +580,15 @@ struct InlineMaskWorkspaceTests {
         }
     }
 
-    private func model(settings: EditSettings = .neutral) throws -> LocalAdjustmentEditorModel {
+    private func model(settings: EditSettings = .neutral,
+                       generator: LocalAdjustmentEditorModel.Generator? = nil) throws -> LocalAdjustmentEditorModel {
         let data = Data(repeating: 100, count: 40 * 20 * 4)
         let provider = try #require(CGDataProvider(data: data as CFData))
         let image = try #require(CGImage(width: 40, height: 20, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: 160,
             space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
             provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent))
         let bitmap = PreviewBitmap(image: image)
+        if let generator { return LocalAdjustmentEditorModel(settings: settings, loader: { _ in bitmap }, generator: generator) }
         return LocalAdjustmentEditorModel(settings: settings, loader: { _ in bitmap })
     }
     private func source() -> AISourceIdentity {
