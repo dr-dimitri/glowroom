@@ -266,7 +266,7 @@ struct InlineMaskList: View {
                     .accessibilityIdentifier("local-mask.add")
                 Menu {
                     Button("Himmelsmodell einrichten …") { showsSkySetup = true }
-                    Button("Motivmodell einrichten …") { showsSubjectSetup = true }
+                    Button("BiRefNet einrichten …") { showsSubjectSetup = true }
                 } label: { Image(systemName: "ellipsis") }
                     .menuStyle(.borderlessButton).frame(width: 16)
                     .accessibilityLabel("Maskeneinstellungen")

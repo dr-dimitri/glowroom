@@ -1,6 +1,6 @@
 # Local subject matting model
 
-Glowroom runs this model natively with Core ML. Python is a developer-only conversion dependency. Photographs never leave the machine. The app's automatic-mask settings import the resulting package after provenance, interface and integrity checks.
+Glowroom runs this model natively with Core ML. Python is a developer-only conversion dependency. Photographs never leave the machine. Subject and background masks use only BiRefNet; there is no Apple Vision fallback. The app's **BiRefNet einrichten …** action imports the resulting pinned package after provenance, interface and integrity checks. A healthy installation exposes status only; first setup, legacy upgrade and repair accept only the approved package. Sky remains separately configured.
 
 ## Prepare
 

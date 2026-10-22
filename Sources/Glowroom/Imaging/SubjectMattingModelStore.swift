@@ -12,13 +12,15 @@ struct SubjectMattingSetupProgress: Sendable {
 }
 
 enum SubjectMattingError: Error, LocalizedError, Equatable, Sendable {
-    case invalidModel, updateRequired, setupInProgress, insufficientDiskSpace, unavailable
+    case modelNotInstalled, invalidModel, updateRequired, setupInProgress, insufficientDiskSpace, unavailable
     var errorDescription: String? {
         switch self {
+        case .modelNotInstalled:
+            "Richte zuerst BiRefNet über „BiRefNet einrichten …“ ein, um Motiv- und Hintergrundmasken zu erstellen."
         case .invalidModel:
             "Das lokale Motivmodell ist unvollständig, verändert oder nicht kompatibel. Importiere das für Glowroom vorbereitete BiRefNet-HR-Matting-Modell mit 1920 × 1920 Pixeln erneut."
         case .updateRequired:
-            "Das installierte Motivmodell verwendet noch 2048 Pixel. Ersetze es unter „Motivmodell einrichten …“ durch die aktuelle 1920-Pixel-Variante. Gespeicherte Masken bleiben erhalten."
+            "Das installierte Motivmodell verwendet noch 2048 Pixel. Ersetze es unter „BiRefNet einrichten …“ durch die aktuelle 1920-Pixel-Variante. Gespeicherte Masken bleiben erhalten."
         case .setupInProgress:
             "Das lokale Motivmodell wird bereits eingerichtet oder entfernt."
         case .unavailable:

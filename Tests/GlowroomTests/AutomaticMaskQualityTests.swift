@@ -19,12 +19,10 @@ struct AutomaticMaskQualityTests {
     func compareLegacyAndCurrentBackgroundMask() async throws {
         let environment = ProcessInfo.processInfo.environment
         let sourceURL = URL(fileURLWithPath: try #require(environment["GLOWROOM_MASK_QUALITY_IMAGE"]))
-        let packagePath = environment["GLOWROOM_SUBJECT_MATTING_PACKAGE"].flatMap { $0.isEmpty ? nil : $0 }
+        let packagePath = try #require(environment["GLOWROOM_SUBJECT_MATTING_PACKAGE"].flatMap { $0.isEmpty ? nil : $0 },
+            "Set GLOWROOM_SUBJECT_MATTING_PACKAGE to the approved BiRefNet 1920 package; production has no Vision fallback")
         let explicitInstallRoot = environment["GLOWROOM_SUBJECT_MATTING_INSTALL_ROOT"].flatMap { $0.isEmpty ? nil : $0 }
         let repeatsCurrent = environment["GLOWROOM_MASK_QUALITY_REPEAT_CURRENT"] == "1"
-        #expect(explicitInstallRoot == nil || packagePath != nil,
-                "An explicit model install root requires GLOWROOM_SUBJECT_MATTING_PACKAGE")
-        guard explicitInstallRoot == nil || packagePath != nil else { return }
         let output = URL(fileURLWithPath: try #require(environment["GLOWROOM_MASK_QUALITY_OUTPUT"],
             "Set an explicit temporary output directory for mask diagnostics"), isDirectory: true).standardizedFileURL
         let temporaryRoot = FileManager.default.temporaryDirectory.resolvingSymlinksInPath().path
@@ -57,8 +55,8 @@ struct AutomaticMaskQualityTests {
         let service = AutomaticMaskService(budget: budget, generator: { bitmap, kind, url in
             try await worker.generate(bitmap, kind: kind, sourceURL: url)
         })
-        var installationReport: [String: Any] = ["backend": "Apple Vision revision 1 with RGB guided refinement"]
-        if let packagePath {
+        let installationReport: [String: Any]
+        do {
             let installStart = ContinuousClock.now
             let installed = try await subjectStore.install(from: URL(fileURLWithPath: packagePath, isDirectory: true))
             let installationMS = milliseconds(installStart.duration(to: .now))

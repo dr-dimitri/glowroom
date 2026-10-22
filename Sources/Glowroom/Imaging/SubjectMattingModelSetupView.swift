@@ -5,6 +5,7 @@ import UniformTypeIdentifiers
 private final class SubjectMattingModelSetupState: ObservableObject {
     @Published var installed = false
     @Published var requiresUpdate = false
+    @Published var isChecking = true
     @Published var isBusy = false
     @Published var progress: SubjectMattingSetupProgress?
     @Published var errorMessage: String?
@@ -12,8 +13,17 @@ private final class SubjectMattingModelSetupState: ObservableObject {
     private var operation = UUID()
 
     func refresh() async {
+        isChecking = true
+        defer { isChecking = false }
         do {
-            installed = try await SubjectMattingModelStore.shared.installedModel() != nil
+            if let installation = try await SubjectMattingModelStore.shared.installedModel() {
+                // A damaged installation must keep the repair action available.
+                // Hashing model weights stays off MainActor.
+                _ = try await Task.detached(priority: .utility) {
+                    try SubjectMattingModelStore.verifyInstallation(installation)
+                }.value
+                installed = true
+            } else { installed = false }
             requiresUpdate = false; errorMessage = nil
         } catch SubjectMattingError.updateRequired {
             installed = true; requiresUpdate = true; errorMessage = nil
@@ -46,19 +56,6 @@ private final class SubjectMattingModelSetupState: ObservableObject {
         }
     }
 
-    func remove() {
-        guard !isBusy else { return }
-        isBusy = true; errorMessage = nil
-        operation = UUID()
-        task = Task { [weak self] in
-            guard let self else { return }
-            defer { isBusy = false; task = nil; operation = UUID() }
-            do { try await SubjectMattingModelStore.shared.remove(); installed = false; requiresUpdate = false; progress = nil }
-            catch is CancellationError { progress = nil }
-            catch { errorMessage = error.localizedDescription }
-        }
-    }
-
     func cancel() { task?.cancel() }
 }
 
@@ -71,20 +68,24 @@ struct SubjectMattingModelSetupView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Lokales Motivmodell").font(.title2.bold())
-            Text("BiRefNet HR Matting berechnet Motiv- und Hintergrundmasken direkt auf deinem Mac. Es berücksichtigt feine Strukturen und weiche Übergänge. Deine Fotos bleiben auf dem Gerät.")
-            Text("Importiere die für Glowroom vorbereitete 1920-Pixel-Variante des Core-ML-Modells (.mlpackage). Der Import benötigt vorübergehend mindestens 3 GB freien Speicher. Danach funktioniert das Modell offline.")
-                .foregroundStyle(.secondary)
+            Text("BiRefNet · Motiv und Hintergrund").font(.title2.bold())
+            Text("Glowroom verwendet für Motiv- und Hintergrundmasken ausschließlich BiRefNet HR Matting. Es berücksichtigt feine Strukturen und weiche Übergänge. Deine Fotos bleiben auf dem Gerät.")
             Link("BiRefNet HR Matting · MIT-Lizenz", destination: URL(string: "https://huggingface.co/ZhengPeng7/BiRefNet_HR-matting")!)
-            Text("Ohne importiertes Modell verwendet Glowroom weiterhin Apples lokale Motiverkennung. Vorhandene Masken bleiben erhalten; erst eine neue Motivauswahl verwendet das importierte Modell.")
+            Text("Vorhandene Masken bleiben erhalten. Erstelle eine neue Motiv- oder Hintergrundmaske, um BiRefNet zu verwenden. Die Himmelsmaskierung wird separat eingerichtet.")
                 .font(.callout).foregroundStyle(.secondary)
-            if state.requiresUpdate {
+            if state.isChecking {
+                ProgressView("BiRefNet wird geprüft …")
+            } else if state.requiresUpdate {
                 Label("2048-Pixel-Modell vorhanden · Aktualisierung erforderlich", systemImage: "arrow.triangle.2.circlepath")
                     .foregroundStyle(.orange)
-                Text("Ersetze das bisherige Modell durch die 1920-Pixel-Variante. Bis dahin wird es für neue Auswahlen nicht verwendet. Bereits gespeicherte Masken bleiben erhalten.")
+                Text("Aktualisiere BiRefNet auf die freigegebene 1920-Pixel-Variante. Bis dahin können keine neuen Motiv- oder Hintergrundmasken erstellt werden.")
                     .font(.callout).foregroundStyle(.secondary)
             } else if state.installed {
-                Label("Motivmodell eingerichtet", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
+                Label("BiRefNet ist bereit", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
+            }
+            if !state.isChecking && (!state.installed || state.requiresUpdate) {
+                Text("Wähle das für Glowroom vorbereitete BiRefNet-Paket mit 1920 Pixeln (.mlpackage). Andere Modelle werden nicht akzeptiert. Die Einrichtung benötigt vorübergehend mindestens 3 GB freien Speicher und funktioniert anschließend offline.")
+                    .foregroundStyle(.secondary)
             }
             if let progress = state.progress {
                 if let fraction = progress.fraction { ProgressView(value: fraction) }
@@ -95,10 +96,9 @@ struct SubjectMattingModelSetupView: View {
             HStack {
                 if state.isBusy {
                     Button("Abbrechen") { state.cancel() }
-                } else {
-                    Button(state.installed ? "Modell ersetzen …" : "Modell importieren …") { importsModel = true }
+                } else if !state.isChecking && (!state.installed || state.requiresUpdate) {
+                    Button(state.requiresUpdate ? "BiRefNet aktualisieren …" : "BiRefNet einrichten …") { importsModel = true }
                         .buttonStyle(.borderedProminent)
-                    if state.installed { Button("Entfernen", role: .destructive) { state.remove() } }
                 }
                 Spacer()
                 Button("Fertig") { dismiss() }.keyboardShortcut(.defaultAction).disabled(state.isBusy)
