@@ -97,7 +97,7 @@ final class LibraryModelTests {
     }
 
     @Test
-    func refreshFindsAddedAndDeletedPhotosAndKeepsRatings() async throws {
+    func refreshFindsAddedPhotosAndRetainsMissingPhotosAndRatings() async throws {
         let folder = try directory("Photos")
         let retained = folder.appendingPathComponent("retained.png")
         let removed = folder.appendingPathComponent("removed.png")
@@ -115,7 +115,7 @@ final class LibraryModelTests {
         model.refreshCurrentFolder()
         try await waitUntilIdle(model)
         await model.waitForProjection()
-        #expect(Set(model.assets.map(\.fileName)) == ["retained.png", "new.png"])
+        #expect(Set(model.assets.map(\.fileName)) == ["retained.png", "removed.png", "new.png"])
         #expect(model.assets.first { $0.id == retainedID }?.rating == 3)
         #expect(model.assets.first { $0.id == retainedID }?.isFavorite == true)
         #expect(await model.finishSaving())
@@ -160,7 +160,7 @@ final class LibraryModelTests {
         model.refreshCurrentFolder()
         try await waitUntilIdle(model)
         await model.waitForProjection()
-        #expect(Set(model.assets.map(\.fileName)) == ["parent.png", "retained.png", "new.png"])
+        #expect(Set(model.assets.map(\.fileName)) == ["parent.png", "retained.png", "removed.png", "new.png"])
         #expect(model.assets.first { $0.id == retainedID }?.rating == 5)
         #expect(model.assets.first { $0.id == retainedID }?.isFavorite == true)
         #expect(await model.finishSaving())
@@ -369,7 +369,7 @@ final class LibraryModelTests {
     }
 
     @Test
-    func subfolderRefreshPreservesNavigationUpdatesTreeAndFallsBackAfterDeletion() async throws {
+    func subfolderRefreshUpdatesTreeAndRetainsNavigationToMissingPhotos() async throws {
         let photos = try directory("Photos")
         let trip = try directory("Photos/Trip")
         let oldEmpty = try directory("Photos/Trip/OldEmpty")
@@ -416,8 +416,9 @@ final class LibraryModelTests {
         model.refreshCurrentFolder()
         try await waitUntilIdle(model)
         await model.waitForProjection()
-        #expect(model.selection == .folder(folder.id))
-        #expect(model.visibleAssets.map(\.fileName) == ["root.png"])
+        #expect(model.selection == .subfolder(folder.id, "Trip"))
+        #expect(Set(model.visibleAssets.map(\.fileName)) == ["retained.png", "new.png"])
+        #expect(model.folderTree(for: try #require(model.folders.first)).contains(relativePath: "Trip"))
         #expect(model.folders.first?.subdirectoryPaths == ["AddedEmpty"])
         #expect(await model.finishSaving())
     }

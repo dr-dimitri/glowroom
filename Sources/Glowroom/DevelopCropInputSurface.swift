@@ -31,6 +31,7 @@ struct DevelopCropInputSurface: NSViewRepresentable {
     let capturesEscapeWhileIdle: Bool
     let onDoubleClickBegan: (() -> Void)?
     let pansWithPointer: Bool
+    let onTeardown: (() -> Void)?
 
     init(onInput: @escaping (DevelopCropInputEvent) -> Void,
          onHover: @escaping (CGPoint?) -> Void, isEnabled: Bool,
@@ -38,7 +39,7 @@ struct DevelopCropInputSurface: NSViewRepresentable {
          onDoubleClick: (() -> Void)? = nil, canvasLabel: String = "Zuschneiden und Drehen auf dem Bild",
          onCancel: (() -> Void)? = nil, onDoubleClickBegan: (() -> Void)? = nil,
          pansWithPointer: Bool = false, canvasIdentifier: String = "develop.interactive-canvas",
-         capturesEscapeWhileIdle: Bool = true) {
+         capturesEscapeWhileIdle: Bool = true, onTeardown: (() -> Void)? = nil) {
         self.onInput = onInput
         self.onHover = onHover
         self.isEnabled = isEnabled
@@ -51,6 +52,7 @@ struct DevelopCropInputSurface: NSViewRepresentable {
         self.capturesEscapeWhileIdle = capturesEscapeWhileIdle
         self.onDoubleClickBegan = onDoubleClickBegan
         self.pansWithPointer = pansWithPointer
+        self.onTeardown = onTeardown
     }
 
     func makeNSView(context: Context) -> DevelopCropNativeInputView {
@@ -64,7 +66,7 @@ struct DevelopCropInputSurface: NSViewRepresentable {
                        inputIdentity: inputIdentity, cursor: cursor, onDoubleClick: onDoubleClick, onCancel: onCancel,
                        onDoubleClickBegan: onDoubleClickBegan,
                        pansEnclosingScrollView: photoCanvasPanning, pansWithPointer: pansWithPointer,
-                       capturesEscapeWhileIdle: capturesEscapeWhileIdle)
+                       capturesEscapeWhileIdle: capturesEscapeWhileIdle, onTeardown: onTeardown)
         view.setAccessibilityLabel(canvasLabel)
         view.setAccessibilityIdentifier(canvasIdentifier)
     }
@@ -168,6 +170,7 @@ final class DevelopCropNativeInputView: NSView {
     var cursor: (CGPoint) -> NSCursor = { _ in .arrow }
     var onDoubleClick: (() -> Void)?
     var onCancel: (() -> Void)?
+    var onTeardown: (() -> Void)?
     var onDoubleClickBegan: (() -> Void)?
     var inputIdentity: AnyHashable?
     var inputEnabled = true {
@@ -226,7 +229,7 @@ final class DevelopCropNativeInputView: NSView {
                    onDoubleClick: (() -> Void)? = nil, onCancel: (() -> Void)? = nil,
                    onDoubleClickBegan: (() -> Void)? = nil,
                    pansEnclosingScrollView: Bool = false, pansWithPointer: Bool = false,
-                   capturesEscapeWhileIdle: Bool = true) {
+                   capturesEscapeWhileIdle: Bool = true, onTeardown: (() -> Void)? = nil) {
         // End an old asset/tool transaction using its old callback before a new
         // identity's closures replace it.
         if self.inputIdentity != inputIdentity || (!isEnabled && inputEnabled)
@@ -238,6 +241,7 @@ final class DevelopCropNativeInputView: NSView {
         self.cursor = cursor
         self.onDoubleClick = onDoubleClick
         self.onCancel = onCancel
+        self.onTeardown = onTeardown
         self.onDoubleClickBegan = onDoubleClickBegan
         self.inputIdentity = inputIdentity
         self.pansEnclosingScrollView = pansEnclosingScrollView
@@ -250,7 +254,7 @@ final class DevelopCropNativeInputView: NSView {
     override func viewWillMove(toWindow newWindow: NSWindow?) {
         // Initial attachment has no active input to cancel. In particular, a
         // one-shot picker must not close just because its surface was mounted.
-        if window != nil, window !== newWindow { cancelInput() }
+        if window != nil, window !== newWindow { cancelInput(tearingDown: newWindow == nil) }
         releaseMouseMovementRegistration()
         stopMonitoring()
         super.viewWillMove(toWindow: newWindow)
@@ -351,15 +355,18 @@ final class DevelopCropNativeInputView: NSView {
     override func touchesEnded(with event: NSEvent) { receiveTouches(event) }
     override func touchesCancelled(with event: NSEvent) { receiveTouches(event, cancelled: true) }
 
-    func cancelInput() {
-        onCancel?()
+    func cancelInput(tearingDown: Bool = false) {
+        let separatesTeardown = tearingDown && onTeardown != nil
+        if separatesTeardown { onTeardown?() } else { onCancel?() }
         if pointerStart != nil || pendingDoubleClick != nil { suppressesPointerUntilMouseUp = true }
         pendingDoubleClick = nil
-        cancelPointer()
+        cancelPointer(notify: !separatesTeardown)
         if let start = touchStart {
             let location = touchLocation ?? start
             touchStart = nil; touchLocation = nil
-            publishInput(DevelopCropInputEvent(phase: .cancelled, kind: .threeFinger, startLocation: start, location: location))
+            if !separatesTeardown {
+                publishInput(DevelopCropInputEvent(phase: .cancelled, kind: .threeFinger, startLocation: start, location: location))
+            }
         }
         panSession.cancel()
         panViewportSize = nil
@@ -384,7 +391,7 @@ final class DevelopCropNativeInputView: NSView {
         isInvalidated = true
         menuTracking.stop()
         releaseMouseMovementRegistration()
-        cancelInput()
+        cancelInput(tearingDown: true)
         stopMonitoring()
     }
 
@@ -415,11 +422,11 @@ final class DevelopCropNativeInputView: NSView {
         }
     }
 
-    private func cancelPointer() {
+    private func cancelPointer(notify: Bool = true) {
         guard let start = pointerStart else { return }
         let location = pointerLocation ?? start
         pointerStart = nil; pointerLocation = nil
-        publishInput(DevelopCropInputEvent(phase: .cancelled, kind: .pointer, startLocation: start, location: location))
+        if notify { publishInput(DevelopCropInputEvent(phase: .cancelled, kind: .pointer, startLocation: start, location: location)) }
     }
 
     private func pointerPoint(_ event: NSEvent) -> CGPoint {

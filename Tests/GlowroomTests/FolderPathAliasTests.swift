@@ -71,8 +71,8 @@ struct FolderPathAliasTests {
         #expect(removed.assets[0].fileURL == catalog.assets[0].fileURL)
 
         let refreshed = try await worker.merge(ScanResult(assets: [], skippedFiles: 0), folder: parent, into: catalog)
-        #expect(refreshed.catalog.assets.map(\.id) == [catalog.assets[3].id],
-                "Refresh removes old members through either alias and retains the similarly named sibling")
+        #expect(refreshed.catalog.assets == catalog.assets,
+                "An empty scan cannot remove catalog identities, through either alias or in the similarly named sibling")
 
         let original = catalog.assets[0]
         let alternateURL = parent.url.appendingPathComponent("Trip/A.jpg", isDirectory: false)

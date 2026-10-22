@@ -141,6 +141,40 @@ enum EditRenderer {
                 max(1, min(maximumPixelSize, Int((Double(height) * scale).rounded()))))
     }
 
+    private struct RasterOutput {
+        let colorSpace: CGColorSpace
+        let format: CIFormat
+    }
+
+    /// A monochrome source profile describes the input, not the developed
+    /// result: white balance and other color edits can separate RGB channels.
+    /// Core Image converts from the tagged source into the chosen RGB profile.
+    /// A resize alone keeps the source format; the neutral render stays a no-op.
+    private static func rasterOutput(for original: CGImage, developing: Bool,
+                                     hdrEnabled: Bool = false) throws -> RasterOutput {
+        let sourceSpace = original.colorSpace ?? CGColorSpace(name: CGColorSpace.sRGB)!
+        let colorSpace = hdrEnabled ? CGColorSpace(name: CGColorSpace.extendedLinearSRGB)!
+            : developing && sourceSpace.model == .monochrome ? CGColorSpace(name: CGColorSpace.sRGB)! : sourceSpace
+        let highPrecision = original.bitsPerComponent > 8
+        let floatingPoint = hdrEnabled || (!developing && original.bitmapInfo.contains(.floatComponents))
+        let format: CIFormat
+        switch colorSpace.model {
+        case .rgb: format = floatingPoint ? .RGBAh : highPrecision ? .RGBA16 : .RGBA8
+        case .monochrome: format = floatingPoint ? .RGBAh : highPrecision ? .LA16 : .LA8
+        default: throw EditRenderError.unavailable
+        }
+        return RasterOutput(colorSpace: colorSpace, format: format)
+    }
+
+    /// Add the RGB readback expansion to the existing global preview budget.
+    /// Row padding is already covered by the retained source's actual byte cost.
+    static func additionalColorOutputBytesPerPixel(for original: CGImage, settings: EditSettings) -> UInt64 {
+        guard !settings.isNeutral, !settings.developColor.hdrEnabled,
+              original.colorSpace?.model == .monochrome else { return 0 }
+        let outputBytes = (original.bitsPerComponent > 8 ? 2 : 1) * 4
+        return UInt64(max(0, outputBytes - (original.bitsPerPixel + 7) / 8))
+    }
+
     /// Runs only inside AdjustedPreviewPipeline's existing worker. Reuses the
     /// lane's CIContext and preserves the developed base's profile and alpha.
     static func resized(_ bitmap: PreviewBitmap, width: Int, height: Int,
@@ -155,20 +189,12 @@ enum EditRenderer {
                                               y: CGFloat(height) / CGFloat(original.height))
             let image = CIImage(cgImage: original).transformed(by: transform, highQualityDownsample: true)
             let extent = CGRect(x: 0, y: 0, width: width, height: height)
-            let colorSpace = original.colorSpace ?? CGColorSpace(name: CGColorSpace.sRGB)!
-            let highPrecision = original.bitsPerComponent > 8
-            let floatingPoint = original.bitmapInfo.contains(.floatComponents)
-            let format: CIFormat
-            switch colorSpace.model {
-            case .rgb: format = floatingPoint ? .RGBAh : highPrecision ? .RGBA16 : .RGBA8
-            case .monochrome: format = floatingPoint ? .RGBAh : highPrecision ? .LA16 : .LA8
-            default: throw EditRenderError.unavailable
-            }
+            let output = try rasterOutput(for: original, developing: false)
             let session = priority == .selected ? interactive : background
             let renderSpan = PipelineTrace.begin(.render)
             defer { renderSpan.end() }
             guard let result = session.context.createCGImage(image.cropped(to: extent), from: extent,
-                                                             format: format, colorSpace: colorSpace, deferred: false)
+                                                             format: output.format, colorSpace: output.colorSpace, deferred: false)
             else { throw EditRenderError.unavailable }
             try Task.checkCancellation()
             return PreviewBitmap(image: result, sourceLongEdge: bitmap.sourceLongEdge)
@@ -194,17 +220,18 @@ enum EditRenderer {
         }
         // Direct callers must honor the same local-work limit as the adaptive
         // preview pipeline. The export graph has its separate full-size budget.
-        let sharpeningBytes = UInt64(original.width) * UInt64(original.height)
-            * DevelopSharpening.additionalBytesPerPixel(settings: settings)
+        let globalBytes = UInt64(original.width) * UInt64(original.height)
+            * (DevelopSharpening.additionalBytesPerPixel(settings: settings)
+                + additionalColorOutputBytesPerPixel(for: original, settings: settings))
         guard let localBytes = LocalAdjustmentRenderer.estimatedAdditionalBytes(adjustments: settings.localAdjustments,
             width: original.width, height: original.height,
             additionalRenderCount: DevelopGeometryRenderer.replacementCount(in: settings.developGeometry)),
               let geometryBytes = DevelopGeometryRenderer.estimatedAdditionalBytes(geometry: settings.developGeometry,
                 width: original.width, height: original.height,
                 replacementColorBytesPerPixel: replacementColorBytesPerPixel(settings: settings)),
-              sharpeningBytes <= LocalAdjustmentRenderer.previewWorkingMemoryBudget,
-              geometryBytes <= LocalAdjustmentRenderer.previewWorkingMemoryBudget - sharpeningBytes,
-              localBytes <= LocalAdjustmentRenderer.previewWorkingMemoryBudget - sharpeningBytes - geometryBytes else {
+              globalBytes <= LocalAdjustmentRenderer.previewWorkingMemoryBudget,
+              geometryBytes <= LocalAdjustmentRenderer.previewWorkingMemoryBudget - globalBytes,
+              localBytes <= LocalAdjustmentRenderer.previewWorkingMemoryBudget - globalBytes - geometryBytes else {
             throw EditRenderError.insufficientMaskMemory
         }
 
@@ -229,21 +256,13 @@ enum EditRenderer {
             let developed = try DevelopGeometryRenderer.apply(to: image,
                 geometry: settings.developGeometry, extent: extent, replacementImages: replacements)
 
-            let colorSpace = settings.developColor.hdrEnabled
-                ? CGColorSpace(name: CGColorSpace.extendedLinearSRGB)!
-                : original.colorSpace ?? CGColorSpace(name: CGColorSpace.sRGB)!
-            let highPrecision = original.bitsPerComponent > 8
-            let format: CIFormat
-            switch colorSpace.model {
-            case .rgb: format = settings.developColor.hdrEnabled ? .RGBAh : highPrecision ? .RGBA16 : .RGBA8
-            case .monochrome: format = highPrecision ? .LA16 : .LA8
-            default: throw EditRenderError.unavailable
-            }
+            let output = try rasterOutput(for: original, developing: true, hdrEnabled: settings.developColor.hdrEnabled)
             let outputExtent = developed.extent
             graphSpan.end(); graphEnded = true
             let renderSpan = PipelineTrace.begin(.render)
             defer { renderSpan.end() }
-            guard let rendered = session.context.createCGImage(developed, from: outputExtent, format: format, colorSpace: colorSpace, deferred: false) else {
+            guard let rendered = session.context.createCGImage(developed, from: outputExtent,
+                format: output.format, colorSpace: output.colorSpace, deferred: false) else {
                 throw EditRenderError.unavailable
             }
             try Task.checkCancellation()

@@ -352,7 +352,11 @@ public actor PhotoMetadataRepository: CoordinatedPhotoMetadataStoring {
             row.confirmedProvenance = .init(title:operation.fields.contains(.title) ? origin : row.confirmedProvenance.title,
                 description:operation.fields.contains(.description) ? origin : row.confirmedProvenance.description,tags:tags,
                 language:operation.fields.contains(.language) ? origin : row.confirmedProvenance.language)
-            try row.advance(confirmed:true,ai:proposal != nil,manual:clearManual)
+            // Confirming manual values invalidates an open proposal's reviewed
+            // basis in the same transaction. Keep its text and original analysis;
+            // rebasing it would silently authorize overwriting the new values.
+            let outdated = proposal == nil && row.draft.map { [.pending,.edited].contains($0.state) } == true
+            try row.advance(confirmed:true,ai:proposal != nil || outdated,manual:clearManual)
             row.confirmed = next; row.confirmedAt = Date(); row.confirmedSource = operation.source
             let currentAssociation = catalogByID[row.assetID] ?? operation.source
             if currentAssociation.nativeStamp != nil { row.associationSource = currentAssociation }
@@ -364,6 +368,9 @@ public actor PhotoMetadataRepository: CoordinatedPhotoMetadataStoring {
             if let d = proposal {
                 row.draft = .init(id:d.id,revision:row.version.aiDraftRevision,baseConfirmedRevision:d.baseConfirmedRevision,
                     fields:d.fields,source:d.source,state:.accepted,createdAt:d.createdAt,modifiedAt:Date(),appliedFields:operation.fields,editedFields:d.editedFields)
+            } else if outdated, let d = row.draft {
+                row.draft = .init(id:d.id,revision:row.version.aiDraftRevision,baseConfirmedRevision:d.baseConfirmedRevision,
+                    fields:d.fields,source:d.source,state:.outdated,createdAt:d.createdAt,modifiedAt:Date(),editedFields:d.editedFields)
             }
         }
     }

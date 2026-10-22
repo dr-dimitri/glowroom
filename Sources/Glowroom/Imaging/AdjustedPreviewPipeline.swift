@@ -128,7 +128,8 @@ actor AdjustedPreviewPipeline {
             adjustments: normalized.localAdjustments, geometry: normalized.developGeometry, fixedBytes: fixedBytes,
             outputBytesPerPixel: outputBytesPerPixel, totalMemoryBudget: totalMemoryBudget,
             replacementColorBytesPerPixel: EditRenderer.replacementColorBytesPerPixel(settings: normalized),
-            globalBytesPerPixel: DevelopSharpening.additionalBytesPerPixel(settings: normalized))
+            globalBytesPerPixel: DevelopSharpening.additionalBytesPerPixel(settings: normalized)
+                + EditRenderer.additionalColorOutputBytesPerPixel(for: source.image, settings: normalized))
         guard !normalized.isNeutral || size.width != source.image.width || size.height != source.image.height else { return source }
         let key = Key(request: request, settings: normalized, width: source.image.width, height: source.image.height,
                       sourceLongEdge: source.sourceLongEdge,
@@ -232,7 +233,8 @@ actor AdjustedPreviewPipeline {
                             let sourceBytes = Int64(source.byteCost).multipliedReportingOverflow(by: 4)
                             let outputPixels = Int64(outputWidth).multipliedReportingOverflow(by: Int64(outputHeight))
                             let outputBytes = outputPixels.partialValue.multipliedReportingOverflow(
-                                by: Int64(32 + DevelopSharpening.additionalBytesPerPixel(settings: settings)))
+                                by: Int64(32 + DevelopSharpening.additionalBytesPerPixel(settings: settings)
+                                    + EditRenderer.additionalColorOutputBytesPerPixel(for: source.image, settings: settings)))
                             let baseBytes = sourceBytes.partialValue.addingReportingOverflow(outputBytes.partialValue)
                             guard !sourceBytes.overflow, !outputPixels.overflow, !outputBytes.overflow, !baseBytes.overflow,
                                   let local = LocalAdjustmentRenderer.estimatedAdditionalBytes(adjustments: settings.localAdjustments,

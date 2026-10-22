@@ -20,8 +20,24 @@ struct DevelopRepairServices: Sendable {
         candidates: { try await DevelopRepairAnalyzer.shared.candidates(in: $0, kind: $1, sensitivity: $2) })
 }
 
+/// Freeze brush controls at input time while each queued repair takes its
+/// editing baseline and clone source after the preceding accepted command.
+struct DevelopRepairBrush {
+    let mode: DevelopRepairMode
+    let radius: Double
+    let feather: Double
+    let usesAI: Bool
+    let detectsObjects: Bool
+
+    @MainActor init(_ workspace: DevelopWorkspace) {
+        mode = workspace.repairMode; radius = workspace.repairRadius; feather = workspace.repairFeather
+        usesAI = workspace.repairUsesAI; detectsObjects = workspace.repairObjectDetection
+    }
+}
+
 extension DevelopWorkspace {
-    func cancelRepairWork(clearCandidates: Bool = true) {
+    func cancelRepairWork(clearCandidates: Bool = true, preservingInputQueue: Bool = false) {
+        if !preservingInputQueue { repairInputQueue.cancel(cancelWorker: false) }
         repairRequest = UUID(); repairTask?.cancel(); repairTask = nil; repairBusy = false
         if clearCandidates {
             repairCandidates = []; repairSelectedCandidateIDs = []
@@ -46,23 +62,26 @@ extension DevelopWorkspace {
     /// A painted gesture is stored once, after source selection/segmentation.
     /// Source/session/revision guards protect Undo, restore and A→B→A changes.
     func applyRepair(path: [LocalMaskPoint], selection: LocalMaskRaster? = nil, asset: PhotoAsset, editor: EditingModel,
-                     expectedRevision: Int64, expectedSession: UUID) {
+                     expectedRevision: Int64, expectedSession: UUID, brush: DevelopRepairBrush? = nil,
+                     preservingInputQueue: Bool = false,
+                     onAccepted: (@MainActor () -> Void)? = nil) {
         guard !path.isEmpty, editor.canEdit, isOriginalCanvasReady, tool == .repair,
               editor.localRevision(for: asset.id) == expectedRevision,
               editor.aiEditSessionID == expectedSession,
               let bitmap = originalBitmap, let sourceIdentity else { return }
-        cancelRepairWork(clearCandidates: false)
+        cancelRepairWork(clearCandidates: false, preservingInputQueue: preservingInputQueue)
         repairTriedSourceStrokeID = nil; repairTriedSources = []
         let request = repairRequest, services = repairServices
         let baseline = editor.settings(for: asset.id)
-        let mode = repairMode, radius = repairRadius, feather = repairFeather
-        let usesAI = repairUsesAI && mode == .remove
+        let brush = brush ?? DevelopRepairBrush(self)
+        let mode = brush.mode, radius = brush.radius, feather = brush.feather
+        let usesAI = brush.usesAI && mode == .remove
         if usesAI && baseline.developColor.hdrEnabled {
             errorMessage = "Das lokale Reparaturmodell verarbeitet SDR-Farben. Deaktiviere HDR, bevor du eine KI-Reparatur erstellst."
             return
         }
         let sourceSize = self.sourceSize ?? CGSize(width: bitmap.image.width, height: bitmap.image.height)
-        let detectsObject = selection == nil && repairObjectDetection && mode == .remove
+        let detectsObject = selection == nil && brush.detectsObjects && mode == .remove
         let manualSource = usesAI ? nil : repairSource
         if mode == .clone && manualSource == nil {
             errorMessage = "Wähle zuerst mit ⌥-Klick einen sauberen Quellbereich für den Kopierstempel."
@@ -110,6 +129,7 @@ extension DevelopWorkspace {
                       editor.localRevision(for: asset.id) == expectedRevision,
                       editor.aiEditSessionID == expectedSession else { return }
                 try self.appendRepairs([stroke], asset: asset, editor: editor)
+                onAccepted?()
                 self.repairTriedSourceStrokeID = usesAI ? nil : stroke.id
                 self.repairTriedSources = usesAI ? [] : [source]
                 self.repairCandidates = []; self.repairSelectedCandidateIDs = []
