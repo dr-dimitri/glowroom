@@ -432,7 +432,12 @@ enum EditRenderer {
         kernel vec4 toneAndColor(__sample original, float exposure, float contrast, float highlights, float shadows, float whites, float blacks, float dehaze, float vibrance, float saturation, float hdr) {
             vec4 o = unpremultiply(original);
             vec3 rgb = pow(max(o.rgb * exp2(exposure), vec3(0.0)), vec3(1.0 / 2.2));
-            rgb = (rgb - vec3(0.5)) * (1.0 + contrast * 0.65) + vec3(0.5);
+            // Keep black/white fixed: an affine compression toward midgray
+            // otherwise adds a gray floor after strong negative exposure.
+            // For c in [-1, 1], the derivative 1+c*(-6u*u+6u-1) is >= 0.
+            // Clamp only the curve's domain so extended HDR values survive.
+            vec3 u = clamp(rgb, 0.0, 1.0);
+            rgb += contrast * u * (vec3(1.0) - u) * (2.0 * u - vec3(1.0));
             vec3 weights = vec3(0.2126, 0.7152, 0.0722);
             float y = clamp(dot(rgb, weights), 0.0, 1.0);
             float shift = shadows * 0.22 * (1.0 - smoothstep(0.05, 0.65, y));

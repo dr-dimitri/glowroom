@@ -449,6 +449,7 @@ struct InlineMaskInspector: View {
                     .menuStyle(.borderlessButton).frame(width: 16).accessibilityLabel("Aktionen für diese Maske")
             }.font(.system(size: 10)).controlSize(.mini).frame(height: 23)
             valueSlider("Maskenstärke", value: Binding(get: { workspace.selected?.mask.opacity ?? 1 }, set: { value in model.updateSelected { $0.mask.opacity = value } }), range: 0...1, neutral: 1, model: model)
+                .help("1,00 wendet die Korrektur in vollständig ausgewählten Bereichen voll an. Kleinere Werte mischen den Bildstand vor dieser Maske bei; dadurch bleibt er auch bei starker Abdunklung sichtbar.")
             valueSlider("Weiche Kante", value: Binding(get: { workspace.selected?.mask.feather ?? 0 }, set: { value in model.updateSelected { $0.mask.feather = value } }), range: 0...1, neutral: featherResetValue, model: model)
             if case .radial = layer.mask.shape {
                 valueSlider("Drehung", value: Binding(get: {
