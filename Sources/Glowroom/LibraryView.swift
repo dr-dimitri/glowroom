@@ -316,18 +316,18 @@ struct LibraryView: View {
             }.frame(width: 28, height: 28).accessibilityHidden(true)
             Text("Glowroom").font(.system(size: 17, weight: .semibold))
             Spacer(minLength: 8)
+            HStack(spacing: 18) {
+                Button {
+                    WorkspaceActions.showGrid(layout, library: model)
+                    model.comparesOriginal = false
+                    model.comparesCurrentSourceWithoutSettings = false
+                } label: { Text("Bibliothek") }
+                    .foregroundStyle(!model.isDeveloping ? Theme.text : Theme.muted)
+                Button { WorkspaceActions.reveal(.edit, layout: layout, library: model) } label: { Text("Entwickeln") }
+                    .foregroundStyle(model.isDeveloping ? Theme.text : Theme.muted)
+                    .disabled(model.selectedAsset == nil || editor.isLoading)
+            }.font(.system(size: 14, weight: .medium))
             if !layout.isFocused {
-                HStack(spacing: 18) {
-                    Button {
-                        WorkspaceActions.showGrid(layout, library: model)
-                        model.comparesOriginal = false
-                        model.comparesCurrentSourceWithoutSettings = false
-                    } label: { Text("Bibliothek") }
-                        .foregroundStyle(!model.isDeveloping ? Theme.text : Theme.muted)
-                    Button { WorkspaceActions.reveal(.edit, layout: layout, library: model) } label: { Text("Entwickeln") }
-                        .foregroundStyle(model.isDeveloping ? Theme.text : Theme.muted)
-                        .disabled(model.selectedAsset == nil || editor.isLoading)
-                }.font(.system(size: 14, weight: .medium))
                 Divider().frame(height: 20)
                 panelControls
             }
