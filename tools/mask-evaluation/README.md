@@ -5,6 +5,10 @@ dependencies. Historical reports were removed with the `reports` directory.
 The product limitations remain documented in [Automatic masks](../../docs/AUTOMATIC-MASKS.md);
 use explicit local output directories for new measurements.
 
+The [DETR versus SkyWater comparison](sky_comparison_README.md) provides pinned
+SkyWater ONNX inference and a native harness using the current production sky
+converter and edge refiner. Both use the same seven local photo proxies.
+
 The seven private JPEGs are available only in this local checkout at
 `Fixtures/LocalTestImages/test_picture1.jpg` through `test_picture7.jpg`.
 Missing images are an explicit prerequisite failure. Never commit originals,

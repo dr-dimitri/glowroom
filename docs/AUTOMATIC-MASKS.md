@@ -85,6 +85,8 @@ Der Motiv-Worker behält genau ein Ergebnis für dasselbe unveränderliche Vorsc
 
 ## Grenzen und Verifikation
 
+Der [lokale Vergleich von DETR und SkyWater vom 22. Oktober 2026](../tools/mask-evaluation/sky_comparison_README.md) verwendet dieselben sieben Testbilder und die echte Kantennachführung der App. SkyWater folgt Teilen der Baumkronen-Kontur besser, beseitigt aber ebenso wenig alle Himmelslücken zwischen feinen Ästen. Seine CPU-Inferenz liegt in dieser Messreihe ungefähr auf dem Niveau des beschleunigten DETR; SkyWater über ONNX/Core ML ist langsamer. Die unterschiedlichen Laufzeitumgebungen und der fehlende Referenzmaskensatz begrenzen die Aussage. Der Vergleich ändert das in der App verwendete Modell nicht.
+
 Die folgenden Modellvergleiche beschreiben historische Messungen. Ihre Berichte
 wurden mit dem Ordner `reports` entfernt; Werkzeuge für neue lokale Messungen
 stehen unter [Maskenmodellvergleich](../tools/mask-evaluation/README.md).
