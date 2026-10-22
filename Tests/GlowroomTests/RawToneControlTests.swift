@@ -9,7 +9,7 @@ import UniformTypeIdentifiers
 @testable import Glowroom
 
 /// Private, opt-in RAW diagnostics. Serial rendering bounds memory and avoids
-/// competing native work; Core Image/Vision retain their own parallel backends.
+/// competing native work; Core Image/Core ML retain their own parallel backends.
 @Suite("Tone controls on an explicitly supplied RAW", .serialized)
 struct RawToneControlTests {
     @Test(.enabled(if: ProcessInfo.processInfo.environment["GLOWROOM_TONE_TEST_RAW"]?.isEmpty == false
@@ -55,12 +55,12 @@ struct RawToneControlTests {
         } else {
             // Inspect and use the normal installed backend; this diagnostic
             // neither installs models nor changes the application's stores.
-            let installation = try await SubjectMattingModelStore.shared.installedModel()
+            let installation = try #require(await SubjectMattingModelStore.shared.installedModel(),
+                "Set up the approved BiRefNet model before generating a new diagnostic mask")
             let raster = try await AutomaticMaskService.shared.generate(source, kind: .subject, sourceURL: sourceURL)
             frozen = FrozenMask(sourceSHA256: sourceHash, sourceWidth: source.image.width,
                 sourceHeight: source.image.height,
-                backend: installation.map { "BiRefNet-HR-matting; receipt " + $0.receiptSHA256 }
-                    ?? "Apple Vision revision 1 with RGB guided refinement",
+                backend: "BiRefNet-HR-matting; receipt " + installation.receiptSHA256,
                 subject: raster)
         }
         try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)

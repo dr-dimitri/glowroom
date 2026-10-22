@@ -43,7 +43,7 @@ struct InlineMaskCreator: View {
             Button("Himmelsmodell einrichten …") { showsSkySetup = true }
                 .buttonStyle(.plain).font(.system(size: 10)).foregroundStyle(Theme.muted)
                 .accessibilityIdentifier("local-mask.sky-setup")
-            Button("Motivmodell einrichten …") { showsSubjectSetup = true }
+            Button("BiRefNet einrichten …") { showsSubjectSetup = true }
                 .buttonStyle(.plain).font(.system(size: 10)).foregroundStyle(Theme.muted)
                 .accessibilityIdentifier("local-mask.subject-setup")
             if (workspace.model?.settings.localAdjustments.count ?? 0) >= 16 {

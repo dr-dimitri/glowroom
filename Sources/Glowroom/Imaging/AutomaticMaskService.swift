@@ -3,7 +3,6 @@ import CoreML
 import CoreVideo
 import Foundation
 import GlowroomCore
-import Vision
 
 enum AutomaticMaskKind: String, CaseIterable, Identifiable, Sendable {
     case subject, sky
@@ -27,7 +26,7 @@ enum AutomaticMaskError: Error, LocalizedError, Equatable {
 }
 
 /// A single shared AI lease covers the actual native return, including canceled
-/// Vision/Core ML work. The caller owns source/session guards before accepting
+/// Core ML work. The caller owns source/session guards before accepting
 /// a result: this service never publishes image state or saves edits itself.
 actor AutomaticMaskService {
     static let shared = AutomaticMaskService()
@@ -44,8 +43,8 @@ actor AutomaticMaskService {
 
     func generate(_ bitmap: PreviewBitmap, kind: AutomaticMaskKind, sourceURL: URL? = nil) async throws -> LocalMaskRaster {
         try Task.checkCancellation()
-        // Reserve the largest eligible subject path before admission: setup can
-        // publish a matting model while this request waits in the shared queue.
+        // Subject/background requests always reserve the BiRefNet working set.
+        // Setup can publish a model while this request waits in the shared queue.
         let residentBytes = kind == .subject ? SubjectMattingModelInterface.residentBytes : 384 * 1_024 * 1_024
         let lease = try await budget.acquireLocalInference(priority: .interactive, residentBytes: residentBytes)
         do {
@@ -62,22 +61,8 @@ actor AutomaticMaskService {
     }
 }
 
-private final class AutomaticVisionCancellation: @unchecked Sendable {
-    private let lock = NSLock()
-    private var request: VNRequest?
-    private var cancelled = false
-    func register(_ request: VNRequest) throws {
-        lock.lock(); self.request = request; let wasCancelled = cancelled; lock.unlock()
-        if wasCancelled { request.cancel(); throw CancellationError() }
-    }
-    func cancel() {
-        lock.lock(); cancelled = true; let active = request; lock.unlock()
-        active?.cancel()
-    }
-}
-
 /// Native work is serial on an actor off MainActor. Neural inference is already
-/// parallel inside Vision/Core ML; another photo worker pool increases peak
+/// parallel inside Core ML; another photo worker pool increases peak
 /// memory and competes with the interactive renderer.
 actor AutomaticMaskWorker {
     static let shared = AutomaticMaskWorker()
@@ -101,7 +86,10 @@ actor AutomaticMaskWorker {
         try Task.checkCancellation()
         switch kind {
         case .subject:
-            if let installation = try await subjectModelStore.installedModel() {
+            do {
+                guard let installation = try await subjectModelStore.installedModel() else {
+                    throw SubjectMattingError.modelNotInstalled
+                }
                 if cachesSubjectResults, let cached = subjectCache.value(for: bitmap.image, modelID: installation.receiptSHA256) {
                     // A cached matte must not hide a changed installation. This
                     // bounded hash check is much cheaper than another inference.
@@ -113,12 +101,12 @@ actor AutomaticMaskWorker {
                 try Task.checkCancellation()
                 if cachesSubjectResults { subjectCache.store(raster, for: bitmap, modelID: installation.receiptSHA256) }
                 return raster
+            } catch {
+                // Missing, removed or invalid model data must never reuse a
+                // stale selection or silently switch the recognition backend.
+                subjectCache.clear()
+                throw error
             }
-            subjectCache.clear()
-            let cancellation = AutomaticVisionCancellation()
-            return try await withTaskCancellationHandler {
-                try autoreleasepool { try subject(bitmap.image, cancellation: cancellation) }
-            } onCancel: { cancellation.cancel() }
         case .sky:
             // Always segment the immutable bitmap supplied by the editor. A
             // fresh auxiliary-matte read could refer to a different file version
@@ -127,24 +115,6 @@ actor AutomaticMaskWorker {
             guard let installed else { throw AutomaticMaskError.skyModelNotInstalled }
             return try autoreleasepool { try sky(bitmap.image, installation: installed) }
         }
-    }
-
-    private func subject(_ image: CGImage, cancellation: AutomaticVisionCancellation) throws -> LocalMaskRaster {
-        try Task.checkCancellation()
-        let proxy = try Self.proxy(image, maximumDimension: LocalMaskRaster.maximumDimension)
-        let request = VNGenerateForegroundInstanceMaskRequest()
-        request.revision = VNGenerateForegroundInstanceMaskRequestRevision1
-        request.preferBackgroundProcessing = true
-        try cancellation.register(request)
-        let handler = VNImageRequestHandler(cgImage: proxy, orientation: .up, options: [:])
-        try handler.perform([request])
-        try Task.checkCancellation()
-        guard let observation = request.results?.first, !observation.allInstances.isEmpty else {
-            throw AutomaticMaskError.noSubject
-        }
-        let buffer = try observation.generateScaledMaskForImage(forInstances: observation.allInstances, from: handler)
-        let raster = try AutomaticMaskRasterConverter.raster(buffer)
-        return try AutomaticMaskRefiner.refine(raster, guide: proxy)
     }
 
     private func sky(_ image: CGImage, installation: SkyMaskInstalledModel) throws -> LocalMaskRaster {
@@ -183,18 +153,6 @@ actor AutomaticMaskWorker {
             guard let classes = prediction.featureValue(for: "semanticPredictions")?.multiArrayValue else { throw AutomaticMaskError.invalidModel }
             return try AutomaticMaskRasterConverter.skyRaster(classes, skyClass: skyClass, outputSize: outputSize)
         }
-    }
-
-    private static func proxy(_ image: CGImage, maximumDimension: Int) throws -> CGImage {
-        let size = AutomaticMaskRasterConverter.outputSize(width: image.width, height: image.height, maximumDimension: maximumDimension)
-        guard let context = CGContext(data: nil, width: size.width, height: size.height, bitsPerComponent: 8,
-                                      bytesPerRow: size.width * 4, space: CGColorSpace(name: CGColorSpace.sRGB)!,
-                                      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { throw AutomaticMaskError.unavailable }
-        context.interpolationQuality = .high
-        context.setBlendMode(.copy)
-        context.draw(image, in: CGRect(x: 0, y: 0, width: size.width, height: size.height))
-        guard let proxy = context.makeImage() else { throw AutomaticMaskError.unavailable }
-        return proxy
     }
 
     private static func squarePixelBuffer(_ image: CGImage, side: Int) throws -> CVPixelBuffer {

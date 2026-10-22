@@ -43,6 +43,15 @@ private struct SubjectMattingStoreFixture: Sendable {
     }
 
     func clean() { try? FileManager.default.removeItem(at: root) }
+
+    func bitmap() throws -> PreviewBitmap {
+        let image = try #require(CGImage(width: 1, height: 1, bitsPerComponent: 8, bitsPerPixel: 32,
+            bytesPerRow: 4, space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
+            provider: CGDataProvider(data: Data([255, 0, 0, 255]) as CFData)!,
+            decode: nil, shouldInterpolate: false, intent: .defaultIntent))
+        return PreviewBitmap(image: image)
+    }
 }
 
 private struct SubjectMattingUpgradeFixture: Sendable {
@@ -169,6 +178,75 @@ struct SubjectMattingModelStoreTests {
             #expect(try Data(contentsOf: model) == preservedBytes)
             #expect(FileManager.default.fileExists(atPath: previous.directory.path))
         }
+    }
+
+    @Test func missingBiRefNetModelReportsSetupWithoutStartingInference() async throws {
+        let fixture = try SubjectMattingStoreFixture(); defer { fixture.clean() }
+        let budget = AIResourceBudget()
+        let store = fixture.store(budget: budget)
+        let calls = TestStateSignal(0)
+        let worker = AutomaticMaskWorker(subjectModelStore: store, subjectGenerator: { _, _ in
+            calls.update { $0 += 1 }
+            return try LocalMaskRaster(width: 1, height: 1, bytes: Data([128]))
+        })
+        let service = AutomaticMaskService(budget: budget) { bitmap, kind, url in
+            try await worker.generate(bitmap, kind: kind, sourceURL: url)
+        }
+        let bitmap = try fixture.bitmap()
+        await #expect(throws: SubjectMattingError.modelNotInstalled) {
+            try await service.generate(bitmap, kind: .subject)
+        }
+        #expect(calls.value == 0)
+        #expect(try await store.installedModel() == nil)
+        #expect(SubjectMattingError.modelNotInstalled.errorDescription?.contains("BiRefNet einrichten …") == true)
+        var states = await budget.stateUpdates().makeAsyncIterator()
+        #expect(await states.next()?.activeInferences == 0)
+    }
+
+    @Test func removedModelInvalidatesCachedMaskAndReinstallationRunsInferenceAgain() async throws {
+        let fixture = try SubjectMattingStoreFixture(); defer { fixture.clean() }
+        let store = fixture.store()
+        let installed = try await store.install(from: fixture.source)
+        let calls = TestStateSignal(0)
+        let worker = AutomaticMaskWorker(subjectModelStore: store, subjectGenerator: { _, _ in
+            calls.update { $0 += 1 }
+            return try LocalMaskRaster(width: 1, height: 1, bytes: Data([128]))
+        })
+        let bitmap = try fixture.bitmap()
+        _ = try await worker.generate(bitmap, kind: .subject, sourceURL: nil)
+        _ = try await worker.generate(bitmap, kind: .subject, sourceURL: nil)
+        #expect(calls.value == 1)
+        try await store.remove()
+        await #expect(throws: SubjectMattingError.modelNotInstalled) {
+            try await worker.generate(bitmap, kind: .subject, sourceURL: nil)
+        }
+        #expect(calls.value == 1, "A removed model must not produce another or cached selection")
+        let reinstalled = try await store.install(from: fixture.source)
+        #expect(reinstalled.receiptSHA256 == installed.receiptSHA256,
+                "The identical model identity exercises cache invalidation on removal")
+        _ = try await worker.generate(bitmap, kind: .subject, sourceURL: nil)
+        #expect(calls.value == 2)
+    }
+
+    @Test(arguments: [SubjectMattingError.invalidModel, .unavailable])
+    func subjectInferenceErrorsRemainExplicitWithoutFallback(_ failure: SubjectMattingError) async throws {
+        let fixture = try SubjectMattingStoreFixture(); defer { fixture.clean() }
+        let budget = AIResourceBudget()
+        let store = fixture.store(budget: budget)
+        _ = try await store.install(from: fixture.source)
+        let calls = TestStateSignal(0)
+        let worker = AutomaticMaskWorker(subjectModelStore: store, subjectGenerator: { _, _ in
+            calls.update { $0 += 1 }
+            throw failure
+        })
+        let service = AutomaticMaskService(budget: budget) { bitmap, kind, url in
+            try await worker.generate(bitmap, kind: kind, sourceURL: url)
+        }
+        let bitmap = try fixture.bitmap()
+        await #expect(throws: failure) { try await service.generate(bitmap, kind: .subject) }
+        #expect(calls.value == 1)
+        var states = await budget.stateUpdates().makeAsyncIterator()
+        #expect(await states.next()?.activeInferences == 0)
     }
 
     @Test func workerReusesPredictionAndStillRejectsTamperingOnACacheHit() async throws {
