@@ -431,7 +431,7 @@ enum EditRenderer {
     private static let toneKernel = CIColorKernel(source: """
         kernel vec4 toneAndColor(__sample original, float exposure, float contrast, float highlights, float shadows, float whites, float blacks, float dehaze, float vibrance, float saturation, float hdr) {
             vec4 o = unpremultiply(original);
-            vec3 rgb = pow(max(o.rgb * exp2(exposure), vec3(0.0)), vec3(1.0 / 2.2));
+            vec3 rgb = pow(max(o.rgb, vec3(0.0)), vec3(1.0 / 2.2));
             // Keep black/white fixed: an affine compression toward midgray
             // otherwise adds a gray floor after strong negative exposure.
             // For c in [-1, 1], the derivative 1+c*(-6u*u+6u-1) is >= 0.
@@ -447,6 +447,13 @@ enum EditRenderer {
             shift += blacks * 0.11 * (1.0 - smoothstep(0.0, 0.25, y));
             shift += whites * 0.11 * smoothstep(0.75, 1.0, y);
             rgb += vec3(shift);
+            // Select and adjust tone ranges before exposure: at -5 EV even
+            // source white would otherwise fall below the highlights gate.
+            // Scale the entire corrected signal to retain tonal ordering;
+            // frozen weights with an unscaled post-exposure shift can invert it.
+            // In this gamma domain the gain still equals 2^EV in linear light.
+            // Keep HDR headroom until the final output clamp below.
+            rgb *= exp2(exposure / 2.2);
             // A practical veil/black-point approximation, not scene-depth
             // recovery: positive removes a light veil; negative adds one.
             float removeVeil = max(dehaze, 0.0) * 0.12;
