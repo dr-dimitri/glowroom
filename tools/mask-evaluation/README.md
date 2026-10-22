@@ -8,6 +8,9 @@ use explicit local output directories for new measurements.
 The [DETR versus SkyWater comparison](sky_comparison_README.md) provides pinned
 SkyWater ONNX inference and a native harness using the current production sky
 converter and edge refiner. Both use the same seven local photo proxies.
+The [large U²-Net Sky follow-up](u2net_sky_README.md) compares the same Apple
+model against a pinned full U²-Net export, including unstretched predictions
+and a separate check of the producer's per-image min/max visualization.
 
 The seven private JPEGs are available only in this local checkout at
 `Fixtures/LocalTestImages/test_picture1.jpg` through `test_picture7.jpg`.
