@@ -240,7 +240,8 @@ public actor EditingRepository:CoordinatedEditingStoring {
         let value = try ArtifactJSONCodec.decode(EditingCommitWire.self,from:EditingSQLite.blob(s,2,maximum:EditSettings.maximumEncodedBytes),maximum:EditSettings.maximumEncodedBytes)
         guard try EditingSQLite.text(s,0,maximum:36) == value.commitID.canonicalString,
             try EditingSQLite.text(s,1,maximum:64) == value.requestSHA256.sha256,value.version.revision >= 0,
-            value.snapshot.source == .artifact(value.artifactID),value.snapshot.settings == .neutral,
+            value.snapshot.source == .artifact(value.artifactID),
+            value.snapshot.settings == value.snapshot.settings.resettingAdjustments,
             value.previous.storeEpoch == value.version.storeEpoch else {throw EditingRepositoryError.invalidDatabase}
         try ArtifactValueValidation.identifier(value.assetID);try ArtifactValueValidation.expected(value.previous);try ArtifactValueValidation.snapshot(value.snapshot)
         return value
@@ -263,8 +264,13 @@ public actor EditingRepository:CoordinatedEditingStoring {
         if case .original(let original) = r.expectedParentSource {
             guard r.assetID.hasPrefix("/"),FilePathComparison.canonicalPath(URL(fileURLWithPath:r.assetID)) == FilePathComparison.canonicalPath(URL(fileURLWithPath:original.standardizedPath)) else {throw ArtifactContractError.sourceChanged}
         }
-        let parentSnapshot = try r.expected.snapshot ?? EditingSnapshot()
-        guard r.draft.artifact.provenance.parentSource == r.expectedParentSource,r.draft.artifact.provenance.parentSnapshot == parentSnapshot else {throw ArtifactContractError.staleSnapshot}
+        let parentSnapshot = r.draft.artifact.provenance.parentSnapshot
+        // No stored edit means a pristine original. New sessions use V2; an
+        // already captured legacy request remains valid without rewriting its
+        // signed provenance. Persisted parents always match their exact version.
+        let parentMatches = r.expected.snapshot.map { $0 == parentSnapshot }
+            ?? (parentSnapshot.source == .original && parentSnapshot.settings == parentSnapshot.settings.resettingAdjustments)
+        guard r.draft.artifact.provenance.parentSource == r.expectedParentSource,parentMatches else {throw ArtifactContractError.staleSnapshot}
         try await acquireMutation();defer{releaseMutation()};let db = try connection()
         let previous = try sql.read(db) { () throws -> ArtifactCommitReceipt? in
             if let prior = try commitWire(r.commitID,on:db) {guard prior.requestSHA256 == r.requestSHA256 else {throw ArtifactContractError.conflictingCommit};return prior.value}
@@ -280,7 +286,7 @@ public actor EditingRepository:CoordinatedEditingStoring {
             try Self.require(r.expected,id:r.assetID,on:db);try ensureNoRemap(r.assetID,on:db)
             guard r.nextRevision >= 0,r.expected.revision.map({r.nextRevision > $0}) != false else {throw ArtifactContractError.staleSnapshot}
             try Self.register(published.artifact,on:db)
-            let snapshot = try EditingSnapshot(source:.artifact(published.artifact.id)),epoch = try Self.epoch(db)
+            let snapshot = try EditingSnapshot(source:.artifact(published.artifact.id),settings:.newEditingSettings),epoch = try Self.epoch(db)
             if let old = r.expected.snapshot {try addVariant(old,id:r.assetID,on:db)}
             try addVariant(snapshot,id:r.assetID,on:db);try Self.write(snapshot,id:r.assetID,revision:r.nextRevision,on:db)
             let wire = EditingCommitWire(commitID:r.commitID,assetID:r.assetID,requestSHA256:r.requestSHA256,previous:r.expected,

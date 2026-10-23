@@ -128,6 +128,7 @@ public struct EditingSnapshot: Codable, Hashable, Sendable {
         static let localAdjustments = SettingKey(stringValue: "localAdjustments")!
         static let developColor = SettingKey(stringValue: "developColor")!
         static let developGeometry = SettingKey(stringValue: "developGeometry")!
+        static let toneProcessingVersion = SettingKey(stringValue: "toneProcessingVersion")!
         init?(stringValue: String) { self.stringValue = stringValue }
         init?(intValue: Int) { return nil }
     }
@@ -136,6 +137,11 @@ public struct EditingSnapshot: Codable, Hashable, Sendable {
         try values.encode(schemaVersion, forKey: .schemaVersion)
         try values.encode(source, forKey: .source)
         var controls = values.nestedContainer(keyedBy: SettingKey.self, forKey: .settings)
+        // This snapshot encoder preserves old optional-control shapes separately
+        // from EditSettings. Keep V1 absent here too, including provenance parents.
+        if settings.toneProcessingVersion != .legacyV1 {
+            try controls.encode(settings.toneProcessingVersion, forKey: .toneProcessingVersion)
+        }
         for parameter in EditParameter.allCases where !omittedDefaultSettings.contains(parameter) {
             try controls.encode(parameter.value(in: settings), forKey: SettingKey(parameter))
         }

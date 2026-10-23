@@ -194,7 +194,9 @@ final class EditingModel: ObservableObject, GeneratedArtifactAccepting {
     }
     deinit { debounceTask?.cancel() }
 
-    func snapshot(for assetID: String) -> EditingSnapshot { snapshotsByAsset[assetID] ?? (try! EditingSnapshot()) }
+    func snapshot(for assetID: String) -> EditingSnapshot {
+        snapshotsByAsset[assetID] ?? (try! EditingSnapshot(settings: .newEditingSettings))
+    }
     func settings(for assetID: String) -> EditSettings { snapshot(for: assetID).settings }
     func persistedState(for assetID: String) -> EditingExpectedState? {
         if let value = baselines[assetID] { return value }
@@ -302,12 +304,20 @@ final class EditingModel: ObservableObject, GeneratedArtifactAccepting {
     }
     func reset(assetID: String) {
         guard canEdit, !assetID.isEmpty else { return }
-        advanceAIEditGeneration(); endEditing(assetID: assetID); setSettings(.neutral, for: assetID)
+        advanceAIEditGeneration(); endEditing(assetID: assetID)
+        setSettings(settings(for: assetID).resettingAdjustments, for: assetID)
+    }
+    func upgradeToneProcessing(assetID: String) {
+        guard canEdit, !assetID.isEmpty, settings(for: assetID).toneProcessingVersion == .legacyV1 else { return }
+        endEditing(assetID: assetID)
+        setSettings(settings(for: assetID).upgradedToneProcessing, for: assetID)
     }
     func returnToOriginal(assetID: String) {
         guard canEdit else { return }
         endEditing(assetID: assetID)
-        if let value = try? EditingSnapshot(source: .original, settings: .neutral) { setSnapshot(value, for: assetID) }
+        if let value = try? EditingSnapshot(source: .original, settings: settings(for: assetID).resettingAdjustments) {
+            setSnapshot(value, for: assetID)
+        }
     }
     func canUndo(assetID: String) -> Bool { canEdit && (histories.canUndo(assetID) || histories.group(assetID).map { $0 != snapshot(for: assetID) } == true) }
     func canRedo(assetID: String) -> Bool { canEdit && histories.canRedo(assetID) }

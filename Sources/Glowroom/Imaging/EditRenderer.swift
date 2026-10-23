@@ -6,12 +6,14 @@ enum EditRenderError: LocalizedError, Equatable {
     case unavailable
     case oversizedPreview
     case insufficientMaskMemory
+    case unsupportedSpatialRadius
 
     var errorDescription: String? {
         switch self {
         case .unavailable: "Die Bildbearbeitung konnte nicht gerendert werden."
         case .oversizedPreview: "Die Vorschau ist für die Bildbearbeitung zu groß."
         case .insufficientMaskMemory: "Die Vorschau mit Schärfung, Masken oder Retusche überschreitet das verfügbare Speicherbudget. Verkleinere die Vorschau oder reduziere vorübergehend die Korrekturen."
+        case .unsupportedSpatialRadius: "Dieses Bild benötigt einen zu großen räumlichen Float-Filter. Deaktiviere Präsenz, Entrauschen und Schärfen oder verwende eine kleinere Bildquelle."
         }
     }
 }
@@ -27,6 +29,10 @@ enum EditRenderer {
     /// manages its temporary texture budget; render concurrency is bounded above.
     final class Session: @unchecked Sendable {
         let context: CIContext
+        private let preciseContext: CIContext
+        func context(for version: ToneProcessingVersion) -> CIContext {
+            version == .consistentV2 ? preciseContext : context
+        }
         private let cachesPrefix: Bool
         private let lock = NSLock()
         private var original: CGImage?
@@ -48,6 +54,7 @@ enum EditRenderer {
             let luminance: Double
             let color: Double
             let hdr: Bool
+            let version: ToneProcessingVersion
         }
 
         init(cacheIntermediates: Bool = false, lowPriority: Bool, softwareRenderer: Bool = false) {
@@ -63,6 +70,9 @@ enum EditRenderer {
             // The automatic production path retains Core Image's own fallback.
             if softwareRenderer { options[.useSoftwareRenderer] = true }
             context = CIContext(options: options)
+            options[.workingFormat] = CIFormat.RGBAf
+            options[.name] = lowPriority ? "Glowroom precise background" : "Glowroom precise interactive"
+            preciseContext = CIContext(options: options)
         }
 
         fileprivate func prefix(_ bitmap: PreviewBitmap, settings: EditSettings, extent: CGRect, scale: Double) throws -> CIImage {
@@ -76,6 +86,7 @@ enum EditRenderer {
                     noise = nil
                     balanceKey = nil
                     context.clearCaches()
+                    preciseContext.clearCaches()
                     lock.unlock()
                 }
                 return try EditRenderer.prefix(CIImage(cgImage: bitmap.image), original: bitmap.image,
@@ -96,9 +107,10 @@ enum EditRenderer {
                 // Old-photo intermediates cannot help this source. This is a
                 // thread-safe cache hint; in-flight renders keep their resources.
                 context.clearCaches()
+                preciseContext.clearCaches()
             }
             let noiseKey = NoiseKey(luminance: settings.luminanceNoiseReduction, color: settings.colorNoiseReduction,
-                                    hdr: settings.developColor.hdrEnabled)
+                                    hdr: settings.developColor.hdrEnabled, version: settings.toneProcessingVersion)
             if noise != noiseKey {
                 denoised = try EditRenderer.denoise(base!, settings: settings, extent: extent, scale: scale)
                 noise = noiseKey
@@ -178,7 +190,8 @@ enum EditRenderer {
     /// Runs only inside AdjustedPreviewPipeline's existing worker. Reuses the
     /// lane's CIContext and preserves the developed base's profile and alpha.
     static func resized(_ bitmap: PreviewBitmap, width: Int, height: Int,
-                        priority: PreviewPriority) throws -> PreviewBitmap {
+                        priority: PreviewPriority,
+                        toneProcessingVersion: ToneProcessingVersion = .legacyV1) throws -> PreviewBitmap {
         try Task.checkCancellation()
         let original = bitmap.image
         guard width > 0, height > 0, width <= original.width, height <= original.height,
@@ -191,13 +204,17 @@ enum EditRenderer {
             let extent = CGRect(x: 0, y: 0, width: width, height: height)
             let output = try rasterOutput(for: original, developing: false)
             let session = priority == .selected ? interactive : background
+            let context = session.context(for: toneProcessingVersion)
+            let format: CIFormat = toneProcessingVersion == .consistentV2 ? .RGBAf : output.format
+            let colorSpace = toneProcessingVersion == .consistentV2 && output.colorSpace.model == .monochrome
+                ? CGColorSpace(name: CGColorSpace.extendedLinearSRGB)! : output.colorSpace
             let renderSpan = PipelineTrace.begin(.render)
             defer { renderSpan.end() }
-            guard let result = session.context.createCGImage(image.cropped(to: extent), from: extent,
-                                                             format: output.format, colorSpace: output.colorSpace, deferred: false)
+            guard let result = context.createCGImage(image.cropped(to: extent), from: extent,
+                                                             format: format, colorSpace: colorSpace, deferred: false)
             else { throw EditRenderError.unavailable }
             try Task.checkCancellation()
-            return PreviewBitmap(image: result, sourceLongEdge: bitmap.sourceLongEdge)
+            return PreviewBitmap(image: result, sourceLongEdge: bitmap.sourceLongEdge, rangeProvenance: bitmap.rangeProvenance)
         }
     }
 
@@ -222,10 +239,12 @@ enum EditRenderer {
         // preview pipeline. The export graph has its separate full-size budget.
         let globalBytes = UInt64(original.width) * UInt64(original.height)
             * (DevelopSharpening.additionalBytesPerPixel(settings: settings)
-                + additionalColorOutputBytesPerPixel(for: original, settings: settings))
+                + additionalColorOutputBytesPerPixel(for: original, settings: settings)
+                + LocalAdjustmentRenderer.additionalToneWorkingBytesPerPixel(version: settings.toneProcessingVersion))
         guard let localBytes = LocalAdjustmentRenderer.estimatedAdditionalBytes(adjustments: settings.localAdjustments,
             width: original.width, height: original.height,
-            additionalRenderCount: DevelopGeometryRenderer.replacementCount(in: settings.developGeometry)),
+            additionalRenderCount: DevelopGeometryRenderer.replacementCount(in: settings.developGeometry),
+            toneProcessingVersion: settings.toneProcessingVersion),
               let geometryBytes = DevelopGeometryRenderer.estimatedAdditionalBytes(geometry: settings.developGeometry,
                 width: original.width, height: original.height,
                 replacementColorBytesPerPixel: replacementColorBytesPerPixel(settings: settings)),
@@ -250,7 +269,8 @@ enum EditRenderer {
             let maskCache = bitmap.resourceOwner == nil ? session.localMaskCache : nil
             let image = try LocalAdjustmentRenderer.apply(to: global, adjustments: settings.localAdjustments,
                                                           extent: extent, scale: scale, cache: maskCache,
-                                                          preservesExtendedRange: settings.developColor.hdrEnabled)
+                                                          preservesExtendedRange: settings.developColor.hdrEnabled,
+            toneProcessingVersion: settings.toneProcessingVersion)
             let replacements = try replacementImages(original, settings: settings, extent: extent,
                 scale: scale, maskCache: maskCache, sourcePixelScale: bitmap.sourcePixelScale)
             let developed = try DevelopGeometryRenderer.apply(to: image,
@@ -261,12 +281,12 @@ enum EditRenderer {
             graphSpan.end(); graphEnded = true
             let renderSpan = PipelineTrace.begin(.render)
             defer { renderSpan.end() }
-            guard let rendered = session.context.createCGImage(developed, from: outputExtent,
+            guard let rendered = session.context(for: settings.toneProcessingVersion).createCGImage(developed, from: outputExtent,
                 format: output.format, colorSpace: output.colorSpace, deferred: false) else {
                 throw EditRenderError.unavailable
             }
             try Task.checkCancellation()
-            return PreviewBitmap(image: rendered, sourceLongEdge: bitmap.sourceLongEdge)
+            return PreviewBitmap(image: rendered, sourceLongEdge: bitmap.sourceLongEdge, rangeProvenance: bitmap.rangeProvenance)
         }
     }
 
@@ -282,10 +302,24 @@ enum EditRenderer {
         let prefix = try prefix(image, original: original, settings: settings, extent: extent, scale: scale)
         let global = try manualAdjustments(prefix, settings: settings, extent: extent, scale: scale)
         let local = try LocalAdjustmentRenderer.apply(to: global, adjustments: settings.localAdjustments,
-            extent: extent, scale: scale, preservesExtendedRange: settings.developColor.hdrEnabled)
+            extent: extent, scale: scale, preservesExtendedRange: settings.developColor.hdrEnabled,
+            toneProcessingVersion: settings.toneProcessingVersion)
         let replacements = try replacementImages(original, settings: settings, extent: extent, scale: scale, maskCache: nil)
         return try DevelopGeometryRenderer.apply(to: local, geometry: settings.developGeometry, extent: extent,
                                                  replacementImages: replacements)
+    }
+
+    /// Shared precision analysis graph. Reuses the decoded source and cached
+    /// prefix, retaining every active global setting before output quantization.
+    /// Source masks, retouch and geometry are deliberately excluded.
+    static func globalGraph(_ bitmap: PreviewBitmap, settings: EditSettings, session: Session) throws -> CIImage {
+        try Task.checkCancellation()
+        let settings = settings.normalized
+        let extent = CGRect(x: 0, y: 0, width: bitmap.image.width, height: bitmap.image.height)
+        let scale = max(0.25, Double(max(bitmap.image.width, bitmap.image.height)) / 1_600)
+        let base = try session.prefix(bitmap, settings: settings, extent: extent, scale: scale)
+        return try manualAdjustments(base, settings: settings, extent: extent, scale: scale,
+                                     sourcePixelScale: bitmap.sourcePixelScale)
     }
 
     static func manualAdjustments(_ input: CIImage, settings: EditSettings,
@@ -296,22 +330,30 @@ enum EditRenderer {
         var image = try DevelopColorAdjustments.input(input, settings: settings.developColor, extent: extent)
         if settings.exposure != 0 || settings.contrast != 0 || settings.highlights != 0 || settings.shadows != 0 ||
             settings.whites != 0 || settings.blacks != 0 || settings.dehaze != 0 || settings.vibrance != 0 || settings.saturation != 0 {
-            guard let result = toneKernel?.apply(extent: extent, arguments: [
-                image, settings.exposure, settings.contrast / 100,
-                settings.highlights / 100, settings.shadows / 100,
-                settings.whites / 100, settings.blacks / 100,
-                settings.dehaze / 100, settings.vibrance / 100, settings.saturation / 100, extended ? 1.0 : 0.0
-            ]) else { throw EditRenderError.unavailable }
-            image = result
+            if settings.toneProcessingVersion == .consistentV2 {
+                image = try TonePipelineV2.tone(image, settings: settings, extent: extent)
+            } else {
+                guard let result = toneKernel?.apply(extent: extent, arguments: [
+                    image, settings.exposure, settings.contrast / 100,
+                    settings.highlights / 100, settings.shadows / 100,
+                    settings.whites / 100, settings.blacks / 100,
+                    settings.dehaze / 100, settings.vibrance / 100, settings.saturation / 100, extended ? 1.0 : 0.0
+                ]) else { throw EditRenderError.unavailable }
+                image = result
+            }
         }
         try Task.checkCancellation()
         if settings.texture != 0 || settings.clarity != 0 {
-            let fine = settings.texture != 0 ? blur(image, radius: 2.5 * scale, extent: extent) : image
-            let broad = settings.clarity != 0 ? blur(image, radius: 18 * scale, extent: extent) : image
-            guard let result = presenceKernel?.apply(extent: extent, arguments: [
-                image, fine, broad, settings.texture / 100, settings.clarity / 100, extended ? 1.0 : 0.0
-            ]) else { throw EditRenderError.unavailable }
-            image = result
+            let fine = settings.texture != 0 ? try blur(image, radius: 2.5 * scale, extent: extent, version: settings.toneProcessingVersion) : image
+            let broad = settings.clarity != 0 ? try blur(image, radius: 18 * scale, extent: extent, version: settings.toneProcessingVersion) : image
+            if settings.toneProcessingVersion == .consistentV2 {
+                image = try TonePipelineV2.presence(image, fine: fine, broad: broad, settings: settings, extent: extent)
+            } else {
+                guard let result = presenceKernel?.apply(extent: extent, arguments: [
+                    image, fine, broad, settings.texture / 100, settings.clarity / 100, extended ? 1.0 : 0.0
+                ]) else { throw EditRenderError.unavailable }
+                image = result
+            }
         }
         try Task.checkCancellation()
         image = try DevelopColorAdjustments.output(image, settings: settings.developColor, extent: extent)
@@ -342,7 +384,8 @@ enum EditRenderer {
             let global = try manualAdjustments(base, settings: settings, extent: extent, scale: scale,
                                                sourcePixelScale: sourcePixelScale)
             result[stroke.id] = try LocalAdjustmentRenderer.apply(to: global, adjustments: settings.localAdjustments,
-                extent: extent, scale: scale, cache: maskCache, preservesExtendedRange: settings.developColor.hdrEnabled)
+                extent: extent, scale: scale, cache: maskCache, preservesExtendedRange: settings.developColor.hdrEnabled,
+            toneProcessingVersion: settings.toneProcessingVersion)
         }
         return result
     }
@@ -390,8 +433,12 @@ enum EditRenderer {
         guard settings.luminanceNoiseReduction > 0 || settings.colorNoiseReduction > 0 else { return image }
         let luminance = settings.luminanceNoiseReduction / 100
         let chroma = settings.colorNoiseReduction / 100
-        let lumaBlur = luminance > 0 ? blur(image, radius: (1 + 2 * luminance) * scale, extent: extent) : image
-        let chromaBlur = chroma > 0 ? blur(image, radius: (2 + 4 * chroma) * scale, extent: extent) : image
+        let lumaBlur = luminance > 0 ? try blur(image, radius: (1 + 2 * luminance) * scale, extent: extent, version: settings.toneProcessingVersion) : image
+        let chromaBlur = chroma > 0 ? try blur(image, radius: (2 + 4 * chroma) * scale, extent: extent, version: settings.toneProcessingVersion) : image
+        if settings.toneProcessingVersion == .consistentV2 {
+            return try TonePipelineV2.denoise(image, luma: lumaBlur, chroma: chromaBlur,
+                luminance: luminance, color: chroma, extent: extent)
+        }
         guard let result = denoiseKernel?.apply(extent: extent, arguments: [image, lumaBlur, chromaBlur, luminance, chroma,
             settings.developColor.hdrEnabled ? 1.0 : 0.0]) else {
             throw EditRenderError.unavailable
@@ -399,8 +446,12 @@ enum EditRenderer {
         return result
     }
 
-    private static func blur(_ image: CIImage, radius: Double, extent: CGRect) -> CIImage {
-        image.clampedToExtent()
+    private static func blur(_ image: CIImage, radius: Double, extent: CGRect,
+                             version: ToneProcessingVersion) throws -> CIImage {
+        if version == .consistentV2 {
+            return try PreciseGaussianBlur.apply(image: image, radius: radius, extent: extent)
+        }
+        return image.clampedToExtent()
             .applyingFilter("CIGaussianBlur", parameters: [kCIInputRadiusKey: radius])
             .cropped(to: extent)
     }

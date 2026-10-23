@@ -27,7 +27,7 @@ struct DevelopRepairWorkspaceTests {
         #expect(await probe.state().sourceCalls == 1)
         #expect(!fixture.workspace.repairBusy)
         fixture.editor.undo(assetID: fixture.asset.id)
-        #expect(fixture.editor.settings(for: fixture.asset.id) == .neutral)
+        #expect(fixture.editor.settings(for: fixture.asset.id) == .newEditingSettings)
         #expect(!fixture.editor.canUndo(assetID: fixture.asset.id))
         #expect(fixture.editor.canRedo(assetID: fixture.asset.id))
         #expect(await fixture.editor.flush())
@@ -41,7 +41,7 @@ struct DevelopRepairWorkspaceTests {
         let path = try [repairWorkspacePoint(0.5, 0.5), repairWorkspacePoint(0.6, 0.5)]
         fixture.beginPaint(path)
         #expect(fixture.workspace.repairTask == nil)
-        #expect(fixture.editor.settings(for: fixture.asset.id) == .neutral)
+        #expect(fixture.editor.settings(for: fixture.asset.id) == .newEditingSettings)
         #expect(fixture.workspace.errorMessage?.contains("Quellbereich") == true)
         #expect(!fixture.workspace.repairBusy)
 
@@ -86,7 +86,7 @@ struct DevelopRepairWorkspaceTests {
         defer { unavailable.workspace.clear() }
         unavailable.workspace.repairObjectDetection = true
         try await unavailable.paint(path)
-        #expect(unavailable.editor.settings(for: unavailable.asset.id) == .neutral)
+        #expect(unavailable.editor.settings(for: unavailable.asset.id) == .newEditingSettings)
         #expect(unavailable.workspace.errorMessage == DevelopRepairAnalysisError.unavailable.localizedDescription)
         #expect(await failed.state().sourceCalls == 0)
         #expect(!unavailable.workspace.repairBusy)
@@ -121,7 +121,7 @@ struct DevelopRepairWorkspaceTests {
         #expect(fixture.workspace.repairBusy)
         fixture.editor.undo(assetID: fixture.asset.id)
         latch.releaseAll(); await operation.value
-        #expect(fixture.editor.settings(for: fixture.asset.id) == .neutral)
+        #expect(fixture.editor.settings(for: fixture.asset.id) == .newEditingSettings)
         #expect(fixture.editor.canRedo(assetID: fixture.asset.id))
         #expect(!fixture.workspace.repairBusy && fixture.workspace.repairTask == nil)
         fixture.editor.redo(assetID: fixture.asset.id)
@@ -144,7 +144,7 @@ struct DevelopRepairWorkspaceTests {
         fixture.workspace.bind(source: original)
         fixture.workspace.tool = .repair
         latch.releaseAll(); await operation.value
-        #expect(fixture.editor.settings(for: fixture.asset.id) == .neutral)
+        #expect(fixture.editor.settings(for: fixture.asset.id) == .newEditingSettings)
         #expect(!fixture.workspace.repairBusy)
         #expect(fixture.workspace.repairCandidates.isEmpty)
         #expect(await fixture.editor.flush())
@@ -162,7 +162,7 @@ struct DevelopRepairWorkspaceTests {
         fixture.workspace.cancelRepairWork()
         #expect(!fixture.workspace.repairBusy && fixture.workspace.repairTask == nil)
         latch.releaseAll(); await operation.value
-        #expect(fixture.editor.settings(for: fixture.asset.id) == .neutral)
+        #expect(fixture.editor.settings(for: fixture.asset.id) == .newEditingSettings)
         #expect(fixture.workspace.errorMessage == nil)
         #expect(await fixture.editor.flush())
     }
@@ -208,7 +208,7 @@ struct DevelopRepairWorkspaceTests {
         #expect(await probe.state().replacementCalls == 1)
         #expect(fixture.editor.settings(for: fixture.asset.id).developGeometry.retouchStrokes == [preview])
         fixture.editor.undo(assetID: fixture.asset.id)
-        #expect(fixture.editor.settings(for: fixture.asset.id) == .neutral)
+        #expect(fixture.editor.settings(for: fixture.asset.id) == .newEditingSettings)
         #expect(!fixture.editor.canUndo(assetID: fixture.asset.id))
         #expect(await fixture.editor.flush())
     }
@@ -275,7 +275,7 @@ struct DevelopRepairWorkspaceTests {
         other.editor.undo(assetID: other.asset.id)
         latch.releaseAll(); await operation.value
         #expect(!other.workspace.repairBusy)
-        #expect(other.editor.settings(for: other.asset.id) == .neutral)
+        #expect(other.editor.settings(for: other.asset.id) == .newEditingSettings)
         #expect(await fixture.editor.flush())
         #expect(await other.editor.flush())
     }
@@ -293,7 +293,7 @@ struct DevelopRepairWorkspaceTests {
         #expect(await probe.state().sourceCalls == 0)
         #expect(fixture.editor.canUndo(assetID: fixture.asset.id))
         fixture.editor.undo(assetID: fixture.asset.id)
-        #expect(fixture.editor.settings(for: fixture.asset.id) == .neutral)
+        #expect(fixture.editor.settings(for: fixture.asset.id) == .newEditingSettings)
         #expect(await fixture.editor.flush())
     }
 
@@ -320,7 +320,7 @@ struct DevelopRepairWorkspaceTests {
         fixture.editor.undo(assetID: fixture.asset.id)
         #expect(fixture.editor.settings(for: fixture.asset.id).developGeometry.retouchStrokes == [original])
         fixture.editor.undo(assetID: fixture.asset.id)
-        #expect(fixture.editor.settings(for: fixture.asset.id) == .neutral)
+        #expect(fixture.editor.settings(for: fixture.asset.id) == .newEditingSettings)
         #expect(!fixture.editor.canUndo(assetID: fixture.asset.id))
         #expect(await fixture.editor.flush())
     }
@@ -442,7 +442,7 @@ private struct RepairWorkspaceFixture {
         workspace.bind(source: source)
         let bitmap = PreviewBitmap(image: image)
         workspace.receive(bitmap, sourceBitmap: bitmap)
-        workspace.markDisplayed(source: source, settings: .neutral)
+        workspace.markDisplayed(source: source, settings: editor.settings(for: asset.id))
         workspace.tool = .repair
         return Self(asset: asset, workspace: workspace, editor: editor)
     }

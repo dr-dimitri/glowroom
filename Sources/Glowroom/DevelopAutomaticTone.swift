@@ -26,7 +26,7 @@ extension DevelopWorkspace {
                 if let self, self.automaticToneIdentity == request { self.automaticToneTask = nil }
             }
             do {
-                let value = try await estimateTone(control, bitmap, baseline.settings)
+                let result = try await estimateTone(control, bitmap, baseline.settings)
                 try Task.checkCancellation()
                 guard let self, self.automaticToneIdentity == request,
                       self.sourceIdentity == source, self.tool == .basic,
@@ -35,7 +35,12 @@ extension DevelopWorkspace {
                       editor.snapshot(for: assetID) == baseline,
                       editor.localRevision(for: assetID) == revision,
                       editor.aiEditSessionID == session, editor.aiEditGeneration == generation,
-                      !editor.hasActiveEditing(assetID: assetID), value.isFinite else { return }
+                      !editor.hasActiveEditing(assetID: assetID) else { return }
+                guard case .value(let value) = result else {
+                    if case .noProposal(let reason) = result { self.errorMessage = reason.explanation }
+                    return
+                }
+                guard value.isFinite else { throw EditRenderError.unavailable }
                 var settings = baseline.settings
                 settings[keyPath: control.keyPath] = min(control.range.upperBound, max(control.range.lowerBound, value))
                 // No group stays open across the asynchronous estimate. This
@@ -44,9 +49,12 @@ extension DevelopWorkspace {
             } catch is CancellationError { }
             catch {
                 guard let self, self.automaticToneIdentity == request, !Task.isCancelled,
-                      self.sourceIdentity == source, isCurrent(),
+                      self.sourceIdentity == source, self.tool == .basic,
+                      self.originalBitmap.map({ ObjectIdentifier($0.image) }) == baseID,
+                      editor.canEdit, isCurrent(), editor.snapshot(for: assetID) == baseline,
                       editor.localRevision(for: assetID) == revision,
-                      editor.aiEditSessionID == session, editor.aiEditGeneration == generation else { return }
+                      editor.aiEditSessionID == session, editor.aiEditGeneration == generation,
+                      !editor.hasActiveEditing(assetID: assetID) else { return }
                 self.errorMessage = "Der automatische Tonwert konnte nicht berechnet werden. Der bisherige Wert bleibt erhalten."
             }
         }

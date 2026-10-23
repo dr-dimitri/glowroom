@@ -8,10 +8,12 @@ import Testing
 @Suite("Inline mask workspace", .serialized)
 @MainActor
 struct InlineMaskWorkspaceTests {
-    @Test func liveSettingsAndCanvasShareOneSessionAndUndoEachGestureImmediately() async throws {
+    @Test(arguments: ToneProcessingVersion.allCases)
+    func liveSettingsAndCanvasShareOneSessionAndUndoEachGestureImmediately(version: ToneProcessingVersion) async throws {
         let f = try await fixture()
         defer { try? FileManager.default.removeItem(at: f.directory) }
-        f.editor.setSettings(EditSettings(exposure: 0.5), for: f.asset.id)
+        let baseline = EditSettings(exposure: 0.5, toneProcessingVersion: version)
+        f.editor.setSettings(baseline, for: f.asset.id)
         let workspace = InlineMaskWorkspace()
         let model = try model(settings: f.editor.settings(for: f.asset.id))
         #expect(workspace.open(asset: f.asset, source: f.source, settings: model.settings, editor: f.editor, library: f.library, model: model))
@@ -29,13 +31,13 @@ struct InlineMaskWorkspaceTests {
         #expect(workspace.isCurrent)
         let accepted = model.settings
         workspace.comparesBefore = true
-        #expect(workspace.previewSettings == EditSettings(exposure: 0.5))
+        #expect(workspace.previewSettings == baseline)
         workspace.comparesBefore = false
         workspace.undo()
         #expect(workspace.isPresented && workspace.isCurrent)
         #expect(f.editor.settings(for: f.asset.id) == added)
         workspace.undo()
-        #expect(f.editor.settings(for: f.asset.id) == EditSettings(exposure: 0.5))
+        #expect(f.editor.settings(for: f.asset.id) == baseline)
         #expect(!model.canUndo)
         workspace.redo(); workspace.redo()
         #expect(f.editor.settings(for: f.asset.id) == accepted)
@@ -54,7 +56,8 @@ struct InlineMaskWorkspaceTests {
         let f = try await fixture()
         defer { try? FileManager.default.removeItem(at: f.directory) }
         let workspace = InlineMaskWorkspace(), model = try model()
-        #expect(workspace.open(asset: f.asset, source: f.source, settings: .neutral, editor: f.editor, library: f.library, model: model))
+        #expect(f.editor.settings(for: f.asset.id) == .newEditingSettings)
+        #expect(workspace.open(asset: f.asset, source: f.source, settings: f.editor.settings(for: f.asset.id), editor: f.editor, library: f.library, model: model))
         try await wait { workspace.canvasSize != nil }
         model.add(.brush)
         workspace.brush.appendPoint(try MaskPoint(x: 4, y: 5))
@@ -170,7 +173,7 @@ struct InlineMaskWorkspaceTests {
         let f = try await fixture(nativeStore: false)
         defer { try? FileManager.default.removeItem(at: f.directory) }
         let workspace = InlineMaskWorkspace(), model = try model()
-        #expect(workspace.open(asset: f.asset, source: f.source, settings: .neutral,
+        #expect(workspace.open(asset: f.asset, source: f.source, settings: f.editor.settings(for: f.asset.id),
             editor: f.editor, library: f.library, model: model))
         try await wait { workspace.canvasSize != nil }
         model.add(.linear)
@@ -209,7 +212,7 @@ struct InlineMaskWorkspaceTests {
         let f = try await fixture(nativeStore: false)
         defer { try? FileManager.default.removeItem(at: f.directory) }
         let workspace = InlineMaskWorkspace(), model = try model()
-        #expect(workspace.open(asset: f.asset, source: f.source, settings: .neutral,
+        #expect(workspace.open(asset: f.asset, source: f.source, settings: f.editor.settings(for: f.asset.id),
             editor: f.editor, library: f.library, model: model))
         try await wait { workspace.canvasSize != nil }
         model.add(.brush)
@@ -239,7 +242,7 @@ struct InlineMaskWorkspaceTests {
         let f = try await fixture(nativeStore: false)
         defer { try? FileManager.default.removeItem(at: f.directory) }
         let workspace = InlineMaskWorkspace(), model = try model()
-        #expect(workspace.open(asset: f.asset, source: f.source, settings: .neutral,
+        #expect(workspace.open(asset: f.asset, source: f.source, settings: f.editor.settings(for: f.asset.id),
             editor: f.editor, library: f.library, model: model))
         try await wait { workspace.canvasSize != nil }
         model.add(.linear)
@@ -282,7 +285,7 @@ struct InlineMaskWorkspaceTests {
         let f = try await fixture(nativeStore: false)
         defer { try? FileManager.default.removeItem(at: f.directory) }
         let workspace = InlineMaskWorkspace(), model = try model()
-        #expect(workspace.open(asset: f.asset, source: f.source, settings: .neutral,
+        #expect(workspace.open(asset: f.asset, source: f.source, settings: f.editor.settings(for: f.asset.id),
             editor: f.editor, library: f.library, model: model))
         try await wait { workspace.canvasSize != nil }
         model.add(.linear)
@@ -321,7 +324,7 @@ struct InlineMaskWorkspaceTests {
         defer { try? FileManager.default.removeItem(at: f.directory) }
         let workspace = InlineMaskWorkspace()
         let model = try model(generator: { _, _, _ in try LocalMaskRaster(width: 2, height: 1, bytes: Data([0, 255])) })
-        #expect(workspace.open(asset: f.asset, source: f.source, settings: .neutral,
+        #expect(workspace.open(asset: f.asset, source: f.source, settings: f.editor.settings(for: f.asset.id),
             editor: f.editor, library: f.library, model: model))
         try await wait { workspace.canvasSize != nil }
         for kind in LocalMaskCreation.allCases {
@@ -343,7 +346,7 @@ struct InlineMaskWorkspaceTests {
         let f = try await fixture(nativeStore: false)
         defer { try? FileManager.default.removeItem(at: f.directory) }
         let workspace = InlineMaskWorkspace(), model = try model()
-        #expect(workspace.open(asset: f.asset, source: f.source, settings: .neutral,
+        #expect(workspace.open(asset: f.asset, source: f.source, settings: f.editor.settings(for: f.asset.id),
             editor: f.editor, library: f.library, model: model))
         try await wait { workspace.canvasSize != nil }
         model.add(.brush)
@@ -387,7 +390,7 @@ struct InlineMaskWorkspaceTests {
         let f = try await fixture()
         defer { try? FileManager.default.removeItem(at: f.directory) }
         let workspace = InlineMaskWorkspace(), model = try model()
-        #expect(workspace.open(asset: f.asset, source: f.source, settings: .neutral, editor: f.editor, library: f.library, model: model))
+        #expect(workspace.open(asset: f.asset, source: f.source, settings: f.editor.settings(for: f.asset.id), editor: f.editor, library: f.library, model: model))
         try await wait { workspace.canvasSize != nil }
         model.add(.radial)
         let radial = model.settings
@@ -443,7 +446,7 @@ struct InlineMaskWorkspaceTests {
         let f = try await fixture(nativeStore: false)
         defer { try? FileManager.default.removeItem(at: f.directory) }
         let workspace = InlineMaskWorkspace(), model = try model()
-        #expect(workspace.open(asset: f.asset, source: f.source, settings: .neutral,
+        #expect(workspace.open(asset: f.asset, source: f.source, settings: f.editor.settings(for: f.asset.id),
             editor: f.editor, library: f.library, model: model))
         try await wait { workspace.canvasSize != nil }
         model.add(.brush)
@@ -550,7 +553,7 @@ struct InlineMaskWorkspaceTests {
         let f = try await fixture(nativeStore: false)
         defer { try? FileManager.default.removeItem(at: f.directory) }
         let workspace = InlineMaskWorkspace(), model = try model()
-        #expect(workspace.open(asset: f.asset, source: f.source, settings: .neutral,
+        #expect(workspace.open(asset: f.asset, source: f.source, settings: f.editor.settings(for: f.asset.id),
             editor: f.editor, library: f.library, model: model))
         try await wait { workspace.canvasSize != nil }
         model.add(.linear)

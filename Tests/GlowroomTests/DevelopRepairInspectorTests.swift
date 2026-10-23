@@ -100,7 +100,7 @@ struct DevelopRepairInspectorTests {
         #expect(fixture.workspace.repairRadius == 0.0005)
         #expect(host.accessibleText.contains("0.1 px"))
         #expect(try #require(host.element("feather")).isAccessibilityEnabled())
-        #expect(fixture.editor.settings(for: fixture.asset.id) == .neutral)
+        #expect(fixture.editor.settings(for: fixture.asset.id) == .newEditingSettings)
         #expect(await fixture.editor.flush())
     }
 
@@ -254,7 +254,7 @@ struct DevelopRepairInspectorTests {
         fixture.editor.undo(assetID: fixture.asset.id)
         #expect(fixture.editor.settings(for: fixture.asset.id).developGeometry.retouchStrokes == [original])
         fixture.editor.undo(assetID: fixture.asset.id)
-        #expect(fixture.editor.settings(for: fixture.asset.id) == .neutral)
+        #expect(fixture.editor.settings(for: fixture.asset.id) == .newEditingSettings)
         #expect(!fixture.editor.canUndo(assetID: fixture.asset.id))
         #expect(await fixture.editor.flush())
     }
@@ -299,7 +299,7 @@ private struct RepairInspectorFixture {
             workspace.bind(source: source)
             let bitmap = PreviewBitmap(image: image)
             workspace.receive(bitmap, sourceBitmap: bitmap)
-            workspace.markDisplayed(source: source, settings: .neutral)
+            workspace.markDisplayed(source: source, settings: editor.settings(for: asset.id))
         }
         return Self(asset: asset, workspace: workspace, editor: editor)
     }

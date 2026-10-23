@@ -28,7 +28,7 @@ struct DevelopRepairCanvasInputTests {
         fixture.editor.undo(assetID: fixture.asset.id)
         #expect(fixture.editor.settings(for: fixture.asset.id).developGeometry.retouchStrokes.count == 1)
         fixture.editor.undo(assetID: fixture.asset.id)
-        #expect(fixture.editor.settings(for: fixture.asset.id) == .neutral)
+        #expect(fixture.editor.settings(for: fixture.asset.id) == .newEditingSettings)
         fixture.editor.redo(assetID: fixture.asset.id); fixture.editor.redo(assetID: fixture.asset.id)
         #expect(fixture.editor.settings(for: fixture.asset.id) == settings)
         #expect(await fixture.editor.flush())
@@ -104,7 +104,7 @@ struct DevelopRepairCanvasInputTests {
         let expectedTarget = try LocalMaskPoint(x: 0.3, y: 0.35)
         #expect(strokes.count == 1 && strokes.first?.target == expectedTarget)
         fixture.editor.undo(assetID: fixture.asset.id)
-        #expect(fixture.editor.settings(for: fixture.asset.id) == .neutral)
+        #expect(fixture.editor.settings(for: fixture.asset.id) == .newEditingSettings)
         #expect(await fixture.editor.flush())
     }
 
@@ -190,7 +190,7 @@ struct DevelopRepairCanvasInputTests {
         #expect(host.doubleClicks == 0)
         #expect(fixture.editor.settings(for: fixture.asset.id).developGeometry.retouchStrokes == [stroke])
         fixture.editor.undo(assetID: fixture.asset.id)
-        #expect(fixture.editor.settings(for: fixture.asset.id) == .neutral)
+        #expect(fixture.editor.settings(for: fixture.asset.id) == .newEditingSettings)
         #expect(!fixture.editor.canUndo(assetID: fixture.asset.id))
         #expect(await fixture.editor.flush())
     }
@@ -205,7 +205,7 @@ struct DevelopRepairCanvasInputTests {
         try host.send(.leftMouseUp, at: CGPoint(x: 0.5, y: 0.5))
         try host.cancel(reason)
         try await Task.sleep(for: .seconds(NSEvent.doubleClickInterval + 0.1))
-        #expect(fixture.editor.settings(for: fixture.asset.id) == .neutral)
+        #expect(fixture.editor.settings(for: fixture.asset.id) == .newEditingSettings)
         #expect(fixture.workspace.repairSource == nil)
         #expect(!fixture.workspace.repairBusy && fixture.workspace.repairTask == nil)
         #expect(!fixture.editor.canUndo(assetID: fixture.asset.id))
@@ -248,7 +248,7 @@ struct DevelopRepairCanvasInputTests {
         #expect(fixture.editor.settings(for: fixture.asset.id) == accepted)
         #expect(fixture.editor.canUndo(assetID: fixture.asset.id))
         fixture.editor.undo(assetID: fixture.asset.id)
-        #expect(fixture.editor.settings(for: fixture.asset.id) == .neutral)
+        #expect(fixture.editor.settings(for: fixture.asset.id) == .newEditingSettings)
         #expect(await fixture.editor.flush())
     }
 
@@ -270,12 +270,12 @@ struct DevelopRepairCanvasInputTests {
         // click paint or select a clone source. Cancellation belongs to down.
         try await Task.sleep(for: .seconds(NSEvent.doubleClickInterval + 0.1))
         #expect(host.doubleClicks == 0)
-        #expect(fixture.editor.settings(for: fixture.asset.id) == .neutral)
+        #expect(fixture.editor.settings(for: fixture.asset.id) == .newEditingSettings)
         #expect(fixture.workspace.repairSource == nil)
         #expect(!fixture.workspace.repairBusy && fixture.workspace.repairTask == nil)
         try host.send(.leftMouseUp, at: point, clickCount: 2)
         #expect(host.doubleClicks == 1)
-        #expect(fixture.editor.settings(for: fixture.asset.id) == .neutral)
+        #expect(fixture.editor.settings(for: fixture.asset.id) == .newEditingSettings)
         #expect(fixture.workspace.repairSource == nil)
         #expect(!fixture.workspace.repairBusy && fixture.workspace.repairTask == nil)
         #expect(!fixture.editor.canUndo(assetID: fixture.asset.id))
@@ -297,7 +297,7 @@ struct DevelopRepairCanvasInputTests {
         #expect(fixture.editor.localRevision(for: fixture.asset.id) == revision)
         #expect(fixture.workspace.repairRequest != request)
         try await Task.sleep(for: .seconds(NSEvent.doubleClickInterval + 0.1))
-        #expect(fixture.editor.settings(for: fixture.asset.id) == .neutral)
+        #expect(fixture.editor.settings(for: fixture.asset.id) == .newEditingSettings)
         #expect(fixture.workspace.repairSource == nil)
         #expect(!fixture.workspace.repairBusy && fixture.workspace.repairTask == nil)
         #expect(host.doubleClicks == 0)
@@ -319,7 +319,7 @@ struct DevelopRepairCanvasInputTests {
         #expect(fixture.workspace.repairSource == nil)
         try await Task.sleep(for: .seconds(NSEvent.doubleClickInterval + 0.1))
         #expect(fixture.workspace.repairSource == nil)
-        #expect(fixture.editor.settings(for: fixture.asset.id) == .neutral)
+        #expect(fixture.editor.settings(for: fixture.asset.id) == .newEditingSettings)
         #expect(!fixture.workspace.repairBusy && fixture.workspace.repairTask == nil)
         #expect(!fixture.editor.canUndo(assetID: fixture.asset.id))
         #expect(await fixture.editor.flush())
@@ -358,7 +358,7 @@ private struct RepairCanvasFixture {
             provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent)))
         let source = AISourceIdentity.original(.init(fileURL: asset.fileURL, modifiedAt: asset.modifiedAt, fileSize: asset.fileSize))
         workspace.bind(source: source); workspace.receive(bitmap, sourceBitmap: bitmap)
-        workspace.markDisplayed(source: source, settings: .neutral)
+        workspace.markDisplayed(source: source, settings: editor.settings(for: asset.id))
         workspace.tool = .repair; workspace.repairObjectDetection = false
         return Self(asset: asset, editor: editor, workspace: workspace, store: store)
     }

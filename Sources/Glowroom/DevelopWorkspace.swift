@@ -99,7 +99,7 @@ final class DevelopWorkspace: ObservableObject {
     private var identity = UUID()
     typealias Analyze = @Sendable (PreviewBitmap) async throws -> DevelopPreviewAnalysis
     typealias EstimateHorizon = @Sendable (PreviewBitmap) async throws -> Double?
-    typealias EstimateTone = @Sendable (AutomaticToneControl, PreviewBitmap, EditSettings) async throws -> Double
+    typealias EstimateTone = @Sendable (AutomaticToneControl, PreviewBitmap, EditSettings) async throws -> AutomaticToneEstimate
     private let analyze: Analyze
     private let estimateHorizon: EstimateHorizon
     let estimateTone: EstimateTone
@@ -109,7 +109,7 @@ final class DevelopWorkspace: ObservableObject {
         self.repairServices = repairServices
         self.repairAIStore = repairAIStore
         self.estimateHorizon = estimateHorizon ?? { try await DevelopHorizonEstimator.shared.estimate($0) }
-        self.estimateTone = estimateTone ?? { try await AutomaticToneEstimator.shared.value(for: $0, bitmap: $1, settings: $2) }
+        self.estimateTone = estimateTone ?? { try await AutomaticToneEstimator.shared.estimate(for: $0, bitmap: $1, settings: $2) }
         if let analyze { self.analyze = analyze }
         else {
             let worker = DevelopPreviewAnalyzer()

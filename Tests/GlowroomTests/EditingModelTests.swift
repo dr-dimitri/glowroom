@@ -15,6 +15,39 @@ final class EditingModelTests {
 
     deinit { try? FileManager.default.removeItem(at: directory) }
 
+    @Test func newEditsUseV2AndLegacyUpgradeIsOneDurableUndoStep() async throws {
+        let model = EditingModel(directory: directory)
+        try await waitLoaded(model)
+        #expect(model.settings(for: "new") == .newEditingSettings)
+        var newEdit = model.settings(for: "new")
+        newEdit.exposure = 0.75
+        model.setSettings(newEdit, for: "new")
+        model.reset(assetID: "new")
+        #expect(model.settings(for: "new") == .newEditingSettings)
+        model.undo(assetID: "new")
+        #expect(model.settings(for: "new") == newEdit)
+
+        let legacy = EditSettings(exposure: 0.5, contrast: 20)
+        model.setSettings(legacy, for: "old")
+        #expect(await model.finishSaving())
+        model.upgradeToneProcessing(assetID: "old")
+        #expect(model.settings(for: "old") == legacy.upgradedToneProcessing)
+        #expect(await model.finishSaving())
+        #expect(model.canUndo(assetID: "old"))
+        model.undo(assetID: "old")
+        #expect(model.settings(for: "old") == legacy)
+        model.redo(assetID: "old")
+        #expect(model.settings(for: "old") == legacy.upgradedToneProcessing)
+        model.upgradeToneProcessing(assetID: "old")
+        model.undo(assetID: "old")
+        #expect(model.settings(for: "old") == legacy)
+        #expect(await model.finishSaving())
+        let reopened = EditingModel(directory: directory)
+        try await waitLoaded(reopened)
+        #expect(reopened.settings(for: "old") == legacy)
+        #expect(reopened.settings(for: "new") == newEdit)
+    }
+
     @Test
     func loadsExistingRevisionsAndDebouncesLatestValuesPerImage() async throws {
         let legacyWasReleased = try await seedClosedLegacyDatabase(in: directory)
