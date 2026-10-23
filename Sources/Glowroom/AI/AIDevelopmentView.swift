@@ -9,6 +9,7 @@ struct AIDevelopmentView: View {
     @EnvironmentObject private var workspace: DevelopWorkspace
     @StateObject private var model: AIDevelopmentModel
     @ViewState private var showsModels = false
+    @ViewState private var showsSubjectModel = false
 
     @MainActor
     init(library: LibraryModel, model: AIDevelopmentModel? = nil) {
@@ -20,6 +21,19 @@ struct AIDevelopmentView: View {
         editor.canEdit && library.canModify && !library.isImporting && !library.isProjecting
             && !library.comparesOriginal && !library.comparesCurrentSourceWithoutSettings
             && workspace.navigatorImage != nil
+    }
+
+    private var layers: [LocalAdjustment] {
+        library.selectedID.map { editor.settings(for: $0).localAdjustments } ?? []
+    }
+
+    private var validRequest: Bool {
+        if model.createsMask {
+            return layers.count < LocalAdjustment.maximumCount
+                && !model.intent.instruction.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
+        guard let id = model.intent.targetMaskID else { return true }
+        return layers.contains { $0.id == id && $0.isEnabled && $0.mask.opacity > 0 }
     }
 
     var body: some View {
@@ -36,25 +50,60 @@ struct AIDevelopmentView: View {
                     .accessibilityIdentifier("ai-development.models")
             }
 
-            Text("Diese Regler beschreiben deinen Auftrag an das Modell. Das Bild ändert sich erst mit „Vorschlag erstellen“ und „Übernehmen“. Übernommene Werte findest du unter „Entwickeln“.")
+            Text("Aufträge werden erst nach einem Vorschlag und deiner Übernahme gespeichert. Bildkorrekturen und Masken sind in allen Entwicklungsansichten gemeinsam verfügbar.")
                 .font(.system(size: 11)).foregroundStyle(Theme.muted)
                 .fixedSize(horizontal: false, vertical: true)
 
             VStack(alignment: .leading, spacing: 7) {
+                Picker("Aufgabe", selection: $model.createsMask) {
+                    Text("Entwickeln").tag(false)
+                    Text("Neue Maske").tag(true)
+                }.pickerStyle(.segmented).accessibilityIdentifier("ai-development.task")
+                if !model.createsMask {
+                    Picker("Anwenden auf", selection: $model.intent.targetMaskID) {
+                        Text("Gesamtes Bild").tag(Optional<UUID>.none)
+                        ForEach(layers) { layer in
+                            Text(layer.name + (layer.isEnabled && layer.mask.opacity > 0 ? "" : " (ausgeblendet)"))
+                                .tag(Optional(layer.id))
+                        }
+                        if let id = model.intent.targetMaskID, !layers.contains(where: { $0.id == id }) {
+                            Text("Maske nicht mehr verfügbar").tag(Optional(id))
+                        }
+                    }.accessibilityIdentifier("ai-development.scope")
+                    if model.intent.targetMaskID != nil {
+                        Text("Nur die gewählte Maske wird korrigiert. Globale Werte und andere Masken bleiben erhalten.")
+                            .font(.system(size: 10)).foregroundStyle(Theme.muted)
+                    }
+                    if !validRequest {
+                        Text(AIDevelopmentError.unavailableMask.localizedDescription)
+                            .font(.system(size: 10)).foregroundStyle(Theme.muted)
+                    }
+                }
                 Text("Auftrag für den nächsten Vorschlag").font(.system(size: 11, weight: .medium))
-                TextField("Zum Beispiel: natürliches Licht, wärmere Farben", text: $model.intent.instruction, axis: .vertical)
+                TextField(model.createsMask ? "Zum Beispiel: Maskiere den Blumenstrauß" : "Zum Beispiel: natürliches Licht, wärmere Farben", text: $model.intent.instruction, axis: .vertical)
                     .textFieldStyle(.roundedBorder).lineLimit(3...5)
                     .accessibilityIdentifier("ai-development.instruction")
-                intentSlider("Helligkeit", value: $model.intent.brightness,
+                if model.createsMask {
+                    Text("Qwen findet das gewünschte Objekt; das lokale Freistellungsmodell erstellt die Maske. Prüfe die rote Fläche auf dem vollständigen Bild. Nach der Übernahme kannst du sie unter „Masken“ mit Pinsel und Radierer verfeinern.")
+                        .font(.system(size: 10)).foregroundStyle(Theme.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Button("Freistellungsmodell einrichten …") { showsSubjectModel = true }
+                        .controlSize(.small).accessibilityIdentifier("ai-development.subject-model")
+                    if layers.count >= LocalAdjustment.maximumCount {
+                        Text("Pro Foto sind höchstens 16 Masken möglich.").font(.system(size: 10))
+                    }
+                } else {
+                    intentSlider("Helligkeit", value: $model.intent.brightness,
                              low: "Dunkler", high: "Heller", identifier: "brightness")
-                intentSlider("Kontrast", value: $model.intent.contrast,
+                    intentSlider("Kontrast", value: $model.intent.contrast,
                              low: "Weicher", high: "Kräftiger", identifier: "contrast")
-                intentSlider("Wärme", value: $model.intent.warmth,
+                    intentSlider("Wärme", value: $model.intent.warmth,
                              low: "Kühler", high: "Wärmer", identifier: "warmth")
-                intentSlider("Farbkraft", value: $model.intent.color,
+                    intentSlider("Farbkraft", value: $model.intent.color,
                              low: "Gedämpft", high: "Lebendig", identifier: "color")
-                intentSlider("Stärke", value: $model.intent.strength,
+                    intentSlider("Stärke", value: $model.intent.strength,
                              low: "Dezent", high: "Deutlich", identifier: "strength", range: 0...1, neutral: 0.5)
+                }
             }.disabled(model.isRunning)
 
             if model.isRunning {
@@ -71,7 +120,7 @@ struct AIDevelopmentView: View {
                 } label: {
                     Label("Vorschlag erstellen", systemImage: "sparkles").frame(maxWidth: .infinity)
                 }.buttonStyle(.borderedProminent).controlSize(.small)
-                    .disabled(!canRequest)
+                    .disabled(!canRequest || !validRequest)
                     .accessibilityIdentifier("ai-development.generate")
             }
 
@@ -83,7 +132,16 @@ struct AIDevelopmentView: View {
 
             if let proposal = model.proposal {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Korrekturvorschlag").font(.system(size: 12, weight: .medium))
+                    Text(proposal.createdMaskID == nil ? "Korrekturvorschlag" : "Maskenvorschlag")
+                        .font(.system(size: 12, weight: .medium))
+                    if let name = proposal.targetName, proposal.createdMaskID == nil {
+                        Text("Nur Maske: \(name)").font(.system(size: 11, weight: .medium))
+                    }
+                    if let preview = model.maskPreview {
+                        Image(decorative: preview.image, scale: 1).resizable().aspectRatio(contentMode: .fit)
+                            .frame(maxHeight: 240).accessibilityLabel("Vorgeschlagene Maske als rote Fläche auf dem vollständigen Foto")
+                            .accessibilityIdentifier("ai-development.mask-preview")
+                    }
                     Text(proposal.summary).font(.system(size: 11))
                         .fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
                     ForEach(Array(proposal.changes.enumerated()), id: \.offset) { _, change in
@@ -105,6 +163,7 @@ struct AIDevelopmentView: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .sheet(isPresented: $showsModels) { LLMModelManagerView() }
+        .sheet(isPresented: $showsSubjectModel) { SubjectMattingModelSetupView() }
         .onChange(of: editor.aiSnapshot(in: library)) { _, _ in
             model.invalidateIfNeeded(library: library, editor: editor)
         }

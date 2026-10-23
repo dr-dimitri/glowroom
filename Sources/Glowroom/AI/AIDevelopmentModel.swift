@@ -3,40 +3,64 @@ import Combine
 import Foundation
 import GlowroomCore
 
-struct AIDevelopmentReview: Equatable {
+struct AIDevelopmentReview: Equatable, Sendable {
     let summary: String
     let changes: [String]
     let settings: EditSettings
+    let targetName: String?
+    let createdMaskID: UUID?
 
-    init(proposal: AIDevelopmentProposal, baseline: EditSettings, strength: Double) throws {
+    init(proposal: AIDevelopmentProposal, baseline: EditSettings, strength: Double, targetMaskID: UUID? = nil) throws {
+        var intent = AIDevelopmentIntent(); intent.strength = strength; intent.targetMaskID = targetMaskID
+        let target = try intent.targetMask(in: baseline)
         summary = proposal.summary
-        settings = try proposal.adjustments.applying(to: baseline, strength: strength)
+        targetName = target?.name; createdMaskID = nil
+        let result = try proposal.adjustments.applying(to: baseline, intent: intent)
+        settings = result
+        let before = target?.settings.editSettings ?? baseline
+        let after = targetMaskID.flatMap { id in result.localAdjustments.first { $0.id == id } }?.settings.editSettings ?? result
         let controls: [(String, Double, Double)] = [
-            ("Belichtung", baseline.exposure, settings.exposure), ("Kontrast", baseline.contrast, settings.contrast),
-            ("Lichter", baseline.highlights, settings.highlights), ("Tiefen", baseline.shadows, settings.shadows),
-            ("Weiß", baseline.whites, settings.whites), ("Schwarz", baseline.blacks, settings.blacks),
-            ("Dynamik", baseline.vibrance, settings.vibrance), ("Sättigung", baseline.saturation, settings.saturation),
-            ("Temperatur", baseline.developColor.temperature, settings.developColor.temperature),
-            ("Tönung", baseline.developColor.tint, settings.developColor.tint)]
+            ("Belichtung", before.exposure, after.exposure), ("Kontrast", before.contrast, after.contrast),
+            ("Lichter", before.highlights, after.highlights), ("Tiefen", before.shadows, after.shadows),
+            ("Weiß", before.whites, after.whites), ("Schwarz", before.blacks, after.blacks),
+            ("Dynamik", before.vibrance, after.vibrance), ("Sättigung", before.saturation, after.saturation),
+            ("Temperatur", before.developColor.temperature, after.developColor.temperature),
+            ("Tönung", before.developColor.tint, after.developColor.tint)]
         changes = controls.compactMap { label, before, after in
             guard before != after else { return nil }
             return "\(label): \(before.formatted(.number.precision(.fractionLength(0...2)))) → \(after.formatted(.number.precision(.fractionLength(0...2))))"
         }
     }
+
+    init(mask response: AIObjectMaskResponse, baseline: EditSettings) throws {
+        var result = baseline
+        result.localAdjustments.append(response.layer)
+        try result.validateLocalAdjustments()
+        summary = response.summary
+        changes = ["Neue Maske: \(response.layer.name)"]
+        settings = result; targetName = response.layer.name; createdMaskID = response.layer.id
+    }
+
 }
 
 @MainActor
 final class AIDevelopmentModel: ObservableObject {
     typealias Propose = @Sendable (AIEditingSnapshot, PreviewBitmap, AIDevelopmentIntent) async throws -> AIDevelopmentResponse
+    typealias ProposeMask = @Sendable (AIEditingSnapshot, String) async throws -> AIObjectMaskResponse
     typealias ValidateSource = @Sendable (AIEditingSnapshot, ImageAnalysisSourceStamp) async throws -> Void
     @Published var intent = AIDevelopmentIntent() {
         didSet { if intent != oldValue { discard() } }
     }
+    @Published var createsMask = false {
+        didSet { if createsMask != oldValue { discard() } }
+    }
+    @Published private(set) var maskPreview: PreviewBitmap?
     @Published private(set) var proposal: AIDevelopmentReview?
     @Published private(set) var status: String?
     @Published private(set) var isRunning = false
     var canApplyProposal: Bool { proposal?.changes.isEmpty == false }
     private let propose: Propose
+    private let proposeMask: ProposeMask
     private let validateSource: ValidateSource
     private var task: Task<Void, Never>?
     private var expected: AIEditingSnapshot?
@@ -46,12 +70,14 @@ final class AIDevelopmentModel: ObservableObject {
 
     init(propose: @escaping Propose = { snapshot, _, intent in
         try await AIDevelopmentService().propose(snapshot: snapshot, intent: intent)
+    }, proposeMask: @escaping ProposeMask = { snapshot, instruction in
+        try await AIObjectMaskService().propose(snapshot: snapshot, instruction: instruction)
     }, validateSource: @escaping ValidateSource = { snapshot, stamp in
         let request = ImageAnalysisRequest(snapshot: snapshot, inputKind: .editedPreview, lifecycleID: UUID())
         guard try await ImageAnalysisPreparer().sourceStamp(for: request) == stamp else {
             throw AIDevelopmentError.staleContext
         }
-    }) { self.propose = propose; self.validateSource = validateSource }
+    }) { self.propose = propose; self.proposeMask = proposeMask; self.validateSource = validateSource }
 
     deinit { task?.cancel() }
 
@@ -68,8 +94,17 @@ final class AIDevelopmentModel: ObservableObject {
               workspace.sourceIdentity == snapshot.source else {
             status = AIDevelopmentError.missingPreview.localizedDescription; return nil
         }
-        do { try intent.validate() } catch { status = error.localizedDescription; return nil }
+        do {
+            try intent.validate()
+            if createsMask {
+                guard !intent.instruction.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                      snapshot.settings.localAdjustments.count < LocalAdjustment.maximumCount else {
+                    status = "Beschreibe das Objekt. Pro Foto sind höchstens 16 Masken möglich."; return nil
+                }
+            } else { _ = try intent.targetMask(in: snapshot.settings) }
+        } catch { status = error.localizedDescription; return nil }
         let requestedIntent = intent
+        let createsMask = self.createsMask
         let bitmapID = ObjectIdentifier(bitmap.image)
         expected = snapshot
         isCurrentContext = { [weak library, weak editor, weak workspace] in
@@ -88,8 +123,16 @@ final class AIDevelopmentModel: ObservableObject {
         isRunning = true; status = "Qwen3.5‑4B erstellt einen lokalen Vorschlag …"
         // The worker captures immutable values only. No file IO, source stamps,
         // prompt validation or native inference blocks the main actor.
-        let worker = Task.detached(priority: .userInitiated) { [propose] in
-            try await propose(snapshot, bitmap, requestedIntent)
+        let worker = Task.detached(priority: .userInitiated) { [propose, proposeMask] in
+            if createsMask {
+                let response = try await proposeMask(snapshot, requestedIntent.instruction)
+                let review = try AIDevelopmentReview(mask: response, baseline: snapshot.settings)
+                return (review, response.sourceStamp, response.preview)
+            }
+            let response = try await propose(snapshot, bitmap, requestedIntent)
+            let review = try AIDevelopmentReview(proposal: response.proposal, baseline: snapshot.settings,
+                strength: requestedIntent.strength, targetMaskID: requestedIntent.targetMaskID)
+            return (review, response.sourceStamp, Optional<PreviewBitmap>.none)
         }
         let operation = Task { [weak self] in
             defer {
@@ -100,8 +143,9 @@ final class AIDevelopmentModel: ObservableObject {
                 let result = try await withTaskCancellationHandler { try await worker.value } onCancel: { worker.cancel() }
                 try Task.checkCancellation()
                 guard let self, self.expected == snapshot, self.isCurrentContext?() == true else { return }
-                self.proposal = try AIDevelopmentReview(proposal: result.proposal, baseline: snapshot.settings, strength: requestedIntent.strength)
-                self.sourceStamp = result.sourceStamp
+                self.proposal = result.0
+                self.sourceStamp = result.1
+                self.maskPreview = result.2
                 self.status = self.proposal?.changes.isEmpty == true
                     ? "Das Modell schlägt bei dieser Stärke keine Änderung vor." : "Prüfe den Vorschlag vor dem Übernehmen."
             } catch {
@@ -150,12 +194,17 @@ final class AIDevelopmentModel: ObservableObject {
                 // The final snapshot check and ordinary undo/write stay atomic.
                 editor.setSettings(proposal.settings, for: expected.assetID)
                 let applied = editor.settings(for: expected.assetID) == proposal.settings
-                self.expected = nil; self.proposal = nil; self.sourceStamp = nil
+                self.expected = nil; self.proposal = nil; self.sourceStamp = nil; self.maskPreview = nil
                 self.subscriptions.removeAll(); self.isCurrentContext = nil
-                self.status = applied ? "Vorschlag übernommen. Werte unter „Entwickeln“ prüfen. Mit ⌘Z rückgängig machen." : "Der Vorschlag konnte nicht gespeichert werden."
+                if !applied { self.status = "Der Vorschlag konnte nicht gespeichert werden." }
+                else if proposal.createdMaskID != nil {
+                    self.status = "Maske hinzugefügt. Sie steht in allen Entwicklungsansichten unter „Masken“ bereit. Kontur dort bei Bedarf verfeinern. Mit ⌘Z rückgängig machen."
+                } else if let name = proposal.targetName {
+                    self.status = "Vorschlag nur auf „\(name)“ übernommen. Werte unter „Masken“ prüfen. Mit ⌘Z rückgängig machen."
+                } else { self.status = "Vorschlag übernommen. Werte unter „Entwickeln“ prüfen. Mit ⌘Z rückgängig machen." }
             } catch {
                 guard let self, self.expected == expected, !Task.isCancelled else { return }
-                self.expected = nil; self.proposal = nil; self.sourceStamp = nil
+                self.expected = nil; self.proposal = nil; self.sourceStamp = nil; self.maskPreview = nil
                 self.status = AIDevelopmentError.staleContext.localizedDescription
             }
         }
@@ -187,7 +236,7 @@ final class AIDevelopmentModel: ObservableObject {
     }
 
     func cancel() {
-        task?.cancel(); expected = nil; proposal = nil; sourceStamp = nil
+        task?.cancel(); expected = nil; proposal = nil; sourceStamp = nil; maskPreview = nil
         status = isRunning ? "Abbruch wird abgeschlossen …" : nil
     }
 

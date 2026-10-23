@@ -26,7 +26,8 @@ struct QwenDevelopmentBackend: Sendable {
         }
     }
 
-    func propose(modelDirectory: URL, image: CGImage, prompt: String, schema: String) async throws -> Data {
+    func propose(modelDirectory: URL, image: CGImage, prompt: String, schema: String,
+                 suppressesWhitespaceRuns: Bool = false) async throws -> Data {
         try Task.checkCancellation()
         guard image.width > 0, image.height > 0, image.width <= 2_048, image.height <= 2_048,
               !prompt.isEmpty, prompt.utf8.count <= 24_000, schema.utf8.count <= 24_000 else {
@@ -35,7 +36,7 @@ struct QwenDevelopmentBackend: Sendable {
         // This actor does not cache weights. A completed/cancelled operation
         // releases all model references before the model directory can be deleted.
         return try await QwenNativeRuntime.shared.propose(
-            modelDirectory: modelDirectory, image: image, prompt: prompt, schema: schema)
+            modelDirectory: modelDirectory, image: image, prompt: prompt, schema: schema, suppressesWhitespaceRuns: suppressesWhitespaceRuns)
     }
 }
 
@@ -68,7 +69,7 @@ private actor QwenNativeRuntime {
         #endif
     }
 
-    func propose(modelDirectory: URL, image: CGImage, prompt: String, schema: String) async throws -> Data {
+    func propose(modelDirectory: URL, image: CGImage, prompt: String, schema: String, suppressesWhitespaceRuns: Bool) async throws -> Data {
         guard !busy else { throw QwenDevelopmentBackend.Failure.busy }
         try prepareRuntime()
         try Task.checkCancellation()
@@ -81,10 +82,10 @@ private actor QwenNativeRuntime {
             Memory.clearCache()
             busy = false
         }
-        return try await infer(modelDirectory: modelDirectory, image: image, prompt: prompt, schema: schema)
+        return try await infer(modelDirectory: modelDirectory, image: image, prompt: prompt, schema: schema, suppressesWhitespaceRuns: suppressesWhitespaceRuns)
     }
 
-    private func infer(modelDirectory: URL, image: CGImage, prompt: String, schema: String) async throws -> Data {
+    private func infer(modelDirectory: URL, image: CGImage, prompt: String, schema: String, suppressesWhitespaceRuns: Bool) async throws -> Data {
         let container = try await VLMModelFactory.shared.loadContainer(from: modelDirectory, using: QwenTokenizerLoader())
         try Task.checkCancellation()
         return try await container.perform { context in
@@ -103,8 +104,13 @@ private actor QwenNativeRuntime {
             var output = ""
             // Greedy sampling is intrinsic to GuidedGenerationLoop. It throws
             // on token exhaustion or premature EOS; no partial JSON is repaired.
+            // Structured localization responses can otherwise emit long tab runs.
+            // Suppress pathological whitespace runs without closing or repairing
+            // incomplete JSON. The decoder still validates every returned value.
+            let whitespace = suppressesWhitespaceRuns ? WhitespaceTokenBias.compute(tokenizer: tokenizer) : nil
             try GuidedGenerationLoop.run(input: prepared, context: context, constraint: constraint,
                 maxTokens: 768, vocabSize: grammarTokenizer.vocabSize,
+                whitespaceBias: whitespace?.bias, whitespaceTokenIDs: whitespace?.tokenIDs ?? [],
                 prefill: PrefillParameters(stepSize: 512)) { text in
                     output += text
                     return !Task.isCancelled && output.utf8.count <= 16_384

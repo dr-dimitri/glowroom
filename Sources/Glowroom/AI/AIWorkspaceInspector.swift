@@ -91,7 +91,7 @@ struct AIWorkspaceInspector: View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Weitere KI-Werkzeuge").font(.system(size: 12, weight: .medium))
             Button("Bildinhalt suchen und Suchmodell verwalten …") { showsSearch = true }
-            Button("Motiv, Himmel oder Hintergrund maskieren") {
+            Button("Masken anzeigen und bearbeiten") {
                 activate(.masks)
             }.disabled(library.selectedAsset == nil || !editor.canEdit || !library.canModify)
             Button("Mit KI reparieren") {
@@ -103,7 +103,7 @@ struct AIWorkspaceInspector: View {
                 Button("Himmelserkennung …") { showsSky = true }
                 Button("BiRefNet für Motiv und Hintergrund …") { showsSubject = true }
             }
-            Text("Die Werkzeuge verwenden jeweils ihr eigenes lokales Modell. Qwen steuert die Bildkorrekturen; Maskierung, Reparatur und Suche bleiben getrennte Funktionen.")
+            Text("Alle Entwicklungsansichten teilen dieselben Masken. Qwen erstellt Korrektur- und Objektkonturvorschläge; Motiv, Himmel, Reparatur und Suche verwenden ihre jeweiligen lokalen Modelle.")
                 .font(.system(size: 10)).foregroundStyle(Theme.muted)
                 .fixedSize(horizontal: false, vertical: true)
         }.controlSize(.small).font(.system(size: 11))

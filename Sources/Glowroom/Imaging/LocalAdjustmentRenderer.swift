@@ -83,6 +83,7 @@ enum LocalAdjustmentRenderer {
             guard layer.isEffective else { continue }
             // RGBAh candidate + blend + scalar coverage/strength intermediates.
             var bytesPerPixel: UInt64 = 32
+            if layer.settings.temperature != 6_500 || layer.settings.tint != 0 { bytesPerPixel += 16 }
             if layer.settings.texture != 0 { bytesPerPixel += 8 }
             if layer.settings.clarity != 0 { bytesPerPixel += 8 }
             var rasterPlanes: UInt64 = 0

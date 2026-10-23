@@ -352,6 +352,7 @@ struct InlineMaskList: View {
 struct InlineMaskInspector: View {
     @ObservedObject var workspace: InlineMaskWorkspace
     @ViewState private var showsCreator = false
+    @ViewState private var showsWhiteBalance = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -471,11 +472,32 @@ struct InlineMaskInspector: View {
                         }.buttonStyle(.plain).help("Lokale Regler zurücksetzen").accessibilityLabel("Lokale Regler zurücksetzen")
                             .accessibilityIdentifier("local-mask.reset")
                     }
+                    if group == .color {
+                        Button { showsWhiteBalance.toggle() } label: {
+                            HStack(spacing: 4) {
+                                Text(layer.settings.temperature == 6_500 && layer.settings.tint == 0
+                                     ? "Weißabgleich" : "Weißabgleich · angepasst")
+                                Image(systemName: showsWhiteBalance ? "chevron.down" : "chevron.right")
+                            }.font(.system(size: 10)).foregroundStyle(Theme.muted)
+                        }.buttonStyle(.plain)
+                            .accessibilityLabel(showsWhiteBalance ? "Weißabgleich einklappen" : "Weißabgleich ausklappen")
+                            .accessibilityIdentifier("local-mask.white-balance")
+                    }
                 }.frame(height: 16, alignment: .bottom)
                 ForEach(group.controls) { control in
                     valueSlider(control.title, value: Binding(get: { workspace.selected?.settings[keyPath: control.keyPath] ?? 0 },
                         set: { value in model.updateSelected { $0.settings[keyPath: control.keyPath] = value } }), range: control.range, model: model,
                         target: .correction, accessibilityID: "local-mask.correction.\(control.rawValue)")
+                }
+                if group == .color && showsWhiteBalance {
+                    valueSlider("Temperatur", value: Binding(get: { workspace.selected?.settings.temperature ?? 6_500 },
+                        set: { value in model.updateSelected { $0.settings.temperature = value } }),
+                        range: DevelopColorSettings.temperatureRange, neutral: 6_500, model: model,
+                        target: .correction, accessibilityID: "local-mask.correction.temperature")
+                    valueSlider("Tönung", value: Binding(get: { workspace.selected?.settings.tint ?? 0 },
+                        set: { value in model.updateSelected { $0.settings.tint = value } }),
+                        range: DevelopColorSettings.tintRange, model: model,
+                        target: .correction, accessibilityID: "local-mask.correction.tint")
                 }
             }
         }

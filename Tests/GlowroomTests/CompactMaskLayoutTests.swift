@@ -374,6 +374,36 @@ struct CompactMaskLayoutTests {
         #expect(await fixture.library.finishSaving())
     }
 
+    @Test func maskWhiteBalanceControlsUseSharedSettingsAndUndo() async throws {
+        let fixture = try await CompactMaskFixture.make()
+        let host = CompactMaskHost(width: 300, height: 550)
+        defer { host.close(); fixture.close() }
+        fixture.model.add(.linear)
+        let baseline = try #require(fixture.model.selected)
+        try await host.mount(InlineMaskInspector(workspace: fixture.workspace).padding(.horizontal, 12))
+        #expect(try host.element("local-mask.white-balance").accessibilityPerformPress())
+        try await host.settle()
+        _ = try host.element("local-mask.correction.temperature")
+        _ = try host.element("local-mask.correction.tint")
+        let temperature = try #require(host.sliders.first { $0.minValue == 2_000 && $0.maxValue == 12_000 })
+        let tint = try #require(host.sliders.first { $0.minValue == -150 && $0.maxValue == 150 })
+        #expect(temperature.resetNeutralValue == 6_500 && tint.resetNeutralValue == 0)
+        // Native target/action follows the same path as an ordinary slider
+        // value change. AppKit's AX increment return value varies by host.
+        temperature.doubleValue = 7_500
+        #expect(temperature.sendAction(temperature.action, to: temperature.target))
+        tint.doubleValue = 30
+        #expect(tint.sendAction(tint.action, to: tint.target))
+        let selected = try #require(fixture.model.selected)
+        #expect(selected.settings.temperature == 7_500 && selected.settings.tint == 30)
+        let assetID = try #require(fixture.workspace.asset?.id)
+        #expect(fixture.editor.settings(for: assetID).localAdjustments == [selected])
+        #expect(fixture.editor.settings(for: assetID).developColor == .neutral)
+        fixture.workspace.undo(); fixture.workspace.undo()
+        #expect(fixture.model.selected == baseline)
+        #expect(await fixture.library.finishSaving())
+    }
+
     @Test func floatingMaskListKeepsItsHeightWhenTheLayerLimitIsReached() async throws {
         let fixture = try await CompactMaskFixture.make()
         let host = CompactMaskHost(width: 250, height: 260)
@@ -468,6 +498,15 @@ private final class CompactMaskHost {
     var fittingHeight: CGFloat { hosting.fittingSize.height }
     var elements: [WorkspaceAccessibilityElement] { WorkspaceAccessibilityElement.descendants(of: hosting) }
     var screenFrame: NSRect { window.convertToScreen(hosting.convert(hosting.bounds, to: nil)) }
+    var sliders: [ResettableNativeSlider] {
+        var pending: [NSView] = [hosting]
+        var sliders: [ResettableNativeSlider] = []
+        while let view = pending.popLast() {
+            if let slider = view as? ResettableNativeSlider { sliders.append(slider) }
+            pending.append(contentsOf: view.subviews)
+        }
+        return sliders
+    }
 
     func element(_ identifier: String) throws -> WorkspaceAccessibilityElement {
         try #require(elements.first { $0.accessibilityIdentifier() == identifier }, "Missing native control: \(identifier)")
