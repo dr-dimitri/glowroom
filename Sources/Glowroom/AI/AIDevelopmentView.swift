@@ -7,8 +7,14 @@ struct AIDevelopmentView: View {
     @ObservedObject var library: LibraryModel
     @EnvironmentObject private var editor: EditingModel
     @EnvironmentObject private var workspace: DevelopWorkspace
-    @StateObject private var model = AIDevelopmentModel()
+    @StateObject private var model: AIDevelopmentModel
     @ViewState private var showsModels = false
+
+    @MainActor
+    init(library: LibraryModel, model: AIDevelopmentModel? = nil) {
+        self.library = library
+        _model = StateObject(wrappedValue: model ?? AIDevelopmentModel())
+    }
 
     private var canRequest: Bool {
         editor.canEdit && library.canModify && !library.isImporting && !library.isProjecting
@@ -30,12 +36,12 @@ struct AIDevelopmentView: View {
                     .accessibilityIdentifier("ai-development.models")
             }
 
-            Text("Beschreibe die gewünschte Bildwirkung. Die Regler geben dem Modell ein Ziel für seinen Korrekturvorschlag.")
+            Text("Diese Regler beschreiben deinen Auftrag an das Modell. Das Bild ändert sich erst mit „Vorschlag erstellen“ und „Übernehmen“. Übernommene Werte findest du unter „Entwickeln“.")
                 .font(.system(size: 11)).foregroundStyle(Theme.muted)
                 .fixedSize(horizontal: false, vertical: true)
 
             VStack(alignment: .leading, spacing: 7) {
-                Text("Auftrag").font(.system(size: 11, weight: .medium))
+                Text("Auftrag für den nächsten Vorschlag").font(.system(size: 11, weight: .medium))
                 TextField("Zum Beispiel: natürliches Licht, wärmere Farben", text: $model.intent.instruction, axis: .vertical)
                     .textFieldStyle(.roundedBorder).lineLimit(3...5)
                     .accessibilityIdentifier("ai-development.instruction")
@@ -88,7 +94,7 @@ struct AIDevelopmentView: View {
                         Button("Verwerfen") { model.discard() }
                         Spacer(minLength: 0)
                         Button("Übernehmen") { model.apply(library: library, editor: editor) }
-                            .buttonStyle(.borderedProminent).disabled(!canRequest || model.isRunning)
+                            .buttonStyle(.borderedProminent).disabled(!canRequest || model.isRunning || !model.canApplyProposal)
                             .accessibilityIdentifier("ai-development.apply")
                     }.controlSize(.small)
                 }.padding(10).background(Theme.panel, in: RoundedRectangle(cornerRadius: 6))

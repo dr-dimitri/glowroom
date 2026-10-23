@@ -31,6 +31,143 @@ struct AIDevelopmentModelTests {
         #expect(await f.store.loadAll()[f.assetID]?.exposure == 0.5)
     }
 
+    @Test(arguments: ["empty", "unchangedTargets", "zeroStrength"])
+    func unchangedProposalCannotBeAcceptedOrReportedAsApplied(kind: String) async throws {
+        let adjustments: AIDevelopmentAdjustments = kind == "empty" ? .init()
+            : kind == "unchangedTargets" ? .init(settings: .neutral) : .init(exposure: 1)
+        let f = try await AIDevelopmentFixture.make(adjustments: adjustments)
+        defer { f.remove() }
+        if kind == "zeroStrength" { f.model.intent.strength = 0 }
+        await (try #require(f.start())).value
+        let status = try #require(f.model.status)
+        #expect(!f.model.canApplyProposal)
+        #expect(f.model.apply(library: f.library, editor: f.editor) == nil)
+        #expect(f.model.status == status)
+        #expect(!f.model.isRunning)
+        #expect(f.editor.settings(for: f.assetID) == .neutral)
+        #expect(f.editor.localRevision(for: f.assetID) == 0)
+        #expect(!f.editor.canUndo(assetID: f.assetID))
+        #expect(await f.editor.flush())
+        #expect(await f.store.loadAll()[f.assetID] == .neutral)
+    }
+
+    @Test(arguments: ["inference", "ready", "sourceValidation"])
+    func persistenceCompletionPreservesProposalForUnchangedVisibleEdit(phase: String) async throws {
+        let inference = TestAsyncLatch(open: phase != "inference")
+        let save = TestAsyncLatch(), saveEntered = TestAsyncLatch()
+        let validation = TestAsyncLatch(open: phase != "sourceValidation"), validationEntered = TestAsyncLatch()
+        let f = try await AIDevelopmentFixture.make(latch: inference, saveLatch: save, saveEntered: saveEntered,
+            validateSource: { _, _ in validationEntered.releaseAll(); await validation.wait() })
+        defer { inference.releaseAll(); save.releaseAll(); validation.releaseAll(); f.remove() }
+        f.editor.setSettings(EditSettings(exposure: 0.2), for: f.assetID)
+        let saving = Task { await f.editor.flush() }
+        await saveEntered.wait()
+        let captured = try #require(f.editor.aiSnapshot(in: f.library))
+        let generating = try #require(f.start())
+        var applying: Task<Void, Never>?
+        if phase == "inference" {
+            try await waitForTestState("Qwen fake entered before persistence completes", state: { await f.probe.calls }, until: { $0 == 1 })
+        } else {
+            await generating.value
+            #expect(f.model.canApplyProposal)
+            if phase == "sourceValidation" {
+                let application = try #require(f.model.apply(library: f.library, editor: f.editor))
+                applying = application
+                await validationEntered.wait()
+            }
+        }
+
+        save.releaseAll()
+        #expect(await saving.value)
+        let persisted = try #require(f.editor.aiSnapshot(in: f.library))
+        #expect(captured.persistedVersion != persisted.persistedVersion)
+        #expect(captured.settings == persisted.settings && captured.token == persisted.token)
+        // SwiftUI and the Combine observer both revalidate after publication.
+        // Exercise that boundary explicitly without depending on their scheduling.
+        f.model.invalidateIfNeeded(library: f.library, editor: f.editor)
+        inference.releaseAll(); await generating.value
+        if let applying {
+            validation.releaseAll(); await applying.value
+        } else {
+            #expect(f.model.canApplyProposal)
+            await (try #require(f.model.apply(library: f.library, editor: f.editor))).value
+        }
+        #expect(abs(f.editor.settings(for: f.assetID).exposure - 0.6) < 0.000_001)
+        #expect(f.model.status == "Vorschlag übernommen. Werte unter „Entwickeln“ prüfen. Mit ⌘Z rückgängig machen.")
+        #expect(await f.editor.flush())
+        #expect(abs((await f.store.loadAll()[f.assetID]?.exposure ?? 0) - 0.6) < 0.000_001)
+        f.editor.undo(assetID: f.assetID)
+        #expect(f.editor.settings(for: f.assetID).exposure == 0.2)
+        #expect(await f.editor.flush())
+    }
+
+    @Test(arguments: ["inference", "ready", "sourceValidation"])
+    func automaticBackupFencesPreserveProposalAndDeferAcceptance(phase: String) async throws {
+        let backup = AIDevelopmentBackupSchedule()
+        let inference = TestAsyncLatch(open: phase != "inference")
+        let validation = TestAsyncLatch(open: phase != "sourceValidation"), validationEntered = TestAsyncLatch()
+        let f = try await AIDevelopmentFixture.make(latch: inference, backup: backup,
+            validateSource: { _, _ in validationEntered.releaseAll(); await validation.wait() })
+        defer { backup.releaseAll(); inference.releaseAll(); validation.releaseAll(); f.remove() }
+        var generating: Task<Void, Never>?, applying: Task<Void, Never>?
+        do {
+            f.editor.setSettings(EditSettings(exposure: 0.2), for: f.assetID)
+            #expect(await f.editor.flush())
+            let generation = try #require(f.start())
+            generating = generation
+            if phase == "inference" {
+                try await waitForTestState("Qwen fake entered before automatic backup", state: { await f.probe.calls }, until: { $0 == 1 })
+            } else {
+                await generating?.value
+                if phase == "sourceValidation" {
+                    let application = try #require(f.model.apply(library: f.library, editor: f.editor))
+                    applying = application
+                    await validationEntered.wait()
+                }
+            }
+
+            backup.start.releaseAll(); await backup.snapshotEntered.wait()
+            #expect(f.editor.isAutomaticBackupMaintenance && !f.editor.canEdit)
+            #expect(f.editor.aiSnapshot(in: f.library) == nil)
+            f.model.invalidateIfNeeded(library: f.library, editor: f.editor)
+            // Native work may finish while write admission is briefly closed.
+            // Its result must stay reviewable, with acceptance deferred.
+            inference.releaseAll(); await generating?.value
+            validation.releaseAll(); await applying?.value
+            #expect(f.model.canApplyProposal && !f.model.isRunning)
+            let proposal = try #require(f.model.proposal)
+            #expect(f.model.apply(library: f.library, editor: f.editor) == nil)
+            #expect(f.model.proposal == proposal)
+            #expect(f.editor.settings(for: f.assetID).exposure == 0.2)
+
+            backup.snapshotRelease.releaseAll(); await backup.copyEntered.wait()
+            #expect(!f.editor.isAutomaticBackupMaintenance && f.editor.canEdit)
+            f.model.invalidateIfNeeded(library: f.library, editor: f.editor)
+            #expect(f.model.proposal == proposal)
+            backup.copyRelease.releaseAll(); await backup.pruneEntered.wait()
+            #expect(f.editor.isAutomaticBackupMaintenance && !f.editor.canEdit)
+            f.model.invalidateIfNeeded(library: f.library, editor: f.editor)
+            #expect(f.model.apply(library: f.library, editor: f.editor) == nil)
+            #expect(f.model.proposal == proposal && f.model.canApplyProposal)
+            #expect(f.editor.settings(for: f.assetID).exposure == 0.2)
+
+            backup.pruneRelease.releaseAll(); await backup.finished.wait()
+            #expect(f.editor.canEdit)
+            await (try #require(f.model.apply(library: f.library, editor: f.editor))).value
+            #expect(abs(f.editor.settings(for: f.assetID).exposure - 0.6) < 0.000_001)
+            #expect(f.model.status == "Vorschlag übernommen. Werte unter „Entwickeln“ prüfen. Mit ⌘Z rückgängig machen.")
+            #expect(await f.editor.flush())
+            f.editor.undo(assetID: f.assetID)
+            #expect(f.editor.settings(for: f.assetID).exposure == 0.2)
+            #expect(await f.editor.finishSaving())
+        } catch {
+            backup.releaseAll(); inference.releaseAll(); validation.releaseAll()
+            await generating?.value; await applying?.value
+            _ = await f.editor.finishSaving()
+            throw error
+        }
+    }
+
     @Test(arguments: ["editUndo", "selection", "workspace", "intent", "cancel", "bitmap"])
     func staleOrCancelledInferenceNeverPublishes(change: String) async throws {
         let latch = TestAsyncLatch()
@@ -110,6 +247,10 @@ struct AIDevelopmentModelTests {
     func remove() { model.discard(); workspace.clear(); try? FileManager.default.removeItem(at: directory) }
 
     static func make(latch: TestAsyncLatch = TestAsyncLatch(open: true),
+                     adjustments: AIDevelopmentAdjustments = .init(exposure: 1),
+                     saveLatch: TestAsyncLatch = TestAsyncLatch(open: true),
+                     saveEntered: TestAsyncLatch = TestAsyncLatch(),
+                     backup: AIDevelopmentBackupSchedule? = nil,
                      validateSource: @escaping AIDevelopmentModel.ValidateSource = { _, _ in }) async throws -> Self {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("Glowroom-AIDevelopment-\(UUID())")
         let folder = LibraryFolder(url: directory)
@@ -117,8 +258,10 @@ struct AIDevelopmentModelTests {
         let repository = CatalogRepository(directory: directory.appendingPathComponent("catalog"))
         try repository.save(LibraryCatalog(folders: [folder], assets: [asset]))
         let library = LibraryModel(repository: repository)
-        let store = AIDevelopmentTestStore(assetID: asset.id)
-        let editor = EditingModel(database: LegacySnapshotTestAdapter(store))
+        let store = AIDevelopmentTestStore(assetID: asset.id, saveLatch: saveLatch, saveEntered: saveEntered)
+        let adapter = LegacySnapshotTestAdapter(store)
+        let database: any EditingPersistence = if let backup { AIDevelopmentBackupStore(base: adapter, schedule: backup) } else { adapter }
+        let editor = EditingModel(database: database)
         try await waitForTestState("AI development fixture", state: { @MainActor in
             !library.isLoading && !library.isProjecting && !editor.isLoading
         }, until: { $0 })
@@ -131,7 +274,7 @@ struct AIDevelopmentModelTests {
         workspace.bind(source: snapshot.source)
         let bitmap = PreviewBitmap(image: try aiDevelopmentTestImage())
         workspace.receive(bitmap, sourceBitmap: bitmap)
-        let probe = AIDevelopmentTestProbe(latch: latch)
+        let probe = AIDevelopmentTestProbe(latch: latch, adjustments: adjustments)
         let model = AIDevelopmentModel(propose: { snapshot, _, intent in try await probe.propose(snapshot, intent) },
                                      validateSource: validateSource)
         return Self(directory: directory, library: library, editor: editor, workspace: workspace, store: store, probe: probe, model: model)
@@ -141,11 +284,14 @@ struct AIDevelopmentModelTests {
 private actor AIDevelopmentTestProbe {
     private(set) var calls = 0
     let latch: TestAsyncLatch
-    init(latch: TestAsyncLatch) { self.latch = latch }
+    let adjustments: AIDevelopmentAdjustments
+    init(latch: TestAsyncLatch, adjustments: AIDevelopmentAdjustments) {
+        self.latch = latch; self.adjustments = adjustments
+    }
     func propose(_ snapshot: AIEditingSnapshot, _ intent: AIDevelopmentIntent) async throws -> AIDevelopmentResponse {
         calls += 1
         await latch.wait() // Deliberately ignores cancellation like native GPU work.
-        return AIDevelopmentResponse(proposal: AIDevelopmentProposal(summary: "Das Bild behutsam aufhellen.", adjustments: .init(exposure: 1)),
+        return AIDevelopmentResponse(proposal: AIDevelopmentProposal(summary: "Das Bild behutsam aufhellen.", adjustments: adjustments),
             sourceStamp: .init(device: 1, inode: 1, byteCount: 1, modifiedSeconds: 1, modifiedNanoseconds: 0, changedSeconds: 1, changedNanoseconds: 0))
     }
 }
@@ -153,12 +299,79 @@ private actor AIDevelopmentTestProbe {
 private actor AIDevelopmentTestStore: LegacySnapshotTestStore {
     private var values: [String: EditSettings]
     private var versions: [String: Int64] = [:]
-    init(assetID: String) { values = [assetID: .neutral] }
+    let saveLatch: TestAsyncLatch
+    let saveEntered: TestAsyncLatch
+    init(assetID: String, saveLatch: TestAsyncLatch, saveEntered: TestAsyncLatch) {
+        values = [assetID: .neutral]; self.saveLatch = saveLatch; self.saveEntered = saveEntered
+    }
     func loadAll() -> [String: EditSettings] { values }
     func revisions() -> [String: Int64] { versions }
-    func save(_ settings: EditSettings, for assetID: String, revision: Int64) { values[assetID] = settings; versions[assetID] = revision }
+    func save(_ settings: EditSettings, for assetID: String, revision: Int64) async {
+        saveEntered.releaseAll(); await saveLatch.wait()
+        values[assetID] = settings; versions[assetID] = revision
+    }
     func createBackup(automatic: Bool) -> URL { URL(fileURLWithPath: "/tmp/unused-ai-test-backup") }
     func restoreBackup(from url: URL) -> [String: EditSettings] { values }
+}
+
+private struct AIDevelopmentBackupSchedule: Sendable {
+    let start = TestAsyncLatch()
+    let snapshotEntered = TestAsyncLatch(), snapshotRelease = TestAsyncLatch()
+    let copyEntered = TestAsyncLatch(), copyRelease = TestAsyncLatch()
+    let pruneEntered = TestAsyncLatch(), pruneRelease = TestAsyncLatch()
+    let finished = TestAsyncLatch()
+    func releaseAll() { start.releaseAll(); snapshotRelease.releaseAll(); copyRelease.releaseAll(); pruneRelease.releaseAll() }
+}
+
+/// The regular fixture keeps its existing persistence semantics. Only these
+/// tests add the real editor callback boundary for snapshot and pruning.
+private actor AIDevelopmentBackupStore: EditingPersistence {
+    let base: LegacySnapshotTestAdapter
+    let schedule: AIDevelopmentBackupSchedule
+    init(base: LegacySnapshotTestAdapter, schedule: AIDevelopmentBackupSchedule) {
+        self.base = base; self.schedule = schedule
+    }
+    func loadState() async throws -> EditingStoreState { try await base.loadState() }
+    func saveSnapshot(_ snapshot: EditingSnapshot, for assetID: String, expected: EditingExpectedState, revision: Int64) async throws -> StoredEditingState {
+        try await base.saveSnapshot(snapshot, for: assetID, expected: expected, revision: revision)
+    }
+    func createAutomaticBackup(maintenance: @escaping @Sendable (Bool) async throws -> Void) async throws -> URL {
+        defer { schedule.finished.releaseAll() }
+        await schedule.start.wait()
+        do {
+            try await maintenance(true)
+            schedule.snapshotEntered.releaseAll(); await schedule.snapshotRelease.wait()
+            try await maintenance(false)
+            schedule.copyEntered.releaseAll(); await schedule.copyRelease.wait()
+            try await maintenance(true)
+            schedule.pruneEntered.releaseAll(); await schedule.pruneRelease.wait()
+            try await maintenance(false)
+            return try await base.createBackup(automatic: true)
+        } catch { try? await maintenance(false); throw error }
+    }
+    func createBackup(automatic: Bool) async throws -> URL { try await base.createBackup(automatic: automatic) }
+    func restoreBackup(from url: URL) async throws -> EditingStoreState { try await base.restoreBackup(from: url) }
+    func commitGenerated(_ request: GenerationCommitRequest) async throws -> ArtifactCommitReceipt { try await base.commitGenerated(request) }
+    func committed(_ id: EditingCommitID) async throws -> ArtifactCommitReceipt? { try await base.committed(id) }
+    func variants(for assetID: String) async throws -> [EditingVariant] { try await base.variants(for: assetID) }
+    func prepareAssetRemap(_ plan: VerifiedAssetRemap, preparingBy: CatalogParticipantPreparation) async throws -> PreparedAssetRemap {
+        try await base.prepareAssetRemap(plan, preparingBy: preparingBy)
+    }
+    func inspectAssetRemap(_ id: EditingRemapID, expectedRequestSHA256: ArtifactDigest) async throws -> AssetRemapInspection? {
+        try await base.inspectAssetRemap(id, expectedRequestSHA256: expectedRequestSHA256)
+    }
+    func remapAssets(_ prepared: PreparedAssetRemap, armedBy: ArmedCatalogCoordination) async throws -> AssetRemapReceipt {
+        try await base.remapAssets(prepared, armedBy: armedBy)
+    }
+    func confirmCatalogRemap(_ prepared: PreparedAssetRemap, publication: CatalogPublicationEvidence) async throws {
+        try await base.confirmCatalogRemap(prepared, publication: publication)
+    }
+    func completeAssetRemap(_ prepared: PreparedAssetRemap, publication: CatalogPublicationEvidence) async throws -> AssetRemapReceipt {
+        try await base.completeAssetRemap(prepared, publication: publication)
+    }
+    func cancelPreparedAssetRemap(_ prepared: PreparedAssetRemap, abortedBy: CatalogCoordinationAbort) async throws {
+        try await base.cancelPreparedAssetRemap(prepared, abortedBy: abortedBy)
+    }
 }
 
 func aiDevelopmentTestImage() throws -> CGImage {

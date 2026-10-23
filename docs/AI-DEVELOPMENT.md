@@ -48,6 +48,10 @@ Ein Auftrag in eigenen Worten und die Regler **Helligkeit**, **Kontrast**,
 bedeutet keine zusätzliche Vorgabe. **Stärke** mischt geprüfte Zielwerte mit den
 aktuellen Einstellungen; 0 erhält den aktuellen Stand, 100 % übernimmt den
 vollständigen Modellvorschlag. Die anfängliche Stärke beträgt 50 %.
+Der Abschnitt heißt ausdrücklich **Auftrag für den nächsten Vorschlag**:
+Reglerbewegungen allein verändern die laufende Bildvorschau nicht. Um einen
+geänderten Auftrag anzuwenden, erneut **Vorschlag erstellen** und anschließend
+**Übernehmen** wählen. Direkte Bildkorrekturen erfolgen unter **Entwickeln**.
 
 **Vorschlag erstellen** übergibt die aktuelle entwickelte Vorschau und die
 unterstützten aktuellen Reglerwerte an das Modell. Die Vorbereitung verwendet
@@ -65,11 +69,26 @@ Temperatur und Tönung. Alle anderen Einstellungen bleiben erhalten. Qwen
 erzeugt hier keine Bildpixel, Retuschen oder lokalen Masken.
 
 **Übernehmen** verwendet die normale Speicherung und erzeugt einen gemeinsamen
-Rückgängig-Schritt. **Verwerfen** verändert kein Foto. Ein Ergebnis nach
+Rückgängig-Schritt. Die Vorschau wird mit den übernommenen Werten neu gerendert;
+dieselben Werte stehen anschließend in den normalen Reglern unter **Entwickeln**.
+Die Richtungsregler im AI-Bereich beschreiben weiterhin den Auftrag und werden
+durch die Übernahme nicht zurückgesetzt. Enthält der Vorschlag keine wirksame
+Wertänderung (auch bei Stärke 0), bleibt **Übernehmen** deaktiviert und die
+Statusmeldung erklärt, dass keine Änderung vorgeschlagen wird. Ein solcher
+Vorschlag erzeugt weder eine Bearbeitung noch eine Erfolgsmeldung.
+
+**Verwerfen** verändert kein Foto. Ein Ergebnis nach
 Foto-/Quellenwechsel, zwischenzeitlicher Bearbeitung (auch nach Undo), neuem
 Auftrag oder Abbruch darf nicht übernommen werden. Vor der Übernahme wird die
 native Quellenidentität erneut im Hintergrund geprüft, anschließend nochmals
-der Bearbeitungssnapshot. Abgebrochene native Arbeit behält ihren Inferenzplatz
+der Bearbeitungskontext. Der Abschluss einer Hintergrundspeicherung derselben
+bereits angenommenen Einstellungen entwertet einen Vorschlag nicht. Quelle,
+Einstellungen, Bearbeitungs- und Auswahlgeneration sowie Store-Epoch müssen
+unverändert bleiben; die strikten Persistenzprüfungen der Datenbank gelten
+weiterhin. Auch während der kurzen exklusiven Phasen eines automatischen
+Backups bleibt der Vorschlag erhalten. Übernehmen ist in dieser Zeit gesperrt;
+beginnt die Sperre während der Quellenprüfung, bleibt der Vorschlag für eine
+erneute Übernahme verfügbar. Abgebrochene native Arbeit behält ihren Inferenzplatz
 bis zum tatsächlichen Ende; vorher wird keine neue Anfrage gestartet.
 
 ## Qualität und Ressourcen
@@ -100,6 +119,11 @@ Modellantworten. Sie laden keine Gewichte herunter und führen keine echte
 Inferenz aus. Geprüft werden Antwortgrenzen, Stärke, Erhalt übriger Einstellungen,
 explizite Übernahme/Undo/Redo, persistierte Werte, veraltete Antworten, Abbruch,
 Installationsprüfsummen, atomare Veröffentlichung und Schutz aktiver Modelle.
+Zusätzliche Regressionen prüfen unveränderte Vorschläge und den Speicherabschluss
+während Inferenz, Vorschlagsprüfung und Übernahme. Ein gemounteter nativer Test
+bedient die tatsächlichen Schaltflächen mit kontrollierter Modellantwort,
+echter Quellenprüfung und synthetischer PNG-Datei. Er prüft Reglerwerte,
+geänderte Vorschaupixel, Undo/Redo und Speicherung ohne echte Modellinferenz.
 
 Ein optionaler nativer Produkttest mit einem bereits vorhandenen lokalen
 Qwen-Snapshot lässt sich ausdrücklich aktivieren:
@@ -146,3 +170,58 @@ Metal-Bibliothek bestanden. Das Executable bindet Systembibliotheken, keine
 lokale Python- oder Testing-Laufzeit. Ein vorläufiger sauberer Build wurde wegen
 der zwischenzeitlich gefundenen Testkorrekturen bewusst abgebrochen; sein
 Teilstand wurde vor diesem erfolgreichen Abschluss vollständig entfernt.
+
+## Auftragsregler und Übernahmeprüfung am 23. Oktober 2026
+
+Die Auftragsregler blieben nach der Übernahme absichtlich unverändert, wirkten
+aber wie direkte Bildregler. Die Oberfläche benennt ihren Zweck jetzt ausdrücklich
+und verweist auch in der Erfolgsmeldung auf die tatsächlichen Werte unter
+**Entwickeln**. Die gemeldete Kombination Weiß 0 → 5, Dynamik 0 → 10 und
+Temperatur 6500 → 6650 bei 50 % Stärke wird im nativen Test genau übernommen
+und verändert die gerenderten Pixel. Diese dezenten Werte sind kein Nachweis
+eines allgemeinen Rendererfehlers. Die irrtümlich umgekehrte Temperaturrichtung
+im Modellprompt wurde an Renderer und vorhandene Farbtests angepasst: höhere
+Werte wärmen, niedrigere kühlen das Bild.
+
+Zusätzlich gefundene Übernahmefehler wurden behoben: unveränderte Vorschläge
+können nicht mehr als erfolgreiche Bearbeitung angenommen werden. Ein reiner
+Persistenzabschluss und die kurzen automatischen Backup-Sperren verwerfen
+keinen weiterhin gültigen Vorschlag. Die Annahme bleibt während der Sperren
+geschlossen; spätere Bild-/Quellenwechsel, Bearbeitungen, Undo und Abbruch
+entwerten den Vorschlag weiterhin.
+
+Die gezielte Prüfung bestand mit **28 Tests in 7 Suites**. Sie umfasst die
+gemounteten nativen Übernahme-Buttons, normale Regler einschließlich Temperatur,
+geänderte Vorschaupixel, Undo/Redo, echte Quellenprüfung, persistierte Werte und
+erneutes Öffnen sowie kontrollierte Speicher- und Wartungsabläufe. Die Tests
+nutzen synthetische PNG-Dateien und kontrollierte Modellantworten; sie benötigen
+weder private Testbilder noch neue Modellinferenz.
+
+Der erste vollständige Lauf scheiterte an einer fehlenden Testvorbedingung:
+direktes Redo fiel in die reale automatische Backup-Sperre. Die native Regression
+drainiert jetzt das Tagesbackup und prüft die unmittelbare Undo-/Redo-Annahme,
+bevor sie die gerenderte Vorschau abwartet. Keine Frist wurde erhöht. Der
+anschließende vollständige Paralleltest bestand mit **1516 Tests in 203 Suites**
+in 44,541 Sekunden. Logs: `/tmp/glowroom-ai-apply-integration.log`,
+`/tmp/glowroom-ai-apply-full.log` (Fehllauf) und
+`/tmp/glowroom-ai-apply-full-verified.log` (erfolgreicher Vollvergleich).
+
+Das unabhängige Diffreview umfasste Controller-/Persistenzgrenzen, UI,
+Quellenbindung, Prompt, Tests und Dokumentation. Der dabei gefundene
+Backup-Lebenszyklusfehler wurde korrigiert und durch beide exklusiven
+Wartungsphasen nachgeprüft; es bleiben keine offenen Befunde. Implementierung
+und Review liefen mit getrennten Dateiverantwortungen parallel. Vollsuite und
+sauberer App-Build bleiben wegen CPU-/Speicherbedarf und nativer UI-Prüfungen
+geordnet; es werden keine neuen Leistungsgewinne behauptet.
+
+Ein sauberer vollständiger App-Build war erforderlich, weil Controller,
+Oberfläche und Modellprompt das Laufzeitverhalten ändern. Nach Ende aller
+Tests und dem durch den Nutzer vorgenommenen Beenden der laufenden App wurden
+die generierten `.build`-Produkte, Compiler-/Icon-/Shader-Caches und das alte
+`dist/Glowroom.app` entfernt. `GLOWROOM_BUILD_PATH` war nicht gesetzt,
+`.build-app` war nicht vorhanden; Abhängigkeitsquellen und Lockdateien blieben
+erhalten. **`GLOWROOM_BUILD_JOBS=4 ./scripts/build-app.sh` bestand als sauberer
+vollständiger Release-Build** (SwiftPM-Kompilierung 297,41 Sekunden).
+Info.plist-Validierung, ad-hoc Signierung und strikte Signaturprüfung bestanden.
+Log: `/tmp/glowroom-ai-apply-clean-build.log`. Die abschließende Dokumentation
+der Ergebnisse beeinflusst den Build nicht.

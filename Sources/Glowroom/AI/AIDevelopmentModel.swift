@@ -35,6 +35,7 @@ final class AIDevelopmentModel: ObservableObject {
     @Published private(set) var proposal: AIDevelopmentReview?
     @Published private(set) var status: String?
     @Published private(set) var isRunning = false
+    var canApplyProposal: Bool { proposal?.changes.isEmpty == false }
     private let propose: Propose
     private let validateSource: ValidateSource
     private var task: Task<Void, Never>?
@@ -73,7 +74,7 @@ final class AIDevelopmentModel: ObservableObject {
         expected = snapshot
         isCurrentContext = { [weak library, weak editor, weak workspace] in
             guard let library, let editor, let workspace else { return false }
-            return editor.isCurrentAISnapshot(snapshot, in: library)
+            return Self.matchesEditingContext(snapshot, editor.localEditingAnchorSnapshot(in: library))
                 && library.isAIDeveloping
                 && !library.comparesOriginal && !library.comparesCurrentSourceWithoutSettings
                 && workspace.tool == .basic && workspace.sourceIdentity == snapshot.source
@@ -119,10 +120,13 @@ final class AIDevelopmentModel: ObservableObject {
     @discardableResult
     func apply(library: LibraryModel, editor: EditingModel) -> Task<Void, Never>? {
         guard !isRunning, let expected, let proposal, let sourceStamp,
-              editor.isCurrentAISnapshot(expected, in: library), isCurrentContext?() == true,
+              Self.matchesEditingContext(expected, editor.localEditingAnchorSnapshot(in: library)), isCurrentContext?() == true,
               !editor.hasActiveEditing(assetID: expected.assetID) else {
             discard(); status = AIDevelopmentError.staleContext.localizedDescription; return nil
         }
+        // A valid model response can preserve every value (also at strength 0).
+        // It must never report a successful edit when setSettings would be a no-op.
+        guard canApplyProposal, editor.canEdit else { return nil }
         isRunning = true; status = "Bildquelle wird vor der Übernahme geprüft …"
         let worker = Task.detached(priority: .userInitiated) { [validateSource] in
             try await validateSource(expected, sourceStamp)
@@ -136,15 +140,19 @@ final class AIDevelopmentModel: ObservableObject {
                 try await withTaskCancellationHandler { try await worker.value } onCancel: { worker.cancel() }
                 try Task.checkCancellation()
                 guard let self, self.expected == expected,
-                      editor.isCurrentAISnapshot(expected, in: library), self.isCurrentContext?() == true,
+                      Self.matchesEditingContext(expected, editor.localEditingAnchorSnapshot(in: library)), self.isCurrentContext?() == true,
                       !editor.hasActiveEditing(assetID: expected.assetID) else { return }
+                guard editor.canEdit else {
+                    self.status = "Automatische Sicherung läuft. Übernimm den Vorschlag anschließend erneut."
+                    return
+                }
                 // Source IO precedes this synchronous main-actor transaction.
                 // The final snapshot check and ordinary undo/write stay atomic.
                 editor.setSettings(proposal.settings, for: expected.assetID)
                 let applied = editor.settings(for: expected.assetID) == proposal.settings
                 self.expected = nil; self.proposal = nil; self.sourceStamp = nil
                 self.subscriptions.removeAll(); self.isCurrentContext = nil
-                self.status = applied ? "Vorschlag übernommen. Mit ⌘Z rückgängig machen." : "Der Vorschlag konnte nicht gespeichert werden."
+                self.status = applied ? "Vorschlag übernommen. Werte unter „Entwickeln“ prüfen. Mit ⌘Z rückgängig machen." : "Der Vorschlag konnte nicht gespeichert werden."
             } catch {
                 guard let self, self.expected == expected, !Task.isCancelled else { return }
                 self.expected = nil; self.proposal = nil; self.sourceStamp = nil
@@ -157,8 +165,19 @@ final class AIDevelopmentModel: ObservableObject {
 
     func invalidateIfNeeded(library: LibraryModel, editor: EditingModel) {
         guard let expected else { return }
-        if !editor.isCurrentAISnapshot(expected, in: library) { discard(); status = AIDevelopmentError.staleContext.localizedDescription }
+        if !Self.matchesEditingContext(expected, editor.localEditingAnchorSnapshot(in: library)) { discard(); status = AIDevelopmentError.staleContext.localizedDescription }
         else { invalidateContextIfNeeded() }
+    }
+
+    private static func matchesEditingContext(_ expected: AIEditingSnapshot, _ current: AIEditingSnapshot?) -> Bool {
+        guard let current else { return false }
+        // Saving already accepted edits only advances the durable revision.
+        // The source, visible settings, edit/selection generations and store
+        // epoch still protect against edits, undo, navigation and restoration.
+        // This proposal uses the ordinary editor write, not a captured SQL CAS.
+        return current.assetID == expected.assetID && current.source == expected.source
+            && current.settings == expected.settings && current.token == expected.token
+            && current.persistedVersion?.storeEpoch == expected.persistedVersion?.storeEpoch
     }
 
     private func invalidateContextIfNeeded() {
