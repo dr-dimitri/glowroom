@@ -5,6 +5,10 @@ Dieses optionale Werkzeug führt einen lokalen MLX-VLM-Kandidaten auf den zwölf
 Modelle automatisch und verändert weder Testbilder noch deren Erwartungsvertrag.
 Ein Korrekturadapter wird nicht ausgeführt.
 
+`run_jarvis.py` ergänzt einen getrennten lokalen llama.cpp-Pfad für JarvisArt.
+Die [JarvisArt-Prüfung](../../docs/AI-JARVISART-EVALUATION.md) dokumentiert
+Modell, Laufzeit, Ergebnisse und die Grenzen dieses Vergleichs.
+
 Die geprüfte Konfiguration und ihre tatsächlichen Ergebnisse stehen unter
 [Qwen3.5-4B-Evaluation](../../docs/AI-QWEN35-EVALUATION.md). Diese ist keine
 Produktintegration und kein allgemeiner Leistungsnachweis für beliebige Macs.
@@ -102,3 +106,82 @@ Diese Tests erzeugen eigene kleine synthetische Dateien und benötigen weder
 Modellgewichte noch lokale Fotofiles, GPU-Inferenz oder Netzwerk. Änderungen
 dieses externen Werkzeugs beeinflussen die Kompilierung, Paketierung und Laufzeit
 der App nicht und erfordern deshalb keinen vollständigen App-Build.
+
+## JarvisArt über einen lokalen llama.cpp-Server
+
+Dieser Pfad benötigt separat bereitgestellte GGUF-Gewichte **und** deren
+Vision-Projektor. Der geprüfte Snapshot ist
+`mradermacher/JarvisArt-1208-GGUF` bei Revision
+`0abebb0c1c4a8e7745b9383f174df884b7662a4d`; die zugehörige offizielle
+Modellrevision steht im Prüfbericht. Die nichtkommerzielle JarvisArt-Lizenz gilt
+auch für diese experimentelle Verwendung; Gewichte und Upstream-Prompts werden
+nicht im Glowroom-Repository verteilt.
+
+Modell- und Laufzeitprovenienz sind JSON-Objekte mit `root` und `files`;
+jeder Dateieintrag enthält relativen `file`-Pfad, `bytes` und `sha256`.
+Die Modellliste muss die tatsächlich verwendeten beiden GGUFs enthalten,
+die Laufzeitliste mindestens das tatsächlich gestartete Serverbinary.
+Der Runner prüft alle aufgeführten Dateien und bindet sie über die verpflichtende
+`--server-pid` an Executable, Modellpfad, Projektorpfad und einen ausdrücklich
+konfigurierten Server-Slot. Private Eingaben werden nur an eine wörtliche
+Loopback-Adresse übermittelt; Proxies und Weiterleitungen sind deaktiviert.
+
+Ein bereits lokal gestarteter Server wird beispielsweise so geprüft:
+
+```sh
+/tmp/glowroom-jarvisart/build/bin/llama-server \
+  --model /tmp/glowroom-jarvisart/model/JarvisArt-1208.Q4_K_M.gguf \
+  --mmproj /tmp/glowroom-jarvisart/model/JarvisArt-1208.mmproj-f16.gguf \
+  --alias jarvisart --host 127.0.0.1 --port 18082 \
+  --ctx-size 8192 --n-gpu-layers 99 --threads 6 \
+  --batch-size 512 --ubatch-size 512 --parallel 1 \
+  --cache-ram 0 --no-cache-prompt --reasoning-format none \
+  --image-min-tokens 1024 --image-max-tokens 1280 \
+  --offline --no-webui --log-timestamps --no-context-shift
+```
+
+Der Server bleibt in diesem Terminal geöffnet. In einem zweiten Terminal seine
+Prozess-ID als `SERVER_PID` einsetzen und den Runner aufrufen:
+
+```sh
+/tmp/glowroom-qwen35-venv/bin/python tools/auto-correction-evaluation/run_jarvis.py \
+  --fixtures Fixtures/LocalTestImages \
+  --output Fixtures/LocalTestImages/Evaluations/NEUER-JARVIS-LAUF \
+  --server-url http://127.0.0.1:18082 \
+  --server-pid SERVER_PID \
+  --mode shared \
+  --model-provenance /tmp/glowroom-jarvisart/model-provenance.json \
+  --runtime-provenance /tmp/glowroom-jarvisart/runtime-provenance.json
+```
+
+`shared` verwendet dieselbe gemeinsame Aufgabe, dieselbe Decoderansicht und
+dasselbe unveränderte Validierungsschema wie der kontrollierte Qwen-Lauf.
+Die Antworten können mit `evaluate.py` ausgewertet werden. `native` verlangt
+zusätzlich `--system-prompt` und `--user-prompt` als eingefrorene lokale Dateien;
+es verwendet JarvisArts ursprüngliches Lightroom-Ausgabeformat. Diese Bedingung
+hat eine getrennte fachliche Sichtung und besteht dadurch nicht den gemeinsamen
+JSON-Vertrag. Rohe Antworten und Finish-Gründe bleiben unverändert erhalten.
+
+Beide Modi prüfen alle zwölf Fälle in fester Reihenfolge, ohne selektive
+Wiederholungen. `--limit N` kennzeichnet ausdrücklich einen getrennten Piloten
+über die ersten N Fälle. Ein einzelner Slot verarbeitet die Bilder seriell;
+Quellenprüfung und Rastervorbereitung verwenden drei Worker. Der Server muss
+mit lokalen Dateien, `--offline`, `--parallel 1`, deaktiviertem Prompt-Cache
+und ohne konkurrierende Anfragen laufen. Seine Startparameter, Revisionen,
+Dateihashes und Logs gehören zur lokalen Laufprovenienz. `cache_prompt=false`
+im Request ersetzt nicht die Prüfung der tatsächlichen Servermeldungen.
+
+Der HTTP-Timeout begrenzt Socket-Inaktivität, keine gesamte Wall-Zeit. Nach
+Timeout oder Inferenzfehler folgt kein weiterer Auftrag auf denselben
+möglicherweise noch belegten Slot. Ein Server liefert nicht zwingend einen
+Bildtokenzähler; nur positive ganzzahlige Zähler werden als solcher Nachweis
+markiert. Vision-Aktivierung, Serverlogs und die tatsächlich übertragenen
+Raster werden zusätzlich geprüft; ein Template-Marker ist kein Bildtoken.
+Server-RSS und globale Speicher-/Swap-Zähler sind
+unterschiedliche Messgrößen; fehlende OS-Messrechte werden separat ausgewiesen.
+Es gibt keinen MLX-Allokatorpeak für diesen Laufzeitpfad und keinen Nachweis
+vollständiger 8-GB-Systemtauglichkeit.
+
+Die Jarvis-HTTP-Tests verwenden ausschließlich einen temporären lokalen
+Testserver. In der eingeschränkten Sandbox benötigen sie eine Freigabe für
+Loopback-Bindung, aber keine externen Netzwerkdienste oder Modellgewichte.
