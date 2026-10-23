@@ -124,6 +124,7 @@ struct DetailView: View {
     @ViewState<Bool> private var zoomed = false
     @ViewState private var canvasSize = CGSize.zero
     @ViewState private var zoomCanvasSize = CGSize.zero
+    @ViewState private var photoHeaderHeight = CGFloat(30)
     @EnvironmentObject private var maskWorkspace: InlineMaskWorkspace
     @EnvironmentObject private var developWorkspace: DevelopWorkspace
     private var usesNativeCropInput: Bool {
@@ -148,16 +149,8 @@ struct DetailView: View {
         GeometryReader { available in
         VStack(spacing: 0) {
             if let asset = model.selectedAsset {
-                if model.isDeveloping {
-                    DevelopPhotoHeader(asset: asset, previewLabel: previewLabel)
-                } else {
-                    HStack(spacing: 8) {
-                        Text(asset.fileName).fontWeight(.medium)
-                        Text(previewLabel).foregroundStyle(Theme.muted)
-                        Spacer(minLength: 0)
-                    }.font(.system(size: 11)).lineLimit(1).truncationMode(.middle)
-                        .padding(.horizontal, 18).frame(height: 30).background(Theme.chrome)
-                }
+                DevelopPhotoHeader(asset: asset, previewLabel: previewLabel)
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { photoHeaderHeight = $0 }
                 GeometryReader { geometry in
                     if zoomed {
                         ScrollView([.horizontal, .vertical]) {
@@ -200,8 +193,8 @@ struct DetailView: View {
                     .accessibilityIdentifier("workspace.canvas")
                 canvasControls(asset)
                 if !model.isDeveloping, layout.panels(developing: false).showsFilmstrip {
-                    // The bound applies to the image canvas, after its controls and resize handle.
-                    let chromeHeight = 30.0 + 42 + 6
+                    // Include the actual header height when capture data wraps on narrow canvases.
+                    let chromeHeight = photoHeaderHeight + 42 + 6
                     let height = layout.boundedFilmstripHeight(availableHeight: max(0, available.size.height - chromeHeight), developing: model.isDeveloping)
                     WorkspaceResizeHandle(horizontal: false, label: "Höhe des Filmstreifens", value: height, step: 1) { height in
                         layout.update(developing: model.isDeveloping) { $0.filmstripHeight = height }

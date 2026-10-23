@@ -422,12 +422,8 @@ struct LibraryView: View {
                 if layout.isFocused {
                     compactLibraryBar
                 } else {
-                    LibraryHeading(model: model)
-                    HStack(spacing: 0) {
-                        ViewThatFits(in: .horizontal) {
-                            controlBar
-                            compactControlBar
-                        }
+                    LibraryHeading(model: model) {
+                        WorkspaceActions.showGrid(layout, library: model)
                     }
                 }
             if model.searchMode == .semantic || model.semanticOperationLabel != nil || model.semanticState.isIndexing || model.semanticImportReview != nil {
@@ -461,15 +457,6 @@ struct LibraryView: View {
                 .accessibilityLabel(model.searchMode == .literal ? "Wörtliche Fotosuche" : "Semantische Bildsuche")
             libraryOptionsMenu
         }.font(.system(size: 11)).padding(.horizontal, 14).frame(height: 48)
-    }
-
-    private var compactControlBar: some View {
-        HStack(spacing: 8) {
-            libraryOptionsMenu
-            Spacer(minLength: 0)
-            IconButton(symbol: "arrow.clockwise", help: "Ordner aktualisieren") { model.refreshCurrentFolder() }
-                .disabled(model.isImporting || model.folders.isEmpty || !model.canModify)
-        }.padding(.horizontal, 18).frame(height: 40)
     }
 
     private var panelControls: some View {
@@ -516,32 +503,6 @@ struct LibraryView: View {
         } label: { Label("Filter & Sortierung", systemImage: "line.3.horizontal.decrease") }
             .menuStyle(.borderlessButton).fixedSize().font(.system(size: 11))
             .foregroundStyle(model.minimumRating > 0 || model.searchMode == .semantic ? Theme.accent : Theme.muted)
-    }
-
-    private var controlBar: some View {
-        HStack(spacing: 8) {
-            HStack(spacing: 1) {
-                IconButton(symbol: "square.grid.2x2", help: "Rasteransicht", active: !model.showsDetail) { WorkspaceActions.showGrid(layout, library: model) }
-                IconButton(symbol: "rectangle", help: "Einzelbildansicht · Leertaste", active: model.showsDetail) { if model.selectedAsset != nil { model.showsDetail = true } }
-            }
-            Rectangle().fill(Theme.line).frame(width: 1, height: 18).padding(.horizontal, 7)
-            Menu {
-                Button("Alle Bewertungen") { model.minimumRating = 0 }
-                ForEach(1...5, id: \.self) { value in Button("Mindestens \(value) Sterne") { model.minimumRating = value } }
-            } label: {
-                HStack(spacing: 6) { Image(systemName: "line.3.horizontal.decrease"); Text(model.minimumRating == 0 ? "Alle Bewertungen" : "\(model.minimumRating)+ Sterne") }
-                    .font(.system(size: 10)).foregroundStyle(model.minimumRating == 0 ? Theme.muted : Theme.accent)
-            }.menuStyle(.borderlessButton).fixedSize()
-            Picker("Suchmodus", selection: $model.searchMode) {
-                ForEach(LibrarySearchMode.allCases) { Text($0.label).tag($0) }
-            }.pickerStyle(.menu).font(.system(size: 10)).fixedSize()
-            Spacer(minLength: 8)
-            Menu {
-                Picker("Sortieren", selection: $model.sort) { ForEach(PhotoSort.allCases) { Text($0.rawValue).tag($0) } }
-            } label: { Label(model.sort.rawValue, systemImage: "arrow.down").font(.system(size: 10)).foregroundStyle(Theme.muted) }
-                .menuStyle(.borderlessButton).fixedSize()
-            IconButton(symbol: "arrow.clockwise", help: "Ordner aktualisieren") { model.refreshCurrentFolder() }.disabled(model.isImporting || model.folders.isEmpty || !model.canModify)
-        }.padding(.horizontal, 18).frame(height: 40)
     }
 
     private var emptyState: some View {

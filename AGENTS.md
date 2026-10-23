@@ -17,6 +17,24 @@ Abhängigkeiten und gemeinsam veränderlicher Zustand müssen geschützt bleiben
 - Führe unabhängige Builds und Tests parallel aus, sofern sie getrennte Build-Verzeichnisse, Testdaten und andere veränderliche Ressourcen verwenden. Abhängige Schritte und Änderungen an gemeinsamem Git-Zustand bleiben geordnet.
 - Prüfe parallele Teilergebnisse einzeln und anschließend ihre Integration. Parallelisierung ersetzt weder Review noch Verifikation.
 
+### Build-Ausführung mit Netzwerkzugriff
+
+- Ein sauberer Build muss die in `Package.resolved` festgelegten Swift-Pakete gegebenenfalls von GitHub laden können. In der eingeschränkten Codex-Sandbox kann bereits die DNS-Auflösung mit `Could not resolve host: github.com` scheitern. Starte den Build deshalb direkt über `exec_command` mit `sandbox_permissions: "require_escalated"` und einer Begründung für den benötigten Netzwerkzugriff; ein vorheriger Versuch in der netzwerkgesperrten Sandbox ist nicht erforderlich. Das bereits im Build-Skript enthaltene SwiftPM-Flag `--disable-sandbox` ersetzt diese Ausführungsfreigabe nicht.
+- Nach der unten vorgeschriebenen Prüfung laufender Prozesse und Bereinigung der generierten Build-Ergebnisse sieht der Werkzeugaufruf in diesem Checkout so aus:
+
+```json
+{
+  "cmd": "./scripts/build-app.sh",
+  "workdir": "/Users/wolfgangbauer/dev/workspace/picedit",
+  "sandbox_permissions": "require_escalated",
+  "justification": "Darf ich den sauberen lokalen App-Build mit Netzwerkzugriff zum Laden der festgelegten Swift-Pakete ausführen?",
+  "yield_time_ms": 1000,
+  "max_output_tokens": 2000
+}
+```
+
+- In anderen Checkouts `workdir` auf den tatsächlichen Repository-Pfad anpassen. Benötigen Testläufe eine Paketauflösung oder Zugriff auf den macOS-Fensterserver, starte auch `./scripts/test.sh` mit dieser Ausführungsfreigabe. Eine abgelehnte Freigabe ist als Hindernis zu melden; Paketversionen oder Build-Prüfungen dürfen deshalb nicht abgeschwächt werden.
+
 ## Abschluss von Änderungen
 
 - Führe nach jeder umgesetzten Änderung und vor deren Abschluss ein Review des finalen Diffs einschließlich betroffener Schnittstellen, Tests und Dokumentation durch. Behebe zur Umsetzung gehörende Befunde und prüfe die Korrekturen erneut; dokumentiere das Review-Ergebnis im Abschlussbericht.
