@@ -82,3 +82,96 @@ Die Regressionstests prüfen alte Snapshotbytes und Hashes, neue strikte
 Roundtrips, SQL-Sicherung und Wiederherstellung, erhaltene Ausgangswerte bei einzelnen Parameteränderungen,
 bekannte Neutralreferenzen, Alpha, Vorschau-/Exportgleichheit und HDR-Lichter
 einschließlich lokaler Masken und zwischengespeicherter Renderpräfixe.
+
+## Versionierte Tonwertverarbeitung
+
+Neue Bearbeitungen verwenden **sRGB Float (V2)**. Gespeicherte Bearbeitungen
+ohne `toneProcessingVersion` behalten **Bisherig (V1)** einschließlich der
+bisherigen Gamma-2,2-Kennlinien und Automatik. Im Inspector stellt der Befehl
+**Auf sRGB Float (V2) umstellen** ausschließlich die Prozessversion um; die
+Reglerwerte bleiben erhalten. Der sichtbare Farbeindruck kann sich dadurch
+ändern. Einmal Rückgängig stellt die bisherige Version wieder her. Reset und
+Rückkehr zum Original erhalten die gewählte Prozessversion. Auch neue
+generierte Bildquellen beginnen mit neutralen V2-Einstellungen.
+
+Die Versionskennung gehört zu Settings-Gleichheit, Cacheidentitäten,
+Verlauf, Bildständen, Export und Backups. Eine fehlende Kennung bedeutet V1;
+V1 wird weiterhin ohne zusätzliches Versionsfeld gespeichert. So bleiben
+historische kanonische Snapshot- und Provenienzbytes samt Hashes erhalten.
+Unbekannte Prozessversionen werden abgewiesen. Eine neutrale V2-Bearbeitung
+überspringt die Bildoperationen vollständig, bleibt aber als eigener
+Verarbeitungsvertrag gespeichert.
+
+### Farb- und Präzisionsvertrag von V2
+
+Core Image arbeitet in **extended linear sRGB**, mit RGBA-Float32-Zwischenwerten.
+Nach Entrauschung, Bildausgleich sowie Profil und Weißabgleich folgen:
+
+1. Vorzeichenrichtiges stückweises sRGB-Encoding.
+2. Kontrast und Tonbereiche, deren Gewichtung vor der Belichtung bestimmt wird.
+3. sRGB-Decoding, linearer Faktor `2^EV`, danach erneutes Encoding.
+4. Dehaze und Farbregler nach den bestehenden Formeln, danach Decoding.
+5. Präsenz, Schwarzweiß und Schärfen; lokale Masken erben dieselbe Prozessversion.
+
+Für das Encoding gilt betragsweise `12.92*x` bis `0.0031308`, sonst
+`1.055*x^(1/2.4)-0.055`; das Vorzeichen bleibt erhalten. Das Decoding verwendet
+`x/12.92` bis `0.04045`, sonst `((x+0.055)/1.055)^2.4`, ebenfalls mit erhaltenem
+Vorzeichen. Alpha wird getrennt verarbeitet; vollständig transparente Pixel
+werden kanonisch schwarz-transparent. Negative Gamutkanäle und Werte über 1
+werden innerhalb dieser V2-Stufen erhalten. Eine gültige SDR-P3-Farbe kann in
+extended sRGB solche Komponenten haben und ist deshalb kein HDR-Nachweis.
+
+Die SDR-Begrenzung erfolgt bei der Ausgabe in das gewählte Zielprofil und
+anschließende ganzzahlige Rasterformat, nicht bereits im sRGB-Arbeitswürfel.
+Vorschau und Export bauen denselben versionierten Graphen auf. Zielprofil,
+Ausgabequantisierung und Verkleinerung können Unterschiede zwischen einer
+Vorschau und dem Vollbild erklären. Die angeforderte Core-Image-Softwareoption
+ist eine Diagnosepräferenz und kein Nachweis tatsächlicher CPU-Ausführung.
+
+V2 verwendet für räumliche Glättungen zwei separierbare Float-Kernel mit
+normalisierten Gaußgewichten und ganzzahligen Abtastpositionen. Dies vermeidet
+die in der lokalen Stufendiagnose beobachtete Halbpräzisionsrundung des nativen
+Gaußfilters. Der Kernelcache enthält höchstens acht Varianten, keine Bildraster.
+Sigma ist auf 128 Quellpixel und der Stützbereich je Richtung auf 512 Pixel
+begrenzt. Der größere experimentelle Shader mit 1.024 Taps benötigte auf der
+lokalen Maschine mehr als zwei Minuten Kompilierzeit; die Grenze schützt die
+Reaktionsfähigkeit und die Größe der erzeugten Shader. Darüber endet der Renderauftrag mit einem erklärenden Fehler; der
+bisherige Bildstand bleibt erhalten. Die Grenze betrifft sehr große Quellen
+mit aktiven räumlichen Korrekturen, keinen normalen Reglerwertebereich.
+
+### Float-Analyse und Automatikgrenzen
+
+V2 analysiert den aktiven globalen Graphen vor Ausgabequantisierung. Profil,
+Weißabgleich, Bildausgleich und übrige globale Regler bleiben aktiv; nur der
+jeweils geschätzte Regler wird für Baseline und absolute Kandidaten neutralisiert.
+Masken, Retusche und Geometrie sind ausgeschlossen. Die bereits decodierte
+Quelle, Prefix-Caches und der bestehende begrenzte Analyseworker werden
+wiederverwendet; ein Reglerauftrag startet keinen neuen RAW-Decode.
+
+Die Analyse liest höchstens 256×256 RGBA-Float32-Pixel in extended linear sRGB
+und im erweiterten linearen Zielprofil. Die perzeptuellen SDR-Ziele verwenden
+vorzeichenrichtig sRGB-kodierte lineare Luminanz; Clipping und Überschreitungen
+werden separat im tatsächlichen Zielprofil vor der SDR-Begrenzung geprüft.
+Alpha gewichtet die kleine serielle CPU-Reduktion. Transparente Flächen tragen
+keine Masse bei. Zwei Float-Proxys und Histogramme haben einen expliziten
+Speicherplan; es gibt keinen Readback pro Histogramm-Bin.
+
+Ein gemeinsamer Bereichsvertrag beschreibt ausschließlich die decodierte
+Rendition. SDR-Decodierung verspricht keine Sensor-HDR-Information. Für
+erweiterte relative RGB-Räume ist das nominale SDR-Weiß explizit angegeben.
+Die Quellenluminanz wird zusätzlich im bestehenden CI-Graphen auf ein Maximum
+reduziert, damit ein kleines HDR-Licht beim Downsampling nicht verloren geht.
+Tatsächliche Luminanz über nominalem SDR-Weiß, ein aktiver HDR-Ausgabepfad,
+fehlende Bereichsinformation und nicht unterstützte Profile liefern keinen
+SDR-Automatikvorschlag. Erweiterte P3-Gamutkanäle allein führen nicht zur
+Ablehnung. LUT-, PQ- und HLG-Profile benötigen einen eigenen Vertrag.
+
+V2 unterscheidet einen gültigen Wert (auch 0), keinen Vorschlag und einen
+Berechnungsfehler. Kein Vorschlag erhält den aktuellen Reglerwert und erzeugt
+keine neue Revision oder Undo-Stufe. Veraltete Erfolge und Fehler werden anhand
+von Quelle, Snapshot, Revision und Edit-Session verworfen. Das sichtbare
+Histogramm bleibt ausdrücklich eine sRGB-RGBA8-SDR-Anzeige und ist kein
+Float-Analyse- oder RAW-Sensor-Clippingnachweis.
+
+Reproduzierbare Prüfungen und die Grenzen der optionalen lokalen RAW-Messung
+stehen in [TONE-PIPELINE-VALIDATION.md](TONE-PIPELINE-VALIDATION.md).

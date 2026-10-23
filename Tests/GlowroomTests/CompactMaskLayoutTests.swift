@@ -175,7 +175,7 @@ struct CompactMaskLayoutTests {
         try await host.settle()
         #expect(!fixture.workspace.isPresented)
         #expect(fixture.workspace.open(asset: replacement, source: try fixture.editor.resolvedSource(for: replacement).identity,
-            settings: .neutral, editor: fixture.editor, library: fixture.library, model: fixture.model))
+            settings: fixture.editor.settings(for: replacement.id), editor: fixture.editor, library: fixture.library, model: fixture.model))
         try await compactMaskWait { fixture.workspace.canvasSize != nil }
         pending.releaseAll()
         try await returned.wait("old photo mask worker returned", until: { $0 })
@@ -462,14 +462,16 @@ private struct CompactMaskFixture {
             space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
             provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent))
         let bitmap = PreviewBitmap(image: image)
+        let settings = editor.settings(for: asset.id)
+        #expect(settings == .newEditingSettings)
         let model = if let generator {
-            LocalAdjustmentEditorModel(settings: .neutral, loader: { _ in bitmap }, generator: generator)
+            LocalAdjustmentEditorModel(settings: settings, loader: { _ in bitmap }, generator: generator)
         } else {
-            LocalAdjustmentEditorModel(settings: .neutral, loader: { _ in bitmap })
+            LocalAdjustmentEditorModel(settings: settings, loader: { _ in bitmap })
         }
         let workspace = InlineMaskWorkspace()
         #expect(workspace.open(asset: asset, source: try editor.resolvedSource(for: asset).identity,
-            settings: .neutral, editor: editor, library: library, model: model))
+            settings: settings, editor: editor, library: library, model: model))
         try await compactMaskWait { workspace.canvasSize != nil }
         return Self(directory: directory, library: library, editor: editor, model: model, workspace: workspace)
     }

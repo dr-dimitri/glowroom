@@ -11,17 +11,27 @@ enum LocalAdjustmentRenderer {
     static let previewWorkingMemoryBudget = min(UInt64(512 * 1_024 * 1_024),
                                                 ProcessInfo.processInfo.physicalMemory / 16)
 
+    /// V2 expands the existing half-float base plan for its float working graph
+    /// and precise resized proxy. Two additional RGBAf planes are reserved; this
+    /// is a conservative admission bound rather than a measured native peak.
+    /// Callers omit it when a neutral, unchanged-size source returns directly.
+    static func additionalToneWorkingBytesPerPixel(version: ToneProcessingVersion) -> UInt64 {
+        version == .consistentV2 ? 32 : 0
+    }
+
     /// Use the largest aspect-preserving proxy that fits the combined local-mask
     /// and geometry/spot-correction plan. The original decoded base is reused.
     static func previewSize(width: Int, height: Int, adjustments: [LocalAdjustment],
                             geometry: DevelopGeometry = .neutral, fixedBytes: UInt64 = 0, outputBytesPerPixel: UInt64 = 0,
                             totalMemoryBudget: UInt64 = .max,
                             replacementColorBytesPerPixel: UInt64 = 0,
-                            globalBytesPerPixel: UInt64 = 0) throws -> (width: Int, height: Int) {
+                            globalBytesPerPixel: UInt64 = 0,
+                            toneProcessingVersion: ToneProcessingVersion = .legacyV1) throws -> (width: Int, height: Int) {
         guard width > 0, height > 0 else { throw EditRenderError.unavailable }
         func additionalBytes(_ width: Int, _ height: Int) -> UInt64? {
             guard let local = estimatedAdditionalBytes(adjustments: adjustments, width: width, height: height,
-                additionalRenderCount: DevelopGeometryRenderer.replacementCount(in: geometry)),
+                additionalRenderCount: DevelopGeometryRenderer.replacementCount(in: geometry),
+                toneProcessingVersion: toneProcessingVersion),
                   let geometryBytes = DevelopGeometryRenderer.estimatedAdditionalBytes(geometry: geometry, width: width, height: height,
                     replacementColorBytesPerPixel: replacementColorBytesPerPixel) else { return nil }
             let sum = local.addingReportingOverflow(geometryBytes)
@@ -67,7 +77,8 @@ enum LocalAdjustmentRenderer {
     /// saved effective layer so large exports and artifact previews are admitted
     /// before any mask raster or spatial intermediate is allocated.
     static func estimatedAdditionalBytes(adjustments: [LocalAdjustment], width: Int, height: Int,
-                                         additionalRenderCount: Int = 0) -> UInt64? {
+                                         additionalRenderCount: Int = 0,
+                                         toneProcessingVersion: ToneProcessingVersion = .legacyV1) -> UInt64? {
         guard width > 0, height > 0, (0...DevelopGeometry.maximumRetouchStrokes).contains(additionalRenderCount) else { return nil }
         let pixels = UInt64(width).multipliedReportingOverflow(by: UInt64(height))
         guard !pixels.overflow else { return nil }
@@ -81,24 +92,26 @@ enum LocalAdjustmentRenderer {
         for original in adjustments {
             let layer = original.normalized
             guard layer.isEffective else { continue }
-            // RGBAh candidate + blend + scalar coverage/strength intermediates.
-            var bytesPerPixel: UInt64 = 32
-            if layer.settings.temperature != 6_500 || layer.settings.tint != 0 { bytesPerPixel += 16 }
-            if layer.settings.texture != 0 { bytesPerPixel += 8 }
-            if layer.settings.clarity != 0 { bytesPerPixel += 8 }
+            // Candidate, blend and coverage planes use this image's CI working
+            // format. V2 RGBAf doubles V1 RGBAh; CPU Gray8 backing stays unchanged.
+            let plane: UInt64 = toneProcessingVersion == .consistentV2 ? 16 : 8
+            var bytesPerPixel = 4 * plane
+            if layer.settings.temperature != 6_500 || layer.settings.tint != 0 { bytesPerPixel += 2 * plane }
+            if layer.settings.texture != 0 { bytesPerPixel += plane }
+            if layer.settings.clarity != 0 { bytesPerPixel += plane }
             var rasterPlanes: UInt64 = 0
             switch layer.mask.shape {
             case .brush:
                 rasterPlanes += 1
-                if layer.mask.feather > 0 { bytesPerPixel += 8 }
+                if layer.mask.feather > 0 { bytesPerPixel += plane }
             case .subject(let raster), .sky(let raster):
                 guard add(UInt64(raster.bytes.count)) else { return nil }
-                if layer.mask.feather > 0 { bytesPerPixel += 8 }
+                if layer.mask.feather > 0 { bytesPerPixel += plane }
             case .linear, .radial: break
             }
             if let refinement = layer.mask.refinement, !refinement.strokes.isEmpty {
                 rasterPlanes += 2
-                bytesPerPixel += 24 // Two clamp planes and their composed coverage.
+                bytesPerPixel += 3 * plane // Two clamp planes and their composed coverage.
             }
             let intermediates = pixels.partialValue.multipliedReportingOverflow(by: bytesPerPixel)
             guard !intermediates.overflow, add(intermediates.partialValue) else { return nil }
@@ -116,13 +129,16 @@ enum LocalAdjustmentRenderer {
 
     static func apply(to input: CIImage, adjustments: [LocalAdjustment], extent: CGRect,
                       scale: Double, cache: LocalMaskImageCache? = nil,
-                      preservesExtendedRange: Bool = false) throws -> CIImage {
+                      preservesExtendedRange: Bool = false,
+                      toneProcessingVersion: ToneProcessingVersion = .legacyV1) throws -> CIImage {
         var image = input
         // Layer order is observable where masks overlap. The admitted renderer
         // serializes this graph construction; Core Image parallelizes its pixels.
         for adjustment in adjustments where adjustment.isEffective {
             try Task.checkCancellation()
-            let candidate = try EditRenderer.manualAdjustments(image, settings: adjustment.settings.editSettings,
+            var localSettings = adjustment.settings.editSettings
+            localSettings.toneProcessingVersion = toneProcessingVersion
+            let candidate = try EditRenderer.manualAdjustments(image, settings: localSettings,
                 extent: extent, scale: scale, preservesExtendedRange: preservesExtendedRange)
             let mask = try maskImage(adjustment.mask, extent: extent, cache: cache)
             guard let blended = blendKernel?.apply(extent: extent, arguments: [image, candidate, mask]) else {

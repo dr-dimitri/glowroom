@@ -1,4 +1,4 @@
-import CoreGraphics
+import CoreImage
 import Foundation
 import GlowroomCore
 
@@ -40,6 +40,17 @@ enum AutomaticToneControl: String, CaseIterable, Sendable {
         case .blacks: histogram.percentile(0.005)
         }
     }
+
+    fileprivate func measurement(in histogram: FloatToneHistogram) -> Double {
+        switch self {
+        case .exposure: histogram.percentile(0.5)
+        case .contrast: histogram.percentile(0.9) - histogram.percentile(0.1)
+        case .highlights: histogram.percentile(0.8)
+        case .shadows: histogram.percentile(0.2)
+        case .whites: histogram.percentile(0.995)
+        case .blacks: histogram.percentile(0.005)
+        }
+    }
 }
 
 /// One bounded analysis at a time off MainActor. Core Image chooses CPU/GPU
@@ -47,6 +58,147 @@ enum AutomaticToneControl: String, CaseIterable, Sendable {
 actor AutomaticToneEstimator {
     static let shared = AutomaticToneEstimator()
     private lazy var session = EditRenderer.Session(cacheIntermediates: true, lowPriority: true)
+    private var cachedSource: CGImage?
+    private var cachedDomain: FloatAnalysisDomain?
+    private var cachedSourceHistogram: FloatToneHistogram?
+    private var cachedSourceMaximum: Double?
+
+    /// V1 retains its historical estimator. V2 distinguishes a valid absolute
+    /// zero from unavailable evidence so the latter never resets a saved value.
+    func estimate(for control: AutomaticToneControl, bitmap: PreviewBitmap,
+                  settings: EditSettings) async throws -> AutomaticToneEstimate {
+        try Task.checkCancellation()
+        if settings.toneProcessingVersion == .consistentV2 {
+            guard !settings.developColor.hdrEnabled else { return .noProposal(.hdrOutput) }
+            guard bitmap.rangeProvenance != .unknown else { return .noProposal(.unknownSourceRange) }
+            guard FloatAnalysisDomain(bitmap: bitmap, version: .consistentV2) != nil else { return .noProposal(.unsupportedDomain) }
+        }
+        var phase: ArtifactResourceLease?
+        if let resources = bitmap.resourceOwner {
+            let planned = try Self.estimatedAdditionalBytes(sourceBytes: Int64(bitmap.byteCost),
+                width: bitmap.image.width, height: bitmap.image.height,
+                version: settings.toneProcessingVersion, ownsSource: bitmap.memoryOwnership != nil)
+            phase = try await resources.acquire(kind: .codec, bytes: planned, priority: .interactive,
+                                                retaining: bitmap.memoryOwnership.map { [$0] } ?? [])
+        }
+        // Admission can suspend and let another actor request enter. After it
+        // resumes, no await occurs until all native work and reductions finish;
+        // the lease and decoded source survive cancellation until that return.
+        defer { withExtendedLifetime((phase, bitmap)) {} }
+        try Task.checkCancellation()
+        return try estimateAdmitted(for: control, bitmap: bitmap, settings: settings)
+    }
+
+    /// Admission follows the actual versioned allocation graph. V1 first makes
+    /// a <=256-pixel raster, then renders all candidates at that bounded size;
+    /// V2 retains the full source graph until its Float readback is downsampled.
+    /// This is a conservative allocation plan, not a process/GPU memory limit.
+    static func estimatedAdditionalBytes(sourceBytes: Int64, width: Int, height: Int,
+                                         version: ToneProcessingVersion, ownsSource: Bool) throws -> Int64 {
+        guard sourceBytes >= 0, width > 0, height > 0 else { throw ArtifactResourceError.invalidRequest }
+        let scratch: Int64
+        let buffers: Int64
+        switch version {
+        case .legacyV1:
+            // Match the existing preview lane's source import/resize allowance.
+            // The retained input is separately charged by its ownership token.
+            let sourceImport = sourceBytes.multipliedReportingOverflow(by: 4)
+            let scale = min(1, 256 / Double(max(width, height)))
+            let proxyWidth = max(1, min(256, Int((Double(width) * scale).rounded())))
+            let proxyHeight = max(1, min(256, Int((Double(height) * scale).rounded())))
+            guard !sourceImport.overflow else { throw ArtifactResourceError.capacityExceeded }
+            scratch = sourceImport.partialValue
+            // Proxy, candidate/output, RGBA8 histogram buffers and bounded
+            // native half-float scratch; no full-source Float analysis exists.
+            buffers = Int64(proxyWidth * proxyHeight) * 64 + 3 * 1_024 * 8
+        case .consistentV2:
+            let pixels = Int64(width).multipliedReportingOverflow(by: Int64(height))
+            let native = pixels.partialValue.multipliedReportingOverflow(by: 96)
+            guard !pixels.overflow, !native.overflow else { throw ArtifactResourceError.capacityExceeded }
+            scratch = native.partialValue
+            buffers = Int64(FloatAnalysis.maximumWorkingBytes)
+        }
+        let working = scratch.addingReportingOverflow(buffers)
+        let total = working.partialValue.addingReportingOverflow(ownsSource ? 0 : sourceBytes)
+        guard !working.overflow, !total.overflow else { throw ArtifactResourceError.capacityExceeded }
+        return total.partialValue
+    }
+
+    private func estimateAdmitted(for control: AutomaticToneControl, bitmap: PreviewBitmap,
+                                  settings: EditSettings) throws -> AutomaticToneEstimate {
+        try Task.checkCancellation()
+        guard settings.toneProcessingVersion == .consistentV2 else {
+            return .value(try value(for: control, bitmap: bitmap, settings: settings))
+        }
+        guard !settings.developColor.hdrEnabled else { return .noProposal(.hdrOutput) }
+        guard bitmap.rangeProvenance != .unknown else { return .noProposal(.unknownSourceRange) }
+        guard let domain = FloatAnalysisDomain(bitmap: bitmap, version: .consistentV2),
+              let target = bitmap.image.colorSpace.flatMap(FloatAnalysis.extendedTargetSpace) else {
+            return .noProposal(.unsupportedDomain)
+        }
+        let context = session.context(for: .consistentV2)
+        let source: FloatToneHistogram
+        let maximum: Double
+        if cachedSource === bitmap.image, cachedDomain == domain,
+           let histogram = cachedSourceHistogram, let peak = cachedSourceMaximum {
+            source = histogram; maximum = peak
+        } else {
+            maximum = try FloatAnalysis.maximumSourceLuminance(bitmap, context: context)
+            source = try FloatAnalysis.histogram(CIImage(cgImage: bitmap.image), context: context,
+                                                 targetSpace: target, domain: domain)
+            // Match the renderer's single-source decoded-image retention bound.
+            if bitmap.resourceOwner == nil, bitmap.byteCost <= 64 * 1_024 * 1_024 {
+                cachedSource = bitmap.image; cachedDomain = domain
+                cachedSourceHistogram = source; cachedSourceMaximum = maximum
+            } else {
+                cachedSource = nil; cachedDomain = nil
+                cachedSourceHistogram = nil; cachedSourceMaximum = nil
+            }
+        }
+        // Source-range evidence is independent of the selected slider and of
+        // other saved exposure corrections. A P3 gamut coordinate is not HDR.
+        guard maximum / domain.nominalSDRWhite <= 1.000_01 else { return .noProposal(.hdrSource) }
+        guard source.hasUsefulRange else { return .noProposal(.insufficientRange) }
+        var global = settings
+        global.localAdjustments = []; global.developGeometry = .neutral
+        global[keyPath: control.keyPath] = 0
+        global = global.normalized
+        func histogram(_ candidate: EditSettings) throws -> FloatToneHistogram {
+            try Task.checkCancellation()
+            let graph = try EditRenderer.globalGraph(bitmap, settings: candidate, session: session)
+            return try FloatAnalysis.histogram(graph, context: context, targetSpace: target, domain: domain)
+        }
+        let baseline = try histogram(global)
+        guard baseline.hasUsefulRange else { return .noProposal(.insufficientRange) }
+        let initial = control.measurement(in: baseline), targetValue = control.target
+        let tolerance = 2.0 / 1_023
+        guard abs(initial - targetValue) > tolerance else { return .value(0) }
+        if control == .shadows && initial >= targetValue { return .value(0) }
+        if control == .highlights && initial <= targetValue { return .value(0) }
+        let direction = initial < targetValue ? 1.0 : -1.0
+        var lower = 1, upper = Int((control.range.upperBound / control.step).rounded())
+        var best = 0.0, bestError = abs(initial - targetValue), firstCandidate = true
+        while lower <= upper {
+            try Task.checkCancellation()
+            let units = firstCandidate ? upper : (lower + upper) / 2
+            firstCandidate = false
+            let candidate = direction * Double(units) * control.step
+            var proposed = global
+            proposed[keyPath: control.keyPath] = candidate
+            let result = try histogram(proposed)
+            let measured = control.measurement(in: result), error = abs(measured - targetValue)
+            let safe = result.preservesClipping(of: baseline)
+            if safe && (error < bestError - 0.000_001 ||
+                (abs(error - bestError) <= 0.000_001 && abs(candidate) < abs(best))) {
+                best = candidate; bestError = error
+            }
+            if !safe || direction * (measured - targetValue) >= 0 { upper = units - 1 }
+            else { lower = units + 1 }
+        }
+        try Task.checkCancellation()
+        guard abs(initial - targetValue) - bestError > tolerance else { return .noProposal(.noUsefulImprovement) }
+        return .value(min(control.range.upperBound, max(control.range.lowerBound, best)))
+    }
 
     /// Estimates one absolute slider value from an already decoded source.
     /// Other global adjustments, profiles and natural balance remain active.

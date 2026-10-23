@@ -74,7 +74,8 @@ enum PreviewDecoder {
                 throw PreviewFailure.unsupportedOrDamaged
             }
             try Task.checkCancellation()
-            return PreviewBitmap(image: image, sourceLongEdge: sourceLongEdge)
+            return PreviewBitmap(image: image, sourceLongEdge: sourceLongEdge,
+                rangeProvenance: request.allowsHDR ? .extended(nominalSDRWhite: 1) : .sdrDecoded)
         }
     }
 

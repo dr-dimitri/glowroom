@@ -87,11 +87,13 @@ private struct InlineMaskCursorFixture {
             bytesPerRow: 400 * 4, space: CGColorSpaceCreateDeviceRGB(),
             bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
         let bitmap = PreviewBitmap(image: try #require(context.makeImage()))
-        let model = LocalAdjustmentEditorModel(settings: .neutral, loader: { _ in bitmap })
+        let settings = editor.settings(for: asset.id)
+        #expect(settings == .newEditingSettings)
+        let model = LocalAdjustmentEditorModel(settings: settings, loader: { _ in bitmap })
         let workspace = InlineMaskWorkspace()
         let source = try editor.resolvedSource(for: asset).identity
         try #require(workspace.open(asset: asset, source: source,
-            settings: .neutral, editor: editor, library: library, model: model))
+            settings: settings, editor: editor, library: library, model: model))
         try await inlineMaskCursorWait("mask cursor canvas") { workspace.canvasSize != nil }
         model.add(.brush)
         // Zero coverage keeps snapshots independent of asynchronous mask

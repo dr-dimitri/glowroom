@@ -51,10 +51,13 @@ struct PreviewBitmap: @unchecked Sendable {
     let sourceLongEdge: Int
     let memoryOwnership: ArtifactMemoryReservation?
     let resourceOwner: (any ArtifactResourceAdmitting)?
-    init(image: CGImage, sourceLongEdge: Int? = nil, memoryOwnership: ArtifactMemoryReservation? = nil, resourceOwner: (any ArtifactResourceAdmitting)? = nil) {
+    let rangeProvenance: PreviewRangeProvenance
+    init(image: CGImage, sourceLongEdge: Int? = nil, memoryOwnership: ArtifactMemoryReservation? = nil,
+         resourceOwner: (any ArtifactResourceAdmitting)? = nil, rangeProvenance: PreviewRangeProvenance? = nil) {
         self.image = image
         self.sourceLongEdge = max(1, sourceLongEdge ?? max(image.width, image.height))
         self.memoryOwnership = memoryOwnership; self.resourceOwner = resourceOwner
+        self.rangeProvenance = rangeProvenance ?? .inferred(from: image)
     }
     var sourcePixelScale: Double { Double(max(image.width, image.height)) / Double(sourceLongEdge) }
     var byteCost: Int { image.bytesPerRow * image.height }

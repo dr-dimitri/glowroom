@@ -104,6 +104,9 @@ actor AdjustedPreviewPipeline {
         // Small geometry calculations stay serial; another worker would cost
         // more than this constant-size calculation. Scaling uses the render slot.
         let requestedSize = try EditRenderer.outputSize(source, maximumPixelSize: maximumOutputPixelSize)
+        let needsWorkingGraph = !normalized.isNeutral || requestedSize.width != source.image.width || requestedSize.height != source.image.height
+        let toneWorkingBytes = needsWorkingGraph
+            ? LocalAdjustmentRenderer.additionalToneWorkingBytesPerPixel(version: normalized.toneProcessingVersion) : 0
         var fixedBytes: UInt64 = 0
         var outputBytesPerPixel: UInt64 = 0
         var totalMemoryBudget = UInt64.max
@@ -129,7 +132,9 @@ actor AdjustedPreviewPipeline {
             outputBytesPerPixel: outputBytesPerPixel, totalMemoryBudget: totalMemoryBudget,
             replacementColorBytesPerPixel: EditRenderer.replacementColorBytesPerPixel(settings: normalized),
             globalBytesPerPixel: DevelopSharpening.additionalBytesPerPixel(settings: normalized)
-                + EditRenderer.additionalColorOutputBytesPerPixel(for: source.image, settings: normalized))
+                + EditRenderer.additionalColorOutputBytesPerPixel(for: source.image, settings: normalized)
+                + toneWorkingBytes,
+            toneProcessingVersion: normalized.toneProcessingVersion)
         guard !normalized.isNeutral || size.width != source.image.width || size.height != source.image.height else { return source }
         let key = Key(request: request, settings: normalized, width: source.image.width, height: source.image.height,
                       sourceLongEdge: source.sourceLongEdge,
@@ -230,16 +235,21 @@ actor AdjustedPreviewPipeline {
                         // thumbnail. It occupies this same bounded worker/CI lane.
                         var phase: ArtifactResourceLease?
                         if let resources = source.resourceOwner {
+                            let needsWorkingGraph = !settings.isNeutral || outputWidth != source.image.width || outputHeight != source.image.height
+                            let toneWorkingBytes = needsWorkingGraph
+                                ? LocalAdjustmentRenderer.additionalToneWorkingBytesPerPixel(version: settings.toneProcessingVersion) : 0
                             let sourceBytes = Int64(source.byteCost).multipliedReportingOverflow(by: 4)
                             let outputPixels = Int64(outputWidth).multipliedReportingOverflow(by: Int64(outputHeight))
                             let outputBytes = outputPixels.partialValue.multipliedReportingOverflow(
                                 by: Int64(32 + DevelopSharpening.additionalBytesPerPixel(settings: settings)
-                                    + EditRenderer.additionalColorOutputBytesPerPixel(for: source.image, settings: settings)))
+                                    + EditRenderer.additionalColorOutputBytesPerPixel(for: source.image, settings: settings)
+                                    + toneWorkingBytes))
                             let baseBytes = sourceBytes.partialValue.addingReportingOverflow(outputBytes.partialValue)
                             guard !sourceBytes.overflow, !outputPixels.overflow, !outputBytes.overflow, !baseBytes.overflow,
                                   let local = LocalAdjustmentRenderer.estimatedAdditionalBytes(adjustments: settings.localAdjustments,
                                     width: outputWidth, height: outputHeight,
-                                    additionalRenderCount: DevelopGeometryRenderer.replacementCount(in: settings.developGeometry)),
+                                    additionalRenderCount: DevelopGeometryRenderer.replacementCount(in: settings.developGeometry),
+                                    toneProcessingVersion: settings.toneProcessingVersion),
                                   let geometryBytes = DevelopGeometryRenderer.estimatedAdditionalBytes(geometry: settings.developGeometry,
                                     width: outputWidth, height: outputHeight,
                                     replacementColorBytesPerPixel: EditRenderer.replacementColorBytesPerPixel(settings: settings)) else {
@@ -254,12 +264,14 @@ actor AdjustedPreviewPipeline {
                                 priority: priority == .selected ? .interactive : .background,
                                 retaining: source.memoryOwnership.map { [$0] } ?? [])
                         }
-                        var input = try EditRenderer.resized(source, width: outputWidth, height: outputHeight, priority: priority)
+                        var input = try EditRenderer.resized(source, width: outputWidth, height: outputHeight, priority: priority,
+                                                            toneProcessingVersion: settings.toneProcessingVersion)
                         if let resources = source.resourceOwner, input.resourceOwner == nil {
                             // This temporary proxy belongs to the active phase, not
                             // a retained reservation. Mark its owner so renderer
                             // prefix/mask caches cannot keep scratch after the lease.
-                            input = PreviewBitmap(image: input.image, sourceLongEdge: input.sourceLongEdge, resourceOwner: resources)
+                            input = PreviewBitmap(image: input.image, sourceLongEdge: input.sourceLongEdge, resourceOwner: resources,
+                                                  rangeProvenance: input.rangeProvenance)
                         }
                         var bitmap: PreviewBitmap
                         if settings.isNeutral { bitmap = input }

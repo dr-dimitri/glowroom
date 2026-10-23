@@ -24,20 +24,20 @@ struct DevelopWhiteBalanceCanvasTests {
         try host.send(.leftMouseDown, to: input, at: CGPoint(x: 300, y: 50))
         try host.send(.leftMouseUp, to: input, at: CGPoint(x: 300, y: 50))
         #expect(fixture.workspace.picksWhiteBalance)
-        #expect(fixture.editor.settings(for: fixture.asset.id) == .neutral)
+        #expect(fixture.editor.settings(for: fixture.asset.id) == .newEditingSettings)
 
         try host.send(.leftMouseDown, to: input, at: CGPoint(x: 300, y: 300))
         try host.send(.leftMouseUp, to: input, at: CGPoint(x: 300, y: 300))
         #expect(!fixture.workspace.picksWhiteBalance)
         #expect(fixture.editor.settings(for: fixture.asset.id).developColor.temperature != 6_500)
         fixture.editor.undo(assetID: fixture.asset.id)
-        #expect(fixture.editor.settings(for: fixture.asset.id) == .neutral)
+        #expect(fixture.editor.settings(for: fixture.asset.id) == .newEditingSettings)
         #expect(await fixture.editor.flush())
     }
 
     @Test func pickerTakesPriorityOverCropWithoutChangingGeometry() async throws {
         let fixture = try await WhiteBalanceCanvasFixture.make()
-        var baseline = EditSettings.neutral
+        var baseline = fixture.editor.settings(for: fixture.asset.id)
         baseline.developGeometry.crop = try DevelopCropRect(x: 0.1, y: 0.2, width: 0.6, height: 0.5)
         baseline.developGeometry.straightenAngle = 23
         fixture.editor.setSettings(baseline, for: fixture.asset.id)
@@ -64,7 +64,7 @@ struct DevelopWhiteBalanceCanvasTests {
         let input = try host.inputView()
         try host.send(.leftMouseDown, to: input, at: CGPoint(x: 300, y: 300))
         if losesReadiness {
-            var cropped = EditSettings.neutral
+            var cropped = fixture.editor.settings(for: fixture.asset.id)
             cropped.developGeometry.crop = try DevelopCropRect(x: 0.1, y: 0.1, width: 0.8, height: 0.8)
             fixture.workspace.markDisplayed(source: fixture.source, settings: cropped)
         } else {
@@ -73,7 +73,7 @@ struct DevelopWhiteBalanceCanvasTests {
         try await host.settle()
         #expect(input.cursor(CGPoint(x: 300, y: 300)) === NSCursor.arrow)
         try host.send(.leftMouseUp, to: input, at: CGPoint(x: 300, y: 300))
-        #expect(fixture.editor.settings(for: fixture.asset.id) == .neutral)
+        #expect(fixture.editor.settings(for: fixture.asset.id) == .newEditingSettings)
         #expect(!fixture.editor.canUndo(assetID: fixture.asset.id))
         #expect(await fixture.editor.flush())
     }
@@ -104,7 +104,7 @@ private struct WhiteBalanceCanvasFixture {
             provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent)))
         workspace.bind(source: source)
         workspace.receive(bitmap, sourceBitmap: bitmap)
-        workspace.markDisplayed(source: source, settings: .neutral)
+        workspace.markDisplayed(source: source, settings: editor.settings(for: asset.id))
         workspace.picksWhiteBalance = true
         let deadline = ContinuousClock.now + .seconds(10)
         while editor.isLoading || workspace.sourceAnalysis == nil {

@@ -6,6 +6,7 @@ public struct EditSettings: Codable, Hashable, Sendable {
     /// Allows 16 MiB of frozen Gray8 masks after Base64 expansion, plus bounded
     /// vector masks, settings and the surrounding persisted editing envelopes.
     public static let maximumEncodedBytes = 32 * 1_024 * 1_024
+    public var toneProcessingVersion: ToneProcessingVersion
     public var exposure: Double
     public var contrast: Double
     public var highlights: Double
@@ -44,7 +45,9 @@ public struct EditSettings: Codable, Hashable, Sendable {
                 sharpeningDetail: Double = 25, sharpeningMasking: Double = 0,
                 autoToneAmount: Double = 0, naturalBalanceAmount: Double = 0,
                 naturalBalanceColorAmount: Double = 50, localAdjustments: [LocalAdjustment] = [],
-                developColor: DevelopColorSettings = .neutral, developGeometry: DevelopGeometry = .neutral) {
+                developColor: DevelopColorSettings = .neutral, developGeometry: DevelopGeometry = .neutral,
+                toneProcessingVersion: ToneProcessingVersion = .legacyV1) {
+        self.toneProcessingVersion = toneProcessingVersion
         self.exposure = exposure
         self.contrast = contrast
         self.highlights = highlights
@@ -78,10 +81,13 @@ public struct EditSettings: Codable, Hashable, Sendable {
         case naturalBalanceAmount, naturalBalanceColorAmount
         case localAdjustments
         case developColor, developGeometry
+        case toneProcessingVersion
     }
 
     public init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
+        toneProcessingVersion = values.contains(.toneProcessingVersion)
+            ? try values.decode(ToneProcessingVersion.self, forKey: .toneProcessingVersion) : .legacyV1
         exposure = try values.decode(Double.self, forKey: .exposure)
         contrast = try values.decode(Double.self, forKey: .contrast)
         highlights = try values.decode(Double.self, forKey: .highlights)
@@ -123,6 +129,9 @@ public struct EditSettings: Codable, Hashable, Sendable {
 
     public func encode(to encoder: Encoder) throws {
         var values = encoder.container(keyedBy: CodingKeys.self)
+        // V1's historical absence is canonical, including nested provenance.
+        // Adding a metadata field would change signed artifact manifest bytes.
+        if toneProcessingVersion != .legacyV1 { try values.encode(toneProcessingVersion, forKey: .toneProcessingVersion) }
         try values.encode(exposure, forKey: .exposure); try values.encode(contrast, forKey: .contrast)
         try values.encode(highlights, forKey: .highlights); try values.encode(shadows, forKey: .shadows)
         try values.encode(whites, forKey: .whites); try values.encode(blacks, forKey: .blacks)
@@ -173,6 +182,21 @@ public struct EditSettings: Codable, Hashable, Sendable {
 
     public static let neutral = EditSettings()
 
+    /// Only the creation of an unsaved edit uses the current processing version.
+    /// Decoding and the general initializer retain their legacy-safe defaults.
+    public static var newEditingSettings: Self { Self(toneProcessingVersion: .consistentV2) }
+
+    /// Build the explicit upgrade as one complete settings value. The app applies
+    /// this value through its ordinary undo and durable-write path.
+    public var upgradedToneProcessing: Self {
+        var result = self
+        result.toneProcessingVersion = .consistentV2
+        return result
+    }
+
+    /// Reset adjustments without silently upgrading or downgrading their graph.
+    public var resettingAdjustments: Self { Self(toneProcessingVersion: toneProcessingVersion) }
+
     public var normalized: Self {
         func clamp(_ value: Double, _ range: ClosedRange<Double>, fallback: Double = 0) -> Double {
             value.isFinite ? min(max(value, range.lowerBound), range.upperBound) : fallback
@@ -193,11 +217,13 @@ public struct EditSettings: Codable, Hashable, Sendable {
                     naturalBalanceAmount: clamp(naturalBalanceAmount, 0...100),
                     naturalBalanceColorAmount: clamp(naturalBalanceColorAmount, 0...100),
                     localAdjustments: localAdjustments.map(\.normalized), developColor: developColor.normalized,
-                    developGeometry: developGeometry.normalized)
+                    developGeometry: developGeometry.normalized, toneProcessingVersion: toneProcessingVersion)
     }
 
     public var isNeutral: Bool {
         var effective = normalized
+        // Processing version is cache/persistence identity, not an active edit.
+        effective.toneProcessingVersion = .legacyV1
         // A saved color preference has no rendering effect until explicitly enabled.
         if effective.naturalBalanceAmount == 0 {
             effective.naturalBalanceColorAmount = Self.neutral.naturalBalanceColorAmount

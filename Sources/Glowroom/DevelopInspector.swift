@@ -280,6 +280,7 @@ struct DevelopInspector: View {
         case .edit:
             VStack(alignment: .leading, spacing: 5) {
                 colorBasics(assetID: asset.id)
+                toneProcessingSection(assetID: asset.id)
                 naturalBalanceSection(assetID: asset.id)
                 adjustmentSection("Tonwert", key: "tone", controls: Array(Adjustment.allCases.prefix(6)), assetID: asset.id)
                 adjustmentSection("Präsenz", key: "presence", controls: Array(Adjustment.allCases.dropFirst(6).prefix(5)), assetID: asset.id)
@@ -513,6 +514,23 @@ struct DevelopInspector: View {
         }.disabled(!editor.canEdit || !library.canModify || library.comparesOriginal || library.comparesCurrentSourceWithoutSettings)
             .padding(.vertical, 8)
             .overlay(alignment: .top) { Rectangle().fill(Theme.line).frame(height: 1) }
+    }
+
+    private func toneProcessingSection(assetID: String) -> some View {
+        let version = editor.settings(for: assetID).toneProcessingVersion
+        return VStack(alignment: .leading, spacing: 5) {
+            Text(version == .legacyV1 ? "Tonwertverarbeitung: Bisherig (V1)" : "Tonwertverarbeitung: sRGB Float (V2)")
+                .font(.system(size: 10)).foregroundStyle(Theme.muted)
+            if version == .legacyV1 {
+                Button("Auf sRGB Float (V2) umstellen") {
+                    finishInput(assetID: assetID)
+                    editor.upgradeToneProcessing(assetID: assetID)
+                }
+                .font(.system(size: 10))
+                .help("Ändert die Tonwertkennlinien dieses Bildstands. Alle Regler bleiben erhalten. Einmal Rückgängig stellt die bisherige Verarbeitung wieder her.")
+                .accessibilityIdentifier("develop.tone-processing.upgrade")
+            }
+        }.disabled(!editor.canEdit || !library.canModify || library.comparesOriginal || library.comparesCurrentSourceWithoutSettings)
     }
 
     private func naturalBalanceSlider(_ title: String, keyPath: WritableKeyPath<EditSettings, Double>,

@@ -137,6 +137,37 @@ struct DevelopAutomaticToneTests {
         #expect(await fixture.editor.flush())
     }
 
+    @Test func noProposalRetainsTheCurrentValueWithoutUndoOrPersistence() async throws {
+        let baseline = EditSettings(exposure: 1.25, shadows: 12, toneProcessingVersion: .consistentV2)
+        let fixture = try await ToneWorkspaceFixture.make(baseline: baseline, estimate: { _, _, _ in
+            .noProposal(.hdrSource)
+        })
+        defer { fixture.workspace.clear() }
+        let revision = fixture.editor.localRevision(for: fixture.asset.id)
+        let operation = try #require(fixture.request(.exposure))
+        await operation.value
+        #expect(fixture.settings == baseline)
+        #expect(fixture.editor.localRevision(for: fixture.asset.id) == revision)
+        #expect(!fixture.editor.canUndo(assetID: fixture.asset.id))
+        #expect(fixture.workspace.errorMessage?.contains("oberhalb von SDR-Weiß") == true)
+        #expect(await fixture.editor.flush())
+        #expect(await fixture.store.revisions()[fixture.asset.id] == 0)
+    }
+
+    @Test func aValidZeroIsAcceptedAsOneUndoableReplacement() async throws {
+        let baseline = EditSettings(exposure: 1.25, toneProcessingVersion: .consistentV2)
+        let fixture = try await ToneWorkspaceFixture.make(baseline: baseline, estimate: { _, _, _ in .value(0) })
+        defer { fixture.workspace.clear() }
+        let operation = try #require(fixture.request(.exposure))
+        await operation.value
+        #expect(fixture.settings.exposure == 0)
+        #expect(fixture.settings.toneProcessingVersion == .consistentV2)
+        #expect(fixture.editor.canUndo(assetID: fixture.asset.id))
+        fixture.editor.undo(assetID: fixture.asset.id)
+        #expect(fixture.settings == baseline)
+        #expect(await fixture.editor.flush())
+    }
+
     @Test func estimatorFailureAfterToolChangeCannotShowAnObsoleteError() async throws {
         let latch = TestAsyncLatch()
         let probe = ToneEstimateProbe(values: [], latches: [latch], fails: true)
@@ -147,6 +178,30 @@ struct DevelopAutomaticToneTests {
         fixture.workspace.tool = .crop
         latch.releaseAll(); await operation.value
         #expect(fixture.settings == .neutral && fixture.workspace.errorMessage == nil)
+        #expect(await fixture.editor.flush())
+    }
+
+    @Test(arguments: ToneRequestInvalidation.allCases)
+    func lateErrorsCannotOverwriteAChangedBitmapToolOrSource(change: ToneRequestInvalidation) async throws {
+        let latch = TestAsyncLatch()
+        let probe = ToneEstimateProbe(values: [], latches: [latch], fails: true)
+        let fixture = try await ToneWorkspaceFixture.make(estimate: probe.estimate)
+        defer { latch.releaseAll(); fixture.workspace.clear() }
+        var isCurrent = true
+        let operation = try #require(fixture.request(.exposure, isCurrent: { isCurrent }))
+        try await probe.waitForCalls(1)
+        switch change {
+        case .bitmap:
+            let replacement = try toneTestBitmap()
+            fixture.workspace.receive(replacement, sourceBitmap: replacement)
+        case .tool: fixture.workspace.tool = .crop
+        case .source: fixture.workspace.bind(source: nil)
+        case .clear: fixture.workspace.clear()
+        case .context: isCurrent = false
+        }
+        latch.releaseAll(); await operation.value
+        #expect(fixture.workspace.errorMessage == nil)
+        #expect(!fixture.editor.canUndo(assetID: fixture.asset.id))
         #expect(await fixture.editor.flush())
     }
 
@@ -213,7 +268,7 @@ private actor ToneEstimateProbe {
     init(values: [Double], latches: [TestAsyncLatch] = [], fails: Bool = false) {
         self.values = values; self.latches = latches; self.fails = fails
     }
-    nonisolated var estimate: DevelopWorkspace.EstimateTone { { _, _, settings in try await self.value(settings) } }
+    nonisolated var estimate: DevelopWorkspace.EstimateTone { { _, _, settings in .value(try await self.value(settings)) } }
     func calls() -> Int { received.count }
     func baselines() -> [EditSettings] { received }
     nonisolated func waitForCalls(_ count: Int) async throws {

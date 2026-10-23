@@ -50,7 +50,7 @@ Ein Doppelklick auf die Reglerfläche oder den Reglerknopf stellt den Neutralwer
 
 **Umschalt-Doppelklick (⇧) auf Regler oder Beschriftung** berechnet für **Belichtung, Kontrast, Lichter, Tiefen, Weiß und Schwarz** jeweils einen bildabhängigen Automatikwert. Nur der gewählte Tonwert ändert sich; ein normaler Doppelklick setzt ihn auf den Neutralwert zurück. Die Geste entspricht dem [von Adobe beschriebenen Lightroom-Verhalten](https://jkost.com/blog/2024/08/using-the-basic-panel-and-histogram-to-exposure-and-contrast-in-lightroom-classic.html). Glowroom verwendet seine eigene Bildanalyse; identische Zahlenwerte zur proprietären Lightroom-Automatik werden nicht zugesichert.
 
-Die Analyse läuft außerhalb des MainActor auf einer kleinen, bereits decodierten Bildbasis. Andere globale Korrekturen, Profil und natürlicher Bildausgleich werden berücksichtigt; Zuschnitt, lokale Masken und Retusche sind aus dieser globalen Tonwertschätzung ausgeschlossen. Der gewählte Tonwert wird für die Berechnung neutralisiert, damit wiederholte Aufrufe bei sonst gleichen Einstellungen keinen weiteren Effekt addieren. Helligkeitsperzentile und begrenzte Kandidatenrenderings suchen einen passenden Wert im Reglerbereich und schützen vor zusätzlichem Schwarz-/Weiß-Clipping. Flache oder ungeeignete Bildverteilungen ergeben den Neutralwert. Die Analyse rekonstruiert keine verlorenen Bilddetails.
+Die Analyse läuft außerhalb des MainActor auf einer kleinen, bereits decodierten Bildbasis. Andere globale Korrekturen, Profil und natürlicher Bildausgleich werden berücksichtigt; Zuschnitt, lokale Masken und Retusche sind aus dieser globalen Tonwertschätzung ausgeschlossen. Der gewählte Tonwert wird für die Berechnung neutralisiert, damit wiederholte Aufrufe bei sonst gleichen Einstellungen keinen weiteren Effekt addieren. Helligkeitsperzentile und begrenzte Kandidatenrenderings suchen einen passenden Wert im Reglerbereich und schützen vor zusätzlichem Schwarz-/Weiß-Clipping. Die bisherige Verarbeitung V1 behält ihren Neutralwert-Fallback. V2 verwendet präzise Float-Proben vor Ausgabequantisierung und lässt bei flachen oder ungeeigneten Bildern, echtem HDR oder fehlender Bereichsinformation den aktuellen Wert unverändert. Die Analyse rekonstruiert keine verlorenen Bilddetails.
 
 Ein angenommenes Ergebnis bildet einen eigenen Rückgängig-Schritt. Der erste Klick eines Doppelklicks wird dabei nicht als Zwischenwert übernommen. Bild-, Quellen-, Werkzeug- oder Bearbeitungswechsel machen ausstehende Ergebnisse ungültig; eine neuere manuelle Korrektur wird nicht überschrieben. Schreibgeschützte Vergleiche führen keine Automatik aus. Für andere Regler bleibt auch Umschalt-Doppelklick ein Reset.
 
@@ -86,13 +86,15 @@ Schlägt die automatische Auswahl fehl, bleiben Fehlermeldung und Palette sichtb
 
 Die Maskengeometrie bezieht sich auf die orientierte, unbeschnittene Quelle. Während der Bearbeitung zeigen die Bildwerkzeuge diese Quelle; **Schließen** zeigt wieder den gespeicherten Zuschnitt und die Ausrichtung. [Maskenvertrag](MASK-EDITING.md).
 
-## Automatikwert pro Tonwertregler
+## Prozessversion im Inspector
 
-**Control gedrückt halten und auf den Regler oder seine Beschriftung doppelklicken:** Belichtung, Kontrast, Lichter, Tiefen, Weiß und Schwarz erhalten jeweils einen aus dem Bild berechneten Wert. Die Geste verändert ausschließlich den gewählten globalen Regler und erzeugt bei einer Wertänderung einen Rückgängig-Schritt. Ein gewöhnlicher Doppelklick setzt weiterhin auf den Neutralwert zurück. Präsenz-, Entrauschungs- und lokale Maskenregler behalten ihre bisherige Bedienung.
-
-Die Automatik arbeitet im Hintergrund auf einer Vorschau mit höchstens 256 Pixeln langer Kante aus der bereits decodierten aktiven Quelle. Sie verwendet Glowrooms eigene Filter und Helligkeitsperzentile, berücksichtigt die übrigen globalen Korrekturen einschließlich des natürlichen Bildausgleichs und lässt den bisherigen Wert des gewählten Reglers bei der Berechnung weg. Eine wiederholte Geste bei unveränderten übrigen Einstellungen liefert daher denselben Wert. Zuschnitt, Retuschen und lokale Masken fließen nicht in diese globale Schätzung ein. Transparente Flächen werden nach Deckkraft gewichtet; sehr gleichförmige und vollständig transparente Bilder liefern den neutralen Wert. Die Schätzung ersetzt keine verlorenen Bilddetails und bildet Adobes Automatik nicht identisch nach.
-
-Schnell aufeinanderfolgende Gesten ersetzen den laufenden Auftrag. Foto-, Quellen- und Werkzeugwechsel brechen ihn ab. Eine inzwischen geänderte oder rückgängig gemachte Bearbeitung wird durch ein verspätetes Ergebnis nicht überschrieben. Ohne geladene Bildbasis oder bei einem Berechnungsfehler bleibt der bisherige Wert erhalten und ein Hinweis erscheint. Angenommene Werte verwenden dieselbe Speicherung, Vorschau und Exportverarbeitung wie manuelle Einstellungen.
+Unter den Farbgrundeinstellungen steht die aktive **Tonwertverarbeitung**.
+Neue Bearbeitungen nutzen **sRGB Float (V2)**. Gespeicherte Bearbeitungen bleiben
+auf **Bisherig (V1)**, bis **Auf sRGB Float (V2) umstellen** ausdrücklich
+betätigt wird. Dieser Befehl erhält die Reglerwerte und ist als ein Schritt
+rückgängig machbar; wegen der geänderten Kennlinien kann sich das Bild ändern.
+Reset erhält die gewählte Version. Der [Farbvertrag](DEVELOP-COLOR.md#versionierte-tonwertverarbeitung)
+beschreibt die Reihenfolge, Präzision, Migration und SDR-/HDR-Grenzen.
 
 ## Zuschneiden und Ausrichten
 
