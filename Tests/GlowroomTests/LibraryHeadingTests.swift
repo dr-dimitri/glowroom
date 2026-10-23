@@ -10,7 +10,7 @@ import Testing
 @MainActor
 struct LibraryHeadingTests {
     @Test(arguments: [320.0, 640.0, 1_180.0], LibrarySearchMode.allCases)
-    func longFolderNamesKeepSearchAndPhotoCountVisible(width: Double, mode: LibrarySearchMode) async throws {
+    func searchAndControlsShareOneRowWithoutCollectionHeading(width: Double, mode: LibrarySearchMode) async throws {
         let fixture = try await makeFixture()
         defer { try? FileManager.default.removeItem(at: fixture.directory) }
         let model = fixture.model
@@ -18,24 +18,57 @@ struct LibraryHeadingTests {
         await model.waitForProjection()
         let host = LibraryHeadingHost(width: width)
         defer { host.close() }
-        try await host.mount(LibraryHeading(model: model))
+        try await host.mount(LibraryHeading(model: model, onShowGrid: {}))
 
-        let title = try #require(host.element("library.title"))
-        let count = try #require(host.element("library.photo-count"))
         let search = try #require(host.element("library.search"))
-        #expect(host.text(model.title) != nil, "The complete folder name remains accessible after truncation")
-        #expect(host.text("2 Fotos") != nil)
+        let refresh = try #require(host.element("library.refresh"))
+        #expect(host.element("library.title") == nil && host.element("library.photo-count") == nil)
+        #expect(host.text(model.title) == nil && host.text("2 Fotos") == nil)
         #expect(search.accessibilityRole() == .textField)
         #expect(search.accessibilityLabel() == (mode == .literal ? "Wörtliche Fotosuche" : "Semantische Bildsuche"))
-        for element in [title, count, search] {
-            #expect(host.contains(element), "Folder, count and search must fit inside the available header")
+        var controls = [refresh]
+        if let options = host.element("library.options") {
+            controls.append(options)
+            #expect(width < 1_180, "Wide canvases should expose the individual controls")
+        } else {
+            for identifier in ["library.grid", "library.detail", "library.rating", "library.search-mode", "library.sort"] {
+                controls.append(try #require(host.element(identifier)))
+            }
+            #expect(width > 320, "A narrow canvas should use the compact menu")
         }
-        #expect(title.accessibilityFrame().maxX <= count.accessibilityFrame().minX + 1)
-        #expect(count.accessibilityFrame().maxX <= search.accessibilityFrame().minX + 1)
+        for element in [search] + controls {
+            #expect(host.contains(element), "Search and controls must fit inside one header row")
+            #expect(abs(element.accessibilityFrame().midY - refresh.accessibilityFrame().midY) <= 2,
+                "All controls must share the same row")
+        }
+        #expect(search.accessibilityFrame().width >= 30, "Even the narrow search must remain editable")
         #expect(host.headerSize.width == width && host.headerSize.height == 42)
         #expect(host.text(model.subtitle) == nil, "The file path must not occupy a header row")
         #expect(host.text("DEINE BIBLIOTHEK") == nil)
         try host.snapshotIfRequested("library-heading-\(mode.rawValue)-\(Int(width))")
+        #expect(await model.finishSaving())
+    }
+
+    @Test
+    func wideToolbarSwitchesBetweenGridAndDetail() async throws {
+        let fixture = try await makeFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.directory) }
+        let model = fixture.model
+        model.select(try #require(model.visibleAssets.first))
+        var gridRequests = 0
+        let host = LibraryHeadingHost(width: 1_180)
+        defer { host.close() }
+        try await host.mount(LibraryHeading(model: model) {
+            gridRequests += 1
+            model.showsDetail = false
+        })
+
+        let detail = try #require(host.element("library.detail"))
+        #expect(detail.accessibilityPerformPress())
+        try await host.settle { model.showsDetail }
+        let grid = try #require(host.element("library.grid"))
+        #expect(grid.accessibilityPerformPress())
+        try await host.settle { !model.showsDetail && gridRequests == 1 }
         #expect(await model.finishSaving())
     }
 
@@ -50,7 +83,7 @@ struct LibraryHeadingTests {
         await model.waitForProjection()
         let host = LibraryHeadingHost(width: 320)
         defer { host.close() }
-        try await host.mount(LibraryHeading(model: model))
+        try await host.mount(LibraryHeading(model: model, onShowGrid: {}))
 
         let search = try #require(host.element("library.search"))
         #expect(search.accessibilityValue() as? String == (mode == .literal ? "first" : "Sonnenuntergang"))
