@@ -15,6 +15,47 @@ import Testing
 @Suite("Detail picker workspace integration", .serialized, .timeLimit(.minutes(2)))
 @MainActor
 struct DevelopDetailWorkspaceIntegrationTests {
+    @Test func comparisonPausesDirectInputAndSingleButtonRestoresThePicker() async throws {
+        let fixture = try await DetailWorkspaceFixture.make()
+        let host = DetailWorkspaceHost()
+        defer { host.close(); fixture.removeTemporaryFiles() }
+        try await host.mount(fixture)
+        try await host.activatePicker()
+        let assetID = try #require(fixture.library.selectedID)
+        let snapshot = fixture.editor.snapshot(for: assetID)
+
+        for layout in [PreviewComparisonLayout.leftRight, .splitLeftRight, .topBottom, .splitTopBottom] {
+            fixture.library.showPreviewComparison(layout)
+            try await host.wait {
+                host.inputIfPresent("workspace.comparison-navigation") != nil
+                    && host.inputIfPresent("develop.detail-canvas") == nil
+            }
+            #expect(host.inputIfPresent("workspace.photo-navigation") == nil)
+            #expect(try host.element("workspace.compare").accessibilityValue() as? String == layout.title)
+            #expect(try host.element("develop.detail-picker").accessibilityValue() as? String == "Inaktiv")
+            #expect(fixture.editor.snapshot(for: assetID) == snapshot)
+            let navigation = try host.input("workspace.comparison-navigation")
+            let fittedSize = navigation.bounds.size
+            let zoom = try host.element("workspace.zoom")
+            try #require(zoom.accessibilityPerformPress())
+            try await host.settle()
+            #expect(try host.input("workspace.comparison-navigation").bounds.size == fittedSize,
+                "Zoom must enlarge the photographs inside fixed comparison panes")
+            #expect(try host.element("workspace.zoom").accessibilityLabel() == "Einpassen")
+            try #require(zoom.accessibilityPerformPress())
+            try await host.settle()
+        }
+
+        let single = try host.element("workspace.single-preview")
+        try #require(single.accessibilityPerformPress())
+        try await host.wait { host.inputIfPresent("workspace.photo-navigation") != nil }
+        #expect(fixture.library.previewComparisonLayout == .single)
+        try await host.activatePicker()
+        #expect(fixture.editor.snapshot(for: assetID) == snapshot)
+        #expect(await fixture.library.finishSaving())
+        #expect(await fixture.editor.finishSaving())
+    }
+
     @Test(arguments: [false, true], [false, true])
     func escapeInTheRealZoomPopupOnlyDismissesTheMenu(focused: Bool, pickingDetail: Bool) async throws {
         // AppKit menu tracking owns a process-wide run loop. Run each native

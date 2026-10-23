@@ -131,6 +131,7 @@ struct LibraryView: View {
             // Explicit grid commands use WorkspaceActions.showGrid instead.
             if !layout.isFocused && !model.isAIDeveloping { model.isDeveloping = false }
             model.comparesOriginal = false; model.comparesCurrentSourceWithoutSettings = false
+            model.previewComparisonLayout = .single
         } }
         .onChange(of: model.selectedID) { old, current in
             pendingToolReveal = nil
@@ -151,6 +152,18 @@ struct LibraryView: View {
             developWorkspace.picksDetail = false
             if model.editingRenderIntent != .currentEditing { maskWorkspace.cancel(); developWorkspace.tool = .basic }
         }
+        .onChange(of: model.previewComparisonLayout) { _, current in
+            if current != .single {
+                developWorkspace.picksWhiteBalance = false
+                developWorkspace.picksDetail = false
+            }
+        }
+        .onChange(of: developWorkspace.picksWhiteBalance) { _, picking in
+            if picking { model.previewComparisonLayout = .single }
+        }
+        .onChange(of: developWorkspace.picksDetail) { _, picking in
+            if picking { model.previewComparisonLayout = .single }
+        }
         .onChange(of: model.selection) { _, _ in model.reconcileSelection() }
         .onChange(of: model.search) { _, _ in model.reconcileSelection() }
         .onChange(of: model.minimumRating) { _, _ in model.reconcileSelection() }
@@ -168,6 +181,7 @@ struct LibraryView: View {
             if loading != true { finishToolReveal(resuming: true) }
         }
         .onChange(of: developWorkspace.tool) { previous, current in
+            if previous != current { model.previewComparisonLayout = .single }
             if let id = model.selectedID { editor.endEditing(assetID: id) }
             developWorkspace.picksWhiteBalance = false
             developWorkspace.repairSource = nil
@@ -205,6 +219,7 @@ struct LibraryView: View {
         editor.endEditing(assetID: asset.id)
         editor.selectEditingFunction(.masks, assetID: asset.id)
         model.comparesOriginal = false; model.comparesCurrentSourceWithoutSettings = false
+        model.previewComparisonLayout = .single
         model.showsDetail = true; model.isDeveloping = true
         // Opening a canvas palette is not navigation to the ordinary edit
         // group. Keep reveal requests reserved for dock/menu destinations.
