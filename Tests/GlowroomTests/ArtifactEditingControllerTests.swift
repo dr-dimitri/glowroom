@@ -1,38 +1,51 @@
+import Combine
 import Foundation
 import CoreGraphics
 import Testing
 @testable import Glowroom
 @testable import GlowroomCore
 
-@Suite("Artifact editing controller", .serialized)
+@Suite("Artifact editing controller", .serialized, .timeLimit(.minutes(1)))
 @MainActor
 struct ArtifactEditingControllerTests {
     @Test func acceptedCommitSurvivesObserverCancelSelectionAndClosingAndIsOneUndo() async throws {
         let f = try await fixture(); defer { try? FileManager.default.removeItem(at: f.directory) }
-        let token = try await f.editor.generationSnapshot(in: f.library)
-        let draft = try controllerDraft(token: token, storeID: f.artifacts.storeID)
-        await f.artifacts.add(draft.artifact)
-        await f.store.blockCommit()
-        guard case .accepted(let accepted) = f.editor.applyGeneratedArtifact(draft, expectedSnapshotToken: token) else { Issue.record("expected acceptance"); return }
-        try await wait { await f.store.commitStarted }
-        let observer = Task { try await accepted.result() }; observer.cancel()
-        f.library.selectedID = f.assets[1].id
-        f.editor.beginTermination(); f.library.beginTermination()
-        await f.store.releaseCommit()
-        let receipt = try await observer.value
-        #expect(receipt.assetID == f.assets[0].id)
-        #expect(await f.editor.flush())
-        #expect(f.editor.snapshot(for: f.assets[0].id).source == .artifact(draft.artifact.id))
-        #expect(f.editor.snapshot(for: f.assets[1].id).source == .original)
-        f.editor.cancelTermination(); f.library.cancelTermination()
-        f.library.selectedID = f.assets[0].id
-        f.editor.undo(assetID: f.assets[0].id)
-        #expect(f.editor.snapshot(for: f.assets[0].id) == token.snapshot)
-        #expect(!f.editor.canUndo(assetID: f.assets[0].id))
-        #expect(await f.editor.flush())
-        f.editor.redo(assetID: f.assets[0].id)
-        #expect(f.editor.snapshot(for: f.assets[0].id).source == .artifact(draft.artifact.id))
-        #expect(await f.store.commitCount == 1)
+        do {
+            let token = try await f.editor.generationSnapshot(in: f.library)
+            let draft = try controllerDraft(token: token, storeID: f.artifacts.storeID)
+            await f.artifacts.add(draft.artifact)
+            await f.store.blockCommit()
+            guard case .accepted(let accepted) = f.editor.applyGeneratedArtifact(draft, expectedSnapshotToken: token) else { Issue.record("expected acceptance"); return }
+            try await f.store.waitForCommitStarted()
+            let observer = Task { try await accepted.result() }; observer.cancel()
+            f.library.selectedID = f.assets[1].id
+            f.editor.beginTermination(); f.library.beginTermination()
+            await f.store.releaseCommit()
+            let receipt = try await observer.value
+            #expect(receipt.assetID == f.assets[0].id)
+            #expect(await f.editor.flush())
+            #expect(f.editor.snapshot(for: f.assets[0].id).source == .artifact(draft.artifact.id))
+            #expect(f.editor.snapshot(for: f.assets[1].id).source == .original)
+            f.editor.cancelTermination(); f.library.cancelTermination()
+            f.library.selectedID = f.assets[0].id
+            f.editor.undo(assetID: f.assets[0].id)
+            #expect(f.editor.snapshot(for: f.assets[0].id) == token.snapshot)
+            #expect(!f.editor.canUndo(assetID: f.assets[0].id))
+            #expect(await f.editor.flush())
+            f.editor.redo(assetID: f.assets[0].id)
+            #expect(f.editor.snapshot(for: f.assets[0].id).source == .artifact(draft.artifact.id))
+            #expect(await f.store.commitCount == 1)
+            #expect(await f.editor.finishSaving())
+        } catch {
+            // An accepted commit is intentionally uncancellable. Release the
+            // fake even when its observing test is cancelled, and drain actual
+            // persistence before the enclosing fixture removes its files.
+            await f.store.releaseCommit()
+            f.editor.beginTermination(); f.library.beginTermination()
+            _ = await f.editor.finishSaving()
+            _ = await f.library.finishSaving()
+            throw error
+        }
     }
     @Test func pendingParentFlushIsExactAndArtifactDoesNotApplyItsSlidersTwice() async throws {
         let f = try await fixture(); defer { try? FileManager.default.removeItem(at: f.directory) }
@@ -396,15 +409,43 @@ struct ArtifactEditingControllerTests {
         let library = LibraryModel(repository: repository), store = ControllerEditingStore(), artifacts = ControllerArtifactStore()
         if let gate { await store.configureAutomaticBackup(gate: gate) }
         let editor = EditingModel(loader: { EditingModelDependencies(database: store, artifacts: artifacts, gate: gate) })
-        try await wait { !library.isLoading && !library.isProjecting && !editor.isLoading }
+        do { try await waitForInitialModels(library: library, editor: editor) }
+        catch {
+            library.beginTermination(); editor.beginTermination()
+            _ = await editor.finishSaving(); _ = await library.finishSaving()
+            try? FileManager.default.removeItem(at: directory)
+            throw error
+        }
         library.selectedID = assets[0].id; editor.library = library
         return ControllerFixture(directory: directory, assets: assets, library: library, editor: editor, store: store, artifacts: artifacts)
     }
+    private func waitForInitialModels(library: LibraryModel, editor: EditingModel) async throws {
+        let (changes, continuation) = AsyncStream<Bool>.makeStream(bufferingPolicy: .bufferingNewest(1))
+        // Startup is a readiness condition, not a ten-second performance limit.
+        // Initial publisher values also cover completion before registration.
+        let observation = Publishers.CombineLatest3(library.$isLoading, library.$isProjecting, editor.$isLoading)
+            .sink { loading, projecting, editingLoading in
+                continuation.yield(!loading && !projecting && !editingLoading)
+            }
+        defer { observation.cancel(); continuation.finish() }
+        for await ready in changes {
+            try Task.checkCancellation()
+            guard ready else { continue }
+            await library.waitForProjection()
+            try Task.checkCancellation()
+            if !library.isLoading && !library.isProjecting && !editor.isLoading { return }
+        }
+        try Task.checkCancellation()
+        throw ControllerTestObservationError.endedBeforeReadiness
+    }
+
     private func wait(_ condition: @escaping @MainActor () async -> Bool) async throws {
         let deadline = ContinuousClock.now.advanced(by: .seconds(10))
         while !(await condition()) { guard ContinuousClock.now < deadline else { throw ArtifactContractError.limitExceeded }; try await Task.sleep(for: .milliseconds(5)) }
     }
 }
+
+private enum ControllerTestObservationError: Error { case endedBeforeReadiness }
 
 private struct ControllerFixture {
     let directory: URL; let assets: [PhotoAsset]; let library: LibraryModel; let editor: EditingModel
@@ -451,12 +492,21 @@ private actor ControllerEditingStore: EditingPersistence {
     var waitingVariantReads: Int { variantReadContinuations.count }
     private var continuation: CheckedContinuation<Void, Never>?
     private(set) var commitStarted = false
+    private let commitEvents = AsyncStream<Bool>.makeStream(bufferingPolicy: .bufferingNewest(1))
     private(set) var commitCount = 0
     private(set) var lastCommit: GenerationCommitRequest?
     func seed(_ snapshot: EditingSnapshot, for assetID: String) throws {
         values[assetID] = StoredEditingState(snapshot: snapshot, version: try .init(storeEpoch: epoch, revision: 1))
     }
     func blockCommit() { blocked = true }
+    func waitForCommitStarted() async throws {
+        try Task.checkCancellation()
+        if commitStarted { return }
+        var iterator = commitEvents.stream.makeAsyncIterator()
+        let entered = await iterator.next()
+        try Task.checkCancellation()
+        guard entered == true else { throw ControllerTestObservationError.endedBeforeReadiness }
+    }
     func releaseCommit() { blocked = false; continuation?.resume(); continuation = nil }
     func failAfterCommit() { failAfter = true }
     func failLoading(recoveryFailures: Int) { loadFailure = true; self.recoveryFailures = recoveryFailures }
@@ -485,6 +535,7 @@ private actor ControllerEditingStore: EditingPersistence {
     }
     func commitGenerated(_ request: GenerationCommitRequest) async throws -> ArtifactCommitReceipt {
         commitStarted = true; lastCommit = request
+        commitEvents.continuation.yield(true); commitEvents.continuation.finish()
         if blocked { await withCheckedContinuation { continuation = $0 } }
         if let receipt = receipts[request.commitID] { return receipt }
         let snapshot = try EditingSnapshot(source: .artifact(request.draft.artifact.id), settings: .neutral)

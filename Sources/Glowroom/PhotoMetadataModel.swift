@@ -54,6 +54,10 @@ final class PhotoMetadataModel: ObservableObject {
     @Published private(set) var errorMessage: String?
     @Published private(set) var notice: String?
     @Published private(set) var recovery: Recovery?
+    // Recovery can select another photo and recreate its section. Keep the
+    // destination editor on the model, rather than losing it with view state.
+    @Published private(set) var recoveredEditorContext: PhotoMetadataSelectionContext?
+    private(set) var recoveredEditorIsProposal = false
     @Published private(set) var importReview: MetadataImportReview?
     @Published private(set) var catalogReview: CatalogReview?
     @Published private(set) var catalogComparison: CatalogComparison?
@@ -383,6 +387,8 @@ final class PhotoMetadataModel: ObservableObject {
             self.recovery = nil
             if recovery.proposalID != nil { self.proposalFields = recovery.fields; self.proposalDirty = true }
             else { self.manualFields = recovery.fields; self.manualDirty = true }
+            self.recoveredEditorIsProposal = recovery.proposalID != nil
+            self.recoveredEditorContext = self.context
             self.advanceForm()
             self.errorMessage = "Der ungesicherte Entwurf bleibt erhalten. Bitte korrigieren und übernehmen."
 

@@ -39,6 +39,13 @@ struct WorkspaceFocusRoutingTests {
                        tool: .metadata, hasSelection: false) == .focus)
     }
 
+    @Test(arguments: [false, true])
+    func closingAIControlsKeepsTheAIWorkspaceAsKeyboardReturnTarget(_ hasSelection: Bool) {
+        #expect(WorkspaceFocusRouting.target(previous: visibility(focused: true),
+            current: visibility(focused: true, tools: false), revealedTool: .metadata,
+            hasSelection: hasSelection, isAIDeveloping: true) == .tool(.aiDevelopment))
+    }
+
     @Test
     func focusTransitionsUseTheReturnButtonEvenWhenSeveralPanelsDisappear() {
         let focused = visibility(focused: true, library: false, tools: false, filmstrip: false)

@@ -1,6 +1,8 @@
 # Gemeinsame KI-Grundlagen
 
-Der interaktive KI-Assistent, Textbearbeitungsprovider, Lookvorschläge und der optionale Anthropic-Cloudprovider sind entfernt. Die verbliebenen Grundlagen unterstützen unabhängig davon [lokale Bildanalyse und Metadatenvorschläge](AI-IMAGE-ANALYSIS.md), [semantische Suche](SEMANTIC-SEARCH.md), [automatische Masken](AUTOMATIC-MASKS.md) und das weiterhin gesperrte [Bildgenerierungsbackend](AI-IMAGE-BACKEND-DECISION.md). Bereits gespeicherte Einstellungen, Masken und Artefakte behalten ihre vorhandenen Speicher- und Renderverträge.
+Der frühere interaktive KI-Assistent, Textbearbeitungsprovider, Lookvorschläge und der optionale Anthropic-Cloudprovider sind entfernt. Die verbliebenen Grundlagen unterstützen unabhängig davon [lokale Bildanalyse und Metadatenvorschläge](AI-IMAGE-ANALYSIS.md), [semantische Suche](SEMANTIC-SEARCH.md), [automatische Masken](AUTOMATIC-MASKS.md) und das weiterhin gesperrte [Bildgenerierungsbackend](AI-IMAGE-BACKEND-DECISION.md). Bereits gespeicherte Einstellungen, Masken und Artefakte behalten ihre vorhandenen Speicher- und Renderverträge.
+
+Der eigenständige Arbeitsbereich [AI Entwickeln](AI-DEVELOPMENT.md) ergänzt jetzt eine native lokale Qwen-Vorschlagsroute. Sie verwendet dieselben Quellen-/Bearbeitungstokens und das gemeinsame Ressourcenbudget; erst die ausdrückliche Übernahme schreibt reguläre Bildkorrekturen. Die historische Qualitätsentscheidung zur unbeaufsichtigten Automatik bleibt bestehen.
 
 ## Datenfluss und Quellenbezug
 

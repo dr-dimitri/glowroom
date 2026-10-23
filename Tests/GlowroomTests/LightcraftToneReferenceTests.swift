@@ -307,26 +307,31 @@ struct LightcraftToneReferenceTests {
         #expect(preparedB.input.sha256 == b.sha256)
     }
 
-    @Test func cancellationDuringParallelRowsDiscardsThePartialResult() async throws {
-        let entered = DispatchSemaphore(value: 0), release = DispatchSemaphore(value: 0)
+    @Test(.timeLimit(.minutes(1))) func cancellationDuringParallelRowsDiscardsThePartialResult() async throws {
+        let entered = AsyncStream<Void>.makeStream(bufferingPolicy: .bufferingNewest(1))
+        let release = DispatchSemaphore(value: 0)
+        let synchronousWorker = TestSynchronousWorker()
         let worker = Task.detached {
-            try LightcraftToneFilters.rows(width: 1024, height: 128) { row, output in
-                if row == 0 {
-                    entered.signal()
-                    _ = release.wait(timeout: .now() + .seconds(10))
+            try await synchronousWorker.run {
+                try LightcraftToneFilters.rows(width: 1024, height: 128) { row, output in
+                    if row == 0 {
+                        entered.continuation.yield(())
+                        release.wait()
+                    }
+                    for index in output.indices { output[index] = Float(row) }
                 }
-                for index in output.indices { output[index] = Float(row) }
             }
         }
-        // The test coordinator awaits a GCD start-signal waiter. A bounded
-        // wait and unconditional release prevent a broken scheduler from hanging.
-        defer { worker.cancel(); release.signal() }
-        let started = await withCheckedContinuation { continuation in
-            DispatchQueue.global(qos: .userInitiated).async {
-                continuation.resume(returning: entered.wait(timeout: .now() + .seconds(10)) == .success)
-            }
+        // A buffered checkpoint survives delayed test scheduling. Only the
+        // real cancellation below releases the row; no elapsed deadline can
+        // accidentally let the operation finish before cancellation is tested.
+        // The synchronous native wait runs off the cooperative executor.
+        defer {
+            worker.cancel(); release.signal(); entered.continuation.finish()
         }
-        try #require(started, "A parallel row worker must have entered before cancellation")
+        var iterator = entered.stream.makeAsyncIterator()
+        guard await iterator.next() != nil else { throw CancellationError() }
+        try Task.checkCancellation()
         worker.cancel()
         release.signal()
         await #expect(throws: CancellationError.self) { _ = try await worker.value }

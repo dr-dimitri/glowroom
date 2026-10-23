@@ -17,7 +17,7 @@ enum EditingFunction: Equatable {
 
     init(_ tool: WorkspaceTool) {
         switch tool {
-        case .edit, .details: self = .adjustments
+        case .edit, .details, .aiDevelopment: self = .adjustments
         case .metadata: self = .metadata
         case .versions: self = .versions
         }

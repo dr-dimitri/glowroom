@@ -1,5 +1,7 @@
 # Bildfokus und Arbeitsbereiche
 
+**AI Entwickeln** ist ein dritter Arbeitsbereich neben Bibliothek und Entwickeln. Er teilt deren Bild-/Filmstreifen- und Speicherpfade sowie die Entwickeln-Panelmaße, zeigt aber eine eigene KI-Werkzeugseite. Sein Einstieg funktioniert ohne Foto für die Modellverwaltung. Beim Verlassen des Bildfokus wird auch der ursprüngliche AI-/klassische Arbeitsbereich wiederhergestellt. Die Kopfzeile bietet alle drei Arbeitsbereiche auch im Bildfokus an. [Bedienung](AI-DEVELOPMENT.md).
+
 Die Entwickeln-Ansicht verwendet veränderbare Seitenleisten mit klaren Zuständigkeiten: links Navigator und die Gruppen Bildinformationen und Bildstände; rechts Histogramm, Werkzeugleiste und Korrekturen. Das Foto liegt auf einer neutralgrauen Fläche zwischen dunklen Seitenleisten mit heller Schrift. Der Bildfokus ergänzt ein Werkzeugdock, dessen Gruppensprünge nur für verborgene Spalten erscheinen. Beide Darstellungen verwenden dieselben Bearbeitungsmodelle. Layoutaktionen starten keine KI-Anfragen. Das aktuelle Entwickeln-Layout ist unter [Entwickeln](DEVELOP-WORKSPACE.md) beschrieben.
 
 ## Bedienung und Zuständigkeiten

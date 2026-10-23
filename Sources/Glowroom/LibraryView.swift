@@ -55,7 +55,8 @@ struct LibraryView: View {
                                 layout.update(developing: model.isDeveloping) { $0.toolsWidth = width }
                             }
                             Group {
-                                if model.isDeveloping { DevelopInspector(library: model, focusedControl: $focusedWorkspaceControl) }
+                                if model.isAIDeveloping { AIWorkspaceInspector(library: model) }
+                                else if model.isDeveloping { DevelopInspector(library: model, focusedControl: $focusedWorkspaceControl) }
                                 else { InspectorView(model: model) }
                             }.frame(width: widths.tools)
                         }
@@ -102,14 +103,18 @@ struct LibraryView: View {
             return editor.hasActiveEditing(assetID: id) || maskWorkspace.model?.hasActiveChange == true
         }, action: { event in handleKey(event) }))
         .onAppear {
-            if layout.isFocused, model.selectedAsset != nil { model.showsDetail = true; model.isDeveloping = true }
+            if layout.isFocused, model.selectedAsset != nil {
+                model.showsDetail = true
+                model.workspaceMode = layout.focusOrigin.aiDeveloping == true ? .aiDevelop : .develop
+            }
         }
         .onChange(of: panelVisibility) { previous, current in
             // One owner routes focus after removal; the dock and normal controls
             // must not compete to focus different buttons in the same update.
             let target = WorkspaceFocusRouting.target(previous: previous, current: current,
                                                       revealedTool: layout.revealedTool,
-                                                      hasSelection: model.selectedAsset != nil)
+                                                      hasSelection: model.selectedAsset != nil,
+                                                      isAIDeveloping: model.isAIDeveloping)
             focusReturnRequest = target.map { FocusReturnRequest(target: $0) }
             if target != nil { focusedWorkspaceControl = nil }
         }
@@ -124,7 +129,7 @@ struct LibraryView: View {
         .onChange(of: model.showsDetail) { _, detail in if !detail {
             // Empty search results are a selection change, not a request to leave focus.
             // Explicit grid commands use WorkspaceActions.showGrid instead.
-            if !layout.isFocused { model.isDeveloping = false }
+            if !layout.isFocused && !model.isAIDeveloping { model.isDeveloping = false }
             model.comparesOriginal = false; model.comparesCurrentSourceWithoutSettings = false
         } }
         .onChange(of: model.selectedID) { old, current in
@@ -324,8 +329,11 @@ struct LibraryView: View {
                 } label: { Text("Bibliothek") }
                     .foregroundStyle(!model.isDeveloping ? Theme.text : Theme.muted)
                 Button { WorkspaceActions.reveal(.edit, layout: layout, library: model) } label: { Text("Entwickeln") }
-                    .foregroundStyle(model.isDeveloping ? Theme.text : Theme.muted)
+                    .foregroundStyle(model.workspaceMode == .develop ? Theme.text : Theme.muted)
                     .disabled(model.selectedAsset == nil || editor.isLoading)
+                Button { WorkspaceActions.reveal(.aiDevelopment, layout: layout, library: model) } label: { Text("AI Entwickeln") }
+                    .foregroundStyle(model.isAIDeveloping ? Theme.text : Theme.muted)
+                    .accessibilityIdentifier("workspace.ai-develop")
             }.font(.system(size: 14, weight: .medium))
             if !layout.isFocused {
                 Divider().frame(height: 20)
@@ -578,14 +586,20 @@ struct LibraryView: View {
 
     private var workspaceNoticeLinks: some View {
         Group {
-            if photoMetadata.hasManualDraft || photoMetadata.record?.draft != nil {
-                Button("Bildinformationen: Entwurf prüfen") { revealNoticeTool(.metadata) }
+            if photoMetadata.hasManualDraft {
+                Button("Bildinformationen: manuellen Entwurf prüfen") { revealNoticeTool(.metadata) }
             }
-            if photoMetadata.isAnalyzing || photoMetadata.isSaving {
-                Button("Bildinformationen: Auftrag läuft") { revealNoticeTool(.metadata) }
+            if photoMetadata.record?.draft != nil {
+                Button("AI Entwickeln: Bildtextvorschlag prüfen") { revealNoticeTool(.aiDevelopment) }
+            }
+            if photoMetadata.isAnalyzing {
+                Button("AI Entwickeln: Bildanalyse läuft") { revealNoticeTool(.aiDevelopment) }
+            }
+            if photoMetadata.isSaving {
+                Button("Bildinformationen: Speichern läuft") { revealNoticeTool(metadataNoticeTarget) }
             }
             if photoMetadata.errorMessage != nil || photoMetadata.hasPendingRetry || photoMetadata.recovery != nil {
-                Button("Bildinformationen: Fehler prüfen") { revealNoticeTool(.metadata) }
+                Button("Bildinformationen: Fehler prüfen") { revealNoticeTool(metadataNoticeTarget) }
             }
             if editor.failedArtifactCommitID != nil || editor.isReadOnly || editor.errorMessage != nil {
                 Button("Bearbeitung: Speicherfehler prüfen") { revealNoticeTool(.versions) }
@@ -641,6 +655,11 @@ struct LibraryView: View {
         if photoMetadata.isAnalyzing { return "Bildinformationen: Analyse" }
         if photoMetadata.hasManualDraft || photoMetadata.record?.draft != nil { return "Entwurf vorhanden" }
         return "Hinweise"
+    }
+
+    private var metadataNoticeTarget: WorkspaceTool {
+        if let recovery = photoMetadata.recovery { return recovery.proposalID == nil ? .metadata : .aiDevelopment }
+        return photoMetadata.hasManualDraft ? .metadata : .aiDevelopment
     }
 
     private func reveal(_ tool: WorkspaceTool) { WorkspaceActions.reveal(tool, layout: layout, library: model) }

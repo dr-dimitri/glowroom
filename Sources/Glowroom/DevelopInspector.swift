@@ -296,6 +296,8 @@ struct DevelopInspector: View {
                     collapsible: false)
             }
             .onDisappear { developWorkspace.picksDetail = false }
+        case .aiDevelopment:
+            EmptyView() // AI development owns its separate top-level workspace.
         case .metadata:
             VStack(alignment: .leading, spacing: 20) {
                 PhotoMetadataSection(model: photoMetadata)
@@ -421,12 +423,14 @@ struct DevelopInspector: View {
                 ? settings.sharpeningAmount != 0 || settings.luminanceNoiseReduction != 0 || settings.colorNoiseReduction != 0
                 : !settings.isNeutral
             if changed { return ("Geändert", "slider.horizontal.3", false) }
+        case .aiDevelopment:
+            return nil
         case .metadata:
             if photoMetadata.errorMessage != nil || photoMetadata.hasPendingRetry || photoMetadata.recovery != nil {
                 return ("Fehler", "exclamationmark.triangle", true)
             }
-            if photoMetadata.isAnalyzing || photoMetadata.isSaving || photoMetadata.isLoading { return ("Läuft", "arrow.triangle.2.circlepath", false) }
-            if photoMetadata.hasManualDraft || photoMetadata.record?.draft?.state == .pending || photoMetadata.record?.draft?.state == .edited {
+            if photoMetadata.isSaving || photoMetadata.isLoading { return ("Läuft", "arrow.triangle.2.circlepath", false) }
+            if photoMetadata.hasManualDraft {
                 return ("Entwurf", "square.and.pencil", false)
             }
         case .versions:

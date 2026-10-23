@@ -2,7 +2,10 @@ import SwiftUI
 import GlowroomCore
 
 struct PhotoMetadataSection: View {
+    enum Mode { case manual, ai, all }
     @ObservedObject var model: PhotoMetadataModel
+    var mode: Mode = .manual
+    @ViewState private var showsManualEditor = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -36,6 +39,7 @@ struct PhotoMetadataSection: View {
                     Label("Die Quelle hat sich seit der Bestätigung geändert. Die Texte bleiben erhalten.", systemImage: "arrow.triangle.2.circlepath")
                 }
             } else { Text("Noch keine bestätigten Bildinformationen.").foregroundStyle(Theme.muted) }
+            if mode != .ai || showsManualEditor || (showsRecoveredEditor && !model.recoveredEditorIsProposal) {
             Divider()
             Text("Manuelle Angaben").fontWeight(.medium)
             MetadataTextFieldsEditor(fields: Binding(get: { model.manualFields }, set: { model.editManualFields($0) }),
@@ -53,6 +57,8 @@ struct PhotoMetadataSection: View {
             if model.hasManualDraft {
                 Button("Manuellen Entwurf verwerfen") { model.discardManualDraft() }.disabled(!model.canDiscardManualDraft)
             }
+            }
+            if mode != .manual || (showsRecoveredEditor && model.recoveredEditorIsProposal) {
             Divider()
             Text("KI-Entwurf · noch nicht bestätigt").fontWeight(.medium)
             Text("Lokale Bildanalyse des Originals. Reglerwerte und Cloud-Textanbieter ändern diese Eingabe nicht.")
@@ -84,7 +90,9 @@ struct PhotoMetadataSection: View {
                     Button("Verwerfen") { model.discardProposal() }.disabled(!model.canRejectProposal)
                 }
                 if draftState == .accepted || draftState == .rejected || draftState == .outdated {
-                    Button("Als manuelle Angaben bearbeiten") { model.useProposalAsManual() }.disabled(!model.canUseProposalAsManual)
+                    Button("Als manuelle Angaben bearbeiten") {
+                        model.useProposalAsManual(); showsManualEditor = true
+                    }.disabled(!model.canUseProposalAsManual)
                 }
                 if let analysis = draft.source.analyzedRaster {
                     Text("\(analysis.providerID) · \(analysis.modelID) · \(analysis.analyzedAt.formatted(date: .abbreviated, time: .shortened))")
@@ -93,11 +101,19 @@ struct PhotoMetadataSection: View {
                         .font(.system(size: 9)).foregroundStyle(Theme.muted).textSelection(.enabled)
                 }
             }
+            }
             if model.isSaving { ProgressView("Bildinformationen werden gesichert …") }
             Text("Nur bestätigte Felder sind suchbar. Bearbeitungssicherungen enthalten diese Angaben nicht.")
                 .foregroundStyle(Theme.muted)
         }.font(.system(size: 10)).fixedSize(horizontal: false, vertical: true)
-            .task { model.synchronizeContext(); await model.refreshAvailability() }
+            .task {
+                model.synchronizeContext()
+                if mode != .manual { await model.refreshAvailability() }
+            }
+    }
+
+    private var showsRecoveredEditor: Bool {
+        model.recoveredEditorContext != nil && model.recoveredEditorContext == model.context
     }
 
     private func tagPolicy(_ policy: Binding<MetadataTagPolicy>) -> some View {

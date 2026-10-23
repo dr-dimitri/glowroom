@@ -8,25 +8,40 @@ private actor BlockingArtifactResources: ArtifactResourceAdmitting {
     private var first = true
     private var waiter: CheckedContinuation<Void, Never>?
     private(set) var blocked = false
+    private let entered = AsyncStream<Void>.makeStream(bufferingPolicy: .bufferingNewest(1))
+    private let charges = AsyncStream<Int64>.makeStream(bufferingPolicy: .bufferingNewest(1))
     init() throws { base = ArtifactResourceOwner(limits: try .init()) }
     func acquire(kind: ArtifactAdmissionKind, bytes: Int64, priority: ArtifactResourcePriority,
                  retaining: [ArtifactMemoryReservation]) async throws -> ArtifactResourceLease {
         if kind == .codec && first {
-            first = false; blocked = true
+            first = false; blocked = true; entered.continuation.yield(())
             await withCheckedContinuation { waiter = $0 }
         }
-        return try await base.acquire(kind: kind, bytes: bytes, priority: priority, retaining: retaining)
+        let lease = try await base.acquire(kind: kind, bytes: bytes, priority: priority, retaining: retaining)
+        charges.continuation.yield(await base.state().chargedBytes)
+        return lease
+    }
+    func waitUntilBlocked() async throws {
+        var events = entered.stream.makeAsyncIterator()
+        guard await events.next() != nil else { throw CancellationError() }
+    }
+    func waitForCharge(atLeast bytes: Int64) async throws {
+        for await charged in charges.stream where charged >= bytes { return }
+        throw CancellationError()
     }
     func retain(bytes: Int64, from lease: ArtifactResourceLease) async throws -> ArtifactMemoryReservation { try await base.retain(bytes: bytes, from: lease) }
     func validate(_ memory: ArtifactMemoryReservation, minimumBytes: Int64) async throws { try await base.validate(memory, minimumBytes: minimumBytes) }
-    func release() { waiter?.resume(); waiter = nil }
+    func release() { waiter?.resume(); waiter = nil; blocked = false }
 }
-private actor ArtifactCompletionFlag { private(set) var done = false; func finish() { done = true } }
-struct ArtifactPNGCodecTests {
-    private func wait(_ predicate: @escaping @Sendable () async -> Bool) async -> Bool {
-        let until = ContinuousClock.now + .seconds(5)
-        while ContinuousClock.now < until { if await predicate() { return true }; await Task.yield() }; return false
+private actor ArtifactCompletionFlag {
+    private let completion = AsyncStream<Void>.makeStream(bufferingPolicy: .bufferingNewest(1))
+    func finish() { completion.continuation.yield(()) }
+    func wait() async throws {
+        var events = completion.stream.makeAsyncIterator()
+        guard await events.next() != nil else { throw CancellationError() }
     }
+}
+struct ArtifactPNGCodecTests {
     @Test func overBudgetRejectsBeforeEncodingAndPreservesOriginal() async throws {
         let fixture = try ArtifactTestFixture(); defer { fixture.remove() }
         let resources = ArtifactResourceOwner(limits: try .init(maximumBytes: 1_024))
@@ -39,16 +54,16 @@ struct ArtifactPNGCodecTests {
         #expect(try Data(contentsOf: original) == before)
         #expect(await resources.state().runningCodecs == 0)
     }
-    @Test func queuedInputsStayChargedAndCancelledWaiterReturnsPromptly() async throws {
+    @Test(.timeLimit(.minutes(1))) func queuedInputsStayChargedAndCancelledWaiterReturnsPromptly() async throws {
         let fixture = try ArtifactTestFixture(); defer { fixture.remove() }
         let resources = try BlockingArtifactResources()
         let store = try await GeneratedArtifactStore.open(in: fixture.directory, resources: resources)
         let image = fixture.image(); let provenance = try fixture.provenance(image)
         let first = Task { try await store.stageRaster(.init(immutableImage: image), provenance: provenance, masks: []) }
-        guard await wait({ await resources.blocked }) else {
-            await resources.release(); first.cancel(); _ = await first.result
-            Issue.record("First codec did not reach the controlled resource boundary"); return
-        }
+        // Buffered checkpoints prove ordering without spending an arbitrary
+        // wall-clock allowance waiting for an overloaded test executor.
+        defer { first.cancel(); Task { await resources.release() } }
+        try await resources.waitUntilBlocked()
         let before = await resources.base.state().chargedBytes
         let flag = ArtifactCompletionFlag()
         let queued = Task {
@@ -56,11 +71,14 @@ struct ArtifactPNGCodecTests {
             catch { await flag.finish(); throw error }
         }
         let inputBytes = Int64(image.bytesPerRow * image.height)
-        let charged = await wait { await resources.base.state().chargedBytes >= before + inputBytes }
-        #expect(charged, "Queued image owns its real input reservation")
+        defer { queued.cancel() }
+        try await resources.waitForCharge(atLeast: before + inputBytes)
+        #expect(await resources.base.state().chargedBytes >= before + inputBytes,
+                "Queued image owns its real input reservation")
         queued.cancel()
-        let promptly = await wait { await flag.done }
-        #expect(promptly, "Cancel removes only its queued observer without waiting for the first codec")
+        try await flag.wait()
+        #expect(await resources.blocked,
+                "The cancelled queued observer returns while the first codec remains blocked")
         await resources.release()
         _ = try await first.value
         await #expect(throws: CancellationError.self) { _ = try await queued.value }

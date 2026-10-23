@@ -18,6 +18,65 @@ final class WorkspaceProposalLifecycleTests {
     deinit { try? FileManager.default.removeItem(at: directory) }
 
     @Test(arguments: [NSSize(width: 1_000, height: 660), NSSize(width: 1_440, height: 900)])
+    func aiDevelopmentHasItsOwnWorkspaceAndKeepsModelManagementWithoutSelection(size: NSSize) async throws {
+        let f = try await fixture()
+        let host = WorkspaceSectionTestHost(size: size)
+        defer { host.close() }
+        let suite = "Glowroom-AIWorkspace-\(UUID())"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let layout = WorkspaceLayoutModel(defaults: defaults)
+        let metadata = PhotoMetadataModel(store: PhotoMetadataRepository(directory: directory.appendingPathComponent("AIMetadata")),
+            suggestor: LocalPhotoMetadataSuggestor(service: ImageAnalysisService(
+                provider: UnavailableImageAnalysisProvider(reason: .sdkUnavailable), budget: AIResourceBudget())),
+            library: f.library, editor: f.editor)
+        let exporter = JPEGExportModel(preferences: nil)
+        try await host.mount(LibraryView(model: f.library, dataDirectory: directory)
+            .environmentObject(f.editor).environmentObject(exporter).environmentObject(layout).environmentObject(metadata))
+        WorkspaceActions.reveal(.aiDevelopment, layout: layout, library: f.library)
+        try await host.settle()
+        #expect(f.library.workspaceMode == .aiDevelop && f.library.isDeveloping)
+        #expect(host.accessibilityElements.contains { $0.accessibilityIdentifier() == "workspace.ai-develop" })
+        #expect(host.accessibilityElements.contains { $0.accessibilityIdentifier() == "ai-workspace.inspector" })
+        #expect(host.accessibilityElements.contains { $0.accessibilityIdentifier() == "ai-development.generate" })
+        #expect(!host.accessibilityElements.contains { $0.accessibilityIdentifier() == "develop.adjustments" })
+        #expect(!host.accessibilityElements.contains { $0.accessibilityIdentifier() == "workspace.group.aiDevelopment" })
+        #expect(await f.service.requests.isEmpty, "Opening the AI workspace must not start analysis or inference")
+        if let path = ProcessInfo.processInfo.environment["GLOWROOM_WORKSPACE_SNAPSHOTS"] {
+            let output = URL(fileURLWithPath: path, isDirectory: true)
+            try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
+            try host.snapshot(to: output.appendingPathComponent("ai-develop-\(Int(size.width)).png"))
+        }
+        WorkspaceActions.toggleFocus(layout, library: f.library)
+        try await host.settle()
+        #expect(layout.focusOrigin.aiDeveloping == true && f.library.isAIDeveloping)
+        WorkspaceActions.toggleFocus(layout, library: f.library)
+        try await host.settle()
+        #expect(!layout.isFocused && f.library.isAIDeveloping)
+        WorkspaceActions.reveal(.edit, layout: layout, library: f.library)
+        try await host.settle()
+        #expect(f.library.workspaceMode == .develop)
+        #expect(host.accessibilityElements.contains { $0.accessibilityIdentifier() == "develop.adjustments" })
+        #expect(!host.accessibilityElements.contains { $0.accessibilityIdentifier() == "ai-workspace.inspector" })
+        WorkspaceActions.toggleFocus(layout, library: f.library)
+        WorkspaceActions.reveal(.aiDevelopment, layout: layout, library: f.library)
+        try await host.settle()
+        WorkspaceActions.toggleFocus(layout, library: f.library)
+        try await host.settle()
+        #expect(f.library.workspaceMode == .develop, "Leaving focus restores the original workspace even after an AI switch")
+        f.library.selectedID = nil
+        try await host.settle()
+        WorkspaceActions.reveal(.aiDevelopment, layout: layout, library: f.library)
+        try await host.settle()
+        #expect(f.library.isAIDeveloping && !f.library.showsDetail)
+        #expect(host.accessibilityElements.contains { $0.accessibilityIdentifier() == "ai-workspace.inspector" })
+        #expect(host.accessibilityElements.contains { $0.accessibilityLabel() == "LLM-Modelle verwalten" })
+        #expect(await f.service.requests.isEmpty)
+        #expect(await metadata.finishSaving())
+        #expect(await f.library.finishSaving())
+    }
+
+    @Test(arguments: [NSSize(width: 1_000, height: 660), NSSize(width: 1_440, height: 900)])
     func mountedLibraryKeepsFocusReturnPathWhenSearchTemporarilyRemovesSelection(size: NSSize) async throws {
         let f = try await fixture()
         let host = WorkspaceSectionTestHost(size: size)
@@ -72,7 +131,9 @@ final class WorkspaceProposalLifecycleTests {
             #expect(next.accessibilityFrame().maxX <= finderFrame.midX - 14 - 10 + 322 - 10 + 1,
                 "Every image control must remain inside the minimum supported workspace")
         }
-        #expect(host.accessibilityElements.contains { $0.accessibilityIdentifier() == "library.title" })
+        // The compact library contract deliberately removed its title row;
+        // navigation must keep the actual search/control region mounted.
+        #expect(host.accessibilityElements.contains { $0.accessibilityIdentifier() == "library.controls" })
         #expect(host.accessibilityElements.contains { $0.accessibilityIdentifier() == "library.search" })
         if let path = ProcessInfo.processInfo.environment["GLOWROOM_WORKSPACE_SNAPSHOTS"] {
             let output = URL(fileURLWithPath: path, isDirectory: true)
@@ -216,7 +277,7 @@ final class WorkspaceProposalLifecycleTests {
         let navigator = try #require(elements.first { $0.accessibilityIdentifier() == "workspace.navigator" })
         let masks = try #require(elements.first { $0.accessibilityIdentifier() == "develop.tool.masks" })
         #expect(navigator.accessibilityFrame().maxX <= masks.accessibilityFrame().minX)
-        for tool in WorkspaceTool.allCases {
+        for tool in WorkspaceTool.allCases where tool != .aiDevelopment {
             #expect(elements.filter { $0.accessibilityIdentifier() == "workspace.group.\(tool.rawValue)" }.count == 1)
         }
 

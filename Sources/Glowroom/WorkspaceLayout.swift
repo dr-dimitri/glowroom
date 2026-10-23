@@ -1,8 +1,12 @@
 import Combine
 import Foundation
 
+enum LibraryWorkspace: String, Equatable {
+    case library, develop, aiDevelop
+}
+
 enum WorkspaceTool: String, CaseIterable, Codable, Identifiable {
-    case edit, details, metadata, versions
+    case edit, details, aiDevelopment, metadata, versions
 
     var id: String { rawValue }
 
@@ -13,6 +17,7 @@ enum WorkspaceTool: String, CaseIterable, Codable, Identifiable {
         switch self {
         case .edit: "Bearbeiten"
         case .details: "Details"
+        case .aiDevelopment: "AI Entwickeln"
         case .metadata: "Bildinformationen"
         case .versions: "Bildstände"
         }
@@ -22,6 +27,7 @@ enum WorkspaceTool: String, CaseIterable, Codable, Identifiable {
         switch self {
         case .edit: "slider.horizontal.3"
         case .details: "viewfinder"
+        case .aiDevelopment: "sparkles"
         case .metadata: "info.circle"
         case .versions: "square.stack.3d.up"
         }
@@ -130,6 +136,7 @@ struct WorkspacePanels: Codable, Equatable {
 struct WorkspaceFocusOrigin: Codable, Equatable {
     var developing: Bool
     var showsDetail: Bool
+    var aiDeveloping: Bool? = nil
 }
 
 @MainActor
@@ -205,9 +212,10 @@ final class WorkspaceLayoutModel: ObservableObject {
         else { library = panels }
     }
 
-    func enterFocus(developing: Bool = true, showsDetail: Bool = true) {
+    func enterFocus(developing: Bool = true, showsDetail: Bool = true, aiDeveloping: Bool = false) {
         guard !isFocused else { return }
-        focusOrigin = WorkspaceFocusOrigin(developing: developing, showsDetail: showsDetail)
+        focusOrigin = WorkspaceFocusOrigin(developing: developing, showsDetail: showsDetail,
+                                           aiDeveloping: aiDeveloping ? true : nil)
         isFocused = true
     }
 

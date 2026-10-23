@@ -3,6 +3,7 @@ import Darwin
 import Testing
 @testable import GlowroomCore
 
+@Suite(.timeLimit(.minutes(1)))
 struct ArtifactFileSafetyTests {
     @Test func unownedArtifactRootAndHardlinkedOwnerArePreserved() async throws {
         let fixture = try ArtifactTestFixture(); defer { fixture.remove() }
@@ -84,8 +85,29 @@ struct ArtifactFileSafetyTests {
 private final class ArtifactCleanupObservation: @unchecked Sendable {
     private let lock = NSLock()
     private var value: Bool?
-    func finish(_ cleaned: Bool) { lock.withLock { value = cleaned } }
+    private let events: AsyncStream<Bool>
+    private let continuation: AsyncStream<Bool>.Continuation
+
+    init() {
+        (events, continuation) = AsyncStream.makeStream(bufferingPolicy: .bufferingNewest(1))
+    }
+
+    func finish(_ cleaned: Bool) {
+        let first = lock.withLock {
+            guard value == nil else { return false }
+            value = cleaned
+            return true
+        }
+        if first { continuation.yield(cleaned); continuation.finish() }
+    }
     var result: Bool? { lock.withLock { value } }
+
+    func wait() async -> Bool? {
+        // The callback can arrive before registration or while the cooperative
+        // executor is busy. Buffer the result instead of racing a polling clock.
+        var iterator = events.makeAsyncIterator()
+        return await iterator.next()
+    }
 }
 extension ArtifactFileSafetyTests {
     private func privateStage(_ fixture: ArtifactTestFixture) throws -> ArtifactDirectory {
@@ -93,11 +115,6 @@ extension ArtifactFileSafetyTests {
         let name = ".private-package-stage-" + UUID().uuidString.lowercased()
         guard mkdirat(parent.fd.value, name, 0o700) == 0 else { throw ArtifactContractError.invalidCapability }
         return try ArtifactFileIO.child(parent, name)
-    }
-    private func waitCleanup(_ observation: ArtifactCleanupObservation) async -> Bool? {
-        let until = ContinuousClock.now + .seconds(5)
-        while ContinuousClock.now < until { if let value = observation.result { return value }; await Task.yield() }
-        return nil
     }
     private func stageLease(_ ownership: ArtifactPrivateStageOwnership) -> ArtifactLease {
         ArtifactLease(storeID: .init(), artifactIDs: [], purpose: .restore, nonce: UUID(), releaseOwnership: { withExtendedLifetime(ownership) {} })
@@ -114,7 +131,8 @@ extension ArtifactFileSafetyTests {
         #expect(FileManager.default.fileExists(atPath: directory.url.path))
         #expect(try handle?.read(offset: 0) == Data([1, 2]))
         handle = nil
-        #expect(await waitCleanup(observation) == true)
+        let cleaned = try #require(await observation.wait(), "Private-stage cleanup ended without its callback")
+        #expect(cleaned)
         #expect(!FileManager.default.fileExists(atPath: directory.url.path))
     }
     @Test func privateCleanupPreflightPreservesWholeUnknownTree() async throws {
@@ -124,7 +142,8 @@ extension ArtifactFileSafetyTests {
         try ArtifactFileIO.writeSmall(directory, "owned.bin", bytes: Data([4]), ownership: ownership)
         let unknown = directory.url.appendingPathComponent("foreign.txt"); try Data([9]).write(to: unknown)
         ownership = nil
-        #expect(await waitCleanup(observation) == false)
+        let cleaned = try #require(await observation.wait(), "Private-stage cleanup ended without its callback")
+        #expect(!cleaned)
         #expect(try Data(contentsOf: unknown) == Data([9]))
         #expect(try Data(contentsOf: directory.url.appendingPathComponent("owned.bin")) == Data([4]))
     }
@@ -136,9 +155,21 @@ extension ArtifactFileSafetyTests {
         try ArtifactFileIO.writeSmall(directory, "replaced.bin", bytes: Data([8]), ownership: ownership)
         try Data([8]).write(to: directory.url.appendingPathComponent("replaced.bin"), options: .atomic)
         ownership = nil
-        #expect(await waitCleanup(observation) == false)
+        let cleaned = try #require(await observation.wait(), "Private-stage cleanup ended without its callback")
+        #expect(!cleaned)
         #expect(try Data(contentsOf: directory.url.appendingPathComponent("first.bin")) == Data([5]))
         #expect(try Data(contentsOf: directory.url.appendingPathComponent("replaced.bin")) == Data([8]))
         #expect(ArtifactPrivateStageOwnership.cleanupDiagnostics().pendingJobs <= 16)
+    }
+}
+
+extension ArtifactFileSafetyTests {
+    @Test(arguments: [false, true])
+    func privateCleanupObservationRetainsResultBeforeWaiterRegisters(cleaned: Bool) async throws {
+        let observation = ArtifactCleanupObservation()
+        observation.finish(cleaned)
+        // A completed stream still owes its buffered result to a late waiter.
+        // No elapsed-time assumption or live cleanup queue is needed here.
+        #expect(try #require(await observation.wait()) == cleaned)
     }
 }
