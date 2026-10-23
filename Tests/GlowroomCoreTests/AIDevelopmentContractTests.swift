@@ -37,6 +37,7 @@ struct AIDevelopmentContractTests {
         var intent = AIDevelopmentIntent(); intent.brightness = 0.7; intent.instruction = "Etwas heller"
         let prompt = try intent.prompt(settings: EditSettings(exposure: 1))
         #expect(prompt.contains("brightness=0.7") && prompt.contains("Etwas heller") && prompt.contains("\"exposure\":1"))
+        #expect(prompt.contains("larger values make the result warmer") && prompt.contains("smaller values make it cooler"))
         #expect(!prompt.contains("fileURL") && !prompt.contains("assetID"))
         #expect(try JSONSerialization.jsonObject(with: Data(AIDevelopmentProposal.schema.utf8)) is [String: Any])
         intent.instruction = String(repeating: "ä", count: 1_025)
