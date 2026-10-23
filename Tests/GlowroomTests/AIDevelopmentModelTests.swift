@@ -2,6 +2,7 @@ import AppKit
 import Foundation
 import GlowroomCore
 import Testing
+import SwiftUI
 @testable import Glowroom
 
 @Suite("AI development review transactions", .timeLimit(.minutes(2)))
@@ -232,6 +233,100 @@ struct AIDevelopmentModelTests {
         #expect(f.editor.settings(for: f.assetID) == .neutral && f.model.proposal == nil)
         #expect(await f.editor.flush())
     }
+
+    @Test func nativeObjectMaskAcceptanceSharesLayerAndHistoryAcrossWorkspaces() async throws {
+        let response = try Self.maskResponse()
+        let f = try await AIDevelopmentFixture.make(proposeMask: { _, instruction in
+            #expect(instruction == "Maskiere den Blumenstrauß")
+            return response
+        })
+        defer { f.remove() }
+        f.model.createsMask = true
+        f.model.intent.instruction = "Maskiere den Blumenstrauß"
+        let host = WorkspaceSectionTestHost(size: NSSize(width: 420, height: 1_100))
+        defer { host.close() }
+        try await host.mount(AIDevelopmentView(library: f.library, model: f.model)
+            .environmentObject(f.editor).environmentObject(f.workspace).frame(width: 380))
+        let generate = try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == "ai-development.generate" })
+        try #require(generate.accessibilityPerformPress())
+        try await waitForTestState("object mask proposed", state: { @MainActor in f.model.proposal != nil && !f.model.isRunning }, until: { $0 })
+        #expect(f.editor.settings(for: f.assetID) == .neutral)
+        #expect(f.model.proposal?.createdMaskID == response.layer.id)
+        #expect(f.model.maskPreview != nil)
+        try await host.settle()
+        let apply = try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == "ai-development.apply" })
+        try #require(apply.accessibilityPerformPress())
+        try await waitForTestState("object mask accepted", state: { @MainActor in f.model.proposal == nil && !f.model.isRunning }, until: { $0 })
+        let accepted = f.editor.settings(for: f.assetID)
+        #expect(accepted.localAdjustments == [response.layer])
+        #expect(accepted.exposure == 0 && response.layer.settings == .neutral)
+        #expect(await f.probe.calls == 0, "Mask creation never invokes the global development route")
+        f.library.workspaceMode = .develop
+        let inline = InlineMaskWorkspace()
+        let asset = try #require(f.library.selectedAsset)
+        let source = try f.editor.resolvedSource(for: asset).identity
+        #expect(inline.open(asset: asset, source: source, settings: accepted, editor: f.editor, library: f.library))
+        #expect(inline.model?.settings.localAdjustments == [response.layer])
+        inline.close()
+        f.editor.undo(assetID: f.assetID)
+        #expect(f.editor.settings(for: f.assetID) == .neutral)
+        f.editor.redo(assetID: f.assetID)
+        #expect(f.editor.settings(for: f.assetID) == accepted)
+        #expect(await f.editor.flush())
+        #expect(await f.store.loadAll()[f.assetID] == accepted)
+        try await host.unmount()
+    }
+
+    @Test(arguments: ["cancel", "selection", "editUndo", "mode", "scope"])
+    func staleObjectMaskNeverPublishesOrWrites(change: String) async throws {
+        let response = try Self.maskResponse()
+        let entered = TestAsyncLatch(), release = TestAsyncLatch()
+        let f = try await AIDevelopmentFixture.make(proposeMask: { _, _ in
+            entered.releaseAll(); await release.wait(); return response
+        })
+        defer { release.releaseAll(); f.remove() }
+        f.model.createsMask = true; f.model.intent.instruction = "Maskiere den Blumenstrauß"
+        let work = try #require(f.start()); await entered.wait()
+        switch change {
+        case "cancel": f.model.cancel()
+        case "selection": f.library.selectedID = nil
+        case "editUndo":
+            f.editor.setSettings(EditSettings(exposure: 2), for: f.assetID)
+            f.editor.undo(assetID: f.assetID)
+        case "mode": f.model.createsMask = false
+        default: f.model.intent.targetMaskID = UUID()
+        }
+        release.releaseAll(); await work.value
+        #expect(f.model.proposal == nil && f.model.maskPreview == nil)
+        #expect(f.editor.settings(for: f.assetID).localAdjustments.isEmpty)
+        #expect(await f.editor.flush())
+    }
+
+    @Test func removingTargetMaskRejectsProposalWithoutGlobalFallback() async throws {
+        let layer = try Self.maskResponse().layer
+        let f = try await AIDevelopmentFixture.make()
+        defer { f.remove() }
+        f.editor.setSettings(EditSettings(localAdjustments: [layer]), for: f.assetID)
+        f.model.intent.targetMaskID = layer.id
+        await (try #require(f.start())).value
+        #expect(f.model.proposal?.settings.exposure == 0)
+        #expect(f.model.proposal?.settings.localAdjustments[0].settings.exposure == 0.5)
+        f.editor.setSettings(.neutral, for: f.assetID)
+        #expect(f.model.apply(library: f.library, editor: f.editor) == nil)
+        #expect(f.editor.settings(for: f.assetID) == .neutral)
+        #expect(f.start() == nil)
+        #expect(f.model.status == AIDevelopmentError.unavailableMask.localizedDescription)
+        #expect(await f.editor.flush())
+    }
+
+    private static func maskResponse() throws -> AIObjectMaskResponse {
+        let layer = try LocalAdjustment(name: "Blumenstrauß", mask: LocalAdjustmentMask(shape: .subject(
+            LocalMaskRaster(width: 2, height: 2, bytes: Data([255, 0, 0, 0]))), feather: 0))
+        return AIObjectMaskResponse(layer: layer,
+            sourceStamp: .init(device: 1, inode: 1, byteCount: 1, modifiedSeconds: 1, modifiedNanoseconds: 0, changedSeconds: 1, changedNanoseconds: 0),
+            summary: "Ungefähre Kontur des Blumenstraußes.", preview: PreviewBitmap(image: try aiDevelopmentTestImage()))
+    }
+
 }
 
 @MainActor private struct AIDevelopmentFixture {
@@ -248,6 +343,7 @@ struct AIDevelopmentModelTests {
 
     static func make(latch: TestAsyncLatch = TestAsyncLatch(open: true),
                      adjustments: AIDevelopmentAdjustments = .init(exposure: 1),
+                     proposeMask: AIDevelopmentModel.ProposeMask? = nil,
                      saveLatch: TestAsyncLatch = TestAsyncLatch(open: true),
                      saveEntered: TestAsyncLatch = TestAsyncLatch(),
                      backup: AIDevelopmentBackupSchedule? = nil,
@@ -276,7 +372,9 @@ struct AIDevelopmentModelTests {
         workspace.receive(bitmap, sourceBitmap: bitmap)
         let probe = AIDevelopmentTestProbe(latch: latch, adjustments: adjustments)
         let model = AIDevelopmentModel(propose: { snapshot, _, intent in try await probe.propose(snapshot, intent) },
-                                     validateSource: validateSource)
+                                     proposeMask: proposeMask ?? { snapshot, instruction in
+                                         try await AIObjectMaskService().propose(snapshot: snapshot, instruction: instruction)
+                                     }, validateSource: validateSource)
         return Self(directory: directory, library: library, editor: editor, workspace: workspace, store: store, probe: probe, model: model)
     }
 }
@@ -388,8 +486,14 @@ struct QwenNativeModelTests {
     func installedLocalModelProducesValidatedDevelopmentJSON() async throws {
         let path = try #require(ProcessInfo.processInfo.environment["GLOWROOM_QWEN_MODEL_PATH"])
         var intent = AIDevelopmentIntent(); intent.brightness = 0.6; intent.instruction = "Helle das Bild behutsam auf."
-        let data = try await QwenDevelopmentBackend().propose(modelDirectory: URL(fileURLWithPath: path),
-            image: aiDevelopmentTestImage(), prompt: intent.prompt(settings: .neutral), schema: AIDevelopmentProposal.schema)
+        let budget = AIResourceBudget.shared
+        let lease = try await budget.acquireLocalInference(residentBytes: 5 * 1_024 * 1_024 * 1_024)
+        let data: Data
+        do {
+            data = try await QwenDevelopmentBackend().propose(modelDirectory: URL(fileURLWithPath: path),
+                image: aiDevelopmentTestImage(), prompt: intent.prompt(settings: .neutral), schema: AIDevelopmentProposal.schema)
+            await budget.release(lease)
+        } catch { await budget.release(lease); throw error }
         let response = try AIDevelopmentProposal.decode(data)
         #expect(!response.summary.isEmpty)
         print("Qwen product smoke: \(String(decoding: data, as: UTF8.self))")

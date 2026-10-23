@@ -65,8 +65,9 @@ Inferenz noch RAW-Decodierung.
 Das Ergebnis zeigt eine Erläuterung sowie die tatsächlich zur Übernahme
 vorgesehenen Werte (vorher → nachher, einschließlich Stärke). Unterstützt sind
 Belichtung, Kontrast, Lichter, Tiefen, Weiß, Schwarz, Dynamik, Sättigung,
-Temperatur und Tönung. Alle anderen Einstellungen bleiben erhalten. Qwen
-erzeugt hier keine Bildpixel, Retuschen oder lokalen Masken.
+Temperatur und Tönung. Alle anderen Einstellungen bleiben erhalten. Der Bereich
+**Anwenden auf** begrenzt den Vorschlag wahlweise auf das gesamte Bild oder eine
+bestehende aktive Maske. Qwen erzeugt keine neuen Bildpixel oder Retuschen.
 
 **Übernehmen** verwendet die normale Speicherung und erzeugt einen gemeinsamen
 Rückgängig-Schritt. Die Vorschau wird mit den übernommenen Werten neu gerendert;
@@ -90,6 +91,72 @@ Backups bleibt der Vorschlag erhalten. Übernehmen ist in dieser Zeit gesperrt;
 beginnt die Sperre während der Quellenprüfung, bleibt der Vorschlag für eine
 erneute Übernahme verfügbar. Abgebrochene native Arbeit behält ihren Inferenzplatz
 bis zum tatsächlichen Ende; vorher wird keine neue Anfrage gestartet.
+
+## Vorhandene Masken gezielt entwickeln
+
+Unter **Entwickeln → Anwenden auf** stehen **Gesamtes Bild** und alle am Foto
+vorhandenen Masken. Wähle beispielsweise die Maske **Blumenstrauß** und gib
+„Etwas heller und wärmer“ ein. **Vorschlag erstellen** und **Übernehmen** ändern
+nur die Regler dieser gewählten Maske. Name, Form, Pinselkorrekturen, Invertierung,
+Deckkraft, Reihenfolge und die übrigen Masken bleiben erhalten; globale Werte
+werden nicht verändert. Für mehrere Masken nacheinander die jeweilige Maske
+wählen. Ausgeblendete Masken und Masken mit Deckkraft 0 müssen vor dem Auftrag
+unter **Masken anzeigen und bearbeiten** aktiviert werden.
+
+Der Vorschlag nennt die Zielmaske und zeigt ihre lokalen Werte vorher/nachher.
+Auch **Wärme** ist lokal verfügbar: **Masken → Farbe → Weißabgleich** enthält
+Temperatur und Tönung. 6500/0 sind neutrale relative Werte auf dem bereits
+entwickelten Bild. Alte Masken erhalten diese neutralen Werte; vorhandene
+Speicherbytes bleiben ohne Farbänderung identisch.
+
+Das Modell erhält die entwickelte vollständige Bildbasis ohne Beschnitt,
+Drehung oder Spiegelung; die Umgebung außerhalb der gewählten Maske wird nur
+für diese Analyse abgedunkelt. Der Auftrag erklärt diese Markierung ausdrücklich.
+Gespeicherte Bilddaten bleiben davon unberührt. Eine entfernte, ausgeblendete
+oder zwischenzeitlich veränderte Maske führt zu einem neuen Auftrag oder einer
+Fehlermeldung, niemals zum stillen Wechsel auf eine globale Korrektur.
+
+## Neue Objektmaske per Auftrag
+
+1. In **AI Entwickeln** die Aufgabe **Neue Maske** wählen.
+2. Einen Auftrag eingeben, zum Beispiel **„Maskiere den Blumenstrauß“**.
+3. **Vorschlag erstellen** wählen und die rote Fläche auf der unbeschnittenen,
+   ungedrehten Gesamtvorschau prüfen.
+4. **Übernehmen** fügt die benannte Maske mit neutralen lokalen Reglern hinzu.
+   **Verwerfen** lässt das Foto unverändert. Unter **Masken anzeigen und bearbeiten**
+   die neue Maske auswählen und bei Bedarf mit Pinsel/Radierer verfeinern.
+5. Für eine AI-Korrektur auf **Entwickeln** zurückschalten und diese Maske unter
+   **Anwenden auf** wählen.
+
+Dieser Weg benötigt die lokale Qwen-Installation und das vorhandene
+**Freistellungsmodell BiRefNet**. Dessen Einrichtung ist direkt unter **Neue Maske**
+erreichbar. Qwen lokalisiert das gewünschte Objekt; BiRefNet berechnet im
+Objektausschnitt die tatsächliche Auswahl einschließlich weicher Kanten und
+Zwischenräume. Das Ergebnis ist ein prüfbarer Vorschlag: überlagerte Gegenstände,
+Behälter oder benachbarte Teile können eine Korrektur mit Pinsel/Radierer erfordern.
+Nicht erkannte Objekte, fehlende Modelle und ungültige Antworten erzeugen keine
+Ersatzmaske. Motiv/Hintergrund und Himmel bleiben als direkte Maskierungswege
+verfügbar. Entwicklungsregler und **Stärke** gelten ausschließlich für
+Korrekturvorschläge.
+
+Die Maske wird einmalig als Gray8-Raster mit höchstens 1024 Pixeln langer Kante
+im vorhandenen `EditSettings.localAdjustments` gespeichert. Es gibt keine getrennte
+AI-Maskenliste: Entwickeln und AI Entwickeln verwenden identische IDs, Formen,
+Regler und Speicherstände; Masken bleiben nach Neustart und Backup/Restore
+verfügbar. Bestehende Grenzen (16 Masken, 16 MiB Raster insgesamt, 32 MiB
+Einstellungssnapshot) gelten weiterhin. Eine Annahme bildet einen gemeinsamen
+Undo-/Redo-Schritt und verändert keine Originaldatei.
+
+Neue Masken und Korrekturen binden sich an dieselbe Quelle, Auswahl und
+Bearbeitungsgeneration. Modus-/Auftragswechsel, Abbruch, andere Bearbeitungen
+oder Quellenwechsel verwerfen noch nicht angenommene Ergebnisse. Quellenprüfung
+und endgültige Übernahme bleiben geordnet. Qwen und BiRefNet laufen abhängig
+voneinander und belegen nacheinander die gemeinsame Inferenzzulassung; native
+Arbeit hält ihre Zulassung auch nach Abbruch bis zur tatsächlichen Rückkehr.
+BiRefNet nutzt den bestehenden CPU/GPU-Pfad mit demselben Modell als CPU-Fallback.
+Die kleine Rückprojektion des Maskenrasters läuft begrenzt im Hintergrund.
+Gespeicherte Masken und spätere Reglerbewegungen benötigen keine erneute
+Modellinferenz. Es werden keine Leistungsgewinne behauptet.
 
 ## Qualität und Ressourcen
 
@@ -138,6 +205,46 @@ Er verwendet ein synthetisches Bild und die tatsächliche Swift-/Metal-Inferenz
 einschließlich JSON-Grammatik und Antwortvalidierung. Die lokalen Testfotos
 sind dafür nicht erforderlich. Ein sauberer vollständiger App-Build bleibt für
 Änderungen an dieser Produktfunktion gemäß `AGENTS.md` erforderlich.
+
+## Maskenprüfung und optionale Modelltests
+
+Die Standardtests prüfen Maskenbindung, unveränderte globale Werte, lokale
+Temperatur/Tönung, alte Speicherformate, Maskenstärke, Invertierung und
+Pinselkorrekturen, Quellengeometrie, ungültige Objektregionen, Speichergrenzen,
+Abbruch, native Übernahme und gemeinsame Undo-/Redo-/Speicherstände. Sie
+benötigen keine privaten Testbilder und führen keine echte Modellinferenz aus.
+
+`AIObjectMaskNativeTests` prüft mit gesetztem `GLOWROOM_QWEN_MODEL_PATH` zusätzlich
+am synthetischen Bild die Lokalisierung eines asymmetrisch positionierten roten Ovals
+bei einem grünen Ablenkungsobjekt. Für eine ausdrücklich gewünschte lokale
+Fotoprüfung werden drei Pfade gesetzt; das Ausgabeziel muss ein neues Verzeichnis
+unter einem bereits vorhandenen Elternordner sein:
+
+```sh
+GLOWROOM_QWEN_MODEL_PATH=/absoluter/pfad/zum/qwen-snapshot \
+GLOWROOM_QWEN_MASK_TEST_IMAGE=/absoluter/pfad/zum/testfoto.jpg \
+GLOWROOM_QWEN_MASK_TEST_OUTPUT=/tmp/glowroom-masken-neue-pruefung \
+./scripts/test.sh --jobs 4 --filter AIObjectMaskNativeTests
+```
+
+Der optionale `GLOWROOM_QWEN_MASK_TEST_INSTRUCTION` überschreibt den Standardauftrag
+„Maskiere den gelben Blumenstrauß im Vordergrund.“. Der Produkttest verwendet den
+echten Vorbereitungs-/Inferenzpfad und prüft unveränderte Originalbytes. Er legt
+`response.preview.png`, `response.json` und `Layer.json` ausschließlich im neuen
+Ausgabeordner ab. Private Fotos und abgeleitete Prüfbilder werden nicht committet.
+Für diesen vollständigen Fototest muss auch BiRefNet lokal eingerichtet sein.
+Die Sichtprüfung bleibt notwendig: gültige Geometrie belegt keine genaue Auswahl.
+
+Objektantworten enthalten nur Name, Zusammenfassung und eine Box
+`[links, oben, rechts, unten]` mit vier ganzen Zahlen auf einer Skala von 0 bis
+1000. Die Box dient der Lokalisierung, nicht als gespeicherte Maske. Ein kleiner
+Rand von 5 % je Boxdimension bewahrt knapp lokalisierte Objektkanten; die
+Segmentierungsmaske wird in die vollständigen Quellkoordinaten zurückprojiziert.
+Antworten bleiben auf 768 Tokens und 16 KiB begrenzt. Für Objektantworten
+unterdrückt die vorhandene native Laufzeit lange reine Leerraumfolgen; normale
+Reglerantworten behalten ihren bisherigen Inferenzmodus. Teilantworten werden
+weder ergänzt noch übernommen, JSON-Schließzeichen werden nicht erzwungen.
+Die optionalen Qwen-Produkttests verwenden dieselbe Inferenzzulassung.
 
 ## Integrationsprüfung am 23. Oktober 2026
 
@@ -225,3 +332,46 @@ vollständiger Release-Build** (SwiftPM-Kompilierung 297,41 Sekunden).
 Info.plist-Validierung, ad-hoc Signierung und strikte Signaturprüfung bestanden.
 Log: `/tmp/glowroom-ai-apply-clean-build.log`. Die abschließende Dokumentation
 der Ergebnisse beeinflusst den Build nicht.
+
+## Gemeinsame AI-Masken: Prüfung am 23. Oktober 2026
+
+Die gezielte Integration besteht mit **57 Tests in 13 Suites**. Dazu gehören
+die tatsächlichen Übernahme-Buttons, lokale Temperatur/Tönung, alte kanonische
+Snapshotbytes, Quellengeometrie, Maskenwechsel und -löschung, Undo/Redo,
+Speichergrenzen sowie Abbruch vor und während der getrennten Modellphasen.
+Das unabhängige abschließende Diff-Review hat keine offenen Befunde ergeben.
+
+Zwei ausdrücklich aktivierte native Produkttests mit bereits installierten
+lokalen Modellen bestehen. Qwen lokalisiert das synthetische rote Oval mit
+einer Box von [545,125,850,475] gegenüber [550,120,850,480]; der Test fordert
+mindestens 0,6 IoU und schließt das Ablenkungsobjekt aus. Der vollständige
+Fotopfad lokalisiert den gelben Blumenstrauß und erzeugt mit BiRefNet eine
+sichtgeprüfte Maske mit Blüten, Stielen und Vase. Originalbytes bleiben
+unverändert. Das belegt diese beiden Fälle, keine allgemeine semantische
+Zuverlässigkeit; insbesondere gehört die Vase in diesem Vorschlag mit zur
+Auswahl. Private Prüfbilder und Ergebnisse bleiben außerhalb von Git.
+
+Die zuerst untersuchten frei erzeugten Qwen-Polygone wurden wegen ungenauer
+Konturen verworfen. Ein vorheriger Modelllauf scheiterte an unvollständigem
+JSON, weitere an der Zeitgrenze; die Untersuchung fand lange Leerraumfolgen.
+Die finale kompakte Boxantwort und begrenzte Leerraumunterdrückung bestehen
+den nativen Test. Frühere gezielte Testbuilds scheiterten außerdem an einer
+Swift-Initialisierungsreihenfolge beziehungsweise parallel geänderten
+Quelldateien. Diese Ursachen sind behoben; der erfolgreiche finale
+Integrationslauf wurde mit eingefrorenen Quellen durchgeführt. Befunde zur
+Palettenhöhe, nativen Slider-Ansteuerung und bilinearer Masken-Testgeometrie
+wurden ebenfalls korrigiert und erneut geprüft.
+
+Implementierung und Reviews liefen in getrennten Verantwortungsbereichen
+parallel. Native Modellläufe, Vollsuite, Bereinigung und App-Build folgen
+geordnet, weil sie gemeinsame Inferenz-, UI- oder Buildressourcen verwenden.
+
+Die abschließende vollständige Suite besteht mit **1547 Tests in 210 Suites**.
+Wegen der Änderungen an Laufzeit, Renderer und Oberfläche war ein sauberer
+vollständiger App-Build erforderlich. Nach Prüfung auf laufende Builds/Tests
+wurden die generierten Compiler-, Modul-, Icon- und Laufzeitergebnisse in
+`.build/` sowie das alte `dist/Glowroom.app` entfernt; Paketquellen, Downloads
+und Locks blieben erhalten. `GLOWROOM_BUILD_JOBS=4 ./scripts/build-app.sh`
+bestand anschließend einschließlich Bundle-, Plist- und Signaturprüfung.
+Das neue Release-Bundle liegt unter `dist/Glowroom.app`. Es bleiben keine
+offenen Review-, Test- oder Buildhindernisse.

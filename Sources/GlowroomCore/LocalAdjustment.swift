@@ -146,25 +146,65 @@ public struct LocalAdjustmentSettings: Codable, Hashable, Sendable {
     public var dehaze: Double
     public var vibrance: Double
     public var saturation: Double
+    /// Relative white balance applied only through this layer's mask.
+    public var temperature: Double
+    public var tint: Double
     public init(exposure: Double = 0, contrast: Double = 0, highlights: Double = 0, shadows: Double = 0,
                 whites: Double = 0, blacks: Double = 0, texture: Double = 0, clarity: Double = 0,
-                dehaze: Double = 0, vibrance: Double = 0, saturation: Double = 0) {
+                dehaze: Double = 0, vibrance: Double = 0, saturation: Double = 0,
+                temperature: Double = 6_500, tint: Double = 0) {
         self.exposure = exposure; self.contrast = contrast; self.highlights = highlights; self.shadows = shadows
         self.whites = whites; self.blacks = blacks; self.texture = texture; self.clarity = clarity
         self.dehaze = dehaze; self.vibrance = vibrance; self.saturation = saturation
+        self.temperature = temperature; self.tint = tint
     }
     public var editSettings: EditSettings {
         .init(exposure: exposure, contrast: contrast, highlights: highlights, shadows: shadows, whites: whites,
-              blacks: blacks, texture: texture, clarity: clarity, dehaze: dehaze, vibrance: vibrance, saturation: saturation)
+              blacks: blacks, texture: texture, clarity: clarity, dehaze: dehaze, vibrance: vibrance, saturation: saturation,
+              developColor: .init(temperature: temperature, tint: tint))
     }
     public var normalized: Self {
         let value = editSettings.normalized
         return .init(exposure: value.exposure, contrast: value.contrast, highlights: value.highlights,
                      shadows: value.shadows, whites: value.whites, blacks: value.blacks, texture: value.texture,
-                     clarity: value.clarity, dehaze: value.dehaze, vibrance: value.vibrance, saturation: value.saturation)
+                     clarity: value.clarity, dehaze: value.dehaze, vibrance: value.vibrance, saturation: value.saturation,
+                     temperature: value.developColor.temperature, tint: value.developColor.tint)
     }
     public static let neutral = Self()
     public var isNeutral: Bool { normalized == .neutral }
+
+    private enum CodingKeys: String, CodingKey {
+        case exposure, contrast, highlights, shadows, whites, blacks
+        case texture, clarity, dehaze, vibrance, saturation, temperature, tint
+    }
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(exposure: try values.decode(Double.self, forKey: .exposure),
+                  contrast: try values.decode(Double.self, forKey: .contrast),
+                  highlights: try values.decode(Double.self, forKey: .highlights),
+                  shadows: try values.decode(Double.self, forKey: .shadows),
+                  whites: try values.decode(Double.self, forKey: .whites),
+                  blacks: try values.decode(Double.self, forKey: .blacks),
+                  texture: try values.decode(Double.self, forKey: .texture),
+                  clarity: try values.decode(Double.self, forKey: .clarity),
+                  dehaze: try values.decode(Double.self, forKey: .dehaze),
+                  vibrance: try values.decode(Double.self, forKey: .vibrance),
+                  saturation: try values.decode(Double.self, forKey: .saturation),
+                  temperature: values.contains(.temperature) ? try values.decode(Double.self, forKey: .temperature) : 6_500,
+                  tint: values.contains(.tint) ? try values.decode(Double.self, forKey: .tint) : 0)
+    }
+    public func encode(to encoder: Encoder) throws {
+        var values = encoder.container(keyedBy: CodingKeys.self)
+        try values.encode(exposure, forKey: .exposure); try values.encode(contrast, forKey: .contrast)
+        try values.encode(highlights, forKey: .highlights); try values.encode(shadows, forKey: .shadows)
+        try values.encode(whites, forKey: .whites); try values.encode(blacks, forKey: .blacks)
+        try values.encode(texture, forKey: .texture); try values.encode(clarity, forKey: .clarity)
+        try values.encode(dehaze, forKey: .dehaze); try values.encode(vibrance, forKey: .vibrance)
+        try values.encode(saturation, forKey: .saturation)
+        // Keep historical snapshot bytes and digests unchanged until edited.
+        if temperature != 6_500 { try values.encode(temperature, forKey: .temperature) }
+        if tint != 0 { try values.encode(tint, forKey: .tint) }
+    }
 }
 
 public struct LocalAdjustment: Codable, Hashable, Identifiable, Sendable {

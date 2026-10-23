@@ -29,14 +29,16 @@ struct AIDevelopmentService: Sendable {
         let prompt = try intent.prompt(settings: snapshot.settings)
         let analysisRequest = ImageAnalysisRequest(snapshot: snapshot, inputKind: .editedPreview,
                                                   lifecycleID: UUID())
-        let input = try await prepare(snapshot: snapshot)
+        let layer = try intent.targetMask(in: snapshot.settings)
+        let input = try await prepare(snapshot: layer == nil ? snapshot : AIDevelopmentMaskInput.fullCanvasSnapshot(snapshot))
+        let image = try layer.map { try AIDevelopmentMaskInput.render(input.bitmap, mask: $0.mask).image } ?? input.bitmap.image
         let lease = try await budget.acquireLocalInference(priority: .interactive,
             residentBytes: 5 * 1_024 * 1_024 * 1_024)
         do {
             let result = try await store.withModel { model in
                 try Task.checkCancellation()
                 let data = try await QwenDevelopmentBackend().propose(modelDirectory: model.directory,
-                    image: input.bitmap.image, prompt: prompt, schema: AIDevelopmentProposal.schema)
+                    image: image, prompt: prompt, schema: AIDevelopmentProposal.schema)
                 try Task.checkCancellation()
                 return try AIDevelopmentProposal.decode(data)
             }

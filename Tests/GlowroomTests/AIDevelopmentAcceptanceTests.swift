@@ -10,8 +10,10 @@ import UniformTypeIdentifiers
 @Suite("AI development mounted acceptance", .serialized, .timeLimit(.minutes(2)))
 @MainActor
 struct AIDevelopmentAcceptanceTests {
-    @Test(arguments: [false, true])
-    func acceptanceUpdatesNativeControlsPreviewHistoryAndDurableSettings(screenshotProposal: Bool) async throws {
+    @Test(arguments: ["global", "whiteBalance", "mask"])
+    func acceptanceUpdatesNativeControlsPreviewHistoryAndDurableSettings(scenario: String) async throws {
+        let screenshotProposal = scenario == "whiteBalance"
+        let masked = scenario == "mask"
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("Glowroom-AIAcceptance-\(UUID())")
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -35,8 +37,11 @@ struct AIDevelopmentAcceptanceTests {
         let editingDirectory = directory.appendingPathComponent("Editing")
         let dependencies = try await ArtifactAppBootstrap(directory: editingDirectory).editingDependencies()
         let state = try await dependencies.database.loadState()
-        let baseline = screenshotProposal ? EditSettings(texture: 21)
+        var baseline = screenshotProposal ? EditSettings(texture: 21)
             : EditSettings(exposure: 0.2, contrast: -4, shadows: 12, texture: 21)
+        let layer = try LocalAdjustment(name: "Blumenstrauß", mask: LocalAdjustmentMask(shape: .radial(
+            center: LocalMaskPoint(x: 0.5, y: 0.5), radiusX: 0.3, radiusY: 0.3, rotation: 0)))
+        if masked { baseline.localAdjustments = [layer] }
         let expectedState = try EditingExpectedState(storeEpoch: state.storeEpoch, revision: nil, snapshot: nil)
         _ = try await dependencies.database.saveSnapshot(EditingSnapshot(settings: baseline), for: asset.id,
             expected: expectedState, revision: 1)
@@ -52,7 +57,9 @@ struct AIDevelopmentAcceptanceTests {
             : AIDevelopmentProposal(summary: "Belichtung und Schatten aufhellen, Kontrast erhöhen.",
                 adjustments: .init(exposure: 1.2, contrast: 16, shadows: 40))
         let controls: [Adjustment] = screenshotProposal ? [.whites, .vibrance] : [.exposure, .contrast, .shadows]
-        let settings = try proposal.adjustments.applying(to: baseline, strength: 0.5)
+        var scope = AIDevelopmentIntent()
+        scope.targetMaskID = masked ? layer.id : nil
+        let settings = try proposal.adjustments.applying(to: baseline, intent: scope)
         if screenshotProposal {
             #expect(settings.whites == 5 && settings.vibrance == 10 && settings.developColor.temperature == 6_650)
         }
@@ -61,6 +68,7 @@ struct AIDevelopmentAcceptanceTests {
             return AIDevelopmentResponse(proposal: proposal,
                 sourceStamp: try await ImageAnalysisPreparer().sourceStamp(for: request))
         })
+        model.intent.targetMaskID = scope.targetMaskID
         model.intent.brightness = screenshotProposal ? 0 : 0.6
         let requestedIntent = model.intent
         defer { model.discard(); workspace.clear() }
@@ -86,7 +94,14 @@ struct AIDevelopmentAcceptanceTests {
                 !model.isRunning && model.proposal == nil && editor.settings(for: asset.id) == settings
                     && frames.latest?.settings == settings && frames.latest?.sourceWidth == image.width
             }
-            #expect(model.status == "Vorschlag übernommen. Werte unter „Entwickeln“ prüfen. Mit ⌘Z rückgängig machen.")
+            if masked {
+                #expect(model.status?.contains("nur auf „Blumenstrauß“") == true)
+                #expect(settings.exposure == baseline.exposure)
+                #expect(settings.localAdjustments[0].settings.exposure == 0.6)
+                #expect(settings.localAdjustments[0].mask == layer.mask)
+            } else {
+                #expect(model.status == "Vorschlag übernommen. Werte unter „Entwickeln“ prüfen. Mit ⌘Z rückgängig machen.")
+            }
             #expect(model.intent == requestedIntent, "Intent sliders describe the request and retain its directions")
             #expect(frames.latest?.digest != baselineDigest)
             try await expectNativeControls(settings, controls: controls, in: host)
