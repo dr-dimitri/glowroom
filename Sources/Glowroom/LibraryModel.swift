@@ -81,8 +81,20 @@ final class LibraryModel: ObservableObject {
         set { if !newValue { workspaceMode = .library } else if workspaceMode == .library { workspaceMode = .develop } }
     }
     var isAIDeveloping: Bool { workspaceMode == .aiDevelop }
-    @Published var comparesOriginal = false { didSet { if comparesOriginal { comparesCurrentSourceWithoutSettings = false } } }
-    @Published var comparesCurrentSourceWithoutSettings = false { didSet { if comparesCurrentSourceWithoutSettings { comparesOriginal = false } } }
+    @Published var comparesOriginal = false {
+        didSet { if comparesOriginal { comparesCurrentSourceWithoutSettings = false; previewComparisonLayout = .single } }
+    }
+    @Published var comparesCurrentSourceWithoutSettings = false {
+        didSet { if comparesCurrentSourceWithoutSettings { comparesOriginal = false; previewComparisonLayout = .single } }
+    }
+    @Published var previewComparisonLayout: PreviewComparisonLayout = .single
+    private(set) var lastPreviewComparisonLayout: PreviewComparisonLayout = .leftRight
+    func showPreviewComparison(_ layout: PreviewComparisonLayout) {
+        comparesOriginal = false
+        comparesCurrentSourceWithoutSettings = false
+        if layout != .single { lastPreviewComparisonLayout = layout }
+        previewComparisonLayout = layout
+    }
     var editingRenderIntent: EditingRenderIntent { comparesOriginal ? .importedOriginal : comparesCurrentSourceWithoutSettings ? .currentSourceWithoutSettings : .currentEditing }
     @Published var showsDetail = false
     @Published var showsInspector = true

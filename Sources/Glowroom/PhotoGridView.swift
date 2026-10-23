@@ -127,23 +127,25 @@ struct DetailView: View {
     @ViewState private var photoHeaderHeight = CGFloat(30)
     @EnvironmentObject private var maskWorkspace: InlineMaskWorkspace
     @EnvironmentObject private var developWorkspace: DevelopWorkspace
+    private var comparesBeforeAfter: Bool { model.previewComparisonLayout != .single && !maskWorkspace.isPresented }
     private var usesNativeCropInput: Bool {
-        model.isDeveloping && developWorkspace.tool == .crop && model.editingRenderIntent == .currentEditing
+        !comparesBeforeAfter && model.isDeveloping && developWorkspace.tool == .crop && model.editingRenderIntent == .currentEditing
             && !maskWorkspace.isPresented && !developWorkspace.picksWhiteBalance
     }
     private var usesNativeDevelopInput: Bool {
-        model.isDeveloping && [.crop, .repair].contains(developWorkspace.tool)
+        !comparesBeforeAfter && model.isDeveloping && [.crop, .repair].contains(developWorkspace.tool)
             && model.editingRenderIntent == .currentEditing && !maskWorkspace.isPresented && !developWorkspace.picksWhiteBalance
     }
     private var usesPhotoNavigationInput: Bool {
-        !maskWorkspace.isPresented && !developWorkspace.picksDetail && (!model.isDeveloping || model.editingRenderIntent != .currentEditing
-            || (developWorkspace.tool == .basic && !developWorkspace.picksWhiteBalance))
+        comparesBeforeAfter || (!maskWorkspace.isPresented && !developWorkspace.picksDetail && (!model.isDeveloping || model.editingRenderIntent != .currentEditing
+            || (developWorkspace.tool == .basic && !developWorkspace.picksWhiteBalance)))
     }
     private struct NavigationIdentity: Hashable {
         let asset: String
         let source: AISourceIdentity?
         let comparesOriginal: Bool
         let comparesSource: Bool
+        let comparisonLayout: PreviewComparisonLayout
     }
     var body: some View {
         GeometryReader { available in
@@ -152,7 +154,7 @@ struct DetailView: View {
                 DevelopPhotoHeader(asset: asset, previewLabel: previewLabel)
                     .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { photoHeaderHeight = $0 }
                 GeometryReader { geometry in
-                    if zoomed {
+                    if zoomed && !comparesBeforeAfter {
                         ScrollView([.horizontal, .vertical]) {
                             developCanvas(asset: asset)
                                 // Capture magnification once; resizing panels only
@@ -214,34 +216,48 @@ struct DetailView: View {
                 ? editor.settings(for: asset.id).developGeometry.straightenAngle : 0
             let fit = DevelopCropCanvasPresentation.fittingScale(sourceSize: source, viewport: viewport.size, angle: angle)
             ZStack {
-                EditingPhotoPreview(asset: asset, intent: model.editingRenderIntent,
-                    settingsOverride: previewSettings(for: asset.id), developing: model.isDeveloping,
-                    imageScale: fit, imageRotation: angle)
-                    // Composite the cached source immediately while the crop tool is
-                    // open. Only the photo rotates; the shared status stays upright.
-                if maskWorkspace.isPresented {
-                    InlineMaskCanvas(workspace: maskWorkspace).allowsHitTesting(developWorkspace.isOriginalCanvasReady)
-                } else if model.isDeveloping, model.editingRenderIntent == .currentEditing {
-                    if developWorkspace.picksDetail {
-                        DevelopDetailCanvas(workspace: developWorkspace,
-                            geometry: editor.settings(for: asset.id).developGeometry)
-                    } else {
-                        DevelopCanvasInteraction(asset: asset, workspace: developWorkspace,
-                            onDoubleClick: { toggleZoom(viewport: canvasSize) })
+                if comparesBeforeAfter {
+                    PreviewComparisonView(layout: model.previewComparisonLayout,
+                        navigationIdentity: AnyHashable(NavigationIdentity(asset: asset.id,
+                            source: developWorkspace.sourceIdentity, comparesOriginal: false,
+                            comparesSource: false, comparisonLayout: model.previewComparisonLayout)),
+                        zoomed: zoomed, onDoubleClick: { toggleZoom(viewport: canvasSize) }) {
+                        EditingPhotoPreview(asset: asset, intent: .importedOriginal, developing: true)
+                    } after: {
+                        EditingPhotoPreview(asset: asset, intent: .currentEditing,
+                            settingsOverride: editor.settings(for: asset.id), developing: true)
+                    }
+                } else {
+                    EditingPhotoPreview(asset: asset, intent: model.editingRenderIntent,
+                        settingsOverride: previewSettings(for: asset.id), developing: model.isDeveloping,
+                        imageScale: fit, imageRotation: angle)
+                        // Composite the cached source immediately while the crop tool is
+                        // open. Only the photo rotates; the shared status stays upright.
+                    if maskWorkspace.isPresented {
+                        InlineMaskCanvas(workspace: maskWorkspace).allowsHitTesting(developWorkspace.isOriginalCanvasReady)
+                    } else if model.isDeveloping, model.editingRenderIntent == .currentEditing {
+                        if developWorkspace.picksDetail {
+                            DevelopDetailCanvas(workspace: developWorkspace,
+                                geometry: editor.settings(for: asset.id).developGeometry)
+                        } else {
+                            DevelopCanvasInteraction(asset: asset, workspace: developWorkspace,
+                                onDoubleClick: { toggleZoom(viewport: canvasSize) })
+                        }
+                    }
+                    if developWorkspace.tool == .basic, !developWorkspace.picksWhiteBalance,
+                       let analysis = developWorkspace.analysis,
+                       let overlay = analysis.clippingImage(shadows: developWorkspace.showsShadows, highlights: developWorkspace.showsHighlights),
+                       developWorkspace.showsShadows || developWorkspace.showsHighlights {
+                        Image(decorative: overlay, scale: 1).resizable().interpolation(.none)
+                            .aspectRatio(contentMode: .fit).allowsHitTesting(false)
                     }
                 }
-                if developWorkspace.tool == .basic, !developWorkspace.picksWhiteBalance,
-                   let analysis = developWorkspace.analysis,
-                   let overlay = analysis.clippingImage(shadows: developWorkspace.showsShadows, highlights: developWorkspace.showsHighlights),
-                   developWorkspace.showsShadows || developWorkspace.showsHighlights {
-                    Image(decorative: overlay, scale: 1).resizable().interpolation(.none)
-                        .aspectRatio(contentMode: .fit).allowsHitTesting(false)
-                }
-                if usesPhotoNavigationInput {
+                if usesPhotoNavigationInput && !comparesBeforeAfter {
                     DevelopCropInputSurface(onInput: { _ in }, onHover: { _ in }, isEnabled: true,
                         inputIdentity: AnyHashable(NavigationIdentity(asset: asset.id,
                             source: developWorkspace.sourceIdentity, comparesOriginal: model.comparesOriginal,
-                            comparesSource: model.comparesCurrentSourceWithoutSettings)),
+                            comparesSource: model.comparesCurrentSourceWithoutSettings,
+                            comparisonLayout: model.previewComparisonLayout)),
                         cursor: { _ in zoomed ? .openHand : .arrow },
                         onDoubleClick: { toggleZoom(viewport: canvasSize) },
                         canvasLabel: zoomed ? "Vergrößertes Bild verschieben · Doppelklick zum Einpassen" : "Bild · Doppelklick zum Vergrößern",
@@ -259,6 +275,7 @@ struct DetailView: View {
     }
 
     private var previewLabel: String {
+        if comparesBeforeAfter { return " · " + model.previewComparisonLayout.title }
         if model.comparesOriginal { return " · Importiertes Original" }
         if model.comparesCurrentSourceWithoutSettings { return " · Aktuelle Quelle ohne Regler" }
         return ""
@@ -303,10 +320,28 @@ struct DetailView: View {
             }.buttonStyle(.plain).help(zoomed ? "Einpassen · Doppelklick auf das Bild · Drei-Finger-Ziehen zum Verschieben" : "Vergrößern · Doppelklick auf das Bild")
                 .accessibilityLabel(zoomed ? "Einpassen" : "Vergrößern")
                 .accessibilityIdentifier("workspace.zoom")
+            Button { model.showPreviewComparison(.single) } label: {
+                Image(systemName: "rectangle").frame(width: 24, height: 30)
+                    .foregroundStyle(!comparesBeforeAfter && model.editingRenderIntent == .currentEditing ? Theme.accent : Theme.text)
+            }.buttonStyle(.plain).disabled(maskWorkspace.isPresented)
+                .accessibilityLabel("Einzelbild · Aktuelle Bearbeitung").accessibilityIdentifier("workspace.single-preview")
+                .help("Einzelbild · Aktuelle Bearbeitung")
+            Button {
+                model.showPreviewComparison(comparesBeforeAfter ? .single : model.lastPreviewComparisonLayout)
+            } label: {
+                Image(systemName: comparesBeforeAfter ? model.previewComparisonLayout.symbol : model.lastPreviewComparisonLayout.symbol)
+                    .frame(width: 24, height: 30).foregroundStyle(comparesBeforeAfter ? Theme.accent : Theme.text)
+            }.buttonStyle(.plain).disabled(maskWorkspace.isPresented)
+                .accessibilityLabel("Vorher/Nachher").accessibilityValue(comparesBeforeAfter ? "Aktiv" : "Inaktiv")
+                .accessibilityIdentifier("workspace.compare-toggle").help("Vorher/Nachher ein-/ausschalten")
             Menu {
-                Button { model.comparesOriginal = false; model.comparesCurrentSourceWithoutSettings = false } label: {
-                    Label("Aktuelle Bearbeitung", systemImage: model.editingRenderIntent == .currentEditing ? "checkmark" : "circle")
+                ForEach(PreviewComparisonLayout.allCases.filter { $0 != .single }) { comparison in
+                    Button { model.showPreviewComparison(comparison) } label: {
+                        Label(comparison.title, systemImage: model.previewComparisonLayout == comparison ? "checkmark" : comparison.symbol)
+                    }
                 }
+                Divider()
+                Button("Einzelbild · Aktuelle Bearbeitung") { model.showPreviewComparison(.single) }
                 Button { model.comparesOriginal = true; model.comparesCurrentSourceWithoutSettings = false } label: {
                     Label("Importiertes Original", systemImage: model.comparesOriginal ? "checkmark" : "circle")
                 }
@@ -314,13 +349,15 @@ struct DetailView: View {
                     Label("Aktuelle Quelle ohne Regler", systemImage: model.comparesCurrentSourceWithoutSettings ? "checkmark" : "circle")
                 }
             } label: {
-                Image(systemName: "rectangle.lefthalf.inset.filled").frame(width: 24, height: 30)
-            }.menuStyle(.borderlessButton).fixedSize().disabled(maskWorkspace.isPresented)
+                Image(systemName: "chevron.down").font(.system(size: 9)).frame(width: 10, height: 30)
+            }.menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize().disabled(maskWorkspace.isPresented)
                 .accessibilityLabel("Vergleich").accessibilityValue(comparisonTitle)
                 .accessibilityIdentifier("workspace.compare").help("Vergleich: " + comparisonTitle)
             Spacer(minLength: 0)
-            RatingStars(rating: asset.rating, size: 11, onChange: { model.setRating($0) }).disabled(!model.canModify)
-            IconButton(symbol: asset.isFavorite ? "heart.fill" : "heart", help: "Favorit · F", active: asset.isFavorite) { model.toggleFavorite() }.disabled(!model.canModify)
+            if canvasSize.width >= 410 {
+                RatingStars(rating: asset.rating, size: 11, onChange: { model.setRating($0) }).disabled(!model.canModify)
+                IconButton(symbol: asset.isFavorite ? "heart.fill" : "heart", help: "Favorit · F", active: asset.isFavorite) { model.toggleFavorite() }.disabled(!model.canModify)
+            }
             Spacer(minLength: 0)
             IconButton(symbol: "chevron.left", help: "Vorheriges Foto · ←") { model.navigate(-1) }
             IconButton(symbol: "chevron.right", help: "Nächstes Foto · →") { model.navigate(1) }
@@ -329,6 +366,7 @@ struct DetailView: View {
     }
 
     private var comparisonTitle: String {
+        if comparesBeforeAfter { return model.previewComparisonLayout.title }
         if model.comparesOriginal { return "Importiertes Original" }
         if model.comparesCurrentSourceWithoutSettings { return "Aktuelle Quelle ohne Regler" }
         return "Aktuelle Bearbeitung"

@@ -32,6 +32,7 @@ struct DevelopCropInputSurface: NSViewRepresentable {
     let onDoubleClickBegan: (() -> Void)?
     let pansWithPointer: Bool
     let onTeardown: (() -> Void)?
+    let onScroll: ((CGSize) -> Void)?
 
     init(onInput: @escaping (DevelopCropInputEvent) -> Void,
          onHover: @escaping (CGPoint?) -> Void, isEnabled: Bool,
@@ -39,7 +40,8 @@ struct DevelopCropInputSurface: NSViewRepresentable {
          onDoubleClick: (() -> Void)? = nil, canvasLabel: String = "Zuschneiden und Drehen auf dem Bild",
          onCancel: (() -> Void)? = nil, onDoubleClickBegan: (() -> Void)? = nil,
          pansWithPointer: Bool = false, canvasIdentifier: String = "develop.interactive-canvas",
-         capturesEscapeWhileIdle: Bool = true, onTeardown: (() -> Void)? = nil) {
+         capturesEscapeWhileIdle: Bool = true, onTeardown: (() -> Void)? = nil,
+         onScroll: ((CGSize) -> Void)? = nil) {
         self.onInput = onInput
         self.onHover = onHover
         self.isEnabled = isEnabled
@@ -53,6 +55,7 @@ struct DevelopCropInputSurface: NSViewRepresentable {
         self.onDoubleClickBegan = onDoubleClickBegan
         self.pansWithPointer = pansWithPointer
         self.onTeardown = onTeardown
+        self.onScroll = onScroll
     }
 
     func makeNSView(context: Context) -> DevelopCropNativeInputView {
@@ -66,7 +69,8 @@ struct DevelopCropInputSurface: NSViewRepresentable {
                        inputIdentity: inputIdentity, cursor: cursor, onDoubleClick: onDoubleClick, onCancel: onCancel,
                        onDoubleClickBegan: onDoubleClickBegan,
                        pansEnclosingScrollView: photoCanvasPanning, pansWithPointer: pansWithPointer,
-                       capturesEscapeWhileIdle: capturesEscapeWhileIdle, onTeardown: onTeardown)
+                       capturesEscapeWhileIdle: capturesEscapeWhileIdle, onTeardown: onTeardown,
+                       onScroll: onScroll)
         view.setAccessibilityLabel(canvasLabel)
         view.setAccessibilityIdentifier(canvasIdentifier)
     }
@@ -171,6 +175,7 @@ final class DevelopCropNativeInputView: NSView {
     var onDoubleClick: (() -> Void)?
     var onCancel: (() -> Void)?
     var onTeardown: (() -> Void)?
+    var onScroll: ((CGSize) -> Void)?
     var onDoubleClickBegan: (() -> Void)?
     var inputIdentity: AnyHashable?
     var inputEnabled = true {
@@ -229,7 +234,8 @@ final class DevelopCropNativeInputView: NSView {
                    onDoubleClick: (() -> Void)? = nil, onCancel: (() -> Void)? = nil,
                    onDoubleClickBegan: (() -> Void)? = nil,
                    pansEnclosingScrollView: Bool = false, pansWithPointer: Bool = false,
-                   capturesEscapeWhileIdle: Bool = true, onTeardown: (() -> Void)? = nil) {
+                   capturesEscapeWhileIdle: Bool = true, onTeardown: (() -> Void)? = nil,
+                   onScroll: ((CGSize) -> Void)? = nil) {
         // End an old asset/tool transaction using its old callback before a new
         // identity's closures replace it.
         if self.inputIdentity != inputIdentity || (!isEnabled && inputEnabled)
@@ -242,6 +248,7 @@ final class DevelopCropNativeInputView: NSView {
         self.onDoubleClick = onDoubleClick
         self.onCancel = onCancel
         self.onTeardown = onTeardown
+        self.onScroll = onScroll
         self.onDoubleClickBegan = onDoubleClickBegan
         self.inputIdentity = inputIdentity
         self.pansEnclosingScrollView = pansEnclosingScrollView
@@ -333,6 +340,11 @@ final class DevelopCropNativeInputView: NSView {
         pointerLocation = point
         publishInput(DevelopCropInputEvent(phase: .changed, kind: .pointer, startLocation: start, location: point))
         publishHover(event)
+    }
+
+    override func scrollWheel(with event: NSEvent) {
+        guard inputEnabled, !isInvalidated, let onScroll else { super.scrollWheel(with: event); return }
+        onScroll(CGSize(width: event.scrollingDeltaX, height: event.scrollingDeltaY))
     }
 
     override func mouseUp(with event: NSEvent) {
