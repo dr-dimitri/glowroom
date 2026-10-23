@@ -1,5 +1,8 @@
 # Bildinformationen und manuelle Sicherung
 
+KI-Vorschläge stehen jetzt unter **AI Entwickeln → Bildtexte und Tags vorschlagen**. Die klassischen Bildinformationen zeigen bestätigte Inhalte und manuelle Angaben. Die Datenbank-, Entwurfs- und Übernahmeverträge bleiben gemeinsam; ein KI-Vorschlag kann im AI-Bereich auch ausdrücklich in einen manuellen Entwurf übernommen und dort bearbeitet werden.
+
+
 Titel, Beschreibung, Schlagwörter und Sprache sind eigene redaktionelle Daten. Sie stehen weder im JSON-Bildkatalog noch in EXIF/XMP, der Bearbeitungsdatenbank oder dem entbehrlichen Vorschaucache. Das Original bleibt unverändert. Ein bestätigter Text beweist nicht, dass die KI das Bild richtig erkannt hat.
 
 ## Pflege und Bildvorschläge

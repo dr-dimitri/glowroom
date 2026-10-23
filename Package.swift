@@ -29,12 +29,16 @@ let package = Package(
         .package(url: "https://github.com/huggingface/swift-transformers.git", revision: "e37cacea74498bba66002bb83ecafee3e4ab8884"),
         // Newer Collections condition on compiler 6.4 APIs absent from SDK 26.5.
         // Hub/Jinja use stable OrderedCollections APIs available in this pin.
-        .package(url: "https://github.com/apple/swift-collections.git", exact: "1.2.1")
+        .package(url: "https://github.com/apple/swift-collections.git", exact: "1.2.1"),
+        // Qwen3.5 vision support and constrained decoding; pair the Swift core
+        // with the exact v0.32.2 Metal library in prepare-mlx-runtime.sh.
+        .package(url: "https://github.com/ml-explore/mlx-swift-lm.git", exact: "3.32.3"),
+        .package(url: "https://github.com/ml-explore/mlx-swift.git", exact: "0.32.3")
     ],
     targets: [
         .systemLibrary(name: "CSQLite"),
         .target(name: "GlowroomCore", dependencies: ["CSQLite"]),
-        .executableTarget(name: "Glowroom", dependencies: ["GlowroomCore", "CSQLite", .product(name: "Tokenizers", package: "swift-transformers"), .product(name: "Hub", package: "swift-transformers")], resources: [.process("AI/Resources"), .process("Resources")], swiftSettings: appSettings),
+        .executableTarget(name: "Glowroom", dependencies: ["GlowroomCore", "CSQLite", .product(name: "Tokenizers", package: "swift-transformers"), .product(name: "Hub", package: "swift-transformers"), .product(name: "MLX", package: "mlx-swift"), .product(name: "MLXVLM", package: "mlx-swift-lm"), .product(name: "MLXLMCommon", package: "mlx-swift-lm"), .product(name: "MLXGuidedGeneration", package: "mlx-swift-lm")], resources: [.process("AI/Resources"), .process("Resources")], swiftSettings: appSettings),
         .testTarget(name: "GlowroomCoreTests", dependencies: ["GlowroomCore", "CSQLite"]),
         .testTarget(name: "GlowroomTests", dependencies: ["Glowroom", "GlowroomCore"])
     ]

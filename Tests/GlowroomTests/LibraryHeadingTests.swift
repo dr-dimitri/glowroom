@@ -6,7 +6,7 @@ import Testing
 @testable import Glowroom
 
 /// AppKit window and accessibility state are shared, so native layouts stay ordered.
-@Suite("Library heading native layout", .serialized)
+@Suite("Library heading native layout", .serialized, .timeLimit(.minutes(1)))
 @MainActor
 struct LibraryHeadingTests {
     @Test(arguments: [320.0, 640.0, 1_180.0], LibrarySearchMode.allCases)
@@ -113,11 +113,14 @@ struct LibraryHeadingTests {
         let repository = CatalogRepository(directory: directory.appendingPathComponent("Catalog"))
         try repository.save(LibraryCatalog(folders: [folder], assets: assets))
         let model = LibraryModel(repository: repository)
-        let deadline = ContinuousClock.now + .seconds(15)
-        while model.isLoading {
-            guard ContinuousClock.now < deadline else { throw LibraryHeadingTestError.timeout }
-            try await Task.sleep(for: .milliseconds(10))
-        }
+        // This layout fixture has no imports or mutations. Join its actual
+        // startup task through the normal drain instead of racing MainActor
+        // scheduling against a wall-clock readiness poll. The suite watchdog
+        // still bounds a genuinely stuck load; all layout assertions remain.
+        await model.drainAcceptedCatalogOperations()
+        try Task.checkCancellation()
+        try #require(!model.isLoading && model.errorMessage == nil)
+        try #require(model.assets.count == assets.count)
         model.selection = .folder(folder.id)
         await model.waitForProjection()
         return (directory, model)

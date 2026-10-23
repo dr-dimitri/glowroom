@@ -6,7 +6,7 @@ import Testing
 @Suite("Editing SQLite coordinates in-process inode scopes", .serialized, .timeLimit(.minutes(1)))
 struct EditingDatabaseCooperationTests {
     @Test func actualJournalContentionThroughNativeAliasProducesOneCASWinner() async throws {
-        let probe = EditingCooperationProbe()
+        let probe = EditingCooperationProbe(releaseOnContention: true)
         let f = try EditingFixture(hooks:.init(beforeCommit:{try probe.holdCommit()}))
         let state = try await f.repository.loadState()
         let alias = f.directory.appendingPathComponent("native-alias",isDirectory:true)
@@ -22,8 +22,9 @@ struct EditingDatabaseCooperationTests {
         #expect(FileManager.default.fileExists(atPath:f.repository.fileURL.path+"-journal"))
         let contender = Task.detached {try await second.saveSnapshot(other,for:"asset",expected:expected,revision:1)}
         try await probe.waitFor(.contention)
-        // Admission was actually attempted while the first real journal lived.
-        // Releasing its owner must yield stale CAS, never crash recovery.
+        // The contender's actual admission callback releases the writer on
+        // that same thread. Test-driver scheduling cannot consume SQLite's
+        // unchanged production contention deadline before the release.
         probe.release()
         let committed = try await writer.value
         await #expect(throws:ArtifactContractError.staleSnapshot) {_ = try await contender.value}
@@ -101,7 +102,7 @@ struct EditingDatabaseCooperationTests {
 
     @Test(arguments:[false,true])
     func healthyWriterTimeoutOrCancellationNeverBecomesDamagedRecovery(cancel:Bool) async throws {
-        let probe = EditingCooperationProbe(holdTimeout:5),f = try EditingFixture()
+        let probe = EditingCooperationProbe(),f = try EditingFixture()
         let first = try await f.save(exposure:0.5),backup = try await f.repository.createBackup(automatic:false)
         // An independent gate models a second repository in this process. The
         // identity mutex must coordinate actors beyond one gate/DI instance.
@@ -157,7 +158,7 @@ struct EditingDatabaseCooperationTests {
     @Test(arguments:["open","readOnly"])
     func canceledPinAndArtifactDropCannotUnlockAnotherActorsRealSQLiteTransaction(path:String) async throws {
         var phase = "fixture"
-        let probe = EditingCooperationProbe(holdTimeout:5)
+        let probe = EditingCooperationProbe()
         do {
         let f = try EditingFixture(hooks:.init(beforeCommit:{try probe.holdCommit()}))
         phase = "initial-load"
@@ -214,7 +215,7 @@ struct EditingDatabaseCooperationTests {
     }
 
     @Test func rejectedHardlinkKeepsKernelLocksUntilControlledParentFailureReturns() async throws {
-        let probe = EditingCooperationProbe(holdTimeout:5),f = try EditingFixture()
+        let probe = EditingCooperationProbe(),f = try EditingFixture()
         let previous = try await f.save(exposure:0.5)
         let writer = EditingRepository(directory:f.directory,artifacts:f.artifacts,packages:f.packages,gate:f.gate,
             hooks:.init(beforeCommit:{try probe.holdCommit()}))
@@ -331,21 +332,28 @@ struct EditingDatabaseCooperationTests {
 private final class EditingCooperationProbe:@unchecked Sendable {
     enum Point:Equatable {case entered,contention}
     private let lock = NSLock(),resumeCommit = DispatchSemaphore(value:0)
-    private var entered = false,contention = false,released = false
-    private let holdTimeout:TimeInterval
-    init(holdTimeout:TimeInterval = 1.5){self.holdTimeout = holdTimeout}
+    private var released = false
+    private let releaseOnContention:Bool
+    private let entered = AsyncStream<Void>.makeStream(bufferingPolicy:.bufferingNewest(1))
+    private let contention = AsyncStream<Void>.makeStream(bufferingPolicy:.bufferingNewest(1))
+    init(releaseOnContention:Bool = false){self.releaseOnContention = releaseOnContention}
     func holdCommit() throws {
-        lock.withLock{entered = true}
-        guard resumeCommit.wait(timeout:.now()+holdTimeout) == .success else {throw EditingRepositoryError.storageFailure}
+        entered.continuation.yield(())
+        // This synchronous hook deliberately holds one real SQLite transaction;
+        // the serialized suite permits one such owner at a time. The async
+        // driver releases it in defer even if its one-minute test limit cancels
+        // a checkpoint wait. No artificial 1.5s commit failure races that driver.
+        resumeCommit.wait()
+        try Task.checkCancellation()
     }
-    func contended(){lock.withLock{contention = true}}
+    func contended(){
+        contention.continuation.yield(())
+        if releaseOnContention {release()}
+    }
     func release(){let shouldResume = lock.withLock{if released{return false};released = true;return true};if shouldResume{resumeCommit.signal()}}
     func waitFor(_ point:Point) async throws {
-        let deadline = ContinuousClock.now.advanced(by:.seconds(1))
-        while !lock.withLock({point == .entered ? entered : contention}) {
-            guard ContinuousClock.now < deadline else {throw EditingRepositoryError.storageFailure}
-            try await Task.sleep(for:.milliseconds(1))
-        }
+        var events = (point == .entered ? entered.stream : contention.stream).makeAsyncIterator()
+        guard await events.next() != nil else {throw CancellationError()}
     }
 }
 

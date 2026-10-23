@@ -236,6 +236,22 @@ struct WorkspaceLayoutTests {
         #expect(WorkspaceLayoutModel(defaults: fixture.defaults).develop == layout.develop)
     }
 
+    @Test
+    func aiFocusOriginSurvivesRestartWithoutChangingLegacyOrigins() throws {
+        let fixture = try Preferences()
+        defer { fixture.remove() }
+        let layout = WorkspaceLayoutModel(defaults: fixture.defaults)
+        layout.enterFocus(developing: true, showsDetail: true, aiDeveloping: true)
+        let restored = WorkspaceLayoutModel(defaults: fixture.defaults)
+        #expect(restored.focusOrigin.aiDeveloping == true)
+        #expect(restored.leaveFocus() == WorkspaceFocusOrigin(developing: true, showsDetail: true, aiDeveloping: true))
+        #expect(EditingFunction(WorkspaceTool.aiDevelopment) == .adjustments)
+        #expect(!WorkspaceTool.aiDevelopment.isNavigationTool)
+        let legacy = try JSONDecoder().decode(WorkspaceFocusOrigin.self,
+            from: Data(#"{"developing":true,"showsDetail":true}"#.utf8))
+        #expect(legacy.aiDeveloping == nil)
+    }
+
     @Test(arguments: [false, true])
     func olderOpenNoiseGroupMovesToDetailsAndSubsequentClosingPersists(_ singleGroup: Bool) throws {
         let fixture = try Preferences()

@@ -105,9 +105,9 @@ printf '%s\n' "$$" > "$LOCK/pid"
 STAGING="$(mktemp -d "$ROOT/dist/.glowroom-build.XXXXXX")"
 mkdir -p "$BUILD_PATH/ModuleCache" "$BUILD_PATH/IconModuleCache"
 BUILD_ARGS=(--disable-sandbox --package-path "$ROOT" --configuration "$CONFIGURATION" --scratch-path "$BUILD_PATH" --jobs "$COMPILER_JOBS")
-if [[ -n "${GLOWROOM_BUILD_SYSTEM:-}" ]]; then
-    BUILD_ARGS+=(--build-system "$GLOWROOM_BUILD_SYSTEM")
-fi
+# The pinned, version-matched Metal library is prepared separately so CLT-only
+# machines can produce the same functional bundle without a Metal compiler.
+BUILD_ARGS+=(--build-system "${GLOWROOM_BUILD_SYSTEM:-native}")
 
 APP="$STAGING/Glowroom.app"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
@@ -137,6 +137,7 @@ PLIST
 
 ICONSET="$STAGING/AppIcon.iconset"
 build_product() {
+    "$ROOT/scripts/prepare-mlx-runtime.sh" "$BUILD_PATH/MLXRuntime"
     swift build "${BUILD_ARGS[@]}" --product Glowroom
 }
 create_icon() {
@@ -175,6 +176,8 @@ set +m
 
 BIN_PATH="$(swift build "${BUILD_ARGS[@]}" --show-bin-path)"
 cp "$BIN_PATH/Glowroom" "$APP/Contents/MacOS/Glowroom"
+cp "$BUILD_PATH/MLXRuntime/mlx.metallib" "$APP/Contents/Resources/mlx.metallib"
+cp "$BUILD_PATH/MLXRuntime/MLX-LICENSE.txt" "$APP/Contents/Resources/MLX-LICENSE.txt"
 chmod 755 "$APP/Contents/MacOS/Glowroom"
 
 # SwiftPM dependency and application resources are independent immutable bundles.

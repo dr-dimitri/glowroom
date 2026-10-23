@@ -1,9 +1,10 @@
+import Combine
 import Foundation
 import GlowroomCore
 import Testing
 @testable import Glowroom
 
-@Suite("Catalog publication and complete database cleanup")
+@Suite("Catalog publication and complete database cleanup", .timeLimit(.minutes(1)))
 struct CatalogCleanupIntegrationTests {
     @Test @MainActor func libraryRemovalAndFreshReimportKeepBothDatabasesEmpty() async throws {
         let f = try await CatalogCleanupFixture.make(); defer { f.remove() }
@@ -11,6 +12,7 @@ struct CatalogCleanupIntegrationTests {
         let model = LibraryModel(repository:f.repository,metadataStore:f.metadata,
             catalogCleanup:{ catalog,reference in try await f.clean(catalog,reference:reference) },
             folderScanner:{ folder in await scanner.scan(folder) })
+        defer { model.beginTermination() }
         var preparations = 0,synchronizations = 0
         model.prepareCatalogCleanup = { preparations += 1 }
         model.synchronizeEditing = { synchronizations += 1 }
@@ -52,6 +54,7 @@ struct CatalogCleanupIntegrationTests {
                 if await failure.shouldFail { throw CatalogCleanupFailure.injected }
                 return try await f.clean(catalog,reference:reference)
             },folderScanner:{ folder in await scanner.scan(folder) })
+        defer { model.beginTermination() }
         try await waitForCatalogCleanupModel(model)
         try await f.seed()
         var synchronizations = 0
@@ -194,12 +197,35 @@ struct CatalogCleanupIntegrationTests {
 
 @MainActor
 private func waitForCatalogCleanupModel(_ model:LibraryModel) async throws {
-    let clock = ContinuousClock(),deadline = clock.now.advanced(by:.seconds(10))
-    while model.isLoading || model.isImporting || model.isProjecting || model.isUpdatingCatalog {
-        guard clock.now < deadline else { throw CatalogCleanupFailure.timeout }
-        try await Task.sleep(for:.milliseconds(5))
+    let (changes, continuation) = AsyncStream<Bool>.makeStream(bufferingPolicy: .bufferingNewest(1))
+    // Published replays current values on subscription, so this also handles
+    // startup/import completion before registration. A delayed main-actor turn
+    // is not evidence that catalog cleanup violated a production deadline.
+    let observation = Publishers.CombineLatest4(model.$isLoading, model.$isImporting,
+                                                model.$isProjecting, model.$isUpdatingCatalog)
+        .sink { loading, importing, projecting, updating in
+            continuation.yield(!loading && !importing && !projecting && !updating)
+        }
+    defer { observation.cancel(); continuation.finish() }
+    do {
+        for await ready in changes {
+            try Task.checkCancellation()
+            guard ready else { continue }
+            // Published emits before its stored value changes. Await the actual
+            // mutation/projection tasks, then inspect the current whole state.
+            await model.waitForProjection()
+            try Task.checkCancellation()
+            if !model.isLoading && !model.isImporting && !model.isProjecting && !model.isUpdatingCatalog { return }
+        }
+        try Task.checkCancellation()
+        throw CatalogCleanupFailure.observationEnded
+    } catch {
+        model.beginTermination()
+        // A cancelled test may not delete fixtures under accepted native writes.
+        // The same app shutdown path drains their actual completion.
+        await model.drainAcceptedCatalogOperations()
+        throw error
     }
-    await model.waitForProjection()
 }
 private actor CatalogCleanupScanner {
     let asset:PhotoAsset
@@ -213,8 +239,8 @@ private actor CatalogCleanupScanner {
 }
 
 private enum CatalogCleanupFailure:LocalizedError {
-    case injected,timeout
-    var errorDescription:String? { self == .injected ? "injected cleanup failure" : "catalog cleanup test timeout" }
+    case injected,observationEnded
+    var errorDescription:String? { self == .injected ? "injected cleanup failure" : "catalog cleanup observation ended before model readiness" }
 }
 private actor CatalogCleanupObservations {
     struct Call:Sendable {

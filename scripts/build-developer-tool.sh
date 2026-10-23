@@ -30,10 +30,13 @@ export GLOWROOM_DEVELOPER_TOOL="$TOOL"
 export CLANG_MODULE_CACHE_PATH="$BUILD_PATH/ModuleCache"
 export SWIFTPM_MODULECACHE_OVERRIDE="$BUILD_PATH/ModuleCache"
 mkdir -p "$CLANG_MODULE_CACHE_PATH"
-ARGS=(--disable-sandbox --package-path "$SOURCE_ROOT" --scratch-path "$BUILD_PATH" --configuration release --jobs "$JOBS" --product Glowroom)
+ARGS=(--disable-sandbox --package-path "$SOURCE_ROOT" --scratch-path "$BUILD_PATH" --configuration release --jobs "$JOBS" --product Glowroom --build-system "${GLOWROOM_BUILD_SYSTEM:-native}")
+"$ROOT/scripts/prepare-mlx-runtime.sh" "$BUILD_PATH/MLXRuntime"
 # Build output stays visible on stderr; stdout is the one executable path.
 # Harness modes use the same SwiftPM sources, resources and pinned dependencies
 # as the application. Different scratch paths permit independent builds.
 xcrun swift build "${ARGS[@]}" >&2
 BIN_PATH="$(xcrun swift build "${ARGS[@]}" --show-bin-path)"
+cp "$BUILD_PATH/MLXRuntime/mlx.metallib" "$BIN_PATH/mlx.metallib"
+cp "$BUILD_PATH/MLXRuntime/MLX-LICENSE.txt" "$BIN_PATH/MLX-LICENSE.txt"
 printf '%s\n' "$BIN_PATH/Glowroom"

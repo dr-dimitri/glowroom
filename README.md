@@ -6,11 +6,9 @@ Der **Bildfokus** bietet mehr Bildfläche und Werkzeuge nach Bedarf. Die Bedienw
 
 ## Starten
 
-Voraussetzungen: **macOS 14 oder neuer** und Xcode oder die Apple Command Line Tools mit **Swift 6.1 oder neuer**. Falls die Entwicklungswerkzeuge fehlen, lassen sie sich mit `xcode-select --install` installieren. SwiftPM löst die in `Package.resolved` festgehaltenen Swift-Bibliotheken auf; dafür ist beim ersten Build Internetzugang oder ein bereits gefüllter lokaler Paketcache nötig. Die laufende App benötigt für Bibliothek und lokale Bearbeitung keinen Online-Dienst.
+Voraussetzungen: **macOS 14 oder neuer** und Xcode oder die Apple Command Line Tools mit **Swift 6.3 oder neuer**. Falls die Entwicklungswerkzeuge fehlen, lassen sie sich mit `xcode-select --install` installieren. SwiftPM löst die in `Package.resolved` festgehaltenen Swift-Bibliotheken auf; dafür ist beim ersten Build Internetzugang oder ein bereits gefüllter lokaler Paketcache nötig. Die laufende App benötigt für Bibliothek und lokale Bearbeitung keinen Online-Dienst.
 
-```sh
-swift run Glowroom
-```
+Für die vollständige lokale Qwen-Laufzeit verwende das folgende Buildskript; ein bloßes `swift run` richtet die erforderliche Metal-Ressource nicht ein.
 
 Ein reguläres App-Bundle erzeugen und öffnen:
 
@@ -23,7 +21,7 @@ Für einen schnelleren Entwicklungsbuild kann `./scripts/build-app.sh --debug` v
 
 Das App-Icon verwendet den gerade ausgerichteten Glasrahmen mit türkisfarbenem Bergmotiv und goldener Sonne aus [`Assets/AppIcon.png`](Assets/AppIcon.png). Der Build skaliert diese feste Quelle unter Erhalt von Transparenz in alle zehn macOS-Iconset-Größen (16 bis 1024 Pixel einschließlich Retina), konvertiert sie zu `AppIcon.icns` und bindet sie über `CFBundleIconFile` ein. Im App-Kopf steht das freigestellte innere Bildmotiv samt Glasrahmen aus [`Sources/Glowroom/Resources/BrandMark.png`](Sources/Glowroom/Resources/BrandMark.png) neben dem Programmnamen; die Gruppe beginnt links bündig mit der Navigator-Überschrift. Zum Austauschen des Motivs die quadratische PNG-Quelle mit mindestens 1024 Pixeln Kantenlänge ersetzen und das App-Bundle neu bauen; eine Bildgenerierung beim Build ist nicht nötig.
 
-Optional setzt `GLOWROOM_BUILD_PATH` ein separates Build-Verzeichnis. Mit neueren Swift-Versionen kann `GLOWROOM_BUILD_SYSTEM=swiftbuild` explizit Apples Swift-Build-System auswählen; ohne diese Variable gilt der Standard der installierten Swift-Version.
+Optional setzt `GLOWROOM_BUILD_PATH` ein separates Build-Verzeichnis. Mit neueren Swift-Versionen kann `GLOWROOM_BUILD_SYSTEM=swiftbuild` explizit Apples Swift-Build-System auswählen; ohne diese Variable verwendet das Skript das `native`-Buildsystem. Es richtet außerdem eine geprüfte Metal-Ressource für die [native Qwen-Laufzeit](docs/AI-QWEN-RUNTIME.md) ein.
 
 ### Paralleler lokaler Build
 
@@ -52,6 +50,10 @@ git remote set-url origin https://github.com/dr-dimitri/glowroom.git
 
 Die Umstellungsreihenfolge, Prüfungen der GitHub-Einstellungen und begründete historische Namensreste stehen unter [Umbenennung zu Glowroom](docs/GLOWROOM-RENAME.md).
 
+## AI Entwickeln
+
+Neben **Bibliothek** und **Entwickeln** gibt es den eigenen Bereich **AI Entwickeln**. Er bündelt lokale Qwen3.5-4B-Korrekturvorschläge, KI-Bildtexte und Zugänge zu Suche, Maskierung und Reparatur. Die Regler steuern die gewünschte Bildwirkung; **Übernehmen** schreibt einen geprüften Vorschlag als rückgängig machbare Bearbeitung. **LLM-Modelle verwalten** bietet Download, Abbruch, Löschen und Speicheranzeigen. Das erste Modell benötigt etwa **3,06 GB** sowie Apple Silicon und Metal. [Bedienung, Grenzen und Tests](docs/AI-DEVELOPMENT.md).
+
 ## Bibliothek verwenden
 
 Die Bibliotheksleiste hält Suche, Ansicht, Bewertungsfilter, Suchmodus, Sortierung und **Ordner aktualisieren** in einer Zeile. Bei schmaler Bildfläche fasst **Filter & Sortierung** die Optionen zusammen und lässt die Suche direkt erreichbar. Ordnername und Fotoanzahl entfallen im oberen Bildbereich; die Ordner bleiben links in der Navigation sichtbar.
@@ -60,13 +62,13 @@ In der Einzelbildansicht öffnet das kleine **Finder-Symbol** unten links neben 
 
 ### Bildfokus und Werkzeuge
 
-Wähle ein Foto und klicke oben auf **Bildfokus**, verwende **Darstellung → Bildfokus** oder **⇧⌘F**. Der Modus funktioniert im normalen Fenster und unabhängig vom macOS-Vollbild. Navigation, Filmstreifen und Werkzeugseite sind zunächst verborgen. **Bibliothek** und **Entwickeln** bleiben oben sichtbar: **Bibliothek** beendet den Fokus und öffnet das Raster, **Entwickeln** öffnet die Bearbeitungswerkzeuge im Fokus. Das beschriftete Dock öffnet **Bearbeiten** und **Details** rechts sowie **Informationen** und **Bildstände** links. Sobald eine Spalte sichtbar ist, stehen ihre Gruppen direkt dort zur Verfügung und ihre zusätzlichen Dockknöpfe entfallen. **Zur vorherigen Ansicht** bzw. erneut **⇧⌘F** stellt die bisherige Raster-/Einzelbildansicht und deren Panelzustand wieder her. **Esc** verlässt den Fokus; bei aktiver Detailauswahl beendet es zunächst diese Auswahl. **Leertaste** bzw. **Rasteransicht** wechselt geordnet ins Raster.
+Wähle ein Foto und klicke oben auf **Bildfokus**, verwende **Darstellung → Bildfokus** oder **⇧⌘F**. Der Modus funktioniert im normalen Fenster und unabhängig vom macOS-Vollbild. Navigation, Filmstreifen und Werkzeugseite sind zunächst verborgen. **Bibliothek**, **Entwickeln** und **AI Entwickeln** bleiben oben sichtbar: **Bibliothek** beendet den Fokus und öffnet das Raster, **Entwickeln** öffnet die Bearbeitungswerkzeuge im Fokus. Das beschriftete Dock öffnet **Bearbeiten** und **Details** rechts sowie **Informationen** und **Bildstände** links. Sobald eine Spalte sichtbar ist, stehen ihre Gruppen direkt dort zur Verfügung und ihre zusätzlichen Dockknöpfe entfallen. **Zur vorherigen Ansicht** bzw. erneut **⇧⌘F** stellt die bisherige Raster-/Einzelbildansicht und deren Panelzustand wieder her. **Esc** verlässt den Fokus; bei aktiver Detailauswahl beendet es zunächst diese Auswahl. **Leertaste** bzw. **Rasteransicht** wechselt geordnet ins Raster.
 
 Über **Ansicht** im Fenster oder das Menü **Darstellung** lassen sich Bibliothek beziehungsweise Entwickeln-Navigation (**⌥⌘L**), Werkzeuge (**⌘I**) und Filmstreifen (**⌥⌘S**) unabhängig schalten. Zwischen Bibliothek und Bild bzw. Bild und Werkzeugen ziehen die Griffe die Breite auf; der Griff oberhalb des Filmstreifens verändert dessen Höhe. Die Darstellungspräferenzen werden automatisch gemerkt, getrennt für Bibliothek, Entwickeln und Bildfokus. Beim Verkleinern begrenzt die App die wirksamen Größen; die bevorzugten Größen bleiben für größere Fenster erhalten. **Standardansicht wiederherstellen** setzt die aktuelle Darstellung zurück.
 
 Die Entwickeln-Ansicht zeigt links den **Navigator**, darunter **Bildinformationen** und **Bildstände**. Rechts stehen Histogramm, Werkzeugleiste sowie die Gruppen **Grundeinstellungen** und **Details**. Details enthält einen vergrößerten Bildausschnitt sowie **Schärfen** und **Entrauschen**. Die Details-Gruppe lässt sich über ihre Überschrift ein- und ausklappen; ihr Zustand wird für Entwickeln und Bildfokus getrennt gespeichert und der Einzelgruppenmodus berücksichtigt ihn. Innerhalb der geöffneten Details-Gruppe bleiben Schärfen und Entrauschen stets aufgeklappt. Bei neuen Entwickeln-/Fokuspräferenzen und nach **Standardansicht wiederherstellen** sind die **Grundeinstellungen** geöffnet; **Details**, **Bildinformationen** und **Bildstände** beginnen eingeklappt. Dunkle neutrale Seitenleisten, eine graue Bildfläche und helle Schrift orientieren sich an klassischen Fotoarbeitsplätzen. Die übrigen Gruppen und Regler-Untergruppen lassen sich einklappen. **Nur eine Gruppe geöffnet** im Kontextmenü einer einklappbaren Gruppenüberschrift gilt pro Spalte; eine linke Gruppe schließt die rechten Grundeinstellungen nicht. Direkte Sprünge über **Darstellung** oder das Fokusdock öffnen die zuständige Spalte. Einklappen und Fokuswechsel erhalten laufende Metadatenanfragen und Metadatenentwürfe. Sie übernehmen keine Werte und erzeugen keine Undo-Einträge. Ein echter Bild-/Quellenwechsel oder eine geänderte Bearbeitung kann Vorschläge weiterhin ungültig machen.
 
-Alle Regler aktualisieren die Vorschau während des Ziehens. Die automatische Speicherung der Bildeinstellungen beginnt erst nach dem Loslassen der Maustaste und sichert den letzten Wert des Reglerzugs. Das gemeinsame Reglerbauteil übernimmt dieses Verhalten auch für neue Regler. Ausdrückliches Speichern, Sicherungen und das Beenden der App sichern weiterhin alle bereits angenommenen Änderungen.
+Die manuellen Bildregler aktualisieren die Vorschau während des Ziehens. Die Bildwirkungsregler in AI Entwickeln beschreiben dagegen den nächsten ausdrücklich angeforderten Modellvorschlag. Die automatische Speicherung der Bildeinstellungen beginnt erst nach dem Loslassen der Maustaste und sichert den letzten Wert des Reglerzugs. Das gemeinsame Reglerbauteil übernimmt dieses Verhalten auch für neue Regler. Ausdrückliches Speichern, Sicherungen und das Beenden der App sichern weiterhin alle bereits angenommenen Änderungen.
 
 Oben neben dem Dateinamen stehen in der Einzelbildansicht der Bibliothek, in Entwickeln und im Bildfokus dieselben Angaben zu Belichtungszeit, Blende, ISO, Brennweite und Aufnahmedatum, etwa **1/300s, f5,6, ISO 200, 56mm, 12.04.2026**. Fehlende Metadaten entfallen; das Dateidatum ersetzt kein fehlendes Aufnahmedatum. Belichtungszeiten wie **0,8s** behalten ihren tatsächlichen Wert; übliche Kamera-Bruchzeiten wie **1/125s** bleiben als Bruch dargestellt. Für bereits eingelesene Fotos liest **Ordner aktualisieren** die korrigierten Belichtungszeiten erneut aus den Originalen ein. Die Anzeige passt sich schmalen Bildflächen an; der Hinweis beim Verweilen zeigt die vollständigen verfügbaren Aufnahmedaten. Die Angaben stammen aus dem Katalog und lösen beim Anzeigen keine zusätzlichen Dateizugriffe aus.
 
@@ -155,7 +157,7 @@ Nach jeder Umsetzungsanforderung sind die betroffene Dokumentation zu aktualisie
 
 Während der Umsetzung oder beim Review gefundene Bugs werden direkt im laufenden Aufgabenbranch behoben, auch wenn sie nicht mit der ursprünglichen Umsetzung zusammenhängen. Ein separates Issue oder ein zusätzlicher Branch ist dafür nicht erforderlich. Die Fehlerbehebungen werden in Dokumentation, Review und geeignete Prüfungen einbezogen und im Abschlussbericht beschrieben. Ist eine direkte Behebung nicht möglich, das konkrete Hindernis melden und Reproduktionsschritte, erwartetes und tatsächliches Verhalten sowie die betroffenen Stellen dokumentieren. Die verbindlichen Projektvorgaben stehen in [AGENTS.md](AGENTS.md).
 
-Die automatisierten Tests verwenden Swift Testing und benötigen **Swift 6.1 oder neuer**. Das Testskript setzt lokale Compiler-Caches und berücksichtigt die Plugin-Erkennung der Apple Command Line Tools:
+Die automatisierten Tests verwenden Swift Testing und benötigen **Swift 6.3 oder neuer**. Das Testskript setzt lokale Compiler-Caches und berücksichtigt die Plugin-Erkennung der Apple Command Line Tools:
 
 ```sh
 ./scripts/test.sh
@@ -191,7 +193,7 @@ Anschließend `/tmp/Glowroom-Demo` in Glowroom hinzufügen. Die Beispielbilder s
 Für einen vollständig getrennten Testkatalog lässt sich ein anderes Datenverzeichnis übergeben:
 
 ```sh
-swift run Glowroom --catalog-directory /tmp/Glowroom-Testkatalog
+dist/Glowroom.app/Contents/MacOS/Glowroom --catalog-directory /tmp/Glowroom-Testkatalog
 ```
 
 Die Bibliotheksberechnungen lassen sich unabhängig vom RAW-Decoder mit 10.000 synthetischen Einträgen messen:

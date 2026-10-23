@@ -17,7 +17,8 @@ struct WorkspacePanelVisibility: Equatable {
 
 enum WorkspaceFocusRouting {
     static func target(previous: WorkspacePanelVisibility, current: WorkspacePanelVisibility,
-                       revealedTool: WorkspaceTool?, hasSelection: Bool) -> WorkspaceControlFocus? {
+                       revealedTool: WorkspaceTool?, hasSelection: Bool,
+                       isAIDeveloping: Bool = false) -> WorkspaceControlFocus? {
         if previous.isFocused != current.isFocused {
             return current.isFocused || hasSelection ? .focus : .library
         }
@@ -28,6 +29,7 @@ enum WorkspaceFocusRouting {
             return .tool(navigationTool)
         }
         if previous.showsTools && !current.showsTools {
+            if current.isFocused && isAIDeveloping { return .tool(.aiDevelopment) }
             return current.isFocused ? (hasSelection ? .tool(.edit) : .focus) : .tools
         }
         if previous.showsFilmstrip && !current.showsFilmstrip { return .filmstrip }
@@ -58,11 +60,12 @@ enum WorkspaceActions {
         finishField()
         if layout.isFocused {
             let origin = layout.leaveFocus()
-            library.isDeveloping = origin.developing
+            library.workspaceMode = origin.aiDeveloping == true ? .aiDevelop : (origin.developing ? .develop : .library)
             library.showsDetail = origin.showsDetail && library.selectedAsset != nil
         } else {
             guard library.selectedAsset != nil else { return }
-            layout.enterFocus(developing: library.isDeveloping, showsDetail: library.showsDetail)
+            layout.enterFocus(developing: library.isDeveloping, showsDetail: library.showsDetail,
+                              aiDeveloping: library.isAIDeveloping)
             library.isDeveloping = true
             library.showsDetail = true
         }
@@ -70,9 +73,11 @@ enum WorkspaceActions {
 
     static func reveal(_ tool: WorkspaceTool, layout: WorkspaceLayoutModel, library: LibraryModel) {
         finishField()
-        guard library.selectedAsset != nil else { return }
-        library.isDeveloping = true
-        library.showsDetail = true
+        guard library.selectedAsset != nil || tool == .aiDevelopment else { return }
+        if tool == .aiDevelopment { library.workspaceMode = .aiDevelop }
+        else if tool == .edit || tool == .details { library.workspaceMode = .develop }
+        else { library.isDeveloping = true }
+        library.showsDetail = library.selectedAsset != nil
         layout.reveal(tool, developing: true)
     }
 
@@ -125,7 +130,7 @@ struct WorkspaceViewCommands: View {
             Divider()
             ForEach(WorkspaceTool.allCases) { tool in
                 Button(tool.title) { WorkspaceActions.reveal(tool, layout: layout, library: library) }
-                    .disabled(library.selectedAsset == nil)
+                    .disabled(library.selectedAsset == nil && tool != .aiDevelopment)
             }
         }
         Divider()
@@ -164,7 +169,7 @@ struct WorkspaceDock: View {
                 }.workspaceFocusTarget(focusedControl, equals: .tool(tool)) {
                     WorkspaceActions.reveal(tool, layout: layout, library: library)
                 }
-                    .disabled(library.selectedAsset == nil)
+                    .disabled(library.selectedAsset == nil && tool != .aiDevelopment)
             }
             Spacer(minLength: 0)
             if panels.showsTools {
@@ -228,6 +233,7 @@ private extension WorkspaceTool {
         switch self {
         case .edit: return "Bearbeiten"
         case .details: return "Details"
+        case .aiDevelopment: return "AI Entwickeln"
         case .metadata: return "Informationen"
         case .versions: return "Bildstände"
         }

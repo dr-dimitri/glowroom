@@ -137,6 +137,13 @@ new_case() {
     CASE="$TEST_ROOT/$1"
     mkdir -p "$CASE/scripts" "$CASE/dist/Glowroom.app"
     cp "$ROOT/scripts/build-app.sh" "$CASE/scripts/build-app.sh"
+    cat > "$CASE/scripts/prepare-mlx-runtime.sh" <<'MOCKRUNTIME'
+#!/bin/bash
+mkdir -p "$1"
+printf 'verified shader fixture\n' > "$1/mlx.metallib"
+printf 'MLX license fixture\n' > "$1/MLX-LICENSE.txt"
+MOCKRUNTIME
+    chmod +x "$CASE/scripts/prepare-mlx-runtime.sh"
     touch "$CASE/scripts/make-app-icon.swift"
     printf 'previous app\n' > "$CASE/dist/Glowroom.app/previous"
 }
@@ -161,6 +168,8 @@ assert_success() {
     [[ -f "$CASE/dist/Glowroom.app/Contents/Resources/AppIcon.icns" ]] || fail "Missing icon"
     cmp "$CASE/bin/Glowroom_Glowroom.bundle/nested/manifest.json" "$CASE/dist/Glowroom.app/Contents/Resources/Glowroom_Glowroom.bundle/nested/manifest.json" || fail "Application resources changed or missing"
     cmp "$CASE/bin/Tokenizer Resources.bundle/data.txt" "$CASE/dist/Glowroom.app/Contents/Resources/Tokenizer Resources.bundle/data.txt" || fail "Dependency resources changed or missing"
+    [[ -s "$CASE/dist/Glowroom.app/Contents/Resources/mlx.metallib" ]] || fail "Qwen Metal runtime missing"
+    [[ -s "$CASE/dist/Glowroom.app/Contents/Resources/MLX-LICENSE.txt" ]] || fail "MLX license missing"
     [[ ! -e "$CASE/dist/Glowroom.app/previous" ]] || fail "Previous app was not replaced"
     [[ -f "$CASE/codesign.finished" ]] || fail "Signing was skipped"
     assert_clean

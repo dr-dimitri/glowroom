@@ -591,6 +591,8 @@ struct PhotoMetadataModelTests {
         f.model.recoverUnsavedDraft()
         try await wait { f.model.recovery == nil }
         #expect(f.model.proposalFields == raw)
+        #expect(f.model.recoveredEditorContext == f.model.context)
+        #expect(f.model.recoveredEditorIsProposal)
         #expect(!f.model.canEditProposal && !f.model.canEditManual)
         #expect(f.model.canUseProposalAsManual)
         f.model.useProposalAsManual()

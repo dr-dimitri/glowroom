@@ -116,10 +116,13 @@ struct GlowroomApp: App {
             }
             CommandMenu("Entwickeln") {
                 Button("Foto entwickeln") {
-                    library.isDeveloping = true
+                    library.workspaceMode = .develop
                     library.showsDetail = true
                     layout.reveal(.edit, developing: true)
                 }.keyboardShortcut("d", modifiers: .command).disabled(library.selectedAsset == nil || editor.isLoading)
+                Button("AI Entwickeln") {
+                    WorkspaceActions.reveal(.aiDevelopment, layout: layout, library: library)
+                }
                 Button(library.comparesOriginal ? "Bearbeitung anzeigen" : "Importiertes Original anzeigen") { library.comparesOriginal.toggle() }
                     .disabled(!library.isDeveloping || library.selectedAsset == nil || editingHistory?.allowsComparison == false)
                 Divider()

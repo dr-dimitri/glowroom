@@ -23,6 +23,11 @@ struct LibraryHeading: View {
             }
         }
         .padding(.horizontal, 18).frame(height: 42)
+        // Group the compact toolbar without restoring the intentionally
+        // removed collection-title row or merging its individual controls.
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Bibliothekswerkzeuge")
+        .accessibilityIdentifier("library.controls")
     }
 
     private var viewButtons: some View {
