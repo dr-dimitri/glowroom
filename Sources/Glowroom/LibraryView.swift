@@ -422,7 +422,7 @@ struct LibraryView: View {
                 if layout.isFocused {
                     compactLibraryBar
                 } else {
-                    libraryHeading
+                    LibraryHeading(model: model)
                     HStack(spacing: 0) {
                         ViewThatFits(in: .horizontal) {
                             controlBar
@@ -451,37 +451,6 @@ struct LibraryView: View {
         }
     }
 
-    private var libraryHeading: some View {
-        HStack(alignment: .center, spacing: 20) {
-            VStack(alignment: .leading, spacing: 7) {
-                SectionLabel(text: "Deine Bibliothek")
-                HStack(alignment: .firstTextBaseline, spacing: 10) {
-                    Text(model.title).font(.system(size: 27, weight: .semibold)).tracking(-0.7).lineLimit(1)
-                    if model.isProjecting || model.isUpdatingCatalog {
-                        ProgressView().controlSize(.small).help("Fotoauswahl wird aktualisiert …")
-                    } else {
-                        Text(model.visibleAssets.count.formatted()).font(.system(size: 12, design: .monospaced)).foregroundStyle(Theme.muted)
-                    }
-                }
-                Text(model.subtitle).font(.system(size: 11)).foregroundStyle(Theme.muted).lineLimit(1).truncationMode(.middle)
-            }
-            Spacer(minLength: 0)
-            HStack(spacing: 8) {
-                Image(systemName: "magnifyingglass").foregroundStyle(Theme.muted)
-                TextField(model.searchMode == .literal ? "Fotos wörtlich suchen …" : "Bildinhalt auf Deutsch/Englisch …", text: Binding(
-                    get: { model.searchMode == .literal ? model.search : model.semanticQuery },
-                    set: { if model.searchMode == .literal { model.search = $0 } else { model.semanticQuery = $0 } }))
-                    .textFieldStyle(.plain).font(.system(size: 12))
-                    .accessibilityLabel(model.searchMode == .literal ? "Wörtliche Fotosuche" : "Semantische Bildsuche")
-                if !(model.searchMode == .literal ? model.search : model.semanticQuery).isEmpty {
-                    Button { if model.searchMode == .literal { model.search = "" } else { model.semanticQuery = "" } }
-                        label: { Image(systemName: "xmark.circle.fill").foregroundStyle(Theme.muted) }.buttonStyle(.plain)
-                }
-            }.padding(10).frame(width: model.searchMode == .literal ? 175 : 240).background(Theme.panel, in: RoundedRectangle(cornerRadius: 7))
-        }.padding(.horizontal, 26).padding(.top, 27).padding(.bottom, 23)
-    }
-
-
     private var compactLibraryBar: some View {
         HStack(spacing: 10) {
             Image(systemName: "magnifyingglass").foregroundStyle(Theme.muted)
@@ -500,7 +469,7 @@ struct LibraryView: View {
             Spacer(minLength: 0)
             IconButton(symbol: "arrow.clockwise", help: "Ordner aktualisieren") { model.refreshCurrentFolder() }
                 .disabled(model.isImporting || model.folders.isEmpty || !model.canModify)
-        }.padding(.horizontal, 14).frame(height: 48)
+        }.padding(.horizontal, 18).frame(height: 40)
     }
 
     private var panelControls: some View {
@@ -572,7 +541,7 @@ struct LibraryView: View {
             } label: { Label(model.sort.rawValue, systemImage: "arrow.down").font(.system(size: 10)).foregroundStyle(Theme.muted) }
                 .menuStyle(.borderlessButton).fixedSize()
             IconButton(symbol: "arrow.clockwise", help: "Ordner aktualisieren") { model.refreshCurrentFolder() }.disabled(model.isImporting || model.folders.isEmpty || !model.canModify)
-        }.padding(.horizontal, 22).frame(height: 48)
+        }.padding(.horizontal, 18).frame(height: 40)
     }
 
     private var emptyState: some View {
