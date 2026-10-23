@@ -284,8 +284,26 @@ struct DetailView: View {
         return settings
     }
 
+    private static let finderIcon: NSImage? = {
+        guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.finder") else { return nil }
+        return NSWorkspace.shared.icon(forFile: url.path)
+    }()
+
     private func canvasControls(_ asset: PhotoAsset) -> some View {
-        HStack(spacing: 5) {
+        // Leave room for the native menu indicator at the minimum canvas width.
+        HStack(spacing: 4) {
+            Button { model.reveal(asset) } label: {
+                Group {
+                    if let icon = Self.finderIcon {
+                        Image(nsImage: icon).resizable().interpolation(.high)
+                            .aspectRatio(contentMode: .fit).frame(width: 16, height: 16)
+                    } else {
+                        Image(systemName: "folder")
+                    }
+                }.frame(width: 28, height: 30)
+            }.buttonStyle(.plain).help("Originalbild im Finder anzeigen")
+                .accessibilityLabel("Im Finder anzeigen")
+                .accessibilityIdentifier("workspace.reveal-in-finder")
             Button { toggleZoom(viewport: canvasSize) } label: {
                 Image(systemName: zoomed ? "minus.magnifyingglass" : "plus.magnifyingglass")
                     .frame(width: 28, height: 30)

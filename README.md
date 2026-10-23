@@ -54,6 +54,10 @@ Die Umstellungsreihenfolge, Prüfungen der GitHub-Einstellungen und begründete 
 
 ## Bibliothek verwenden
 
+Die kompakte Kopfzeile zeigt Ordner beziehungsweise Sammlung, Fotoanzahl und Suche. Direkt darunter stehen Ansicht, Bewertungsfilter, Suchmodus und Sortierung; bei schmaler Bildfläche fasst **Filter & Sortierung** diese Funktionen zusammen. Der Dateipfad und die zusätzliche Überschrift „Deine Bibliothek“ entfallen, sodass mehr Höhe für die Fotos bleibt. Lange Ordnernamen lassen sich über den Hinweis beim Verweilen vollständig lesen.
+
+In der Einzelbildansicht öffnet das kleine **Finder-Symbol** unten links neben der Lupe den Finder und markiert das Originalbild. Die Schaltfläche steht auch in Entwickeln und Bildfokus zur Verfügung. Die untere Werkzeugleiste hält ihre Schaltflächen auch bei minimaler Bildflächenbreite erreichbar.
+
 ### Bildfokus und Werkzeuge
 
 Wähle ein Foto und klicke oben auf **Bildfokus**, verwende **Darstellung → Bildfokus** oder **⇧⌘F**. Der Modus funktioniert im normalen Fenster und unabhängig vom macOS-Vollbild. Navigation, Filmstreifen und Werkzeugseite sind zunächst verborgen. **Bibliothek** und **Entwickeln** bleiben oben sichtbar: **Bibliothek** beendet den Fokus und öffnet das Raster, **Entwickeln** öffnet die Bearbeitungswerkzeuge im Fokus. Das beschriftete Dock öffnet **Bearbeiten** und **Details** rechts sowie **Informationen** und **Bildstände** links. Sobald eine Spalte sichtbar ist, stehen ihre Gruppen direkt dort zur Verfügung und ihre zusätzlichen Dockknöpfe entfallen. **Zur vorherigen Ansicht** bzw. erneut **⇧⌘F** stellt die bisherige Raster-/Einzelbildansicht und deren Panelzustand wieder her. **Esc** verlässt den Fokus; bei aktiver Detailauswahl beendet es zunächst diese Auswahl. **Leertaste** bzw. **Rasteransicht** wechselt geordnet ins Raster.

@@ -46,6 +46,42 @@ final class WorkspaceProposalLifecycleTests {
                 .environmentObject(metadata)
         )
         #expect(host.contentSize == size)
+        f.library.showsDetail = true
+        if size.width == 1_000 {
+            layout.update(developing: false) { $0.libraryWidth = 360; $0.toolsWidth = 520 }
+            let widths = layout.boundedWidths(availableWidth: size.width - 12, developing: false)
+            // The width budget also reserves one divider per visible side panel.
+            #expect(abs(size.width - 12 - widths.library - widths.tools - 322) <= 0.01)
+        }
+        try await host.settle()
+        try await wait("library image controls") {
+            host.accessibilityElements.contains { $0.accessibilityIdentifier() == "workspace.reveal-in-finder" }
+                && host.accessibilityElements.contains { $0.accessibilityIdentifier() == "workspace.zoom" }
+        }
+        let finder = try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == "workspace.reveal-in-finder" })
+        let zoom = try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == "workspace.zoom" })
+        #expect(finder.isAccessibilityEnabled() && zoom.isAccessibilityEnabled())
+        let finderFrame = finder.accessibilityFrame(), zoomFrame = zoom.accessibilityFrame()
+        #expect(finderFrame.width > 0 && finderFrame.height > 0)
+        #expect(zoomFrame.width > 0 && zoomFrame.height > 0)
+        #expect(finderFrame.midX < zoomFrame.midX && abs(zoomFrame.midX - finderFrame.midX - 32) <= 1,
+            "Finder must sit immediately to the left of the zoom control")
+        #expect(abs(finderFrame.midY - zoomFrame.midY) <= 1)
+        if size.width == 1_000 {
+            let next = try #require(host.accessibilityElements.first { $0.accessibilityLabel() == "Nächstes Foto · →" })
+            #expect(next.accessibilityFrame().maxX <= finderFrame.midX - 14 - 10 + 322 - 10 + 1,
+                "Every image control must remain inside the minimum supported workspace")
+        }
+        #expect(host.accessibilityElements.contains { $0.accessibilityIdentifier() == "library.title" })
+        #expect(host.accessibilityElements.contains { $0.accessibilityIdentifier() == "library.search" })
+        if let path = ProcessInfo.processInfo.environment["GLOWROOM_WORKSPACE_SNAPSHOTS"] {
+            let output = URL(fileURLWithPath: path, isDirectory: true)
+            try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
+            try host.snapshot(to: output.appendingPathComponent("library-compact-\(Int(size.width)).png"))
+        }
+        layout.library = libraryPanels
+        f.library.showsDetail = false
+        try await host.settle()
         WorkspaceActions.toggleFocus(layout, library: f.library)
         try await wait { layout.isFocused && f.library.isDeveloping && f.library.showsDetail }
         // Opt-in snapshots render this isolated native view, never the user's desktop.
