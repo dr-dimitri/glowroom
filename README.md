@@ -4,6 +4,8 @@ Eine native Fotobibliothek für macOS, entwickelt mit SwiftUI und AppKit. Die An
 
 Der **Bildfokus** bietet mehr Bildfläche und Werkzeuge nach Bedarf. Die Bedienwege und Zustandsregeln stehen unter [Bildfokus und Arbeitsbereiche](docs/WORKSPACE-LAYOUT.md).
 
+Das [UI-Konzept für gemeinsames Entwickeln mit KI-Unterstützung](docs/ui-concept-2026-10/README.md) dokumentiert die geplante Zusammenführung von Entwickeln und AI Entwickeln, Aufgaben-Issues sowie native Ausgangsaufnahmen. Es ist ein noch nicht implementierter Entwurf; die Bedienungsanleitungen beschreiben weiterhin den aktuellen Stand.
+
 ## Starten
 
 Voraussetzungen: **macOS 14 oder neuer** und Xcode oder die Apple Command Line Tools mit **Swift 6.3 oder neuer**. Falls die Entwicklungswerkzeuge fehlen, lassen sie sich mit `xcode-select --install` installieren. SwiftPM löst die in `Package.resolved` festgehaltenen Swift-Bibliotheken auf; dafür ist beim ersten Build Internetzugang oder ein bereits gefüllter lokaler Paketcache nötig. Die laufende App benötigt für Bibliothek und lokale Bearbeitung keinen Online-Dienst.

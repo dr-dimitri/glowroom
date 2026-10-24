@@ -1,0 +1,53 @@
+{
+  "epic": "https://github.com/dr-dimitri/glowroom/issues/201",
+  "issues": [
+    {
+      "key": "UX-01",
+      "title": "[UX-01] Entwickeln und AI Entwickeln zu einem gemeinsamen Arbeitsbereich zusammenführen",
+      "url": "https://github.com/dr-dimitri/glowroom/issues/193",
+      "number": 193
+    },
+    {
+      "key": "UX-02",
+      "title": "[UX-02] KI-Korrekturen im gemeinsamen Foto prüfen und mit den regulären Reglern verbinden",
+      "url": "https://github.com/dr-dimitri/glowroom/issues/194",
+      "number": 194
+    },
+    {
+      "key": "UX-03",
+      "title": "[UX-03] KI-Objektmasken und manuelle Maskierung in einer gemeinsamen Maskenansicht bündeln",
+      "url": "https://github.com/dr-dimitri/glowroom/issues/195",
+      "number": 195
+    },
+    {
+      "key": "UX-04",
+      "title": "[UX-04] Licht, Farbe und Details klar gruppieren und erklärenden Kleindruck aus der Bedienung entfernen",
+      "url": "https://github.com/dr-dimitri/glowroom/issues/196",
+      "number": 196
+    },
+    {
+      "key": "UX-05",
+      "title": "[UX-05] Entfernen, Heilen, Kopierstempel und KI-Retusche in einem Werkzeug zusammenführen",
+      "url": "https://github.com/dr-dimitri/glowroom/issues/197",
+      "number": 197
+    },
+    {
+      "key": "UX-06",
+      "title": "[UX-06] Bildinformationen und KI-Bildtexte in einem gemeinsamen Formular bearbeiten",
+      "url": "https://github.com/dr-dimitri/glowroom/issues/198",
+      "number": 198
+    },
+    {
+      "key": "UX-07",
+      "title": "[UX-07] Bildsuche in der Bibliothek bündeln und KI-Modelle zentral verwalten",
+      "url": "https://github.com/dr-dimitri/glowroom/issues/199",
+      "number": 199
+    },
+    {
+      "key": "UX-08",
+      "title": "[UX-08] Kleinsthinweise durch klare Bedienung ersetzen und die neue Oberfläche visuell abnehmen",
+      "url": "https://github.com/dr-dimitri/glowroom/issues/200",
+      "number": 200
+    }
+  ]
+}

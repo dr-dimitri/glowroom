@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="960" viewBox="0 0 1440 960" role="img">
+<title>Bibliothek: ein Suchort und gemeinsame Bildinformationen</title>
+<desc>Konzeptgrafik für eine noch nicht implementierte Glowroom-Oberfläche. Synthetische Landschaft, keine privaten Fotos.</desc>
+<style>text{font-family:Arial,sans-serif;font-size:15px;fill:#e9e9ec}.muted{fill:#b4b6bd}.small{font-size:13px}.heading{font-size:18px;font-weight:600}.title{font-size:24px;font-weight:600}</style>
+<rect x="0" y="0" width="1440" height="960" rx="0" fill="#111317"/>
+<text x="24" y="34" class="heading" text-anchor="start">KONZEPT · NICHT IMPLEMENTIERT</text>
+<text x="1416" y="34" class="muted" text-anchor="end">Glowroom · Oktober 2026</text>
+<rect x="0" y="60" width="1440" height="900" rx="0" fill="#1c1e22"/>
+<text x="22" y="94" class="title" text-anchor="start">Glowroom</text>
+<rect x="505" y="75" width="140" height="32" rx="5" fill="#d7dbff"/>
+<text x="575.0" y="96" text-anchor="middle" style="fill:#191e3e">Bibliothek</text>
+<rect x="653" y="75" width="140" height="32" rx="5" fill="#30333a"/>
+<text x="723.0" y="96" text-anchor="middle" style="fill:#e9e9ec">Entwickeln</text>
+<rect x="1114" y="75" width="140" height="32" rx="5" fill="#30333a"/>
+<text x="1184.0" y="96" text-anchor="middle" style="fill:#e9e9ec">KI-Modelle</text>
+<rect x="1266" y="75" width="150" height="32" rx="5" fill="#30333a"/>
+<text x="1341.0" y="96" text-anchor="middle" style="fill:#e9e9ec">Exportieren</text>
+<rect x="0" y="120" width="236" height="695" rx="0" fill="#24262b"/>
+<rect x="1104" y="120" width="336" height="695" rx="0" fill="#24262b"/>
+<text x="18" y="151" class="heading" text-anchor="start">Ordner</text>
+<path d="M0,170 L236,170" fill="none" stroke="#42454d" stroke-width="1"/>
+<rect x="236" y="120" width="868" height="695" rx="0" fill="#36383c"/>
+<rect x="0" y="815" width="1440" height="112" rx="0" fill="#25272c"/>
+<text x="18" y="842" class="muted" text-anchor="start">12 Fotos</text>
+<svg x="130" y="829" width="112" height="75" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice"><rect width="800" height="500" fill="#c3b5a2"/><circle cx="590" cy="100" r="36" fill="#f6dfad"/><path d="M0 330 L130 165 245 290 410 92 580 250 730 142 800 207 V500 H0Z" fill="#727a83"/><path d="M0 390 L155 295 305 350 450 260 630 370 800 287 V500 H0Z" fill="#495963"/><path d="M0 440 Q200 320 400 433 T800 390 V500 H0Z" fill="#2e444b"/></svg>
+<rect x="128" y="827" width="116" height="79" rx="2" fill="none" stroke="#d7dbff"/>
+<svg x="254" y="829" width="112" height="75" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice"><rect width="800" height="500" fill="#c3b5a2"/><circle cx="590" cy="100" r="36" fill="#f6dfad"/><path d="M0 330 L130 165 245 290 410 92 580 250 730 142 800 207 V500 H0Z" fill="#727a83"/><path d="M0 390 L155 295 305 350 450 260 630 370 800 287 V500 H0Z" fill="#495963"/><path d="M0 440 Q200 320 400 433 T800 390 V500 H0Z" fill="#2e444b"/></svg>
+<svg x="378" y="829" width="112" height="75" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice"><rect width="800" height="500" fill="#c3b5a2"/><circle cx="590" cy="100" r="36" fill="#f6dfad"/><path d="M0 330 L130 165 245 290 410 92 580 250 730 142 800 207 V500 H0Z" fill="#727a83"/><path d="M0 390 L155 295 305 350 450 260 630 370 800 287 V500 H0Z" fill="#495963"/><path d="M0 440 Q200 320 400 433 T800 390 V500 H0Z" fill="#2e444b"/></svg>
+<svg x="502" y="829" width="112" height="75" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice"><rect width="800" height="500" fill="#c3b5a2"/><circle cx="590" cy="100" r="36" fill="#f6dfad"/><path d="M0 330 L130 165 245 290 410 92 580 250 730 142 800 207 V500 H0Z" fill="#727a83"/><path d="M0 390 L155 295 305 350 450 260 630 370 800 287 V500 H0Z" fill="#495963"/><path d="M0 440 Q200 320 400 433 T800 390 V500 H0Z" fill="#2e444b"/></svg>
+<svg x="626" y="829" width="112" height="75" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice"><rect width="800" height="500" fill="#c3b5a2"/><circle cx="590" cy="100" r="36" fill="#f6dfad"/><path d="M0 330 L130 165 245 290 410 92 580 250 730 142 800 207 V500 H0Z" fill="#727a83"/><path d="M0 390 L155 295 305 350 450 260 630 370 800 287 V500 H0Z" fill="#495963"/><path d="M0 440 Q200 320 400 433 T800 390 V500 H0Z" fill="#2e444b"/></svg>
+<svg x="750" y="829" width="112" height="75" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice"><rect width="800" height="500" fill="#c3b5a2"/><circle cx="590" cy="100" r="36" fill="#f6dfad"/><path d="M0 330 L130 165 245 290 410 92 580 250 730 142 800 207 V500 H0Z" fill="#727a83"/><path d="M0 390 L155 295 305 350 450 260 630 370 800 287 V500 H0Z" fill="#495963"/><path d="M0 440 Q200 320 400 433 T800 390 V500 H0Z" fill="#2e444b"/></svg>
+<svg x="874" y="829" width="112" height="75" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice"><rect width="800" height="500" fill="#c3b5a2"/><circle cx="590" cy="100" r="36" fill="#f6dfad"/><path d="M0 330 L130 165 245 290 410 92 580 250 730 142 800 207 V500 H0Z" fill="#727a83"/><path d="M0 390 L155 295 305 350 450 260 630 370 800 287 V500 H0Z" fill="#495963"/><path d="M0 440 Q200 320 400 433 T800 390 V500 H0Z" fill="#2e444b"/></svg>
+<svg x="998" y="829" width="112" height="75" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice"><rect width="800" height="500" fill="#c3b5a2"/><circle cx="590" cy="100" r="36" fill="#f6dfad"/><path d="M0 330 L130 165 245 290 410 92 580 250 730 142 800 207 V500 H0Z" fill="#727a83"/><path d="M0 390 L155 295 305 350 450 260 630 370 800 287 V500 H0Z" fill="#495963"/><path d="M0 440 Q200 320 400 433 T800 390 V500 H0Z" fill="#2e444b"/></svg>
+<svg x="1122" y="829" width="112" height="75" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice"><rect width="800" height="500" fill="#c3b5a2"/><circle cx="590" cy="100" r="36" fill="#f6dfad"/><path d="M0 330 L130 165 245 290 410 92 580 250 730 142 800 207 V500 H0Z" fill="#727a83"/><path d="M0 390 L155 295 305 350 450 260 630 370 800 287 V500 H0Z" fill="#495963"/><path d="M0 440 Q200 320 400 433 T800 390 V500 H0Z" fill="#2e444b"/></svg>
+<svg x="1246" y="829" width="112" height="75" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice"><rect width="800" height="500" fill="#c3b5a2"/><circle cx="590" cy="100" r="36" fill="#f6dfad"/><path d="M0 330 L130 165 245 290 410 92 580 250 730 142 800 207 V500 H0Z" fill="#727a83"/><path d="M0 390 L155 295 305 350 450 260 630 370 800 287 V500 H0Z" fill="#495963"/><path d="M0 440 Q200 320 400 433 T800 390 V500 H0Z" fill="#2e444b"/></svg>
+<text x="18" y="949" class="muted" text-anchor="start">Alle Änderungen gespeichert</text>
+<text x="1418" y="949" class="muted" text-anchor="end">Bildfokus  ·  Seitenleisten  ·  Filmstreifen</text>
+<text x="18" y="202" class="" text-anchor="start">Alle Fotos                         12</text>
+<text x="18" y="239" class="" text-anchor="start">Favoriten                            0</text>
+<text x="18" y="276" class="" text-anchor="start">Zuletzt hinzugefügt</text>
+<path d="M14,298 L222,298" fill="none" stroke="#42454d" stroke-width="1"/>
+<text x="18" y="333" class="" text-anchor="start">▾  Demo-Bibliothek</text>
+<text x="36" y="370" class="muted" text-anchor="start">Landschaften                  12</text>
+<rect x="14" y="765" width="208" height="32" rx="5" fill="#30333a"/>
+<text x="118.0" y="786" text-anchor="middle" style="fill:#e9e9ec">Ordner hinzufügen</text>
+<rect x="252" y="135" width="100" height="32" rx="5" fill="#d7dbff"/>
+<text x="302.0" y="156" text-anchor="middle" style="fill:#191e3e">Raster</text>
+<rect x="362" y="135" width="110" height="32" rx="5" fill="#30333a"/>
+<text x="417.0" y="156" text-anchor="middle" style="fill:#e9e9ec">Einzelbild</text>
+<rect x="490" y="135" width="394" height="32" rx="5" fill="#23262b"/>
+<text x="502" y="156" class="muted" text-anchor="start">Suchen …</text>
+<rect x="895" y="135" width="193" height="32" rx="5" fill="#30333a"/>
+<text x="991.5" y="156" text-anchor="middle" style="fill:#e9e9ec">Bildinhalt ▾</text>
+<text x="255" y="200" class="muted" text-anchor="start">Alle Bewertungen ▾</text>
+<text x="1084" y="200" class="muted" text-anchor="end">Aufnahmedatum ▾</text>
+<svg x="254" y="222" width="260" height="148" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice"><rect width="800" height="500" fill="#c3b5a2"/><circle cx="590" cy="100" r="36" fill="#f6dfad"/><path d="M0 330 L130 165 245 290 410 92 580 250 730 142 800 207 V500 H0Z" fill="#727a83"/><path d="M0 390 L155 295 305 350 450 260 630 370 800 287 V500 H0Z" fill="#495963"/><path d="M0 440 Q200 320 400 433 T800 390 V500 H0Z" fill="#2e444b"/></svg>
+<rect x="252" y="220" width="264" height="152" rx="2" fill="none" stroke="#d7dbff"/>
+<text x="254" y="395" class="small" text-anchor="start">01-Landschaft.jpg</text>
+<svg x="532" y="222" width="260" height="148" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice"><rect width="800" height="500" fill="#c3b5a2"/><circle cx="590" cy="100" r="36" fill="#f6dfad"/><path d="M0 330 L130 165 245 290 410 92 580 250 730 142 800 207 V500 H0Z" fill="#727a83"/><path d="M0 390 L155 295 305 350 450 260 630 370 800 287 V500 H0Z" fill="#495963"/><path d="M0 440 Q200 320 400 433 T800 390 V500 H0Z" fill="#2e444b"/></svg>
+<text x="532" y="395" class="small" text-anchor="start">02-Landschaft.jpg</text>
+<svg x="810" y="222" width="260" height="148" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice"><rect width="800" height="500" fill="#c3b5a2"/><circle cx="590" cy="100" r="36" fill="#f6dfad"/><path d="M0 330 L130 165 245 290 410 92 580 250 730 142 800 207 V500 H0Z" fill="#727a83"/><path d="M0 390 L155 295 305 350 450 260 630 370 800 287 V500 H0Z" fill="#495963"/><path d="M0 440 Q200 320 400 433 T800 390 V500 H0Z" fill="#2e444b"/></svg>
+<text x="810" y="395" class="small" text-anchor="start">03-Landschaft.jpg</text>
+<svg x="254" y="412" width="260" height="148" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice"><rect width="800" height="500" fill="#c3b5a2"/><circle cx="590" cy="100" r="36" fill="#f6dfad"/><path d="M0 330 L130 165 245 290 410 92 580 250 730 142 800 207 V500 H0Z" fill="#727a83"/><path d="M0 390 L155 295 305 350 450 260 630 370 800 287 V500 H0Z" fill="#495963"/><path d="M0 440 Q200 320 400 433 T800 390 V500 H0Z" fill="#2e444b"/></svg>
+<text x="254" y="585" class="small" text-anchor="start">04-Landschaft.jpg</text>
+<svg x="532" y="412" width="260" height="148" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice"><rect width="800" height="500" fill="#c3b5a2"/><circle cx="590" cy="100" r="36" fill="#f6dfad"/><path d="M0 330 L130 165 245 290 410 92 580 250 730 142 800 207 V500 H0Z" fill="#727a83"/><path d="M0 390 L155 295 305 350 450 260 630 370 800 287 V500 H0Z" fill="#495963"/><path d="M0 440 Q200 320 400 433 T800 390 V500 H0Z" fill="#2e444b"/></svg>
+<text x="532" y="585" class="small" text-anchor="start">05-Landschaft.jpg</text>
+<svg x="810" y="412" width="260" height="148" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice"><rect width="800" height="500" fill="#c3b5a2"/><circle cx="590" cy="100" r="36" fill="#f6dfad"/><path d="M0 330 L130 165 245 290 410 92 580 250 730 142 800 207 V500 H0Z" fill="#727a83"/><path d="M0 390 L155 295 305 350 450 260 630 370 800 287 V500 H0Z" fill="#495963"/><path d="M0 440 Q200 320 400 433 T800 390 V500 H0Z" fill="#2e444b"/></svg>
+<text x="810" y="585" class="small" text-anchor="start">06-Landschaft.jpg</text>
+<svg x="254" y="602" width="260" height="148" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice"><rect width="800" height="500" fill="#c3b5a2"/><circle cx="590" cy="100" r="36" fill="#f6dfad"/><path d="M0 330 L130 165 245 290 410 92 580 250 730 142 800 207 V500 H0Z" fill="#727a83"/><path d="M0 390 L155 295 305 350 450 260 630 370 800 287 V500 H0Z" fill="#495963"/><path d="M0 440 Q200 320 400 433 T800 390 V500 H0Z" fill="#2e444b"/></svg>
+<text x="254" y="775" class="small" text-anchor="start">07-Landschaft.jpg</text>
+<svg x="532" y="602" width="260" height="148" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice"><rect width="800" height="500" fill="#c3b5a2"/><circle cx="590" cy="100" r="36" fill="#f6dfad"/><path d="M0 330 L130 165 245 290 410 92 580 250 730 142 800 207 V500 H0Z" fill="#727a83"/><path d="M0 390 L155 295 305 350 450 260 630 370 800 287 V500 H0Z" fill="#495963"/><path d="M0 440 Q200 320 400 433 T800 390 V500 H0Z" fill="#2e444b"/></svg>
+<text x="532" y="775" class="small" text-anchor="start">08-Landschaft.jpg</text>
+<svg x="810" y="602" width="260" height="148" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice"><rect width="800" height="500" fill="#c3b5a2"/><circle cx="590" cy="100" r="36" fill="#f6dfad"/><path d="M0 330 L130 165 245 290 410 92 580 250 730 142 800 207 V500 H0Z" fill="#727a83"/><path d="M0 390 L155 295 305 350 450 260 630 370 800 287 V500 H0Z" fill="#495963"/><path d="M0 440 Q200 320 400 433 T800 390 V500 H0Z" fill="#2e444b"/></svg>
+<text x="810" y="775" class="small" text-anchor="start">09-Landschaft.jpg</text>
+<text x="1120" y="151" class="heading" text-anchor="start">Bildinformationen</text>
+<svg x="1118" y="176" width="306" height="192" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice"><rect width="800" height="500" fill="#c3b5a2"/><circle cx="590" cy="100" r="36" fill="#f6dfad"/><path d="M0 330 L130 165 245 290 410 92 580 250 730 142 800 207 V500 H0Z" fill="#727a83"/><path d="M0 390 L155 295 305 350 450 260 630 370 800 287 V500 H0Z" fill="#495963"/><path d="M0 440 Q200 320 400 433 T800 390 V500 H0Z" fill="#2e444b"/></svg>
+<text x="1120" y="397" class="" text-anchor="start">Titel</text>
+<rect x="1118" y="409" width="306" height="33" rx="4" fill="#191b20"/>
+<text x="1130" y="431" class="" text-anchor="start">Morgenlicht in den Bergen</text>
+<text x="1120" y="472" class="" text-anchor="start">Beschreibung</text>
+<rect x="1118" y="485" width="306" height="72" rx="4" fill="#191b20"/>
+<text x="1130" y="510" class="" text-anchor="start">Sonne über einer Berglandschaft.</text>
+<text x="1120" y="588" class="" text-anchor="start">Tags</text>
+<rect x="1118" y="602" width="91" height="32" rx="5" fill="#30333a"/>
+<text x="1163.5" y="623" text-anchor="middle" style="fill:#e9e9ec">Berge  ×</text>
+<rect x="1218" y="602" width="109" height="32" rx="5" fill="#30333a"/>
+<text x="1272.5" y="623" text-anchor="middle" style="fill:#e9e9ec">Morgen  ×</text>
+<rect x="1336" y="602" width="88" height="32" rx="5" fill="#30333a"/>
+<text x="1380.0" y="623" text-anchor="middle" style="fill:#e9e9ec">+ Tag</text>
+<rect x="1118" y="658" width="306" height="32" rx="5" fill="#d7dbff"/>
+<text x="1271.0" y="679" text-anchor="middle" style="fill:#191e3e">Mit KI vorschlagen</text>
+<path d="M1104,714 L1440,714" fill="none" stroke="#42454d" stroke-width="1"/>
+<text x="1118" y="741" class="heading" text-anchor="start">▸  Aufnahmedaten</text>
+</svg>

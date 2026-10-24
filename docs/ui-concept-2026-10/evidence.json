@@ -1,0 +1,75 @@
+{
+  "captured_on": "2026-10-24",
+  "source_commit": "c11089624d0b56cd1eabc2280e89d21d16f022f6",
+  "macos": "27.0.1",
+  "kind": "Native SwiftUI/AppKit view snapshots from existing isolated UI tests; synthetic A.png/B.png fixtures; no real AI inference",
+  "result": "PASS: 2 parameterized tests, 4 cases, 1 suite; 11.174 seconds test runtime",
+  "command": "GLOWROOM_WORKSPACE_SNAPSHOTS=/private/tmp/glowroom-ui-audit-20261024 ./scripts/test.sh --jobs 4 --filter 'WorkspaceProposalLifecycleTests/(aiDevelopmentHasItsOwnWorkspaceAndKeepsModelManagementWithoutSelection|mountedLibraryKeepsFocusReturnPathWhenSearchTemporarilyRemovesSelection)'",
+  "screenshots": [
+    {
+      "file": "screenshots/ai-develop-1440.png",
+      "pixels": [
+        2880,
+        1800
+      ],
+      "window_points": [
+        1440,
+        900
+      ],
+      "scale": 2.0,
+      "sha256": "3e5318e7c125c03464c83fa3b4d3e2af53ac641f711a55f146e02c0b779ce5b5"
+    },
+    {
+      "file": "screenshots/ai-develop-1000.png",
+      "pixels": [
+        2000,
+        1320
+      ],
+      "window_points": [
+        1000,
+        660
+      ],
+      "scale": 2.0,
+      "sha256": "c143a2849caa7ede6ca6883e57df049258b778fbc8af0a005a018969d94b2897"
+    },
+    {
+      "file": "screenshots/focus-panels-1440.png",
+      "pixels": [
+        2880,
+        1800
+      ],
+      "window_points": [
+        1440,
+        900
+      ],
+      "scale": 2.0,
+      "sha256": "9a3be5fcd9f5efcc8a6843d26c1634d29b9b4cc8b402efa400b1f48bbd064f78"
+    },
+    {
+      "file": "screenshots/focus-metadata-1440.png",
+      "pixels": [
+        2880,
+        1800
+      ],
+      "window_points": [
+        1440,
+        900
+      ],
+      "scale": 2.0,
+      "sha256": "0439ed88b45c80348f4bef4faf650a315492688dff1b43d090f285a04e71b0ea"
+    },
+    {
+      "file": "screenshots/library-compact-1440.png",
+      "pixels": [
+        2880,
+        1800
+      ],
+      "window_points": [
+        1440,
+        900
+      ],
+      "scale": 2.0,
+      "sha256": "2e00ce4c041d9f2cd714c7e009dab07c3c9dfe2176fe7b2f46741752e554c0d8"
+    }
+  ]
+}
