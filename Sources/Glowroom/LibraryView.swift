@@ -416,6 +416,37 @@ struct LibraryView: View {
 
     private var sidebar: some View {
         VStack(alignment: .leading, spacing: 0) {
+            if model.showsDetail, let asset = model.selectedAsset {
+                // Share the scroll budget so the navigator cannot squeeze the
+                // folder tree out of the minimum-height window.
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        DevelopPhotoNavigator(asset: asset, image: developWorkspace.navigatorImage,
+                                              viewport: developWorkspace.photoViewport)
+                            .padding(.horizontal, 8).padding(.top, 6)
+                        libraryNavigation
+                        libraryFolders
+                    }
+                }
+            } else {
+                libraryNavigation
+                ScrollView { libraryFolders }
+            }
+            Spacer(minLength: 16)
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(spacing: 7) {
+                    Circle().fill(model.isReadOnly ? Color.orange : Theme.accent).frame(width: 5, height: 5)
+                    Text(model.isReadOnly ? "Katalog nicht verfügbar" : "Lokaler Katalog").font(.system(size: 10)).foregroundStyle(Theme.muted)
+                }
+                Button { model.chooseFolders() } label: { Label("Ordner hinzufügen", systemImage: "plus").frame(maxWidth: .infinity) }
+                    .buttonStyle(AccentButton()).disabled(!model.canModify || model.isImporting)
+                Text("Originale bleiben unverändert.").font(.system(size: 9)).foregroundStyle(Theme.muted.opacity(0.8)).frame(maxWidth: .infinity)
+            }.padding(18)
+        }.background(Theme.sidebar)
+    }
+
+    private var libraryNavigation: some View {
+        VStack(alignment: .leading, spacing: 0) {
             HStack {
                 SectionLabel(text: "Bibliothek")
                 Spacer()
@@ -430,28 +461,19 @@ struct LibraryView: View {
                 Button { model.chooseFolders() } label: { Image(systemName: "plus").font(.system(size: 12)) }
                     .buttonStyle(.plain).foregroundStyle(Theme.muted).help("Ordner hinzufügen").disabled(!model.canModify || model.isImporting)
             }.padding(.horizontal, 22).padding(.top, 32).padding(.bottom, 12)
-            ScrollView {
-                VStack(spacing: 3) {
-                    if model.folders.isEmpty {
-                        Text("Deine Fotoordner\nerscheinen hier.").font(.system(size: 11)).foregroundStyle(Theme.muted).lineSpacing(4)
-                            .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 22).padding(.vertical, 8)
-                    }
-                    ForEach(model.folders) { folder in
-                        FolderTreeRow(model: model, folder: folder, node: model.folderTree(for: folder)) { folderToRemove = $0 }
-                    }
-                }
+        }
+    }
+
+    private var libraryFolders: some View {
+        VStack(spacing: 3) {
+            if model.folders.isEmpty {
+                Text("Deine Fotoordner\nerscheinen hier.").font(.system(size: 11)).foregroundStyle(Theme.muted).lineSpacing(4)
+                    .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 22).padding(.vertical, 8)
             }
-            Spacer(minLength: 16)
-            VStack(alignment: .leading, spacing: 16) {
-                HStack(spacing: 7) {
-                    Circle().fill(model.isReadOnly ? Color.orange : Theme.accent).frame(width: 5, height: 5)
-                    Text(model.isReadOnly ? "Katalog nicht verfügbar" : "Lokaler Katalog").font(.system(size: 10)).foregroundStyle(Theme.muted)
-                }
-                Button { model.chooseFolders() } label: { Label("Ordner hinzufügen", systemImage: "plus").frame(maxWidth: .infinity) }
-                    .buttonStyle(AccentButton()).disabled(!model.canModify || model.isImporting)
-                Text("Originale bleiben unverändert.").font(.system(size: 9)).foregroundStyle(Theme.muted.opacity(0.8)).frame(maxWidth: .infinity)
-            }.padding(18)
-        }.background(Theme.sidebar)
+            ForEach(model.folders) { folder in
+                FolderTreeRow(model: model, folder: folder, node: model.folderTree(for: folder)) { folderToRemove = $0 }
+            }
+        }
     }
 
     private func navRow(_ label: String, symbol: String, count: Int?, selection: LibrarySelection) -> some View {
