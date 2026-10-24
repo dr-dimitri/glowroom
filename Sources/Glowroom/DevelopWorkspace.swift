@@ -34,6 +34,10 @@ final class DevelopWorkspace: ObservableObject {
     var levelsRequest = UUID()
     let detailPosition = DevelopDetailPosition()
     let photoViewport = PhotoViewportState()
+    @Published var aiCorrectionPreview: AICorrectionPreview?
+    @Published var showsAICorrectionProposal = true
+    @Published var previewReloadID = UUID()
+    @Published private(set) var isFinalPreviewReady = false
     var detailCenter: CGPoint {
         get { detailPosition.center }
         set { if detailPosition.center != newValue { detailPosition.center = newValue } }
@@ -117,6 +121,7 @@ final class DevelopWorkspace: ObservableObject {
     var automaticToneTask: Task<Void, Never>?
     var automaticToneIdentity = UUID()
     private(set) var originalBitmap: PreviewBitmap?
+    private(set) var originalSourceStamp: ImageAnalysisSourceStamp?
     private var identity = UUID()
     typealias Analyze = @Sendable (PreviewBitmap) async throws -> DevelopPreviewAnalysis
     typealias EstimateHorizon = @Sendable (PreviewBitmap) async throws -> Double?
@@ -160,7 +165,9 @@ final class DevelopWorkspace: ObservableObject {
         if sourceIdentity != nil { clear() }
         sourceIdentity = source
     }
-    func receive(_ bitmap: PreviewBitmap, sourceBitmap: PreviewBitmap) {
+    func receive(_ bitmap: PreviewBitmap, sourceBitmap: PreviewBitmap, sourceStamp: ImageAnalysisSourceStamp? = nil,
+                 finalSourceReady: Bool = true) {
+        isFinalPreviewReady = finalSourceReady
         navigatorImage = bitmap.image
         repairDisplayBitmap = bitmap
         if tool == .repair && repairVisualizesSpots { refreshRepairVisualization() }
@@ -171,6 +178,7 @@ final class DevelopWorkspace: ObservableObject {
             cancelAutomaticTone()
         }
         originalBitmap = sourceBitmap
+        originalSourceStamp = sourceStamp
         let needsBase = baseIdentity != baseID || sourceAnalysis == nil
         if needsBase { sourceAnalysis = nil }
         analysisTask?.cancel()
@@ -254,6 +262,9 @@ final class DevelopWorkspace: ObservableObject {
         isAutoStraightening = false
     }
     func clear() {
+        aiCorrectionPreview = nil
+        showsAICorrectionProposal = true
+        isFinalPreviewReady = false
         photoViewport.reset()
         endLevelsPicker(); levelsDisplay = nil; levelsSampleDescription = nil
         cancelAutomaticTone()
@@ -261,7 +272,7 @@ final class DevelopWorkspace: ObservableObject {
         repairDisplayBitmap = nil; repairSpotImage = nil; repairStatus = nil
         identity = UUID(); analysisTask?.cancel(); analysisTask = nil
         invalidateScope()
-        cancelAutoStraighten(); originalBitmap = nil
+        cancelAutoStraighten(); originalBitmap = nil; originalSourceStamp = nil
         displayedMapping = nil; hdrDisplayed = false
         navigatorImage = nil
         analysis = nil; sourceAnalysis = nil; sourceSize = nil; baseIdentity = nil; sourceIdentity = nil; isAnalyzing = false; repairSource = nil
@@ -270,6 +281,10 @@ final class DevelopWorkspace: ObservableObject {
         detailFitsImage = false
         tool = .basic; errorMessage = nil
         cropAspect = "free"; cropAspectLocked = false; lockedCropRatio = nil; isStraightening = false
+    }
+
+    func markPreviewPending(_ identity: DevelopPreviewRenderIdentity) {
+        if !identity.finalSourceReady { isFinalPreviewReady = false }
     }
 }
 

@@ -1,6 +1,6 @@
 # Glowroom: ein gemeinsamer Entwicklungsbereich mit KI-Unterstützung
 
-**Status: UX-01 umgesetzt; weitere fachliche Konzepte offen.** Die gemeinsame Entwickeln-Navigation aus [Issue #193](https://github.com/dr-dimitri/glowroom/issues/193) verwendet jetzt KI-Korrektur, Licht, Farbe und Details in einem Inspector. [Native Vorher-/Nachher-Abnahme](../issue-193/README.md). Die folgenden Konzeptgrafiken beschreiben weiterhin das übergeordnete Ziel einschließlich noch offener UX-02 bis UX-08. Die ursprüngliche Analyse stammt vom 24.10.2026, Quellcommit `c11089624d0b56cd1eabc2280e89d21d16f022f6`.
+**Status: UX-01 und UX-02 umgesetzt; weitere fachliche Konzepte offen.** Die gemeinsame Entwickeln-Navigation aus [Issue #193](https://github.com/dr-dimitri/glowroom/issues/193) verwendet jetzt KI-Korrektur, Licht, Farbe und Details in einem Inspector. [Native UX-01-Abnahme](../issue-193/README.md). [Issue #194](https://github.com/dr-dimitri/glowroom/issues/194) ergänzt den gerenderten Korrekturvorschlag mit Übernahmeprüfung: [native UX-02-Abnahme](../issue-194/README.md). Die folgenden Konzeptgrafiken beschreiben weiterhin das übergeordnete Ziel einschließlich noch offener UX-03 bis UX-08. Die ursprüngliche Analyse stammt vom 24.10.2026, Quellcommit `c11089624d0b56cd1eabc2280e89d21d16f022f6`.
 
 Ziel ist eine Oberfläche, in der der Anwender eine fotografische Aufgabe auswählt und die passende manuelle oder KI-gestützte Funktion dort findet. Die vom Nutzer bereitgestellten Lightroom-Classic-Bilder dienen als Referenz für große Bildfläche, seitliche Funktionsgruppen, Histogramm, Bibliotheksraster und Filmstreifen. Die privaten Referenzaufnahmen werden nicht im Repository veröffentlicht. Lightroom-Funktionen, die Glowroom nicht besitzt, sind kein Bestandteil dieses Konzepts.
 
@@ -27,13 +27,13 @@ Die Gruppierung legt keine Gleichheit der Rechenverfahren nahe: Natürlicher Bil
 
 ### KI-Vorschlag prüfen
 
-![Konzept: aktuelles Foto und KI-Korrekturvorschlag vergleichen, noch nicht implementiert](concept-proposal.png)
+![Ursprüngliches Konzept: aktuelles Foto und KI-Korrekturvorschlag vergleichen](concept-proposal.png)
 
-Die gerenderte Korrekturvorschau ist eine **neu zu implementierende** Fähigkeit. Aktuell zeigt der KI-Korrekturpfad eine Zusammenfassung und Parameteränderungen; sein Bildvorschaupfad wird nur für Maskenantworten geliefert. Die Grafik illustriert einen Vergleichszustand und ist keine echte KI-Ausgabe.
+UX-02 rendert den Korrekturvorschlag jetzt auf der gemeinsamen Bildfläche. **Aktueller Stand** und **Vorschlag** wechseln die Ansicht bei unverändertem Zoom und Bildausschnitt; **Übernehmen** aktiviert die geprüften Werte als einen Undo-Schritt. Der frühere reine Zusammenfassungs-/Wertelistenpfad und die tatsächliche neue Oberfläche sind im [Abnahmeprotokoll](../issue-194/README.md) dokumentiert. Die obige Grafik bleibt die ursprüngliche Konzeptdarstellung; sie belegt keine Modellinferenz.
 
 Der Ablauf lautet: **Auftrag eingeben → Vorschlag erstellen → am Foto vergleichen → Übernehmen oder Verwerfen**. Vor der Übernahme ändert sich kein gespeicherter Wert. Nach der Übernahme zeigen die normalen Regler die angenommenen Werte; ein Undo-Schritt nimmt den Vorschlag zurück. Während der Berechnung steht **Abbrechen**, bei fehlender Fähigkeit **Einrichten** oder eine konkrete Nichtverfügbarkeit. Manuelle Änderungen während eines offenen Vorschlags entwerten ihn oder führen zu einer ausdrücklich neuen Berechnung; sie dürfen nicht still überschrieben werden.
 
-Eine Gruppe direkter Korrekturregler genügt. Die heutigen KI-Intentregler Helligkeit/Kontrast/Wärme/Farbkraft steuern den nächsten Auftrag und sollen nicht länger wie ein zweiter Satz unmittelbarer Bildregler erscheinen. Optional benötigte Auftragsvorgaben müssen als solche erkennbar sein.
+Eine Gruppe direkter Korrekturregler genügt. UX-02 ersetzt die früheren KI-Intentregler Helligkeit/Kontrast/Wärme/Farbkraft durch kurze Auftragsvorgaben. Die erweiterte Stärke ist ausdrücklich als Vorgabe für den nächsten Vorschlag benannt; die regulären Licht-/Farbregler zeigen die angenommenen Bildwerte.
 
 ### Bibliothek
 

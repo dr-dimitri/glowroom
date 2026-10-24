@@ -130,6 +130,7 @@ struct DetailView: View {
     @ViewState private var photoHeaderHeight = CGFloat(30)
     @EnvironmentObject private var maskWorkspace: InlineMaskWorkspace
     @EnvironmentObject private var developWorkspace: DevelopWorkspace
+    @Environment(\.aiCorrectionDisplay) private var correctionDisplay
     private var comparesBeforeAfter: Bool { model.previewComparisonLayout != .single && !maskWorkspace.isPresented }
     private var usesNativeCropInput: Bool {
         !comparesBeforeAfter && model.isDeveloping && developWorkspace.tool == .crop && model.editingRenderIntent == .currentEditing
@@ -255,6 +256,7 @@ struct DetailView: View {
                         }
                     }
                     if developWorkspace.tool == .basic, !developWorkspace.picksWhiteBalance, developWorkspace.levelsPicker == nil,
+                       correctionDisplay?.showsProposal != true,
                        let analysis = developWorkspace.analysis,
                        let overlay = analysis.clippingImage(shadows: developWorkspace.showsShadows, highlights: developWorkspace.showsHighlights),
                        developWorkspace.showsShadows || developWorkspace.showsHighlights {
@@ -314,6 +316,7 @@ struct DetailView: View {
     }
 
     private var previewLabel: String {
+        if let correctionDisplay { return " · " + correctionDisplay.title }
         if comparesBeforeAfter { return " · " + model.previewComparisonLayout.title }
         if model.comparesOriginal { return " · Importiertes Original" }
         if model.comparesCurrentSourceWithoutSettings { return " · Aktuelle Quelle ohne Regler" }

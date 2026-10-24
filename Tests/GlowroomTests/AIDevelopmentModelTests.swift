@@ -17,9 +17,19 @@ struct AIDevelopmentModelTests {
         let task = try #require(f.start())
         await task.value
         #expect(f.model.proposal?.settings.exposure == 0.5)
+        let preview = try #require(f.workspace.aiCorrectionPreview)
+        #expect(preview.snapshot.settings == .neutral && preview.settings.exposure == 0.5)
+        #expect(f.workspace.showsAICorrectionProposal)
+        #expect(try ImageAnalysisPreparer.describeRaster(preview.bitmap).digest
+            != ImageAnalysisPreparer.describeRaster(try #require(f.workspace.originalBitmap)).digest)
         #expect(f.editor.settings(for: f.assetID) == .neutral)
         #expect(!f.editor.canUndo(assetID: f.assetID))
+        let revision = f.editor.localRevision(for: f.assetID)
+        f.workspace.showsAICorrectionProposal = false
+        f.workspace.showsAICorrectionProposal = true
+        #expect(f.editor.localRevision(for: f.assetID) == revision)
         await (try #require(f.model.apply(library: f.library, editor: f.editor))).value
+        #expect(f.workspace.aiCorrectionPreview == nil)
         #expect(f.editor.settings(for: f.assetID).exposure == 0.5)
         #expect(f.editor.canUndo(assetID: f.assetID))
         f.editor.undo(assetID: f.assetID)
@@ -42,6 +52,7 @@ struct AIDevelopmentModelTests {
         await (try #require(f.start())).value
         let status = try #require(f.model.status)
         #expect(!f.model.canApplyProposal)
+        #expect(f.workspace.aiCorrectionPreview == nil)
         #expect(f.model.apply(library: f.library, editor: f.editor) == nil)
         #expect(f.model.status == status)
         #expect(!f.model.isRunning)
@@ -50,6 +61,153 @@ struct AIDevelopmentModelTests {
         #expect(!f.editor.canUndo(assetID: f.assetID))
         #expect(await f.editor.flush())
         #expect(await f.store.loadAll()[f.assetID] == .neutral)
+    }
+
+    @Test func discardingRenderedProposalKeepsAcceptedPreviewHistoryAndSettings() async throws {
+        let f = try await AIDevelopmentFixture.make()
+        defer { f.remove() }
+        let acceptedImage = try #require(f.workspace.navigatorImage)
+        let acceptedSource = try #require(f.workspace.originalBitmap).rangeSourceIdentity
+        await (try #require(f.start())).value
+        #expect(f.workspace.aiCorrectionPreview != nil)
+        #expect(f.workspace.navigatorImage === acceptedImage)
+        #expect(f.workspace.originalBitmap?.rangeSourceIdentity == acceptedSource)
+        #expect(await f.editor.flush())
+        #expect(await f.store.loadAll()[f.assetID] == .neutral)
+        f.model.discard()
+        #expect(f.workspace.aiCorrectionPreview == nil)
+        #expect(f.workspace.navigatorImage === acceptedImage)
+        #expect(!f.editor.canUndo(assetID: f.assetID))
+        #expect(await f.probe.calls == 1)
+    }
+
+    @Test(arguments: ["cancel", "selection", "editUndo", "scope", "source"])
+    func staleCorrectionRenderNeverPublishes(change: String) async throws {
+        let entered = TestAsyncLatch(), release = TestAsyncLatch()
+        let f = try await AIDevelopmentFixture.make(renderCorrection: { bitmap, snapshot, settings, _ in
+            #expect(snapshot.settings == .neutral && settings.exposure == 0.5)
+            entered.releaseAll(); await release.wait() // Native rendering can finish after cancellation.
+            return bitmap
+        })
+        defer { release.releaseAll(); f.remove() }
+        let work = try #require(f.start()); await entered.wait()
+        #expect(f.model.proposal == nil && f.workspace.aiCorrectionPreview == nil)
+        switch change {
+        case "cancel": f.model.cancel()
+        case "selection": f.library.selectedID = nil
+        case "editUndo":
+            f.editor.setSettings(EditSettings(exposure: 2), for: f.assetID)
+            f.editor.undo(assetID: f.assetID)
+        case "scope": f.model.intent.targetMaskID = UUID()
+        default: f.workspace.clear()
+        }
+        f.model.invalidateIfNeeded(library: f.library, editor: f.editor)
+        #expect(f.start() == nil, "An in-flight render retains admission until completion")
+        release.releaseAll(); await work.value
+        #expect(f.model.proposal == nil && f.workspace.aiCorrectionPreview == nil)
+        #expect(!f.model.canApplyProposal && !f.model.isRunning)
+        #expect(f.editor.settings(for: f.assetID) == .neutral)
+        #expect(!f.editor.canUndo(assetID: f.assetID))
+    }
+
+    @Test func correctionRenderFailureOffersNoUnreviewedAcceptance() async throws {
+        let f = try await AIDevelopmentFixture.make(renderCorrection: { _, _, _, _ in throw PreviewFailure.unavailable })
+        defer { f.remove() }
+        await (try #require(f.start())).value
+        #expect(f.model.proposal == nil && f.workspace.aiCorrectionPreview == nil)
+        #expect(f.model.status == "Die Vorschau des Vorschlags konnte nicht erstellt werden. Erstelle den Vorschlag erneut.")
+        #expect(!f.model.canApplyProposal && !f.model.isRunning)
+        #expect(f.editor.settings(for: f.assetID) == .neutral)
+    }
+
+    @Test func externallyReplacedSourceCannotRenderAProposalOnOlderCanvasPixels() async throws {
+        let renders = AICorrectionRenderProbe()
+        let f = try await AIDevelopmentFixture.make(renderCorrection: { bitmap, _, _, _ in
+            await renders.record(bitmap.rangeSourceIdentity)
+            return bitmap
+        })
+        defer { f.remove() }
+        let bitmap = try #require(f.workspace.originalBitmap)
+        // The catalog identity remains unchanged. Only the native inode/ctime
+        // distinguishes these canvas pixels from the later inference source.
+        let oldStamp = ImageAnalysisSourceStamp(device: 1, inode: 2, byteCount: 1,
+            modifiedSeconds: 1, modifiedNanoseconds: 0, changedSeconds: 0, changedNanoseconds: 0)
+        f.workspace.receive(bitmap, sourceBitmap: bitmap, sourceStamp: oldStamp)
+        await (try #require(f.start())).value
+        #expect(f.model.status == AIDevelopmentError.staleContext.localizedDescription)
+        #expect(f.model.proposal == nil && f.workspace.aiCorrectionPreview == nil)
+        #expect(await renders.sources.isEmpty)
+        #expect(!f.model.canApplyProposal && !f.editor.canUndo(assetID: f.assetID))
+        #expect(f.editor.settings(for: f.assetID) == .neutral)
+    }
+
+    @Test func progressivePreviewWaitsForFinalSourceBeforeStartingInference() async throws {
+        let f = try await AIDevelopmentFixture.make()
+        defer { f.remove() }
+        let bitmap = try #require(f.workspace.originalBitmap)
+        f.workspace.receive(bitmap, sourceBitmap: bitmap, finalSourceReady: false)
+        #expect(f.start() == nil)
+        #expect(f.model.status == AIDevelopmentError.missingPreview.localizedDescription)
+        #expect(await f.probe.calls == 0)
+        f.workspace.receive(bitmap, sourceBitmap: bitmap, finalSourceReady: true)
+        await (try #require(f.start())).value
+        #expect(f.model.canApplyProposal)
+        #expect(await f.probe.calls == 1)
+    }
+
+    @Test func renderedProposalCanBeAcceptedAfterModelWeightsBecomeUnavailable() async throws {
+        let f = try await AIDevelopmentFixture.make()
+        defer { f.remove() }
+        await (try #require(f.start())).value
+        #expect(f.model.canApplyProposal && f.workspace.aiCorrectionPreview != nil)
+        let host = WorkspaceSectionTestHost(size: NSSize(width: 420, height: 1_100))
+        defer { host.close() }
+        try await host.mount(AIDevelopmentView(library: f.library, model: f.model, checkModel: { false })
+            .environmentObject(f.editor).environmentObject(f.workspace).frame(width: 380))
+        try await waitForTestState("weights unavailable after a rendered proposal", state: { @MainActor in
+            host.accessibilityElements.contains { $0.accessibilityIdentifier() == "ai-development.model-required" }
+        }, until: { $0 })
+        try await host.settle()
+        let generate = try #require(host.accessibilityElements.first {
+            $0.accessibilityIdentifier() == "ai-development.generate"
+        })
+        let apply = try #require(host.accessibilityElements.first {
+            $0.accessibilityIdentifier() == "ai-development.apply"
+        })
+        #expect(!generate.isAccessibilityEnabled(), "Another inference still requires model weights")
+        try #require(apply.isAccessibilityEnabled(), "A reviewed proposal needs no further inference")
+        try #require(apply.accessibilityPerformPress())
+        try await waitForTestState("rendered proposal accepted without installed weights", state: { @MainActor in
+            !f.model.isRunning && f.model.proposal == nil && f.editor.settings(for: f.assetID).exposure == 0.5
+        }, until: { $0 })
+        #expect(f.workspace.aiCorrectionPreview == nil)
+        #expect(await f.probe.calls == 1)
+        #expect(await f.editor.flush())
+        #expect(await f.store.loadAll()[f.assetID]?.exposure == 0.5)
+        try await host.unmount()
+    }
+
+    @Test func coldAndWarmProposalsRenderFromTheSameDecodedSourceWithoutNewInferenceOnDisplayChanges() async throws {
+        let probe = AICorrectionRenderProbe()
+        let f = try await AIDevelopmentFixture.make(renderCorrection: { bitmap, snapshot, settings, _ in
+            await probe.record(bitmap.rangeSourceIdentity)
+            return try await AdjustedPreviewPipeline.shared.image(bitmap,
+                request: PreviewRequest(source: snapshot.source, pixelSize: 128), settings: settings, priority: .selected)
+        })
+        defer { f.remove() }
+        let original = try #require(f.workspace.originalBitmap)
+        await (try #require(f.start())).value
+        let first = try #require(f.workspace.aiCorrectionPreview).bitmap
+        f.workspace.showsAICorrectionProposal = false
+        f.workspace.showsAICorrectionProposal = true
+        #expect(await f.probe.calls == 1)
+        f.model.discard()
+        await (try #require(f.start())).value
+        let second = try #require(f.workspace.aiCorrectionPreview).bitmap
+        #expect(await probe.sources == [original.rangeSourceIdentity, original.rangeSourceIdentity])
+        #expect(first.image === second.image, "The warm proposal reuses the shared adjusted render cache")
+        #expect(f.workspace.originalBitmap?.rangeSourceIdentity == original.rangeSourceIdentity)
+        #expect(f.editor.localRevision(for: f.assetID) == 0)
     }
 
     @Test(arguments: ["inference", "ready", "sourceValidation"])
@@ -415,7 +573,12 @@ struct AIDevelopmentModelTests {
                      saveLatch: TestAsyncLatch = TestAsyncLatch(open: true),
                      saveEntered: TestAsyncLatch = TestAsyncLatch(),
                      backup: AIDevelopmentBackupSchedule? = nil,
-                     validateSource: @escaping AIDevelopmentModel.ValidateSource = { _, _ in }) async throws -> Self {
+                     validateSource: @escaping AIDevelopmentModel.ValidateSource = { _, _ in },
+                     renderCorrection: @escaping AIDevelopmentModel.RenderCorrection = { bitmap, snapshot, settings, _ in
+                         try await AdjustedPreviewPipeline.shared.image(bitmap,
+                             request: PreviewRequest(source: snapshot.source, pixelSize: 128),
+                             settings: settings, priority: .selected)
+                     }) async throws -> Self {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("Glowroom-AIDevelopment-\(UUID())")
         let folder = LibraryFolder(url: directory)
         let asset = PhotoAsset(folderID: folder.id, fileURL: directory.appendingPathComponent("photo.png"))
@@ -442,9 +605,14 @@ struct AIDevelopmentModelTests {
         let model = AIDevelopmentModel(propose: { snapshot, _, intent in try await probe.propose(snapshot, intent) },
                                      proposeMask: proposeMask ?? { snapshot, instruction in
                                          try await AIObjectMaskService().propose(snapshot: snapshot, instruction: instruction)
-                                     }, validateSource: validateSource)
+                                     }, validateSource: validateSource, renderCorrection: renderCorrection)
         return Self(directory: directory, library: library, editor: editor, workspace: workspace, store: store, probe: probe, model: model)
     }
+}
+
+private actor AICorrectionRenderProbe {
+    private(set) var sources: [UUID] = []
+    func record(_ source: UUID) { sources.append(source) }
 }
 
 private actor AIDevelopmentTestProbe {

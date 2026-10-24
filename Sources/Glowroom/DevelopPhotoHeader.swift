@@ -62,7 +62,9 @@ struct DevelopPhotoHeader: View {
     }
 
     private var sourceLabel: some View {
-        Text(previewLabel).foregroundStyle(Theme.muted).lineLimit(1).truncationMode(.middle)
+        Text(previewLabel).font(.system(size: 13, weight: .medium))
+            .foregroundStyle(Theme.muted).lineLimit(1).truncationMode(.middle)
+            .accessibilityIdentifier("ai-development.canvas-state")
     }
 
     private func captureText(_ summary: String) -> some View {

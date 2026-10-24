@@ -41,6 +41,7 @@ struct DevelopPreviewHandoff: Sendable {
     // The original decoded basis remains available to the existing WB,
     // horizon and automatic-tone consumers. Levels uses frame.actualInput.
     let decodedSource: PreviewBitmap
+    var sourceStamp: ImageAnalysisSourceStamp? = nil
 }
 
 typealias DevelopPreviewPending = @MainActor (DevelopPreviewRenderIdentity) -> Void
@@ -53,7 +54,15 @@ private struct DevelopPreviewPendingKey: EnvironmentKey {
     static let defaultValue: DevelopPreviewPending? = nil
 }
 
+private struct PhotoPreviewReloadKey: EnvironmentKey {
+    static let defaultValue = UUID()
+}
+
 extension EnvironmentValues {
+    var photoPreviewReloadID: UUID {
+        get { self[PhotoPreviewReloadKey.self] }
+        set { self[PhotoPreviewReloadKey.self] = newValue }
+    }
     var developSelectionIdentity: DevelopSelectionIdentity? {
         get { self[DevelopSelectionIdentityKey.self] }
         set { self[DevelopSelectionIdentityKey.self] = newValue }

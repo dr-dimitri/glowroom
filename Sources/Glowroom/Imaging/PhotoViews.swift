@@ -57,6 +57,8 @@ struct PhotoPreview: View {
 
 @MainActor
 private struct AsyncPhotoView: View {
+    @Environment(\.aiCorrectionDisplay) private var correctionDisplay
+    @Environment(\.photoPreviewReloadID) private var reloadID
     @Environment(\.developPreviewSink) private var previewSink
     @Environment(\.developPreviewPending) private var previewPending
     @Environment(\.editingProgressIsCovered) private var progressIsCovered
@@ -77,10 +79,11 @@ private struct AsyncPhotoView: View {
         let frame: AdjustedPreviewFrame?
     }
 
-    private struct SourceLoadIdentity: Hashable { let request: PreviewRequest; let retry: UUID }
+    private struct SourceLoadIdentity: Hashable { let request: PreviewRequest; let retry: UUID; let reload: UUID }
     @PhotoState private var retry = UUID()
     @PhotoState private var loadedRequest: PreviewRequest?
     @PhotoState private var sourceBitmap: PreviewBitmap?
+    @PhotoState private var sourceStamp: ImageAnalysisSourceStamp?
     @PhotoState private var sourceToken: UUID?
     @PhotoState private var finalSourceReady = false
     @PhotoState private var displayed: Displayed?
@@ -89,22 +92,31 @@ private struct AsyncPhotoView: View {
     @PhotoState private var renderError: String?
 
     private var renderIdentity: DevelopPreviewRenderIdentity {
-        DevelopPreviewRenderIdentity(request: request, settings: settings.normalized, revision: revision,
+        DevelopPreviewRenderIdentity(request: renderRequest, settings: settings.normalized, revision: revision,
                                      sourceToken: sourceToken, finalSourceReady: finalSourceReady)
+    }
+    private var renderRequest: PreviewRequest {
+        sourceStamp.map { PreviewSourceStamp.stampedRequest(request, stamp: $0) } ?? request
     }
     private var sameDisplayedPhoto: Bool {
         guard let displayed else { return false }
         let previous = displayed.identity.request
-        return previous.source == request.source && previous.sourceRevision == request.sourceRevision
+        return previous.source == request.source && previous.sourceRevision == renderRequest.sourceRevision
     }
     private var busy: Bool {
         (loadingSource || displayed?.identity != renderIdentity) && sourceError == nil && renderError == nil
     }
 
+    private var correction: AICorrectionDisplay? {
+        guard let correctionDisplay,
+              correctionDisplay.preview.matches(request: request, settings: settings, revision: revision) else { return nil }
+        return correctionDisplay
+    }
+
     var body: some View {
         ZStack {
             if sameDisplayedPhoto, let displayed {
-                DevelopImageView(image: displayed.image, hdr: displayed.identity.settings.developColor.hdrEnabled)
+                DevelopImageView(image: proposalImage ?? displayed.image, hdr: displayed.identity.settings.developColor.hdrEnabled)
                     .scaleEffect(imageScale).rotationEffect(.degrees(imageRotation))
                     .accessibilityLabel(request.displayName)
             } else if let error = sourceError ?? renderError {
@@ -129,29 +141,38 @@ private struct AsyncPhotoView: View {
         }
         // Decoding is keyed only by the original, independently of the slider
         // values. Moving a slider never repeatedly cancels a slow RAW decode.
-        .task(id: SourceLoadIdentity(request: request, retry: retry), priority: priority == .selected ? .userInitiated : .utility) {
+        .task(id: SourceLoadIdentity(request: request, retry: retry, reload: reloadID), priority: priority == .selected ? .userInitiated : .utility) {
             guard !Task.isCancelled else { return }
-            previewPending?(renderIdentity)
+            previewPending?(DevelopPreviewRenderIdentity(request: request, settings: settings.normalized,
+                revision: revision, sourceToken: nil, finalSourceReady: false))
             loadedRequest = request
             sourceBitmap = nil
+            sourceStamp = nil
             sourceToken = nil
             finalSourceReady = false
             loadingSource = true
             sourceError = nil
             renderError = nil
             if !sameDisplayedPhoto { displayed = nil }
-            if progressive {
-                let small = request.resized(to: 512)
-                if let first = try? await ImagePreviewPipeline.shared.image(for: small, priority: priority),
-                   !Task.isCancelled, loadedRequest == request {
-                    sourceBitmap = first
-                    sourceToken = UUID()
-                }
-            }
             do {
-                let bitmap = try await ImagePreviewPipeline.shared.image(for: request, priority: priority)
+                // A selected canvas basis carries its actual native revision.
+                // Never label an old metadata-only cache hit with a fresh stamp.
+                let stamp = showsFailureDescription ? try await PreviewSourceStamp.capture(for: request) : nil
+                let decodeRequest = stamp.map { PreviewSourceStamp.stampedRequest(request, stamp: $0) } ?? request
+                if progressive {
+                    if let first = try? await ImagePreviewPipeline.shared.image(for: decodeRequest.resized(to: 512), priority: priority),
+                       !Task.isCancelled, loadedRequest == request {
+                        if let stamp, try await PreviewSourceStamp.capture(for: request) != stamp { throw ImageAnalysisError.staleSource }
+                        sourceStamp = stamp
+                        sourceBitmap = first
+                        sourceToken = UUID()
+                    }
+                }
+                let bitmap = try await ImagePreviewPipeline.shared.image(for: decodeRequest, priority: priority)
                 try Task.checkCancellation()
                 guard loadedRequest == request else { return }
+                if let stamp, try await PreviewSourceStamp.capture(for: request) != stamp { throw ImageAnalysisError.staleSource }
+                sourceStamp = stamp
                 sourceBitmap = bitmap
                 sourceToken = UUID()
                 finalSourceReady = true
@@ -194,7 +215,8 @@ private struct AsyncPhotoView: View {
                     displayed = Displayed(identity: identity, image: NSImage(cgImage: bitmap.image,
                                           size: NSSize(width: bitmap.image.width, height: bitmap.image.height)), frame: frame)
                 }
-                if let frame { previewSink?(DevelopPreviewHandoff(identity: identity, frame: frame, decodedSource: sourceBitmap)) }
+                if let frame { previewSink?(DevelopPreviewHandoff(identity: identity, frame: frame,
+                    decodedSource: sourceBitmap, sourceStamp: sourceStamp)) }
             } catch is CancellationError {
                 // A newer parameter value, photo or source resolution supersedes this result.
             } catch {
@@ -205,6 +227,7 @@ private struct AsyncPhotoView: View {
         .onDisappear {
             loadedRequest = nil
             sourceBitmap = nil
+            sourceStamp = nil
             sourceToken = nil
             finalSourceReady = false
             displayed = nil
@@ -214,12 +237,18 @@ private struct AsyncPhotoView: View {
         }
     }
 
+    private var proposalImage: NSImage? {
+        guard let correction, correction.showsProposal else { return nil }
+        let bitmap = correction.preview.bitmap
+        return NSImage(cgImage: bitmap.image, size: NSSize(width: bitmap.image.width, height: bitmap.image.height))
+    }
+
     private func failure(_ message: String) -> some View {
         VStack(spacing: 8) {
             Image(systemName: "photo").font(showsFailureDescription ? .largeTitle : .title2).foregroundStyle(.secondary)
             if showsFailureDescription {
                 Text("Vorschau nicht verfügbar").font(.callout).foregroundStyle(.secondary)
-                Text(message).font(.caption).foregroundStyle(.tertiary)
+                Text(message).font(.system(size: 13)).foregroundStyle(.secondary)
                     .multilineTextAlignment(.center).frame(maxWidth: 320)
                 Button("Erneut versuchen") { retry = UUID() }.buttonStyle(.plain)
             }
