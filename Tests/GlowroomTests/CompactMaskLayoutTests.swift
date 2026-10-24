@@ -209,10 +209,14 @@ struct CompactMaskLayoutTests {
             #expect(frame.width > 0 && frame.height > 0)
             #expect(host.screenFrame.insetBy(dx: -1, dy: -1).contains(frame), "\(title) must be visible without scrolling")
         }
+        let object = try host.element("local-mask.create.object")
+        #expect(object.accessibilityLabel() == "Objekt beschreiben")
+        #expect(object.isAccessibilityEnabled())
         for kind in ["landscape", "object"] {
-            let unavailable = try host.element("local-mask.unavailable.\(kind)")
-            #expect(!unavailable.isAccessibilityEnabled(), "Unimplemented selections must not promise an action")
+            #expect(!host.elements.contains { $0.accessibilityIdentifier() == "local-mask.unavailable.\(kind)" },
+                "The creator must expose implemented actions instead of unavailable selection promises")
         }
+        #expect(!host.elements.contains { $0.accessibilityLabel() == "Personen" })
         let skySetup = try host.element("local-mask.sky-setup")
         #expect(skySetup.isAccessibilityEnabled(), "Sky model setup must remain reachable without an existing mask")
         #expect(!host.elements.contains { $0.accessibilityLabel() == "Bereich" })

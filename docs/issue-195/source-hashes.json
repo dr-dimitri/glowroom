@@ -1,0 +1,1241 @@
+{
+  "sourceState": "working tree based on 433ead6e0381e48b6256c32aa893686846592f83",
+  "files": [
+    {
+      "path": "Package.resolved",
+      "sha256": "c48093b93fc6e10eb76a87a1df593d8b80c13e91886ebffab30c687e10289a33"
+    },
+    {
+      "path": "Package.swift",
+      "sha256": "38c0a9fc38000997909ca0a81a693002e331a83147f7ec2254a1298e9a7bef7a"
+    },
+    {
+      "path": "Sources/CSQLite/module.modulemap",
+      "sha256": "bbfe59a972a3e8e09e347c04bc22c0eacd2544881af8a4b6068bfc30b38466e8"
+    },
+    {
+      "path": "Sources/CSQLite/shim.h",
+      "sha256": "b052d8e561e942f97b503033ecd2eaa2b35213bdbf374983efe9e68eabdfc024"
+    },
+    {
+      "path": "Sources/Glowroom/AI/AICorrectionInspector.swift",
+      "sha256": "c4ff12c5c696bdc2491210b65a3d30a36c55b921fbc0dcf24983b67b15a8576a"
+    },
+    {
+      "path": "Sources/Glowroom/AI/AICorrectionPreview.swift",
+      "sha256": "394e774c4929f41be85d7c128dffb17d7dbaf0fa4f99f6e1ef977a84a4a57a1a"
+    },
+    {
+      "path": "Sources/Glowroom/AI/AICorrectionReadiness.swift",
+      "sha256": "3b23aa4a134ef1704ddf8829d08e2178dfda41fbb7dc88ab263b992ddbd5f017"
+    },
+    {
+      "path": "Sources/Glowroom/AI/AIDevelopmentMaskInput.swift",
+      "sha256": "fbe0c400bf2f66fb4943f4722d367dbbab14b9e6a3a88b8c1912fdff835f9044"
+    },
+    {
+      "path": "Sources/Glowroom/AI/AIDevelopmentModel.swift",
+      "sha256": "97f643e1caa3dd5c9698a44ba6bb5c51deab6cfb6e6960583ecb71af44fdd4b8"
+    },
+    {
+      "path": "Sources/Glowroom/AI/AIDevelopmentService.swift",
+      "sha256": "f432e8a432af1ac0452baebdf51ced5e093d5390889f6d0e8a3c2276a2485583"
+    },
+    {
+      "path": "Sources/Glowroom/AI/AIDevelopmentView.swift",
+      "sha256": "118f76349f99838e5c7c3ec322813ae8008a8494f2f4e1c46743f48640b1ee86"
+    },
+    {
+      "path": "Sources/Glowroom/AI/AIEditingSnapshotIntegration.swift",
+      "sha256": "647b693cc697409b819b183f3f1d40d1dc3d23587318767eb8e2ab87c5355240"
+    },
+    {
+      "path": "Sources/Glowroom/AI/AIObjectMaskService.swift",
+      "sha256": "96115ebb3fedf84f145e795b0a553204eaeda245982385107965c6e352e7acb4"
+    },
+    {
+      "path": "Sources/Glowroom/AI/AIResourceBudget.swift",
+      "sha256": "d89213e035a243c70f8fc1087d9d1789600a7f68fcffd54bc5538975077a4e30"
+    },
+    {
+      "path": "Sources/Glowroom/AI/AppleImageAnalysisProvider.swift",
+      "sha256": "5e28b3e15346efeebaed343a9a51eac45f0649af9b8a761ce5864406c89ddf23"
+    },
+    {
+      "path": "Sources/Glowroom/AI/ApplePhotoMetadataAdapter.swift",
+      "sha256": "2fc356fc70579dd61f96733cab2f28ca7e3c9c1cea28cf81884ba3b9c8e0b7be"
+    },
+    {
+      "path": "Sources/Glowroom/AI/GeneratedLocalModelRegistry.swift",
+      "sha256": "0a62d14a5ba31df7604009e51fccdb6dd71f402a4ad74fdc84bb9a8e9e87728b"
+    },
+    {
+      "path": "Sources/Glowroom/AI/ImageAnalysisModel.swift",
+      "sha256": "4e4e5d977337e6d67988342656970593bafb8b84ee420e315f2bf2b16246fd06"
+    },
+    {
+      "path": "Sources/Glowroom/AI/ImageAnalysisPreparation.swift",
+      "sha256": "46378fea74d28884b20b5ae76254f01ca3adabed7aea2ae39b1c12aea1713f25"
+    },
+    {
+      "path": "Sources/Glowroom/AI/ImageAnalysisSection.swift",
+      "sha256": "08853452a4c32b0e21e1e0419223ee57f19c9945c07fe555295a876ae13cbe21"
+    },
+    {
+      "path": "Sources/Glowroom/AI/ImageAnalysisService.swift",
+      "sha256": "7b0759ad6a083e821217f37226a2e9b90a8cb51aa0632394a29b3637d7a9d6d6"
+    },
+    {
+      "path": "Sources/Glowroom/AI/ImageAnalysisServing.swift",
+      "sha256": "f6683ba47d9a6ce843d7e834de1ef18b329090150cb98e14c561b9cfe24644cb"
+    },
+    {
+      "path": "Sources/Glowroom/AI/ImageGenerationBackend.swift",
+      "sha256": "e6eb5d302574fe26e9d915a610cbe011a3944dc6767a8ddbbdcb010a9257bcdd"
+    },
+    {
+      "path": "Sources/Glowroom/AI/ImageGenerationPreprocessing.swift",
+      "sha256": "6af605bc639bd34e3faddfa7227d5d03e4f412cf0b93a7071ead858ad6890d89"
+    },
+    {
+      "path": "Sources/Glowroom/AI/ImageGenerationService.swift",
+      "sha256": "cad0a7652f76e07054193c698d0fd3057563779abdfc8eab1f148f429438ab53"
+    },
+    {
+      "path": "Sources/Glowroom/AI/LLMModelDescriptor.swift",
+      "sha256": "5a937e70f6d0a03c6f8023a2ac7330cf4a181016faab4aa3c34662e186d5b1bb"
+    },
+    {
+      "path": "Sources/Glowroom/AI/LLMModelDownloader.swift",
+      "sha256": "60adf93f4a4130ae1efc6c0758ff75d9da56cc164589561363acade2f22aff94"
+    },
+    {
+      "path": "Sources/Glowroom/AI/LLMModelManagerView.swift",
+      "sha256": "d0e49e2eb69dfa995bacc919718110897b509b6d259f4e142aacac5cb08bc987"
+    },
+    {
+      "path": "Sources/Glowroom/AI/LLMModelStore.swift",
+      "sha256": "8bfd2cf1ee02d6dcf2151091c07c5ea19feb1aef0dc636e1b3e0c1ca3c35dcd0"
+    },
+    {
+      "path": "Sources/Glowroom/AI/LocalImageAnalysisProvider.swift",
+      "sha256": "b59e52ef86c3359fc368663700e5eeff5c207b2d7caa3d32d347074b4ed0aeb6"
+    },
+    {
+      "path": "Sources/Glowroom/AI/PhotoMetadataSuggestor.swift",
+      "sha256": "73a6cb97d69615d1682d86c8a24bce84d750312667c672ea48b846c4000e7431"
+    },
+    {
+      "path": "Sources/Glowroom/AI/QwenDevelopmentBackend.swift",
+      "sha256": "d24227790e9ac4287a45d92a165c9104c88627ada8cd45ae477cce76d9e463c7"
+    },
+    {
+      "path": "Sources/Glowroom/AI/Resources/SemanticApprovedPackage.json",
+      "sha256": "e8b2e41b95a689838eaf74f761ba68051b938cfd428e7434eb7ecfc3f6f11c92"
+    },
+    {
+      "path": "Sources/Glowroom/AI/Resources/SemanticImagePackageManifest.json",
+      "sha256": "cfa029d4e8ce39924a178dede58145e97aa16d6bed5ecb7b9a67ed3c6d7f6a0d"
+    },
+    {
+      "path": "Sources/Glowroom/AI/Resources/SemanticLicenses/APACHE-2.0.txt",
+      "sha256": "648b81e6c6f9975c3b6cf6d630229b6c8d6f1ddaef55f5770f576adda19f3495"
+    },
+    {
+      "path": "Sources/Glowroom/AI/Resources/SemanticLicenses/CONVERSION-NOTICE.txt",
+      "sha256": "7ebf8aba1427f4b9d9a7893304bff0ea621a6515a16b8a3c77c0360eaafdcabc"
+    },
+    {
+      "path": "Sources/Glowroom/AI/Resources/SemanticLicenses/MODEL-CARD.md",
+      "sha256": "6eed8501b5d87ea439336a98a9567bcd46b05a3562b36d1207c0f21c6da6b38b"
+    },
+    {
+      "path": "Sources/Glowroom/AI/Resources/SemanticTextPackageManifest.json",
+      "sha256": "3718fe94471716c2e9dad16930e5e829bd8a18e53d34509b9f9175bc361e2568"
+    },
+    {
+      "path": "Sources/Glowroom/AI/Resources/SkyMaskLicenses/SkyMask-APACHE-2.0.txt",
+      "sha256": "648b81e6c6f9975c3b6cf6d630229b6c8d6f1ddaef55f5770f576adda19f3495"
+    },
+    {
+      "path": "Sources/Glowroom/AI/Resources/SkyMaskLicenses/SkyMask-NOTICE.txt",
+      "sha256": "b1d89fe8f1e5e6b567fba64a3f97b354f27857df8d358774f3fa5e43db7e56bb"
+    },
+    {
+      "path": "Sources/Glowroom/AI/Resources/SkyMaskLicenses/Skyseg-MIT.txt",
+      "sha256": "d5bf18adf43d9688ed2908a916fe707882acc844cb51a393c91213d87bbf43ca"
+    },
+    {
+      "path": "Sources/Glowroom/AI/Resources/SkyMaskLicenses/Skyseg-NOTICE.txt",
+      "sha256": "1e68ddf161c4e585ac0faedfea9758d0a33c57c262a44757fd42785d68bbe585"
+    },
+    {
+      "path": "Sources/Glowroom/AI/Resources/SubjectMattingApprovedPackage.json",
+      "sha256": "77c13a699b411424cbe599fabe15f7ba8d27556d552afde0b31635b86536258f"
+    },
+    {
+      "path": "Sources/Glowroom/AI/Resources/SubjectMattingLegacyPackage.json",
+      "sha256": "8c9402f067a84dd4c68f935b0b9d1b3b892d5bc797c5ebdc8de6fa7d19e7ca17"
+    },
+    {
+      "path": "Sources/Glowroom/AI/Resources/THIRD-PARTY-NOTICES.txt",
+      "sha256": "d9a42b11a849361e1618cef0d964d7133869f9e88f1da4371244a7b80aa31f0b"
+    },
+    {
+      "path": "Sources/Glowroom/AI/SemanticEmbeddingProvider.swift",
+      "sha256": "98a92d51f18dc54c0b8a66ef4fcf9acd4c0ab2c78828ba0672ca9f737de5dae9"
+    },
+    {
+      "path": "Sources/Glowroom/AI/SemanticImagePreprocessor.swift",
+      "sha256": "5adbedc2abcaff7535f9ccd264358b3d89235260fdc9279c97056c7162d4e212"
+    },
+    {
+      "path": "Sources/Glowroom/AI/SemanticLocalEmbeddingProvider.swift",
+      "sha256": "a5c14b19ea1052eeba99bda2e21f44a5ee2cce4193f88a01889a634a64c0044c"
+    },
+    {
+      "path": "Sources/Glowroom/AI/SemanticModelInstaller.swift",
+      "sha256": "c9109dd4bd3518c4d21089fd7a07cc0368e87d7816acc63c65cfd1ef66f1bf45"
+    },
+    {
+      "path": "Sources/Glowroom/AI/SemanticSearchService.swift",
+      "sha256": "b17313b08f0583a265b5b23722b7cc51d2a61362490adf0aa750d264bd60a5a7"
+    },
+    {
+      "path": "Sources/Glowroom/AI/SemanticSearchServing.swift",
+      "sha256": "2b432405a4cde19da77bcf66d5bba0c0498f92c8160224ef95109cd024687312"
+    },
+    {
+      "path": "Sources/Glowroom/AI/SemanticTokenizer.swift",
+      "sha256": "36e3cf04a96a30911c5c6f25f141ef30c2a417e9e6e068548aefc9211bc4a76f"
+    },
+    {
+      "path": "Sources/Glowroom/AI/SemanticVectorSearch.swift",
+      "sha256": "379df923e69bea1a66c10e2f0273172a870178670f24999e6a088754ced8a6cd"
+    },
+    {
+      "path": "Sources/Glowroom/ArtifactAppBootstrap.swift",
+      "sha256": "5a805b682129af0149f6ef02daa3b90e16640392e27cccd8a7ae4e4548299308"
+    },
+    {
+      "path": "Sources/Glowroom/ArtifactAppContracts.swift",
+      "sha256": "7babd50033714209d72df20a837953f90db6c1535f67e16cd6fb22f75196df4e"
+    },
+    {
+      "path": "Sources/Glowroom/ArtifactVariantsSection.swift",
+      "sha256": "194f43e4e26594aacd8038a5fe4cd9e958f3f5644a10690b8b9f2e03c8e1cd3d"
+    },
+    {
+      "path": "Sources/Glowroom/CatalogWriter.swift",
+      "sha256": "6c79651c93078d2ce43817bc1e47b72ed315fd48efda286bfd0fb5df5b9a3f3b"
+    },
+    {
+      "path": "Sources/Glowroom/DevelopAutomaticLevels.swift",
+      "sha256": "9379227abe6bb8cf042b9079054cf9790718ef5e5d3a9e2cd75417f0ef941767"
+    },
+    {
+      "path": "Sources/Glowroom/DevelopAutomaticTone.swift",
+      "sha256": "6f77ac3aff003ead4b24cc3c74579cf1d599f8033ce382d56f456bfa388a6f31"
+    },
+    {
+      "path": "Sources/Glowroom/DevelopCanvasTools.swift",
+      "sha256": "0b3222d6aabb6a9a3678b31c9e624b760e86bf2a052ab83eb93575da4120de35"
+    },
+    {
+      "path": "Sources/Glowroom/DevelopCropCanvasPresentation.swift",
+      "sha256": "62a3299210a6803f09fb3984a682aab5b2a149ef4f2fe2cf873ee50da1eb4698"
+    },
+    {
+      "path": "Sources/Glowroom/DevelopCropCursor.swift",
+      "sha256": "667fe1d9b21d8bae9690e45451c0ab69a11688d67f520804f062c4138ba133a6"
+    },
+    {
+      "path": "Sources/Glowroom/DevelopCropDragRouting.swift",
+      "sha256": "07efacda5b2b8750a1c665a7fe8fa42e40a47124fe45f5fbae5fd992962842d5"
+    },
+    {
+      "path": "Sources/Glowroom/DevelopCropInputSurface.swift",
+      "sha256": "03eee32f0821bd44d0d3f2ae0c4b934e43e7e624d766824fcb21063d728d8716"
+    },
+    {
+      "path": "Sources/Glowroom/DevelopCropInspector.swift",
+      "sha256": "e88095d8d917c5a61fa53250a05c9580f21efee77b828554e1df76a58b3f6be6"
+    },
+    {
+      "path": "Sources/Glowroom/DevelopCropInteraction.swift",
+      "sha256": "fbe83d30a834d076be3f35c9ece43b7c937ef1d618551a28bceeac3ca90c91d2"
+    },
+    {
+      "path": "Sources/Glowroom/DevelopDetailImage.swift",
+      "sha256": "1f0a9224aafdb75356b9017119a25874da655a350b0e5cb35f44380f738cf33a"
+    },
+    {
+      "path": "Sources/Glowroom/DevelopDetailPreview.swift",
+      "sha256": "9eed43600d0364f5fb6861f92da6ee67d21e20504e32f8d59b8f8afd8378d629"
+    },
+    {
+      "path": "Sources/Glowroom/DevelopInspector.swift",
+      "sha256": "79ab8207ae936c13a462b3665d5ecbaa12f81902b024d3961df9862cb983bd61"
+    },
+    {
+      "path": "Sources/Glowroom/DevelopLevelsPicking.swift",
+      "sha256": "d7e83a82fc0974029bdc4141d86aaf3ea93d6291f6bb3352ecfb5d9cfb7ad283"
+    },
+    {
+      "path": "Sources/Glowroom/DevelopPhotoHeader.swift",
+      "sha256": "ad3ef5f7acfe1aa681143426101a2ff2ec1c90d8bb63784111c6fde7c79ffca3"
+    },
+    {
+      "path": "Sources/Glowroom/DevelopPhotoNavigator.swift",
+      "sha256": "a73689590d9e6ab81c269c2e68cb735bfe471dc5e46cbbff9c6db0eed110ce49"
+    },
+    {
+      "path": "Sources/Glowroom/DevelopRepairAIModelDownloadStore.swift",
+      "sha256": "bd6b124ac5150be809f5fb34c31f1f375f5c4a95105a38f0f8e3acfa0628e5ab"
+    },
+    {
+      "path": "Sources/Glowroom/DevelopRepairAIModelStore.swift",
+      "sha256": "f11e8ae1215b283cbacb0f5e39bdd7249d64c0327a8546aa5a9b7462004f10bb"
+    },
+    {
+      "path": "Sources/Glowroom/DevelopRepairAIService.swift",
+      "sha256": "a7de48b5077991aecf9ddd76ee80768b8a6c073774188e9b450523d2ed11b39b"
+    },
+    {
+      "path": "Sources/Glowroom/DevelopRepairAnalyzer.swift",
+      "sha256": "611a108542fd85c71d1bdce4191e78ab01c22ac014a022779a6e34d9d1ad3f3b"
+    },
+    {
+      "path": "Sources/Glowroom/DevelopRepairCanvas.swift",
+      "sha256": "6f7015f386f425b1830659735f82e930897df5ec81116659d2a5740b18da7c3b"
+    },
+    {
+      "path": "Sources/Glowroom/DevelopRepairEditing.swift",
+      "sha256": "d733393a0de048bbcdc830245ba1a6c490b29a8bff3aa195617bbff8a95f7e84"
+    },
+    {
+      "path": "Sources/Glowroom/DevelopRepairInputQueue.swift",
+      "sha256": "c59dd3137b8ac241e277adb52dbdbe38f0353ed3418bca51c6468c3c693026bd"
+    },
+    {
+      "path": "Sources/Glowroom/DevelopRepairInspector.swift",
+      "sha256": "8101bbe7157d3222d5718105752772969436db9961496470684a0aa71532d492"
+    },
+    {
+      "path": "Sources/Glowroom/DevelopRepairMaskUnion.swift",
+      "sha256": "10328875c019d49c330de71742824dfb50d09c4094ab18868e0e936bd2c00849"
+    },
+    {
+      "path": "Sources/Glowroom/DevelopRepairSpotVisualizer.swift",
+      "sha256": "c1299e06a0bc5509132cd4f4e82ca696267737f22051a292acb37c1ca7ee2a7f"
+    },
+    {
+      "path": "Sources/Glowroom/DevelopRepairWorkspace.swift",
+      "sha256": "59812af01b56ff6b8e8a534d16a7d6da80e3c08382066cda6f4aeff279f613b7"
+    },
+    {
+      "path": "Sources/Glowroom/DevelopScopes.swift",
+      "sha256": "40665de56db74f24730eaea28877006d4140adbaaccf5f153f86463c6494f961"
+    },
+    {
+      "path": "Sources/Glowroom/DevelopWhiteBalanceCursor.swift",
+      "sha256": "7bc1142589af7c91f1808bceedadcb2586d96079436abbdebeb245c7a3fe609b"
+    },
+    {
+      "path": "Sources/Glowroom/DevelopWorkspace.swift",
+      "sha256": "427384e80f4ed0fad1ace0bd339c8090c228c265d6dd004434714a5d7ed85213"
+    },
+    {
+      "path": "Sources/Glowroom/DeveloperTools/AlgorithmEvaluation.swift",
+      "sha256": "6a7170a834298019dff41a6d37588dbf01439d06d9b1ece408391808cabb8854"
+    },
+    {
+      "path": "Sources/Glowroom/DeveloperTools/AlgorithmEvaluationFixtures.swift",
+      "sha256": "733719980bb561a929ec99a54e97b4cf7f73ab1c2b5a83d692b7b378aa933ac4"
+    },
+    {
+      "path": "Sources/Glowroom/DeveloperTools/AlgorithmEvaluationMetrics.swift",
+      "sha256": "8dee9fc678e2b44e36eaf88c4318aca0002d0ecbb655006a70bfe422371ee693"
+    },
+    {
+      "path": "Sources/Glowroom/DeveloperTools/AlgorithmEvaluationReferences.swift",
+      "sha256": "8189f738745e48567f700120fe4494882caeb2337b9f69f83ea973c12c379ef6"
+    },
+    {
+      "path": "Sources/Glowroom/DeveloperTools/DarktableSharpenEvaluation.swift",
+      "sha256": "25c71e3174d369bcc5160696c6fe23043702631f12bf560441c84f81fc48dad7"
+    },
+    {
+      "path": "Sources/Glowroom/DeveloperTools/DarktableSharpenFixtures.swift",
+      "sha256": "b9a8bb3b3b361f13cb3738b36e01d688590e3b3a2ca96e85610e8ac4678f7e57"
+    },
+    {
+      "path": "Sources/Glowroom/DeveloperTools/DarktableSharpenReference.swift",
+      "sha256": "a18bdcae85f273fcdf2dac66b32ecd10f1ec41bc525289235bf93297f5b9a7e0"
+    },
+    {
+      "path": "Sources/Glowroom/DeveloperTools/EIGFToneComparison.swift",
+      "sha256": "7eef2679c3d3440a06d006ee050e00199f4a5188859f831d56a28a1af17c2acc"
+    },
+    {
+      "path": "Sources/Glowroom/DeveloperTools/EIGFToneEvaluation.swift",
+      "sha256": "2460d8559d84e04e37e58747e64899fd76db402402c21e654701735955f8fc12"
+    },
+    {
+      "path": "Sources/Glowroom/DeveloperTools/EIGFToneReference.swift",
+      "sha256": "4da05502e5a22598e7c479f207c3e17175caa28a2f6d0dc0770a54607698ccdf"
+    },
+    {
+      "path": "Sources/Glowroom/DeveloperTools/EditingBenchmark.swift",
+      "sha256": "8c4e59f948c09723fee645dc4e69fd0cd970f4b2a604968fb78aed448b44cda8"
+    },
+    {
+      "path": "Sources/Glowroom/DeveloperTools/ImageGenerationEvaluation.swift",
+      "sha256": "8a1c5613f4ed92d2728cacb6a891387ae3fad07e53d4f8a6fb71a94c835836d5"
+    },
+    {
+      "path": "Sources/Glowroom/DeveloperTools/ImageGenerationFixtures.swift",
+      "sha256": "99378a6230e85c2d1232967198a7e6c9739b194ed2740d4c0a954c62c51d7cd8"
+    },
+    {
+      "path": "Sources/Glowroom/DeveloperTools/ImageGenerationPreviewProbe.swift",
+      "sha256": "7d56b76537384a3d46ff7544e75f8e97fddd117615b69e76878fec1c621af8b8"
+    },
+    {
+      "path": "Sources/Glowroom/DeveloperTools/ImageGenerationReplay.swift",
+      "sha256": "5ce7fb149cdbf764070534bd3fec3382f23b7f9899592f830af515600d3b02cb"
+    },
+    {
+      "path": "Sources/Glowroom/DeveloperTools/ImagePipelineSmoke.swift",
+      "sha256": "3ea26c7fbcffe365552e149c5146e29c004f6c3805c394c631b7666ed767ea27"
+    },
+    {
+      "path": "Sources/Glowroom/DeveloperTools/LaMaEvaluation.swift",
+      "sha256": "b6be73d300ffb69d473137352c74e4b94f8f008667c23706f3a954e16674d3f3"
+    },
+    {
+      "path": "Sources/Glowroom/DeveloperTools/LaMaEvaluationMapping.swift",
+      "sha256": "869de527a38098de1e42db496729502f0f87b212d1022749af491fdc182521a8"
+    },
+    {
+      "path": "Sources/Glowroom/DeveloperTools/LaMaEvaluationPixels.swift",
+      "sha256": "5b05ffb8e76931a1baefd3997e2153316271c06dbaff107a8ba6c57b18904c06"
+    },
+    {
+      "path": "Sources/Glowroom/DeveloperTools/LibraryBenchmark.swift",
+      "sha256": "2e70e9e63bab54bc8d93ff27e97587193d2dafe6d618aafa7712d4a0c2370ad2"
+    },
+    {
+      "path": "Sources/Glowroom/DeveloperTools/LightcraftColorComparison.swift",
+      "sha256": "0f76b3c7e646e73ea99c67d84a1c675e095ca9e24b2f1ee739b8f223f4a1e811"
+    },
+    {
+      "path": "Sources/Glowroom/DeveloperTools/LightcraftColorEvaluation.swift",
+      "sha256": "136a9e41b3dcbeb744a165744063a5179665fc6142f5196c4f4fc70e09bd43f7"
+    },
+    {
+      "path": "Sources/Glowroom/DeveloperTools/LightcraftColorFixtures.swift",
+      "sha256": "3b90f75d7b7b96f1545e1b361809a9afe45c5346a93d572aed6e2ad512574669"
+    },
+    {
+      "path": "Sources/Glowroom/DeveloperTools/LightcraftColorReference.swift",
+      "sha256": "ee3c48126f84d117ee09d6bd4b60adf5dce4110b075b1062263bf86544fb9bfc"
+    },
+    {
+      "path": "Sources/Glowroom/DeveloperTools/LightcraftDenoiseComparison.swift",
+      "sha256": "17618281ecf18839904e8282a40f7486287cd8fc564c28555e4062e3577e3754"
+    },
+    {
+      "path": "Sources/Glowroom/DeveloperTools/LightcraftDenoiseEvaluation.swift",
+      "sha256": "543132472cdf7d08faf44f5e72a305c5b8d12b0c1780d4494df0792b5dd0806e"
+    },
+    {
+      "path": "Sources/Glowroom/DeveloperTools/LightcraftDenoiseFixtures.swift",
+      "sha256": "e0edd966afad8b7e6705ec9dd6338af8c903e99fca021ce9aa483f8ad8af76cb"
+    },
+    {
+      "path": "Sources/Glowroom/DeveloperTools/LightcraftDenoiseReference.swift",
+      "sha256": "f67f1a9d27ce4e76992e2c6a24f011a211a00772608424867df0b1960d6fbab1"
+    },
+    {
+      "path": "Sources/Glowroom/DeveloperTools/LightcraftDetailComparison.swift",
+      "sha256": "b47a2e10ff7fa06d2d5152641d149025458f97143fb30ea3cbe9f17f135f7f17"
+    },
+    {
+      "path": "Sources/Glowroom/DeveloperTools/LightcraftDetailEvaluation.swift",
+      "sha256": "4b8245462f26ea002da4e79a868493e59f1ce5704ec80916ac7feaa3133d59bd"
+    },
+    {
+      "path": "Sources/Glowroom/DeveloperTools/LightcraftDetailFixtures.swift",
+      "sha256": "766a274ad13f3ffd3a610a823c05935dc4e394d3d90db9b11b56c969e0f1be82"
+    },
+    {
+      "path": "Sources/Glowroom/DeveloperTools/LightcraftDetailReference.swift",
+      "sha256": "84f7eaa7571b61d73ab24a567c9cab2877d89e4d72c68e430a4905fba3f8ccfd"
+    },
+    {
+      "path": "Sources/Glowroom/DeveloperTools/LightcraftToneComparison.swift",
+      "sha256": "1b28adc78f7b47a3163affd5bbcbc57368f5c980c9fc0411c224a570d80343c2"
+    },
+    {
+      "path": "Sources/Glowroom/DeveloperTools/LightcraftToneEvaluation.swift",
+      "sha256": "88b1b58049db2a55adf7f48cad72e090917713532785c69de6af888519071077"
+    },
+    {
+      "path": "Sources/Glowroom/DeveloperTools/LightcraftToneFilters.swift",
+      "sha256": "c9f9eea8c4ff63d0c8283c5c9dbde2d08267acce97ec23da76c8ea503301046e"
+    },
+    {
+      "path": "Sources/Glowroom/DeveloperTools/LightcraftToneReference.swift",
+      "sha256": "95072cda3e60f1c73ac66e53b87d1674beecef6369bfd9648b901cec828d1de8"
+    },
+    {
+      "path": "Sources/Glowroom/DeveloperTools/LocalMaskPerformanceBenchmark.swift",
+      "sha256": "9c0f9b843a9a42ec28ada277444abe253c55f8d25c11e2b988a810f049bbb05c"
+    },
+    {
+      "path": "Sources/Glowroom/DeveloperTools/MaskBenchmark.swift",
+      "sha256": "aac1cf28cdcc88bb40137a4961ece3f9de47294c39ded5587eeff19a3e49e42c"
+    },
+    {
+      "path": "Sources/Glowroom/DeveloperTools/MaskBenchmarkFixtures.swift",
+      "sha256": "6a58ce08a1659fc419b3eeba73d3c7eb90d03e09c8686109623cffacce79ebc6"
+    },
+    {
+      "path": "Sources/Glowroom/DeveloperTools/MultiscaleDenoiseCandidate.swift",
+      "sha256": "496048df9d606a3fa4de438fa7bf0676994906096701af80278dbcd72506403f"
+    },
+    {
+      "path": "Sources/Glowroom/DeveloperTools/MultiscaleDenoiseComparison.swift",
+      "sha256": "50b83779038611b7cd6af7042b1221dd8caeffc3d8d8a6c740521cd8a8db7c19"
+    },
+    {
+      "path": "Sources/Glowroom/DeveloperTools/MultiscaleDenoiseEvaluation.swift",
+      "sha256": "e5d1e74aaf472c4fa160146e6c43b2bba31e1963385c9cca176cd00325a5adb5"
+    },
+    {
+      "path": "Sources/Glowroom/DeveloperTools/NativeProcessCancellation.swift",
+      "sha256": "a2409cdcce6f6de918511ba71652f52cbed91844f0aa3b5cc41d5a986682a7bc"
+    },
+    {
+      "path": "Sources/Glowroom/DeveloperTools/PreviewPerformanceBenchmark.swift",
+      "sha256": "b15eca14c29a83a7a340bf8104a69e320d050eb721a2bd19ab3870dd65c4dbff"
+    },
+    {
+      "path": "Sources/Glowroom/DeveloperTools/SDXLEvaluationRaster.swift",
+      "sha256": "db12ba3b88bfa6b75687639cc518eb51af737478163a39cf8bee9762502a14c3"
+    },
+    {
+      "path": "Sources/Glowroom/EditingBackupActions.swift",
+      "sha256": "1bbaea580ccaf117f68a5274bd613a45d1f3ea24569d5a969fa8cac2797d2e46"
+    },
+    {
+      "path": "Sources/Glowroom/EditingHistoryBudget.swift",
+      "sha256": "6aef240a0a4b3d7dcffeb1265e186505b028377c9156b2fd37447151c878eb15"
+    },
+    {
+      "path": "Sources/Glowroom/EditingModel.swift",
+      "sha256": "11362630111d1ce2d727a5ea1d983986efe01ada65f11f062d332cbefbb71f85"
+    },
+    {
+      "path": "Sources/Glowroom/EditingSourceResolver.swift",
+      "sha256": "410f61fc554b9bf5025520884ebab4f8ea3552fbf8f9e2b59604d03e6e0c62b8"
+    },
+    {
+      "path": "Sources/Glowroom/FolderTreeNode.swift",
+      "sha256": "ec689c85922d82f9b5b012ed93ca38c7cd00b904cc1f097e619ceac52ab1f546"
+    },
+    {
+      "path": "Sources/Glowroom/FolderTreeRow.swift",
+      "sha256": "70717a3e231935fd9fd1a89f903dccbb13f9cfe5a3fcbaa0550abd8b47d131b0"
+    },
+    {
+      "path": "Sources/Glowroom/GlowroomApp.swift",
+      "sha256": "615012a18d6b81589d9d044c792288e6c7b15530e245713067c67f4b83ee8ca2"
+    },
+    {
+      "path": "Sources/Glowroom/Imaging/AdjustedPreviewPipeline.swift",
+      "sha256": "4aed304f3b7e3b54f9fc94a4098ef14f70a67ed5179638982b6f838e85b1be8f"
+    },
+    {
+      "path": "Sources/Glowroom/Imaging/ArtifactBitmapOwnership.swift",
+      "sha256": "95f67a172b56b36cbdfe3441ad36821bb53f411045ad950bf424c9ef94e50f6d"
+    },
+    {
+      "path": "Sources/Glowroom/Imaging/ArtifactPreviewBudget.swift",
+      "sha256": "e1fb015dbc6a0684603f5e5c9e65af8cdf624dd9e30d81a54099353fc8bedaf6"
+    },
+    {
+      "path": "Sources/Glowroom/Imaging/ArtifactPreviewDecoder.swift",
+      "sha256": "452ee1c15965ddefbe94db87e9a2bff952357c581fb208f68b022be9c84d2810"
+    },
+    {
+      "path": "Sources/Glowroom/Imaging/AutoTone.swift",
+      "sha256": "2fd95023a523625a580df47778dfb8741e90ab22a17ad178eea45d1d4ba0f7ab"
+    },
+    {
+      "path": "Sources/Glowroom/Imaging/AutomaticLevelsEstimator.swift",
+      "sha256": "5598ea66604ade025066878c50def38a58a50b8f98b96edb82e68195bd26786e"
+    },
+    {
+      "path": "Sources/Glowroom/Imaging/AutomaticMaskModelSetupView.swift",
+      "sha256": "550af4b1b96ee0fa648df15a42a06f17cd4a61e745c00f08dd47e3b3d7caea04"
+    },
+    {
+      "path": "Sources/Glowroom/Imaging/AutomaticMaskModelStore.swift",
+      "sha256": "5872f8a57b5d2cf6d33f07e7c0380eb26d5a949e623c125a1683ae1daf93d41b"
+    },
+    {
+      "path": "Sources/Glowroom/Imaging/AutomaticMaskRefiner.swift",
+      "sha256": "2b3e24887a90693c040c7403c456b4e4b2997a8efae6ad7370570b90a739b664"
+    },
+    {
+      "path": "Sources/Glowroom/Imaging/AutomaticMaskService.swift",
+      "sha256": "cc1c04652b1b0028852f8200f1d71b4ec7cbfd646e4e42c021d78c4bd0eefd0b"
+    },
+    {
+      "path": "Sources/Glowroom/Imaging/AutomaticToneEstimator.swift",
+      "sha256": "3e541a71061c498666695575f6cb961f2f1bad4f074417f549dc52b912c41313"
+    },
+    {
+      "path": "Sources/Glowroom/Imaging/DevelopColorAdjustments.swift",
+      "sha256": "2eb72497c3895599f6092a12dcaaff09bbeeee8bdec0a3397f26707bbf6be09b"
+    },
+    {
+      "path": "Sources/Glowroom/Imaging/DevelopGeometryPlan.swift",
+      "sha256": "682926ce2804977c035e9b7632132d1f1a4acb8780c337ad977448bd9b529f2f"
+    },
+    {
+      "path": "Sources/Glowroom/Imaging/DevelopGeometryRenderer.swift",
+      "sha256": "fee11ae17a6bd0536161c1f099a8fcdf6f5cd2cb321040f7a01f874cc55f1e3e"
+    },
+    {
+      "path": "Sources/Glowroom/Imaging/DevelopHorizonEstimator.swift",
+      "sha256": "49b0facda136675c7a5cfde5fa0f5ccf23a4b4f0f5ca608c9910dc1ec27e28a0"
+    },
+    {
+      "path": "Sources/Glowroom/Imaging/DevelopPreviewIdentity.swift",
+      "sha256": "d1cc8eb9ff0a68dd7fa533110089f67c705e22eacfee4b83a418c59212ce8efd"
+    },
+    {
+      "path": "Sources/Glowroom/Imaging/DevelopRetouchMaskRenderer.swift",
+      "sha256": "8bf2e83fc7b748eed9578a987b351213343c35bc7650cbee013087d9acdaad5d"
+    },
+    {
+      "path": "Sources/Glowroom/Imaging/DevelopSharpening.swift",
+      "sha256": "600842f1acc0a37f4f79ce9a01bbc97f7054afba39022ca9c654be5e2e675464"
+    },
+    {
+      "path": "Sources/Glowroom/Imaging/EditRenderer.swift",
+      "sha256": "61747e7c9d79da43d46527991432451ed52158fd310bee82306e7ce5cbc4f1e8"
+    },
+    {
+      "path": "Sources/Glowroom/Imaging/EditingPhotoViews.swift",
+      "sha256": "c1fe45bcbff7786b66a5c08ad2e9268fdf066b4eed28ed261c6c80468484f125"
+    },
+    {
+      "path": "Sources/Glowroom/Imaging/EditingProgressIndicator.swift",
+      "sha256": "92aa2f5a1e4af3c7062a1998d3b6a0dda15cf23eece6b4488cfe5f0a1e082e04"
+    },
+    {
+      "path": "Sources/Glowroom/Imaging/FloatAnalysis.swift",
+      "sha256": "1a24405735b2a7ec8a8b73fc95dec81632b464551ee6270a16f0202c5ba50d93"
+    },
+    {
+      "path": "Sources/Glowroom/Imaging/ImagePreviewPipeline.swift",
+      "sha256": "f45bcb7d58dd7daf4d964dd6d47147e0ad1f07b4368dd3c6424e0bcf1fce0732"
+    },
+    {
+      "path": "Sources/Glowroom/Imaging/InlineMaskCalculationStatus.swift",
+      "sha256": "24647b64aa13c0b7667f68be61c4bd611cb101d4f26a72e06c057145779ccac2"
+    },
+    {
+      "path": "Sources/Glowroom/Imaging/InlineMaskCreator.swift",
+      "sha256": "b7e66e9d12b25db63e5791a08bfd6b56b6307beaf434b1bf3fb6e0bfd834182b"
+    },
+    {
+      "path": "Sources/Glowroom/Imaging/InlineMaskViewportOverlays.swift",
+      "sha256": "afb059b6d75a0d4a3c31d14f983a2eb7e8bf6903fca45f4c5f3eae33669bbf18"
+    },
+    {
+      "path": "Sources/Glowroom/Imaging/InlineMaskWorkspace.swift",
+      "sha256": "59251e76da467f9edede5fb5f4dd8755ab83edb520dd2105ed6c016cfb9daed6"
+    },
+    {
+      "path": "Sources/Glowroom/Imaging/InlineObjectMaskModel.swift",
+      "sha256": "cacb9b090bf80938033f55ea65b6c5ceba072a3e0cb069b1fa2a2933af501660"
+    },
+    {
+      "path": "Sources/Glowroom/Imaging/JPEGExportCatalogProtection.swift",
+      "sha256": "74c8b8b5c9d50fd4caa7d5a5374aa2188683e76ef285ddceb2df3dcd616df746"
+    },
+    {
+      "path": "Sources/Glowroom/Imaging/JPEGExporter.swift",
+      "sha256": "80303bd923a79ec69b1a2d201ee8e34ffcde917f730638e3938cff56512ecee2"
+    },
+    {
+      "path": "Sources/Glowroom/Imaging/LevelsRenderer.swift",
+      "sha256": "d0719c928d1f9b697f006233c2fe325c43783b6e2755f207331f69b3d712dd59"
+    },
+    {
+      "path": "Sources/Glowroom/Imaging/LevelsRetouchSampling.swift",
+      "sha256": "242504aa86241f89240c93cf21042b689215c962ebaf3476d3faa744f85ce93d"
+    },
+    {
+      "path": "Sources/Glowroom/Imaging/LevelsSampler.swift",
+      "sha256": "554fcfd41e1c3dbf5a6c5a6828b9d9654dd7ecb05089d2347025b7acc372ffb8"
+    },
+    {
+      "path": "Sources/Glowroom/Imaging/LevelsWorkingPrecision.swift",
+      "sha256": "075f45a04746ecea394e43666d286c68cabd615721e9368ac297f1176d0a02a7"
+    },
+    {
+      "path": "Sources/Glowroom/Imaging/LocalAdjustmentEditorModel.swift",
+      "sha256": "8fb2efe5a372e6a269b4f06cc72bbf9467f93e3ec33852a315c0e5913e999586"
+    },
+    {
+      "path": "Sources/Glowroom/Imaging/LocalAdjustmentMaskEditor.swift",
+      "sha256": "2aa533eb462fad70b18ce0db2f0e5ecbc196ddd5191e7383206c9077ded5a83e"
+    },
+    {
+      "path": "Sources/Glowroom/Imaging/LocalAdjustmentRenderer.swift",
+      "sha256": "908d91e0b89b30aadb4546b341cdadb6b0be963c03b8f9bb86c3f99e7be1ebc5"
+    },
+    {
+      "path": "Sources/Glowroom/Imaging/LocalMaskOverlay.swift",
+      "sha256": "f9bb86dd04d4fe59de621c5c348b30aec5a9805ba19519a42f65c570ab10ab95"
+    },
+    {
+      "path": "Sources/Glowroom/Imaging/MaskCanvasView.swift",
+      "sha256": "70e59f9b1effea29de8b4105286f248ea845357c6bd0a5d3ba6c618c552efcc3"
+    },
+    {
+      "path": "Sources/Glowroom/Imaging/MaskCompositor.swift",
+      "sha256": "9c5320fcd46b878a0c280bb2ea423e8de06d94bb6ab6451e42af965cdfd69c3c"
+    },
+    {
+      "path": "Sources/Glowroom/Imaging/MaskEditingModel.swift",
+      "sha256": "1ba2579ceb655fc1822e0f1ba559848dfa530d2194185becc4b7fea7d6ae9275"
+    },
+    {
+      "path": "Sources/Glowroom/Imaging/NaturalBalance.swift",
+      "sha256": "c3c342e89f660aa8032dd9a35a6ca9cc6b04ab44fcea43e412f299584daf80f9"
+    },
+    {
+      "path": "Sources/Glowroom/Imaging/NaturalBalanceAnalysisCache.swift",
+      "sha256": "0153058dfd73d726ad8006bd11cd4246516a923f9f2529df5d7bac7074123cbd"
+    },
+    {
+      "path": "Sources/Glowroom/Imaging/PairedLevelsClipping.swift",
+      "sha256": "4185254e7f4cd889cd66aec1978ef3331692ee1e79cc8038c7eed83d8616e683"
+    },
+    {
+      "path": "Sources/Glowroom/Imaging/PhotoViews.swift",
+      "sha256": "cb77349173ba996e86fe31ec6d4992ea3e189673df1445c393ad08463442d954"
+    },
+    {
+      "path": "Sources/Glowroom/Imaging/PipelineTrace.swift",
+      "sha256": "ecc2631d0ab6f174cf4b088390917a51ccd37cb32f902b25300c2a1f92cc2b74"
+    },
+    {
+      "path": "Sources/Glowroom/Imaging/PreciseGaussianBlur.swift",
+      "sha256": "af4fc5b5526f99745312dac930cb77c74d862588cc19461a9b69e165c3de36fe"
+    },
+    {
+      "path": "Sources/Glowroom/Imaging/PreviewDecoder.swift",
+      "sha256": "80657ab0e2988e02c4a9920ee6ee5e4a8dd2857569aec7345ba6fc80bc59da9e"
+    },
+    {
+      "path": "Sources/Glowroom/Imaging/PreviewDiskCache.swift",
+      "sha256": "8614a71374cc12a3038a6305c32e850703597f684447d5681ea617d8f9e44ae4"
+    },
+    {
+      "path": "Sources/Glowroom/Imaging/PreviewRangeProvenance.swift",
+      "sha256": "ff80321bc58d7f27cdf5e1fcf1d2406dde21d1479f5b009297d0c5d961beab81"
+    },
+    {
+      "path": "Sources/Glowroom/Imaging/PreviewSourceStamp.swift",
+      "sha256": "f4922b3fe0c70142a7a9187db5f61210dd11c425dd1dac500410bda644a72b53"
+    },
+    {
+      "path": "Sources/Glowroom/Imaging/SkySegModelDownloadStore.swift",
+      "sha256": "f13bffcf7c74515bcaf1baf21b82ac148a4170b93b3d03dfabc0062335a6d366"
+    },
+    {
+      "path": "Sources/Glowroom/Imaging/SkySegModelDownloadView.swift",
+      "sha256": "6e01e39a642d5584bd4f9bc373627aa53229a41fa1a8ed5728c71037be8b6bea"
+    },
+    {
+      "path": "Sources/Glowroom/Imaging/SourceAnalysisIdentity.swift",
+      "sha256": "29a57a935dd83857bdb38ff88d626ca5434bffe302b54e232487f23fc328cae6"
+    },
+    {
+      "path": "Sources/Glowroom/Imaging/SubjectMattingInference.swift",
+      "sha256": "fce8a4c161a39bd4f48b77ae510bf9af7e6687bb2c17d885c46fe0410024ce7b"
+    },
+    {
+      "path": "Sources/Glowroom/Imaging/SubjectMattingModelSetupView.swift",
+      "sha256": "e638b563ee69373790d127866c52d8e53bdb4686307da47d4c20070fdc45e323"
+    },
+    {
+      "path": "Sources/Glowroom/Imaging/SubjectMattingModelStore.swift",
+      "sha256": "fecab93eb65f52f90ecc92dead0a140322d705711293dad21a7a8a8215bb9085"
+    },
+    {
+      "path": "Sources/Glowroom/Imaging/TonePipelineV2.swift",
+      "sha256": "51d86c2ce46d90774dc1b548ddf7d3cc47ab0bf8328443c7789434e6867ea942"
+    },
+    {
+      "path": "Sources/Glowroom/InspectorView.swift",
+      "sha256": "3514a4efdb65413db9eadf12972452eca1a69ccad5d33a664da5ca3bd65a712d"
+    },
+    {
+      "path": "Sources/Glowroom/JPEGExportActions.swift",
+      "sha256": "4c5bce2d0e0d2d3c2ba36a9c21ca70d5162a77314d6f73beef3b84eca7b35c8f"
+    },
+    {
+      "path": "Sources/Glowroom/JPEGExportModel.swift",
+      "sha256": "e8a702a44be1979872dfa69bc01d0a220d82d423080cf4fc4c69b6bec890da22"
+    },
+    {
+      "path": "Sources/Glowroom/JPEGExportView.swift",
+      "sha256": "7cbee7f0970f3a1762f48d0204b7ba5fb1eedb2987cc011331cd441e538d305d"
+    },
+    {
+      "path": "Sources/Glowroom/LevelsInspector.swift",
+      "sha256": "ca5fcbbd3113a9691f54c7576e9c36eb18195ac55da0fddc52d88d919ccdcaef"
+    },
+    {
+      "path": "Sources/Glowroom/LibraryCatalogWorker.swift",
+      "sha256": "26a52342bf2157caf3c982bfe597c0f78c7486b2fa233fd9864d318b17c394c6"
+    },
+    {
+      "path": "Sources/Glowroom/LibraryHeading.swift",
+      "sha256": "22b0765567e35cafed1e4ca32f5eaf1ac4bc0dd2d20f159451ec7d228700d4a4"
+    },
+    {
+      "path": "Sources/Glowroom/LibraryModel.swift",
+      "sha256": "2a72e0375ffef3cf9270398675a8836a824387f23c3392fa451471eacca3cee6"
+    },
+    {
+      "path": "Sources/Glowroom/LibraryProjection.swift",
+      "sha256": "3f1303e7919fcf1a90a27d7020373b78fb107cf03e59fc0508d0d57819ebcc1f"
+    },
+    {
+      "path": "Sources/Glowroom/LibraryView.swift",
+      "sha256": "481c32520f14d4e60201a14830bec362bd480575a865ed28487cf58299e7a6b4"
+    },
+    {
+      "path": "Sources/Glowroom/ManagedFileProtection.swift",
+      "sha256": "87392f2e98f86a932a9d7f7f292fe5e5d82162b5053e5d5e853c92a80129700e"
+    },
+    {
+      "path": "Sources/Glowroom/MetadataCatalogSources.swift",
+      "sha256": "a514d84299094ed93f46d90230dcf1a7c16bf6f59c7489ae5de755201ba6755d"
+    },
+    {
+      "path": "Sources/Glowroom/MetadataTagEditorState.swift",
+      "sha256": "4a59f54eb664f456b25871694d818a232d68d9ed7ba73d56ea674d4d57908a18"
+    },
+    {
+      "path": "Sources/Glowroom/PhotoCanvasNavigation.swift",
+      "sha256": "bca40ddd92005868b59f2869ad43a807dfe4a7711daafcc0f8c365e64c6cc629"
+    },
+    {
+      "path": "Sources/Glowroom/PhotoCanvasViewport.swift",
+      "sha256": "227f57b0e694372d2274b09fb28e0b03bde6b6f0d4c0ad762eeb6ed364562dc2"
+    },
+    {
+      "path": "Sources/Glowroom/PhotoGridView.swift",
+      "sha256": "8386ca8946924c3960a1ec1b2a0d90e84de2ab9b0a225029a5defb0dfacc5b6e"
+    },
+    {
+      "path": "Sources/Glowroom/PhotoMetadataAppContracts.swift",
+      "sha256": "8b32b8a35358509c4174b0fb1bf3f761503b20fcad495553ea10639137640618"
+    },
+    {
+      "path": "Sources/Glowroom/PhotoMetadataCatalogReview.swift",
+      "sha256": "de6a16991e07feb267381944ae077704d7e80c4b7273be6e113c39c14a7485ab"
+    },
+    {
+      "path": "Sources/Glowroom/PhotoMetadataImportExportActions.swift",
+      "sha256": "42803b73a7798f05aa8d7adc6b05f5237c439cf02381bc2e6e3453d277630314"
+    },
+    {
+      "path": "Sources/Glowroom/PhotoMetadataModel.swift",
+      "sha256": "0578d58024ec541f46f650bfd29d6f8f67efb158099686071b2905788b568269"
+    },
+    {
+      "path": "Sources/Glowroom/PhotoMetadataSection.swift",
+      "sha256": "d45496224914fbb698b98e1012a973305172d866c3fb873592efdaa01ba41724"
+    },
+    {
+      "path": "Sources/Glowroom/PreviewComparisonView.swift",
+      "sha256": "38e358a28fd0f483ea33119044ce51192b53698da5fc37045638e5f50916a49b"
+    },
+    {
+      "path": "Sources/Glowroom/ResettableSlider.swift",
+      "sha256": "a74ad9986bdd6f126d0bf01d3f8cb93e8203b897b3135e4cdcdb1fc541be9135"
+    },
+    {
+      "path": "Sources/Glowroom/Resources/BrandMark.png",
+      "sha256": "aefa1890b6929546c72c65149cda746f9607dcb9ebda4c7870665680b0347765"
+    },
+    {
+      "path": "Sources/Glowroom/SemanticSearchControlsView.swift",
+      "sha256": "7432508364f8d8a263ab24157e8043ed281603d2a8520569d87e50f89cef160a"
+    },
+    {
+      "path": "Sources/Glowroom/Theme.swift",
+      "sha256": "163530d128e381929dec789d80362834585834ae28253ed701ed3ee5b072fd0f"
+    },
+    {
+      "path": "Sources/Glowroom/UnavailableArtifactStore.swift",
+      "sha256": "171d1378d9b5e8a488b2c5f36c44aa1232e0d106bfabea8df207f28d9962bdcc"
+    },
+    {
+      "path": "Sources/Glowroom/WorkspaceCanvasMeasurement.swift",
+      "sha256": "e1c5a16005853baee1de6e87d46b6e6e7d3470a97194e183855e39d69fcf4c78"
+    },
+    {
+      "path": "Sources/Glowroom/WorkspaceChrome.swift",
+      "sha256": "a5dcbb52da4ccc3c013b3bcc61ad7316af20a8fd73a38c416832388229ee928f"
+    },
+    {
+      "path": "Sources/Glowroom/WorkspaceEditingHistory.swift",
+      "sha256": "66b1a6031e0a1d3a32b4bee819d4bae12f823198430dc457ab4dc42d18058166"
+    },
+    {
+      "path": "Sources/Glowroom/WorkspaceLayout.swift",
+      "sha256": "cc0e56456f36215b97d0fc6ed39483b613f887be96df06afe1889da886898b72"
+    },
+    {
+      "path": "Sources/Glowroom/WorkspaceMenuTracking.swift",
+      "sha256": "d3cf466d8db55987bd4236253fa0fc6f0a7507d75ff88682e6a76c8011b6a532"
+    },
+    {
+      "path": "Sources/Glowroom/WorkspaceSaveStatus.swift",
+      "sha256": "16157515b6fb9c2502753d5f62bf244352189d3aa0bbe75acef74ac7266ed0f1"
+    },
+    {
+      "path": "Sources/GlowroomCore/AI/AIDevelopmentContracts.swift",
+      "sha256": "41b325f7317a59a59ed4d31eef5cc3286fb659c6d6e96400b713212288a218a8"
+    },
+    {
+      "path": "Sources/GlowroomCore/AI/AIEditingContracts.swift",
+      "sha256": "7b4e2a1a61b83c9774c30354750820fd75eaebb34be5914b610422cab13ff328"
+    },
+    {
+      "path": "Sources/GlowroomCore/AI/AIObjectMaskContracts.swift",
+      "sha256": "e43c0e99c48027d039d719bf38eb70cb7cf50b788811b96aaec1a13fbb9c75fb"
+    },
+    {
+      "path": "Sources/GlowroomCore/AI/EditParameter.swift",
+      "sha256": "bc738af0f123d5b1b9f0fd743a20f449b78cd3fba066113c9117a91154cccac4"
+    },
+    {
+      "path": "Sources/GlowroomCore/AI/ImageAnalysisContracts.swift",
+      "sha256": "b38e659ecc47a93fce6141295c8b4cb5607198aeab6f198df2fa247aa6cb931c"
+    },
+    {
+      "path": "Sources/GlowroomCore/AI/ImageAnalysisSuggestionValidator.swift",
+      "sha256": "a171a87427caaaea874446f3cc14d867984360de57f1b9b8328ed6caddab8f08"
+    },
+    {
+      "path": "Sources/GlowroomCore/AI/ImageGenerationContracts.swift",
+      "sha256": "4907bcbaefdf23b134b6f1ba2f8d540f653b49a355062105ff1b5abe27c86e47"
+    },
+    {
+      "path": "Sources/GlowroomCore/AI/SemanticIndexStore.swift",
+      "sha256": "810d8b6d98de7f707f3b067120dd0efc79011fa29bda306536c6e12f7a15d1d2"
+    },
+    {
+      "path": "Sources/GlowroomCore/AI/SemanticSearchContracts.swift",
+      "sha256": "474d263a081ac25c3cc90047ad481c03a5679e3828ff4abb77c89d069b428db8"
+    },
+    {
+      "path": "Sources/GlowroomCore/ArtifactFileIO.swift",
+      "sha256": "f31add6c96ce9fe8e3cd91afeb31fb9f8605c6a0866c4950d3c9c42107084cf2"
+    },
+    {
+      "path": "Sources/GlowroomCore/ArtifactPNGCodec.swift",
+      "sha256": "2b97fc03c8f811d338a6c5bf0f8ec6b2330c2a93f96e408bbbfd9e0dd6b51df6"
+    },
+    {
+      "path": "Sources/GlowroomCore/ArtifactResourceOwner.swift",
+      "sha256": "e7af4061463d1c63b7fcc3bfa0902780f161a3c9942e8f8d3856df60985cb12e"
+    },
+    {
+      "path": "Sources/GlowroomCore/AssetRemapVerifier.swift",
+      "sha256": "90766f2210e169bcc3b205cd0445f0d8d8eb64ddb4cdadc9e4c099e48f6f9650"
+    },
+    {
+      "path": "Sources/GlowroomCore/AutomaticLevelsHistogram.swift",
+      "sha256": "1035fee62f0d8780bfab89300bdc804a01ef5d37c387718f3761f1b0969116b0"
+    },
+    {
+      "path": "Sources/GlowroomCore/AutomaticLevelsPolicy.swift",
+      "sha256": "74c03e0f37606c3eba209da7d3f0018ab10c219d3d1fa00bb25ea913db67f031"
+    },
+    {
+      "path": "Sources/GlowroomCore/AutomaticLevelsProposal.swift",
+      "sha256": "1d7888c9f6f2251902ce52327ee8c750f9413802ddf56f4aaf803a7ac241b0f3"
+    },
+    {
+      "path": "Sources/GlowroomCore/AutomaticLevelsReference.swift",
+      "sha256": "f3a8e2c3540116eb37cccfb7d6d47470cc8ee7637ee883e56863ebf9eacf8963"
+    },
+    {
+      "path": "Sources/GlowroomCore/CanvasGeometry.swift",
+      "sha256": "5dd6a548716276abb7d9a88fa351a5806671e09fb124c476fd41def3ff025f5b"
+    },
+    {
+      "path": "Sources/GlowroomCore/CatalogBackupProtection.swift",
+      "sha256": "f4aebebe490ec1eeec026c91a1a31af9edb99f9005484698ced6a0510c930eac"
+    },
+    {
+      "path": "Sources/GlowroomCore/CatalogCoordinationFileIO.swift",
+      "sha256": "8a0869a95ebbbf99121198ceca329f7ce47f4bad5228ae7c57eb25f1e47c5ee1"
+    },
+    {
+      "path": "Sources/GlowroomCore/CatalogEditingRecoveryPermit.swift",
+      "sha256": "b46947a9a596902b1fdd83a1b9ba2a6b21f67c54e62e4d69901e537f3be20fff"
+    },
+    {
+      "path": "Sources/GlowroomCore/CatalogFileIO.swift",
+      "sha256": "24e128b28dbaf037fa6b9ad761e8274d7076520f0d0b70844edbda524910a762"
+    },
+    {
+      "path": "Sources/GlowroomCore/CatalogLifecycleGate.swift",
+      "sha256": "9ef954e226dacf5c5c8828b83c864891cecb8adbb048daf67896287caf0dd254"
+    },
+    {
+      "path": "Sources/GlowroomCore/CatalogManagedStoragePaths.swift",
+      "sha256": "ca93dd06bd43799d4bf8623d6f4578d26a20ba1aaaa92412efec2e99546c44b1"
+    },
+    {
+      "path": "Sources/GlowroomCore/CatalogRepository.swift",
+      "sha256": "0fee428de8e85cb793643b3a5f2f05d37affcccd4f28c0add0c61b983a6dc4fd"
+    },
+    {
+      "path": "Sources/GlowroomCore/DevelopColorSettings.swift",
+      "sha256": "c75ff760ee3c21edecce8b20d6ea2798f38a21871f8171f77901bef9b02e0e16"
+    },
+    {
+      "path": "Sources/GlowroomCore/DevelopGeometry.swift",
+      "sha256": "8ebe3bb2217ef742eac0cc998d6df772f1dd09e55d872c52f375e782af4f8e3c"
+    },
+    {
+      "path": "Sources/GlowroomCore/EditDatabase.swift",
+      "sha256": "e4ccfc0a8dd758404661857ccd9c8716e3e98996302dabef4716ae55e2f200e7"
+    },
+    {
+      "path": "Sources/GlowroomCore/EditSettings.swift",
+      "sha256": "3923b6d0f9f0b2480a690dd8eb06b0294f024fcd6c883b9e4aaaaac13b7578c9"
+    },
+    {
+      "path": "Sources/GlowroomCore/EditingArtifactCoordination.swift",
+      "sha256": "ad5c8b170b638e736e6814641f63f629a61f060f5c1208aeaae1b9430c3a8397"
+    },
+    {
+      "path": "Sources/GlowroomCore/EditingArtifactOwnership.swift",
+      "sha256": "3a537b6ade175c98deaae8708deac1b126be153ae7baf22d084fd74d203383cb"
+    },
+    {
+      "path": "Sources/GlowroomCore/EditingArtifactValidation.swift",
+      "sha256": "905ec58857d453a7c82485b0bb89d8d6ef5d62335db88923f56569291294bc63"
+    },
+    {
+      "path": "Sources/GlowroomCore/EditingArtifactValues.swift",
+      "sha256": "ba259d01764b64ba28511d565a1ac1a3223afa270f80ced58953a85faa957144"
+    },
+    {
+      "path": "Sources/GlowroomCore/EditingBackupPackageStore.swift",
+      "sha256": "2f9b2f95673279ea8b8dd996c02fdca2d058da5b20e9fb8d2364c502dae2a5b2"
+    },
+    {
+      "path": "Sources/GlowroomCore/EditingClosedSQLValidator.swift",
+      "sha256": "9e6310b729a64f516992d2d46c28d404db4d918864432313a4248746281a2870"
+    },
+    {
+      "path": "Sources/GlowroomCore/EditingDatabaseAccess.swift",
+      "sha256": "6de45da9e9553129061e67f382538334a3346c3f18d8a83ea17f5335a0f388c0"
+    },
+    {
+      "path": "Sources/GlowroomCore/EditingLegacyWALMigration.swift",
+      "sha256": "43bdf7af783bc8b5780a991ac1c237596b4a0cc56dfe42665e4279631bf920a5"
+    },
+    {
+      "path": "Sources/GlowroomCore/EditingPrivateSQLiteStage.swift",
+      "sha256": "0f88077115bf98cb87480e5953394f511c8d989c02aefbc4950a4b0d99991447"
+    },
+    {
+      "path": "Sources/GlowroomCore/EditingRecoveryArchive.swift",
+      "sha256": "00038d4c3d28db67d5ed53e337255d09fa604073bd90f61bc00b3e91bd651803"
+    },
+    {
+      "path": "Sources/GlowroomCore/EditingRecoveryIntent.swift",
+      "sha256": "904cc73363ea618ec789706bd00964e70d1473583efff4d488b3221e085ddb2c"
+    },
+    {
+      "path": "Sources/GlowroomCore/EditingRepository.swift",
+      "sha256": "94a52e11b29bbcc44195fd617b9449e0f1bc3bc82e742947720ff44e3ac7e769"
+    },
+    {
+      "path": "Sources/GlowroomCore/EditingRepositoryArtifactRecovery.swift",
+      "sha256": "885106d4d3c3ee7f95169d29c9339a4c99bb26b567789f95f15ebc80ee33bd62"
+    },
+    {
+      "path": "Sources/GlowroomCore/EditingRepositoryBackup.swift",
+      "sha256": "0e4a307b6a1219884efe89abe0b48ae92e7f4b696388b27b325a0b558cf15c3a"
+    },
+    {
+      "path": "Sources/GlowroomCore/EditingRepositoryCatalog.swift",
+      "sha256": "b678a4d66e460fe667e6f214289c4fbd18fc148089ece843dc719747ea64a1ec"
+    },
+    {
+      "path": "Sources/GlowroomCore/EditingRepositoryDamagedRecovery.swift",
+      "sha256": "ef1e4d8e09c83ebfb806e84b03068d2ab207791a35a087852f97ccea1738505e"
+    },
+    {
+      "path": "Sources/GlowroomCore/EditingRepositoryRemap.swift",
+      "sha256": "a7100c019919db689c14ee72f9f40d7e50167d478b75ecd6afde2527d75d94c4"
+    },
+    {
+      "path": "Sources/GlowroomCore/EditingSQLite.swift",
+      "sha256": "a329768bf21cde56e6a5d860e41c29e69c7d1a600d907f7a7a4620199038c934"
+    },
+    {
+      "path": "Sources/GlowroomCore/FilePathComparison.swift",
+      "sha256": "42ea9214b1a615f91f2e2c69bf5189d04fa37544d9c15ddafc829f8ec8fbb10c"
+    },
+    {
+      "path": "Sources/GlowroomCore/FolderScanner.swift",
+      "sha256": "5738e090e9e245464cb1c065861fbe77037db209b604777498a9fa3d2682217a"
+    },
+    {
+      "path": "Sources/GlowroomCore/GeneratedArtifactStore.swift",
+      "sha256": "c8a8a799b4d829b76173b6ceb6c00b29c998336240395d63d2bc580a0ec66b02"
+    },
+    {
+      "path": "Sources/GlowroomCore/GenerationMaskPayload.swift",
+      "sha256": "687b321d6aafbf7c43a42ef4574f4f54849bb1f0c04ef0f16d37a998aba561c7"
+    },
+    {
+      "path": "Sources/GlowroomCore/JPEGExportOptions.swift",
+      "sha256": "3ac799c11e8bed30b56155599c71b1c6bb10ca44710b2578b92f1bf1cdb19f56"
+    },
+    {
+      "path": "Sources/GlowroomCore/JointCatalogCoordinator.swift",
+      "sha256": "8f655e7ddcd4795969354f8ac74c2eca63524e54704553155cb876950c942a81"
+    },
+    {
+      "path": "Sources/GlowroomCore/LevelsPickerProposal.swift",
+      "sha256": "142053cfe889654ddbb5f1e3cab83a78011ebd712efb5c7fb80505b58483c75f"
+    },
+    {
+      "path": "Sources/GlowroomCore/LevelsPickerSample.swift",
+      "sha256": "711dd053c349b0e1ffc9d8a00165d0558ec643c23424c049adadf6a480ed4d48"
+    },
+    {
+      "path": "Sources/GlowroomCore/LevelsSettings.swift",
+      "sha256": "190dbf9a211ef2f4fc52a294c26d432e8d12609f3e696ed045cd4471a346bcb7"
+    },
+    {
+      "path": "Sources/GlowroomCore/LibraryModels.swift",
+      "sha256": "05eb055d0d4c111533895f7333bb77ac28ff28acb6d352dc914b1d6d559b897a"
+    },
+    {
+      "path": "Sources/GlowroomCore/LocalAdjustment.swift",
+      "sha256": "eab90cf626e065effb7973ecf8787fe71df886a91aa478fb51878f74dc14af9e"
+    },
+    {
+      "path": "Sources/GlowroomCore/MaskDocument.swift",
+      "sha256": "c8d2eb445d03811f0b64d8249de977653b30e4696841c9d3afe790e5994e16f6"
+    },
+    {
+      "path": "Sources/GlowroomCore/MaskRasterizationCache.swift",
+      "sha256": "7f58d1180f99b6581521673e9abe16342ea6649fdc21a4fb62cdaa4e4e196bb4"
+    },
+    {
+      "path": "Sources/GlowroomCore/MaskRasterizer.swift",
+      "sha256": "120fbca854eac85ecaa6a552c935ec8ae5e43ef2b8cadf007faf1328222a7b8b"
+    },
+    {
+      "path": "Sources/GlowroomCore/MetadataCatalogSourceReader.swift",
+      "sha256": "dc498dd25788dffa102db9504dee1274a676d13726d9a0b26492cecc779d6612"
+    },
+    {
+      "path": "Sources/GlowroomCore/PhotoMetadataFiles.swift",
+      "sha256": "f1ecf4be470201b8ba6ec523e6e61585a639c867d6d67e00f9f65fe16801ee61"
+    },
+    {
+      "path": "Sources/GlowroomCore/PhotoMetadataJSON.swift",
+      "sha256": "2733c60b37cd18087debc313b5e6cb3fdabfdd2a142938f4066437a145613038"
+    },
+    {
+      "path": "Sources/GlowroomCore/PhotoMetadataRepository.swift",
+      "sha256": "0d6a322bdd8e8cf4ba70e0720f31c635e3ecfd9bb8a4b2add1b5ed06cba56754"
+    },
+    {
+      "path": "Sources/GlowroomCore/PhotoMetadataRepositoryAccess.swift",
+      "sha256": "427ece6d09d5c2e2c6c658aeab2d4c426cac4567fe8cc53fbf65962a04156c41"
+    },
+    {
+      "path": "Sources/GlowroomCore/PhotoMetadataRepositoryCatalog.swift",
+      "sha256": "2c3c863515e2287a76c50ce9bdc0630565618606e9d3e96964286aacfb725f19"
+    },
+    {
+      "path": "Sources/GlowroomCore/PhotoMetadataRepositoryCoordination.swift",
+      "sha256": "c587873586871a5f528dbd40af313eab579840d2bbda40ecbd568e056de1ea16"
+    },
+    {
+      "path": "Sources/GlowroomCore/PhotoMetadataRepositoryJSON.swift",
+      "sha256": "3670a93a39e19b065e5fb0536c72dd2204c58924414019773c4bfbc9348a9687"
+    },
+    {
+      "path": "Sources/GlowroomCore/PhotoMetadataSQLite.swift",
+      "sha256": "864d236c80f73a0e4a33911bd9d2599d4924a67660142a495b7820dabc98bada"
+    },
+    {
+      "path": "Sources/GlowroomCore/PhotoMetadataValidation.swift",
+      "sha256": "75937dcff9041c57eada63c93fcb975a42c8200b57da520497bcc01aff6c1a78"
+    },
+    {
+      "path": "Sources/GlowroomCore/PhotoTextMetadata.swift",
+      "sha256": "a4b3e146ee244d85b2ab1dc9aedbe8cce9a97cfbf6b34ba93d8f167f78de4156"
+    },
+    {
+      "path": "Sources/GlowroomCore/ToneProcessingVersion.swift",
+      "sha256": "e3fabcc0c8571ee511c1647009a331500a0d5da42d961dec4c7f0a7c1a56cc25"
+    },
+    {
+      "path": "Tests/GlowroomTests/AIDevelopmentMaskInputTests.swift",
+      "sha256": "30e5398aeea35aa4d933b7307383b6a764e526114fb1dc765271890978c024c7"
+    },
+    {
+      "path": "Tests/GlowroomTests/AIObjectMaskServiceTests.swift",
+      "sha256": "ad07292fbbf56bb2751b21c1121a9fb954f08295d7eb108fab5e29ca70b4d619"
+    },
+    {
+      "path": "Tests/GlowroomTests/CompactMaskLayoutTests.swift",
+      "sha256": "fac0ba8911ddff77a1d74f6d6a8c994473db637053ef3a76078b312f19b75309"
+    },
+    {
+      "path": "Tests/GlowroomTests/InlineMaskCanvasInputTests.swift",
+      "sha256": "19971b840e348e3c2451ba6eb792dc4d5aa03885888ea56cc0d65c627fe3af1a"
+    },
+    {
+      "path": "Tests/GlowroomTests/InlineMaskWorkspaceTests.swift",
+      "sha256": "35fb8043ba7b894729afcff214ffa63715f43c623eaac00ff4c416d3ea631fcb"
+    },
+    {
+      "path": "Tests/GlowroomTests/InlineObjectMaskWorkspaceTests.swift",
+      "sha256": "956b3bd11dc77ded74a2d8452ad52455aaaf0f4d45427dc4cf3f0a736ccdea1c"
+    },
+    {
+      "path": "Tests/GlowroomTests/UnifiedObjectMaskAcceptanceTests.swift",
+      "sha256": "da648d27a516be8186e232b8f5aeed1ccc1a6492448d69f2ea010ee23da84f9a"
+    }
+  ]
+}

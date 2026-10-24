@@ -1,12 +1,18 @@
-# Automatische Motiv- und Himmelsmasken
+# Automatische Motiv-, Objekt- und Himmelsmasken
 
 ## Bedienung und Datenschutz
 
+Alle Masken entstehen unter **Entwickeln → Maskieren**. Der gemeinsame Ersteller
+enthält **Motiv**, **Himmel**, **Hintergrund**, **Objekt beschreiben**, **Pinsel**,
+**Linearer Verlauf** und **Radialverlauf**. Die nicht implementierte Landschafts-
+und Personenauswahl wird nicht angeboten. Die [Maskenbearbeitung](MASK-EDITING.md)
+beschreibt Überlagerung, Maskenliste, Pinselverfeinerung und lokale Korrekturen.
+
 **Motiv** und **Hintergrund** verwenden ausschließlich das lokal ausgeführte **BiRefNet HR Matting**. Das fest freigegebene Modell berechnet eine abgestufte Vordergrunddeckung für feine Strukturen und Übergänge; eine fehlerfreie Auswahl wird nicht zugesichert. Fehlendes, veraltetes oder beschädigtes BiRefNet führt zu einem verständlichen Hinweis. Es gibt keinen Ersatzweg über Apple Vision. Pinsel und Verläufe bleiben verfügbar.
 
-**BiRefNet einrichten …** ist in der Maskenauswahl und im Menü **…** der Maskenliste erreichbar. Bei einer frischen Installation wird einmalig das für Glowroom vorbereitete 1920-`.mlpackage` gewählt. Andere Pakete werden anhand exakter Dateigrößen und Hashes zurückgewiesen. Ein eingerichtetes, geprüftes BiRefNet zeigt nur seinen Bereitschaftsstatus; die Oberfläche bietet weder Modellaustausch noch Entfernen an. Bei einem früheren 2048-Modell ist ausschließlich die Aktualisierung auf das freigegebene BiRefNet möglich. Eine beschädigte Installation kann mit demselben freigegebenen Paket repariert werden. Die bisherige Installation bleibt bei einem fehlgeschlagenen oder abgebrochenen Import erhalten; erst ein erfolgreich geprüftes Paket ersetzt sie atomar. Der Import benötigt vorübergehend mindestens 3 GiB freien Speicher und verändert keine gespeicherten Masken. Die App enthält weder Modellgewichte noch einen Python-Interpreter und führt keinen automatischen Modelldownload aus. Das [Entwicklerwerkzeug](../tools/subject-matting/README.md) bereitet den festgelegten öffentlichen Checkpoint lokal für Core ML vor. Die Himmelsmaskierung behält ihre separate Einrichtung.
+**Motivmodell einrichten …** ist in der Maskenauswahl und im Menü **…** der Maskenliste erreichbar. Bei einer frischen Installation wird einmalig das für Glowroom vorbereitete 1920-`.mlpackage` gewählt. Andere Pakete werden anhand exakter Dateigrößen und Hashes zurückgewiesen. Ein eingerichtetes, geprüftes BiRefNet zeigt nur seinen Bereitschaftsstatus; die Oberfläche bietet weder Modellaustausch noch Entfernen an. Bei einem früheren 2048-Modell ist ausschließlich die Aktualisierung auf das freigegebene BiRefNet möglich. Eine beschädigte Installation kann mit demselben freigegebenen Paket repariert werden. Die bisherige Installation bleibt bei einem fehlgeschlagenen oder abgebrochenen Import erhalten; erst ein erfolgreich geprüftes Paket ersetzt sie atomar. Der Import benötigt vorübergehend mindestens 3 GiB freien Speicher und verändert keine gespeicherten Masken. Die App enthält weder Modellgewichte noch einen Python-Interpreter und führt keinen automatischen Modelldownload aus. Das [Entwicklerwerkzeug](../tools/subject-matting/README.md) bereitet den festgelegten öffentlichen Checkpoint lokal für Core ML vor. Die Himmelsmaskierung behält ihre separate Einrichtung.
 
-Während **Motiv**, **Hintergrund** oder **Himmel** berechnet werden, erscheint eine kleine Statusanzeige an der Bildfläche: **Maske wird berechnet …** mit Aktivitätsanzeige und **Abbrechen**. Sie verschiebt oder verdunkelt das Foto nicht und verschwindet nach Abschluss, Fehler, Abbruch oder Bildwechsel. Bei reduzierter Bewegung erscheint ein ruhiges Symbol anstelle des laufenden Spinners. Abbrechen verwirft den Auswahlauftrag sofort; eine bereits laufende native Berechnung kann technisch bis zu ihrer Rückkehr nachlaufen. Ihre veralteten Ergebnisse werden nicht übernommen.
+Während eine Auswahl berechnet wird, erscheint **Bild wird bearbeitet …** mit **Abbrechen** mittig über dem Foto. Der Status verschiebt oder verdunkelt das Foto nicht und verschwindet nach Abschluss, Fehler, Abbruch oder Bildwechsel. Abbrechen verwirft den noch nicht angenommenen Auftrag; eine bereits laufende native Berechnung kann bis zu ihrer tatsächlichen Rückkehr nachlaufen. Veraltete Ergebnisse werden nicht übernommen.
 
 **Himmel** verwendet nach einer einmaligen Einrichtung ein lokales Segmentierungsmodell auf der bereits geladenen, orientierten Bildvorschau. Über **Himmelsmodell einrichten …** und **Modell laden und einrichten** wird das Modell ausdrücklich heruntergeladen. Der Download umfasst 85.468.610 Bytes, angezeigt als etwa 86 MB. Die Einrichtung benötigt vorübergehend mindestens 768 MB freien Speicher. Das Modell kann im selben Dialog entfernt werden.
 
@@ -19,6 +25,55 @@ Das Ergebnis wird als unveränderliche Gray8-Auswahl mit höchstens 2048 Pixeln 
 Neue Masken für **Motiv**, **Hintergrund** und **Himmel** beginnen mit **Weiche Kante = 0**. Ihre bereits abgestuften Auswahlkanten erhalten dadurch keine zusätzliche breite Weichzeichnung. Himmelsränder werden einmalig anhand der RGB-Bildkanten verfeinert. BiRefNet berechnet die Deckung selbst; dessen gelernte Übergänge erhalten weder einen zusätzlichen Guided Filter noch eine Erosion oder harte Schwelle. **Hintergrund** ist immer die umgekehrte Motivauswahl. Wer einen weicheren Übergang möchte, kann **Weiche Kante** weiterhin erhöhen. Pinsel, lineare und radiale Verläufe behalten ihre bisherigen Vorgaben und ihre Weichheit.
 
 Bereits gespeicherte Masken werden weder neu erkannt noch umgeschrieben. Für die höhere Auswahlauflösung und Kantennachführung eine neue automatische Maske erstellen. Bei einer bestehenden Maske entfernt **Weiche Kante = 0** nur die zusätzliche Weichzeichnung; fehlende Details des alten gespeicherten Rasters entstehen dadurch nicht nachträglich.
+
+## Objekt beschreiben
+
+Im gemeinsamen Ersteller **Objekt beschreiben** wählen, den Auftrag eingeben und
+**Objekt auswählen** auslösen. Das lokale KI-Modell lokalisiert das Objekt;
+das vorhandene Motivmodell berechnet dessen tatsächliche Auswahl im gefundenen
+Ausschnitt. Es wird keine neue Segmentierungsfunktion und keine gefüllte
+Rechteckmaske verwendet. Das Ergebnis erscheint als rote Überlagerung am Foto.
+**Übernehmen** fügt genau eine benannte Maske mit neutralen lokalen Reglern hinzu
+und wählt sie aus. **Verwerfen** lässt vorhandene Masken unverändert. Umkehren,
+Stärke, weiche Kante, Pinsel/Radierer und lokale Korrekturen stehen danach für
+dieselbe Maske bereit. Eine KI-Korrektur auf dieser vorhandenen Maske wird über
+[KI-Korrektur → Zielbereich](AI-DEVELOPMENT.md) angefordert.
+
+Fehlende Installationen führen direkt zu **KI-Modell einrichten …** oder
+**Motivmodell einrichten …**. Die Einrichtungen bleiben getrennt und starten
+keine Fotoanalyse. Die Modellinformationen stehen in der ausdrücklich geöffneten
+Hilfe beziehungsweise den Einrichtungsansichten. Nicht erkannte Objekte,
+fehlende Modelle, leere Auswahlen oder ungültige Antworten erzeugen keine
+Ersatzmaske. Überlagerte Objekte und feine Zwischenräume können trotz gültigem
+Ergebnis Pinselkorrekturen erfordern.
+
+Der vorhandene Qwen-/BiRefNet-Pfad bereitet die entwickelte vollständige
+Bildbasis ohne Beschnitt, Drehung oder Spiegelung vor. Der lokale Qwen-Auftrag
+liefert Name und Objektregion; BiRefNet segmentiert den Ausschnitt mit einem
+kleinen Rand von 5 % je Boxdimension. Die abgestufte Gray8-Auswahl wird in die
+vollständigen Quellkoordinaten zurückprojiziert und mit höchstens 1024 Pixeln
+langer Kante eingefroren. Die Bildfläche verwendet daraus dieselbe Auswahl
+unter dem aktuellen Zoom und derselben Geometrie wie nach der Übernahme.
+Modellupdates verändern angenommene Masken nicht.
+
+Quellenidentität, ausgewähltes Foto und Bearbeitungsgeneration binden den
+Vorschlag. Abbruch, Foto-/Quellenwechsel, Werkzeugwechsel und zwischenzeitliche
+Bearbeitungen einschließlich Undo/Redo verwerfen unbestätigte Ergebnisse. Vor
+Übernahme wird die native Quelle erneut im Hintergrund geprüft. Eine extern
+veränderte Quelle bietet **Foto neu laden** beziehungsweise **Ordner aktualisieren**
+als nächste Aktion. Die Annahme
+verwendet die vorhandene Maskenhistorie und bildet genau einen Undo-/Redo-Schritt.
+16 Masken pro Foto, 16 MiB automatische Raster und 32 MiB Einstellungssnapshot
+bleiben verbindlich; eine abgelehnte Annahme erhält den vorherigen Stand.
+
+Qwen und BiRefNet laufen abhängig voneinander nacheinander in der gemeinsamen
+Inferenzzulassung. Eine zweite Modellinferenz wird nicht zugleich gestartet;
+dies vermeidet Überbelegung und erhält die bestehende Speicherzulassung.
+BiRefNet nutzt den bestehenden CPU/GPU-Pfad und denselben Graphen als
+CPU-Fallback. Die kleine Rückprojektion läuft begrenzt im Hintergrund; UI,
+Dateivorbereitung und unabhängige Arbeit können parallel fortschreiten.
+Reglerbewegungen und gespeicherte Masken benötigen keine neue Modellinferenz.
+Es werden keine neuen Leistungs- oder Genauigkeitsgewinne behauptet.
 
 ## Modellquelle und Lizenz
 

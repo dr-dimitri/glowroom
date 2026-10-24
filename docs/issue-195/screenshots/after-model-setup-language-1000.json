@@ -1,0 +1,15 @@
+{
+  "capture": "real sheet route asserted, identical production view in standalone native host with explicit system window background and dark color scheme",
+  "heightPoints": 343,
+  "macOS": "Version 27.0.1 (Build 26A434)",
+  "modelService": "real setup dialog, no download started",
+  "nativeView": "LLMModelManagerView",
+  "requiredModel": "language",
+  "screenshotSHA256": "11303848ddd4a4b0ad0a9751c3fa6a1cb18f2de9c8540dc89891fa404e3eaa61",
+  "sourceCommit": "working tree based on 433ead6e0381e48b6256c32aa893686846592f83",
+  "state": "targeted model setup",
+  "widthPoints": 540,
+  "pixelWidth": 1080,
+  "pixelHeight": 686,
+  "scale": 2.0
+}

@@ -1,0 +1,15 @@
+{
+  "fixture": "synthetic 768x512 blue field with red ellipse",
+  "macOS": "Version 27.0.1 (Build 26A434)",
+  "modelService": "no inference",
+  "sourceCommit": "433ead6e0381e48b6256c32aa893686846592f83",
+  "sourceSHA256": "fcd4cea33e295e6efe6ad533d3b1261a3737acea4bea44e4197628fe0d39c5ec",
+  "state": "Mask creator plus separate AI new-mask entry",
+  "windowHeightPoints": 900,
+  "windowWidthPoints": 1440,
+  "zoom": "fitted, unchanged",
+  "pixelWidth": 2880,
+  "pixelHeight": 1800,
+  "scale": 2.0,
+  "screenshotSHA256": "d1a803318df9a0b014b034fc0087057fa27660c3cce0c6e44c657acdfaae69ea"
+}

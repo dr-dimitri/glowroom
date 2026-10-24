@@ -1,0 +1,15 @@
+{
+  "capture": "real sheet route asserted, identical production view in standalone native host with explicit system window background and dark color scheme",
+  "heightPoints": 141,
+  "macOS": "Version 27.0.1 (Build 26A434)",
+  "modelService": "real setup dialog, no download started",
+  "nativeView": "SubjectMattingModelSetupView",
+  "requiredModel": "subject",
+  "screenshotSHA256": "b7ec373c5ee5057324430b445eaf23157878962efd15ae9b56eb474c690c384b",
+  "sourceCommit": "working tree based on 433ead6e0381e48b6256c32aa893686846592f83",
+  "state": "targeted model setup",
+  "widthPoints": 560,
+  "pixelWidth": 1120,
+  "pixelHeight": 282,
+  "scale": 2.0
+}

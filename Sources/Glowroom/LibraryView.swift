@@ -251,7 +251,7 @@ struct LibraryView: View {
         developWorkspace.tool = .masks
         if !maskWorkspace.isPresented {
             _ = maskWorkspace.open(asset: asset, source: source.identity, settings: source.settings,
-                                   editor: editor, library: model, model: localMaskModel)
+                                   editor: editor, library: model, model: localMaskModel, developWorkspace: developWorkspace)
         }
     }
 

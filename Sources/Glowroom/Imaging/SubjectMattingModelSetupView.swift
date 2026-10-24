@@ -65,46 +65,51 @@ struct SubjectMattingModelSetupView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var state = SubjectMattingModelSetupState()
     @ViewState private var importsModel = false
+    @ViewState private var showsHelp = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("BiRefNet · Motiv und Hintergrund").font(.title2.bold())
-            Text("Glowroom verwendet für Motiv- und Hintergrundmasken ausschließlich BiRefNet HR Matting. Es berücksichtigt feine Strukturen und weiche Übergänge. Deine Fotos bleiben auf dem Gerät.")
-            Link("BiRefNet HR Matting · MIT-Lizenz", destination: URL(string: "https://huggingface.co/ZhengPeng7/BiRefNet_HR-matting")!)
-            Text("Vorhandene Masken bleiben erhalten. Erstelle eine neue Motiv- oder Hintergrundmaske, um BiRefNet zu verwenden. Die Himmelsmaskierung wird separat eingerichtet.")
-                .font(.callout).foregroundStyle(.secondary)
+            Text("Motivmodell einrichten").font(.title2.bold())
             if state.isChecking {
-                ProgressView("BiRefNet wird geprüft …")
+                ProgressView("Motivmodell wird geprüft …")
             } else if state.requiresUpdate {
-                Label("2048-Pixel-Modell vorhanden · Aktualisierung erforderlich", systemImage: "arrow.triangle.2.circlepath")
+                Label("Motivmodell aktualisieren", systemImage: "arrow.triangle.2.circlepath")
                     .foregroundStyle(.orange)
-                Text("Aktualisiere BiRefNet auf die freigegebene 1920-Pixel-Variante. Bis dahin können keine neuen Motiv- oder Hintergrundmasken erstellt werden.")
-                    .font(.callout).foregroundStyle(.secondary)
             } else if state.installed {
-                Label("BiRefNet ist bereit", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
-            }
-            if !state.isChecking && (!state.installed || state.requiresUpdate) {
-                Text("Wähle das für Glowroom vorbereitete BiRefNet-Paket mit 1920 Pixeln (.mlpackage). Andere Modelle werden nicht akzeptiert. Die Einrichtung benötigt vorübergehend mindestens 3 GB freien Speicher und funktioniert anschließend offline.")
-                    .foregroundStyle(.secondary)
+                Label("Motivmodell ist bereit", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
             }
             if let progress = state.progress {
                 if let fraction = progress.fraction { ProgressView(value: fraction) }
                 else { ProgressView().controlSize(.small) }
-                Text(progress.text).font(.callout)
+                Text(progress.text)
             }
             if let error = state.errorMessage { Text(error).foregroundStyle(.red).textSelection(.enabled) }
             HStack {
                 if state.isBusy {
                     Button("Abbrechen") { state.cancel() }
                 } else if !state.isChecking && (!state.installed || state.requiresUpdate) {
-                    Button(state.requiresUpdate ? "BiRefNet aktualisieren …" : "BiRefNet einrichten …") { importsModel = true }
+                    Button(state.requiresUpdate ? "Modellpaket aktualisieren …" : "Modellpaket auswählen …") { importsModel = true }
                         .buttonStyle(.borderedProminent)
                 }
+                Button("Hilfe") { showsHelp = true }
+                    .accessibilityIdentifier("subject-model.help")
                 Spacer()
                 Button("Fertig") { dismiss() }.keyboardShortcut(.defaultAction).disabled(state.isBusy)
             }
         }
+        .font(.system(size: 13))
         .padding(24).frame(width: 560)
+        .accessibilityIdentifier("subject-model.setup")
+        .sheet(isPresented: $showsHelp) {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Motivmodell · Hilfe").font(.title2.bold())
+                Text("Motiv, Hintergrund und beschriebene Objekte werden lokal mit BiRefNet HR Matting ausgewählt. Fotos bleiben auf deinem Mac.")
+                Text("Wähle das für Glowroom vorbereitete BiRefNet-Paket mit 1920 Pixeln (.mlpackage). Die Einrichtung benötigt vorübergehend mindestens 3 GB freien Speicher und funktioniert anschließend offline.")
+                Text("Ein älteres Modell mit 2048 Pixeln muss aktualisiert werden. Vorhandene Masken bleiben erhalten. Die Himmelsauswahl hat eine eigene Einrichtung.")
+                Link("BiRefNet HR Matting · Modell und MIT-Lizenz", destination: URL(string: "https://huggingface.co/ZhengPeng7/BiRefNet_HR-matting")!)
+                HStack { Spacer(); Button("Fertig") { showsHelp = false } }
+            }.font(.system(size: 13)).padding(24).frame(width: 540)
+        }
         .task { await state.refresh() }
         .onDisappear { state.cancel() }
         .fileImporter(isPresented: $importsModel, allowedContentTypes: [UTType(filenameExtension: "mlpackage") ?? .folder]) { result in
