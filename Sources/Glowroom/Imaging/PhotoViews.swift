@@ -283,7 +283,9 @@ private struct DevelopImageView: NSViewRepresentable {
         return view
     }
     func updateNSView(_ view: NSImageView, context: Context) {
-        view.image = image
+        // Layout updates reuse the accepted pixels without invalidating the
+        // native image view by assigning the same image again.
+        if view.image !== image { view.image = image }
         view.preferredImageDynamicRange = hdr ? .high : .standard
     }
 }

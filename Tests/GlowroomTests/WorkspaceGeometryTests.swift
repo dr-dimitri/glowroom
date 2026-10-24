@@ -113,17 +113,31 @@ struct WorkspaceGeometryTests {
                 if size.width == 1_440 {
                     let zoom = try #require(host.elements.first { $0.accessibilityIdentifier() == "workspace.zoom" })
                     #expect(zoom.accessibilityPerformPress())
-                    try await eventually { host.elements.contains { $0.accessibilityRole() == .image && $0.accessibilityLabel() == asset.fileName } }
-                    try await Task.sleep(for: .milliseconds(80)); host.layout()
-                    func imageSize() throws -> NSSize {
-                        try host.renderedImageSize()
+                    let scroll = try host.photoViewport()
+                    // Capture the final native scale, rather than a frame from
+                    // the 240 ms animation that a panel resize would complete.
+                    try await eventually {
+                        host.layout()
+                        return scroll.magnification == 2
+                            && host.elements.contains { $0.accessibilityRole() == .image && $0.accessibilityLabel() == asset.fileName }
                     }
-                    let magnified = try imageSize()
+                    let magnified = try host.renderedImageSize()
+                    let canvasBeforeResize = host.canvasSize
                     layout.update(developing: true) { $0.showsTools = true; $0.showsFilmstrip = true }
-                    try await eventually { host.elements.contains { $0.accessibilityRole() == .image && $0.accessibilityLabel() == asset.fileName } }
-                    try await Task.sleep(for: .milliseconds(80)); host.layout()
-                    #expect(try imageSize() == magnified)
+                    try await eventually {
+                        host.layout()
+                        return scroll.magnification == 2
+                            && host.canvasSize.width < canvasBeforeResize.width
+                            && host.canvasSize.height < canvasBeforeResize.height
+                            && host.elements.contains { $0.accessibilityRole() == .image && $0.accessibilityLabel() == asset.fileName }
+                    }
+                    let resized = try host.renderedImageSize()
+                    #expect(resized == magnified)
                     #expect(try #require(host.elements.first { $0.accessibilityIdentifier() == "workspace.zoom" }).accessibilityPerformPress())
+                    try await eventually {
+                        host.layout()
+                        return scroll.magnification == 1
+                    }
                 }
                 #endif
             }
@@ -171,6 +185,14 @@ private final class GeometryHost {
     func mount(_ view: some View) { hosting.rootView = AnyView(view); layout() }
     func layout() { hosting.layoutSubtreeIfNeeded(); hosting.displayIfNeeded() }
     var elements: [WorkspaceAccessibilityElement] { WorkspaceAccessibilityElement.descendants(of: hosting) }
+    func photoViewport() throws -> PhotoCanvasScrollView {
+        var pending: [NSView] = [hosting]
+        while let view = pending.popLast() {
+            if let scroll = view as? PhotoCanvasScrollView { return scroll }
+            pending.append(contentsOf: view.subviews)
+        }
+        return try #require(nil as PhotoCanvasScrollView?, "Missing native photo viewport")
+    }
     func renderedImageSize() throws -> NSSize {
         var pending: [NSView] = [hosting]
         var images: [NSImageView] = []
