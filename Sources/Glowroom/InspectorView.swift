@@ -4,6 +4,7 @@ import GlowroomCore
 struct InspectorView: View {
     @ObservedObject var model: LibraryModel
     @EnvironmentObject private var photoMetadata: PhotoMetadataModel
+    @EnvironmentObject private var layout: WorkspaceLayoutModel
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
@@ -13,6 +14,7 @@ struct InspectorView: View {
             }.padding(.horizontal, 20).frame(height: 58)
             Rectangle().fill(Theme.line).frame(height: 1)
             if let asset = model.selectedAsset {
+                ScrollViewReader { proxy in
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
                         EditingThumbnail(asset: asset, size: 400, priority: .selected)
@@ -34,6 +36,7 @@ struct InspectorView: View {
                         }.padding(.top, 17)
                         separator
                         PhotoMetadataSection(model: photoMetadata)
+                            .id(WorkspaceTool.metadata)
                         separator
                         SectionLabel(text: "Aufnahme").padding(.bottom, 17)
                         metadataRow("Kamera", asset.cameraModel ?? "—")
@@ -59,18 +62,17 @@ struct InspectorView: View {
                             .buttonStyle(.plain).foregroundStyle(Theme.accent).padding(.top, 14)
                     }.padding(19)
                 }
+                .task(id: layout.revealRequest) {
+                    guard layout.revealedTool == .metadata else { return }
+                    await Task.yield()
+                    guard !Task.isCancelled else { return }
+                    proxy.scrollTo(WorkspaceTool.metadata, anchor: .top)
+                }
+                }
             } else {
-                VStack(spacing: 13) {
-                    Image(systemName: "viewfinder").font(.system(size: 29, weight: .ultraLight)).foregroundStyle(Theme.muted.opacity(0.55))
-                    Text("Jedes Bild hat eine Geschichte.").font(.system(size: 11)).foregroundStyle(Color.white.opacity(0.6))
-                    Text("Wähle ein Foto, um seine\nDetails zu entdecken.").font(.system(size: 10)).foregroundStyle(Theme.muted).multilineTextAlignment(.center).lineSpacing(4)
-                }.frame(maxWidth: .infinity, maxHeight: .infinity)
+                ContentUnavailableView("Kein Foto ausgewählt", systemImage: "photo")
             }
             Spacer(minLength: 0)
-            HStack(spacing: 7) {
-                Image(systemName: "lock.shield").font(.system(size: 11))
-                Text("Dein Original bleibt dein Original.").font(.system(size: 9))
-            }.foregroundStyle(Theme.muted.opacity(0.75)).padding(20)
         }.background(Theme.sidebar)
     }
 

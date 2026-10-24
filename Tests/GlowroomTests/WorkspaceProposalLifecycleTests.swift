@@ -18,6 +18,70 @@ final class WorkspaceProposalLifecycleTests {
     deinit { try? FileManager.default.removeItem(at: directory) }
 
     @Test(arguments: [NSSize(width: 1_000, height: 660), NSSize(width: 1_440, height: 900)])
+    func sharedMetadataFormSurvivesLibraryDevelopAndCollapsedGroups(size: NSSize) async throws {
+        let f = try await fixture()
+        let host = WorkspaceSectionTestHost(size: size)
+        defer { host.close() }
+        let suite = "Glowroom-MetadataWorkspace-\(UUID())"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let layout = WorkspaceLayoutModel(defaults: defaults)
+        let suggestor = WorkspaceMetadataSuggestor()
+        let metadata = PhotoMetadataModel(store: PhotoMetadataRepository(directory: directory.appendingPathComponent("SharedMetadata")),
+            suggestor: suggestor, library: f.library, editor: f.editor)
+        f.library.workspaceMode = .library
+        layout.update(developing: false) { $0.showsTools = false }
+        layout.update(developing: true) { $0.singleGroup = true; $0.openGroups = [.aiDevelopment] }
+        try await host.mount(LibraryView(model: f.library, dataDirectory: directory)
+            .environmentObject(f.editor).environmentObject(JPEGExportModel(preferences: nil))
+            .environmentObject(layout).environmentObject(metadata))
+        #expect(!host.accessibilityElements.contains { $0.accessibilityIdentifier() == "metadata.form" })
+        WorkspaceActions.reveal(.metadata, layout: layout, library: f.library)
+        try await wait { metadata.canEditManual && host.accessibilityElements.contains { $0.accessibilityIdentifier() == "metadata.form" } }
+        #expect(f.library.workspaceMode == .library && layout.panels(developing: false).showsTools)
+        #expect(host.accessibilityElements.filter { $0.accessibilityIdentifier() == "metadata.form" }.count == 1)
+        metadata.editManualFields(.init(title: "Offener Bibliotheksentwurf", tags: ["Manuell"]))
+        try await wait { !metadata.isSaving }
+        metadata.manualSelection = [.title]
+        metadata.manualTagPolicy = .replace
+        await metadata.refreshAvailability()
+        try await wait { metadata.canSuggest || metadata.errorMessage != nil }
+        try #require(metadata.canSuggest, "Controlled metadata provider must be ready: \(metadata.errorMessage ?? "no storage error")")
+        metadata.suggest()
+        try await wait { metadata.canEditProposal && !metadata.isSaving && !metadata.isAnalyzing }
+        metadata.proposalSelection = [.tags]
+        metadata.proposalTagPolicy = .replace
+        metadata.editProposalTags("Synthetisch\n\n")
+        let draftID = try #require(metadata.record?.draft?.id)
+        let version = metadata.record?.version
+        #expect(metadata.editor == .proposal)
+        f.library.workspaceMode = .develop
+        WorkspaceActions.reveal(.metadata, layout: layout, library: f.library)
+        try await host.settle()
+        try await wait { host.accessibilityElements.contains { $0.accessibilityIdentifier() == "metadata.proposal" } }
+        #expect(host.accessibilityElements.filter { $0.accessibilityIdentifier() == "metadata.form" }.count == 1)
+        #expect(metadata.manualFields.title == "Offener Bibliotheksentwurf" && metadata.proposalTagEditor.text == "Synthetisch\n\n")
+        layout.update(developing: true) { $0.openGroups.remove(.metadata) }
+        WorkspaceActions.reveal(.aiDevelopment, layout: layout, library: f.library)
+        try await host.settle()
+        #expect(!host.accessibilityElements.contains { $0.accessibilityIdentifier() == "metadata.form" },
+                "AI correction has no second metadata form")
+        WorkspaceActions.reveal(.metadata, layout: layout, library: f.library)
+        try await wait { host.accessibilityElements.contains { $0.accessibilityIdentifier() == "metadata.proposal" } }
+        f.library.workspaceMode = .library
+        try await host.settle()
+        #expect(host.accessibilityElements.filter { $0.accessibilityIdentifier() == "metadata.form" }.count == 1)
+        #expect(metadata.editor == .proposal && metadata.record?.draft?.id == draftID && metadata.record?.version == version)
+        #expect(metadata.manualFields.title == "Offener Bibliotheksentwurf" && metadata.proposalTagEditor.text == "Synthetisch\n\n")
+        #expect(metadata.manualSelection == [.title] && metadata.proposalSelection == [.tags])
+        #expect(metadata.manualTagPolicy == .replace && metadata.proposalTagPolicy == .replace)
+        #expect(metadata.record?.confirmedRevision == 0)
+        #expect(await suggestor.requests == 1)
+        #expect(await f.service.requests.isEmpty)
+        #expect(await metadata.finishSaving()); #expect(await f.library.finishSaving())
+    }
+
+    @Test(arguments: [NSSize(width: 1_000, height: 660), NSSize(width: 1_440, height: 900)])
     func unifiedDevelopmentKeepsPhotoAndHistoryAcrossCorrectionGroups(size: NSSize) async throws {
         let f = try await fixture()
         let host = WorkspaceSectionTestHost(size: size)
@@ -1049,6 +1113,14 @@ final class WorkspaceSectionTestHost {
     }
 
     var firstResponder: NSResponder? { window.firstResponder }
+    var textFields: [NSTextField] {
+        var pending: [NSView] = [hosting], fields: [NSTextField] = []
+        while let view = pending.popLast() {
+            pending.append(contentsOf: view.subviews)
+            if let field = view as? NSTextField, field.isEditable { fields.append(field) }
+        }
+        return fields
+    }
     var sliders: [NSSlider] {
         var pending: [NSView] = [hosting]
         var sliders: [NSSlider] = []
@@ -1146,6 +1218,22 @@ private func wait(_ stage: String = "condition", _ condition: @escaping @MainAct
 }
 
 private enum WorkspaceLifecycleTestError: Error { case timeout(String) }
+
+private actor WorkspaceMetadataSuggestor: PhotoMetadataSuggesting {
+    private(set) var requests = 0
+    func availability() -> ImageAnalysisAvailability { .available }
+    func suggest(_ request: PhotoMetadataSuggestionRequest) -> PhotoMetadataSuggestionResult {
+        requests += 1
+        let source = MetadataSourceFingerprint.metadata(request.context.source)
+        let analysis = MetadataAnalysisProvenance(providerID: "controlled-workspace-test", modelID: "synthetic",
+            analyzedAt: Date(timeIntervalSince1970: 1), source: source,
+            raster: .init(sha256: String(repeating: "a", count: 64), pixelWidth: 1, pixelHeight: 1, byteCount: 4,
+                colorProfile: "sRGB", orientation: "up", preprocessingVersion: 1),
+            analysisTaskVersion: 1, analysisSchemaVersion: 1, metadataPromptVersion: 1, metadataSchemaVersion: 1)
+        return .init(request: request, fields: .init(title: "Synthetischer Vorschlag", tags: ["Synthetisch"]),
+                     source: .init(original: source, analyzedRaster: analysis))
+    }
+}
 
 private actor WorkspaceAnalysisService: ImageAnalysisServing {
     nonisolated let descriptor = ImageAnalysisProviderDescriptor(providerID: "workspace-analysis-test", modelID: "synthetic")

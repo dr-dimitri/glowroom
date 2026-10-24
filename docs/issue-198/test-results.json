@@ -1,0 +1,78 @@
+{
+  "baseline": {
+    "buildSeconds": 22.9,
+    "log": "/private/tmp/glowroom-198-baseline-final-availability.log",
+    "status": "passed",
+    "suites": 1,
+    "testCases": 2,
+    "testFunctions": 1,
+    "testSeconds": 5.585
+  },
+  "build": {
+    "log": "/private/tmp/glowroom-198-build-verified.log",
+    "reason": "SwiftUI form, navigation, and model state change runtime behavior",
+    "required": true,
+    "status": "passed",
+    "exitCode": 0,
+    "compilationSeconds": 324.09,
+    "cleanBuild": true,
+    "packaging": "passed",
+    "plistValidation": "passed",
+    "strictSignatureValidation": "passed"
+  },
+  "final": {
+    "buildSeconds": 39.78,
+    "log": "/private/tmp/glowroom-198-final-tests-retry.log",
+    "status": "passed",
+    "suiteSeconds": {
+      "MetadataTagEditorTests": 0.001,
+      "PhotoMetadataModelTests": 10.338,
+      "PhotoMetadataProposalIntegrationTests": 1.411,
+      "PhotoMetadataScreenshotTests": 4.607,
+      "PhotoMetadataTerminationTests": 0.014,
+      "WorkspaceProposalLifecycleTests": 25.309
+    },
+    "suites": 6,
+    "testFunctions": 56,
+    "testSeconds": 41.683
+  },
+  "priorFailures": [
+    {
+      "reason": "missing @testable Core import and modified harness during first compilation",
+      "scope": "baseline harness",
+      "status": "corrected"
+    },
+    {
+      "reason": "catalog.json located outside repository directory",
+      "scope": "baseline harness",
+      "status": "corrected"
+    },
+    {
+      "reason": "conflict setup omitted the existing manual draft revision",
+      "scope": "baseline harness",
+      "status": "corrected"
+    },
+    {
+      "issues": 10,
+      "reason": "AX group identifiers propagated to descendants; initial mount/availability not settled; earlier screenshot catalog fixture",
+      "scope": "first integrated run",
+      "status": "corrected and full rerun passed",
+      "suites": 6,
+      "testFunctions": 54,
+      "testSeconds": 64.368
+    }
+  ],
+  "screenshots": {
+    "conflictConfirmationBlockedVerified": true,
+    "count": 14,
+    "pngHashesVerified": true,
+    "proposalConfirmedFieldsUnchangedVerified": true,
+    "proposalSelectionVerified": [
+      "tags",
+      "title"
+    ],
+    "sharedFixtureHashVerified": true,
+    "visualReview": "passed",
+    "visualReviewFindings": []
+  }
+}

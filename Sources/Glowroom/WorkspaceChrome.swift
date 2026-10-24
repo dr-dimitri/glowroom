@@ -74,6 +74,10 @@ enum WorkspaceActions {
     static func reveal(_ tool: WorkspaceTool, layout: WorkspaceLayoutModel, library: LibraryModel) {
         finishField()
         guard library.selectedAsset != nil || tool == .edit || tool == .aiDevelopment else { return }
+        if tool == .metadata, !library.isDeveloping, !layout.isFocused {
+            layout.reveal(tool, developing: false)
+            return
+        }
         library.workspaceMode = .develop
         library.showsDetail = library.selectedAsset != nil
         layout.reveal(tool, developing: true)

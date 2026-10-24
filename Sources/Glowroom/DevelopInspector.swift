@@ -558,8 +558,8 @@ struct DevelopInspector: View {
             if photoMetadata.errorMessage != nil || photoMetadata.hasPendingRetry || photoMetadata.recovery != nil {
                 return ("Fehler", "exclamationmark.triangle", true)
             }
-            if photoMetadata.isSaving || photoMetadata.isLoading { return ("Läuft", "arrow.triangle.2.circlepath", false) }
-            if photoMetadata.hasManualDraft {
+            if photoMetadata.isSaving || photoMetadata.isLoading || photoMetadata.isAnalyzing { return ("Läuft", "arrow.triangle.2.circlepath", false) }
+            if photoMetadata.hasManualDraft || photoMetadata.record?.draft != nil {
                 return ("Entwurf", "square.and.pencil", false)
             }
         case .versions:

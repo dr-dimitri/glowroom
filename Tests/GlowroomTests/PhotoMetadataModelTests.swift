@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import GlowroomCore
 import Testing
@@ -6,6 +7,135 @@ import Testing
 @Suite("Photo metadata forms, explicit confirmation and lifecycle", .serialized, .timeLimit(.minutes(2)))
 @MainActor
 struct PhotoMetadataModelTests {
+    @Test func sharedEditorSelectionAndRawTagsSurviveRemountAndRemainBoundToTheirPhotoSource() async throws {
+        let f = fixture()
+        let host = WorkspaceSectionTestHost()
+        defer { host.close() }
+        try await wait { f.model.canEditManual }
+        f.model.editManualFields(.init(title: "Mein manueller Entwurf", tags: ["Licht"]))
+        try await wait { !f.model.isSaving }
+        try await prepareProposal(f)
+        #expect(f.model.editor == .proposal, "A new result opens the proposal in the shared editor")
+        f.model.manualSelection = [.title, .tags]
+        f.model.proposalSelection = [.description]
+        f.model.manualTagPolicy = .replace
+        f.model.proposalTagPolicy = .replace
+        f.model.editManualTags("Licht\n")
+        f.model.editProposalTags("Synthetisch\n\n")
+        let version = f.model.record?.version
+        try await host.mount(PhotoMetadataSection(model: f.model))
+        try await host.settle()
+        #expect(host.accessibilityElements.filter { $0.accessibilityIdentifier() == "metadata.form" }.count == 1)
+        #expect(host.accessibilityElements.contains { $0.accessibilityIdentifier() == "metadata.proposal" })
+        #expect(!host.accessibilityElements.contains { $0.accessibilityIdentifier() == "metadata.manual" })
+        try await host.unmount()
+        f.context.value = metadataContext("a", selection: 2)
+        f.model.synchronizeContext()
+        try await host.mount(PhotoMetadataSection(model: f.model))
+        #expect(f.model.editor == .proposal && f.model.record?.version == version)
+        #expect(f.model.manualSelection == [.title, .tags] && f.model.proposalSelection == [.description])
+        #expect(f.model.manualTagEditor.text == "Licht\n" && f.model.proposalTagEditor.text == "Synthetisch\n\n")
+        f.context.value = nil
+        f.model.synchronizeContext()
+        try await wait { !f.model.isLoading }
+        f.context.value = metadataContext("a", selection: 3)
+        f.model.synchronizeContext()
+        try await wait { f.model.canEditProposal }
+        #expect(f.model.editor == .proposal && f.model.manualSelection == [.title, .tags])
+        #expect(f.model.proposalSelection == [.description] && f.model.manualTagPolicy == .replace)
+        #expect(f.model.manualTagEditor.text == "Licht\n" && f.model.proposalTagEditor.text == "Synthetisch\n\n")
+        f.context.value = metadataContext("b", selection: 3)
+        f.model.synchronizeContext()
+        try await wait { f.model.canEditManual }
+        #expect(f.model.editor == .manual && f.model.manualSelection == Set(PhotoMetadataField.allCases))
+        #expect(f.model.manualTagPolicy == .append && f.model.proposalTagPolicy == .append)
+        #expect(f.model.manualTagEditor.text.isEmpty && f.model.proposalTagEditor.text.isEmpty)
+        f.context.value = metadataContext("a", selection: 4)
+        f.model.synchronizeContext()
+        try await wait { f.model.canEditProposal }
+        #expect(f.model.editor == .proposal && f.model.manualFields.title == "Mein manueller Entwurf")
+        #expect(f.model.manualSelection == [.title, .tags] && f.model.proposalSelection == [.description])
+        #expect(f.model.manualTagPolicy == .replace && f.model.proposalTagPolicy == .replace)
+        #expect(f.model.manualTagEditor.text == "Licht\n" && f.model.proposalTagEditor.text == "Synthetisch\n\n")
+        f.context.value = metadataContext("a", selection: 5, modified: 101)
+        f.model.synchronizeContext()
+        try await wait { f.model.canEditManual }
+        #expect(f.model.editor == .manual && f.model.manualTagPolicy == .append)
+        #expect(f.model.manualTagEditor.text == "Licht" && f.model.proposalTagEditor.text == "Synthetisch")
+        #expect(await f.suggestor.requests.count == 1)
+        #expect(await f.model.finishSaving())
+    }
+
+    @Test func unavailableSharedFormKeepsManualInputAndOnlyOneDisabledSuggestionAction() async throws {
+        let f = fixture()
+        let host = WorkspaceSectionTestHost()
+        defer { host.close() }
+        await f.suggestor.setUnavailable()
+        await f.model.refreshAvailability()
+        try await wait { f.model.canEditManual }
+        try await host.mount(PhotoMetadataSection(model: f.model))
+        try await host.settle()
+        let suggestions = host.accessibilityElements.filter { $0.accessibilityIdentifier() == "metadata.suggest" }
+        #expect(suggestions.count == 1 && suggestions.first?.isAccessibilityEnabled() == false)
+        #expect(host.accessibilityElements.contains { $0.accessibilityIdentifier() == "metadata.manual" })
+        let labels = host.accessibilityElements.compactMap { $0.accessibilityLabel() }
+        #expect(!labels.contains { $0.contains("Qwen") || $0.contains("ein Tag pro Zeile") })
+        #expect(!labels.contains("Verfügbarkeit erneut prüfen"), "An SDK-less build cannot repair availability by retrying")
+        f.model.editManualFields(.init(title: "Manuell ohne KI", tags: ["Licht"]))
+        try await wait { !f.model.isSaving }
+        f.model.acceptManualFields()
+        try await wait { !f.model.isSaving }
+        #expect(f.model.record?.confirmed.title == "Manuell ohne KI")
+        #expect(await f.suggestor.requests.isEmpty)
+        #expect(await f.model.finishSaving())
+    }
+
+    @Test func tagEntryButtonsKeepRawRowsAndEmptyReplacementRequiresExplicitPolicy() async throws {
+        let f = fixture()
+        let host = WorkspaceSectionTestHost()
+        defer { host.close() }
+        try await wait { f.model.canEditManual }
+        f.model.editManualFields(.init(tags: ["Licht", "Wasser"]))
+        try await wait { !f.model.isSaving }
+        f.model.manualSelection = [.tags]
+        f.model.acceptManualFields()
+        try await wait { !f.model.isSaving }
+        #expect(f.model.record?.confirmed.tags == ["Licht", "Wasser"])
+        try await host.mount(PhotoMetadataSection(model: f.model))
+        let add = try #require(host.accessibilityElements.first { $0.accessibilityLabel() == "Tag hinzufügen" && $0.accessibilityRole() == .button })
+        try #require(add.accessibilityPerformPress())
+        try await host.settle()
+        #expect(f.model.manualTagEditor.text == "Licht\nWasser\n")
+        try await host.unmount()
+        try await host.mount(PhotoMetadataSection(model: f.model))
+        #expect(host.accessibilityElements.contains { $0.accessibilityLabel() == "Tag 3" })
+        let oldField = try #require(host.textFields.first { $0.stringValue == "Wasser" })
+        let oldDelegate = try #require(oldField.delegate)
+        let remove = try #require(host.accessibilityElements.first { $0.accessibilityLabel() == "Tag 1 entfernen" })
+        try #require(remove.accessibilityPerformPress())
+        try await wait { !f.model.isSaving }
+        oldField.stringValue = "Verspätete Eingabe nach Entfernen"
+        oldDelegate.controlTextDidChange?(Notification(name: NSControl.textDidChangeNotification, object: oldField))
+        oldDelegate.controlTextDidEndEditing?(Notification(name: NSControl.textDidEndEditingNotification, object: oldField))
+        try await host.settle()
+        #expect(f.model.manualFields.tags == ["Wasser"] && f.model.manualTagEditor.text == "Wasser\n")
+        f.model.editManualTags("")
+        try await wait { !f.model.isSaving }
+        #expect(f.model.manualTagPolicy == .append)
+        f.model.acceptManualFields()
+        try await wait { !f.model.isSaving }
+        #expect(f.model.record?.confirmed.tags == ["Licht", "Wasser"], "Empty append must preserve the confirmed tags")
+        f.model.editManualTags("")
+        try await wait { !f.model.isSaving }
+        f.model.manualTagPolicy = .replace
+        f.model.acceptManualFields()
+        try await wait { !f.model.isSaving }
+        #expect(f.model.record?.confirmed.tags.isEmpty == true)
+        #expect(await f.store.confirms.last?.tagPolicy == .replace)
+        #expect(await f.suggestor.requests.isEmpty)
+        #expect(await f.model.finishSaving())
+    }
+
     @Test func rawTagLinesSurviveSectionRemountWithoutAnotherWriteOrInference() async throws {
         let f = fixture()
         let host = WorkspaceSectionTestHost()
@@ -593,9 +723,11 @@ struct PhotoMetadataModelTests {
         #expect(f.model.proposalFields == raw)
         #expect(f.model.recoveredEditorContext == f.model.context)
         #expect(f.model.recoveredEditorIsProposal)
+        #expect(f.model.editor == .proposal)
         #expect(!f.model.canEditProposal && !f.model.canEditManual)
         #expect(f.model.canUseProposalAsManual)
         f.model.useProposalAsManual()
+        #expect(f.model.editor == .manual)
         #expect(f.model.context?.source.modifiedAt == Date(timeIntervalSince1970: 101))
         #expect(f.model.manualFields == raw)
         try await wait { !f.model.isSaving }
@@ -607,6 +739,154 @@ struct PhotoMetadataModelTests {
         #expect(f.model.record?.manualDraft?.fields == corrected)
         #expect(f.model.record?.draft?.id == draftID && f.model.record?.draft?.state == .outdated)
         #expect(await f.store.confirms.isEmpty)
+        #expect(await f.model.finishSaving())
+    }
+
+    @Test(arguments: [false, true], [false, true])
+    func detachedRecoveredProposalCannotChangeMissingOrReplacementDraft(replacement: Bool, reuse: Bool) async throws {
+        let f = fixture()
+        try await wait { f.model.canEditManual }
+        try await prepareProposal(f)
+        let originalID = try #require(f.model.record?.draft?.id)
+        let raw = PhotoTextFields(title: String(repeating: "x", count: 121), tags: ["Ungesichert"])
+        f.model.editProposalFields(raw)
+        try await wait { !f.model.isSaving && f.model.errorMessage != nil }
+        f.context.value = metadataContext("b", selection: 2)
+        f.model.synchronizeContext()
+        try await wait { !f.model.isLoading }
+        #expect(f.model.recovery?.proposalID == originalID)
+        await f.store.removeOrReplaceProposal(assetID: "a", replacement: replacement)
+        f.model.recoverUnsavedDraft()
+        try await wait { f.model.recovery == nil && !f.model.isLoading }
+        // Leaving an already recovered orphan must retain its original draft
+        // identity rather than borrowing the replacement record's draft ID.
+        f.context.value = metadataContext("b", selection: 3)
+        f.model.synchronizeContext()
+        try await wait { !f.model.isLoading }
+        #expect(f.model.recovery?.proposalID == originalID)
+        f.model.recoverUnsavedDraft()
+        try await wait { f.model.recovery == nil && !f.model.isLoading }
+        let detachedRecord = f.model.record
+        #expect(f.model.editor == .proposal && f.model.hasDetachedRecoveredProposal)
+        #expect(f.model.proposalFields == raw)
+        f.model.editor = .manual
+        f.model.revealPendingState()
+        #expect(f.model.editor == .proposal, "A pending-state link reveals the recovered proposal even after a manual editor switch")
+        #expect(!f.model.canConfirmProposal && !f.model.canEditProposal && !f.model.canRejectProposal)
+        #expect(f.model.canUseProposalAsManual)
+        f.model.editProposalFields(.init(title: "Must not overwrite a replacement"))
+        f.model.acceptProposal(); f.model.discardProposal()
+        #expect(f.model.proposalFields == raw && f.model.record == detachedRecord)
+        #expect(await f.store.confirms.isEmpty)
+        if reuse {
+            f.model.useProposalAsManual()
+            #expect(f.model.editor == .manual && f.model.manualFields == raw)
+            try await wait { !f.model.isSaving }
+            f.model.editManualFields(.init(title: "Bewusst geretteter Titel", tags: raw.tags))
+            try await wait { !f.model.isSaving }
+            #expect(f.model.record?.manualDraft?.fields.title == "Bewusst geretteter Titel")
+        } else {
+            f.model.discardRecoveredProposal()
+            #expect(f.model.editor == .manual && !f.model.hasDetachedRecoveredProposal)
+        }
+        #expect(f.model.record?.draft == detachedRecord?.draft)
+        if replacement {
+            #expect(!f.model.hasDetachedRecoveredProposal && f.model.canEditProposal)
+            f.model.editProposalFields(.init(title: "Neue Korrektur am aktuellen Vorschlag"))
+            try await wait { !f.model.isSaving }
+            #expect(f.model.record?.draft?.fields.title == "Neue Korrektur am aktuellen Vorschlag")
+            #expect(!f.model.hasDetachedRecoveredProposal && f.model.canEditProposal)
+        }
+        #expect(await f.suggestor.requests.count == 1)
+        #expect(await f.model.finishSaving())
+    }
+
+    @Test func recoveryKeepsOriginalDraftPendingWhenSameAssetSourceChangesDuringItsAwaitedLoad() async throws {
+        let f = fixture()
+        try await wait { f.model.canEditManual }
+        try await prepareProposal(f)
+        let raw = PhotoTextFields(title: String(repeating: "x", count: 121), tags: ["Unverloren"])
+        f.model.editProposalFields(raw)
+        try await wait { !f.model.isSaving && f.model.errorMessage != nil }
+        let saved = try #require(await f.store.records["a"])
+        f.context.value = metadataContext("b", selection: 2)
+        f.model.synchronizeContext()
+        try await wait { !f.model.isLoading }
+        let recoveryID = try #require(f.model.recovery?.id)
+        await f.store.setReadsBlocked(true)
+        f.model.recoverUnsavedDraft()
+        try await wait { await f.store.pendingLoadIDs.count == 1 }
+        let oldRead = try #require(await f.store.pendingLoadIDs.first)
+        f.context.value = metadataContext("a", selection: 4, modified: 101)
+        f.model.synchronizeContext()
+        try await wait { await f.store.pendingLoadIDs.count == 2 }
+        let newRead = try #require(await f.store.pendingLoadIDs.last)
+        await f.store.completeLoad(oldRead, value: saved)
+        await f.store.completeLoad(newRead, value: saved)
+        try await wait { !f.model.isLoading }
+        #expect(f.model.recovery?.id == recoveryID && f.model.recovery?.fields == raw)
+        #expect(f.model.recoveredEditorContext == nil)
+        #expect(f.model.context?.source.modifiedAt == Date(timeIntervalSince1970: 101))
+        await f.store.setReadsBlocked(false)
+        f.model.recoverUnsavedDraft()
+        try await wait { f.model.recovery == nil }
+        #expect(f.model.hasDetachedRecoveredProposal && f.model.proposalFields == raw)
+        #expect(f.model.editor == .proposal && !f.model.canConfirmProposal)
+        f.model.useProposalAsManual()
+        try await wait { !f.model.isSaving }
+        f.model.editManualFields(.init(title: "Nach Quellenprüfung gerettet", tags: raw.tags))
+        try await wait { !f.model.isSaving }
+        #expect(f.model.record?.manualDraft?.fields.title == "Nach Quellenprüfung gerettet")
+        #expect(await f.store.confirms.isEmpty)
+        #expect(await f.model.finishSaving())
+    }
+
+    @Test func discardedRecoveryDoesNotReassignOutgoingDirtyFieldsToAnUnloadedDestination() async throws {
+        let f = fixture()
+        try await wait { f.model.canEditManual }
+        f.model.editManualFields(.init(title: String(repeating: "x", count: 121)))
+        try await wait { !f.model.isSaving && f.model.errorMessage != nil }
+        await f.store.setReadsBlocked(true)
+        f.context.value = metadataContext("b", selection: 2)
+        f.model.synchronizeContext()
+        try await wait { await f.store.pendingLoadIDs.count == 1 }
+        #expect(f.model.recovery?.context.assetID == "a")
+        f.model.discardRecovery()
+        f.context.value = metadataContext("c", selection: 3)
+        f.model.synchronizeContext()
+        try await wait { await f.store.pendingLoadIDs.count == 2 }
+        #expect(f.model.recovery == nil, "The discarded A text never belonged to the still-unloaded B form")
+        let reads = await f.store.pendingLoadIDs
+        for id in reads { await f.store.completeLoad(id, value: nil) }
+        await f.store.setReadsBlocked(false)
+        try await wait { f.model.canEditManual }
+        #expect(f.model.context?.assetID == "c" && f.model.manualFields.title.isEmpty)
+        #expect(f.model.recovery == nil && f.model.errorMessage == nil)
+        #expect(await f.model.finishSaving())
+    }
+
+    @Test func failedAutosaveReturningThroughAnotherPhotoStillRecoversItsAcceptedRawText() async throws {
+        let f = fixture()
+        try await wait { f.model.canEditManual }
+        await f.store.setWritesBlocked(true)
+        let raw = PhotoTextFields(title: String(repeating: "x", count: 121))
+        f.model.editManualFields(raw)
+        try await wait { await f.store.hasBlockedWrite }
+        f.context.value = metadataContext("b", selection: 2)
+        f.model.synchronizeContext()
+        try await wait { !f.model.isLoading }
+        f.context.value = metadataContext("a", selection: 3)
+        f.model.synchronizeContext()
+        try await wait { !f.model.isLoading }
+        await f.store.releaseWrite()
+        try await wait { !f.model.isSaving }
+        #expect(f.model.recovery?.context.assetID == "a" && f.model.recovery?.fields == raw)
+        f.model.recoverUnsavedDraft()
+        try await wait { f.model.recovery == nil }
+        #expect(f.model.manualFields == raw)
+        f.model.editManualFields(.init(title: "Wiederhergestellter Rohentwurf"))
+        try await wait { !f.model.isSaving }
+        #expect(f.model.record?.manualDraft?.fields.title == "Wiederhergestellter Rohentwurf")
         #expect(await f.model.finishSaving())
     }
 
@@ -765,6 +1045,18 @@ private actor MetadataUIStore: PhotoMetadataStoring {
             draft: PhotoMetadataDraft(id: draft.id, revision: v.aiDraftRevision + 1, baseConfirmedRevision: draft.baseConfirmedRevision,
                 fields: draft.fields, source: draft.source, state: .outdated, createdAt: draft.createdAt, modifiedAt: Date()),
             manualDraft: old.manualDraft, isOrphaned: false, sourceChanged: true)
+    }
+    func removeOrReplaceProposal(assetID: String, replacement: Bool) {
+        guard let old = records[assetID], let draft = old.draft else { return }
+        let v = old.version
+        let newDraft = replacement ? PhotoMetadataDraft(id: UUID(), revision: v.aiDraftRevision + 1,
+            baseConfirmedRevision: v.confirmedRevision, fields: .init(title: "Neuer fremder Vorschlag"),
+            source: draft.source, state: .pending, createdAt: Date(), modifiedAt: Date()) : nil
+        records[assetID] = PhotoMetadataRecord(assetID: old.assetID,
+            version: MetadataRecordVersion(recordRevision: v.recordRevision + 1, confirmedRevision: v.confirmedRevision,
+                aiDraftRevision: v.aiDraftRevision + 1, manualDraftRevision: v.manualDraftRevision),
+            confirmed: old.confirmed, confirmedProvenance: old.confirmedProvenance,
+            draft: newDraft, manualDraft: old.manualDraft, isOrphaned: false, sourceChanged: false)
     }
     func searchState() async -> PhotoMetadataSearchState {
         searchReads += 1

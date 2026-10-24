@@ -1,6 +1,6 @@
 # Lokale Bildanalyse: interne Grundlage und historische Entscheidung
 
-Der eigenständige Bereich **Bildanalyse** wurde aus der aktuellen Oberfläche entfernt. Die lokale Vision-Anbindung, Quellenprüfung und begrenzte Rastervorbereitung bleiben für **Bildinformationen** erhalten. Die folgenden datierten Nachweise betreffen Bildbeschreibung und Vorbereitung; sie belegen allein keine textgesteuerte Bildkorrektur.
+Der eigenständige Bereich **Bildanalyse** wurde aus der aktuellen Oberfläche entfernt. Die lokale Vision-Anbindung, Quellenprüfung und begrenzte Rastervorbereitung bleiben für das gemeinsame Formular **Bildinformationen** erhalten. Dort stehen manuelle Angaben und **Mit KI vorschlagen** in Bibliothek, Entwickeln und Bildfokus bereit; ein zweiter KI-Bildtextbereich ist nicht erforderlich. Der vorhandene Bildtextanbieter ist die lokale Systemfunktion und wird nicht durch Qwen ersetzt. [Bedienung und Speicherung](PHOTO-METADATA.md). Die folgenden datierten Nachweise betreffen Bildbeschreibung und Vorbereitung; sie belegen allein keine textgesteuerte Bildkorrektur.
 
 Stand: 16. Oktober 2026. Diese Entscheidung wurde vor der Adapterimplementierung für [AI-05 / Issue #6](https://github.com/dr-dimitri/glowroom/issues/6) getroffen. Der damalige Textprovider ohne Bildzugriff ist mit dem interaktiven Assistenten entfernt. Eine getrennte Bildanalysefähigkeit darf nur nach SDK-, Laufzeit-, Sprach- und Modellprüfung angeboten werden.
 
@@ -32,7 +32,7 @@ Der injizierbare Dienst verwendet die vorhandenen begrenzten Vorschau-/Renderpip
 
 Gleiche Analyseanfragen sollen ihre Arbeit teilen; Abbruch eines Beobachters darf andere nicht abbrechen. Cacheeinträge bleiben nach Anzahl/Bytes begrenzt und enthalten keine dauerhafte Foto-/Promptablage. Nach Bild-/Quellenwechsel dürfen verspätete Antworten nicht veröffentlicht werden. Regleränderungen ändern die Originalanalyse nicht; eine bearbeitete Eingabe muss dagegen auch nach Undo auf identische Zahlen durch ihren Revisionstoken vor alten Ergebnissen geschützt sein.
 
-Analyseergebnisse bleiben begrenzte Vorschläge. Sie sind keine bestätigten Metadaten und geben weder Auskunft über Identität oder Gesundheit von Personen noch über nicht belegte Aufnahmeorte. Metadatenpersistenz folgt separat in [AI-06 / Issue #7](https://github.com/dr-dimitri/glowroom/issues/7).
+Analyseergebnisse bleiben begrenzte Vorschläge. Sie sind keine bestätigten Metadaten und geben weder Auskunft über Identität oder Gesundheit von Personen noch über nicht belegte Aufnahmeorte. Erst die ausdrückliche feldweise Bestätigung im gemeinsamen Formular speichert Metadaten; [Speicherung und Herkunft](PHOTO-METADATA.md).
 
 ## Erhaltene interne Implementierung
 
