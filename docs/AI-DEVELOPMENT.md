@@ -2,13 +2,13 @@
 
 **KI-Korrektur** ist eine Gruppe im gemeinsamen Arbeitsbereich **Entwickeln**. Kopfzeile und Darstellungsmenü bieten **Bibliothek** und **Entwickeln**. Der Gruppenwechsel zu **Licht**, **Farbe** oder **Details** verwendet dasselbe Foto, dieselbe Vorschau, denselben Bildstand und dieselbe Speicherung. Im Bildfokus öffnen Menü und Dock dieselben Gruppen.
 
-Die KI-Gruppe enthält den ausdrücklich auszulösenden Qwen-Auftrag sowie vorerst die vorhandenen Zugänge zu Suche und Modellverwaltung. Bildtexte und Tags werden im gemeinsamen Formular **Bildinformationen** in Bibliothek, Entwickeln und Bildfokus manuell bearbeitet oder mit **Mit KI vorschlagen** angefordert. Der eigenständige KI-Bildtextbereich entfällt. Die Funktionen verwenden ihre jeweiligen Modelle; Qwen ersetzt weder Masken-/Suchmodelle noch den lokalen Systemanbieter für Bildtexte. Manuelle Angaben bleiben auch bei nicht verfügbarem Bildtextanbieter möglich. [Bedienung und Speicherung der Bildinformationen](PHOTO-METADATA.md).
+Die KI-Gruppe enthält den ausdrücklich auszulösenden Qwen-Auftrag; die gemeinsame Suche steht in der Bibliothek bereit. Bildtexte und Tags werden im gemeinsamen Formular **Bildinformationen** in Bibliothek, Entwickeln und Bildfokus manuell bearbeitet oder mit **Mit KI vorschlagen** angefordert. Der eigenständige KI-Bildtextbereich entfällt. Die Funktionen verwenden ihre jeweiligen Modelle; Qwen ersetzt weder Masken-/Suchmodelle noch den lokalen Systemanbieter für Bildtexte. Manuelle Angaben bleiben auch bei nicht verfügbarem Bildtextanbieter möglich. [Bedienung und Speicherung der Bildinformationen](PHOTO-METADATA.md).
 
 Ein reiner Gruppen-/Panelwechsel startet keine Inferenz. Die folgenden Abbruchregeln gelten für Korrekturvorschläge; Metadatenentwürfe und laufende Bildtextanfragen bleiben bei Layoutwechseln erhalten. Beim Einklappen von KI-Korrektur, Verbergen der rechten Spalte oder Wechsel zum Bildwerkzeug werden laufende Vorschläge abgebrochen und unbestätigte Ergebnisse verworfen. Die Rückkehr benötigt einen neuen ausdrücklichen Auftrag. Bereits angenommene Bearbeitungen und Speicheraufträge laufen weiter. Ein Fokuswechsel erhält den gemeinsamen Bearbeitungskontext; wenn er die KI-Gruppe verbirgt, gilt derselbe Vorschlagsabbruch. Veraltete Ergebnisse werden zusätzlich anhand von Quelle, Auswahl und Bearbeitungsgeneration abgewiesen.
 
 ## Qwen einrichten und entfernen
 
-**Modelle → LLM-Modelle verwalten** zeigt Qwen3.5-4B in der lokalen
+**KI-Modelle → Bildkorrekturen** zeigt Qwen3.5-4B in der lokalen
 4-Bit-Variante `mlx-community/Qwen3.5-4B-4bit`. Der erste Katalog enthält genau
 dieses Modell; weitere Modelle benötigen einen eigenen geprüften Deskriptor und
 Laufzeitadapter. Revision und Dateiprüfsummen stehen im `LLMModelDescriptor`.

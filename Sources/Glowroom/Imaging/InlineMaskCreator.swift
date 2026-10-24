@@ -6,8 +6,7 @@ import GlowroomCore
 @MainActor
 struct InlineMaskCreator: View {
     @ObservedObject var workspace: InlineMaskWorkspace
-    @ViewState private var showsSkySetup = false
-    @ViewState private var showsSubjectSetup = false
+    @Environment(\.openAIModels) private var openAIModels
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -28,10 +27,10 @@ struct InlineMaskCreator: View {
                 toolRow(.radial, title: "Radialverlauf")
             }
             Divider().overlay(Theme.line)
-            Button("Himmelsmodell einrichten …") { showsSkySetup = true }
+            Button("Himmel einrichten …") { openAIModels(.sky) }
                 .buttonStyle(.plain).foregroundStyle(Theme.muted)
                 .accessibilityIdentifier("local-mask.sky-setup")
-            Button("Motivmodell einrichten …") { showsSubjectSetup = true }
+            Button("Motiv und Hintergrund einrichten …") { openAIModels(.subject) }
                 .buttonStyle(.plain).foregroundStyle(Theme.muted)
                 .accessibilityIdentifier("local-mask.subject-setup")
             if (workspace.model?.settings.localAdjustments.count ?? 0) >= LocalAdjustment.maximumCount {
@@ -42,8 +41,6 @@ struct InlineMaskCreator: View {
             .background(Theme.panel)
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("local-mask.creator")
-            .sheet(isPresented: $showsSkySetup) { SkyMaskModelSetupView() }
-            .sheet(isPresented: $showsSubjectSetup) { SubjectMattingModelSetupView() }
     }
 
     private func tile(_ kind: LocalMaskCreation, title: String) -> some View {
@@ -85,8 +82,7 @@ struct InlineMaskCreator: View {
 struct InlineObjectMaskCreator: View {
     @ObservedObject var workspace: InlineMaskWorkspace
     @ObservedObject private var model: InlineObjectMaskModel
-    @ViewState private var showsLanguageSetup = false
-    @ViewState private var showsSubjectSetup = false
+    @Environment(\.openAIModels) private var openAIModels
 
     init(workspace: InlineMaskWorkspace) {
         self.workspace = workspace
@@ -115,8 +111,7 @@ struct InlineObjectMaskCreator: View {
                 Text(setup == .languageModel ? "KI-Modell fehlt." : "Motivmodell fehlt oder muss aktualisiert werden.")
                     .accessibilityIdentifier("local-mask.object.model-required")
                 Button(setup == .languageModel ? "KI-Modell einrichten …" : "Motivmodell einrichten …") {
-                    if setup == .languageModel { showsLanguageSetup = true }
-                    else { showsSubjectSetup = true }
+                    openAIModels(setup == .languageModel ? .corrections : .subject)
                 }.accessibilityIdentifier("local-mask.object.setup")
             }
             if !model.modelsReady && !model.isCheckingModels && model.setupRequirement == nil {
@@ -170,8 +165,6 @@ struct InlineObjectMaskCreator: View {
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("local-mask.object.creator")
             .task { await model.refreshModels() }
-            .sheet(isPresented: $showsLanguageSetup, onDismiss: refreshModels) { LLMModelManagerView() }
-            .sheet(isPresented: $showsSubjectSetup, onDismiss: refreshModels) { SubjectMattingModelSetupView() }
     }
 
     private func refreshModels() { Task { await model.refreshModels() } }

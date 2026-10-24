@@ -2,7 +2,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 @MainActor
-private final class SubjectMattingModelSetupState: ObservableObject {
+final class SubjectMattingModelSetupState: ObservableObject {
     @Published var installed = false
     @Published var requiresUpdate = false
     @Published var isChecking = true
@@ -11,10 +11,12 @@ private final class SubjectMattingModelSetupState: ObservableObject {
     @Published var errorMessage: String?
     private var task: Task<Void, Never>?
     private var operation = UUID()
+    private var isRefreshing = false
 
     func refresh() async {
-        isChecking = true
-        defer { isChecking = false }
+        guard !isBusy, !isRefreshing else { return }
+        isRefreshing = true; isChecking = true
+        defer { isRefreshing = false; isChecking = false }
         do {
             if let installation = try await SubjectMattingModelStore.shared.installedModel() {
                 // A damaged installation must keep the repair action available.
@@ -22,12 +24,14 @@ private final class SubjectMattingModelSetupState: ObservableObject {
                 _ = try await Task.detached(priority: .utility) {
                     try SubjectMattingModelStore.verifyInstallation(installation)
                 }.value
+                try Task.checkCancellation()
                 installed = true
             } else { installed = false }
             requiresUpdate = false; errorMessage = nil
         } catch SubjectMattingError.updateRequired {
             installed = true; requiresUpdate = true; errorMessage = nil
-        } catch { installed = false; requiresUpdate = false; errorMessage = error.localizedDescription }
+        } catch is CancellationError { }
+        catch { installed = false; requiresUpdate = false; errorMessage = error.localizedDescription }
     }
 
     func install(from url: URL) {
@@ -56,6 +60,20 @@ private final class SubjectMattingModelSetupState: ObservableObject {
         }
     }
 
+    func remove() {
+        guard !isBusy else { return }
+        isBusy = true; errorMessage = nil
+        task = Task { [weak self] in
+            guard let self else { return }
+            defer { isBusy = false; task = nil }
+            do {
+                try await SubjectMattingModelStore.shared.remove()
+                installed = false; requiresUpdate = false; progress = nil
+            } catch is CancellationError { }
+            catch { errorMessage = error.localizedDescription }
+        }
+    }
+
     func cancel() { task?.cancel() }
 }
 
@@ -63,13 +81,20 @@ private final class SubjectMattingModelSetupState: ObservableObject {
 /// request; all photo analysis and subsequent predictions stay on the Mac.
 struct SubjectMattingModelSetupView: View {
     @Environment(\.dismiss) private var dismiss
-    @StateObject private var state = SubjectMattingModelSetupState()
+    @StateObject private var state: SubjectMattingModelSetupState
+    private let embedded: Bool
+
+    @MainActor
+    init(state: SubjectMattingModelSetupState? = nil, embedded: Bool = false) {
+        _state = StateObject(wrappedValue: state ?? SubjectMattingModelSetupState())
+        self.embedded = embedded
+    }
     @ViewState private var importsModel = false
     @ViewState private var showsHelp = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Motivmodell einrichten").font(.title2.bold())
+            Text("Motiv und Hintergrund").font(.title2.bold())
             if state.isChecking {
                 ProgressView("Motivmodell wird geprüft …")
             } else if state.requiresUpdate {
@@ -78,6 +103,10 @@ struct SubjectMattingModelSetupView: View {
             } else if state.installed {
                 Label("Motivmodell ist bereit", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
             }
+            LabeledContent("Modell", value: "BiRefNet HR Matting · 1920 Pixel")
+            LabeledContent("Version", value: LocalModelRegistry.subjectRevision)
+            LabeledContent("Freier Platz für Einrichtung", value: "3 GB")
+            Link("Modell und MIT-Lizenz", destination: URL(string: "https://huggingface.co/ZhengPeng7/BiRefNet_HR-matting")!)
             if let progress = state.progress {
                 if let fraction = progress.fraction { ProgressView(value: fraction) }
                 else { ProgressView().controlSize(.small) }
@@ -91,14 +120,20 @@ struct SubjectMattingModelSetupView: View {
                     Button(state.requiresUpdate ? "Modellpaket aktualisieren …" : "Modellpaket auswählen …") { importsModel = true }
                         .buttonStyle(.borderedProminent)
                 }
+                if !state.isBusy && !state.isChecking && state.installed {
+                    Button("Modell entfernen", role: .destructive) { state.remove() }
+                        .accessibilityIdentifier("subject-model.remove")
+                }
                 Button("Hilfe") { showsHelp = true }
                     .accessibilityIdentifier("subject-model.help")
-                Spacer()
-                Button("Fertig") { dismiss() }.keyboardShortcut(.defaultAction).disabled(state.isBusy)
+                if !embedded {
+                    Spacer()
+                    Button("Fertig") { dismiss() }.keyboardShortcut(.defaultAction).disabled(state.isBusy)
+                }
             }
         }
         .font(.system(size: 13))
-        .padding(24).frame(width: 560)
+        .padding(embedded ? 0 : 24).frame(width: embedded ? nil : 560)
         .accessibilityIdentifier("subject-model.setup")
         .sheet(isPresented: $showsHelp) {
             VStack(alignment: .leading, spacing: 16) {
@@ -110,8 +145,8 @@ struct SubjectMattingModelSetupView: View {
                 HStack { Spacer(); Button("Fertig") { showsHelp = false } }
             }.font(.system(size: 13)).padding(24).frame(width: 540)
         }
-        .task { await state.refresh() }
-        .onDisappear { state.cancel() }
+        .task { if !embedded { await state.refresh() } }
+        .onDisappear { if !embedded { state.cancel() } }
         .fileImporter(isPresented: $importsModel, allowedContentTypes: [UTType(filenameExtension: "mlpackage") ?? .folder]) { result in
             switch result {
             case .success(let url): state.install(from: url)

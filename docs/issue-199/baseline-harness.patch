@@ -1,0 +1,247 @@
+diff --git a/Tests/GlowroomTests/LibrarySearchModelScreenshotTests.swift b/Tests/GlowroomTests/LibrarySearchModelScreenshotTests.swift
+new file mode 100644
+index 0000000..b58cf4a
+--- /dev/null
++++ b/Tests/GlowroomTests/LibrarySearchModelScreenshotTests.swift
+@@ -0,0 +1,241 @@
++import AppKit
++import CryptoKit
++import GlowroomCore
++import ImageIO
++import SwiftUI
++import Testing
++import UniformTypeIdentifiers
++@testable import Glowroom
++
++/// Native windows and accessibility are shared process state; these captures stay ordered.
++/// Catalog projection/preview work still uses the production bounded background services.
++@Suite("Library search and model management native acceptance", .serialized, .timeLimit(.minutes(4)))
++@MainActor
++struct LibrarySearchModelScreenshotTests {
++    @Test(.enabled(if: ProcessInfo.processInfo.environment["GLOWROOM_199_SNAPSHOTS"] != nil),
++          arguments: [NSSize(width: 1_440, height: 900), NSSize(width: 1_000, height: 660)])
++    func searchModesSetupAndFilmstrip(size: NSSize) async throws {
++        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("Glowroom-Search-Capture-\(UUID())")
++        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
++        defer { try? FileManager.default.removeItem(at: directory) }
++        let photos = directory.appendingPathComponent("Synthetische Fotos")
++        try FileManager.default.createDirectory(at: photos, withIntermediateDirectories: true)
++        let image = try fixtureImage(), folder = LibraryFolder(url: photos)
++        var assets: [PhotoAsset] = [], originalBytes: [Data] = []
++        for (index, name) in ["Morgenlicht.png", "Abendlicht.png", "Wald.png"].enumerated() {
++            let url = photos.appendingPathComponent(name)
++            let destination = try #require(CGImageDestinationCreateWithURL(url as CFURL, UTType.png.identifier as CFString, 1, nil))
++            CGImageDestinationAddImage(destination, image, nil)
++            try #require(CGImageDestinationFinalize(destination))
++            let bytes = try Data(contentsOf: url); originalBytes.append(bytes)
++            try FileManager.default.setAttributes([.modificationDate: Date(timeIntervalSince1970: 1)], ofItemAtPath: url.path)
++            assets.append(PhotoAsset(folderID: folder.id, fileURL: url, fileSize: Int64(bytes.count),
++                createdAt: Date(timeIntervalSince1970: Double(index + 1)), modifiedAt: Date(timeIntervalSince1970: 1),
++                rating: [4, 5, 2][index], isFavorite: index < 2))
++        }
++        let repository = CatalogRepository(directory: directory.appendingPathComponent("Catalog"))
++        try repository.save(LibraryCatalog(folders: [folder], assets: assets))
++        let service = SearchCaptureSemanticService()
++        let library = LibraryModel(repository: repository, semanticSearch: service)
++        let editor = EditingModel(directory: directory.appendingPathComponent("Edits"))
++        let defaultsName = "Glowroom-Search-Capture-\(UUID())", defaults = try #require(UserDefaults(suiteName: defaultsName))
++        defer { defaults.removePersistentDomain(forName: defaultsName) }
++        let layout = WorkspaceLayoutModel(defaults: defaults)
++        layout.update(developing: false) { $0.showsTools = false; $0.showsLibrary = true; $0.libraryWidth = 200; $0.showsFilmstrip = true }
++        layout.update(developing: true) { $0.showsLibrary = false; $0.showsTools = true; $0.showsFilmstrip = true; $0.toolsWidth = 330; $0.openGroups = [.aiDevelopment] }
++        let metadata = PhotoMetadataModel(store: PhotoMetadataRepository(directory: directory.appendingPathComponent("Metadata")),
++            suggestor: LocalPhotoMetadataSuggestor(service: ImageAnalysisService(provider: UnavailableImageAnalysisProvider(reason: .sdkUnavailable), budget: AIResourceBudget())),
++            library: library, editor: editor)
++        let host = SearchModelCaptureHost(size: size)
++        defer { host.close() }
++        try await wait { !library.isLoading && !library.isProjecting && !editor.isLoading }
++        func root() -> some View {
++            LibraryView(model: library, dataDirectory: directory)
++                .environmentObject(editor).environmentObject(JPEGExportModel(preferences: nil))
++                .environmentObject(layout).environmentObject(metadata).preferredColorScheme(.dark)
++        }
++        func capture(_ name: String, evidence: String = "production LibraryView; controlled semantic vectors; no real model inference") async throws {
++            try await host.settle()
++            #expect(host.contentSize == size, "Every capture must retain its recorded window dimensions")
++            try await Task.sleep(for: .seconds(1))
++            let output = URL(fileURLWithPath: ProcessInfo.processInfo.environment["GLOWROOM_199_SNAPSHOTS"]!, isDirectory: true)
++            try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
++            let png = output.appendingPathComponent("\(name)-\(Int(size.width)).png")
++            try host.snapshot(to: png)
++            let record: [String: Any] = ["state": name, "windowWidthPoints": size.width, "windowHeightPoints": size.height,
++                "scaleFactor": host.scaleFactor, "sourceCommit": ProcessInfo.processInfo.environment["GLOWROOM_WORKSPACE_SNAPSHOT_COMMIT"] ?? "working-tree",
++                "fixture": "900x600 synthetic landscape generated by LibrarySearchModelScreenshotTests", "fixtureSHA256": digest(originalBytes[0]),
++                "screenshotSHA256": digest(try Data(contentsOf: png)), "searchMode": library.searchMode.rawValue,
++                "query": library.semanticQuery, "literalFilter": library.semanticLiteralFilter, "rating": library.minimumRating,
++                "scope": library.similarityScopeLabel, "reference": library.similarityReference?.fileName ?? "none",
++                "indexScope": library.semanticScope.rawValue, "operation": library.semanticOperationLabel ?? "none",
++                "evidence": evidence, "macOS": ProcessInfo.processInfo.operatingSystemVersionString]
++            try JSONSerialization.data(withJSONObject: record, options: [.prettyPrinted, .sortedKeys])
++                .write(to: png.deletingPathExtension().appendingPathExtension("json"))
++        }
++        #if GLOWROOM_199_BASELINE
++        let prefix = "before"
++        library.semanticControlsExpanded = true
++        #else
++        let prefix = "after"
++        #endif
++        library.workspaceMode = .library
++        library.minimumRating = 4; library.semanticQuery = "Berge im Abendlicht"; library.searchMode = .semantic
++        await library.waitForProjection()
++        try await wait { library.semanticState.version > 0 }
++        try await host.mount(root())
++        try await capture("\(prefix)-search-content")
++        #if GLOWROOM_199_BASELINE
++        // The old production search sheet is captured on its own native host, with
++        // the exact same library model. Its surrounding modal chrome is not claimed.
++        try await host.mount(AISemanticSearchView(library: library, layout: layout)
++            .foregroundStyle(Theme.text).tint(Theme.accent)
++            .background(Color(nsColor: .windowBackgroundColor)).preferredColorScheme(.dark))
++        try await capture("before-search-sheet", evidence: "actual production AISemanticSearchView in standalone host; same catalog/query/filter; no model inference")
++        #endif
++        library.selectedID = assets[0].id; library.findSimilarImages()
++        await library.waitForProjection()
++        try await host.mount(root())
++        try #require(library.similarityReference?.id == assets[0].id)
++        try await capture("\(prefix)-search-similar")
++        library.stopFindingSimilarImages(); library.search = ""; library.minimumRating = 0
++        await library.waitForProjection()
++        library.selectedID = assets[0].id; library.showsDetail = true
++        try await host.settle()
++        try await capture("\(prefix)-library-filmstrip")
++        library.workspaceMode = .develop
++        try await host.settle()
++        try await capture("\(prefix)-develop-filmstrip")
++        library.selectedID = nil
++        try await host.settle()
++        try await capture("\(prefix)-models-no-photo", evidence: "production LibraryView without selected photo; real model setup entry points; no inference/download")
++        #if !GLOWROOM_199_BASELINE
++        try await host.mount(AIModelsView(library: library).preferredColorScheme(.dark))
++        // Allow the real read-only model inspections to finish before MODEL-01.
++        try await Task.sleep(for: .seconds(4))
++        try await capture("after-model-cards", evidence: "production AIModelsView without selected photo; real model availability; no inference/download")
++        #endif
++        let initialCalls = await service.prepareCalls
++        #expect(initialCalls == 0, "Opening search and model management must not build an index")
++        library.workspaceMode = .library; library.searchMode = .semantic
++        await service.setMissing()
++        library.semanticControlsExpanded = true; library.refreshSemanticStatus()
++        try await wait { library.semanticState.availability != .available }
++        #if GLOWROOM_199_BASELINE
++        await library.waitForProjection()
++        try await host.mount(root())
++        #else
++        try await host.mount(AIModelsView(library: library, destination: .index).preferredColorScheme(.dark))
++        let configureSearch = try #require(host.elements.first { $0.accessibilityIdentifier() == "ai-models.index.setup-model" })
++        try #require(configureSearch.accessibilityPerformPress())
++        try await wait { host.elements.contains { $0.accessibilityIdentifier() == "ai-models.search.import" } }
++        #endif
++        try await capture("\(prefix)-model-missing", evidence: "production model/setup controls; controlled missing semantic model; no installation")
++        await service.setReady(); library.refreshSemanticStatus()
++        try await wait { library.semanticState.availability == .available }
++        library.prepareSemanticIndex()
++        try await wait { library.semanticState.isIndexing && library.semanticOperationLabel != nil }
++        #if GLOWROOM_199_BASELINE
++        try await host.mount(root())
++        #else
++        try await host.mount(AIModelsView(library: library, destination: .index).preferredColorScheme(.dark))
++        #endif
++        try await capture("\(prefix)-index-running", evidence: "production index controls; controlled cancellable semantic service paused at 1 of 3; no real index/inference")
++        #expect(host.elements.contains { $0.accessibilityLabel() == "Abbrechen" })
++        library.cancelSemanticOperation()
++        try await wait { library.semanticOperationLabel == nil && !library.semanticState.isIndexing }
++        #expect(await service.prepareCalls == 1)
++        for (index, asset) in assets.enumerated() { #expect(try Data(contentsOf: asset.fileURL) == originalBytes[index]) }
++        #expect(await editor.flush()); #expect(await metadata.finishSaving()); #expect(await library.finishSaving())
++        library.beginTermination()
++    }
++
++    private func fixtureImage() throws -> CGImage {
++        let context = try #require(CGContext(data: nil, width: 900, height: 600, bitsPerComponent: 8, bytesPerRow: 0,
++            space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
++        context.setFillColor(CGColor(srgbRed: 0.21, green: 0.45, blue: 0.72, alpha: 1)); context.fill(CGRect(x: 0, y: 0, width: 900, height: 600))
++        context.setFillColor(CGColor(srgbRed: 0.93, green: 0.7, blue: 0.31, alpha: 1)); context.fillEllipse(in: CGRect(x: 650, y: 390, width: 120, height: 120))
++        context.setFillColor(CGColor(srgbRed: 0.18, green: 0.3, blue: 0.19, alpha: 1))
++        context.move(to: CGPoint(x: 0, y: 0)); context.addLine(to: CGPoint(x: 0, y: 160)); context.addLine(to: CGPoint(x: 250, y: 390)); context.addLine(to: CGPoint(x: 570, y: 120)); context.addLine(to: CGPoint(x: 900, y: 240)); context.addLine(to: CGPoint(x: 900, y: 0)); context.closePath(); context.fillPath()
++        return try #require(context.makeImage())
++    }
++    private func digest(_ data: Data) -> String { SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined() }
++    private func wait(_ condition: () -> Bool) async throws {
++        let deadline = ContinuousClock.now + .seconds(15)
++        while !condition() { try #require(ContinuousClock.now < deadline); try await Task.sleep(for: .milliseconds(20)) }
++    }
++}
++
++private actor SearchCaptureSemanticService: SemanticSearchServing {
++    private static let descriptor = SemanticModelDescriptor(modelID: "controlled-ui-fixture", sourceRevision: "fixture-v1", releaseID: "fixture-v1", dimension: 2, maximumTextTokens: 64, tokenizerVersion: "v1", preprocessingVersion: 1, normalizationVersion: 1)
++    private var session = UUID(), generation = -1, version: UInt64 = 1
++    private let index = UUID()
++    private var missing = false, indexing = false, scopeCount = 3
++    private var continuation: AsyncStream<SemanticSearchState>.Continuation?
++    private(set) var prepareCalls = 0
++    func updateCatalog(snapshotSessionID: UUID, generation: Int, assets: [PhotoAsset]) { session = snapshotSessionID; self.generation = generation }
++    func search(query: String, candidates: [PhotoAsset], topK: Int) throws -> SemanticSearchResult {
++        if missing { throw SemanticEmbeddingError.unavailable(.modelNotInstalled) }
++        return .init(catalogSessionID: session, catalogGeneration: generation, indexGenerationID: index,
++            modelDescriptor: Self.descriptor, candidateAssetIDs: candidates.map(\.id),
++            hits: candidates.prefix(topK).enumerated().map { .init(assetID: $0.element.id, score: 0.88 - Float($0.offset) * 0.1) })
++    }
++    func search(similarTo reference: PhotoAsset, candidates: [PhotoAsset], topK: Int) throws -> SemanticSearchResult {
++        let result = try search(query: "reference", candidates: candidates.filter { $0.id != reference.id }, topK: topK)
++        return .init(catalogSessionID: session, catalogGeneration: generation, indexGenerationID: index, modelDescriptor: Self.descriptor,
++            candidateAssetIDs: candidates.map(\.id), hits: result.hits)
++    }
++    func status(scope: [PhotoAsset]) -> SemanticSearchState { scopeCount = scope.count; return state }
++    private var state: SemanticSearchState { .init(version: version, availability: missing ? .unavailable(.modelNotInstalled) : .available,
++        indexGenerationID: missing ? nil : index, indexedCount: indexing ? 1 : scopeCount, totalCount: scopeCount, staleCount: 0,
++        missingCount: indexing ? max(0, scopeCount - 1) : 0, processedCount: indexing ? 1 : 0, isIndexing: indexing,
++        notice: indexing ? "Kontrollierter Testzustand" : nil, modelDescriptor: missing ? nil : Self.descriptor, installedBytes: missing ? nil : 100) }
++    func updates() -> AsyncStream<SemanticSearchState> { AsyncStream { continuation = $0 } }
++    func setMissing() { missing = true; version += 1; continuation?.yield(state) }
++    func setReady() { missing = false; version += 1; continuation?.yield(state) }
++    func prepareIndex(scope: [PhotoAsset], rebuild: Bool) async throws {
++        prepareCalls += 1; scopeCount = scope.count; indexing = true; version += 1; continuation?.yield(state)
++        defer { indexing = false; version += 1; continuation?.yield(state) }
++        while indexing { try await Task.sleep(for: .milliseconds(50)) }
++    }
++    func cancelIndexing() { indexing = false; version += 1; continuation?.yield(state) }
++    func deleteIndex() {}
++    func inspectModel(source: URL) throws -> SemanticModelImportReview { throw CancellationError() }
++    func installModel(_ review: SemanticModelImportReview) {}
++    func removeModel() {}
++    func shutdown() { continuation?.finish() }
++}
++
++@MainActor
++private final class SearchModelCaptureHost {
++    let window: NSWindow
++    private let hosting = NSHostingView(rootView: AnyView(EmptyView()))
++    private let size: NSSize
++    var contentSize: NSSize { hosting.bounds.size }
++    var scaleFactor: CGFloat { window.backingScaleFactor }
++    var elements: [WorkspaceAccessibilityElement] { WorkspaceAccessibilityElement.descendants(of: hosting) }
++    init(size: NSSize) {
++        self.size = size
++        _ = NSApplication.shared; WorkspaceAccessibilityElement.enableInProcess()
++        // A fixed-size modal must not resize the following workspace capture.
++        hosting.sizingOptions = []
++        window = NSWindow(contentRect: NSRect(origin: NSPoint(x: -10_000, y: -10_000), size: size), styleMask: .borderless, backing: .buffered, defer: false)
++        window.isReleasedWhenClosed = false; window.ignoresMouseEvents = true
++        window.appearance = NSAppearance(named: .darkAqua); window.contentView = hosting; window.orderBack(nil)
++    }
++    func mount(_ view: some View) async throws {
++        // Each scenario represents a fresh root/sheet presentation. A reused
++        // AnyView identity would retain a previous model-card selection.
++        hosting.rootView = AnyView(view.id(UUID()))
++        window.setContentSize(size)
++        hosting.frame = NSRect(origin: .zero, size: size)
++        try await settle()
++    }
++    func settle() async throws { hosting.layoutSubtreeIfNeeded(); try await Task.sleep(for: .milliseconds(150)); hosting.layoutSubtreeIfNeeded(); hosting.displayIfNeeded() }
++    func snapshot(to url: URL) throws {
++        let bitmap = try #require(hosting.bitmapImageRepForCachingDisplay(in: hosting.bounds))
++        hosting.cacheDisplay(in: hosting.bounds, to: bitmap)
++        try #require(bitmap.representation(using: .png, properties: [:])).write(to: url)
++    }
++    func close() { hosting.rootView = AnyView(EmptyView()); window.close() }
++}

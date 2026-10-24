@@ -43,46 +43,72 @@ struct DevelopRepairInspectorTests {
     }
 
     @Test(arguments: [280.0, 320.0])
-    func downloadStartsFromPaletteShowsProgressAndCanBeCanceled(width: Double) async throws {
-        let entered = TestStateSignal(false), gate = TestAsyncLatch()
+    func setupRoutesToCentralRepairCardWithoutStartingWork(width: Double) async throws {
+        let entered = TestStateSignal(false)
         var services = DevelopRepairServices.live
-        services.downloadModel = { progress in
+        services.downloadModel = { _ in
+            entered.update { $0 = true }
+            throw RepairInspectorDownloadFailure.unexpectedCompletion
+        }
+        let fixture = try await RepairInspectorFixture.make(repairServices: services)
+        let host = RepairInspectorHost(width: width, height: 900)
+        defer { host.close(); fixture.workspace.clear() }
+        let edited = EditSettings(exposure: 0.75)
+        fixture.editor.setSettings(edited, for: fixture.asset.id)
+        var destination: AIModelsDestination?
+        try await host.mount(DevelopRepairInspector(asset: fixture.asset, workspace: fixture.workspace)
+            .environmentObject(fixture.editor)
+            .environment(\.openAIModels, { destination = $0 }))
+        #expect(try #require(host.element("ai.setup")).accessibilityPerformPress())
+        try await host.settle()
+        #expect(destination == .repair)
+        #expect(!entered.value && !fixture.workspace.repairBusy && fixture.workspace.repairTask == nil)
+        #expect(fixture.workspace.repairAISetupProgress == nil)
+        #expect(host.element("ai.download") == nil && host.element("ai.import") == nil)
+        #expect(fixture.editor.settings(for: fixture.asset.id) == edited)
+        #expect(await fixture.editor.flush())
+    }
+
+    @Test
+    func centralRepairCardShowsDownloadProgressAndCanCancelWithoutPhotoChanges() async throws {
+        let entered = TestStateSignal(false), gate = TestAsyncLatch()
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("Glowroom-RepairCard-" + UUID().uuidString)
+        let store = DevelopRepairAIModelStore(directory: root, budget: AIResourceBudget(),
+            compiler: { $0 }, validator: { _ in })
+        let model = RepairModelManagerModel(store: store, download: { progress in
             progress(.init(text: "LaMa-Testdownload läuft …", fraction: 0.4))
             entered.update { $0 = true }
             await gate.wait()
             try Task.checkCancellation()
             throw RepairInspectorDownloadFailure.unexpectedCompletion
+        })
+        let fixture = try await RepairInspectorFixture.make()
+        let host = RepairInspectorHost(width: 712, height: 600)
+        defer {
+            gate.releaseAll(); model.cancel(); host.close(); fixture.workspace.clear()
+            try? FileManager.default.removeItem(at: root)
         }
-        let fixture = try await RepairInspectorFixture.make(repairServices: services)
-        let host = RepairInspectorHost(width: width, height: 900)
-        defer { gate.releaseAll(); host.close(); fixture.workspace.clear() }
         let edited = EditSettings(exposure: 0.75)
         fixture.editor.setSettings(edited, for: fixture.asset.id)
-        try await host.mount(DevelopRepairInspector(asset: fixture.asset, workspace: fixture.workspace)
-            .environmentObject(fixture.editor))
-
-        #expect(try #require(host.element("ai.setup")).accessibilityPerformPress())
+        try await host.mount(RepairModelManagerView(model: model))
+        #expect(!entered.value, "Opening model details must not download")
+        #expect(try #require(host.modelElement("download")).accessibilityPerformPress())
+        try await entered.wait("central repair model download entered", until: { $0 })
+        try await waitUntil("central repair model progress") { model.progress?.fraction == 0.4 }
         try await host.settle()
-        #expect(try #require(host.element("ai.download")).accessibilityPerformPress())
-        let operation = try #require(fixture.workspace.repairTask)
-        try await entered.wait("repair model download entered", until: { $0 })
-        try await waitUntil("repair model download progress") { fixture.workspace.repairAISetupProgress?.fraction == 0.4 }
-        try await host.settle()
-        #expect(fixture.workspace.repairBusy)
-        #expect(host.element("ai.download") == nil)
+        #expect(model.isBusy && model.installation == nil)
         #expect(host.accessibleText.contains("LaMa-Testdownload läuft …"))
-        for name in ["ai.progress", "cancel", "ai.import"] {
-            let control = try #require(host.element(name))
-            #expect(host.screenFrame.insetBy(dx: -1, dy: -1).contains(control.accessibilityFrame()))
-        }
-        #expect(try #require(host.element("ai.import")).isAccessibilityEnabled() == false)
-        #expect(try #require(host.element("mode.heal")).isAccessibilityEnabled() == false)
-        #expect(try #require(host.element("cancel")).accessibilityPerformPress())
-        gate.releaseAll(); await operation.value
+        #expect(host.modelElement("download") == nil && host.modelElement("import") == nil)
+        let cancel = try #require(host.modelElement("cancel"))
+        #expect(host.screenFrame.insetBy(dx: -1, dy: -1).contains(cancel.accessibilityFrame()))
+        #expect(cancel.accessibilityPerformPress())
+        gate.releaseAll()
+        try await waitUntil("central repair model cancellation") { !model.isBusy }
         try await host.settle()
-        #expect(!fixture.workspace.repairBusy && fixture.workspace.repairAISetupProgress == nil)
-        #expect(try #require(host.element("ai.download")).isAccessibilityEnabled())
-        #expect(fixture.workspace.errorMessage == nil)
+        #expect(model.progress == nil && model.errorMessage == nil && model.installation == nil)
+        #expect(try #require(host.modelElement("download")).isAccessibilityEnabled())
+        #expect(try #require(host.modelElement("import")).isAccessibilityEnabled())
+        #expect(!fixture.workspace.repairBusy && fixture.workspace.repairTask == nil)
         #expect(fixture.editor.settings(for: fixture.asset.id) == edited)
         #expect(await fixture.editor.flush())
     }
@@ -198,7 +224,7 @@ struct DevelopRepairInspectorTests {
         #expect(fixture.workspace.repairUsesAI)
         #expect(host.element("choose-source") == nil)
         #expect(host.element("feather") == nil)
-        #expect(host.accessibleText.contains("LaMa verfügbar"))
+        #expect(host.accessibleText.contains("KI-Reparatur bereit"))
         #expect(fixture.editor.settings(for: fixture.asset.id) == .newEditingSettings)
         #expect(try #require(host.element("mode.clone")).accessibilityPerformPress())
         try await host.settle()
@@ -486,6 +512,10 @@ private final class RepairInspectorHost {
 
     func element(_ name: String) -> WorkspaceAccessibilityElement? {
         elements.first { $0.accessibilityIdentifier() == "develop.repair." + name }
+    }
+
+    func modelElement(_ name: String) -> WorkspaceAccessibilityElement? {
+        elements.first { $0.accessibilityIdentifier() == "repair-model." + name }
     }
 
     func mount(_ content: some View) async throws {

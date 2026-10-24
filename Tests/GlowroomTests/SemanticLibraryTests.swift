@@ -48,6 +48,45 @@ final class SemanticLibraryTests {
         #expect(await model.finishSaving())
     }
 
+    @Test func workspaceRoundTripPreservesSearchAndResetOnlyClearsThePresentedMode() async throws {
+        let (model, _, folders, photos) = try await fixture()
+        model.search = "separate literal query"
+        model.semanticQuery = "forest"
+        model.searchMode = .semantic
+        model.semanticLiteralFilter = "Canon"
+        model.minimumRating = 4
+        model.semanticTopK = 17
+        model.semanticScope = .all
+        model.selection = .folder(folders[0].id)
+        model.sort = .rating
+        model.selectedID = photos[0].id
+        model.findSimilarImages()
+        await model.waitForProjection()
+        model.isDeveloping = true
+        model.isDeveloping = false
+        #expect(model.similarityReference?.id == photos[0].id)
+        #expect(model.semanticQuery == "forest" && model.search == "separate literal query")
+        #expect(model.semanticLiteralFilter == "Canon" && model.minimumRating == 4)
+        #expect(model.semanticTopK == 17 && model.semanticScope == .all)
+        #expect(model.selection == .folder(folders[0].id) && model.sort == .rating)
+        model.resetVisibleSearch()
+        #expect(model.similarityReference == nil && model.searchMode == .literal)
+        #expect(model.search == "separate literal query" && model.semanticQuery == "forest")
+        #expect(model.minimumRating == 0 && model.semanticLiteralFilter.isEmpty)
+        model.resetVisibleSearch()
+        #expect(model.search.isEmpty && model.semanticQuery == "forest")
+        model.search = "keep text"
+        model.useSemanticTextSearch()
+        model.semanticLiteralFilter = "Canon"
+        model.resetVisibleSearch()
+        #expect(model.semanticQuery.isEmpty && model.semanticLiteralFilter.isEmpty)
+        #expect(model.search == "keep text")
+        #expect(model.selection == .folder(folders[0].id) && model.sort == .rating)
+        #expect(model.semanticTopK == 17 && model.semanticScope == .all)
+        await model.waitForProjection()
+        #expect(await model.finishSaving())
+    }
+
     @Test func rapidImageReferenceRoundTripAndLeavingSearchRejectOldReplies() async throws {
         let (model, service, _, photos) = try await fixture(blocked: true)
         model.selectedID = photos[0].id; model.findSimilarImages()

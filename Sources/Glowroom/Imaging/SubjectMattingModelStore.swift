@@ -16,11 +16,11 @@ enum SubjectMattingError: Error, LocalizedError, Equatable, Sendable {
     var errorDescription: String? {
         switch self {
         case .modelNotInstalled:
-            "Richte zuerst BiRefNet über „BiRefNet einrichten …“ ein, um Motiv- und Hintergrundmasken zu erstellen."
+            "Richte das Motivmodell unter „KI-Modelle → Motiv und Hintergrund“ ein."
         case .invalidModel:
             "Das lokale Motivmodell ist unvollständig, verändert oder nicht kompatibel. Importiere das für Glowroom vorbereitete BiRefNet-HR-Matting-Modell mit 1920 × 1920 Pixeln erneut."
         case .updateRequired:
-            "Das installierte Motivmodell verwendet noch 2048 Pixel. Ersetze es unter „BiRefNet einrichten …“ durch die aktuelle 1920-Pixel-Variante. Gespeicherte Masken bleiben erhalten."
+            "Das installierte Motivmodell verwendet noch 2048 Pixel. Ersetze es unter „KI-Modelle → Motiv und Hintergrund“ durch die aktuelle 1920-Pixel-Variante. Gespeicherte Masken bleiben erhalten."
         case .setupInProgress:
             "Das lokale Motivmodell wird bereits eingerichtet oder entfernt."
         case .unavailable:

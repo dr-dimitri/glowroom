@@ -131,10 +131,9 @@ struct UnifiedObjectMaskAcceptanceTests {
                 // mount the same production view with its normal window color.
                 let setupHost = WorkspaceSectionTestHost(size: setupSize, appearance: appearance)
                 defer { setupHost.close() }
-                try await setupHost.mount(Group {
-                    if requirement == .languageModel { LLMModelManagerView() }
-                    else { SubjectMattingModelSetupView() }
-                }.frame(width: setupSize.width, height: setupSize.height)
+                try await setupHost.mount(AIModelsView(library: library,
+                    destination: requirement == .languageModel ? .corrections : .subject)
+                    .frame(width: setupSize.width, height: setupSize.height)
                     .background(Color(nsColor: .windowBackgroundColor)).preferredColorScheme(.dark))
                 try await wait("standalone native setup ready") { setupIsReady(setupHost.accessibilityElements, requirement: requirement) }
                 try await setupHost.settle()
@@ -143,7 +142,7 @@ struct UnifiedObjectMaskAcceptanceTests {
                 try setupHost.snapshot(to: png)
                 let pngBytes = try Data(contentsOf: png)
                 let metadata: [String: Any] = ["state": "targeted model setup", "requiredModel": name,
-                    "nativeView": requirement == .languageModel ? "LLMModelManagerView" : "SubjectMattingModelSetupView",
+                    "nativeView": "AIModelsView",
                     "sourceCommit": ProcessInfo.processInfo.environment["GLOWROOM_WORKSPACE_SNAPSHOT_COMMIT"] ?? "working-tree",
                     "widthPoints": setupSize.width, "heightPoints": setupSize.height,
                     "screenshotSHA256": SHA256.hash(data: pngBytes).map { String(format: "%02x", $0) }.joined(),
@@ -266,5 +265,9 @@ private struct ObjectMaskEvidenceHarness: View {
                 workspace.receive(handoff.frame.output, sourceBitmap: handoff.decodedSource, sourceStamp: handoff.sourceStamp,
                     finalSourceReady: handoff.identity.finalSourceReady)
             })
+            .environment(\.openAIModels, { library.aiModelsDestination = $0 })
+            .sheet(item: $library.aiModelsDestination) { destination in
+                AIModelsView(library: library, destination: destination)
+            }
     }
 }

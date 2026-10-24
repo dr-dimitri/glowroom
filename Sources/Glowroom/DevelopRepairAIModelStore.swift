@@ -13,7 +13,7 @@ enum DevelopRepairAIError: Error, LocalizedError, Equatable, Sendable {
     case modelNotInstalled, invalidModel, importInProgress, invalidMask, selectionTooLarge, unavailable
     var errorDescription: String? {
         switch self {
-        case .modelNotInstalled: "Importiere zuerst ein kompatibles lokales LaMa-Core-ML-Modell."
+        case .modelNotInstalled: "Richte das lokale LaMa-Modell unter „KI-Modelle → Reparatur“ ein."
         case .invalidModel: "Das Modell ist unvollständig, verändert oder nicht kompatibel. Erwartet werden image und mask mit 800 × 800 Pixeln und eine RGB-Bildausgabe."
         case .importInProgress: "Ein lokales Reparaturmodell wird bereits importiert."
         case .invalidMask: "Markiere einen gültigen kleinen Reparaturbereich."

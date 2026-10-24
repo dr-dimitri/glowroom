@@ -4,7 +4,7 @@ import GlowroomCore
 enum LibrarySearchMode: String, CaseIterable, Identifiable, Sendable {
     case literal, semantic
     var id: Self { self }
-    var label: String { self == .literal ? "Wörtlich" : "Semantisch" }
+    var label: String { self == .literal ? "Text" : "Bildinhalt" }
 }
 
 struct LibraryProjectionKey: Equatable, Sendable {

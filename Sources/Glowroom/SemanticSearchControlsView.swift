@@ -2,8 +2,13 @@ import AppKit
 import SwiftUI
 import GlowroomCore
 
+enum SemanticSearchManagementSection { case model, index }
+
+/// Management opens explicitly in KI-Modelle; the library only presents search controls.
 struct SemanticSearchControlsView: View {
     @ObservedObject var model: LibraryModel
+    var section: SemanticSearchManagementSection = .index
+    var onShowModel: () -> Void = {}
     @ViewState<Deletion?> private var deletion: Deletion?
     private enum Deletion: String, Identifiable {
         case index, model
@@ -11,39 +16,28 @@ struct SemanticSearchControlsView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            if model.searchMode == .semantic {
-                if let reference = model.similarityReference {
-                    HStack {
-                        Label("Ähnliche Bilder zu: \(reference.fileName)", systemImage: "photo.on.rectangle")
-                            .font(.system(size: 11)).textSelection(.enabled)
-                        Spacer()
-                        Button("Ähnlichkeitssuche beenden") { model.stopFindingSimilarImages() }
-                            .font(.system(size: 10))
-                    }
-                    Text("Suchumfang: \(model.similarityScopeLabel)")
-                        .font(.system(size: 13)).foregroundStyle(Theme.muted)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                HStack(spacing: 10) {
-                    TextField("Optional: Dateiname/Kamera/Format filtern", text: $model.semanticLiteralFilter)
-                        .textFieldStyle(.roundedBorder).font(.system(size: 11))
-                        .accessibilityLabel("Zusätzlicher wörtlicher Filter vor der semantischen Suche")
-                    Stepper("Top \(min(500, max(1, model.semanticTopK)))", value: $model.semanticTopK, in: 1...500)
-                        .font(.system(size: 10)).fixedSize()
-                }
-            }
-            if let error = model.semanticError {
+        VStack(alignment: .leading, spacing: 12) {
+            if section == .model { modelControls }
+            else { indexControls }
+            if let error = model.semanticError, section != .model || error != availabilityMessage {
                 Label(error, systemImage: "exclamationmark.triangle")
-                    .font(.system(size: 13)).fixedSize(horizontal: false, vertical: true)
-                Button("Zur wörtlichen Suche") { model.searchMode = .literal }.font(.system(size: 10))
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            DisclosureGroup("Lokales Suchmodell und Suchindex", isExpanded: Binding(
-                get: { model.semanticControlsExpanded || model.semanticOperationLabel != nil || model.semanticState.isIndexing },
-                set: { model.semanticControlsExpanded = $0 })) {
-                controls.padding(.top, 8)
-            }.font(.system(size: 11))
-        }.padding(.horizontal, 26).padding(.bottom, 12)
+            if let label = model.semanticOperationLabel {
+                HStack { ProgressView().controlSize(.small); Text(label) }
+            }
+            if model.semanticState.isIndexing {
+                Text("Abgeschlossen: \(model.semanticState.processedCount) · \(model.semanticActiveScopeLabel ?? "gewählter Indexumfang")")
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if model.semanticOperationLabel != nil || model.semanticState.isIndexing {
+                Button("Abbrechen") { model.cancelSemanticOperation() }
+                    .accessibilityIdentifier("ai-models.search.cancel")
+            }
+            if let notice = model.semanticState.notice {
+                Text(notice).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
+            }
+        }.font(.system(size: 13))
             .background {
                 if let review = model.semanticImportReview {
                     SemanticModelReviewPresenter(model: model, review: review).id(review.id)
@@ -57,53 +51,69 @@ struct SemanticSearchControlsView: View {
                     Button("Index löschen", role: .destructive) { model.deleteSemanticIndex(); deletion = nil }
                 }
                 Button("Abbrechen", role: .cancel) { deletion = nil }
-            } message: {
-                Text("Originalbilder und Bearbeitungen bleiben erhalten. Der lokale Suchindex kann später aus den Originalen neu berechnet werden.")
             }
     }
 
-    private var controls: some View {
-        VStack(alignment: .leading, spacing: 8) {
+    private var availabilityMessage: String? {
+        if case .unavailable(let reason) = model.semanticState.availability { return reason.localizedDescription }
+        return nil
+    }
+
+    private var modelControls: some View {
+        VStack(alignment: .leading, spacing: 12) {
             if case .unavailable(let reason) = model.semanticState.availability {
-                Text(reason.localizedDescription).foregroundStyle(Theme.muted)
+                Text(reason.localizedDescription).fixedSize(horizontal: false, vertical: true)
             }
-            if let descriptor = model.semanticState.modelDescriptor {
-                Text("Modell: \(descriptor.modelID) · \(descriptor.releaseID)").textSelection(.enabled)
+            let descriptor = model.semanticState.modelDescriptor ?? LocalModelRegistry.semantic
+            Group {
+                LabeledContent("Modell", value: descriptor.modelID)
+                LabeledContent("Version", value: descriptor.releaseID)
+                LabeledContent("Quellrevision", value: descriptor.sourceRevision)
+                LabeledContent("Vektordimension", value: "\(descriptor.dimension)")
+                LabeledContent("Tokenizer", value: descriptor.tokenizerVersion)
+                LabeledContent("Vorverarbeitung", value: "\(descriptor.preprocessingVersion)")
+                LabeledContent("Normalisierung", value: "\(descriptor.normalizationVersion)")
                 if let bytes = model.semanticState.installedBytes {
-                    Text("Installiert: \(ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file))")
+                    LabeledContent("Installiert", value: ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file))
                 }
-            } else { Text("Kein Suchmodell eingerichtet.") }
+            }
+            LabeledContent("Maximale Installation", value: ByteCountFormatter.string(fromByteCount: SemanticModelInstaller.maximumInstalledBytes, countStyle: .file))
+            LabeledContent("Zusätzlich freier Platz", value: ByteCountFormatter.string(fromByteCount: SemanticModelInstaller.stagingBytesRequired, countStyle: .file))
+            Link("Modell und Apache-2.0-Lizenz", destination: URL(string: "https://huggingface.co/\(descriptor.modelID)/blob/\(descriptor.sourceRevision)/README.md")!)
+            HStack {
+                Button("Suchmodell importieren …") { chooseModel() }
+                    .accessibilityIdentifier("ai-models.search.import")
+                Button("Modell entfernen …", role: .destructive) { deletion = .model }
+                    .disabled(model.semanticState.modelDescriptor == nil)
+            }.disabled(!model.canManageSemanticSearch || model.semanticOperationLabel != nil || model.semanticState.isIndexing)
+        }
+    }
+
+    private var indexControls: some View {
+        VStack(alignment: .leading, spacing: 12) {
             Picker("Indexumfang", selection: $model.semanticScope) {
                 ForEach(LibraryModel.SemanticScope.allCases) { scope in Text(scope.label).tag(scope) }
-            }.pickerStyle(.menu).disabled(model.semanticOperationLabel != nil)
-            Text("Gewählter Umfang: \(model.semanticScope.label) · \(model.semanticScopeCount) Bilder")
+            }.pickerStyle(.menu).disabled(model.semanticOperationLabel != nil || model.semanticState.isIndexing)
+            Text("\(model.semanticScope.label) · \(model.semanticScopeCount) Bilder")
                 .fixedSize(horizontal: false, vertical: true)
-            Text("\(model.semanticState.indexedCount) gültig · \(model.semanticState.missingCount) fehlend · \(model.semanticState.staleCount) veraltet · \(model.semanticState.totalCount) im geprüften Umfang")
+            Text("\(model.semanticState.indexedCount) aktuell · \(model.semanticState.missingCount) fehlend · \(model.semanticState.staleCount) veraltet")
                 .foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
-            if let label = model.semanticOperationLabel {
-                HStack { ProgressView().controlSize(.small); Text(label) }
+            if model.semanticState.availability != .available {
+                Button("Bildsuche einrichten", action: onShowModel)
+                    .accessibilityIdentifier("ai-models.index.setup-model")
             }
-            if model.semanticState.isIndexing {
-                Text("Abgeschlossen: \(model.semanticState.processedCount) · \(model.semanticActiveScopeLabel ?? "bewusst gestarteter Indexumfang")")
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            if model.semanticOperationLabel != nil || model.semanticState.isIndexing {
-                Button("Abbrechen") { model.cancelSemanticOperation() }
-            } else {
+            HStack {
                 HStack {
                     Button(model.semanticState.indexedCount == 0 ? "Suchindex vorbereiten" : "Index fortsetzen") { model.prepareSemanticIndex() }
-                        .disabled(!model.canManageSemanticSearch || !model.semanticScopeIsReady || model.semanticScopeCount == 0 || model.semanticState.availability != .available)
+                        .accessibilityIdentifier("ai-models.index.prepare")
                     Button("Neu aufbauen") { model.prepareSemanticIndex(rebuild: true) }
-                        .disabled(!model.canManageSemanticSearch || !model.semanticScopeIsReady || model.semanticScopeCount == 0 || model.semanticState.availability != .available)
-                    Menu("Verwalten") {
-                        Button("Lokales Suchmodell importieren …") { chooseModel() }
-                        Button("Suchindex löschen …", role: .destructive) { deletion = .index }
-                        Button("Suchmodell entfernen …", role: .destructive) { deletion = .model }
-                    }.disabled(!model.canManageSemanticSearch)
-                }.font(.system(size: 11))
+                        .accessibilityIdentifier("ai-models.index.rebuild")
+                }.disabled(!model.canManageSemanticSearch || !model.semanticScopeIsReady || model.semanticScopeCount == 0 || model.semanticState.availability != .available || model.semanticOperationLabel != nil || model.semanticState.isIndexing)
+                Button("Index löschen …", role: .destructive) { deletion = .index }
+                    .disabled(!model.canManageSemanticSearch || model.semanticOperationLabel != nil || model.semanticState.isIndexing)
+                    .accessibilityIdentifier("ai-models.index.delete")
             }
-            if let notice = model.semanticState.notice { Text(notice).foregroundStyle(Theme.muted) }
-        }.font(.system(size: 13))
+        }
     }
 
     private func chooseModel() {

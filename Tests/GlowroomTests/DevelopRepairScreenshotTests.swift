@@ -41,11 +41,14 @@ struct DevelopRepairScreenshotTests {
         workspace.receive(bitmap, sourceBitmap: bitmap); workspace.markDisplayed(source: source, settings: .newEditingSettings)
         let host = RepairAcceptanceHost(size: size)
         defer { host.close(); workspace.clear() }
+        var modelDestination: AIModelsDestination?
         func mount() async throws {
             let settings = editor.settings(for: asset.id)
             let rendered = try await Task.detached(priority: .userInitiated) { try EditRenderer.render(bitmap, settings: settings) }.value
             workspace.receive(rendered, sourceBitmap: bitmap); workspace.markDisplayed(source: source, settings: settings)
-            try await host.mount(RepairAcceptanceView(asset: asset, workspace: workspace, bitmap: rendered, size: size).environmentObject(editor))
+            try await host.mount(RepairAcceptanceView(asset: asset, workspace: workspace, bitmap: rendered, size: size)
+                .environmentObject(editor)
+                .environment(\.openAIModels, { modelDestination = $0 }))
         }
         func capture(_ name: String, evidence: String = "production views; synthetic fixture; no model inference") async throws {
             try await host.settle()
@@ -77,9 +80,9 @@ struct DevelopRepairScreenshotTests {
         if baseline { #expect(await editor.finishSaving()); return }
 
         try await host.press("develop.repair.ai.setup")
-        try await host.reveal(identifier: "develop.repair.ai.download")
-        try await capture("model-setup")
-        try await host.press("develop.repair.ai.setup")
+        #expect(modelDestination == .repair)
+        #expect(!host.elements.contains { $0.accessibilityIdentifier() == "develop.repair.ai.download" })
+        try await capture("model-setup-entry", evidence: "production setup action routes to central Reparatur card; no inline model manager or inference")
 
         try await host.press("develop.repair.mode.clone")
         workspace.repairSource = try LocalMaskPoint(x: 0.24, y: 0.35)

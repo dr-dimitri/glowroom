@@ -198,7 +198,7 @@ struct SubjectMattingModelStoreTests {
         }
         #expect(calls.value == 0)
         #expect(try await store.installedModel() == nil)
-        #expect(SubjectMattingError.modelNotInstalled.errorDescription?.contains("BiRefNet einrichten …") == true)
+        #expect(SubjectMattingError.modelNotInstalled.errorDescription?.contains("KI-Modelle → Motiv und Hintergrund") == true)
         var states = await budget.stateUpdates().makeAsyncIterator()
         #expect(await states.next()?.activeInferences == 0)
     }

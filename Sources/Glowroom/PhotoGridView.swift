@@ -428,17 +428,20 @@ struct PhotoFilmstrip: View {
                 Text(model.title).fontWeight(.medium).lineLimit(1)
                 Text("\(model.visibleAssets.count) Fotos").foregroundStyle(Theme.muted).fixedSize()
                 Spacer(minLength: 0)
-                Menu {
-                    Picker("Bewertung", selection: $model.minimumRating) {
-                        Text("Alle Bewertungen").tag(0)
-                        ForEach(1...5, id: \.self) { Text("Mindestens \($0) Sterne").tag($0) }
-                    }
-                    Picker("Sortieren", selection: $model.sort) {
-                        ForEach(PhotoSort.allCases) { Text($0.rawValue).tag($0) }
-                    }
-                } label: { Label("Filter & Sortierung", systemImage: "line.3.horizontal.decrease") }
-                    .menuStyle(.borderlessButton).fixedSize()
-            }.font(.system(size: 10)).padding(.horizontal, 14).frame(height: 26).background(Theme.chrome)
+                if model.isDeveloping {
+                    Menu {
+                        Picker("Bewertung", selection: $model.minimumRating) {
+                            Text("Alle Bewertungen").tag(0)
+                            ForEach(1...5, id: \.self) { Text("Mindestens \($0) Sterne").tag($0) }
+                        }
+                        Picker("Sortieren", selection: $model.sort) {
+                            ForEach(PhotoSort.allCases) { Text($0.rawValue).tag($0) }
+                        }
+                    } label: { Label("Filter & Sortierung", systemImage: "line.3.horizontal.decrease") }
+                        .menuStyle(.borderlessButton).fixedSize()
+                        .accessibilityIdentifier("filmstrip.filters")
+                }
+            }.font(.system(size: 13)).padding(.horizontal, 14).frame(height: 26).background(Theme.chrome)
             ScrollViewReader { reader in
                 ScrollView(.horizontal) {
                     LazyHStack(spacing: 2) {
@@ -460,6 +463,7 @@ struct PhotoFilmstrip: View {
                     .onChange(of: model.selectedID) { _, id in if let id { withAnimation(.easeOut(duration: 0.15)) { reader.scrollTo(id, anchor: .center) } } }
             }
         }.frame(height: height).background(Theme.sidebar)
+            .accessibilityElement(children: .contain)
             .accessibilityIdentifier("workspace.filmstrip")
     }
 }
