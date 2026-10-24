@@ -10,7 +10,7 @@ Der identische synthetische Katalog enthält `Morgenlicht.png` (4 Sterne), `Aben
 
 Die Suchtreffer, das fehlende Suchmodell und der laufende Index stammen aus einem ausdrücklich kontrollierten `SemanticSearchServing`. Die Aufnahmen belegen das native Layout und die Bedienzustände, keine reale semantische Inferenz, Modellqualität oder Indexleistung. Die Modellübersicht liest dagegen die tatsächlich verfügbaren lokalen Modellzustände; sie startet keine Downloads oder Inferenz. Der Index-Test startet genau eine kontrollierte Operation, pausiert bei einem abgeschlossenen Eintrag und bricht über denselben Modellpfad ab. Das bloße Öffnen der Suchansichten und der Verwaltung muss zuvor null Indexstarts ergeben.
 
-Der Ausgangsstand ist `846aecb574739916b3807034fb6783348e5538ae`. Eine getrennte `git archive`-Kopie erhält ausschließlich den [Screenshot-Harness](baseline-harness.patch), aktiviert durch `-Xswiftc -DGLOWROOM_199_BASELINE`. Die JSON-Dateien neben den PNGs enthalten Zustand, Suchparameter, Referenz, Fenstergröße, Skalierungsfaktor, Quellstand, Fixture- und Screenshot-Hash. Die [Baseline-Inventur](baseline-source-hashes.json) und die [Nachher-Inventur](after-source-hashes.json) enthalten SHA-256 für versionierte und neue nicht ignorierte Quellen, Ressourcen, Tests, Paketauflösung und Buildskripte. Lokaler Finder-/Cachezustand ist ausgeschlossen. Sie binden die Aufnahmen an den verwendeten Stand; nachher bezeichnet `issue-199-working-tree` den durch das Nachher-Inventar festgehaltenen Produktionsdiff.
+Der Ausgangsstand ist `846aecb574739916b3807034fb6783348e5538ae`. Eine getrennte `git archive`-Kopie erhält ausschließlich den [Screenshot-Harness](baseline-harness.patch), aktiviert durch `-Xswiftc -DGLOWROOM_199_BASELINE`. Die JSON-Dateien neben den PNGs enthalten Zustand, Suchparameter, Referenz, Fenstergröße, Skalierungsfaktor, Quellstand, Fixture- und Screenshot-Hash. Die [Baseline-Inventur](baseline-source-hashes.json) und die [Nachher-Inventur](after-source-hashes.json) enthalten SHA-256 für versionierte und neue nicht ignorierte Quellen, Ressourcen, Tests, Paketauflösung und Buildskripte. Lokaler Finder-/Cachezustand ist ausgeschlossen. Sie binden die Aufnahmen an den verwendeten Stand; nachher bezeichnet `1bf5e0e6f0de2ab60e99d9834fe73724de6b8534` den durch das Nachher-Inventar festgehaltenen Produktionsdiff.
 
 ## Schritte
 
@@ -37,7 +37,7 @@ Nachher im finalen Checkout:
 ```sh
 GLOWROOM_TEST_BUILD_PATH=/private/tmp/glowroom-199-visual-build \
 GLOWROOM_199_SNAPSHOTS=/private/tmp/glowroom-199-after \
-GLOWROOM_WORKSPACE_SNAPSHOT_COMMIT=issue-199-working-tree \
+GLOWROOM_WORKSPACE_SNAPSHOT_COMMIT=1bf5e0e6f0de2ab60e99d9834fe73724de6b8534 \
 ./scripts/test.sh --jobs 3 --no-parallel --filter LibrarySearchModelScreenshotTests
 ```
 
@@ -87,3 +87,5 @@ Ein sauberer vollständiger App-Build war erforderlich, weil SwiftUI-Quellcode u
 Der erste saubere App-Build war fehlgeschlagen: Der neue direkte `@State`-Einsatz verlangte ein in der verwendeten Toolchain nicht verfügbares SwiftUI-Makro. Die Ansichten verwenden nun den bestehenden Projektwrapper `@ViewState`; der anschließend erforderliche vollständig saubere Build bestand. Der erste vollständige Testlauf umfasste 2003 Tests in 275 Suites und meldete drei veraltete Reparatur-Erwartungen auf den entfernten Inline-Download beziehungsweise den alten Statustext. Diese Tests prüfen jetzt die gezielte Route zur zentralen Reparaturkarte und zusätzlich deren echte native Download-/Fortschritts-/Abbruchbedienung mit kontrolliertem Download. Angenommene Fotoeinstellungen bleiben dabei erhalten. Der Objektmasken-Harness verwendet ebenfalls den zentralen Dispatcher. Alle diese Tests bestehen im finalen Gesamtlauf; Tests oder Paketgates wurden nicht abgeschwächt.
 
 Das abschließende Review des integrierten Diffs, der betroffenen Schnittstellen, Tests und Dokumentation ergab **keine offenen Befunde**. Die endgültigen 16 Nachher-Aufnahmen, Quellen und Tests sind durch die aktualisierte Nachher-Inventur gebunden. Rohprotokolle mit privaten Dateisystempfaden und lokale Testbilder werden nicht veröffentlicht.
+
+Die Nachher-Aufnahmen wurden vor dem Commit auf dem durch das Inventar nachgewiesenen bytegleichen Quellstand erzeugt. Ihre Quellreferenz ist anschließend auf Commit `1bf5e0e6f0de2ab60e99d9834fe73724de6b8534` festgeschrieben. Diese Nachpflege ändert ausschließlich Dokumentation und JSON-Metadaten; Bilddateien, Quellen und Tests bleiben unverändert. Dafür ist gemäß `AGENTS.md` kein weiterer App-Build erforderlich. Die Bild- und Quellhashes wurden erneut verglichen.

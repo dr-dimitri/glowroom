@@ -13,7 +13,7 @@
   "scope" : "Gesamte Bibliothek",
   "screenshotSHA256" : "e4de005bbac45e44e723a9630a57398b01f3a9694262b04b2373df7a2a235522",
   "searchMode" : "semantic",
-  "sourceCommit" : "issue-199-working-tree",
+  "sourceCommit" : "1bf5e0e6f0de2ab60e99d9834fe73724de6b8534",
   "state" : "after-model-missing",
   "windowHeightPoints" : 660,
   "windowWidthPoints" : 1000
