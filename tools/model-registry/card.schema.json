@@ -23,7 +23,8 @@
       "enum": [
         "app-pinned",
         "download-only",
-        "user-import"
+        "user-import",
+        "download-and-user-import"
       ]
     },
     "source": {

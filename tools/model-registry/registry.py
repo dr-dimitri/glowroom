@@ -152,7 +152,15 @@ def validate_card(card, root=ROOT):
         require(card['status'] == 'download-only' and card['runtime']['engine'] == 'none-download-only',
                 'Skyseg must remain download-only')
     if kind == 'user-import':
-        require(card['status'] == 'user-import', 'user imports are not publisher approvals')
+        require(card['status'] == 'download-and-user-import', 'repair download and user imports are not global generation approvals')
+        require(pkg.get('folder') == 'LaMa.mlpackage', 'repair download package folder mismatch')
+        require(set(seen) == {'Manifest.json', 'Data/com.apple.CoreML/model.mlmodel',
+                              'Data/com.apple.CoreML/weights/weight.bin'}, 'repair download inventory mismatch')
+        reference = {file['path']: file for file in pkg.get('referenceFiles', [])}
+        for file in inventory(card):
+            recorded = reference.get(pkg['folder'] + '/' + file['path'])
+            require(recorded == dict(file, path=pkg['folder'] + '/' + file['path']),
+                    'repair download differs from recorded evaluation bytes')
     if kind in ('semantic-json', 'subject-json'):
         relative(pkg['target'])
         require(pkg['target'].startswith('Sources/Glowroom/AI/Resources/'), 'invalid generated resource target')
@@ -214,6 +222,11 @@ def outputs(cards):
                       f'    static let {prefix}Files: [SemanticManifestFile] = [', swift_files(inventory(card)), '    ]']
             if kind == 'sky-swift':
                 lines += [f'    static let skyFolder = {swift_string(pkg["folder"])}', f'    static let skySide = {card["contract"]["resolution"][0]}']
+        if kind == 'user-import':
+            lines += [f'    static let repairRevision = {swift_string(source["revision"])}',
+                      f'    static let repairRepository = {swift_string(source["repository"])}',
+                      f'    static let repairFolder = {swift_string(pkg["folder"])}',
+                      '    static let repairFiles: [SemanticManifestFile] = [', swift_files(inventory(card)), '    ]']
         if kind == 'subject-json':
             lines += [f'    static let subjectSide = {card["contract"]["resolution"][0]}',
                       f'    static let subjectContract = {swift_string(pkg["approval"]["contract"])}',
@@ -281,7 +294,7 @@ def verify_artifacts(card, directory, jobs=2):
 
 def release_check(card, report, artifacts, jobs=2):
     verify_artifacts(card, artifacts, jobs)
-    require(card['status'] == 'app-pinned', 'download-only/user-import is not a releasable app model')
+    require(card['status'] == 'app-pinned', 'download and user-import statuses are not a releasable app model')
     original = card['source']['originalWeights']
     require(isinstance(original['sha256'], str) and re.fullmatch('[a-f0-9]{64}', original['sha256']) is not None, 'original weight provenance is missing/invalid; new release blocked')
     require(isinstance(original['revision'], str) and re.fullmatch('[a-f0-9]{40}', original['revision']) is not None, 'original revision provenance is missing/invalid; new release blocked')

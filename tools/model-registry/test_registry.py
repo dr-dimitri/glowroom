@@ -39,6 +39,28 @@ class RegistryTests(unittest.TestCase):
             with self.assertRaisesRegex(r.RegistryError, 'generated file drift'):
                 r.check_generated(self.cards, root)
 
+    def test_repair_download_preserves_recorded_bytes_and_manual_import_scope(self):
+        c = self.card('user-import')
+        self.assertEqual(c['status'], 'download-and-user-import')
+        self.assertEqual(c['package']['folder'], 'LaMa.mlpackage')
+        self.assertEqual(len(r.inventory(c)), 3)
+        self.assertEqual(sum(file['bytes'] for file in r.inventory(c)), 216_647_386)
+        self.assertEqual(len(c['package']['referenceFiles']), 4)
+        generated = r.outputs(self.cards)[r.GENERATED].decode()
+        self.assertIn('static let repairRevision = "5ed76e3799ab4cad31381750d29880c267477e18"', generated)
+        self.assertIn('static let repairRepository = "mlboydaisuke/LaMa-CoreML"', generated)
+        self.assertIn('static let repairFiles: [SemanticManifestFile]', generated)
+        self.assertNotIn('path: "LaMa.mlpackage/', generated)
+        for mutate in [lambda card: card['package']['files'][0].update(sha256='0' * 64),
+                       lambda card: card['package'].update(folder='Another.mlpackage'),
+                       lambda card: card.update(status='app-pinned'),
+                       lambda card: card['package']['files'].append(dict(path='extra.bin', bytes=1, sha256='0' * 64))]:
+            with self.subTest(mutation=mutate):
+                bad = copy.deepcopy(c)
+                mutate(bad)
+                with self.assertRaises(r.RegistryError):
+                    r.validate_card(bad)
+
     def test_missing_fields_unknown_fields_and_invalid_hashes_fail(self):
         for mutate in [lambda c: c.pop('trainingData'), lambda c: c.update(unexpected=True),
                        lambda c: c['source'].update(revision='main'),
@@ -223,9 +245,10 @@ class RegistryTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as name:
             root = Path(name)
             c = self.fixture(root)
-            c['status'] = 'user-import'
-            with self.assertRaisesRegex(r.RegistryError, 'not a releasable'):
-                r.release_check(c, self.report(c), root)
+            for status in ['user-import', 'download-and-user-import']:
+                c['status'] = status
+                with self.subTest(status=status), self.assertRaisesRegex(r.RegistryError, 'not a releasable'):
+                    r.release_check(c, self.report(c), root)
 
 
 if __name__ == '__main__':

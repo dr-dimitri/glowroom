@@ -13,6 +13,9 @@ struct DevelopRepairServices: Sendable {
     var nextSource: @Sendable (PreviewBitmap, [LocalMaskPoint], Double, LocalMaskRaster?, [LocalMaskPoint]) async throws -> LocalMaskPoint = {
         try await DevelopRepairAnalyzer.shared.source(for: $0, path: $1, radius: $2, mask: $3, excluding: $4)
     }
+    var downloadModel: @Sendable (@escaping @Sendable (SkyMaskSetupProgress) -> Void) async throws -> DevelopRepairAIInstallation = {
+        try await DevelopRepairAIModelDownloadStore.shared.downloadAndInstall(progress: $0)
+    }
 
     static let live = Self(
         source: { try await DevelopRepairAnalyzer.shared.source(for: $0, path: $1, radius: $2, mask: $3) },
@@ -39,6 +42,7 @@ extension DevelopWorkspace {
     func cancelRepairWork(clearCandidates: Bool = true, preservingInputQueue: Bool = false) {
         if !preservingInputQueue { repairInputQueue.cancel(cancelWorker: false) }
         repairRequest = UUID(); repairTask?.cancel(); repairTask = nil; repairBusy = false
+        repairAISetupProgress = nil
         if clearCandidates {
             repairCandidates = []; repairSelectedCandidateIDs = []
             repairSelectedStrokeID = nil
@@ -342,13 +346,56 @@ extension DevelopWorkspace {
     }
 
     func refreshRepairAIAvailability() async {
+        let request = repairRequest
         do {
             let installation = try await repairAIStore.installedModel()
             try Task.checkCancellation()
+            guard repairRequest == request else { return }
             repairAIReady = installation != nil; repairAIModelName = installation?.displayName
             if installation == nil { repairUsesAI = false }
         } catch is CancellationError { }
-        catch { repairAIReady = false; repairUsesAI = false; errorMessage = error.localizedDescription }
+        catch {
+            guard repairRequest == request else { return }
+            repairAIReady = false; repairUsesAI = false; errorMessage = error.localizedDescription
+        }
+    }
+
+    func downloadRepairAIModel() {
+        guard !repairBusy, tool == .repair else { return }
+        cancelRepairWork()
+        repairBusy = true; errorMessage = nil; repairStatus = nil
+        repairAISetupProgress = .init(text: "LaMa wird heruntergeladen …", fraction: 0)
+        let request = repairRequest, services = repairServices
+        repairTask = Task { [weak self] in
+            defer {
+                if let self, self.repairRequest == request {
+                    self.repairBusy = false; self.repairTask = nil; self.repairAISetupProgress = nil
+                }
+            }
+            do {
+                let installation = try await services.downloadModel { [weak self] progress in
+                    Task { @MainActor in
+                        guard let self, self.repairRequest == request, self.repairBusy,
+                              self.tool == .repair else { return }
+                        self.repairAISetupProgress = progress
+                    }
+                }
+                guard let self else { return }
+                guard self.repairRequest == request, self.tool == .repair, !Task.isCancelled else {
+                    // A later import may have replaced this committed model.
+                    // Read the current store in an uncanceled task instead of
+                    // publishing stale metadata from this completed download.
+                    await Task { @MainActor [weak self] in await self?.refreshRepairAIAvailability() }.value
+                    return
+                }
+                self.repairAIReady = true; self.repairAIModelName = installation.displayName
+                self.repairMode = .remove; self.repairUsesAI = true
+                self.repairStatus = "LaMa wurde heruntergeladen und eingerichtet. Markiere einen kleinen Bereich für eine KI-Reparatur."
+            } catch is CancellationError { }
+            catch {
+                if let self, self.repairRequest == request { self.errorMessage = error.localizedDescription }
+            }
+        }
     }
 
     func importRepairAIModel(from url: URL) async {

@@ -17,6 +17,14 @@ enum LocalModelRegistry {
     static let subjectContract = "birefnet-hr-matting-v1"
     static let subjectRevision = "5d6b6f8adcb5b417c871b1d84ceaae9871355b7f"
     static let subjectWeightsSHA256 = "a5a4de698739ea5e0e8bbab28e1b293dde95092b87a442d566cbc585c53cef55"
+    static let repairRevision = "5ed76e3799ab4cad31381750d29880c267477e18"
+    static let repairRepository = "mlboydaisuke/LaMa-CoreML"
+    static let repairFolder = "LaMa.mlpackage"
+    static let repairFiles: [SemanticManifestFile] = [
+        .init(path: "Data/com.apple.CoreML/model.mlmodel", bytes: 1101809, sha256: "06a100ef99e0fd16326a3a8c4a687d13f7b26f544ea906a75338932d8554f953"),
+        .init(path: "Data/com.apple.CoreML/weights/weight.bin", bytes: 215544960, sha256: "d0541f6044a94cd4982bfdac074fc1ccfe11d8f1f590c299d6b5071b501fc184"),
+        .init(path: "Manifest.json", bytes: 617, sha256: "c814fff3cedf827c044094545ef80b0280b6cb8dd0e5c0bcf69fd31921191e58")
+    ]
     static let qwen35 = LLMModelDescriptor(id: "qwen35-4b-4bit", name: "Qwen3.5-4B",
         repository: "mlx-community/Qwen3.5-4B-4bit", revision: "0e7ffd5c629ef7719d4cbc04069232580bfa9d9c", files: [
         .init(path: "chat_template.jinja", bytes: 7756, sha256: "a4aee8afcf2e0711942cf848899be66016f8d14a889ff9ede07bca099c28f715"),

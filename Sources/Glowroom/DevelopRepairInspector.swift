@@ -86,7 +86,7 @@ struct DevelopRepairInspector: View {
                     .padding(.vertical, 6).accessibilityIdentifier("develop.repair.error")
             }
         }.font(.system(size: 11)).foregroundStyle(Theme.text)
-            .onDisappear { actionTask?.cancel(); editor.endEditing(assetID: asset.id) }
+            .onDisappear { cancelWork(); editor.endEditing(assetID: asset.id) }
             .task { await workspace.refreshRepairAIAvailability() }
             .fileImporter(isPresented: $importsModel, allowedContentTypes: [.folder, UTType(filenameExtension: "mlpackage") ?? .folder]) { result in
                 guard case .success(let url) = result else { return }
@@ -134,9 +134,23 @@ struct DevelopRepairInspector: View {
                     .disabled(!ready || !workspace.repairAIReady || workspace.repairMode != .remove)
                     .accessibilityIdentifier("develop.repair.generative")
                 Text(workspace.repairAIModelName.map { "\($0) · lokal · Änderungen werden direkt aktiv" }
-                     ?? "Kompatibles LaMa-Modell importieren, um kleine Bereiche lokal zu ergänzen.")
+                     ?? "LaMa herunterladen oder ein kompatibles Modell importieren, um kleine Bereiche lokal zu ergänzen.")
                     .font(.system(size: 10)).foregroundStyle(Theme.muted)
                     .fixedSize(horizontal: false, vertical: true)
+                if let progress = workspace.repairAISetupProgress {
+                    Group {
+                        if let fraction = progress.fraction { ProgressView(value: fraction) }
+                        else { ProgressView().controlSize(.small) }
+                    }.accessibilityIdentifier("develop.repair.ai.progress")
+                    Text(progress.text).font(.system(size: 10)).foregroundStyle(Theme.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                } else if !workspace.repairAIReady {
+                    Button("LaMa herunterladen (ca. 217 MB)") { workspace.downloadRepairAIModel() }
+                        .controlSize(.mini).disabled(!ready)
+                        .accessibilityIdentifier("develop.repair.ai.download")
+                    Link("Modellquelle und Lizenzangaben", destination: DevelopRepairAIApprovedDownload.modelCard)
+                        .font(.system(size: 10))
+                }
                 Button("Lokales Modell importieren …") { importsModel = true }
                     .controlSize(.mini).disabled(!ready).accessibilityIdentifier("develop.repair.ai.import")
             }
