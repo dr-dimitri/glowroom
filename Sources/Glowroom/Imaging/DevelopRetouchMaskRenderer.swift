@@ -108,8 +108,8 @@ enum DevelopRetouchMaskRenderer {
 
     static func replacementBounds(_ replacement: DevelopRetouchReplacement, extent: CGRect) -> CGRect {
         let bounds = replacement.bounds
-        return CGRect(x: extent.minX + bounds.x * extent.width,
-                      y: extent.maxY - (bounds.y + bounds.height) * extent.height,
+        return CGRect(x: extent.minX + (bounds.x + replacement.offsetX) * extent.width,
+                      y: extent.maxY - (bounds.y + replacement.offsetY + bounds.height) * extent.height,
                       width: bounds.width * extent.width, height: bounds.height * extent.height)
     }
 

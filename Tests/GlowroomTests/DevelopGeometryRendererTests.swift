@@ -301,6 +301,48 @@ struct DevelopGeometryRendererTests {
         #expect(pixel(exportPixels, width: 256, x: 144, y: 136)[1] > 90)
     }
 
+    @Test(arguments: [0.25, -0.25])
+    func movingFullFrameModelContextPreservesPixelsAcrossImageEdgesAndBack(delta: Double) throws {
+        let source = try fixture { _, _ in (40, 90, 140, 173) }
+        var modelPixels = Data()
+        for row in 0..<3 { for column in 0..<3 {
+            modelPixels.append(contentsOf: [UInt8(20 + column * 90), UInt8(30 + row * 80),
+                UInt8((row + column).isMultiple(of: 2) ? 220 : 20), 255])
+        } }
+        let replacement = try DevelopRetouchReplacement(bounds: .init(x: 0, y: 0, width: 1, height: 1),
+            width: 3, height: 3, rgba: modelPixels)
+        var coverage = Data(count: 32 * 24)
+        for row in 9..<12 { for column in 12..<16 { coverage[row * 32 + column] = 255 } }
+        let target = try LocalMaskPoint(x: 0.4375, y: 0.4375)
+        let stroke = try DevelopRetouchStroke(source: target, target: target, radius: 0.01,
+            mask: .init(width: 32, height: 24, bytes: coverage), replacement: replacement)
+        let original = try pixels(render(source, geometry: .init(retouchStrokes: [stroke])))
+        let moved = try DevelopRepairEditing.moved(stroke, handle: .target,
+            translation: CGSize(width: delta, height: delta))
+        let patch = try #require(moved.replacement)
+        #expect(patch.bounds == replacement.bounds && patch.rgba == replacement.rgba)
+        #expect(patch.offsetX == delta && patch.offsetY == delta)
+        let shiftedBounds = DevelopRetouchMaskRenderer.replacementBounds(patch,
+            extent: CGRect(x: 0, y: 0, width: 128, height: 96))
+        #expect(!CGRect(x: 0, y: 0, width: 128, height: 96).contains(shiftedBounds))
+        let movedImage = try render(source, geometry: .init(retouchStrokes: [moved]))
+        #expect(movedImage.width == 128 && movedImage.height == 96)
+        let shifted = try pixels(movedImage), unchanged = try pixels(source)
+        let dx = Int(delta * 128), dy = Int(delta * 96)
+        for (x, y) in [(54, 41), (56, 42), (58, 43)] {
+            let before = pixel(original, width: 128, x: x, y: y)
+            let after = pixel(shifted, width: 128, x: x + dx, y: y + dy)
+            #expect(zip(before, after).allSatisfy { abs($0 - $1) <= 1 },
+                "The moved selection must sample the original model pixels at the same local position")
+            #expect(after[3] == 173)
+            #expect(pixel(shifted, width: 128, x: x, y: y) == pixel(unchanged, width: 128, x: x, y: y))
+        }
+        let returned = try DevelopRepairEditing.moved(moved, handle: .target,
+            translation: CGSize(width: -delta, height: -delta))
+        #expect(returned == stroke)
+        #expect(try pixels(render(source, geometry: .init(retouchStrokes: [returned]))) == original)
+    }
+
     @Test func frozenSourceRepairsFollowExposureAndWhiteBalanceInPreviewAndExport() throws {
         let source = try fixture { x, _ in x < 64 ? (80, 110, 150, 255) : (210, 70, 20, 255) }
         let bounds = try DevelopCropRect(x: 0.5, y: 0, width: 0.5, height: 1)

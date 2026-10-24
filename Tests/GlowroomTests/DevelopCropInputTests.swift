@@ -99,6 +99,80 @@ struct DevelopCropNativeInputTests {
         #expect(view.isAccessibilityEnabled())
     }
 
+    @Test func deleteKeysUseTheFocusedCanvasCallbackAndPointerInputTakesFocus() throws {
+        _ = NSApplication.shared
+        let window = NSWindow(contentRect: NSRect(x: -10_000, y: -10_000, width: 600, height: 400),
+            styleMask: .borderless, backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        let view = DevelopCropNativeInputView(frame: NSRect(x: 0, y: 0, width: 600, height: 400))
+        window.contentView = view
+        defer { view.invalidate(); window.close() }
+        #expect(!view.acceptsFirstResponder)
+        var deletes = 0
+        view.configure(onInput: { _ in }, onHover: { _ in }, isEnabled: true,
+            inputIdentity: "repair", cursor: { _ in .arrow }, onDelete: { deletes += 1 })
+        #expect(view.acceptsFirstResponder)
+        view.mouseDown(with: try mouse(.leftMouseDown, at: CGPoint(x: 100, y: 100)))
+        view.mouseUp(with: try mouse(.leftMouseUp, at: CGPoint(x: 100, y: 100)))
+        #expect(window.firstResponder === view)
+        view.keyDown(with: try key(51))
+        view.keyDown(with: try key(117))
+        #expect(deletes == 2)
+    }
+
+    @Test func modifiedUnfocusedDisabledAndInvalidatedDeleteKeysDoNotInvokeTheCallback() throws {
+        _ = NSApplication.shared
+        let window = NSWindow(contentRect: NSRect(x: -10_000, y: -10_000, width: 600, height: 400),
+            styleMask: .borderless, backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        let parent = CropKeyboardTestParent(frame: NSRect(x: 0, y: 0, width: 600, height: 400))
+        let view = DevelopCropNativeInputView(frame: parent.bounds)
+        window.contentView = parent; parent.addSubview(view)
+        defer { view.invalidate(); window.close() }
+        var deletes = 0
+        view.configure(onInput: { _ in }, onHover: { _ in }, isEnabled: true,
+            inputIdentity: "repair", cursor: { _ in .arrow }, onDelete: { deletes += 1 })
+        #expect(window.makeFirstResponder(view))
+        let modifiers: [NSEvent.ModifierFlags] = [.command, .option, .control]
+        for modifier in modifiers {
+            view.keyDown(with: try key(51, modifiers: modifier))
+        }
+        view.keyDown(with: try key(0))
+        #expect(deletes == 0)
+        #expect(parent.keyCount == 4, "Unrelated key events keep their responder-chain routing")
+        #expect(window.makeFirstResponder(nil))
+        view.keyDown(with: try key(51))
+        #expect(deletes == 0)
+        #expect(window.makeFirstResponder(view))
+        view.inputEnabled = false
+        view.keyDown(with: try key(51))
+        #expect(!view.acceptsFirstResponder && deletes == 0)
+        view.inputEnabled = true
+        view.invalidate()
+        view.keyDown(with: try key(117))
+        #expect(!view.acceptsFirstResponder && deletes == 0)
+    }
+
+    @Test func removingTheDeleteCallbackRestoresNormalKeyboardRouting() throws {
+        _ = NSApplication.shared
+        let window = NSWindow(contentRect: NSRect(x: -10_000, y: -10_000, width: 600, height: 400),
+            styleMask: .borderless, backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        let parent = CropKeyboardTestParent(frame: NSRect(x: 0, y: 0, width: 600, height: 400))
+        let view = DevelopCropNativeInputView(frame: parent.bounds)
+        window.contentView = parent; parent.addSubview(view)
+        defer { view.invalidate(); window.close() }
+        var deletes = 0
+        view.configure(onInput: { _ in }, onHover: { _ in }, isEnabled: true,
+            inputIdentity: "repair", cursor: { _ in .arrow }, onDelete: { deletes += 1 })
+        #expect(window.makeFirstResponder(view))
+        view.configure(onInput: { _ in }, onHover: { _ in }, isEnabled: true,
+            inputIdentity: "repair", cursor: { _ in .arrow })
+        #expect(!view.acceptsFirstResponder)
+        view.keyDown(with: try key(51))
+        #expect(deletes == 0 && parent.keyCount == 1)
+    }
+
     @Test func synthesizedPrimaryDragPublishesOneGestureWithTotalLocalTranslation() throws {
         let view = DevelopCropNativeInputView(frame: CGRect(x: 0, y: 0, width: 600, height: 400))
         defer { view.invalidate() }
@@ -228,11 +302,23 @@ struct DevelopCropNativeInputTests {
         #expect(parent.scrollCount == 1)
     }
 
+    private func key(_ keyCode: UInt16, modifiers: NSEvent.ModifierFlags = []) throws -> NSEvent {
+        try #require(NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: modifiers,
+            timestamp: 1, windowNumber: 0, context: nil, characters: keyCode == 117 ? "\u{F728}" : "\u{7F}",
+            charactersIgnoringModifiers: keyCode == 117 ? "\u{F728}" : "\u{7F}", isARepeat: false, keyCode: keyCode))
+    }
+
     private func mouse(_ type: NSEvent.EventType, at point: CGPoint, clickCount: Int = 1) throws -> NSEvent {
         try #require(NSEvent.mouseEvent(with: type, location: point, modifierFlags: [],
                                        timestamp: 1, windowNumber: 0, context: nil,
                                        eventNumber: 0, clickCount: clickCount, pressure: 1))
     }
+}
+
+@MainActor
+private final class CropKeyboardTestParent: NSView {
+    var keyCount = 0
+    override func keyDown(with event: NSEvent) { keyCount += 1 }
 }
 
 @MainActor
