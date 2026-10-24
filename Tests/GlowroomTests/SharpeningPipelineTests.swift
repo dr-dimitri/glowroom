@@ -70,9 +70,16 @@ struct SharpeningPipelineTests {
             width: observed.width, height: observed.height))
         let geometry = try #require(DevelopGeometryRenderer.estimatedAdditionalBytes(geometry: edits.developGeometry,
             width: observed.width, height: observed.height))
-        let output = UInt64(observed.width * observed.height) * (32 + DevelopSharpening.additionalBytesPerPixel(settings: edits))
-        let expected = ownedBytes + Int64(source.byteCost) * 4 + Int64(output + local + geometry)
-        #expect(observed.chargedBytes == expected, "Admission must include sharpening in addition to base, masks and geometry")
+        // This fixture always resizes. Its active phase reserves both the new
+        // input proxy and output provider: 2 × 16 bytes each, conservatively
+        // covering Float32 rasters and provider ownership even on this V1 path.
+        // The separate previous-frame headroom affects proxy-size selection;
+        // it is not another allocation charged to the current codec phase.
+        let currentFrameBytesPerPixel: UInt64 = 2 * 16 + 2 * 16
+        let frameWorking = UInt64(observed.width * observed.height)
+            * (currentFrameBytesPerPixel + DevelopSharpening.additionalBytesPerPixel(settings: edits))
+        let expected = ownedBytes + Int64(source.byteCost) * 4 + Int64(frameWorking + local + geometry)
+        #expect(observed.chargedBytes == expected, "Admission must include retained input/output, sharpening, masks and geometry exactly")
         #expect(observed.chargedBytes <= resources.limits.maximumBytes)
         var next = edits; next.sharpeningAmount = 120
         _ = try await pipeline.image(source, request: request, settings: next, priority: .selected)

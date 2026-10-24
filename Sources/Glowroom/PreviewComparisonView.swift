@@ -121,7 +121,7 @@ struct PreviewComparisonView<Before: View, After: View>: View {
                 if layout == .single {
                     after
                 } else {
-                    pane(before.environment(\.developPreviewSink, nil), frame: geometry.beforeFrame,
+                    pane(before.environment(\.developPreviewSink, nil).environment(\.developPreviewPending, nil), frame: geometry.beforeFrame,
                          contentFrame: geometry.beforeContentFrame, pan: visiblePan, label: "Vorher", isAfter: false)
                     pane(after, frame: geometry.afterFrame, contentFrame: geometry.afterContentFrame,
                          pan: visiblePan, label: "Nachher", isAfter: true)

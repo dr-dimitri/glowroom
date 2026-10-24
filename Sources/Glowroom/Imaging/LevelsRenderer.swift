@@ -8,6 +8,33 @@ enum LevelsScope { case global, local }
 /// The input/output images remain premultiplied, extended-linear sRGB. Only
 /// straight RGB inside this node uses the versioned signed-sRGB transfer.
 enum LevelsRenderer {
+    /// The scalar solution cannot predict native pow approximations or FMA
+    /// contraction amplified by a narrow master interval. Probe the exact
+    /// node on this backend before promising RGB gray at the sampled mean.
+    /// This single Float pixel shares the existing admitted analysis context.
+    static func validateNeutralGray(sample: LevelsPickerSample, settings: LevelsSettings,
+                                    context: CIContext) throws {
+        try sample.validate()
+        let values: [Float] = [Float(SignedSRGB.decode(sample.red)), Float(SignedSRGB.decode(sample.green)),
+                               Float(SignedSRGB.decode(sample.blue)), 1]
+        guard values.allSatisfy(\.isFinite) else { throw LevelsPickerError.unreachableTarget }
+        let data = values.withUnsafeBytes { Data($0) }
+        let extent = CGRect(x: 0, y: 0, width: 1, height: 1)
+        let input = CIImage(bitmapData: data, bytesPerRow: 16, size: extent.size,
+                            format: .RGBAf, colorSpace: FloatAnalysis.workingSpace)
+        let output = try apply(to: input, settings: settings, extent: extent, context: context)
+        var pixel = [Float](repeating: 0, count: 4)
+        pixel.withUnsafeMutableBytes {
+            context.render(output, toBitmap: $0.baseAddress!, rowBytes: 16, bounds: extent,
+                           format: .RGBAf, colorSpace: FloatAnalysis.workingSpace)
+        }
+        try Task.checkCancellation()
+        guard pixel.allSatisfy(\.isFinite), pixel[3] > 0 else { throw LevelsPickerError.unreachableTarget }
+        let tolerance = Double(LevelsPickerProposal.neutralizationTargetTolerance)
+        guard (0..<3).allSatisfy({
+            abs(SignedSRGB.encode(Double(pixel[$0] / pixel[3])) - 0.5) <= tolerance
+        }) else { throw LevelsPickerError.unreachableTarget }
+    }
     struct InputRange: Equatable, Sendable {
         let red: ClosedRange<Double>
         let green: ClosedRange<Double>

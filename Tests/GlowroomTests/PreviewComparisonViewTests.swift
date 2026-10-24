@@ -63,10 +63,23 @@ struct PreviewComparisonViewTests {
         host.mount(PreviewComparisonView(layout: layout,
             before: { ComparisonSinkReader { observations["before"] = $0 } },
             after: { ComparisonSinkReader { observations["after"] = $0 } })
-            .environment(\.developPreviewSink, { _, _, _, _ in }))
+            .environment(\.developPreviewSink, { _ in }))
         try await host.settle()
         #expect(observations["after"] == true)
         #expect(observations["before"] == (layout == .single ? nil : false))
+    }
+
+    @Test(arguments: PreviewComparisonLayout.allCases)
+    func onlyTheAfterPaneCanInvalidateTheAcceptedLevelsDisplay(layout: PreviewComparisonLayout) async throws {
+        let host = ComparisonViewTestHost()
+        defer { host.close() }
+        var pending: [String] = []
+        host.mount(PreviewComparisonView(layout: layout,
+            before: { ComparisonPendingReader(name: "before") },
+            after: { ComparisonPendingReader(name: "after") })
+            .environment(\.developPreviewPending, { pending.append($0.request.displayName) }))
+        try await host.settle()
+        #expect(pending == ["after"])
     }
 
     @Test(arguments: [PreviewComparisonLayout.splitLeftRight, .splitTopBottom])
@@ -337,6 +350,19 @@ private struct ComparisonSinkReader: View {
     @Environment(\.developPreviewSink) private var sink
     let appeared: (Bool) -> Void
     var body: some View { Color.clear.onAppear { appeared(sink != nil) } }
+}
+
+private struct ComparisonPendingReader: View {
+    @Environment(\.developPreviewPending) private var pending
+    let name: String
+    var body: some View {
+        Color.clear.onAppear {
+            let request = PreviewRequest(url: URL(fileURLWithPath: "/synthetic/\(name)"),
+                modifiedAt: .distantPast, pixelSize: 512)
+            pending?(DevelopPreviewRenderIdentity(request: request, settings: .neutral, revision: nil,
+                sourceToken: UUID(), finalSourceReady: false))
+        }
+    }
 }
 
 private struct ComparisonNativeTestPhoto: NSViewRepresentable {

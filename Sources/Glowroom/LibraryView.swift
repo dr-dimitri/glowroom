@@ -88,13 +88,21 @@ struct LibraryView: View {
         .tint(Theme.accent)
         .environmentObject(maskWorkspace)
         .environmentObject(developWorkspace)
+        .environment(\.developSelectionIdentity, DevelopSelectionIdentity(
+            sessionID: model.aiSelectionSessionID, generation: model.aiSelectionGeneration))
         .focusedSceneValue(\.editingHistory, editingHistory)
-        .environment(\.developPreviewSink, { request, settings, bitmap, sourceBitmap in
-            guard let asset = model.selectedAsset,
-                  (try? editor.resolvedSource(for: asset, intent: model.editingRenderIntent).identity) == request.source else { return }
+        .environment(\.developPreviewSink, { display in
+            let request = display.identity.request
+            let settings = display.identity.settings
+            guard isCurrentDevelopPreview(display.identity) else { return }
             developWorkspace.bind(source: request.source)
             developWorkspace.markDisplayed(source: request.source, settings: settings)
-            developWorkspace.receive(bitmap, sourceBitmap: sourceBitmap)
+            developWorkspace.receive(display.frame.output, sourceBitmap: display.decodedSource)
+            developWorkspace.receiveLevelsDisplay(display)
+        })
+        .environment(\.developPreviewPending, { identity in
+            guard isCurrentDevelopPreview(identity) else { return }
+            developWorkspace.invalidateLevelsDisplay()
         })
         .overlay { if dropTargeted { RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.accent, style: StrokeStyle(lineWidth: 3, dash: [8])).padding(6).allowsHitTesting(false) } }
         .onDrop(of: [.fileURL], isTargeted: $dropTargeted, perform: acceptDrop)
@@ -148,12 +156,14 @@ struct LibraryView: View {
             developWorkspace.bind(source: source)
         }
         .onChange(of: model.editingRenderIntent) { _, _ in
+            developWorkspace.endLevelsPicker()
             developWorkspace.picksWhiteBalance = false
             developWorkspace.picksDetail = false
             if model.editingRenderIntent != .currentEditing { maskWorkspace.cancel(); developWorkspace.tool = .basic }
         }
         .onChange(of: model.previewComparisonLayout) { _, current in
             if current != .single {
+                developWorkspace.endLevelsPicker()
                 developWorkspace.picksWhiteBalance = false
                 developWorkspace.picksDetail = false
             }
@@ -163,6 +173,9 @@ struct LibraryView: View {
         }
         .onChange(of: developWorkspace.picksDetail) { _, picking in
             if picking { model.previewComparisonLayout = .single }
+        }
+        .onChange(of: developWorkspace.levelsPicker) { _, picker in
+            if picker != nil { model.previewComparisonLayout = .single }
         }
         .onChange(of: model.selection) { _, _ in model.reconcileSelection() }
         .onChange(of: model.search) { _, _ in model.reconcileSelection() }
@@ -292,6 +305,18 @@ struct LibraryView: View {
             developWorkspace.cancelRepairWork()
             if redo { editor.redo(assetID: id) } else { editor.undo(assetID: id) }
         }
+    }
+
+    private func isCurrentDevelopPreview(_ identity: DevelopPreviewRenderIdentity) -> Bool {
+        guard let asset = model.selectedAsset, let revision = identity.revision,
+              revision.assetID == asset.id, revision.editorSessionID == editor.aiEditSessionID,
+              revision.editorGeneration == editor.aiEditGeneration,
+              revision.localRevision == editor.localRevision(for: asset.id),
+              revision.selection == DevelopSelectionIdentity(sessionID: model.aiSelectionSessionID,
+                                                             generation: model.aiSelectionGeneration),
+              revision.intent == model.editingRenderIntent,
+              (try? editor.resolvedSource(for: asset, intent: revision.intent).identity) == identity.request.source else { return false }
+        return true
     }
 
     private var previewSourceIdentity: AISourceIdentity? {
@@ -724,7 +749,8 @@ struct LibraryView: View {
         case 125: model.navigate(model.showsDetail ? 1 : model.gridColumnCount, extending: extending)
         case 126: model.navigate(model.showsDetail ? -1 : -model.gridColumnCount, extending: extending)
         case 53:
-            if developWorkspace.picksDetail { developWorkspace.picksDetail = false }
+            if developWorkspace.levelsPicker != nil { developWorkspace.endLevelsPicker() }
+            else if developWorkspace.picksDetail { developWorkspace.picksDetail = false }
             else if layout.isFocused { WorkspaceActions.toggleFocus(layout, library: model) }
             else { model.showsDetail = false }
         case 49:

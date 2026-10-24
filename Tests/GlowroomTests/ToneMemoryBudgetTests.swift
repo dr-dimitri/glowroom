@@ -54,7 +54,12 @@ struct ToneMemoryBudgetTests {
     @Test(arguments: [false, true])
     func artifactPreviewAdmitsFloatResizeBeforeEnteringItsExistingWorker(legacyWithLevels: Bool) async throws {
         let image = try image(width: 128, height: 96)
-        let resources = ArtifactResourceOwner(limits: try .init(maximumBytes: 1_000_000))
+        // Active Levels requires 884,736 planned bytes even at the minimum
+        // 64×48 proxy, including its retained input/output and previous frame.
+        // This leaves 918,750 after LRU headroom, while full resolution still
+        // exceeds the budget and must select the existing adaptive proxy.
+        let byteLimit: Int64 = 1_050_000
+        let resources = ArtifactResourceOwner(limits: try .init(maximumBytes: byteLimit))
         var phase: ArtifactResourceLease? = try await resources.acquire(kind: .retainedMemory,
             bytes: Int64(image.bytesPerRow * image.height) * 2, priority: .interactive, retaining: [])
         let memory = try await resources.retain(bytes: Int64(image.bytesPerRow * image.height) * 2, from: #require(phase))
@@ -78,7 +83,7 @@ struct ToneMemoryBudgetTests {
         #expect(result.image.width < 128 && result.image.height < 96)
         #expect(result.image.bitsPerComponent == 32, "The resized V2 basis must retain Float precision")
         #expect(await pipeline.state().runningSelected == 0)
-        #expect(await resources.state().chargedBytes <= 1_000_000)
+        #expect(await resources.state().chargedBytes <= byteLimit)
     }
 
     @Test(arguments: [false, true])

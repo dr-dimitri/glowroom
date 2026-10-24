@@ -40,9 +40,9 @@ enum LocalAdjustmentRenderer {
             let total = sum.partialValue.addingReportingOverflow(global.partialValue)
             return sum.overflow || pixels.overflow || global.overflow || total.overflow ? nil : total.partialValue
         }
-        // A dormant mask or crop transform alone adds no spatial buffers. Keep
-        // the existing resolution policy when no additional work is needed.
-        if additionalBytes(width, height) == 0 { return (width, height) }
+        // Even without local work, an artifact's retained input/output frame
+        // needs to fit its finite total budget (for example legacy exposure).
+        if additionalBytes(width, height) == 0, totalMemoryBudget == .max { return (width, height) }
         func fits(_ width: Int, _ height: Int) -> Bool {
             guard let bytes = additionalBytes(width, height), bytes <= previewWorkingMemoryBudget else { return false }
             let pixels = UInt64(width).multipliedReportingOverflow(by: UInt64(height))

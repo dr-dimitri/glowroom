@@ -16,16 +16,21 @@ final class DevelopDetailPosition: ObservableObject {
 final class DevelopWorkspace: ObservableObject {
     @Published var tool: DevelopCanvasTool = .basic {
         didSet {
-            if oldValue != tool { cancelAutomaticTone(); picksDetail = false }
+            if oldValue != tool { cancelAutomaticTone(); endLevelsPicker(); picksDetail = false }
             if oldValue == .repair && tool != .repair { cancelRepairWork(); repairSpotImage = nil }
         }
     }
     @Published var picksWhiteBalance = false {
-        didSet { if picksWhiteBalance { picksDetail = false } }
+        didSet { if picksWhiteBalance { picksDetail = false; endLevelsPicker() } }
     }
     @Published var picksDetail = false {
-        didSet { if picksDetail { picksWhiteBalance = false } }
+        didSet { if picksDetail { picksWhiteBalance = false; endLevelsPicker() } }
     }
+    @Published var levelsPicker: DevelopLevelsPickerSelection?
+    @Published var levelsDisplay: DevelopPreviewHandoff?
+    @Published var levelsSampleDescription: String?
+    var levelsTask: Task<Void, Never>?
+    var levelsRequest = UUID()
     let detailPosition = DevelopDetailPosition()
     var detailCenter: CGPoint {
         get { detailPosition.center }
@@ -100,16 +105,24 @@ final class DevelopWorkspace: ObservableObject {
     typealias Analyze = @Sendable (PreviewBitmap) async throws -> DevelopPreviewAnalysis
     typealias EstimateHorizon = @Sendable (PreviewBitmap) async throws -> Double?
     typealias EstimateTone = @Sendable (AutomaticToneControl, PreviewBitmap, EditSettings) async throws -> AutomaticToneEstimate
+    typealias SampleLevels = @Sendable (PreviewBitmap, EditSettings, CGPoint) async throws -> LevelsSampleReport
+    typealias ValidateLevels = @Sendable (PreviewBitmap, EditSettings, LevelsPickerSample?) async throws -> Void
     private let analyze: Analyze
     private let estimateHorizon: EstimateHorizon
     let estimateTone: EstimateTone
+    let sampleLevels: SampleLevels
+    let validateLevels: ValidateLevels
 
     init(analyze: Analyze? = nil, estimateHorizon: EstimateHorizon? = nil, estimateTone: EstimateTone? = nil,
+         sampleLevels: SampleLevels? = nil,
+         validateLevels: ValidateLevels? = nil,
          repairServices: DevelopRepairServices = .live, repairAIStore: DevelopRepairAIModelStore = .shared) {
         self.repairServices = repairServices
         self.repairAIStore = repairAIStore
         self.estimateHorizon = estimateHorizon ?? { try await DevelopHorizonEstimator.shared.estimate($0) }
         self.estimateTone = estimateTone ?? { try await AutomaticToneEstimator.shared.estimate(for: $0, bitmap: $1, settings: $2) }
+        self.sampleLevels = sampleLevels ?? { try await AutomaticToneEstimator.shared.sampleLevels(bitmap: $0, settings: $1, normalizedTopLeft: $2) }
+        self.validateLevels = validateLevels ?? { try await AutomaticToneEstimator.shared.validateLevels(bitmap: $0, settings: $1, neutralGraySample: $2) }
         if let analyze { self.analyze = analyze }
         else {
             let worker = DevelopPreviewAnalyzer()
@@ -195,6 +208,7 @@ final class DevelopWorkspace: ObservableObject {
         isAutoStraightening = false
     }
     func clear() {
+        endLevelsPicker(); levelsDisplay = nil; levelsSampleDescription = nil
         cancelAutomaticTone()
         cancelRepairWork(); repairSpotTask?.cancel(); repairSpotTask = nil
         repairDisplayBitmap = nil; repairSpotImage = nil; repairStatus = nil
@@ -367,7 +381,7 @@ actor DevelopPreviewAnalyzer {
     }
 }
 
-typealias DevelopPreviewSink = @MainActor (PreviewRequest, EditSettings, PreviewBitmap, PreviewBitmap) -> Void
+typealias DevelopPreviewSink = @MainActor (DevelopPreviewHandoff) -> Void
 private struct DevelopPreviewSinkKey: EnvironmentKey {
     static let defaultValue: DevelopPreviewSink? = nil
 }

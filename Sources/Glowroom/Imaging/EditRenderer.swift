@@ -378,7 +378,8 @@ enum EditRenderer {
 
     /// Builds the full-size graph without converting to a preview or imposing
     /// preview dimensions. The exporter validates its own memory/format limits.
-    static func filterGraph(_ original: CGImage, settings: EditSettings, context: CIContext? = nil) throws -> CIImage {
+    static func filterGraph(_ original: CGImage, settings: EditSettings, context: CIContext? = nil,
+                            sourcePixelScale: Double = 1) throws -> CIImage {
         try Task.checkCancellation()
         let settings = settings.normalized
         let image = CIImage(cgImage: original)
@@ -388,12 +389,12 @@ enum EditRenderer {
         let scale = max(0.25, Double(max(original.width, original.height)) / 1_600)
         let prefix = try prefix(image, original: original, settings: settings, extent: extent, scale: scale)
         let global = try manualAdjustments(prefix, settings: settings, extent: extent, scale: scale,
-            context: context, validatesLevelsOutput: false)
+            sourcePixelScale: sourcePixelScale, context: context, validatesLevelsOutput: false)
         let local = try LocalAdjustmentRenderer.apply(to: global, adjustments: settings.localAdjustments,
             extent: extent, scale: scale, preservesExtendedRange: settings.developColor.hdrEnabled,
             toneProcessingVersion: settings.toneProcessingVersion)
         let replacements = try replacementImages(original, settings: settings, extent: extent, scale: scale,
-            maskCache: nil, context: context)
+            maskCache: nil, sourcePixelScale: sourcePixelScale, context: context)
         let developed = try DevelopGeometryRenderer.apply(to: local, geometry: settings.developGeometry, extent: extent,
                                                           replacementImages: replacements)
         if needsLevelsOutputValidation(settings, includingDocumentStages: true) {
@@ -436,6 +437,24 @@ enum EditRenderer {
         let extent = CGRect(x: 0, y: 0, width: bitmap.image.width, height: bitmap.image.height)
         let scale = max(0.25, Double(max(bitmap.image.width, bitmap.image.height)) / 1_600)
         let base = try session.prefix(bitmap, settings: settings, extent: extent, scale: scale)
+        return try beforeLevels(base, settings: settings, extent: extent,
+                                preservesExtendedRange: settings.developColor.hdrEnabled)
+    }
+
+    /// A fully covered frozen repair has one unambiguous Levels input. Match
+    /// replacementImages' original-canvas balance analysis and prefix exactly;
+    /// the replacement pixels must never become their own balance reference.
+    static func globalLevelsReplacementInputGraph(_ bitmap: PreviewBitmap, settings: EditSettings,
+                                                  session: Session,
+                                                  replacement: DevelopRetouchReplacement) throws -> CIImage {
+        try Task.checkCancellation()
+        let settings = settings.normalized
+        let extent = CGRect(x: 0, y: 0, width: bitmap.image.width, height: bitmap.image.height)
+        let scale = max(0.25, Double(max(bitmap.image.width, bitmap.image.height)) / 1_600)
+        let candidate = try DevelopGeometryRenderer.replacementInput(replacement,
+            original: CIImage(cgImage: bitmap.image), extent: extent)
+        let base = try prefix(candidate, original: bitmap.image, settings: settings, extent: extent, scale: scale,
+                              analysisIdentity: SourceAnalysisIdentity(bitmap: bitmap))
         return try beforeLevels(base, settings: settings, extent: extent,
                                 preservesExtendedRange: settings.developColor.hdrEnabled)
     }

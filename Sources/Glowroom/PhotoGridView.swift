@@ -137,7 +137,7 @@ struct DetailView: View {
             && model.editingRenderIntent == .currentEditing && !maskWorkspace.isPresented && !developWorkspace.picksWhiteBalance
     }
     private var usesPhotoNavigationInput: Bool {
-        comparesBeforeAfter || (!maskWorkspace.isPresented && !developWorkspace.picksDetail && (!model.isDeveloping || model.editingRenderIntent != .currentEditing
+        comparesBeforeAfter || (!maskWorkspace.isPresented && !developWorkspace.picksDetail && developWorkspace.levelsPicker == nil && (!model.isDeveloping || model.editingRenderIntent != .currentEditing
             || (developWorkspace.tool == .basic && !developWorkspace.picksWhiteBalance)))
     }
     private struct NavigationIdentity: Hashable {
@@ -240,11 +240,22 @@ struct DetailView: View {
                             DevelopDetailCanvas(workspace: developWorkspace,
                                 geometry: editor.settings(for: asset.id).developGeometry)
                         } else {
+                            let selection = DevelopSelectionIdentity(sessionID: model.aiSelectionSessionID,
+                                                                    generation: model.aiSelectionGeneration)
                             DevelopCanvasInteraction(asset: asset, workspace: developWorkspace,
-                                onDoubleClick: { toggleZoom(viewport: canvasSize) })
+                                onDoubleClick: { toggleZoom(viewport: canvasSize) }, levelsSelection: selection,
+                                levelsIsCurrent: {
+                                    guard model.selectedID == asset.id && model.aiSelectionSessionID == selection.sessionID &&
+                                    model.aiSelectionGeneration == selection.generation && model.canModify &&
+                                    model.isDeveloping && model.editingRenderIntent == .currentEditing &&
+                                    model.previewComparisonLayout == .single && !maskWorkspace.isPresented,
+                                    let current = model.selectedAsset,
+                                    let source = try? editor.resolvedSource(for: current, intent: .currentEditing) else { return false }
+                                    return source.identity == developWorkspace.sourceIdentity
+                                })
                         }
                     }
-                    if developWorkspace.tool == .basic, !developWorkspace.picksWhiteBalance,
+                    if developWorkspace.tool == .basic, !developWorkspace.picksWhiteBalance, developWorkspace.levelsPicker == nil,
                        let analysis = developWorkspace.analysis,
                        let overlay = analysis.clippingImage(shadows: developWorkspace.showsShadows, highlights: developWorkspace.showsHighlights),
                        developWorkspace.showsShadows || developWorkspace.showsHighlights {

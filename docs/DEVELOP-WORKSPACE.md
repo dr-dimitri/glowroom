@@ -123,11 +123,51 @@ Hinweis. Eine Zahleneingabe, eine abgeschlossene Reglergeste und jeder Reset
 bilden jeweils einen Rückgängig-Schritt.
 
 Die bisherigen Weiß-/Schwarzregler und ihre Umschalt-Doppelklick-Automatik
-bleiben eigenständig. Die Schwarz-/Grau-/Weißpipetten und Endpunkt-Automatik
-folgen in #170 und #171. Der [Levels-Vertrag](DEVELOP-COLOR.md#globale-tonwertkorrektur-levels)
+bleiben eigenständig. Die Endpunkt-Automatik folgt in #171.
+Der [Levels-Vertrag](DEVELOP-COLOR.md#globale-tonwertkorrektur-levels)
 beschreibt die Berechnung, Speicherung und Einordnung im Rendergraphen.
 Die [Levels-Prüfanleitung](LEVELS-VALIDATION.md) beschreibt synthetische Abnahmen
 und optionale lokale RAW-Messungen.
+
+### Schwarz-, Grau- und Weißpipetten
+
+Wähle **Tonwert setzen**, den gewünschten Kanal und **Schwarzpunkt setzen**,
+**Mittelton auf 50 % setzen** oder **Weißpunkt setzen**. Anschließend wählst du
+die Bildfläche mit dem Fadenkreuz. Escape oder erneutes Betätigen beendet die
+Pipette ohne Änderung. Andere Canvas-Werkzeuge sind dabei ausgeschlossen.
+Im gemeinsamen Kanal wird der größte RGB-Wert nach den unveränderten
+Einzelkurven gemessen. Die Graupipette setzt Gamma für den normalisierten
+Mittelton auf 50 Prozent; eine farbige Fläche wird dabei nicht als neutral
+versprochen. Schwarz/Weiß ändern nur ihren jeweiligen Eingangsanker.
+
+**RGB neutralisieren** wird ausdrücklich gewählt und vorher erklärt. Diese
+Aktion setzt drei Kanalwerte atomar und neutralisiert ausschließlich den
+entsprechenden gemeinsamen Parameter (Schwarz 0, Weiß 1, Gamma 1). Andere
+Parameter bleiben erhalten. Grau rechnet das Ziel 0,5 durch die verbleibende
+gemeinsame Kurve und die RGB-Ausgangsgrenzen zurück. Unterschiedliche
+RGB-Ausgangsgrenzen, nicht eindeutig invertierbare Kurven, unerreichbare Ziele
+und Gamma außerhalb 0,1…10 werden mit Hinweis vollständig abgelehnt.
+
+Die Probe umfasst deterministisch **5 × 5 Pixel** des tatsächlich angezeigten
+adaptiven Eingangs-Proxys (höchstens 4096 Pixel je Kante), am Bildrand gekürzt.
+Ein kleineres Proxybild wird dafür nicht erneut erzeugt. Der Hinweis nach einer
+Übernahme zeigt tatsächliches Fenster und Proxymaße. Jeder Float-Pixel wird
+vor der Mittelung entpremultipliziert, in die signierte sRGB-Domäne gewandelt
+und mit Alpha gewichtet. Nicht endliche und transparente Pixel werden ignoriert;
+mindestens ein opakes Pixeläquivalent und 25 Prozent Fensterdeckung sind nötig.
+
+Gemessen wird vor dem gesamten globalen Levels-Knoten bei aktiven vorgelagerten
+Profilen, Weißabgleich und Tonwerten. Spätere Looks bleiben im Ergebnis aktiv;
+das Ziel gilt am Levels-Ausgang. Crop, Spiegelung und Drehung werden mit genau
+dem Geometrieplan der akzeptierten Vorschau zurückgerechnet. Letterboxing und
+transparente Rotationsränder sind keine Messflächen. Unberührte Bereiche und
+deaktivierte Reparaturen bleiben messbar. Eine vollständig deckende, einzelne
+eingefrorene Ersatzfläche verwendet ihren eigenen vorgelagerten Rendergraphen;
+gemischte, überlappende und andere mehrdeutige Reparaturproben werden mit Hinweis
+abgelehnt. Während des Ladens,
+bei veralteten Vorschauen, Vergleichsansichten und im Nur-Lesen-Modus ist keine
+Übernahme möglich. Ein akzeptierter Klick erzeugt einen Rückgängig-Schritt;
+Fehler verändern nichts und Speicherfehler bleiben sichtbar.
 
 ## Zuschneiden und Ausrichten
 
