@@ -1,0 +1,85 @@
+{
+  "calibration_sha256": "60ab763a0c4aca5863e7701862d4113f240ffbb6a959597be6fc4d7d4c93ea4a",
+  "candidates": {
+    "eigf": {
+      "critical_failures": [
+        "hard-edge/highlights-positive-40: halo_undershoot",
+        "hard-edge/highlights-negative-40: halo_overshoot",
+        "colors/highlights-positive-20: target_clipping_fraction_increase",
+        "colors/highlights-positive-20: target_new_clipping_fraction",
+        "colors/highlights-positive-40: target_clipping_fraction_increase",
+        "colors/highlights-positive-40: target_new_clipping_fraction"
+      ],
+      "decision": "no-go",
+      "matched_records": 44,
+      "missing_evidence": [
+        "Licensed developed RAW and photographic critical scenes with declared target profiles and range provenance",
+        "Recorded blind visual acceptance including skin, fine texture, branches, SDR/P3, HDR and alpha",
+        "Production prefix/contrast/white/black/NaturalBalance/automatic-control staging, full mask equivalence, undo/persistence and backup integration",
+        "Actual small and large RAW decoding, render-lane contention, cancellation and stale UI publication, CPU/GPU equivalence",
+        "Matched texture and per-profile HDR/clipping evaluation beyond the procedural diagnostics",
+        "Unmatched or unsupported effect targets: ramp/shadows-positive-20, ramp/shadows-negative-20, ramp/shadows-positive-40, ramp/shadows-negative-40, ramp/highlights-positive-40, constants/shadows-positive-40, constants/shadows-negative-40, fine-lines/shadows-positive-40, fine-lines/shadows-negative-40, hard-edge/shadows-positive-40, hard-edge/shadows-negative-40, texture/shadows-positive-20, texture/shadows-negative-20, texture/highlights-positive-20, texture/highlights-negative-20, texture/shadows-positive-40, texture/shadows-negative-40, texture/highlights-positive-40, texture/highlights-negative-40, colors/shadows-positive-20, colors/shadows-negative-20, colors/shadows-positive-40, colors/shadows-negative-40, saturation/shadows-positive-20, saturation/shadows-negative-20, saturation/shadows-positive-40, saturation/shadows-negative-40, transparency/shadows-positive-20, transparency/shadows-negative-20, transparency/highlights-positive-20, transparency/highlights-negative-20, transparency/shadows-positive-40, transparency/shadows-negative-40, transparency/highlights-positive-40, transparency/highlights-negative-40, noise/shadows-positive-20, noise/shadows-negative-20, noise/shadows-positive-40, noise/shadows-negative-40, branches/shadows-positive-40, branches/shadows-negative-40, p3/shadows-positive-20, p3/shadows-negative-20, p3/highlights-positive-20, p3/highlights-negative-20, p3/shadows-positive-40, p3/shadows-negative-40, p3/highlights-positive-40, p3/highlights-negative-40, hdr/shadows-negative-20, hdr/shadows-positive-40, hdr/shadows-negative-40",
+        "Controlled cold/warm performance and peak RSS"
+      ],
+      "primary": {
+        "baseline_mean": 0.06771675296525327,
+        "candidate_mean": 0.05972437824610981,
+        "metric": "log_line_contrast_error",
+        "regressions": [],
+        "relative_improvement": 0.11802654984423869,
+        "required_directions": [
+          "highlights-negative-20",
+          "highlights-positive-20",
+          "shadows-negative-20",
+          "shadows-positive-20"
+        ],
+        "status": "pass"
+      },
+      "quality_records": 96,
+      "scope": "Independent EIGF hypothesis, V2 Float contract; isolated synthetic CPU reference"
+    },
+    "simple": {
+      "critical_failures": [
+        "hard-edge/highlights-positive-20: halo_undershoot",
+        "hard-edge/highlights-negative-20: halo_overshoot",
+        "hard-edge/highlights-positive-40: halo_undershoot",
+        "hard-edge/highlights-negative-40: halo_overshoot",
+        "colors/highlights-positive-20: target_clipping_fraction_increase",
+        "colors/highlights-positive-20: target_new_clipping_fraction",
+        "colors/highlights-positive-40: target_clipping_fraction_increase",
+        "colors/highlights-positive-40: target_new_clipping_fraction"
+      ],
+      "decision": "no-go",
+      "matched_records": 40,
+      "missing_evidence": [
+        "Licensed developed RAW and photographic critical scenes with declared target profiles and range provenance",
+        "Recorded blind visual acceptance including skin, fine texture, branches, SDR/P3, HDR and alpha",
+        "Production prefix/contrast/white/black/NaturalBalance/automatic-control staging, full mask equivalence, undo/persistence and backup integration",
+        "Actual small and large RAW decoding, render-lane contention, cancellation and stale UI publication, CPU/GPU equivalence",
+        "Matched texture and per-profile HDR/clipping evaluation beyond the procedural diagnostics",
+        "Unmatched or unsupported effect targets: ramp/shadows-positive-20, ramp/shadows-negative-20, ramp/shadows-positive-40, ramp/shadows-negative-40, ramp/highlights-positive-40, constants/shadows-positive-40, constants/shadows-negative-40, fine-lines/shadows-positive-20, fine-lines/shadows-negative-20, fine-lines/shadows-positive-40, fine-lines/shadows-negative-40, hard-edge/shadows-positive-40, hard-edge/shadows-negative-40, texture/shadows-positive-20, texture/shadows-negative-20, texture/highlights-positive-20, texture/highlights-negative-20, texture/shadows-positive-40, texture/shadows-negative-40, texture/highlights-positive-40, texture/highlights-negative-40, colors/shadows-positive-20, colors/shadows-negative-20, colors/shadows-positive-40, colors/shadows-negative-40, saturation/shadows-positive-20, saturation/shadows-negative-20, saturation/shadows-positive-40, saturation/shadows-negative-40, transparency/shadows-positive-20, transparency/shadows-negative-20, transparency/highlights-positive-20, transparency/highlights-negative-20, transparency/shadows-positive-40, transparency/shadows-negative-40, transparency/highlights-positive-40, transparency/highlights-negative-40, noise/shadows-positive-20, noise/shadows-negative-20, noise/shadows-positive-40, noise/shadows-negative-40, branches/shadows-positive-20, branches/shadows-negative-20, branches/shadows-positive-40, branches/shadows-negative-40, p3/shadows-positive-20, p3/shadows-negative-20, p3/highlights-positive-20, p3/highlights-negative-20, p3/shadows-positive-40, p3/shadows-negative-40, p3/highlights-positive-40, p3/highlights-negative-40, hdr/shadows-negative-20, hdr/shadows-positive-40, hdr/shadows-negative-40",
+        "Complete matched moderate fine-line comparison with nonempty finite ROIs",
+        "Controlled cold/warm performance and peak RSS"
+      ],
+      "primary": {
+        "metric": "log_line_contrast_error",
+        "required_directions": [
+          "highlights-negative-20",
+          "highlights-positive-20",
+          "shadows-negative-20",
+          "shadows-positive-20"
+        ],
+        "status": "blocked"
+      },
+      "quality_records": 96,
+      "scope": "Independent EIGF hypothesis, V2 Float contract; isolated synthetic CPU reference"
+    }
+  },
+  "expected_quality_records": 192,
+  "manifest_sha256": "c8f722e9064f9490ec58d772094392f9a449e1fa0625df8baa0f74f23cc7907e",
+  "performance": [],
+  "production": "unchanged; no synthetic run can grant integration",
+  "protocol": "eigf-tone-experiment-v1",
+  "quality_records": 192,
+  "scale_measured": false
+}

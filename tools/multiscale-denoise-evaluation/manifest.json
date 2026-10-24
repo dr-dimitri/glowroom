@@ -1,0 +1,149 @@
+{
+  "schemaVersion": 1,
+  "protocolID": "multiscale-denoise-175-v1",
+  "qualitySize": [
+    256,
+    160
+  ],
+  "scenes": [
+    "flat-dark",
+    "flat-bright",
+    "dark-edges",
+    "fine-lines",
+    "color-lines",
+    "texture",
+    "transparency",
+    "p3-dark",
+    "skin",
+    "hdr"
+  ],
+  "primaryScenes": [
+    "dark-edges",
+    "fine-lines",
+    "color-lines",
+    "texture",
+    "skin"
+  ],
+  "values": [
+    20,
+    60,
+    100
+  ],
+  "controls": [
+    "luminance",
+    "chroma",
+    "joint"
+  ],
+  "matching": {
+    "minimumTarget": 0.0002,
+    "absoluteTolerance": 1e-05,
+    "relativeTolerance": 0.05,
+    "coarseSteps": 33,
+    "refinementSteps": 17
+  },
+  "qualityGates": {
+    "minimumMeanImprovement": 0.1,
+    "floor": 1e-05,
+    "maximumCaseAbsoluteRegression": 1e-05,
+    "maximumCaseRelativeRegression": 0.1,
+    "metrics": [
+      "detail_rgb_rmse",
+      "edge_gradient_rmse"
+    ]
+  },
+  "criticalGates": {
+    "luma_drift_mean": 0.005,
+    "chroma_fringing_rmse": 0.005,
+    "target_outside_fraction": 0.02,
+    "target_boundary_fraction": 0.02,
+    "target_new_outside_fraction": 0.02
+  },
+  "alphaTolerance": 0.001,
+  "candidate": {
+    "strides": [
+      1,
+      2,
+      4
+    ],
+    "thresholds": [
+      0.04,
+      0.028,
+      0.018
+    ],
+    "lumaEdge": 0.06,
+    "chromaEdge": 0.06,
+    "curve": "threshold=bandThreshold*clamp(control,0,100)/100; no sensor/ISO profile",
+    "geometry": "fixed discrete native-pixel bands; unknown decoder sampling is not silently scaled"
+  },
+  "scaling": {
+    "nativeSize": [
+      4608,
+      3072
+    ],
+    "previewSizes": [
+      [
+        512,
+        341
+      ],
+      [
+        2400,
+        1600
+      ],
+      [
+        4096,
+        2731
+      ]
+    ],
+    "maximumRGBDistance": 0.002,
+    "maximumLumaDistance": 0.002,
+    "maximumChromaDistance": 0.002,
+    "maximumAlphaError": 0.001,
+    "maximumNoiseReductionAbsoluteError": 0.02,
+    "maximumNoiseReductionRelativeError": 0.1,
+    "variants": [
+      "glowroom",
+      "multiscale"
+    ],
+    "maximumQualityAbsoluteRegression": 0.001,
+    "maximumQualityRelativeRegression": 0.1,
+    "qualityMetrics": [
+      "detail_rgb_rmse",
+      "edge_gradient_rmse",
+      "chroma_fringing_rmse"
+    ]
+  },
+  "performance": {
+    "sizes": [
+      [
+        512,
+        320
+      ],
+      [
+        2400,
+        1600
+      ],
+      [
+        4096,
+        2731
+      ],
+      [
+        4608,
+        3072
+      ]
+    ],
+    "coldProcesses": 5,
+    "warmSamples": 5,
+    "maximumColdRatio": 1.25,
+    "maximumWarmRatio": 1.2,
+    "maximumRSSRatio": 1.25
+  },
+  "colorContract": "straight extended-linear-sRGB D65 -> (Y,R-Y,B-Y), Y=.2126R+.7152G+.0722B, inverse G=Y-(.2126C1+.0722C2)/.7152. Channels use linear relative SDR-white units, no clipping/log/divide-by-Y. SDR target=sRGB except p3-dark=Display-P3, range[0,1]; hdr target=linear-sRGB [0,4] with explicit synthetic HDR provenance, nominal SDR white1. Alpha preserved separately; hidden RGB zero. Legacy LC06 sRGB-cube counters are diagnostics only.",
+  "requiredEvidence": [
+    "real RAW-developed photographs",
+    "independent matched-pair visual acceptance",
+    "matched cold/warm/RSS performance at every size",
+    "CPU/GPU execution attribution and equivalence",
+    "preview/native scale matrix",
+    "production cache/version/undo/cancellation integration"
+  ]
+}

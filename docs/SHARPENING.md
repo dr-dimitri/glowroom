@@ -42,3 +42,7 @@ Ein vorheriger Gesamtlauf ohne diese Begrenzung traf bekannte Test-Watchdogs in 
 Das unabhängige Diffreview fand eine zunächst fehlende Berücksichtigung der Schärfung in der adaptiven Vorschauplanung. Diese wurde korrigiert, mit Schärfung allein und zusammen mit Masken/Retusche in kleinen Artefaktbudgets geprüft und erneut reviewt. Im Änderungsumfang blieben keine offenen Reviewbefunde.
 
 Der damals erforderliche vollständige Release-Build war erfolgreich. `.build-app/` war vor Beginn nicht vorhanden, das alte `dist/PicEdit.app` wurde entfernt. Der gleichzeitig aktive Testpfad `.build/` blieb geschützt und wurde vom App-Build nicht verwendet. Bundle-Prüfung und lokale Signaturprüfung waren erfolgreich. Dieser historische Nachweis bezieht sich auf PicEdit. Der entsprechende aktuelle Befehl `GLOWROOM_BUILD_PATH=.build-app GLOWROOM_BUILD_JOBS=3 ./scripts/build-app.sh` erstellt `dist/Glowroom.app`.
+
+## Mehrskalen-/Diffusionsvergleich #174
+
+Die getrennte [Evaluation kantenbewusster Mehrskalenschärfung](DARKTABLE-SHARPEN-EVALUATION.md) vergleicht zwei eigenständige Kandidaten bei angeglichener Kantensteilheit mit dieser USM. Beide erhalten ein dokumentiertes No-Go; der hier beschriebene Produktionsfilter und seine Regler bleiben erhalten. Synthetische Messdaten und private Fotodiagnosen ersetzen keine unabhängige Sichtabnahme.

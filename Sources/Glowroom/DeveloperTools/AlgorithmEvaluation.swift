@@ -18,6 +18,18 @@ enum AlgorithmEvaluation {
     }
 
     static func run(_ options: Benchmark.Options) throws {
+        if options.evaluationMode.hasPrefix("eigf-") {
+            try EIGFToneEvaluation.run(options)
+            return
+        }
+        if options.evaluationMode.hasPrefix("sharpen-") {
+            try DarktableSharpenEvaluation.run(options)
+            return
+        }
+        if options.evaluationMode.hasPrefix("multiscale-denoise-") {
+            try MultiscaleDenoiseEvaluation.run(options)
+            return
+        }
         if options.evaluationMode.hasPrefix("denoise-") {
             try LightcraftDenoiseEvaluation.run(options)
             return

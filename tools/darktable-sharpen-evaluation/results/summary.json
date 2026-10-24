@@ -1,0 +1,158 @@
+{
+  "calibration_sha256": "d7a1aeeeb0c3cb3908d36d7b64aff16e37ded8fc423420703b506084ccf7465d",
+  "decisions": [
+    {
+      "candidate": "multiscale",
+      "failures": [
+        "fine-50/slanted-edge: matched per-case halo_total regression",
+        "fine-50/slanted-edge: matched per-case halo_width_pixels regression",
+        "fine-100/slanted-edge: matched per-case halo_total regression",
+        "fine-100/slanted-edge: matched per-case halo_width_pixels regression",
+        "wide-100/slanted-edge: matched per-case halo_width_pixels regression",
+        "masked-100/slanted-edge: matched per-case halo_width_pixels regression",
+        "fine-50/noisy-flat: matched noise std increase"
+      ],
+      "matching": {
+        "fine-100/broad-edge": false,
+        "fine-100/slanted-edge": true,
+        "fine-50/broad-edge": true,
+        "fine-50/slanted-edge": true,
+        "masked-100/broad-edge": false,
+        "masked-100/slanted-edge": true,
+        "wide-100/broad-edge": false,
+        "wide-100/slanted-edge": true
+      },
+      "missing_evidence": [
+        "Licensed skin, hair, branches against sky, textiles and native RAW-developed regions with matching source provenance",
+        "Independent blinded visual judgement consistent with metrics",
+        "Complete isolated process-cold/warm end-to-end timing including conversions/transfers and peak RSS",
+        "Actual accelerated/backend parity; software preference alone is insufficient",
+        "Production cancellation between iterations, rapid slider sequences, A-B-A, stale publication, undo/redo, bounded memory",
+        "Versioned production alpha/HDR/profile/persistence/export regressions against merged process contract",
+        "Complete equally steep acceptance problem edges with frozen tuning"
+      ],
+      "performance_diagnostics": [
+        {
+          "reason": "Complete independent process matrix required",
+          "size": [
+            512,
+            320
+          ],
+          "status": "blocked"
+        },
+        {
+          "reason": "Complete independent process matrix required",
+          "size": [
+            2400,
+            1600
+          ],
+          "status": "blocked"
+        },
+        {
+          "reason": "Complete independent process matrix required",
+          "size": [
+            4096,
+            2731
+          ],
+          "status": "blocked"
+        },
+        {
+          "reason": "Complete independent process matrix required",
+          "size": [
+            4608,
+            3072
+          ],
+          "status": "blocked"
+        }
+      ],
+      "primary": {},
+      "production_changed": false,
+      "scale_diagnostics": {
+        "reason": "Native/preview matrix not measured",
+        "status": "blocked"
+      },
+      "scope": "CPU research adapter cannot itself fulfill real/visual/accelerated/production gates",
+      "status": "no-go"
+    },
+    {
+      "candidate": "diffusion",
+      "failures": [
+        "fine-50/slanted-edge: matched per-case halo_total regression",
+        "fine-50/slanted-edge: matched per-case halo_width_pixels regression",
+        "wide-100/slanted-edge: matched per-case halo_total regression",
+        "masked-100/slanted-edge: matched per-case halo_total regression",
+        "fine-50/line-pairs: matched truth RMSE increase",
+        "masked-100/impulse: matched truth RMSE increase",
+        "fine-50/noisy-flat: matched noise std increase",
+        "fine-50/noisy-flat: matched truth RMSE increase",
+        "fine-50/alpha-signed-hdr: matched truth RMSE increase"
+      ],
+      "matching": {
+        "fine-100/broad-edge": false,
+        "fine-100/slanted-edge": false,
+        "fine-50/broad-edge": true,
+        "fine-50/slanted-edge": true,
+        "masked-100/broad-edge": true,
+        "masked-100/slanted-edge": true,
+        "wide-100/broad-edge": false,
+        "wide-100/slanted-edge": true
+      },
+      "missing_evidence": [
+        "Licensed skin, hair, branches against sky, textiles and native RAW-developed regions with matching source provenance",
+        "Independent blinded visual judgement consistent with metrics",
+        "Complete isolated process-cold/warm end-to-end timing including conversions/transfers and peak RSS",
+        "Actual accelerated/backend parity; software preference alone is insufficient",
+        "Production cancellation between iterations, rapid slider sequences, A-B-A, stale publication, undo/redo, bounded memory",
+        "Versioned production alpha/HDR/profile/persistence/export regressions against merged process contract",
+        "Complete equally steep acceptance problem edges with frozen tuning"
+      ],
+      "performance_diagnostics": [
+        {
+          "reason": "Complete independent process matrix required",
+          "size": [
+            512,
+            320
+          ],
+          "status": "blocked"
+        },
+        {
+          "reason": "Complete independent process matrix required",
+          "size": [
+            2400,
+            1600
+          ],
+          "status": "blocked"
+        },
+        {
+          "reason": "Complete independent process matrix required",
+          "size": [
+            4096,
+            2731
+          ],
+          "status": "blocked"
+        },
+        {
+          "reason": "Complete independent process matrix required",
+          "size": [
+            4608,
+            3072
+          ],
+          "status": "blocked"
+        }
+      ],
+      "primary": {},
+      "production_changed": false,
+      "scale_diagnostics": {
+        "reason": "Native/preview matrix not measured",
+        "status": "blocked"
+      },
+      "scope": "CPU research adapter cannot itself fulfill real/visual/accelerated/production gates",
+      "status": "no-go"
+    }
+  ],
+  "manifest_sha256": "0f2d1e5a0ba7afe2248bb4f2af4bb79d348b64a95b564eac8abee212da7a2661",
+  "production_changed": false,
+  "protocol": "DT174-sharpen-v1",
+  "scale_complete": false,
+  "timing_complete": false
+}

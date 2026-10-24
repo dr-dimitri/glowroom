@@ -1,0 +1,69 @@
+{
+  "manifestSHA256" : "0f2d1e5a0ba7afe2248bb4f2af4bb79d348b64a95b564eac8abee212da7a2661",
+  "records" : [
+    {
+      "caseID" : "fine-50",
+      "inputSHA256" : "32ab5422dba07104a3564010f4ad06d6d40aea70225c32958ac4e3d2f80cf3cb",
+      "measured" : 0.41602949798107147,
+      "parameter" : 0.90625,
+      "target" : 0.41626526974141598,
+      "variant" : "multiscale"
+    },
+    {
+      "caseID" : "fine-50",
+      "inputSHA256" : "32ab5422dba07104a3564010f4ad06d6d40aea70225c32958ac4e3d2f80cf3cb",
+      "measured" : 0.41626766137778759,
+      "parameter" : 4.822916666666667,
+      "target" : 0.41626526974141598,
+      "variant" : "diffusion"
+    },
+    {
+      "caseID" : "fine-100",
+      "inputSHA256" : "32ab5422dba07104a3564010f4ad06d6d40aea70225c32958ac4e3d2f80cf3cb",
+      "measured" : 0.46824938245117664,
+      "parameter" : 1.8229166666666667,
+      "target" : 0.46840987633913755,
+      "variant" : "multiscale"
+    },
+    {
+      "caseID" : "fine-100",
+      "inputSHA256" : "32ab5422dba07104a3564010f4ad06d6d40aea70225c32958ac4e3d2f80cf3cb",
+      "measured" : 0.42885688040405512,
+      "parameter" : 6,
+      "target" : 0.46840987633913755,
+      "variant" : "diffusion"
+    },
+    {
+      "caseID" : "wide-100",
+      "inputSHA256" : "32ab5422dba07104a3564010f4ad06d6d40aea70225c32958ac4e3d2f80cf3cb",
+      "measured" : 0.60763298176849878,
+      "parameter" : 2.1041666666666665,
+      "target" : 0.6072519700974226,
+      "variant" : "multiscale"
+    },
+    {
+      "caseID" : "wide-100",
+      "inputSHA256" : "32ab5422dba07104a3564010f4ad06d6d40aea70225c32958ac4e3d2f80cf3cb",
+      "measured" : 0.60755301799832118,
+      "parameter" : 2.6875,
+      "target" : 0.6072519700974226,
+      "variant" : "diffusion"
+    },
+    {
+      "caseID" : "masked-100",
+      "inputSHA256" : "32ab5422dba07104a3564010f4ad06d6d40aea70225c32958ac4e3d2f80cf3cb",
+      "measured" : 0.53263238620840836,
+      "parameter" : 1.9375,
+      "target" : 0.53238474298268557,
+      "variant" : "multiscale"
+    },
+    {
+      "caseID" : "masked-100",
+      "inputSHA256" : "32ab5422dba07104a3564010f4ad06d6d40aea70225c32958ac4e3d2f80cf3cb",
+      "measured" : 0.53213218941042817,
+      "parameter" : 2.7395833333333335,
+      "target" : 0.53238474298268557,
+      "variant" : "diffusion"
+    }
+  ]
+}

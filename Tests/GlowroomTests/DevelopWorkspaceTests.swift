@@ -24,7 +24,7 @@ struct DevelopWorkspaceTests {
             #expect(abs(rgb.2 - Double(color[2]) / 255) < 0.01)
             #expect(rgb.3 == 1)
         }
-        #expect(analysis.channels.map { $0.reduce(0, +) } == [width * height, width * height, width * height])
+        #expect(analysis.channels.map { $0.reduce(0, +) } == [width * height * 255, width * height * 255, width * height * 255])
         #expect(analysis.shadows == 0 && analysis.highlights == 0)
     }
 
@@ -32,7 +32,7 @@ struct DevelopWorkspaceTests {
         let colors: [[UInt8]] = [[0, 0, 0, 255], [255, 255, 255, 255], [120, 80, 40, 128], [255, 0, 0, 0]]
         let bitmap = try bitmap(width: 4, height: 1) { x, _ in colors[x] }
         let analysis = try await DevelopPreviewAnalyzer().analyze(bitmap)
-        #expect(analysis.channels.map { $0.reduce(0, +) } == [3, 3, 3])
+        #expect(analysis.channels.map { $0.reduce(0, +) } == [638, 638, 638])
         #expect(analysis.shadows == 1 && analysis.highlights == 1)
         #expect(abs(Int(analysis.pixels[8]) - 120) <= 1)
         #expect(abs(Int(analysis.pixels[9]) - 80) <= 1)
@@ -63,7 +63,7 @@ struct DevelopWorkspaceTests {
         #expect(analysis.rgb(at: CGPoint(x: CGFloat.nan, y: 0)) == nil)
         #expect(analysis.rgb(at: CGPoint(x: 0.5, y: -0.01)) == nil)
         #expect(analysis.rgb(at: CGPoint(x: 1.01, y: 0.5)) == nil)
-        #expect(analysis.channels.map { $0.reduce(0, +) } == [73_728, 73_728, 73_728])
+        #expect(analysis.channels.map { $0.reduce(0, +) } == [18_800_640, 18_800_640, 18_800_640])
     }
 
     @Test func cancelledAnalysisNeverReturnsAnObsoleteResult() async throws {

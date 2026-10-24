@@ -91,6 +91,18 @@ final class DevelopWorkspace: ObservableObject {
     /// Reuse the accepted preview frame; the navigator never requests another decode.
     @Published private(set) var navigatorImage: CGImage?
     @Published private(set) var analysis: DevelopPreviewAnalysis?
+    @Published var scopePreferences: DevelopScopePreferences {
+        didSet {
+            if let data = try? JSONEncoder().encode(scopePreferences) { scopeDefaults.set(data, forKey: DevelopScopePreferences.key) }
+            if oldValue.mode != scopePreferences.mode { refreshScope() }
+        }
+    }
+    @Published private(set) var spatialScope: DevelopSpatialScope?
+    private let scopeDefaults: UserDefaults
+    private var scopeTask: Task<Void, Never>?
+    private var scopeIdentity = UUID()
+    typealias ReduceScope = @Sendable (DevelopPreviewAnalysis) async throws -> DevelopSpatialScope
+    private let reduceScope: ReduceScope
     @Published private(set) var isAnalyzing = false
     @Published private(set) var sourceAnalysis: DevelopPreviewAnalysis?
     private var baseIdentity: ObjectIdentifier?
@@ -119,7 +131,13 @@ final class DevelopWorkspace: ObservableObject {
     init(analyze: Analyze? = nil, estimateHorizon: EstimateHorizon? = nil, estimateTone: EstimateTone? = nil,
          sampleLevels: SampleLevels? = nil,
          validateLevels: ValidateLevels? = nil, estimateLevels: EstimateLevels? = nil,
-         repairServices: DevelopRepairServices = .live, repairAIStore: DevelopRepairAIModelStore = .shared) {
+         repairServices: DevelopRepairServices = .live, repairAIStore: DevelopRepairAIModelStore = .shared,
+         scopeDefaults: UserDefaults = .standard, reduceScope: ReduceScope? = nil) {
+        self.scopeDefaults = scopeDefaults
+        self.scopePreferences = scopeDefaults.data(forKey: DevelopScopePreferences.key)
+            .flatMap { try? JSONDecoder().decode(DevelopScopePreferences.self, from: $0) } ?? .init()
+        let scopeWorker = DevelopScopeReducer()
+        self.reduceScope = reduceScope ?? { try await scopeWorker.reduce($0) }
         self.repairServices = repairServices
         self.repairAIStore = repairAIStore
         self.estimateHorizon = estimateHorizon ?? { try await DevelopHorizonEstimator.shared.estimate($0) }
@@ -153,6 +171,7 @@ final class DevelopWorkspace: ObservableObject {
         let needsBase = baseIdentity != baseID || sourceAnalysis == nil
         if needsBase { sourceAnalysis = nil }
         analysisTask?.cancel()
+        analysis = nil; invalidateScope()
         let token = UUID(); identity = token; isAnalyzing = true
         analysisTask = Task { [weak self, analyze] in
             do {
@@ -162,9 +181,29 @@ final class DevelopWorkspace: ObservableObject {
                 try Task.checkCancellation()
                 guard let self, !Task.isCancelled, self.identity == token else { return }
                 self.analysis = result; self.isAnalyzing = false; self.analysisTask = nil
+                self.invalidateScope(); self.refreshScope()
                 if let base { self.sourceAnalysis = base; self.baseIdentity = baseID }
             } catch is CancellationError { }
             catch { if let self, self.identity == token { self.isAnalyzing = false; self.analysisTask = nil } }
+        }
+    }
+    private func invalidateScope() {
+        scopeIdentity = UUID(); scopeTask?.cancel(); scopeTask = nil; spatialScope = nil
+    }
+    private func refreshScope() {
+        guard scopePreferences.mode != .histogram else { invalidateScope(); return }
+        guard spatialScope == nil, scopeTask == nil, let analysis else { return }
+        let token = UUID(); scopeIdentity = token
+        scopeTask = Task { [weak self, reduceScope] in
+            do {
+                let result = try await reduceScope(analysis)
+                try Task.checkCancellation()
+                guard let self, self.scopeIdentity == token else { return }
+                self.spatialScope = result; self.scopeTask = nil
+            } catch {
+                guard let self, self.scopeIdentity == token else { return }
+                self.scopeTask = nil
+            }
         }
     }
     func cropRatio(source: CGSize) -> Double {
@@ -217,6 +256,7 @@ final class DevelopWorkspace: ObservableObject {
         cancelRepairWork(); repairSpotTask?.cancel(); repairSpotTask = nil
         repairDisplayBitmap = nil; repairSpotImage = nil; repairStatus = nil
         identity = UUID(); analysisTask?.cancel(); analysisTask = nil
+        invalidateScope()
         cancelAutoStraighten(); originalBitmap = nil
         displayedMapping = nil; hdrDisplayed = false
         navigatorImage = nil
@@ -286,7 +326,8 @@ struct DevelopPreviewAnalysis: Sendable {
         self.shadows = shadows; self.highlights = highlights; self.clippingImages = clippingImages
     }
     func rgb(at point: CGPoint) -> (Double, Double, Double, Double)? {
-        guard point.x.isFinite, point.y.isFinite, (0...1).contains(point.x), (0...1).contains(point.y) else { return nil }
+        guard width > 0, height > 0, width <= 384, height <= 384, pixels.count == width * height * 4,
+              point.x.isFinite, point.y.isFinite, (0...1).contains(point.x), (0...1).contains(point.y) else { return nil }
         let x = min(width - 1, Int(point.x * Double(width)))
         let y = min(height - 1, Int(point.y * Double(height)))
         // Average a small neighborhood; isolated noise must not set the WB.
@@ -339,7 +380,7 @@ actor DevelopPreviewAnalyzer {
             return true
         }
         guard result else { throw EditRenderError.unavailable }
-        var channels = [[Int]](repeating: [Int](repeating: 0, count: 128), count: 3)
+        var channels = [[Int]](repeating: [Int](repeating: 0, count: 256), count: 3)
         var shadows = 0, highlights = 0
         var shadowPixels = [UInt8](repeating: 0, count: bytes.count)
         var highlightPixels = shadowPixels
@@ -352,7 +393,8 @@ actor DevelopPreviewAnalyzer {
                 guard alpha > 0 else { continue }
                 for channel in 0..<3 {
                     bytes[index + channel] = UInt8(min(255, (Int(bytes[index + channel]) * 255 + alpha / 2) / alpha))
-                    channels[channel][Int(bytes[index + channel]) / 2] += 1
+                    // Exact integer alpha mass: 255 units represent one opaque pixel.
+                    channels[channel][Int(bytes[index + channel])] += alpha
                 }
                 let maximum = max(bytes[index], max(bytes[index + 1], bytes[index + 2]))
                 if maximum <= 1 {
@@ -403,33 +445,60 @@ struct DevelopHistogram: View {
     var body: some View {
         VStack(spacing: 4) {
             HStack {
-                Text(workspace.hdrDisplayed ? "Histogramm · SDR-Vorschau" : "Histogramm").font(.system(size: 12, weight: .semibold))
-                Spacer()
+                Picker("Anzeige", selection: $workspace.scopePreferences.mode) {
+                    ForEach(DevelopScopeMode.allCases) { Text($0.title).tag($0) }
+                }.pickerStyle(.menu).labelsHidden()
+                    .accessibilityLabel("Scope-Anzeige")
+                    .accessibilityValue(workspace.scopePreferences.mode.title)
+                Spacer(minLength: 0)
                 if workspace.isAnalyzing { ProgressView().controlSize(.mini) }
+                clipButton("Schattenwarnung", symbol: "triangle.fill", active: $workspace.showsShadows, count: workspace.analysis?.shadows ?? 0, color: .blue)
+                clipButton("Lichterwarnung", symbol: "triangle.fill", active: $workspace.showsHighlights, count: workspace.analysis?.highlights ?? 0, color: .red)
             }
+            Text("sRGB · SDR-Vorschau").font(.system(size: 10)).foregroundStyle(Theme.muted)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .help("Bearbeitete SDR-Vorschau; keine Sensorclipping-, HDR- oder präzise Levels-Messung.")
+            HStack(spacing: 4) {
+                ForEach(0..<3) { channel in
+                    Toggle(["R", "G", "B"][channel], isOn: Binding(
+                        get: { workspace.scopePreferences.channelMask & (1 << channel) != 0 },
+                        set: { enabled in
+                            if enabled { workspace.scopePreferences.channelMask |= 1 << channel }
+                            else { workspace.scopePreferences.channelMask &= ~(1 << channel) }
+                        }))
+                        .toggleStyle(.button).controlSize(.mini)
+                        .accessibilityLabel(["Rot", "Grün", "Blau"][channel] + " anzeigen")
+                }
+                Spacer(minLength: 0)
+            }
+            Picker("Zählerskala", selection: $workspace.scopePreferences.scale) {
+                ForEach(DevelopScopeScale.allCases) { Text($0.title).tag($0) }
+            }.pickerStyle(.menu).controlSize(.mini)
+                .help("Nur Höhe bzw. Dichte der alpha-gewichteten Häufigkeit. Die Kanalwerte bleiben sRGB-Codewerte. Gemeinsames Maximum der sichtbaren Kanäle.")
             ZStack(alignment: .top) {
-                Canvas { context, size in
-                    guard let analysis = workspace.analysis else { return }
-                    let colors: [Color] = [.red, .green, .blue]
-                    let peak = max(1, analysis.channels.flatMap { $0 }.max() ?? 1)
-                    for channel in 0..<3 {
-                        var path = Path(); path.move(to: CGPoint(x: 0, y: size.height))
-                        for (bin, count) in analysis.channels[channel].enumerated() {
-                            let value = log1p(Double(count)) / log1p(Double(peak))
-                            path.addLine(to: CGPoint(x: Double(bin) / 127 * size.width, y: (1 - value) * size.height))
-                        }
-                        path.addLine(to: CGPoint(x: size.width, y: size.height)); path.closeSubpath()
-                        context.blendMode = .plusLighter
-                        context.fill(path, with: .color(colors[channel].opacity(0.45)))
+                HStack(spacing: 2) {
+                    if workspace.scopePreferences.mode != .histogram {
+                        VStack { Text("100 %"); Spacer(); Text("50 %"); Spacer(); Text("0 %") }
+                            .font(.system(size: 8)).foregroundStyle(Theme.muted).frame(width: 30)
                     }
-                }.frame(height: 80).background(Color.black.opacity(0.25))
-                HStack {
-                    clipButton("Schattenwarnung", symbol: "triangle.fill", active: $workspace.showsShadows, count: workspace.analysis?.shadows ?? 0, color: .blue)
-                    Spacer()
-                    clipButton("Lichterwarnung", symbol: "triangle.fill", active: $workspace.showsHighlights, count: workspace.analysis?.highlights ?? 0, color: .red)
-                }.padding(5)
+                    DevelopScopePlot(analysis: workspace.analysis, spatial: workspace.spatialScope,
+                                     preferences: workspace.scopePreferences)
+                        .overlay {
+                            if workspace.scopePreferences.mode != .histogram {
+                                VStack { Divider(); Spacer(); Divider(); Spacer(); Divider() }.allowsHitTesting(false)
+                            }
+                        }
+                }.frame(height: 96)
             }.overlay(Rectangle().stroke(Theme.line))
-                .accessibilityLabel("RGB-Histogramm der aktuellen Vorschau")
+            HStack {
+                if workspace.scopePreferences.mode == .parade {
+                    ForEach(["R", "G", "B"], id: \.self) { Text($0).frame(maxWidth: .infinity) }
+                } else {
+                    Text("0 %"); Spacer(); Text("50 %"); Spacer(); Text("100 %")
+                }
+            }.font(.system(size: 8)).foregroundStyle(Theme.muted)
+            Text(workspace.scopePreferences.mode == .histogram ? "sRGB-Codewert → · Höhe = Häufigkeit" : "Bildposition → · Höhe = sRGB · Helligkeit = Dichte")
+                .font(.system(size: 8)).foregroundStyle(Theme.muted).lineLimit(2)
             HStack(spacing: 5) {
                 Text(asset.iso.map { "ISO \($0)" } ?? "ISO —")
                 Spacer(minLength: 0); Text(asset.focalLength ?? "— mm")
