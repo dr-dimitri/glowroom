@@ -1,0 +1,104 @@
+{
+  "issue": 195,
+  "baseCommit": "433ead6e0381e48b6256c32aa893686846592f83",
+  "modelInference": "controlled services only; no real Qwen/BiRefNet inference",
+  "runs": [
+    {
+      "name": "baseline native screenshot",
+      "status": "passed",
+      "tests": 1,
+      "suites": 1,
+      "seconds": 1.111,
+      "compileSeconds": 305.84,
+      "log": "/private/tmp/glowroom-195-baseline.log"
+    },
+    {
+      "name": "initial integrated targeted",
+      "status": "failed",
+      "tests": 102,
+      "suites": 11,
+      "issues": 3,
+      "seconds": 34.291,
+      "log": "/private/tmp/glowroom-195-targeted.log",
+      "findings": [
+        "brush inspector fitting height 468 exceeds 460",
+        "redo restored object mask without selecting it; refinement targeted another mask"
+      ]
+    },
+    {
+      "name": "history integration targeted",
+      "status": "failed",
+      "tests": 117,
+      "suites": 13,
+      "issues": 5,
+      "seconds": 48.594,
+      "log": "/private/tmp/glowroom-195-targeted-final.log",
+      "findings": [
+        "restoring an unchanged published selectedID incorrectly revealed overlay after correction undo/redo"
+      ]
+    },
+    {
+      "name": "verified integrated targeted",
+      "status": "passed",
+      "tests": 117,
+      "suites": 13,
+      "seconds": 47.877,
+      "optionalEntriesSkipped": 4,
+      "log": "/private/tmp/glowroom-195-verified-tests.log"
+    },
+    {
+      "name": "final source reload verification",
+      "status": "passed",
+      "tests": 7,
+      "suites": 1,
+      "seconds": 0.322,
+      "log": "/private/tmp/glowroom-195-reload-verification.log"
+    },
+    {
+      "name": "complementary integration",
+      "status": "passed",
+      "tests": 48,
+      "suites": 9,
+      "seconds": 8.385,
+      "log": "/private/tmp/glowroom-195-complementary-tests.log"
+    },
+    {
+      "name": "final native captures after source reload and capture correction",
+      "status": "passed",
+      "tests": 1,
+      "suites": 1,
+      "parameterCases": 2,
+      "seconds": 11.431,
+      "compileSeconds": 22.71,
+      "log": "/private/tmp/glowroom-195-capture-native-final.log"
+    }
+  ],
+  "releaseBuild": {
+    "status": "passed",
+    "clean": true,
+    "swiftPMSeconds": 466.51,
+    "script": "./scripts/build-app.sh",
+    "buildPath": "/private/tmp/glowroom-195-release-build",
+    "jobs": 3,
+    "log": "/private/tmp/glowroom-195-clean-build.log",
+    "output": "dist/Glowroom.app",
+    "checks": [
+      "Info.plist",
+      "packaging",
+      "ad-hoc codesign",
+      "strict signature verification"
+    ],
+    "previousAttempt": "interrupted after test findings; not counted as passed",
+    "previousLog": "/private/tmp/glowroom-195-interrupted-build.log"
+  },
+  "visualEvidence": {
+    "status": "passed",
+    "baselineCaptures": 1,
+    "mainAfterCaptures": 14,
+    "setupAfterCaptures": 4,
+    "allCapturesVisuallyInspected": true,
+    "sourceManifest": "source-hashes.json",
+    "sourceManifestFiles": 309,
+    "setupCapture": "Actual setup sheet route and readiness asserted; same production view captured in separate native host at measured sheet dimensions with explicit system window background and dark color scheme. No download or model removal."
+  }
+}

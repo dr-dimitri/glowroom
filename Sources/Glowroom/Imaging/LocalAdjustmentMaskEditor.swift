@@ -32,9 +32,9 @@ struct InlineMaskCanvas: View {
         let height: CGFloat
     }
     private var overlayRequest: LocalMaskOverlayRequest? {
-        guard workspace.isPresented, workspace.showsOverlay, !workspace.comparesBefore,
+        guard workspace.isCurrent, workspace.showsOverlay, !workspace.comparesBefore,
               let source = workspace.source, let canvas = workspace.canvasSize,
-              let layerID = workspace.selected?.id, let mask = workspace.displayMask else { return nil }
+              let layerID = workspace.displayMaskID, let mask = workspace.displayMask else { return nil }
         return .init(source: source, canvas: canvas, layerID: layerID, mask: mask)
     }
     private enum Handle { case start, end, center, radiusX, radiusY, new }
@@ -53,7 +53,7 @@ struct InlineMaskCanvas: View {
                     if !workspace.comparesBefore { maskImage(geometry: geometry) }
                     brushCursor(geometry: geometry)
                     let acceptsInput = isEnabled && workspace.isCurrent && !workspace.comparesBefore
-                        && workspace.model?.isGenerating != true
+                        && !workspace.blocksMaskInput
                     DevelopCropInputSurface(onInput: { input($0, geometry: geometry) },
                         onHover: { cursor = $0 }, isEnabled: acceptsInput,
                         inputIdentity: AnyHashable(CanvasInputIdentity(source: workspace.source,
@@ -80,7 +80,7 @@ struct InlineMaskCanvas: View {
         .onChange(of: photoCanvasMagnification) { _, _ in cancelGesture() }
         .onChange(of: workspace.comparesBefore) { _, _ in cancelGesture() }
         .onChange(of: isEnabled) { _, enabled in if !enabled { cancelGesture() } }
-        .onChange(of: workspace.model?.isGenerating) { _, generating in if generating == true { cancelGesture() } }
+        .onChange(of: workspace.blocksMaskInput) { _, blocked in if blocked { cancelGesture() } }
         .onDisappear { cancelGesture(); overlay.update(nil) }
     }
 
@@ -89,14 +89,14 @@ struct InlineMaskCanvas: View {
         let height = Double(geometry.canvasSize.height) * geometry.scale
         return ZStack {
             if workspace.showsOverlay, let image = overlay.image { Color.red.mask { Image(decorative: image, scale: 1).resizable() }.opacity(0.45) }
-            if !workspace.usesBrush { gradientHandles }
+            if !workspace.usesBrush && !workspace.blocksMaskInput { gradientHandles }
         }.frame(width: width, height: height)
             .position(x: geometry.originX + width / 2, y: geometry.originY + height / 2)
             .allowsHitTesting(false)
     }
 
     @ViewBuilder private func brushCursor(geometry: CanvasGeometry) -> some View {
-        if workspace.usesBrush, !workspace.comparesBefore, let cursor, let document = workspace.brush.document,
+        if workspace.usesBrush, !workspace.blocksMaskInput, !workspace.comparesBefore, let cursor, let document = workspace.brush.document,
            let point = try? MaskPoint(x: cursor.x, y: cursor.y), geometry.viewToCanvas(point) != nil {
             let diameter = workspace.brush.radius * 2 * geometry.scale * Double(geometry.canvasSize.width) / Double(document.canvasSize.width)
             ZStack {
@@ -299,19 +299,25 @@ struct InlineMaskList: View {
                     .accessibilityLabel("Maskenfenster verschieben")
                     .accessibilityIdentifier("local-mask.drag-handle")
                 Menu {
+                    Button("Objekt beschreiben", systemImage: "viewfinder") {
+                        workspace.finishGesture(); workspace.showsObjectCreator = true
+                    }
                     ForEach(LocalMaskCreation.allCases) { kind in
-                        Button { workspace.finishGesture(); workspace.model?.add(kind) } label: {
+                        Button {
+                            workspace.finishGesture(); workspace.discardObjectMask(); workspace.showsObjectCreator = false
+                            workspace.model?.add(kind)
+                        } label: {
                             Label(kind.title, systemImage: kind.symbol)
                         }
                     }
                 } label: { Image(systemName: "plus") }
                     .menuStyle(.borderlessButton).fixedSize()
-                    .disabled(workspace.canvasSize == nil || workspace.model?.isGenerating == true || layers.count >= 16)
+                    .disabled(!workspace.canCreateMask)
                     .help("Neue Maske hinzufügen").accessibilityLabel("Neue Maske")
                     .accessibilityIdentifier("local-mask.add")
                 Menu {
                     Button("Himmelsmodell einrichten …") { showsSkySetup = true }
-                    Button("BiRefNet einrichten …") { showsSubjectSetup = true }
+                    Button("Motivmodell einrichten …") { showsSubjectSetup = true }
                 } label: { Image(systemName: "ellipsis") }
                     .menuStyle(.borderlessButton).frame(width: 16)
                     .accessibilityLabel("Maskeneinstellungen")
@@ -342,8 +348,10 @@ struct InlineMaskList: View {
                 }
                 Spacer(minLength: 0)
                 Toggle("Überlagerung", isOn: $workspace.showsOverlay).toggleStyle(.checkbox)
+                    .disabled(workspace.blocksMaskInput)
                     .accessibilityIdentifier("local-mask.overlay")
                 Toggle("Vorher", isOn: $workspace.comparesBefore).toggleStyle(.checkbox)
+                    .disabled(workspace.blocksMaskInput)
             }.controlSize(.mini).font(.system(size: 10)).frame(height: 16)
         }.padding(8)
             .background(Theme.panel, in: RoundedRectangle(cornerRadius: 7))
@@ -383,7 +391,8 @@ struct InlineMaskList: View {
             }.buttonStyle(.plain).foregroundStyle(Theme.muted).help("Maske löschen")
                 .accessibilityLabel("Maske löschen: \(layer.name)")
                 .accessibilityIdentifier("local-mask.delete.\(layer.id.uuidString)")
-        }.font(.system(size: 11)).padding(.horizontal, 4).frame(height: 28)
+        }.disabled(workspace.blocksMaskInput)
+            .font(.system(size: 11)).padding(.horizontal, 4).frame(height: 28)
             .background(selected ? Theme.accent.opacity(0.10) : Color.clear, in: RoundedRectangle(cornerRadius: 4))
             .overlay { RoundedRectangle(cornerRadius: 4).strokeBorder(selected ? Theme.accent.opacity(0.65) : Color.clear) }
     }
@@ -405,11 +414,15 @@ struct InlineMaskInspector: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 6) {
-                Text("Maskieren").font(.headline)
+                Text(workspace.selected.map { "Maskieren · \($0.name)" } ?? "Maskieren")
+                    .font(.system(size: 13, weight: .semibold)).lineLimit(1)
+                    .accessibilityIdentifier("local-mask.active-name")
                 Spacer()
                 if workspace.selected != nil {
                     Button {
                         workspace.finishGesture()
+                        workspace.discardObjectMask()
+                        workspace.showsObjectCreator = false
                         showsCreator.toggle()
                     } label: { Image(systemName: showsCreator ? "minus" : "plus") }
                         .buttonStyle(.plain).help(showsCreator ? "Maskenauswahl schließen" : "Neue Maske hinzufügen")
@@ -430,10 +443,15 @@ struct InlineMaskInspector: View {
                     .accessibilityIdentifier("local-mask.close")
             }
             if let model = workspace.model {
-                if workspace.selected == nil || showsCreator {
+                if workspace.showsObjectCreator {
+                    InlineObjectMaskCreator(workspace: workspace)
+                } else if workspace.selected == nil || showsCreator {
                     InlineMaskCreator(workspace: workspace)
                 }
-                if let selected = workspace.selected { maskControls(selected, model: model).id(model.inputContextID) }
+                if let selected = workspace.selected, !workspace.showsObjectCreator {
+                    maskControls(selected, model: model).id(model.inputContextID)
+                        .disabled(workspace.blocksMaskInput)
+                }
                 if model.isLoading { ProgressView("Bild wird geladen").controlSize(.small) }
                 if model.isGenerating {
                     HStack {
@@ -494,7 +512,6 @@ struct InlineMaskInspector: View {
                     .menuStyle(.borderlessButton).frame(width: 16).accessibilityLabel("Aktionen für diese Maske")
             }.font(.system(size: 10)).controlSize(.mini).frame(height: 23)
             valueSlider("Maskenstärke", value: Binding(get: { workspace.selected?.mask.opacity ?? 1 }, set: { value in model.updateSelected { $0.mask.opacity = value } }), range: 0...1, neutral: 1, model: model)
-                .help("1,00 wendet die Korrektur in vollständig ausgewählten Bereichen voll an. Kleinere Werte mischen den Bildstand vor dieser Maske bei; dadurch bleibt er auch bei starker Abdunklung sichtbar.")
             valueSlider("Weiche Kante", value: Binding(get: { workspace.selected?.mask.feather ?? 0 }, set: { value in model.updateSelected { $0.mask.feather = value } }), range: 0...1, neutral: featherResetValue, model: model)
             if case .radial = layer.mask.shape {
                 valueSlider("Drehung", value: Binding(get: {
@@ -508,7 +525,9 @@ struct InlineMaskInspector: View {
             Divider()
             ForEach(LocalMaskControlGroup.allCases) { group in
                 HStack {
-                    Text(group.title).font(.system(size: 10, weight: .semibold)).foregroundStyle(Theme.muted)
+                    Text(group == .tone ? "Lokale Korrekturen" : group.title)
+                        .font(.system(size: group == .tone ? 13 : 10, weight: .semibold)).foregroundStyle(Theme.muted)
+                        .accessibilityIdentifier(group == .tone ? "local-mask.local-scope" : "local-mask.group.\(group.rawValue)")
                     Spacer()
                     if group == .tone {
                         Button { workspace.finishGesture(); model.updateSelected { $0.settings = .neutral } } label: {

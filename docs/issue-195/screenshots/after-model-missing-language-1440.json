@@ -1,0 +1,20 @@
+{
+  "acceptedMaskCount": 1,
+  "fixture": "synthetic 768x512 blue field with red ellipse",
+  "localRevision": 5,
+  "macOS": "Version 27.0.1 (Build 26A434)",
+  "modelService": "controlled full-source elliptical alpha matte, no model inference",
+  "proposalVisible": false,
+  "screenshotSHA256": "07c3b947b8fb78657e95f68f657263ab8b39702f0c0d7f67ec40a69997b6feb4",
+  "selectedMask": "Roter Kreis",
+  "sourceCommit": "working tree based on 433ead6e0381e48b6256c32aa893686846592f83",
+  "sourceName": "Roter-Kreis.png",
+  "sourceSHA256": "fcd4cea33e295e6efe6ad533d3b1261a3737acea4bea44e4197628fe0d39c5ec",
+  "state": "after-model-missing-language",
+  "windowHeightPoints": 900,
+  "windowWidthPoints": 1440,
+  "zoom": "fitted, unchanged",
+  "pixelWidth": 2880,
+  "pixelHeight": 1800,
+  "scale": 2.0
+}

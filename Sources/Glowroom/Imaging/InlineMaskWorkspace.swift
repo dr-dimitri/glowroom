@@ -12,6 +12,7 @@ final class InlineMaskWorkspace: ObservableObject {
     @Published private(set) var source: AISourceIdentity?
     @Published var showsOverlay = true
     @Published var comparesBefore = false
+    @Published var showsObjectCreator = false
     @Published var erases = false {
         didSet {
             brush.cancelStroke()
@@ -21,11 +22,13 @@ final class InlineMaskWorkspace: ObservableObject {
     @Published var refines = false { didSet { finishGesture() } }
     @Published var errorMessage: String?
     let brush = MaskEditingModel(rendersOverlay: false)
+    let objectMask: InlineObjectMaskModel
     private var openingSettings = EditSettings.neutral
     private var acceptedSettings = EditSettings.neutral
     private var anchor: LocalMaskEditingAnchor?
     private weak var editor: EditingModel?
     private weak var library: LibraryModel?
+    private weak var developWorkspace: DevelopWorkspace?
     private var subscriptions: Set<AnyCancellable> = []
     private var brushSubscriptions: Set<AnyCancellable> = []
     private var loadTask: Task<Void, Never>?
@@ -33,7 +36,10 @@ final class InlineMaskWorkspace: ObservableObject {
     private var session = UUID()
     private var syncingBrush = false
 
-    init() {
+    init(objectMask: InlineObjectMaskModel? = nil) {
+        let objectMask = objectMask ?? InlineObjectMaskModel()
+        self.objectMask = objectMask
+        objectMask.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &brushSubscriptions)
         brush.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &brushSubscriptions)
         brush.$document.dropFirst().sink { [weak self] document in
             guard let self, !self.syncingBrush, let document else { return }
@@ -50,8 +56,21 @@ final class InlineMaskWorkspace: ObservableObject {
     var showsMaskList: Bool { isPresented && model?.settings.localAdjustments.isEmpty == false }
     /// Follows the visible request, not a canceled native operation's lifetime.
     /// Source changes hide its status before asynchronous reconciliation closes it.
-    var showsCalculationStatus: Bool { isCurrent && model?.isGenerating == true }
+    var showsCalculationStatus: Bool { isCurrent && (model?.isGenerating == true || objectMask.isRunning) }
     var canvasSize: ArtifactPixelSize? { model?.canvasSize }
+    var blocksMaskInput: Bool { model?.isGenerating == true || objectMask.blocksMaskInput }
+    var canCreateMask: Bool {
+        isCurrent && canvasSize != nil && model?.isLoading == false
+            && model?.isGenerating == false && !blocksMaskInput
+            && (model?.settings.localAdjustments.count ?? 0) < LocalAdjustment.maximumCount
+    }
+    var canRequestObjectMask: Bool {
+        guard canCreateMask else { return false }
+        guard let developWorkspace else { return true }
+        return developWorkspace.tool == .masks && developWorkspace.sourceIdentity == source
+            && developWorkspace.originalBitmap != nil && developWorkspace.isFinalPreviewReady
+    }
+    var displayMaskID: UUID? { objectMask.proposal?.layer.id ?? selected?.id }
     var previewSettings: EditSettings? {
         guard isPresented else { return nil }
         return comparesBefore ? openingSettings : model?.settings
@@ -64,7 +83,7 @@ final class InlineMaskWorkspace: ObservableObject {
     }
     var canApply: Bool { isCurrent && model?.isLoading == false && model?.isGenerating == false }
     func acceptsCanvasInput(source: AISourceIdentity, layerID: UUID) -> Bool {
-        isCurrent && self.source == source && selected?.id == layerID && model?.isGenerating == false
+        isCurrent && self.source == source && selected?.id == layerID && model?.isGenerating == false && !blocksMaskInput
     }
     var usesBrush: Bool {
         guard let selected else { return false }
@@ -74,6 +93,7 @@ final class InlineMaskWorkspace: ObservableObject {
         }
     }
     var displayMask: LocalAdjustmentMask? {
+        if let proposal = objectMask.proposal { return proposal.layer.mask }
         guard var mask = selected?.mask else { return nil }
         if let document = brush.previewDocument, brush.source == source {
             if case .brush = mask.shape { mask.shape = .brush(document) }
@@ -94,7 +114,8 @@ final class InlineMaskWorkspace: ObservableObject {
 
     @discardableResult
     func open(asset: PhotoAsset, source: AISourceIdentity, settings: EditSettings,
-              editor: EditingModel, library: LibraryModel, model suppliedModel: LocalAdjustmentEditorModel? = nil) -> Bool {
+              editor: EditingModel, library: LibraryModel, model suppliedModel: LocalAdjustmentEditorModel? = nil,
+              developWorkspace: DevelopWorkspace? = nil) -> Bool {
         cancel()
         guard library.selectedID == asset.id, editor.canEdit,
               editor.settings(for: asset.id) == settings,
@@ -104,18 +125,21 @@ final class InlineMaskWorkspace: ObservableObject {
         model.reset(settings: settings)
         self.model = model; self.asset = asset; self.source = source
         self.editor = editor; self.library = library; self.anchor = anchor
+        self.developWorkspace = developWorkspace
         openingSettings = settings; acceptedSettings = settings; errorMessage = nil
-        showsOverlay = true; comparesBefore = false; erases = false; refines = false
+        showsOverlay = true; comparesBefore = false; erases = false; refines = false; showsObjectCreator = false
         isPresented = true
         model.acceptSettings = { [weak self] settings in self?.accept(settings) == true }
         model.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &subscriptions)
         model.$settings.dropFirst().sink { [weak self] settings in
             guard let self else { return }
+            if settings != self.model?.settings { self.objectMask.invalidate() }
             self.updateOverlayVisibility(settings: settings)
             self.syncBrush(settings: settings)
         }.store(in: &subscriptions)
         model.$selectedID.dropFirst().sink { [weak self] selectedID in
             guard let self else { return }
+            if selectedID != self.model?.selectedID { self.objectMask.invalidate() }
             self.brush.cancelStroke(); self.model?.endChange(); self.refines = false
             self.showsOverlay = true
             self.syncBrush(selectedID: selectedID)
@@ -124,6 +148,12 @@ final class InlineMaskWorkspace: ObservableObject {
         // turn, coalescing rapid edits and allowing an accepted opening save.
         editor.objectWillChange.sink { [weak self] _ in self?.scheduleReconciliation() }.store(in: &subscriptions)
         library.objectWillChange.sink { [weak self] _ in self?.scheduleReconciliation() }.store(in: &subscriptions)
+        if let developWorkspace {
+            developWorkspace.$tool.dropFirst().sink { [weak self] tool in
+                if tool != .masks { self?.objectMask.discard() }
+            }.store(in: &subscriptions)
+            developWorkspace.objectWillChange.sink { [weak self] _ in self?.scheduleReconciliation() }.store(in: &subscriptions)
+        }
         let token = session
         loadTask = Task { [weak self, weak model] in
             guard let model else { return }
@@ -137,16 +167,19 @@ final class InlineMaskWorkspace: ObservableObject {
     /// Closing preserves all accepted edits. Finish an active gesture only while
     /// its original source is current; stale work must never overwrite a winner.
     func cancel() {
+        objectMask.discard()
+        showsObjectCreator = false
         if isCurrent { finishGesture() }
         session = UUID(); loadTask?.cancel(); loadTask = nil
         reconciliation?.cancel(); reconciliation = nil
         subscriptions.removeAll(); syncingBrush = true; brush.discard(); syncingBrush = false
         model?.close(); model = nil; asset = nil; source = nil; anchor = nil
-        editor = nil; library = nil; isPresented = false; errorMessage = nil
+        editor = nil; library = nil; developWorkspace = nil; isPresented = false; errorMessage = nil
     }
     func close() { cancel() }
     func reconcile() {
         guard isPresented, let asset, let source, let editor, let library, let anchor else { return }
+        objectMask.invalidateIfNeeded()
         if library.selectedID != asset.id || editor.settings(for: asset.id) != acceptedSettings
             || (try? editor.resolvedSource(for: asset).identity) != source
             || !anchor.isCurrent(editor: editor, library: library) { cancel() }
@@ -182,13 +215,75 @@ final class InlineMaskWorkspace: ObservableObject {
         // the resulting photo. Apply this before the first native slider value.
         showsOverlay = target == .mask
     }
-    func undo() { brush.cancelStroke(); model?.undo(); syncBrush() }
-    func redo() { brush.cancelStroke(); model?.redo(); syncBrush() }
+    func undo() { objectMask.discard(); brush.cancelStroke(); model?.undo(); syncBrush() }
+    func redo() { objectMask.discard(); brush.cancelStroke(); model?.redo(); syncBrush() }
     func select(_ id: UUID) {
         guard model?.settings.localAdjustments.contains(where: { $0.id == id }) == true else { return }
         finishGesture(); model?.selectedID = id; showsOverlay = true
     }
     func delete(_ id: UUID) { finishGesture(); model?.delete(id) }
+
+    @discardableResult
+    func requestObjectMask() -> Task<Void, Never>? {
+        guard canRequestObjectMask, let model, let editor, let library else { return nil }
+        finishGesture()
+        guard isCurrent, let expected = LocalMaskEditingAnchor(editor: editor, library: library) else { return nil }
+        let token = session, inputContext = model.inputContextID
+        let developWorkspace = developWorkspace
+        if let developWorkspace {
+            guard developWorkspace.tool == .masks, developWorkspace.sourceIdentity == source,
+                  developWorkspace.originalBitmap != nil, developWorkspace.isFinalPreviewReady else { return nil }
+        }
+        let bitmapID = developWorkspace?.originalBitmap.map { ObjectIdentifier($0.image) }
+        let bitmapStamp = developWorkspace?.originalSourceStamp
+        showsOverlay = true; comparesBefore = false
+        return objectMask.start(snapshot: expected.snapshot, expectedSourceStamp: bitmapStamp) { [weak self, weak model, weak editor, weak library, weak developWorkspace] in
+            guard let self, let model, let editor, let library else { return false }
+            if let developWorkspace {
+                guard developWorkspace.tool == .masks, developWorkspace.sourceIdentity == self.source,
+                      developWorkspace.originalBitmap.map({ ObjectIdentifier($0.image) }) == bitmapID,
+                      developWorkspace.originalSourceStamp == bitmapStamp else { return false }
+            }
+            return self.session == token && self.isCurrent && self.model === model
+                && model.inputContextID == inputContext && !model.isGenerating
+                && expected.isCurrent(editor: editor, library: library)
+        }
+    }
+
+    @discardableResult
+    func applyObjectMask() -> Task<Void, Never>? {
+        objectMask.apply { [weak self] layer in
+            guard let self, self.isCurrent, let model = self.model,
+                  model.settings.localAdjustments.count < LocalAdjustment.maximumCount else { return false }
+            guard model.appendProposedMask(layer) else { return false }
+            self.showsObjectCreator = false
+            self.comparesBefore = false; self.showsOverlay = true; self.refines = true; self.erases = false
+            self.syncBrush()
+            return true
+        }
+    }
+
+    func discardObjectMask() { objectMask.discard(); showsOverlay = true }
+    func reloadObjectMaskSource() {
+        finishGesture()
+        discardObjectMask()
+        developWorkspace?.previewReloadID = UUID()
+        guard isCurrent, let source, let model else { return }
+        loadTask?.cancel()
+        let token = session
+        loadTask = Task { [weak self, weak model] in
+            guard let model else { return }
+            // The preview pipeline checks the native source stamp again, so a
+            // replaced file refreshes both the photo and mask-canvas geometry.
+            await model.load(source: source)
+            guard let self, self.session == token, !Task.isCancelled else { return }
+            self.syncBrush()
+        }
+    }
+    func refreshObjectMaskFolder() {
+        discardObjectMask()
+        library?.refreshCurrentFolder()
+    }
     private func updateOverlayVisibility(settings: EditSettings) {
         // The comparison toggle lives in the floating list. Once that list
         // disappears, show current edits rather than an unreachable before state.

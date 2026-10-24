@@ -9,7 +9,6 @@ struct AIDevelopmentView: View {
     @StateObject private var model: AIDevelopmentModel
     @StateObject private var readiness: AICorrectionReadiness
     @ViewState private var showsModels = false
-    @ViewState private var showsSubjectModel = false
     @ViewState private var showsIntent = false
     @ViewState private var showsChanges = false
 
@@ -38,10 +37,6 @@ struct AIDevelopmentView: View {
     }
 
     private var validRequest: Bool {
-        if model.createsMask {
-            return layers.count < LocalAdjustment.maximumCount
-                && !model.intent.instruction.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        }
         guard let id = model.intent.targetMaskID else { return true }
         return layers.contains { $0.id == id && $0.isEnabled && $0.mask.opacity > 0 }
     }
@@ -96,7 +91,6 @@ struct AIDevelopmentView: View {
         }
         .font(.system(size: 13))
         .sheet(isPresented: $showsModels, onDismiss: { Task { await readiness.refresh() } }) { LLMModelManagerView() }
-        .sheet(isPresented: $showsSubjectModel) { SubjectMattingModelSetupView() }
         .task { await readiness.refresh() }
         .onChange(of: editor.aiSnapshot(in: library)) { _, _ in
             model.invalidateIfNeeded(library: library, editor: editor)
@@ -108,48 +102,34 @@ struct AIDevelopmentView: View {
 
     private var order: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Picker("Aufgabe", selection: $model.createsMask) {
-                Text("Korrektur").tag(false)
-                Text("Neue Maske").tag(true)
-            }.pickerStyle(.segmented).accessibilityIdentifier("ai-development.task")
-            if !model.createsMask {
-                Picker("Zielbereich", selection: $model.intent.targetMaskID) {
-                    Text("Gesamtes Bild").tag(Optional<UUID>.none)
-                    ForEach(layers) { layer in
-                        Text(layer.name + (layer.isEnabled && layer.mask.opacity > 0 ? "" : " (ausgeblendet)"))
-                            .tag(Optional(layer.id))
-                    }
-                    if let id = model.intent.targetMaskID, !layers.contains(where: { $0.id == id }) {
-                        Text("Maske nicht mehr verfügbar").tag(Optional(id))
-                    }
-                }.accessibilityIdentifier("ai-development.scope")
-            }
+            Picker("Zielbereich", selection: $model.intent.targetMaskID) {
+                Text("Gesamtes Bild").tag(Optional<UUID>.none)
+                ForEach(layers) { layer in
+                    Text(layer.name + (layer.isEnabled && layer.mask.opacity > 0 ? "" : " (ausgeblendet)"))
+                        .tag(Optional(layer.id))
+                }
+                if let id = model.intent.targetMaskID, !layers.contains(where: { $0.id == id }) {
+                    Text("Maske nicht mehr verfügbar").tag(Optional(id))
+                }
+            }.accessibilityIdentifier("ai-development.scope")
             Text("Auftrag").fontWeight(.medium)
-            TextField(model.createsMask ? "Zum Beispiel: Maskiere den Blumenstrauß" : "Zum Beispiel: natürliches Licht, wärmere Farben", text: $model.intent.instruction, axis: .vertical)
+            TextField("Zum Beispiel: natürliches Licht, wärmere Farben", text: $model.intent.instruction, axis: .vertical)
                 .textFieldStyle(.roundedBorder).lineLimit(2...3)
                 .accessibilityIdentifier("ai-development.instruction")
-            if model.createsMask {
-                Button("Freistellungsmodell einrichten …") { showsSubjectModel = true }
-                    .accessibilityIdentifier("ai-development.subject-model")
-                if layers.count >= LocalAdjustment.maximumCount {
-                    Text("Pro Foto sind höchstens 16 Masken möglich.")
+            Menu("Auftragsvorgabe wählen") {
+                ForEach(["Natürliches Licht und ausgewogene Farben", "Schatten behutsam aufhellen", "Wärmere Farben", "Zurückhaltende Farben"], id: \.self) { instruction in
+                    Button(instruction) { model.intent.instruction = instruction }
                 }
-            } else {
-                Menu("Auftragsvorgabe wählen") {
-                    ForEach(["Natürliches Licht und ausgewogene Farben", "Schatten behutsam aufhellen", "Wärmere Farben", "Zurückhaltende Farben"], id: \.self) { instruction in
-                        Button(instruction) { model.intent.instruction = instruction }
+            }.accessibilityIdentifier("ai-development.presets")
+            DisclosureGroup("Erweiterte Auftragsvorgaben", isExpanded: $showsIntent) {
+                Picker("Stärke des nächsten Vorschlags", selection: $model.intent.strength) {
+                    Text("Dezent").tag(0.25)
+                    Text("Mittel").tag(0.5)
+                    Text("Kräftig").tag(1.0)
+                    if ![0.25, 0.5, 1].contains(model.intent.strength) {
+                        Text("\(Int((model.intent.strength * 100).rounded())) %").tag(model.intent.strength)
                     }
-                }.accessibilityIdentifier("ai-development.presets")
-                DisclosureGroup("Erweiterte Auftragsvorgaben", isExpanded: $showsIntent) {
-                    Picker("Stärke des nächsten Vorschlags", selection: $model.intent.strength) {
-                        Text("Dezent").tag(0.25)
-                        Text("Mittel").tag(0.5)
-                        Text("Kräftig").tag(1.0)
-                        if ![0.25, 0.5, 1].contains(model.intent.strength) {
-                            Text("\(Int((model.intent.strength * 100).rounded())) %").tag(model.intent.strength)
-                        }
-                    }.accessibilityIdentifier("ai-development.strength")
-                }
+                }.accessibilityIdentifier("ai-development.strength")
             }
         }
     }
@@ -159,7 +139,7 @@ struct AIDevelopmentView: View {
             Text("Kein Foto ausgewählt.")
             Button("Foto auswählen") { library.workspaceMode = .library }
                 .accessibilityIdentifier("ai-development.select-photo")
-        } else if !validRequest && !model.createsMask {
+        } else if !validRequest {
             Text(AIDevelopmentError.unavailableMask.localizedDescription)
             Button("Gesamtes Bild verwenden") { model.intent.targetMaskID = nil }
                 .accessibilityIdentifier("ai-development.reset-scope")
@@ -190,18 +170,13 @@ struct AIDevelopmentView: View {
 
     private func review(_ proposal: AIDevelopmentReview) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(proposal.createdMaskID == nil ? "Korrekturvorschlag" : "Maskenvorschlag").fontWeight(.medium)
+            Text("Korrekturvorschlag").fontWeight(.medium)
             Text(proposal.targetName.map { "Zielbereich: \($0)" } ?? "Zielbereich: Gesamtes Bild")
-            if proposal.createdMaskID == nil, workspace.aiCorrectionPreview != nil {
+            if workspace.aiCorrectionPreview != nil {
                 HStack(spacing: 6) {
                     comparisonButton("Aktueller Stand", proposal: false, identifier: "current")
                     comparisonButton("Vorschlag", proposal: true, identifier: "proposal")
                 }
-            }
-            if let preview = model.maskPreview {
-                Image(decorative: preview.image, scale: 1).resizable().aspectRatio(contentMode: .fit)
-                    .frame(maxHeight: 240).accessibilityLabel("Vorgeschlagene Maske als rote Fläche auf dem vollständigen Foto")
-                    .accessibilityIdentifier("ai-development.mask-preview")
             }
             HStack {
                 Button("Verwerfen") { model.discard() }

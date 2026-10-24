@@ -67,8 +67,17 @@ final class LocalAdjustmentEditorModel: ObservableObject {
     @Published private(set) var canRedo = false
     private let loader: Loader
     private let generator: Generator
-    private var history = BoundedEditingHistory<[LocalAdjustment]>(footprint: EditingHistoryFootprint.layers)
-    private var groupStart: [LocalAdjustment]? { history.group() }
+    private struct HistoryState {
+        let layers: [LocalAdjustment]
+        let selectedID: UUID?
+    }
+    private var history = BoundedEditingHistory<HistoryState> { state in
+        var footprint = EditingHistoryFootprint.layers(state.layers)
+        footprint.metadataBytes += MemoryLayout<UUID?>.stride
+        return footprint
+    }
+    private var historyState: HistoryState { .init(layers: settings.localAdjustments, selectedID: selectedID) }
+    private var groupStart: HistoryState? { history.group() }
     var historyStateCount: Int { history.count }
     var historyByteCount: Int { history.byteCount }
     private var session = UUID()
@@ -151,6 +160,20 @@ final class LocalAdjustmentEditorModel: ObservableObject {
         selectedID = layer.id
     }
 
+    /// Preserve the reviewed raster, name and UUID, using the same validation,
+    /// accepted write and single undo entry as the other creation tools.
+    @discardableResult
+    func appendProposedMask(_ layer: LocalAdjustment) -> Bool {
+        endChange()
+        guard canvasSize != nil, !isLoading, !isGenerating,
+              !settings.localAdjustments.contains(where: { $0.id == layer.id }) else { return false }
+        do {
+            guard try install(settings.localAdjustments + [layer]) else { return false }
+            selectedID = layer.id
+            return true
+        } catch { errorMessage = error.localizedDescription; return false }
+    }
+
     func updateSelected(_ update: (inout LocalAdjustment) -> Void) {
         guard let index = settings.localAdjustments.firstIndex(where: { $0.id == selectedID }) else { return }
         var layers = settings.localAdjustments
@@ -197,51 +220,60 @@ final class LocalAdjustmentEditorModel: ObservableObject {
         } catch { errorMessage = error.localizedDescription }
     }
 
-    func beginChange() { history.beginGroup(settings.localAdjustments) }
+    func beginChange() { history.beginGroup(historyState) }
     func endChange() {
         guard let previous = history.endGroup() else { return }
-        if previous != settings.localAdjustments { remember(previous) }
+        if previous.layers != settings.localAdjustments { remember(previous) }
     }
     func undo() {
         cancelInference()
         endChange()
         guard let previous = history.lastUndo() else { return }
-        var candidate = settings; candidate.localAdjustments = previous
+        var candidate = settings; candidate.localAdjustments = previous.layers
         guard acceptSettings?(candidate) != false else { return }
         history.popUndo()
         inputContextID = UUID()
-        history.appendRedo(settings.localAdjustments); settings = candidate; reconcileSelection(); updateHistory()
+        history.appendRedo(historyState); settings = candidate
+        restoreSelection(previous.selectedID); updateHistory()
     }
     func redo() {
         cancelInference()
         endChange()
         guard let next = history.lastRedo() else { return }
-        var candidate = settings; candidate.localAdjustments = next
+        var candidate = settings; candidate.localAdjustments = next.layers
         guard acceptSettings?(candidate) != false else { return }
         history.popRedo()
         inputContextID = UUID()
-        history.appendUndo(settings.localAdjustments); settings = candidate; reconcileSelection(); updateHistory()
+        history.appendUndo(historyState); settings = candidate
+        restoreSelection(next.selectedID); updateHistory()
     }
-    private func reconcileSelection() {
-        if selected == nil { selectedID = settings.localAdjustments.first?.id }
+    private func restoreSelection(_ preferredID: UUID?) {
+        // A restored creation must select that mask again, even when another
+        // accepted mask remains after undo. Refinement then targets the same
+        // layer the user had selected before undoing the operation.
+        let restoredID = settings.localAdjustments.contains { $0.id == preferredID }
+            ? preferredID : settings.localAdjustments.first?.id
+        // Reassigning the same @Published value would look like selection to
+        // the workspace and reveal the overlay after a correction-only undo.
+        if selectedID != restoredID { selectedID = restoredID }
     }
     @discardableResult private func install(_ layers: [LocalAdjustment]) throws -> Bool {
         guard settings.localAdjustments != layers else { return true }
         var candidate = settings; candidate.localAdjustments = layers
         _ = try EditingSnapshot(settings: candidate)
         guard acceptSettings?(candidate) != false else { return false }
-        if groupStart == nil { remember(settings.localAdjustments) }
+        if groupStart == nil { remember(historyState) }
         else { history.clearRedo() }
         settings = candidate; errorMessage = nil; updateHistory()
         return true
     }
-    private func remember(_ previous: [LocalAdjustment]) {
+    private func remember(_ previous: HistoryState) {
         history.clearRedo()
         history.appendUndo(previous)
         updateHistory()
     }
     private func updateHistory() {
-        canUndo = history.canUndo() || groupStart.map { $0 != settings.localAdjustments } == true
+        canUndo = history.canUndo() || groupStart.map { $0.layers != settings.localAdjustments } == true
         canRedo = history.canRedo()
     }
 

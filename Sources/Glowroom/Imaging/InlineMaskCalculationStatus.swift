@@ -8,7 +8,10 @@ struct InlineMaskCalculationStatus: View {
     var body: some View {
         if workspace.showsCalculationStatus {
             EditingProgressIndicator(accessibilityPrefix: "local-mask.calculation",
-                cancelLabel: "Maskenberechnung abbrechen") { workspace.model?.cancelInference() }
+                cancelLabel: "Maskenberechnung abbrechen") {
+                    if workspace.objectMask.isRunning { workspace.discardObjectMask() }
+                    else { workspace.model?.cancelInference() }
+                }
         }
     }
 }

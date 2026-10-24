@@ -1,0 +1,89 @@
+--- /dev/null
++++ b/Tests/GlowroomTests/UnifiedObjectMaskBaselineTests.swift
+@@ -0,0 +1,86 @@
++import AppKit
++import CryptoKit
++import Foundation
++import GlowroomCore
++import ImageIO
++import SwiftUI
++import Testing
++import UniformTypeIdentifiers
++@testable import Glowroom
++
++@Suite("Object mask baseline evidence", .serialized)
++@MainActor
++struct UnifiedObjectMaskBaselineTests {
++    @Test func beforeCreatorAndSeparateAIEntry() async throws {
++        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("Glowroom-MaskBaseline-\(UUID())")
++        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
++        defer { try? FileManager.default.removeItem(at: directory) }
++        let image = try fixtureImage()
++        let imageURL = directory.appendingPathComponent("Roter-Kreis.png")
++        let destination = try #require(CGImageDestinationCreateWithURL(imageURL as CFURL, UTType.png.identifier as CFString, 1, nil))
++        CGImageDestinationAddImage(destination, image, nil)
++        try #require(CGImageDestinationFinalize(destination))
++        let bytes = try Data(contentsOf: imageURL)
++        let date = try imageURL.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate ?? .distantPast
++        let folder = LibraryFolder(url: directory)
++        let asset = PhotoAsset(folderID: folder.id, fileURL: imageURL, fileSize: Int64(bytes.count), pixelWidth: 768, pixelHeight: 512, modifiedAt: date)
++        let repository = CatalogRepository(directory: directory.appendingPathComponent("Catalog"))
++        try repository.save(LibraryCatalog(folders: [folder], assets: [asset]))
++        let library = LibraryModel(repository: repository)
++        let editor = EditingModel(directory: directory.appendingPathComponent("Editing"))
++        try await wait { !library.isLoading && !library.isProjecting && !editor.isLoading }
++        library.selectedID = asset.id; library.workspaceMode = .develop
++        let workspace = DevelopWorkspace(), masks = InlineMaskWorkspace()
++        let ai = AIDevelopmentModel()
++        ai.createsMask = true; ai.intent.instruction = "Maskiere den roten Kreis"
++        let host = WorkspaceSectionTestHost(size: NSSize(width: 1440, height: 900), appearance: NSAppearance(named: .darkAqua))
++        defer { host.close(); masks.cancel(); workspace.clear(); ai.discard() }
++        let defaults = try #require(UserDefaults(suiteName: "Mask-Baseline-\(UUID())"))
++        let layout = WorkspaceLayoutModel(defaults: defaults)
++        let source = try editor.resolvedSource(for: asset).identity
++        try #require(masks.open(asset: asset, source: source, settings: editor.settings(for: asset.id), editor: editor, library: library))
++        try await host.mount(HStack(alignment: .top, spacing: 12) {
++            DetailView(model: library, photoViewport: workspace.photoViewport)
++            ScrollView {
++                VStack(alignment: .leading, spacing: 16) {
++                    InlineMaskInspector(workspace: masks)
++                    Divider()
++                    Text("KI-Korrektur").font(.headline)
++                    AIDevelopmentView(library: library, model: ai, checkModel: { true })
++                }.padding(12)
++            }.frame(width: 340).background(Theme.panel)
++        }.frame(width: 1440, height: 900).background(Theme.background).foregroundStyle(Theme.text).tint(Theme.accent)
++            .preferredColorScheme(.dark).environmentObject(editor).environmentObject(workspace)
++            .environmentObject(masks).environmentObject(layout).environmentObject(JPEGExportModel(preferences: nil))
++            .environment(\.developSelectionIdentity, DevelopSelectionIdentity(sessionID: library.aiSelectionSessionID, generation: library.aiSelectionGeneration))
++            .environment(\.developPreviewPending, { workspace.markPreviewPending($0) })
++            .environment(\.developPreviewSink, { handoff in
++                workspace.bind(source: handoff.identity.request.source)
++                workspace.markDisplayed(source: handoff.identity.request.source, settings: handoff.identity.settings)
++                workspace.receive(handoff.frame.output, sourceBitmap: handoff.decodedSource, sourceStamp: handoff.sourceStamp, finalSourceReady: handoff.identity.finalSourceReady)
++            }))
++        try await wait { masks.canvasSize != nil && workspace.isFinalPreviewReady }
++        try await host.settle()
++        #expect(host.accessibilityElements.contains { $0.accessibilityIdentifier() == "local-mask.unavailable.object" })
++        #expect(host.accessibilityElements.contains { $0.accessibilityIdentifier() == "ai-development.task" })
++        if let path = ProcessInfo.processInfo.environment["GLOWROOM_195_SNAPSHOTS"] {
++            let output = URL(fileURLWithPath: path, isDirectory: true)
++            try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
++            try host.snapshot(to: output.appendingPathComponent("before-separated-1440.png"))
++            let metadata: [String:Any] = ["sourceCommit":"433ead6e0381e48b6256c32aa893686846592f83", "sourceSHA256": SHA256.hash(data: bytes).map{String(format:"%02x",$0)}.joined(), "windowWidthPoints":1440,"windowHeightPoints":900,"zoom":"fitted, unchanged", "fixture":"synthetic 768x512 blue field with red ellipse", "state":"Mask creator plus separate AI new-mask entry", "modelService":"no inference", "macOS":ProcessInfo.processInfo.operatingSystemVersionString]
++            try JSONSerialization.data(withJSONObject: metadata, options:[.prettyPrinted,.sortedKeys]).write(to:output.appendingPathComponent("before-separated-1440.json"))
++        }
++        #expect(try Data(contentsOf:imageURL) == bytes)
++        #expect(await editor.finishSaving()); #expect(await library.finishSaving())
++        try await host.unmount()
++    }
++    private func wait(_ condition:@escaping @MainActor ()->Bool) async throws {
++        try await waitForTestState("baseline canvas", timeout:.seconds(15),state:{@MainActor in condition()},until:{$0})
++    }
++    private func fixtureImage() throws -> CGImage {
++        let context = try #require(CGContext(data:nil,width:768,height:512,bitsPerComponent:8,bytesPerRow:768*4,space:CGColorSpace(name:CGColorSpace.sRGB)!,bitmapInfo:CGImageAlphaInfo.premultipliedLast.rawValue))
++        context.setFillColor(CGColor(red:0.2,green:0.3,blue:0.4,alpha:1));context.fill(CGRect(x:0,y:0,width:768,height:512))
++        context.setFillColor(CGColor(red:0.7,green:0.2,blue:0.1,alpha:1));context.fillEllipse(in:CGRect(x:192,y:128,width:384,height:256))
++        return try #require(context.makeImage())
++    }
++}

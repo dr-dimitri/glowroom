@@ -127,47 +127,21 @@ Gespeicherte Bilddaten bleiben davon unberührt. Eine entfernte, ausgeblendete
 oder zwischenzeitlich veränderte Maske führt zu einem neuen Auftrag oder einer
 Fehlermeldung, niemals zum stillen Wechsel auf eine globale Korrektur.
 
-## Neue Objektmaske per Auftrag
+## Objektmasken im gemeinsamen Maskenwerkzeug
 
-1. Unter **Entwickeln → KI-Korrektur** die Aufgabe **Neue Maske** wählen.
-2. Einen Auftrag eingeben, zum Beispiel **„Maskiere den Blumenstrauß“**.
-3. **Vorschlag erstellen** wählen und die rote Fläche auf der unbeschnittenen,
-   ungedrehten Gesamtvorschau prüfen.
-4. **Übernehmen** fügt die benannte Maske mit neutralen lokalen Reglern hinzu.
-   **Verwerfen** lässt das Foto unverändert. Im Werkzeug **Maskieren**
-   die neue Maske auswählen und bei Bedarf mit Pinsel/Radierer verfeinern.
-5. Für eine KI-Korrektur die Aufgabe **Korrektur** wählen und diese Maske unter
-   **Zielbereich** wählen.
+Neue Masken entstehen unter **Entwickeln → Maskieren**. **Objekt beschreiben**
+fordert dort eine Auswahl per Auftrag an; Überlagerung, **Übernehmen**,
+**Verwerfen**, Maskenliste und Pinselverfeinerung bleiben in diesem Werkzeug.
+Die frühere Aufgabe **Neue Maske** in KI-Korrektur entfällt. Den vollständigen
+Ablauf beschreibt [Masken bearbeiten](MASK-EDITING.md); Modellpfad, Einrichtung
+und Grenzen stehen unter [Automatische Masken](AUTOMATIC-MASKS.md).
 
-Dieser Weg benötigt die lokale Qwen-Installation und das vorhandene
-**Freistellungsmodell BiRefNet**. Dessen Einrichtung ist direkt unter **Neue Maske**
-erreichbar. Qwen lokalisiert das gewünschte Objekt; BiRefNet berechnet im
-Objektausschnitt die tatsächliche Auswahl einschließlich weicher Kanten und
-Zwischenräume. Das Ergebnis ist ein prüfbarer Vorschlag: überlagerte Gegenstände,
-Behälter oder benachbarte Teile können eine Korrektur mit Pinsel/Radierer erfordern.
-Nicht erkannte Objekte, fehlende Modelle und ungültige Antworten erzeugen keine
-Ersatzmaske. Motiv/Hintergrund und Himmel bleiben als direkte Maskierungswege
-verfügbar. Entwicklungsregler und **Stärke** gelten ausschließlich für
-Korrekturvorschläge.
-
-Die Maske wird einmalig als Gray8-Raster mit höchstens 1024 Pixeln langer Kante
-im vorhandenen `EditSettings.localAdjustments` gespeichert. Es gibt keine getrennte
-KI-Maskenliste: KI-Korrektur und das Maskenwerkzeug verwenden identische IDs, Formen,
-Regler und Speicherstände; Masken bleiben nach Neustart und Backup/Restore
-verfügbar. Bestehende Grenzen (16 Masken, 16 MiB Raster insgesamt, 32 MiB
-Einstellungssnapshot) gelten weiterhin. Eine Annahme bildet einen gemeinsamen
-Undo-/Redo-Schritt und verändert keine Originaldatei.
-
-Neue Masken und Korrekturen binden sich an dieselbe Quelle, Auswahl und
-Bearbeitungsgeneration. Modus-/Auftragswechsel, Abbruch, andere Bearbeitungen
-oder Quellenwechsel verwerfen noch nicht angenommene Ergebnisse. Quellenprüfung
-und endgültige Übernahme bleiben geordnet. Qwen und BiRefNet laufen abhängig
-voneinander und belegen nacheinander die gemeinsame Inferenzzulassung; native
-Arbeit hält ihre Zulassung auch nach Abbruch bis zur tatsächlichen Rückkehr.
-BiRefNet nutzt den bestehenden CPU/GPU-Pfad mit demselben Modell als CPU-Fallback.
-Die kleine Rückprojektion des Maskenrasters läuft begrenzt im Hintergrund.
-Gespeicherte Masken und spätere Reglerbewegungen benötigen keine erneute
-Modellinferenz. Es werden keine Leistungsgewinne behauptet.
+Für eine anschließende KI-Korrektur dieselbe angenommene Maske unter
+**Zielbereich** wählen. KI-Korrektur verändert nur deren lokale Regler;
+Maskenname, Auswahl, Pinselkorrekturen, Invertierung, Deckkraft und Reihenfolge
+bleiben erhalten. Neue Objektmasken und Korrekturvorschläge nutzen dieselben
+Quellen-, Auswahl- und Bearbeitungsgarantien, werden aber jeweils im zugehörigen
+Werkzeug geprüft und ausdrücklich übernommen.
 
 ## Qualität und Ressourcen
 
