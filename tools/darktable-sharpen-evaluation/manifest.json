@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "protocolID": "DT174-sharpen-v1",
+  "sourceCommit": "ff93cf64c5e393a903c57ebf9accf655091bf972",
+  "qualityWidth": 256,
+  "qualityHeight": 160,
+  "domain": "straight Float32 extended-linear sRGB, signed log2 luminance floor 0.0001; consistentV2; isolated actual DevelopSharpening stage",
+  "scenes": ["slanted-edge", "broad-edge", "line-pairs", "impulse", "fine-texture", "noisy-flat", "blurred-truth", "alpha-signed-hdr"],
+  "primaryScenes": ["slanted-edge", "broad-edge"],
+  "cases": [
+    {"id":"fine-50", "amount":50, "radius":1, "detail":25, "masking":0},
+    {"id":"fine-100", "amount":100, "radius":1, "detail":25, "masking":0},
+    {"id":"wide-100", "amount":100, "radius":2, "detail":25, "masking":0},
+    {"id":"masked-100", "amount":100, "radius":2, "detail":25, "masking":40}
+  ],
+  "matching": {"metric":"mean maximum central edge slope / known step contrast, aligned per row; not MTF50", "scene":"slanted-edge", "minimumEffect":0.0001, "relativeTolerance":0.03, "absoluteTolerance":0.0001, "candidateMinimum":0, "candidateMaximum":6, "coarseSteps":49, "refinementSteps":25, "rule":"Tune only on split tuning; independently remeasure each acceptance primary edge. Never refit acceptance; matching is per primary row, unmatched data cannot pass/fail a relative quality gate."},
+  "primary": {"minimumRelativeHaloImprovement":0.10, "overshootFloor":0.0005, "maximumAbsoluteHaloRegression":0.0005, "haloWidthFloorPixels":0.1, "maximumHaloWidthRegressionPixels":0.1, "rule":"Both normalized overshoot+undershoot and mean halo width improve >=10% on equal-weight informative matched primary rows; every primary row must match and may not regress beyond absolute guards. Below-floor primary signals block Go."},
+  "critical": {"maximumDetailContrastRelativeLoss":0.03, "maximumNoiseStdRelativeIncrease":0.02, "maximumTruthRMSEIncrease":0.001, "maximumAlphaError":0.00001, "maximumHiddenRGB":0},
+  "fixedParameters": {"multiscaleBands":2, "coarseBandWeight":0.35, "coarseRegularizationStops":0.15, "diffusionIterations":3, "diffusionStep":0.25, "diffusionConductanceStops":0.4, "maximumLogGainStops":0.5, "noiseThreshold":"none beyond identical frozen existing Detail soft threshold; no separate denoise"},
+  "scale": {"nativeSize":[4096,2731], "previewSizes":[[512,341],[2400,1600]], "maximumRMSE":0.002, "sourceGeometry":"known area averaging; source-pixel sigma scaling; original pixel evidence is separate from preview"},
+  "performance": {"sizes":[[512,320],[2400,1600],[4096,2731],[4608,3072]], "processes":5, "warmSamples":5, "maximumColdLatencyRatio":1.25, "maximumWarmLatencyRatio":1.20, "maximumPeakRSSRatio":1.25},
+  "requiredEvidence": ["Licensed skin, hair, branches against sky, textiles and native RAW-developed regions with matching source provenance", "Independent blinded visual judgement consistent with metrics", "Complete isolated process-cold/warm end-to-end timing including conversions/transfers and peak RSS", "Actual accelerated/backend parity; software preference alone is insufficient", "Production cancellation between iterations, rapid slider sequences, A-B-A, stale publication, undo/redo, bounded memory", "Versioned production alpha/HDR/profile/persistence/export regressions against merged process contract"],
+  "decisionOrder": ["Independent numerical contract failure yields no-go.", "Complete matched primary or critical regression yields no-go.", "Missing, unmatched or uninformative evidence blocks Go; never fabricate zero or successful evidence.", "Production remains unchanged unless every numeric, visual, native, performance and integration requirement passes."],
+  "thresholdMeaning": "Predeclared engineering limits, not validated perceptual thresholds. No postmeasurement relaxation."
+}

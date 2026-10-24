@@ -1,0 +1,63 @@
+{
+  "calibrationSHA256": "8c17f8723682e9092832f6c3bc7b7a5b2105b230de2782ecaa978ea5577fc9ba",
+  "decisions": {
+    "chroma": {
+      "failures": [],
+      "means": {},
+      "missingQualityEvidence": [
+        "positive strength matching for every acceptance case"
+      ],
+      "promotionDecision": "no-go",
+      "promotionMissingEvidence": [
+        "real RAW-developed photographs",
+        "independent matched-pair visual acceptance",
+        "matched cold/warm/RSS performance at every size",
+        "CPU/GPU execution attribution and equivalence",
+        "preview/native scale matrix",
+        "production cache/version/undo/cancellation integration"
+      ],
+      "qualityDecision": "blocked"
+    },
+    "joint": {
+      "failures": [
+        "per-case edge_gradient_rmse: skin/60",
+        "per-case edge_gradient_rmse: texture/60"
+      ],
+      "means": {},
+      "missingQualityEvidence": [
+        "positive strength matching for every acceptance case"
+      ],
+      "promotionDecision": "no-go",
+      "promotionMissingEvidence": [
+        "real RAW-developed photographs",
+        "independent matched-pair visual acceptance",
+        "matched cold/warm/RSS performance at every size",
+        "CPU/GPU execution attribution and equivalence",
+        "preview/native scale matrix",
+        "production cache/version/undo/cancellation integration"
+      ],
+      "qualityDecision": "no-go"
+    },
+    "luminance": {
+      "failures": [],
+      "means": {},
+      "missingQualityEvidence": [
+        "positive strength matching for every acceptance case"
+      ],
+      "promotionDecision": "no-go",
+      "promotionMissingEvidence": [
+        "real RAW-developed photographs",
+        "independent matched-pair visual acceptance",
+        "matched cold/warm/RSS performance at every size",
+        "CPU/GPU execution attribution and equivalence",
+        "preview/native scale matrix",
+        "production cache/version/undo/cancellation integration"
+      ],
+      "qualityDecision": "blocked"
+    }
+  },
+  "manifestSHA256": "d2b1794edaad71a95ec8d1f6e9cf812a300ce901b5860cf4847ec101920bc152",
+  "performance": [],
+  "productionChanged": false,
+  "scale": null
+}

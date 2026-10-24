@@ -1,0 +1,167 @@
+{
+  "protocolID": "eigf-tone-experiment-v1",
+  "sourceCommit": "ff93cf64c5e393a903c57ebf9accf655091bf972",
+  "comparison": {
+    "schemaVersion": 1,
+    "sourceCommit": "ff93cf64c5e393a903c57ebf9accf655091bf972",
+    "qualityWidth": 512,
+    "qualityHeight": 320,
+    "performanceSceneClass": "fine-lines",
+    "directions": [
+      {
+        "id": "shadows-positive-20",
+        "control": "shadows",
+        "value": 20,
+        "primary": true
+      },
+      {
+        "id": "shadows-negative-20",
+        "control": "shadows",
+        "value": -20,
+        "primary": true
+      },
+      {
+        "id": "highlights-positive-20",
+        "control": "highlights",
+        "value": 20,
+        "primary": true
+      },
+      {
+        "id": "highlights-negative-20",
+        "control": "highlights",
+        "value": -20,
+        "primary": true
+      },
+      {
+        "id": "shadows-positive-40",
+        "control": "shadows",
+        "value": 40,
+        "primary": false
+      },
+      {
+        "id": "shadows-negative-40",
+        "control": "shadows",
+        "value": -40,
+        "primary": false
+      },
+      {
+        "id": "highlights-positive-40",
+        "control": "highlights",
+        "value": 40,
+        "primary": false
+      },
+      {
+        "id": "highlights-negative-40",
+        "control": "highlights",
+        "value": -40,
+        "primary": false
+      }
+    ],
+    "matching": {
+      "sceneClasses": [
+        "ramp",
+        "constants",
+        "fine-lines",
+        "hard-edge",
+        "texture",
+        "colors",
+        "saturation",
+        "transparency",
+        "noise",
+        "branches",
+        "p3",
+        "hdr"
+      ],
+      "split": "tuning",
+      "shadowMaximumInputY": 0.25,
+      "highlightMinimumInputY": 0.5,
+      "minimumAbsoluteTarget": 0.002,
+      "maximumAbsoluteDeltaError": 0.003,
+      "maximumRelativeDeltaError": 0.05,
+      "coarseSteps": 33,
+      "refinementSteps": 33,
+      "candidateMinimum": -100,
+      "candidateMaximum": 100,
+      "toleranceRule": "target and measured must have the same nonzero sign; abs(target) >= minimumAbsoluteTarget; absolute error <= max(maximumAbsoluteDeltaError, maximumRelativeDeltaError * abs(target))",
+      "acceptanceRule": "Freeze one signed parameter per scene class and direction from that class's tuning variant; report achieved signed mean delta Y on its acceptance variant without refitting. This experimental effect normalization is not a universal slider mapping."
+    },
+    "primary": {
+      "sceneClass": "fine-lines",
+      "metric": "log_line_contrast_error",
+      "formula": "abs(outputContrastEV - inputContrastEV) / max(abs(inputContrastEV), minimumInputContrastEV)",
+      "contrastFormula": "For each known line pixel, log2(line Y / nearby same-half background Y), comparing the first background neighbor at offsets [-2,-1,1,2] in that order. Mean the relative error within each half; then equal-weight the two half means.",
+      "minimumInputContrastEV": 0.05,
+      "minimumRelativeImprovement": 0.1,
+      "maximumPerCaseRegression": 0.05,
+      "aggregation": "Equal-weight mean over bright-line/dark-background and dark-line/bright-background regions and the four matched moderate (+/-20) directions. Report each region/direction separately. +/-40 are stress diagnostics with a critical veto only when matched. No noise-energy or clipping credit.",
+      "roi": "Input-defined bright line Y>0.8 on dark background Y<0.1 in upper half; dark line Y<0.1 on bright background Y>0.8 in lower half. Exclude outer 2 pixels and rows within 2 pixels of the half boundary. Empty half is missing evidence."
+    },
+    "criticalLimits": {
+      "haloOvershoot": 0.02,
+      "haloUndershoot": 0.02,
+      "hueDeviationDegrees": 3.0,
+      "gamutFractionIncrease": 0.02,
+      "clippingFractionIncrease": 0.02,
+      "alphaError": 0.001
+    }
+  },
+  "sceneClasses": [
+    "ramp",
+    "constants",
+    "fine-lines",
+    "hard-edge",
+    "texture",
+    "colors",
+    "saturation",
+    "transparency",
+    "noise",
+    "branches",
+    "p3",
+    "hdr"
+  ],
+  "maximumNoiseGainRatio": 1.1,
+  "performanceBudgets": {
+    "maximumColdLatencyRatio": 1.25,
+    "maximumWarmLatencyRatio": 1.2,
+    "maximumPeakRSSRatio": 1.25,
+    "sizes": [
+      [
+        512,
+        320
+      ],
+      [
+        2400,
+        1600
+      ],
+      [
+        4096,
+        2731
+      ],
+      [
+        4608,
+        3072
+      ]
+    ],
+    "minimumColdProcesses": 5,
+    "minimumWarmSamplesPerProcess": 5
+  },
+  "requiredMissingUntilMeasured": [
+    "Licensed developed RAW and photographic critical scenes with declared target profiles and range provenance",
+    "Recorded blind visual acceptance including skin, fine texture, branches, SDR/P3, HDR and alpha",
+    "Production prefix/contrast/white/black/NaturalBalance/automatic-control staging, full mask equivalence, undo/persistence and backup integration",
+    "Actual small and large RAW decoding, render-lane contention, cancellation and stale UI publication, CPU/GPU equivalence",
+    "Matched texture and per-profile HDR/clipping evaluation beyond the procedural diagnostics"
+  ],
+  "transferContract": {
+    "input": "straight Float32 extended linear sRGB",
+    "nominalWhite": 1.0,
+    "gain": "common positive linear RGB gain; no cube clamp",
+    "basisBeforeExposure": true,
+    "signedControl": "0.2126 abs(R) + 0.7152 abs(G) + 0.0722 abs(B)",
+    "epsilon": 0.5,
+    "floor": 1e-07,
+    "radius": "nativeLong*0.015 scaled by outputLong/nativeLong; rounded, minimum one output pixel",
+    "border": "replicated-edge separable box, alpha-normalized, no coefficient averaging",
+    "productionIntegration": "only a complete Go; synthetic mode cannot grant it"
+  }
+}

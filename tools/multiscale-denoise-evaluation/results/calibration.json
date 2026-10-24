@@ -1,0 +1,1505 @@
+{
+  "manifestSHA256" : "d2b1794edaad71a95ec8d1f6e9cf812a300ce901b5860cf4847ec101920bc152",
+  "records" : [
+    {
+      "chroma" : 0,
+      "control" : "luminance",
+      "inputSHA256" : "3fd88db3568cac1ea8044043dfa05d51c10d8519de9efc81b522ba90ec97a89f",
+      "luminance" : 0.1953125,
+      "matched" : false,
+      "measured" : {
+        "luminance" : 0.009777971335337643
+      },
+      "scene" : "flat-dark",
+      "targets" : {
+        "luminance" : 0.011232881824973617
+      },
+      "truthSHA256" : "c8a59bfe04a839157f9fc9ca6f79181712dfb2dea997f6e8185860c30888a2db",
+      "value" : 20
+    },
+    {
+      "chroma" : 0,
+      "control" : "luminance",
+      "inputSHA256" : "3fd88db3568cac1ea8044043dfa05d51c10d8519de9efc81b522ba90ec97a89f",
+      "luminance" : 4.6875,
+      "matched" : true,
+      "measured" : {
+        "luminance" : 0.22528522568250176
+      },
+      "scene" : "flat-dark",
+      "targets" : {
+        "luminance" : 0.22647871011587406
+      },
+      "truthSHA256" : "c8a59bfe04a839157f9fc9ca6f79181712dfb2dea997f6e8185860c30888a2db",
+      "value" : 60
+    },
+    {
+      "chroma" : 0,
+      "control" : "luminance",
+      "inputSHA256" : "3fd88db3568cac1ea8044043dfa05d51c10d8519de9efc81b522ba90ec97a89f",
+      "luminance" : 12.109375,
+      "matched" : true,
+      "measured" : {
+        "luminance" : 0.51876509677118499
+      },
+      "scene" : "flat-dark",
+      "targets" : {
+        "luminance" : 0.51808232631963091
+      },
+      "truthSHA256" : "c8a59bfe04a839157f9fc9ca6f79181712dfb2dea997f6e8185860c30888a2db",
+      "value" : 100
+    },
+    {
+      "chroma" : 1.953125,
+      "control" : "chroma",
+      "inputSHA256" : "3fd88db3568cac1ea8044043dfa05d51c10d8519de9efc81b522ba90ec97a89f",
+      "luminance" : 0,
+      "matched" : false,
+      "measured" : {
+        "chroma" : 0.11398271541357352
+      },
+      "scene" : "flat-dark",
+      "targets" : {
+        "chroma" : 0.12037646933876223
+      },
+      "truthSHA256" : "c8a59bfe04a839157f9fc9ca6f79181712dfb2dea997f6e8185860c30888a2db",
+      "value" : 20
+    },
+    {
+      "chroma" : 8.59375,
+      "control" : "chroma",
+      "inputSHA256" : "3fd88db3568cac1ea8044043dfa05d51c10d8519de9efc81b522ba90ec97a89f",
+      "luminance" : 0,
+      "matched" : true,
+      "measured" : {
+        "chroma" : 0.45031387747032359
+      },
+      "scene" : "flat-dark",
+      "targets" : {
+        "chroma" : 0.44731628086754216
+      },
+      "truthSHA256" : "c8a59bfe04a839157f9fc9ca6f79181712dfb2dea997f6e8185860c30888a2db",
+      "value" : 60
+    },
+    {
+      "chroma" : 18.359375,
+      "control" : "chroma",
+      "inputSHA256" : "3fd88db3568cac1ea8044043dfa05d51c10d8519de9efc81b522ba90ec97a89f",
+      "luminance" : 0,
+      "matched" : true,
+      "measured" : {
+        "chroma" : 0.75568211771341476
+      },
+      "scene" : "flat-dark",
+      "targets" : {
+        "chroma" : 0.75615805064968933
+      },
+      "truthSHA256" : "c8a59bfe04a839157f9fc9ca6f79181712dfb2dea997f6e8185860c30888a2db",
+      "value" : 100
+    },
+    {
+      "chroma" : 1.953125,
+      "control" : "joint",
+      "inputSHA256" : "3fd88db3568cac1ea8044043dfa05d51c10d8519de9efc81b522ba90ec97a89f",
+      "luminance" : 0.1953125,
+      "matched" : false,
+      "measured" : {
+        "chroma" : 0.11398271541357352,
+        "luminance" : 0.009777971335337643
+      },
+      "scene" : "flat-dark",
+      "targets" : {
+        "chroma" : 0.12037646823271642,
+        "luminance" : 0.011232882771037067
+      },
+      "truthSHA256" : "c8a59bfe04a839157f9fc9ca6f79181712dfb2dea997f6e8185860c30888a2db",
+      "value" : 20
+    },
+    {
+      "chroma" : 8.59375,
+      "control" : "joint",
+      "inputSHA256" : "3fd88db3568cac1ea8044043dfa05d51c10d8519de9efc81b522ba90ec97a89f",
+      "luminance" : 4.6875,
+      "matched" : true,
+      "measured" : {
+        "chroma" : 0.45031387747032359,
+        "luminance" : 0.22528522568250176
+      },
+      "scene" : "flat-dark",
+      "targets" : {
+        "chroma" : 0.44731627754543923,
+        "luminance" : 0.22647871007244946
+      },
+      "truthSHA256" : "c8a59bfe04a839157f9fc9ca6f79181712dfb2dea997f6e8185860c30888a2db",
+      "value" : 60
+    },
+    {
+      "chroma" : 18.359375,
+      "control" : "joint",
+      "inputSHA256" : "3fd88db3568cac1ea8044043dfa05d51c10d8519de9efc81b522ba90ec97a89f",
+      "luminance" : 12.109375,
+      "matched" : true,
+      "measured" : {
+        "chroma" : 0.75568211771341476,
+        "luminance" : 0.51876509677118499
+      },
+      "scene" : "flat-dark",
+      "targets" : {
+        "chroma" : 0.75615805124728308,
+        "luminance" : 0.51808232302565971
+      },
+      "truthSHA256" : "c8a59bfe04a839157f9fc9ca6f79181712dfb2dea997f6e8185860c30888a2db",
+      "value" : 100
+    },
+    {
+      "chroma" : 0,
+      "control" : "luminance",
+      "inputSHA256" : "97e8cbb42a625a968b8c701624dd61aa9681c2e5c973dbb5656b0da9997f0da7",
+      "luminance" : 0.5859375,
+      "matched" : true,
+      "measured" : {
+        "luminance" : 0.011119054206050083
+      },
+      "scene" : "flat-bright",
+      "targets" : {
+        "luminance" : 0.011140390708532899
+      },
+      "truthSHA256" : "db69e060475f82e7cbb8e2fa5759d1e948f4804f38115c8c5d7211a516f07a4e",
+      "value" : 20
+    },
+    {
+      "chroma" : 0,
+      "control" : "luminance",
+      "inputSHA256" : "97e8cbb42a625a968b8c701624dd61aa9681c2e5c973dbb5656b0da9997f0da7",
+      "luminance" : 10.546875,
+      "matched" : true,
+      "measured" : {
+        "luminance" : 0.19566378955494279
+      },
+      "scene" : "flat-bright",
+      "targets" : {
+        "luminance" : 0.1977166666850626
+      },
+      "truthSHA256" : "db69e060475f82e7cbb8e2fa5759d1e948f4804f38115c8c5d7211a516f07a4e",
+      "value" : 60
+    },
+    {
+      "chroma" : 0,
+      "control" : "luminance",
+      "inputSHA256" : "97e8cbb42a625a968b8c701624dd61aa9681c2e5c973dbb5656b0da9997f0da7",
+      "luminance" : 24.609375,
+      "matched" : true,
+      "measured" : {
+        "luminance" : 0.43373923880285137
+      },
+      "scene" : "flat-bright",
+      "targets" : {
+        "luminance" : 0.43641976731845533
+      },
+      "truthSHA256" : "db69e060475f82e7cbb8e2fa5759d1e948f4804f38115c8c5d7211a516f07a4e",
+      "value" : 100
+    },
+    {
+      "chroma" : 3.90625,
+      "control" : "chroma",
+      "inputSHA256" : "97e8cbb42a625a968b8c701624dd61aa9681c2e5c973dbb5656b0da9997f0da7",
+      "luminance" : 0,
+      "matched" : true,
+      "measured" : {
+        "chroma" : 0.10244565617173829
+      },
+      "scene" : "flat-bright",
+      "targets" : {
+        "chroma" : 0.10589212912383106
+      },
+      "truthSHA256" : "db69e060475f82e7cbb8e2fa5759d1e948f4804f38115c8c5d7211a516f07a4e",
+      "value" : 20
+    },
+    {
+      "chroma" : 15.234375,
+      "control" : "chroma",
+      "inputSHA256" : "97e8cbb42a625a968b8c701624dd61aa9681c2e5c973dbb5656b0da9997f0da7",
+      "luminance" : 0,
+      "matched" : true,
+      "measured" : {
+        "chroma" : 0.37950073395474537
+      },
+      "scene" : "flat-bright",
+      "targets" : {
+        "chroma" : 0.38234272372482503
+      },
+      "truthSHA256" : "db69e060475f82e7cbb8e2fa5759d1e948f4804f38115c8c5d7211a516f07a4e",
+      "value" : 60
+    },
+    {
+      "chroma" : 28.90625,
+      "control" : "chroma",
+      "inputSHA256" : "97e8cbb42a625a968b8c701624dd61aa9681c2e5c973dbb5656b0da9997f0da7",
+      "luminance" : 0,
+      "matched" : true,
+      "measured" : {
+        "chroma" : 0.65005006480948468
+      },
+      "scene" : "flat-bright",
+      "targets" : {
+        "chroma" : 0.64906355652009129
+      },
+      "truthSHA256" : "db69e060475f82e7cbb8e2fa5759d1e948f4804f38115c8c5d7211a516f07a4e",
+      "value" : 100
+    },
+    {
+      "chroma" : 3.90625,
+      "control" : "joint",
+      "inputSHA256" : "97e8cbb42a625a968b8c701624dd61aa9681c2e5c973dbb5656b0da9997f0da7",
+      "luminance" : 0.5859375,
+      "matched" : true,
+      "measured" : {
+        "chroma" : 0.10244565617173829,
+        "luminance" : 0.011119054206050083
+      },
+      "scene" : "flat-bright",
+      "targets" : {
+        "chroma" : 0.10589213460660707,
+        "luminance" : 0.011140391060981969
+      },
+      "truthSHA256" : "db69e060475f82e7cbb8e2fa5759d1e948f4804f38115c8c5d7211a516f07a4e",
+      "value" : 20
+    },
+    {
+      "chroma" : 15.234375,
+      "control" : "joint",
+      "inputSHA256" : "97e8cbb42a625a968b8c701624dd61aa9681c2e5c973dbb5656b0da9997f0da7",
+      "luminance" : 10.546875,
+      "matched" : true,
+      "measured" : {
+        "chroma" : 0.37950073395474537,
+        "luminance" : 0.19566378955494279
+      },
+      "scene" : "flat-bright",
+      "targets" : {
+        "chroma" : 0.38234272089728927,
+        "luminance" : 0.19771666832600043
+      },
+      "truthSHA256" : "db69e060475f82e7cbb8e2fa5759d1e948f4804f38115c8c5d7211a516f07a4e",
+      "value" : 60
+    },
+    {
+      "chroma" : 28.90625,
+      "control" : "joint",
+      "inputSHA256" : "97e8cbb42a625a968b8c701624dd61aa9681c2e5c973dbb5656b0da9997f0da7",
+      "luminance" : 24.609375,
+      "matched" : true,
+      "measured" : {
+        "chroma" : 0.65005006480948468,
+        "luminance" : 0.43373923880285137
+      },
+      "scene" : "flat-bright",
+      "targets" : {
+        "chroma" : 0.64906355496023926,
+        "luminance" : 0.4364197694611921
+      },
+      "truthSHA256" : "db69e060475f82e7cbb8e2fa5759d1e948f4804f38115c8c5d7211a516f07a4e",
+      "value" : 100
+    },
+    {
+      "chroma" : 0,
+      "control" : "luminance",
+      "inputSHA256" : "c309a2eb09f97fe0f24844335151b96e5403400ac0a6ff31d11700cae0747123",
+      "luminance" : 0.1953125,
+      "matched" : false,
+      "measured" : {
+        "luminance" : 0.009708742455998953
+      },
+      "scene" : "dark-edges",
+      "targets" : {
+        "luminance" : 0.011375404514727627
+      },
+      "truthSHA256" : "f46cfbc787443599dea375c0e4d83f12e1553b2e41a9c8bf1861430aa23342c8",
+      "value" : 20
+    },
+    {
+      "chroma" : 0,
+      "control" : "luminance",
+      "inputSHA256" : "c309a2eb09f97fe0f24844335151b96e5403400ac0a6ff31d11700cae0747123",
+      "luminance" : 4.6875,
+      "matched" : true,
+      "measured" : {
+        "luminance" : 0.22422528931559138
+      },
+      "scene" : "dark-edges",
+      "targets" : {
+        "luminance" : 0.2300156981501873
+      },
+      "truthSHA256" : "f46cfbc787443599dea375c0e4d83f12e1553b2e41a9c8bf1861430aa23342c8",
+      "value" : 60
+    },
+    {
+      "chroma" : 0,
+      "control" : "luminance",
+      "inputSHA256" : "c309a2eb09f97fe0f24844335151b96e5403400ac0a6ff31d11700cae0747123",
+      "luminance" : 12.5,
+      "matched" : true,
+      "measured" : {
+        "luminance" : 0.53010414839272324
+      },
+      "scene" : "dark-edges",
+      "targets" : {
+        "luminance" : 0.52616282850347407
+      },
+      "truthSHA256" : "f46cfbc787443599dea375c0e4d83f12e1553b2e41a9c8bf1861430aa23342c8",
+      "value" : 100
+    },
+    {
+      "chroma" : 1.953125,
+      "control" : "chroma",
+      "inputSHA256" : "c309a2eb09f97fe0f24844335151b96e5403400ac0a6ff31d11700cae0747123",
+      "luminance" : 0,
+      "matched" : true,
+      "measured" : {
+        "chroma" : 0.11462234375775582
+      },
+      "scene" : "dark-edges",
+      "targets" : {
+        "chroma" : 0.11819914676364174
+      },
+      "truthSHA256" : "f46cfbc787443599dea375c0e4d83f12e1553b2e41a9c8bf1861430aa23342c8",
+      "value" : 20
+    },
+    {
+      "chroma" : 8.203125,
+      "control" : "chroma",
+      "inputSHA256" : "c309a2eb09f97fe0f24844335151b96e5403400ac0a6ff31d11700cae0747123",
+      "luminance" : 0,
+      "matched" : true,
+      "measured" : {
+        "chroma" : 0.43713853792911783
+      },
+      "scene" : "dark-edges",
+      "targets" : {
+        "chroma" : 0.44027268045332113
+      },
+      "truthSHA256" : "f46cfbc787443599dea375c0e4d83f12e1553b2e41a9c8bf1861430aa23342c8",
+      "value" : 60
+    },
+    {
+      "chroma" : 17.578125,
+      "control" : "chroma",
+      "inputSHA256" : "c309a2eb09f97fe0f24844335151b96e5403400ac0a6ff31d11700cae0747123",
+      "luminance" : 0,
+      "matched" : true,
+      "measured" : {
+        "chroma" : 0.74355428721872707
+      },
+      "scene" : "dark-edges",
+      "targets" : {
+        "chroma" : 0.74431743937671913
+      },
+      "truthSHA256" : "f46cfbc787443599dea375c0e4d83f12e1553b2e41a9c8bf1861430aa23342c8",
+      "value" : 100
+    },
+    {
+      "chroma" : 1.953125,
+      "control" : "joint",
+      "inputSHA256" : "c309a2eb09f97fe0f24844335151b96e5403400ac0a6ff31d11700cae0747123",
+      "luminance" : 0.1953125,
+      "matched" : false,
+      "measured" : {
+        "chroma" : 0.11462234375775582,
+        "luminance" : 0.009708742455998953
+      },
+      "scene" : "dark-edges",
+      "targets" : {
+        "chroma" : 0.11819914559722344,
+        "luminance" : 0.011375403781308413
+      },
+      "truthSHA256" : "f46cfbc787443599dea375c0e4d83f12e1553b2e41a9c8bf1861430aa23342c8",
+      "value" : 20
+    },
+    {
+      "chroma" : 8.203125,
+      "control" : "joint",
+      "inputSHA256" : "c309a2eb09f97fe0f24844335151b96e5403400ac0a6ff31d11700cae0747123",
+      "luminance" : 4.6875,
+      "matched" : true,
+      "measured" : {
+        "chroma" : 0.43713853792911783,
+        "luminance" : 0.22422528931559138
+      },
+      "scene" : "dark-edges",
+      "targets" : {
+        "chroma" : 0.44027268031622069,
+        "luminance" : 0.2300156967982534
+      },
+      "truthSHA256" : "f46cfbc787443599dea375c0e4d83f12e1553b2e41a9c8bf1861430aa23342c8",
+      "value" : 60
+    },
+    {
+      "chroma" : 17.578125,
+      "control" : "joint",
+      "inputSHA256" : "c309a2eb09f97fe0f24844335151b96e5403400ac0a6ff31d11700cae0747123",
+      "luminance" : 12.5,
+      "matched" : true,
+      "measured" : {
+        "chroma" : 0.74355428721872707,
+        "luminance" : 0.53010414839272324
+      },
+      "scene" : "dark-edges",
+      "targets" : {
+        "chroma" : 0.74431743791001481,
+        "luminance" : 0.52616282518063062
+      },
+      "truthSHA256" : "f46cfbc787443599dea375c0e4d83f12e1553b2e41a9c8bf1861430aa23342c8",
+      "value" : 100
+    },
+    {
+      "chroma" : 0,
+      "control" : "luminance",
+      "inputSHA256" : "be0fa6812410f8fd2a36f9383942da41c7711fef3810837d8772e16f474a0197",
+      "luminance" : 0.1953125,
+      "matched" : false,
+      "measured" : {
+        "luminance" : 0.009756316669062515
+      },
+      "scene" : "fine-lines",
+      "targets" : {
+        "luminance" : 0.011529946625915999
+      },
+      "truthSHA256" : "339f37c3b0259991b5d2b4f0c49f11b83250a47bb0abe23c821b71c3f06f2088",
+      "value" : 20
+    },
+    {
+      "chroma" : 0,
+      "control" : "luminance",
+      "inputSHA256" : "be0fa6812410f8fd2a36f9383942da41c7711fef3810837d8772e16f474a0197",
+      "luminance" : 4.6875,
+      "matched" : true,
+      "measured" : {
+        "luminance" : 0.22496159367997637
+      },
+      "scene" : "fine-lines",
+      "targets" : {
+        "luminance" : 0.23147136547092029
+      },
+      "truthSHA256" : "339f37c3b0259991b5d2b4f0c49f11b83250a47bb0abe23c821b71c3f06f2088",
+      "value" : 60
+    },
+    {
+      "chroma" : 0,
+      "control" : "luminance",
+      "inputSHA256" : "be0fa6812410f8fd2a36f9383942da41c7711fef3810837d8772e16f474a0197",
+      "luminance" : 12.5,
+      "matched" : true,
+      "measured" : {
+        "luminance" : 0.52953868403099347
+      },
+      "scene" : "fine-lines",
+      "targets" : {
+        "luminance" : 0.52744440322552633
+      },
+      "truthSHA256" : "339f37c3b0259991b5d2b4f0c49f11b83250a47bb0abe23c821b71c3f06f2088",
+      "value" : 100
+    },
+    {
+      "chroma" : 1.953125,
+      "control" : "chroma",
+      "inputSHA256" : "be0fa6812410f8fd2a36f9383942da41c7711fef3810837d8772e16f474a0197",
+      "luminance" : 0,
+      "matched" : false,
+      "measured" : {
+        "chroma" : 0.11338649583147309
+      },
+      "scene" : "fine-lines",
+      "targets" : {
+        "chroma" : 0.12183133795607337
+      },
+      "truthSHA256" : "339f37c3b0259991b5d2b4f0c49f11b83250a47bb0abe23c821b71c3f06f2088",
+      "value" : 20
+    },
+    {
+      "chroma" : 8.59375,
+      "control" : "chroma",
+      "inputSHA256" : "be0fa6812410f8fd2a36f9383942da41c7711fef3810837d8772e16f474a0197",
+      "luminance" : 0,
+      "matched" : true,
+      "measured" : {
+        "chroma" : 0.4481239833009486
+      },
+      "scene" : "fine-lines",
+      "targets" : {
+        "chroma" : 0.45192914036170262
+      },
+      "truthSHA256" : "339f37c3b0259991b5d2b4f0c49f11b83250a47bb0abe23c821b71c3f06f2088",
+      "value" : 60
+    },
+    {
+      "chroma" : 18.75,
+      "control" : "chroma",
+      "inputSHA256" : "be0fa6812410f8fd2a36f9383942da41c7711fef3810837d8772e16f474a0197",
+      "luminance" : 0,
+      "matched" : true,
+      "measured" : {
+        "chroma" : 0.76292259322061751
+      },
+      "scene" : "fine-lines",
+      "targets" : {
+        "chroma" : 0.76349315798160844
+      },
+      "truthSHA256" : "339f37c3b0259991b5d2b4f0c49f11b83250a47bb0abe23c821b71c3f06f2088",
+      "value" : 100
+    },
+    {
+      "chroma" : 1.953125,
+      "control" : "joint",
+      "inputSHA256" : "be0fa6812410f8fd2a36f9383942da41c7711fef3810837d8772e16f474a0197",
+      "luminance" : 0.1953125,
+      "matched" : false,
+      "measured" : {
+        "chroma" : 0.11338649583147309,
+        "luminance" : 0.009756316669062515
+      },
+      "scene" : "fine-lines",
+      "targets" : {
+        "chroma" : 0.12183133509818822,
+        "luminance" : 0.01152994808754404
+      },
+      "truthSHA256" : "339f37c3b0259991b5d2b4f0c49f11b83250a47bb0abe23c821b71c3f06f2088",
+      "value" : 20
+    },
+    {
+      "chroma" : 8.59375,
+      "control" : "joint",
+      "inputSHA256" : "be0fa6812410f8fd2a36f9383942da41c7711fef3810837d8772e16f474a0197",
+      "luminance" : 4.6875,
+      "matched" : true,
+      "measured" : {
+        "chroma" : 0.4481239833009486,
+        "luminance" : 0.22496159367997637
+      },
+      "scene" : "fine-lines",
+      "targets" : {
+        "chroma" : 0.45192914194206546,
+        "luminance" : 0.23147136152189463
+      },
+      "truthSHA256" : "339f37c3b0259991b5d2b4f0c49f11b83250a47bb0abe23c821b71c3f06f2088",
+      "value" : 60
+    },
+    {
+      "chroma" : 18.75,
+      "control" : "joint",
+      "inputSHA256" : "be0fa6812410f8fd2a36f9383942da41c7711fef3810837d8772e16f474a0197",
+      "luminance" : 12.5,
+      "matched" : true,
+      "measured" : {
+        "chroma" : 0.76292259322061751,
+        "luminance" : 0.52953868403099347
+      },
+      "scene" : "fine-lines",
+      "targets" : {
+        "chroma" : 0.76349315682993524,
+        "luminance" : 0.52744439108504837
+      },
+      "truthSHA256" : "339f37c3b0259991b5d2b4f0c49f11b83250a47bb0abe23c821b71c3f06f2088",
+      "value" : 100
+    },
+    {
+      "chroma" : 0,
+      "control" : "luminance",
+      "inputSHA256" : "e9b41b5f75a823e33bcd638bf4fc68bd22a66b8eb0963d0be411b11c350ef7b3",
+      "luminance" : 0.1953125,
+      "matched" : false,
+      "measured" : {
+        "luminance" : 0.0097904785715987597
+      },
+      "scene" : "color-lines",
+      "targets" : {
+        "luminance" : 0.01136051699302032
+      },
+      "truthSHA256" : "5d0b415e32bfef7fe2b94962213d8b3a250e89b95d173e69358988bb8fa03916",
+      "value" : 20
+    },
+    {
+      "chroma" : 0,
+      "control" : "luminance",
+      "inputSHA256" : "e9b41b5f75a823e33bcd638bf4fc68bd22a66b8eb0963d0be411b11c350ef7b3",
+      "luminance" : 4.6875,
+      "matched" : true,
+      "measured" : {
+        "luminance" : 0.22584249110623078
+      },
+      "scene" : "color-lines",
+      "targets" : {
+        "luminance" : 0.22979897837726782
+      },
+      "truthSHA256" : "5d0b415e32bfef7fe2b94962213d8b3a250e89b95d173e69358988bb8fa03916",
+      "value" : 60
+    },
+    {
+      "chroma" : 0,
+      "control" : "luminance",
+      "inputSHA256" : "e9b41b5f75a823e33bcd638bf4fc68bd22a66b8eb0963d0be411b11c350ef7b3",
+      "luminance" : 12.109375,
+      "matched" : true,
+      "measured" : {
+        "luminance" : 0.52156857295732173
+      },
+      "scene" : "color-lines",
+      "targets" : {
+        "luminance" : 0.5267087004256894
+      },
+      "truthSHA256" : "5d0b415e32bfef7fe2b94962213d8b3a250e89b95d173e69358988bb8fa03916",
+      "value" : 100
+    },
+    {
+      "chroma" : 1.953125,
+      "control" : "chroma",
+      "inputSHA256" : "e9b41b5f75a823e33bcd638bf4fc68bd22a66b8eb0963d0be411b11c350ef7b3",
+      "luminance" : 0,
+      "matched" : false,
+      "measured" : {
+        "chroma" : 0.11356048836495247
+      },
+      "scene" : "color-lines",
+      "targets" : {
+        "chroma" : 0.12139381930219972
+      },
+      "truthSHA256" : "5d0b415e32bfef7fe2b94962213d8b3a250e89b95d173e69358988bb8fa03916",
+      "value" : 20
+    },
+    {
+      "chroma" : 8.59375,
+      "control" : "chroma",
+      "inputSHA256" : "e9b41b5f75a823e33bcd638bf4fc68bd22a66b8eb0963d0be411b11c350ef7b3",
+      "luminance" : 0,
+      "matched" : true,
+      "measured" : {
+        "chroma" : 0.44884973991600474
+      },
+      "scene" : "color-lines",
+      "targets" : {
+        "chroma" : 0.45025120736976787
+      },
+      "truthSHA256" : "5d0b415e32bfef7fe2b94962213d8b3a250e89b95d173e69358988bb8fa03916",
+      "value" : 60
+    },
+    {
+      "chroma" : 18.75,
+      "control" : "chroma",
+      "inputSHA256" : "e9b41b5f75a823e33bcd638bf4fc68bd22a66b8eb0963d0be411b11c350ef7b3",
+      "luminance" : 0,
+      "matched" : true,
+      "measured" : {
+        "chroma" : 0.76237388919350169
+      },
+      "scene" : "color-lines",
+      "targets" : {
+        "chroma" : 0.76182775018282023
+      },
+      "truthSHA256" : "5d0b415e32bfef7fe2b94962213d8b3a250e89b95d173e69358988bb8fa03916",
+      "value" : 100
+    },
+    {
+      "chroma" : 1.953125,
+      "control" : "joint",
+      "inputSHA256" : "e9b41b5f75a823e33bcd638bf4fc68bd22a66b8eb0963d0be411b11c350ef7b3",
+      "luminance" : 0.1953125,
+      "matched" : false,
+      "measured" : {
+        "chroma" : 0.11356048836495247,
+        "luminance" : 0.0097904785715987597
+      },
+      "scene" : "color-lines",
+      "targets" : {
+        "chroma" : 0.12139381861583431,
+        "luminance" : 0.011360513501658676
+      },
+      "truthSHA256" : "5d0b415e32bfef7fe2b94962213d8b3a250e89b95d173e69358988bb8fa03916",
+      "value" : 20
+    },
+    {
+      "chroma" : 8.59375,
+      "control" : "joint",
+      "inputSHA256" : "e9b41b5f75a823e33bcd638bf4fc68bd22a66b8eb0963d0be411b11c350ef7b3",
+      "luminance" : 4.6875,
+      "matched" : true,
+      "measured" : {
+        "chroma" : 0.44884973991600474,
+        "luminance" : 0.22584249110623078
+      },
+      "scene" : "color-lines",
+      "targets" : {
+        "chroma" : 0.45025120825840148,
+        "luminance" : 0.22979899146363647
+      },
+      "truthSHA256" : "5d0b415e32bfef7fe2b94962213d8b3a250e89b95d173e69358988bb8fa03916",
+      "value" : 60
+    },
+    {
+      "chroma" : 18.75,
+      "control" : "joint",
+      "inputSHA256" : "e9b41b5f75a823e33bcd638bf4fc68bd22a66b8eb0963d0be411b11c350ef7b3",
+      "luminance" : 12.109375,
+      "matched" : true,
+      "measured" : {
+        "chroma" : 0.76237388919350169,
+        "luminance" : 0.52156857295732173
+      },
+      "scene" : "color-lines",
+      "targets" : {
+        "chroma" : 0.76182774914266971,
+        "luminance" : 0.52670871123181617
+      },
+      "truthSHA256" : "5d0b415e32bfef7fe2b94962213d8b3a250e89b95d173e69358988bb8fa03916",
+      "value" : 100
+    },
+    {
+      "chroma" : 0,
+      "control" : "luminance",
+      "inputSHA256" : "7e850d2b5b5b059ed23015ecba2425d02e57c09dabd83e3081026ebc18be518d",
+      "luminance" : 0.1953125,
+      "matched" : false,
+      "measured" : {
+        "luminance" : 0.0097097080843543404
+      },
+      "scene" : "texture",
+      "targets" : {
+        "luminance" : 0.011447881228984436
+      },
+      "truthSHA256" : "b59e17cd2ba3c914ca2d93fcffbcb157ab01fe61d2bbc1650778cd5a39bb1eb6",
+      "value" : 20
+    },
+    {
+      "chroma" : 0,
+      "control" : "luminance",
+      "inputSHA256" : "7e850d2b5b5b059ed23015ecba2425d02e57c09dabd83e3081026ebc18be518d",
+      "luminance" : 4.6875,
+      "matched" : true,
+      "measured" : {
+        "luminance" : 0.22437170513742311
+      },
+      "scene" : "texture",
+      "targets" : {
+        "luminance" : 0.23045104465355637
+      },
+      "truthSHA256" : "b59e17cd2ba3c914ca2d93fcffbcb157ab01fe61d2bbc1650778cd5a39bb1eb6",
+      "value" : 60
+    },
+    {
+      "chroma" : 0,
+      "control" : "luminance",
+      "inputSHA256" : "7e850d2b5b5b059ed23015ecba2425d02e57c09dabd83e3081026ebc18be518d",
+      "luminance" : 12.5,
+      "matched" : true,
+      "measured" : {
+        "luminance" : 0.53091966160076609
+      },
+      "scene" : "texture",
+      "targets" : {
+        "luminance" : 0.52694203542351725
+      },
+      "truthSHA256" : "b59e17cd2ba3c914ca2d93fcffbcb157ab01fe61d2bbc1650778cd5a39bb1eb6",
+      "value" : 100
+    },
+    {
+      "chroma" : 1.953125,
+      "control" : "chroma",
+      "inputSHA256" : "7e850d2b5b5b059ed23015ecba2425d02e57c09dabd83e3081026ebc18be518d",
+      "luminance" : 0,
+      "matched" : false,
+      "measured" : {
+        "chroma" : 0.11364352186157067
+      },
+      "scene" : "texture",
+      "targets" : {
+        "chroma" : 0.12062174152914784
+      },
+      "truthSHA256" : "b59e17cd2ba3c914ca2d93fcffbcb157ab01fe61d2bbc1650778cd5a39bb1eb6",
+      "value" : 20
+    },
+    {
+      "chroma" : 8.59375,
+      "control" : "chroma",
+      "inputSHA256" : "7e850d2b5b5b059ed23015ecba2425d02e57c09dabd83e3081026ebc18be518d",
+      "luminance" : 0,
+      "matched" : true,
+      "measured" : {
+        "chroma" : 0.44910375295711424
+      },
+      "scene" : "texture",
+      "targets" : {
+        "chroma" : 0.44796533040139708
+      },
+      "truthSHA256" : "b59e17cd2ba3c914ca2d93fcffbcb157ab01fe61d2bbc1650778cd5a39bb1eb6",
+      "value" : 60
+    },
+    {
+      "chroma" : 18.359375,
+      "control" : "chroma",
+      "inputSHA256" : "7e850d2b5b5b059ed23015ecba2425d02e57c09dabd83e3081026ebc18be518d",
+      "luminance" : 0,
+      "matched" : true,
+      "measured" : {
+        "chroma" : 0.75287034193088265
+      },
+      "scene" : "texture",
+      "targets" : {
+        "chroma" : 0.75532754701113647
+      },
+      "truthSHA256" : "b59e17cd2ba3c914ca2d93fcffbcb157ab01fe61d2bbc1650778cd5a39bb1eb6",
+      "value" : 100
+    },
+    {
+      "chroma" : 1.953125,
+      "control" : "joint",
+      "inputSHA256" : "7e850d2b5b5b059ed23015ecba2425d02e57c09dabd83e3081026ebc18be518d",
+      "luminance" : 0.1953125,
+      "matched" : false,
+      "measured" : {
+        "chroma" : 0.11364352186157067,
+        "luminance" : 0.0097097080843543404
+      },
+      "scene" : "texture",
+      "targets" : {
+        "chroma" : 0.12062174021029004,
+        "luminance" : 0.011447880985339443
+      },
+      "truthSHA256" : "b59e17cd2ba3c914ca2d93fcffbcb157ab01fe61d2bbc1650778cd5a39bb1eb6",
+      "value" : 20
+    },
+    {
+      "chroma" : 8.59375,
+      "control" : "joint",
+      "inputSHA256" : "7e850d2b5b5b059ed23015ecba2425d02e57c09dabd83e3081026ebc18be518d",
+      "luminance" : 4.6875,
+      "matched" : true,
+      "measured" : {
+        "chroma" : 0.44910375295711424,
+        "luminance" : 0.22437170513742311
+      },
+      "scene" : "texture",
+      "targets" : {
+        "chroma" : 0.44796533290086271,
+        "luminance" : 0.23045104255952031
+      },
+      "truthSHA256" : "b59e17cd2ba3c914ca2d93fcffbcb157ab01fe61d2bbc1650778cd5a39bb1eb6",
+      "value" : 60
+    },
+    {
+      "chroma" : 18.359375,
+      "control" : "joint",
+      "inputSHA256" : "7e850d2b5b5b059ed23015ecba2425d02e57c09dabd83e3081026ebc18be518d",
+      "luminance" : 12.5,
+      "matched" : true,
+      "measured" : {
+        "chroma" : 0.75287034193088265,
+        "luminance" : 0.53091966160076609
+      },
+      "scene" : "texture",
+      "targets" : {
+        "chroma" : 0.75532754697023774,
+        "luminance" : 0.52694203023345254
+      },
+      "truthSHA256" : "b59e17cd2ba3c914ca2d93fcffbcb157ab01fe61d2bbc1650778cd5a39bb1eb6",
+      "value" : 100
+    },
+    {
+      "chroma" : 0,
+      "control" : "luminance",
+      "inputSHA256" : "01cf4b0546885d91669bb482a0653d812f0b67493fc7d1b97b63c2780d57925c",
+      "luminance" : 0.1953125,
+      "matched" : false,
+      "measured" : {
+        "luminance" : 0.0096720300400763293
+      },
+      "scene" : "transparency",
+      "targets" : {
+        "luminance" : 0.011355206654779071
+      },
+      "truthSHA256" : "3bb7bba40be25fed0d8352e1ed916e9c585541de296cf35419f9ac3ded080c6a",
+      "value" : 20
+    },
+    {
+      "chroma" : 0,
+      "control" : "luminance",
+      "inputSHA256" : "01cf4b0546885d91669bb482a0653d812f0b67493fc7d1b97b63c2780d57925c",
+      "luminance" : 4.6875,
+      "matched" : true,
+      "measured" : {
+        "luminance" : 0.22263558545588868
+      },
+      "scene" : "transparency",
+      "targets" : {
+        "luminance" : 0.22889959821809691
+      },
+      "truthSHA256" : "3bb7bba40be25fed0d8352e1ed916e9c585541de296cf35419f9ac3ded080c6a",
+      "value" : 60
+    },
+    {
+      "chroma" : 0,
+      "control" : "luminance",
+      "inputSHA256" : "01cf4b0546885d91669bb482a0653d812f0b67493fc7d1b97b63c2780d57925c",
+      "luminance" : 12.5,
+      "matched" : true,
+      "measured" : {
+        "luminance" : 0.52912885829076872
+      },
+      "scene" : "transparency",
+      "targets" : {
+        "luminance" : 0.52486766784100558
+      },
+      "truthSHA256" : "3bb7bba40be25fed0d8352e1ed916e9c585541de296cf35419f9ac3ded080c6a",
+      "value" : 100
+    },
+    {
+      "chroma" : 1.953125,
+      "control" : "chroma",
+      "inputSHA256" : "01cf4b0546885d91669bb482a0653d812f0b67493fc7d1b97b63c2780d57925c",
+      "luminance" : 0,
+      "matched" : false,
+      "measured" : {
+        "chroma" : 0.11404080961570251
+      },
+      "scene" : "transparency",
+      "targets" : {
+        "chroma" : 0.12043294348074807
+      },
+      "truthSHA256" : "3bb7bba40be25fed0d8352e1ed916e9c585541de296cf35419f9ac3ded080c6a",
+      "value" : 20
+    },
+    {
+      "chroma" : 8.59375,
+      "control" : "chroma",
+      "inputSHA256" : "01cf4b0546885d91669bb482a0653d812f0b67493fc7d1b97b63c2780d57925c",
+      "luminance" : 0,
+      "matched" : true,
+      "measured" : {
+        "chroma" : 0.45031019417884588
+      },
+      "scene" : "transparency",
+      "targets" : {
+        "chroma" : 0.44618680678658074
+      },
+      "truthSHA256" : "3bb7bba40be25fed0d8352e1ed916e9c585541de296cf35419f9ac3ded080c6a",
+      "value" : 60
+    },
+    {
+      "chroma" : 17.96875,
+      "control" : "chroma",
+      "inputSHA256" : "01cf4b0546885d91669bb482a0653d812f0b67493fc7d1b97b63c2780d57925c",
+      "luminance" : 0,
+      "matched" : true,
+      "measured" : {
+        "chroma" : 0.75020908099242101
+      },
+      "scene" : "transparency",
+      "targets" : {
+        "chroma" : 0.75299067010112386
+      },
+      "truthSHA256" : "3bb7bba40be25fed0d8352e1ed916e9c585541de296cf35419f9ac3ded080c6a",
+      "value" : 100
+    },
+    {
+      "chroma" : 1.953125,
+      "control" : "joint",
+      "inputSHA256" : "01cf4b0546885d91669bb482a0653d812f0b67493fc7d1b97b63c2780d57925c",
+      "luminance" : 0.1953125,
+      "matched" : false,
+      "measured" : {
+        "chroma" : 0.11404080961570251,
+        "luminance" : 0.0096720300400763293
+      },
+      "scene" : "transparency",
+      "targets" : {
+        "chroma" : 0.1204329431975093,
+        "luminance" : 0.011355210021340767
+      },
+      "truthSHA256" : "3bb7bba40be25fed0d8352e1ed916e9c585541de296cf35419f9ac3ded080c6a",
+      "value" : 20
+    },
+    {
+      "chroma" : 8.59375,
+      "control" : "joint",
+      "inputSHA256" : "01cf4b0546885d91669bb482a0653d812f0b67493fc7d1b97b63c2780d57925c",
+      "luminance" : 4.6875,
+      "matched" : true,
+      "measured" : {
+        "chroma" : 0.45031019417884588,
+        "luminance" : 0.22263558545588868
+      },
+      "scene" : "transparency",
+      "targets" : {
+        "chroma" : 0.44618680768486474,
+        "luminance" : 0.22889960045705704
+      },
+      "truthSHA256" : "3bb7bba40be25fed0d8352e1ed916e9c585541de296cf35419f9ac3ded080c6a",
+      "value" : 60
+    },
+    {
+      "chroma" : 17.96875,
+      "control" : "joint",
+      "inputSHA256" : "01cf4b0546885d91669bb482a0653d812f0b67493fc7d1b97b63c2780d57925c",
+      "luminance" : 12.5,
+      "matched" : true,
+      "measured" : {
+        "chroma" : 0.75020908099242101,
+        "luminance" : 0.52912885829076872
+      },
+      "scene" : "transparency",
+      "targets" : {
+        "chroma" : 0.75299067345353121,
+        "luminance" : 0.5248676465810711
+      },
+      "truthSHA256" : "3bb7bba40be25fed0d8352e1ed916e9c585541de296cf35419f9ac3ded080c6a",
+      "value" : 100
+    },
+    {
+      "chroma" : 0,
+      "control" : "luminance",
+      "inputSHA256" : "8517bd16042f90993358fc3d3d9d007596e9ae6b6caee278403261b08da79a85",
+      "luminance" : 0.1953125,
+      "matched" : false,
+      "measured" : {
+        "luminance" : 0.009761920883134656
+      },
+      "scene" : "p3-dark",
+      "targets" : {
+        "luminance" : 0.011500726643894343
+      },
+      "truthSHA256" : "65f885c33f358c1d45f688def827cca6dcc12f06d35c7358dcd6122d1957e4c9",
+      "value" : 20
+    },
+    {
+      "chroma" : 0,
+      "control" : "luminance",
+      "inputSHA256" : "8517bd16042f90993358fc3d3d9d007596e9ae6b6caee278403261b08da79a85",
+      "luminance" : 4.6875,
+      "matched" : true,
+      "measured" : {
+        "luminance" : 0.22428482098437952
+      },
+      "scene" : "p3-dark",
+      "targets" : {
+        "luminance" : 0.23162789733122724
+      },
+      "truthSHA256" : "65f885c33f358c1d45f688def827cca6dcc12f06d35c7358dcd6122d1957e4c9",
+      "value" : 60
+    },
+    {
+      "chroma" : 0,
+      "control" : "luminance",
+      "inputSHA256" : "8517bd16042f90993358fc3d3d9d007596e9ae6b6caee278403261b08da79a85",
+      "luminance" : 12.5,
+      "matched" : true,
+      "measured" : {
+        "luminance" : 0.52932282007824027
+      },
+      "scene" : "p3-dark",
+      "targets" : {
+        "luminance" : 0.53036559842015174
+      },
+      "truthSHA256" : "65f885c33f358c1d45f688def827cca6dcc12f06d35c7358dcd6122d1957e4c9",
+      "value" : 100
+    },
+    {
+      "chroma" : 1.953125,
+      "control" : "chroma",
+      "inputSHA256" : "8517bd16042f90993358fc3d3d9d007596e9ae6b6caee278403261b08da79a85",
+      "luminance" : 0,
+      "matched" : false,
+      "measured" : {
+        "chroma" : 0.11465820233121604
+      },
+      "scene" : "p3-dark",
+      "targets" : {
+        "chroma" : 0.12200349016928103
+      },
+      "truthSHA256" : "65f885c33f358c1d45f688def827cca6dcc12f06d35c7358dcd6122d1957e4c9",
+      "value" : 20
+    },
+    {
+      "chroma" : 8.59375,
+      "control" : "chroma",
+      "inputSHA256" : "8517bd16042f90993358fc3d3d9d007596e9ae6b6caee278403261b08da79a85",
+      "luminance" : 0,
+      "matched" : true,
+      "measured" : {
+        "chroma" : 0.44910259656069806
+      },
+      "scene" : "p3-dark",
+      "targets" : {
+        "chroma" : 0.45192114106709813
+      },
+      "truthSHA256" : "65f885c33f358c1d45f688def827cca6dcc12f06d35c7358dcd6122d1957e4c9",
+      "value" : 60
+    },
+    {
+      "chroma" : 18.75,
+      "control" : "chroma",
+      "inputSHA256" : "8517bd16042f90993358fc3d3d9d007596e9ae6b6caee278403261b08da79a85",
+      "luminance" : 0,
+      "matched" : true,
+      "measured" : {
+        "chroma" : 0.76092821689586787
+      },
+      "scene" : "p3-dark",
+      "targets" : {
+        "chroma" : 0.76091487862072404
+      },
+      "truthSHA256" : "65f885c33f358c1d45f688def827cca6dcc12f06d35c7358dcd6122d1957e4c9",
+      "value" : 100
+    },
+    {
+      "chroma" : 1.953125,
+      "control" : "joint",
+      "inputSHA256" : "8517bd16042f90993358fc3d3d9d007596e9ae6b6caee278403261b08da79a85",
+      "luminance" : 0.1953125,
+      "matched" : false,
+      "measured" : {
+        "chroma" : 0.11465820233121604,
+        "luminance" : 0.009761920883134656
+      },
+      "scene" : "p3-dark",
+      "targets" : {
+        "chroma" : 0.12200348826542073,
+        "luminance" : 0.011500726796980554
+      },
+      "truthSHA256" : "65f885c33f358c1d45f688def827cca6dcc12f06d35c7358dcd6122d1957e4c9",
+      "value" : 20
+    },
+    {
+      "chroma" : 8.59375,
+      "control" : "joint",
+      "inputSHA256" : "8517bd16042f90993358fc3d3d9d007596e9ae6b6caee278403261b08da79a85",
+      "luminance" : 4.6875,
+      "matched" : true,
+      "measured" : {
+        "chroma" : 0.44910259656069806,
+        "luminance" : 0.22428482098437952
+      },
+      "scene" : "p3-dark",
+      "targets" : {
+        "chroma" : 0.45192114198977351,
+        "luminance" : 0.23162789752256008
+      },
+      "truthSHA256" : "65f885c33f358c1d45f688def827cca6dcc12f06d35c7358dcd6122d1957e4c9",
+      "value" : 60
+    },
+    {
+      "chroma" : 18.75,
+      "control" : "joint",
+      "inputSHA256" : "8517bd16042f90993358fc3d3d9d007596e9ae6b6caee278403261b08da79a85",
+      "luminance" : 12.5,
+      "matched" : true,
+      "measured" : {
+        "chroma" : 0.76092821689586787,
+        "luminance" : 0.52932282007824027
+      },
+      "scene" : "p3-dark",
+      "targets" : {
+        "chroma" : 0.7609148776846697,
+        "luminance" : 0.53036559702909591
+      },
+      "truthSHA256" : "65f885c33f358c1d45f688def827cca6dcc12f06d35c7358dcd6122d1957e4c9",
+      "value" : 100
+    },
+    {
+      "chroma" : 0,
+      "control" : "luminance",
+      "inputSHA256" : "c4c19726669237c193f1c76d68cf57b7cb1d2fe90090860c1fafd9842b648e2c",
+      "luminance" : 0.1953125,
+      "matched" : false,
+      "measured" : {
+        "luminance" : 0.009776923139691363
+      },
+      "scene" : "skin",
+      "targets" : {
+        "luminance" : 0.01137911221609067
+      },
+      "truthSHA256" : "12fe0462ffba3312a59f3fd2ddcf6153effe3bc20132329978084be289f1900e",
+      "value" : 20
+    },
+    {
+      "chroma" : 0,
+      "control" : "luminance",
+      "inputSHA256" : "c4c19726669237c193f1c76d68cf57b7cb1d2fe90090860c1fafd9842b648e2c",
+      "luminance" : 4.6875,
+      "matched" : true,
+      "measured" : {
+        "luminance" : 0.22463645276908761
+      },
+      "scene" : "skin",
+      "targets" : {
+        "luminance" : 0.22962355863356887
+      },
+      "truthSHA256" : "12fe0462ffba3312a59f3fd2ddcf6153effe3bc20132329978084be289f1900e",
+      "value" : 60
+    },
+    {
+      "chroma" : 0,
+      "control" : "luminance",
+      "inputSHA256" : "c4c19726669237c193f1c76d68cf57b7cb1d2fe90090860c1fafd9842b648e2c",
+      "luminance" : 12.5,
+      "matched" : true,
+      "measured" : {
+        "luminance" : 0.5317960551811628
+      },
+      "scene" : "skin",
+      "targets" : {
+        "luminance" : 0.52538487120647459
+      },
+      "truthSHA256" : "12fe0462ffba3312a59f3fd2ddcf6153effe3bc20132329978084be289f1900e",
+      "value" : 100
+    },
+    {
+      "chroma" : 1.953125,
+      "control" : "chroma",
+      "inputSHA256" : "c4c19726669237c193f1c76d68cf57b7cb1d2fe90090860c1fafd9842b648e2c",
+      "luminance" : 0,
+      "matched" : false,
+      "measured" : {
+        "chroma" : 0.11366388241034309
+      },
+      "scene" : "skin",
+      "targets" : {
+        "chroma" : 0.1203162739006679
+      },
+      "truthSHA256" : "12fe0462ffba3312a59f3fd2ddcf6153effe3bc20132329978084be289f1900e",
+      "value" : 20
+    },
+    {
+      "chroma" : 8.59375,
+      "control" : "chroma",
+      "inputSHA256" : "c4c19726669237c193f1c76d68cf57b7cb1d2fe90090860c1fafd9842b648e2c",
+      "luminance" : 0,
+      "matched" : true,
+      "measured" : {
+        "chroma" : 0.45108209931443932
+      },
+      "scene" : "skin",
+      "targets" : {
+        "chroma" : 0.4473486147254494
+      },
+      "truthSHA256" : "12fe0462ffba3312a59f3fd2ddcf6153effe3bc20132329978084be289f1900e",
+      "value" : 60
+    },
+    {
+      "chroma" : 18.359375,
+      "control" : "chroma",
+      "inputSHA256" : "c4c19726669237c193f1c76d68cf57b7cb1d2fe90090860c1fafd9842b648e2c",
+      "luminance" : 0,
+      "matched" : true,
+      "measured" : {
+        "chroma" : 0.75779532410398653
+      },
+      "scene" : "skin",
+      "targets" : {
+        "chroma" : 0.75533014981761659
+      },
+      "truthSHA256" : "12fe0462ffba3312a59f3fd2ddcf6153effe3bc20132329978084be289f1900e",
+      "value" : 100
+    },
+    {
+      "chroma" : 1.953125,
+      "control" : "joint",
+      "inputSHA256" : "c4c19726669237c193f1c76d68cf57b7cb1d2fe90090860c1fafd9842b648e2c",
+      "luminance" : 0.1953125,
+      "matched" : false,
+      "measured" : {
+        "chroma" : 0.11366388241034309,
+        "luminance" : 0.009776923139691363
+      },
+      "scene" : "skin",
+      "targets" : {
+        "chroma" : 0.12031627015052948,
+        "luminance" : 0.011379114193572182
+      },
+      "truthSHA256" : "12fe0462ffba3312a59f3fd2ddcf6153effe3bc20132329978084be289f1900e",
+      "value" : 20
+    },
+    {
+      "chroma" : 8.59375,
+      "control" : "joint",
+      "inputSHA256" : "c4c19726669237c193f1c76d68cf57b7cb1d2fe90090860c1fafd9842b648e2c",
+      "luminance" : 4.6875,
+      "matched" : true,
+      "measured" : {
+        "chroma" : 0.45108209931443932,
+        "luminance" : 0.22463645276908761
+      },
+      "scene" : "skin",
+      "targets" : {
+        "chroma" : 0.44734861509428425,
+        "luminance" : 0.2296235433106949
+      },
+      "truthSHA256" : "12fe0462ffba3312a59f3fd2ddcf6153effe3bc20132329978084be289f1900e",
+      "value" : 60
+    },
+    {
+      "chroma" : 18.359375,
+      "control" : "joint",
+      "inputSHA256" : "c4c19726669237c193f1c76d68cf57b7cb1d2fe90090860c1fafd9842b648e2c",
+      "luminance" : 12.5,
+      "matched" : true,
+      "measured" : {
+        "chroma" : 0.75779532410398653,
+        "luminance" : 0.5317960551811628
+      },
+      "scene" : "skin",
+      "targets" : {
+        "chroma" : 0.75533013622153822,
+        "luminance" : 0.52538484145774533
+      },
+      "truthSHA256" : "12fe0462ffba3312a59f3fd2ddcf6153effe3bc20132329978084be289f1900e",
+      "value" : 100
+    },
+    {
+      "chroma" : 0,
+      "control" : "luminance",
+      "inputSHA256" : "08740d856ceec68b589c63522b8d8126bcf3a9898e71fe903beec5b07bbc83a4",
+      "luminance" : 0.1953125,
+      "matched" : false,
+      "measured" : {
+        "luminance" : 0.009737541678347283
+      },
+      "scene" : "hdr",
+      "targets" : {
+        "luminance" : 0.011439086706819923
+      },
+      "truthSHA256" : "2e81795dcb9243e42d929de9a381528d5c8ce0390cc085c3275f74e704fc5786",
+      "value" : 20
+    },
+    {
+      "chroma" : 0,
+      "control" : "luminance",
+      "inputSHA256" : "08740d856ceec68b589c63522b8d8126bcf3a9898e71fe903beec5b07bbc83a4",
+      "luminance" : 4.6875,
+      "matched" : true,
+      "measured" : {
+        "luminance" : 0.22509015715982827
+      },
+      "scene" : "hdr",
+      "targets" : {
+        "luminance" : 0.23026171774852389
+      },
+      "truthSHA256" : "2e81795dcb9243e42d929de9a381528d5c8ce0390cc085c3275f74e704fc5786",
+      "value" : 60
+    },
+    {
+      "chroma" : 0,
+      "control" : "luminance",
+      "inputSHA256" : "08740d856ceec68b589c63522b8d8126bcf3a9898e71fe903beec5b07bbc83a4",
+      "luminance" : 12.5,
+      "matched" : true,
+      "measured" : {
+        "luminance" : 0.5312595591007736
+      },
+      "scene" : "hdr",
+      "targets" : {
+        "luminance" : 0.52622602557881359
+      },
+      "truthSHA256" : "2e81795dcb9243e42d929de9a381528d5c8ce0390cc085c3275f74e704fc5786",
+      "value" : 100
+    },
+    {
+      "chroma" : 1.953125,
+      "control" : "chroma",
+      "inputSHA256" : "08740d856ceec68b589c63522b8d8126bcf3a9898e71fe903beec5b07bbc83a4",
+      "luminance" : 0,
+      "matched" : false,
+      "measured" : {
+        "chroma" : 0.11384966484537185
+      },
+      "scene" : "hdr",
+      "targets" : {
+        "chroma" : 0.12119805688076857
+      },
+      "truthSHA256" : "2e81795dcb9243e42d929de9a381528d5c8ce0390cc085c3275f74e704fc5786",
+      "value" : 20
+    },
+    {
+      "chroma" : 8.59375,
+      "control" : "chroma",
+      "inputSHA256" : "08740d856ceec68b589c63522b8d8126bcf3a9898e71fe903beec5b07bbc83a4",
+      "luminance" : 0,
+      "matched" : true,
+      "measured" : {
+        "chroma" : 0.44818125797965136
+      },
+      "scene" : "hdr",
+      "targets" : {
+        "chroma" : 0.44681534858622629
+      },
+      "truthSHA256" : "2e81795dcb9243e42d929de9a381528d5c8ce0390cc085c3275f74e704fc5786",
+      "value" : 60
+    },
+    {
+      "chroma" : 18.359375,
+      "control" : "chroma",
+      "inputSHA256" : "08740d856ceec68b589c63522b8d8126bcf3a9898e71fe903beec5b07bbc83a4",
+      "luminance" : 0,
+      "matched" : true,
+      "measured" : {
+        "chroma" : 0.74973097090914043
+      },
+      "scene" : "hdr",
+      "targets" : {
+        "chroma" : 0.74961901898747152
+      },
+      "truthSHA256" : "2e81795dcb9243e42d929de9a381528d5c8ce0390cc085c3275f74e704fc5786",
+      "value" : 100
+    },
+    {
+      "chroma" : 1.953125,
+      "control" : "joint",
+      "inputSHA256" : "08740d856ceec68b589c63522b8d8126bcf3a9898e71fe903beec5b07bbc83a4",
+      "luminance" : 0.1953125,
+      "matched" : false,
+      "measured" : {
+        "chroma" : 0.11384966484537185,
+        "luminance" : 0.009737541678347283
+      },
+      "scene" : "hdr",
+      "targets" : {
+        "chroma" : 0.12119804917378552,
+        "luminance" : 0.011439071007690704
+      },
+      "truthSHA256" : "2e81795dcb9243e42d929de9a381528d5c8ce0390cc085c3275f74e704fc5786",
+      "value" : 20
+    },
+    {
+      "chroma" : 8.59375,
+      "control" : "joint",
+      "inputSHA256" : "08740d856ceec68b589c63522b8d8126bcf3a9898e71fe903beec5b07bbc83a4",
+      "luminance" : 4.6875,
+      "matched" : true,
+      "measured" : {
+        "chroma" : 0.44818125797965136,
+        "luminance" : 0.22509015715982827
+      },
+      "scene" : "hdr",
+      "targets" : {
+        "chroma" : 0.44681533791612194,
+        "luminance" : 0.23026172458814287
+      },
+      "truthSHA256" : "2e81795dcb9243e42d929de9a381528d5c8ce0390cc085c3275f74e704fc5786",
+      "value" : 60
+    },
+    {
+      "chroma" : 18.359375,
+      "control" : "joint",
+      "inputSHA256" : "08740d856ceec68b589c63522b8d8126bcf3a9898e71fe903beec5b07bbc83a4",
+      "luminance" : 12.5,
+      "matched" : true,
+      "measured" : {
+        "chroma" : 0.74973097090914043,
+        "luminance" : 0.5312595591007736
+      },
+      "scene" : "hdr",
+      "targets" : {
+        "chroma" : 0.74961902130085267,
+        "luminance" : 0.52622599981860496
+      },
+      "truthSHA256" : "2e81795dcb9243e42d929de9a381528d5c8ce0390cc085c3275f74e704fc5786",
+      "value" : 100
+    }
+  ]
+}
