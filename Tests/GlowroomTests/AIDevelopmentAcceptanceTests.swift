@@ -257,7 +257,11 @@ private struct AIAcceptanceHarness: View {
         .padding(20)
         .environmentObject(editor)
         .environmentObject(workspace)
-        .environment(\.developPreviewSink, { request, settings, bitmap, source in
+        .environment(\.developPreviewSink, { handoff in
+            let request = handoff.identity.request
+            let settings = handoff.identity.settings
+            let bitmap = handoff.frame.output
+            let source = handoff.decodedSource
             workspace.bind(source: request.source)
             workspace.markDisplayed(source: request.source, settings: settings)
             workspace.receive(bitmap, sourceBitmap: source)

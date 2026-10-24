@@ -22,11 +22,8 @@ enum DevelopGeometryRenderer {
     }
 
     static func outputSize(width: Int, height: Int, geometry: DevelopGeometry) throws -> (width: Int, height: Int) {
-        let geometry = geometry.normalized
-        try geometry.validate()
-        let rect = try cropRect(width: width, height: height, crop: geometry.crop)
-        let size = try straightenedSize(width: rect.width, height: rect.height, geometry: geometry)
-        return geometry.quarterTurns.isMultiple(of: 2) ? size : (size.height, size.width)
+        try DevelopGeometryPlan(sourceExtent: CGRect(x: 0, y: 0, width: width, height: height),
+                                geometry: geometry).outputSize
     }
 
     static func apply(to input: CIImage, geometry: DevelopGeometry, extent: CGRect,
@@ -73,33 +70,14 @@ enum DevelopGeometryRenderer {
             }
             image = result
         }
-        let localCrop = try cropRect(width: Int(extent.width), height: Int(extent.height), crop: geometry.crop)
-        let crop = localCrop.offsetBy(dx: extent.minX, dy: extent.minY)
-        image = image.cropped(to: crop).transformed(by: CGAffineTransform(translationX: -crop.minX, y: -crop.minY))
-        if geometry.straightenAngle != 0 {
-            let size = try straightenedSize(width: crop.width, height: crop.height, geometry: geometry)
-            let radians = CGFloat(geometry.straightenAngle * .pi / 180)
-            let cosine = cos(radians), sine = sin(radians)
-            let transform = CGAffineTransform(a: cosine, b: -sine, c: sine, d: cosine,
-                tx: CGFloat(size.width) / 2 - cosine * crop.width / 2 - sine * crop.height / 2,
-                ty: CGFloat(size.height) / 2 + sine * crop.width / 2 - cosine * crop.height / 2)
-            // Clamping also protects the first/last pixel's interpolation
-            // footprint, and permits a valid opaque 1-pixel result for a tiny
-            // crop whose mathematical inscribed width would be subpixel.
-            if geometry.constrainToImage { image = image.clampedToExtent() }
-            image = image.transformed(by: transform)
-                .cropped(to: CGRect(x: 0, y: 0, width: size.width, height: size.height))
-        }
-        if geometry.flipHorizontal {
-            image = image.transformed(by: CGAffineTransform(a: -1, b: 0, c: 0, d: 1, tx: image.extent.width, ty: 0))
-        }
-        if geometry.flipVertical {
-            image = image.transformed(by: CGAffineTransform(a: 1, b: 0, c: 0, d: -1, tx: 0, ty: image.extent.height))
-        }
-        for _ in 0..<geometry.quarterTurns {
-            let width = image.extent.width, height = image.extent.height
-            image = image.transformed(by: CGAffineTransform(a: 0, b: -1, c: 1, d: 0, tx: 0, ty: width))
-                .cropped(to: CGRect(x: 0, y: 0, width: height, height: width))
+        let plan = try DevelopGeometryPlan(sourceExtent: extent, geometry: geometry)
+        // Keep the established crop/clamp/transform order. The inverse picker
+        // consumes these same planned matrices rather than recomputing angles.
+        for step in plan.steps {
+            if let crop = step.inputCrop { image = image.cropped(to: crop) }
+            if step.clampsInput { image = image.clampedToExtent() }
+            image = image.transformed(by: step.transform)
+            if let crop = step.outputCrop { image = image.cropped(to: crop) }
         }
         try Task.checkCancellation()
         return image
@@ -191,48 +169,10 @@ enum DevelopGeometryRenderer {
         return total.overflow ? nil : total.partialValue
     }
 
-    private static func cropRect(width: Int, height: Int, crop: DevelopCropRect?) throws -> CGRect {
-        guard width > 0, height > 0, Double(width) < Double(Int.max), Double(height) < Double(Int.max) else {
-            throw EditRenderError.unavailable
-        }
-        guard let crop else { return CGRect(x: 0, y: 0, width: width, height: height) }
-        // Avoid an extra pixel when a decimal edge such as 0.2 + 0.4 is a few
-        // floating-point ulps above its exact integer pixel boundary.
-        let left = min(width - 1, max(0, Int((crop.x * Double(width) + 1e-9).rounded(.down))))
-        let right = min(width, max(left + 1, Int((min(1, crop.x + crop.width) * Double(width) - 1e-9).rounded(.up))))
-        let top = min(height - 1, max(0, Int((crop.y * Double(height) + 1e-9).rounded(.down))))
-        let bottom = min(height, max(top + 1, Int((min(1, crop.y + crop.height) * Double(height) - 1e-9).rounded(.up))))
-        return CGRect(x: left, y: height - bottom, width: right - left, height: bottom - top)
-    }
-
     private static func validateExtent(_ extent: CGRect) throws {
         guard extent.width > 0, extent.height > 0, extent.width.isFinite, extent.height.isFinite,
               extent.width < CGFloat(Int.max), extent.height < CGFloat(Int.max),
               extent.minX.isFinite, extent.minY.isFinite else { throw EditRenderError.unavailable }
-    }
-
-    /// The same integer canvas is used for rendering and export descriptors.
-    /// A centered output of the crop's aspect fits inside the rotated crop iff
-    /// both of its inverse-rotated corner coordinates fit the source bounds.
-    private static func straightenedSize(width: CGFloat, height: CGFloat, geometry: DevelopGeometry) throws -> (width: Int, height: Int) {
-        guard geometry.straightenAngle != 0 else {
-            return (try rasterDimension(width, rounding: .down), try rasterDimension(height, rounding: .down))
-        }
-        let radians = CGFloat(abs(geometry.straightenAngle) * .pi / 180)
-        let cosine = cos(radians), sine = sin(radians)
-        if geometry.constrainToImage {
-            let scale = min(width / (width * cosine + height * sine), height / (width * sine + height * cosine))
-            return (try rasterDimension(width * scale + 1e-9, rounding: .down),
-                    try rasterDimension(height * scale + 1e-9, rounding: .down))
-        }
-        return (try rasterDimension(width * cosine + height * sine - 1e-9, rounding: .up),
-                try rasterDimension(width * sine + height * cosine - 1e-9, rounding: .up))
-    }
-
-    private static func rasterDimension(_ value: CGFloat, rounding: FloatingPointRoundingRule) throws -> Int {
-        let rounded = max(1, value.rounded(rounding))
-        guard value.isFinite, value > 0, rounded < CGFloat(Int.max) else { throw EditRenderError.unavailable }
-        return Int(rounded)
     }
 
     private static func point(_ point: LocalMaskPoint, in extent: CGRect) -> CGPoint {

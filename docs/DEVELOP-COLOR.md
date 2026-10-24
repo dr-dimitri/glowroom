@@ -3,8 +3,9 @@
 Die Grundeinstellungen gelten nicht destruktiv für die aktive Bildquelle. Vorschau
 und Export verwenden denselben Core-Image-Graphen; die Originaldatei bleibt
 unverändert. Die Bildoperationen laufen in den vorhandenen begrenzten
-Hintergrund-Renderern. Der kleine Weißpunkt-/Pipettenalgorithmus braucht keine
-zusätzlichen Worker oder GPU-Rücklesevorgänge.
+Hintergrund-Renderern. Die bisherige Weißabgleichspipette verwendet die bereits
+vorhandene kleine Analyse. Die präzisen Levels-Pipetten lesen dagegen ein
+begrenztes Float-Fenster aus ihrem eigenen festgelegten Messknoten.
 
 ## Weißabgleich
 
@@ -251,5 +252,55 @@ Levels gehört ausschließlich zur globalen Bearbeitung. Lokale Masken wenden
 den globalen Levels-Schritt nicht erneut an; ihre Korrekturen arbeiten auf der
 global entwickelten Grundlage. Vorschau, Export und entwickelte Ersatzpixel
 verwenden denselben Levels-Graphen. Die bestehenden Weiß-/Schwarzregler sowie
-ihre Umschalt-Doppelklick-Automatik bleiben eigenständige Funktionen. Pipetten
-und Endpunkt-Automatik sind die nachfolgenden Erweiterungen #170 und #171.
+ihre Umschalt-Doppelklick-Automatik bleiben eigenständige Funktionen. Die
+Endpunkt-Automatik folgt in #171.
+
+### Präzise Levels-Pipetten
+
+Schwarz und Weiß setzen einen Eingangsanker; Grau berechnet
+`gamma = log((x-B)/(W-B)) / log(t)`. Im Standardmodus gilt `t=0.5` für den
+normalisierten Mittelton. Master verwendet `max(R,G,B)` nach den unveränderten
+Einzelkurven. RGB-Neutralisierung bildet zuerst den vollständigen vorgeschlagenen
+Master mit Gamma 1 und invertiert dessen übrige Parameter sowie gemeinsame
+RGB-Ausgangsgrenzen auf das Ziel 0,5. Ungültige Logarithmen, Gammawerte,
+Float-Spannen oder mehrdeutige Inversen werden vollständig abgelehnt.
+Das RGB-Grauziel wird zusätzlich mit Float-Uniforms bei getrennter und
+kontrahierter Multiplikation/Addition geprüft. Instabile Vorschläge mit mehr
+als acht Float-Einheits-ULPs Abweichung (etwa `9.54e-7`) werden abgelehnt.
+Vor der Übernahme prüft ein einzelner Float-Pixel denselben Levels-Knoten auch
+auf dem tatsächlichen Core-Image-Backend; dadurch können native Potenz-/TRC-
+Rundungen das zugesagte Ziel nicht unbemerkt verändern.
+
+`globalLevelsInputGraph` ist die gemeinsame Messquelle vor dem gesamten Knoten.
+Die Probe verwendet den tatsächlichen adaptiven Renderinput, kein Bildschirm-
+RGBA8 und keinen zusätzlichen kleinen Proxy. Das feste 5×5-Fenster wird an
+Rasterrändern gekürzt. Nach Entpremultiplikation wird jeder Pixel signiert-sRGB-
+codiert; erst danach folgt die Alpha-Mittelung. Nicht endliche/unsichtbare Pixel
+zählen nicht, mindestens `max(1, 0.25 * Fensterpixel)` sichtbare Pixeläquivalente
+sind erforderlich. Nur maximal 400 Bytes gelangen pro Farbmessfenster zur CPU.
+Diese kleine Reduktion bleibt seriell; die bestehende Analyse-Actor-Lane teilt
+Kontext und decodierte Quelle mit anderen Tonwertanalysen.
+
+Die inverse Geometrie verwendet dieselben geordneten Crop-/Clamp-/Transform-
+Schritte wie der Renderer, einschließlich gerundeter adaptiver Rastermaße.
+Retusche wird im tatsächlichen Messfenster aufgelöst: unberührt bleibt der
+Originalgraph; genau eine vollständig deckende eingefrorene Ersatzfläche
+verwendet `globalLevelsReplacementInputGraph` mit dem Originalbezug für Balance.
+Gemischte und andere nicht eindeutig zuordenbare Reparaturproben werden abgelehnt.
+
+Der angenommene Frame hält genau seinen tatsächlichen Input und Output. Der
+32-MiB-Ausgabecache hält zusätzliche Inputs nur schwach; verlorene Inputs werden
+in derselben begrenzten Renderlane ohne Decode rekonstruiert. Artefaktprovider
+tragen die zugehörige Reservation auch nach Ende ihrer Renderphase; Planung
+berücksichtigt Eingabe, Ausgabe, vorigen Frame, Cache und native Arbeitsflächen.
+Ein unveränderter Input/Output teilt seine bestehende Reservation.
+
+Asset-/Artefaktquelle, Quellrevision, Edit-/Selection-Session und Generation,
+lokale Revision, komplette Einstellungen, Lade-Token und tatsächliche Raster-
+Identität gehören zum Auftrag. Sie entstehen vor dem Rendern. Pending-Aufträge
+entwerten alte Frames auch bei einem Retry ohne Bearbeitungsrevision. Eingebettete
+RAW-Kameravorschauen und progressive Zwischenframes sind nicht messbereit.
+Nach Probe und vollständiger Graphvalidierung wird derselbe Gültigkeitsbeweis
+erneut geprüft, auch für Fehler. Der Renderer prüft mögliche Überläufe außerhalb
+der Probe und in nachfolgenden Stufen vor der einzigen atomaren Settingsübernahme.
+Bedienung und Grenzen beschreibt die [Workspace-Anleitung](DEVELOP-WORKSPACE.md#schwarz--grau--und-weißpipetten).

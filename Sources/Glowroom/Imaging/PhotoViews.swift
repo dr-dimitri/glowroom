@@ -43,13 +43,14 @@ struct PhotoPreview: View {
     var sourceRevision: String? = nil
     var imageScale: CGFloat = 1
     var imageRotation: Double = 0
+    var revision: DevelopPreviewRevision? = nil
 
     var body: some View {
         AsyncPhotoView(
             request: PreviewRequest(source: source ?? .original(.init(fileURL: url, modifiedAt: modifiedAt, fileSize: fileSize)), pixelSize: 2_400,
                                     allowsEmbeddedPreview: !developing && settings.isNeutral, sourceRevision: sourceRevision, allowsHDR: settings.developColor.hdrEnabled),
             priority: .selected, settings: settings, showsFailureDescription: true, progressive: true,
-            imageScale: imageScale, imageRotation: imageRotation
+            imageScale: imageScale, imageRotation: imageRotation, revision: revision
         )
     }
 }
@@ -57,6 +58,7 @@ struct PhotoPreview: View {
 @MainActor
 private struct AsyncPhotoView: View {
     @Environment(\.developPreviewSink) private var previewSink
+    @Environment(\.developPreviewPending) private var previewPending
     @Environment(\.editingProgressIsCovered) private var progressIsCovered
     let request: PreviewRequest
     let priority: PreviewPriority
@@ -65,15 +67,14 @@ private struct AsyncPhotoView: View {
     var progressive = false
     var imageScale: CGFloat = 1
     var imageRotation: Double = 0
+    var revision: DevelopPreviewRevision? = nil
 
-    private struct RenderIdentity: Hashable {
-        let request: PreviewRequest
-        let settings: EditSettings
-        let sourceToken: UUID?
-    }
     private struct Displayed {
-        let identity: RenderIdentity
+        let identity: DevelopPreviewRenderIdentity
         let image: NSImage
+        // Retain the displayed input only for the selected-photo frame. The
+        // output cache itself holds no additional decoded source or proxy.
+        let frame: AdjustedPreviewFrame?
     }
 
     private struct SourceLoadIdentity: Hashable { let request: PreviewRequest; let retry: UUID }
@@ -81,13 +82,15 @@ private struct AsyncPhotoView: View {
     @PhotoState private var loadedRequest: PreviewRequest?
     @PhotoState private var sourceBitmap: PreviewBitmap?
     @PhotoState private var sourceToken: UUID?
+    @PhotoState private var finalSourceReady = false
     @PhotoState private var displayed: Displayed?
     @PhotoState private var loadingSource = true
     @PhotoState private var sourceError: String?
     @PhotoState private var renderError: String?
 
-    private var renderIdentity: RenderIdentity {
-        RenderIdentity(request: request, settings: settings.normalized, sourceToken: sourceToken)
+    private var renderIdentity: DevelopPreviewRenderIdentity {
+        DevelopPreviewRenderIdentity(request: request, settings: settings.normalized, revision: revision,
+                                     sourceToken: sourceToken, finalSourceReady: finalSourceReady)
     }
     private var sameDisplayedPhoto: Bool {
         guard let displayed else { return false }
@@ -128,9 +131,11 @@ private struct AsyncPhotoView: View {
         // values. Moving a slider never repeatedly cancels a slow RAW decode.
         .task(id: SourceLoadIdentity(request: request, retry: retry), priority: priority == .selected ? .userInitiated : .utility) {
             guard !Task.isCancelled else { return }
+            previewPending?(renderIdentity)
             loadedRequest = request
             sourceBitmap = nil
             sourceToken = nil
+            finalSourceReady = false
             loadingSource = true
             sourceError = nil
             renderError = nil
@@ -149,6 +154,7 @@ private struct AsyncPhotoView: View {
                 guard loadedRequest == request else { return }
                 sourceBitmap = bitmap
                 sourceToken = UUID()
+                finalSourceReady = true
                 loadingSource = false
             } catch is CancellationError {
                 // The next photo's task owns the state.
@@ -160,7 +166,9 @@ private struct AsyncPhotoView: View {
         }
         .task(id: renderIdentity, priority: priority == .selected ? .userInitiated : .utility) {
             let identity = renderIdentity
-            guard loadedRequest == request, let sourceBitmap, !Task.isCancelled else { return }
+            guard !Task.isCancelled else { return }
+            previewPending?(identity)
+            guard loadedRequest == request, let sourceBitmap else { return }
             renderError = nil
             do {
                 // Coalesce continuous slider events while retaining the previous
@@ -168,15 +176,25 @@ private struct AsyncPhotoView: View {
                 if !settings.isNeutral { try await Task.sleep(for: .milliseconds(45)) }
                 // A cached source can exceed request.pixelSize. Enforce the
                 // actual output limit even for neutral/original comparisons.
-                let bitmap = try await AdjustedPreviewPipeline.shared.image(sourceBitmap, request: request,
-                    settings: identity.settings, priority: priority, maximumOutputPixelSize: request.pixelSize)
+                let frame: AdjustedPreviewFrame?
+                let bitmap: PreviewBitmap
+                if priority == .selected, showsFailureDescription {
+                    let rendered = try await AdjustedPreviewPipeline.shared.frame(sourceBitmap, request: identity.request,
+                        settings: identity.settings, priority: priority, maximumOutputPixelSize: identity.request.pixelSize)
+                    frame = rendered
+                    bitmap = rendered.output
+                } else {
+                    frame = nil
+                    bitmap = try await AdjustedPreviewPipeline.shared.image(sourceBitmap, request: identity.request,
+                        settings: identity.settings, priority: priority, maximumOutputPixelSize: identity.request.pixelSize)
+                }
                 try Task.checkCancellation()
                 guard renderIdentity == identity else { return }
                 PipelineTrace.measure(.uiHandoff) {
                     displayed = Displayed(identity: identity, image: NSImage(cgImage: bitmap.image,
-                                          size: NSSize(width: bitmap.image.width, height: bitmap.image.height)))
+                                          size: NSSize(width: bitmap.image.width, height: bitmap.image.height)), frame: frame)
                 }
-                if priority == .selected, showsFailureDescription { previewSink?(request, identity.settings, bitmap, sourceBitmap) }
+                if let frame { previewSink?(DevelopPreviewHandoff(identity: identity, frame: frame, decodedSource: sourceBitmap)) }
             } catch is CancellationError {
                 // A newer parameter value, photo or source resolution supersedes this result.
             } catch {
@@ -188,6 +206,7 @@ private struct AsyncPhotoView: View {
             loadedRequest = nil
             sourceBitmap = nil
             sourceToken = nil
+            finalSourceReady = false
             displayed = nil
             loadingSource = true
             sourceError = nil

@@ -58,10 +58,12 @@ enum LevelsUIParameter: String, CaseIterable, Identifiable {
 struct LevelsInspector: View {
     let assetID: String
     @ObservedObject var library: LibraryModel
+    @ObservedObject var workspace: DevelopWorkspace
     @EnvironmentObject private var editor: EditingModel
     @ViewState private var selectedChannel: LevelsChannel = .master
     @ViewState private var expanded = true
     @ViewState private var validationMessage: String?
+    @ViewState private var pickerMode: LevelsPickerMode = .setTone
     @StateObject private var numericInput = LevelsNumericInput()
 
     private var levels: LevelsSettings { editor.settings(for: assetID).levels }
@@ -69,17 +71,23 @@ struct LevelsInspector: View {
         !editor.canEdit || !library.canModify || library.selectedID != assetID ||
             library.comparesOriginal || library.comparesCurrentSourceWithoutSettings
     }
+    private var pickerContextIsCurrent: Bool {
+        guard !readOnly, library.isDeveloping, library.previewComparisonLayout == .single,
+              let asset = library.selectedAsset, asset.id == assetID,
+              let source = try? editor.resolvedSource(for: asset, intent: .currentEditing) else { return false }
+        return source.identity == workspace.sourceIdentity
+    }
 
     var body: some View {
         DisclosureGroup(isExpanded: Binding(get: { expanded }, set: { value in
-            if !value { finishInput() }
+            if !value { finishInput(); workspace.endLevelsPicker() }
             expanded = value
         })) {
             VStack(alignment: .leading, spacing: 5) {
                 HStack {
                     Text("Kanal")
                     LevelsChannelPicker(selection: Binding(get: { selectedChannel }, set: { channel in
-                        finishInput(); selectedChannel = channel; validationMessage = nil
+                        finishInput(); workspace.endLevelsPicker(); selectedChannel = channel; validationMessage = nil
                     }), titles: LevelsChannel.allCases.map { title($0) + (levels[$0].isNeutral ? "" : " •") })
                 }.font(.system(size: 11))
                 if !otherActiveChannels.isEmpty {
@@ -88,6 +96,7 @@ struct LevelsInspector: View {
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityIdentifier("develop.levels.other-active-channels")
                 }
+                pickerControls
                 ForEach(LevelsUIParameter.allCases) { parameter in
                     parameterRow(parameter, channel: selectedChannel)
                 }
@@ -116,6 +125,14 @@ struct LevelsInspector: View {
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityIdentifier("develop.levels.validation")
                 }
+                if let error = workspace.errorMessage {
+                    Text(error).font(.system(size: 10)).foregroundStyle(.orange)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("develop.levels.picker-message")
+                }
+                if let description = workspace.levelsSampleDescription {
+                    Text(description).font(.system(size: 10)).foregroundStyle(Theme.muted)
+                }
             }.font(.system(size: 10)).toggleStyle(.checkbox).controlSize(.mini)
                 .padding(.top, 5).disabled(readOnly)
         } label: {
@@ -126,7 +143,49 @@ struct LevelsInspector: View {
         }
         .padding(.vertical, 6)
         .overlay(alignment: .top) { Rectangle().fill(Theme.line).frame(height: 1) }
-        .onDisappear { finishInput() }
+        .onDisappear { finishInput(); workspace.endLevelsPicker() }
+        .onChange(of: readOnly) { _, value in if value { workspace.endLevelsPicker() } }
+        .onChange(of: editor.localRevision(for: assetID)) { _, _ in workspace.endLevelsPicker() }
+    }
+
+    private var pickerControls: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Picker("Pipettenmodus", selection: Binding(get: { pickerMode }, set: {
+                finishInput(); workspace.endLevelsPicker(); pickerMode = $0
+            })) {
+                Text("Tonwert setzen").tag(LevelsPickerMode.setTone)
+                Text("RGB neutralisieren").tag(LevelsPickerMode.neutralizeRGB)
+            }.pickerStyle(.segmented).accessibilityIdentifier("develop.levels.picker-mode")
+            if pickerMode == .neutralizeRGB {
+                Text("Ändert Rot, Grün und Blau gemeinsam. Zusätzlich wird nur der passende gemeinsame Parameter neutralisiert: Schwarz → 0, Weiß → 1 oder Gamma → 1. Andere Parameter bleiben erhalten; unterschiedliche RGB-Ausgangsgrenzen werden abgelehnt.")
+                    .font(.system(size: 10)).foregroundStyle(Theme.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            ForEach([LevelsPickerPoint.black, .gray, .white], id: \.self) { point in
+                let picker = DevelopLevelsPickerSelection(point: point, mode: pickerMode, channel: selectedChannel)
+                Button {
+                    finishInput()
+                    if workspace.levelsPicker == picker { workspace.endLevelsPicker() }
+                    else {
+                        workspace.beginLevelsPicker(picker, assetID: assetID, editor: editor,
+                            selection: DevelopSelectionIdentity(sessionID: library.aiSelectionSessionID,
+                                                                generation: library.aiSelectionGeneration),
+                            isCurrent: pickerContextIsCurrent)
+                    }
+                } label: {
+                    HStack(spacing: 5) {
+                        Image(systemName: "eyedropper")
+                        Text(point == .black ? "Schwarzpunkt setzen" : point == .gray ? "Mittelton auf 50 % setzen" : "Weißpunkt setzen")
+                        Spacer(minLength: 0)
+                        if workspace.levelsPicker == picker { Text("Aktiv · Esc") }
+                    }
+                }.buttonStyle(.plain).foregroundStyle(workspace.levelsPicker == picker ? Theme.accent : Theme.text)
+                    .accessibilityIdentifier("develop.levels.pick-\(point.rawValue)")
+            }
+            Text("5 × 5 Pixel der angezeigten Eingangsauflösung; am Rand beschnitten. Gemessen wird vor Levels. Nachfolgende Looks bleiben aktiv. RGB gemeinsam verwendet den größten Kanalwert und verspricht keine neutrale Farbe.")
+                .font(.system(size: 10)).foregroundStyle(Theme.muted)
+                .fixedSize(horizontal: false, vertical: true)
+        }.padding(.vertical, 4)
     }
 
     private var otherActiveChannels: [LevelsChannel] {
@@ -169,6 +228,7 @@ struct LevelsInspector: View {
     }
     private func publish(_ settings: EditSettings) {
         guard !readOnly else { return }
+        workspace.endLevelsPicker()
         editor.selectEditingFunction(.adjustments, assetID: assetID, cancelsActiveInput: false)
         editor.setSettings(settings, for: assetID)
     }

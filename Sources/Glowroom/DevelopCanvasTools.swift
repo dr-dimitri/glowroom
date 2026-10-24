@@ -60,6 +60,8 @@ struct DevelopCanvasInteraction: View {
     let asset: PhotoAsset
     @ObservedObject var workspace: DevelopWorkspace
     var onDoubleClick: (() -> Void)? = nil
+    var levelsSelection: DevelopSelectionIdentity? = nil
+    var levelsIsCurrent: @MainActor () -> Bool = { false }
     @EnvironmentObject private var editor: EditingModel
     @ViewState private var start: CGPoint?
     @ViewState private var current: CGPoint?
@@ -81,6 +83,16 @@ struct DevelopCanvasInteraction: View {
         let asset: String
         let source: AISourceIdentity?
     }
+    private struct LevelsInputIdentity: Hashable {
+        let display: DevelopPreviewRenderIdentity?
+        let picker: DevelopLevelsPickerSelection?
+        let selection: DevelopSelectionIdentity?
+    }
+    private var levelsReady: Bool {
+        guard let levelsSelection else { return false }
+        return workspace.levelsPicker != nil && editor.canEdit && levelsIsCurrent() &&
+            workspace.matchesLevelsDisplay(assetID: asset.id, editor: editor, selection: levelsSelection)
+    }
 
     var body: some View {
         GeometryReader { viewport in
@@ -88,7 +100,19 @@ struct DevelopCanvasInteraction: View {
             let angle = geometry.straightenAngle
             let fit = DevelopCropCanvasPresentation.fittingScale(sourceSize: sourceSize, viewport: viewport.size, angle: angle)
             ZStack(alignment: .topLeading) {
-                if workspace.picksWhiteBalance {
+                if workspace.levelsPicker != nil {
+                    let outputSize = workspace.levelsDisplay.map {
+                        CGSize(width: $0.frame.output.image.width, height: $0.frame.output.image.height)
+                    } ?? .zero
+                    let levelsRect = DevelopCropCanvasPresentation.imageRect(sourceSize: outputSize, viewport: viewport.size)
+                    DevelopCropInputSurface(onInput: { levelsInput($0, rect: levelsRect) }, onHover: { _ in },
+                        isEnabled: levelsReady,
+                        inputIdentity: AnyHashable(LevelsInputIdentity(display: workspace.levelsDisplay?.identity,
+                            picker: workspace.levelsPicker, selection: levelsSelection)),
+                        cursor: { levelsReady && levelsRect.contains($0) ? .crosshair : .arrow },
+                        canvasLabel: "Bildfläche für Tonwertpipette wählen · Escape beendet die Pipette")
+                        .accessibilityIdentifier("develop.levels.canvas")
+                } else if workspace.picksWhiteBalance {
                     DevelopCropInputSurface(onInput: { whiteBalanceInput($0, rect: rect) }, onHover: { _ in },
                         isEnabled: editor.canEdit && workspace.isOriginalCanvasReady,
                         inputIdentity: AnyHashable(WhiteBalanceInputIdentity(asset: asset.id, source: workspace.sourceIdentity)),
@@ -129,9 +153,10 @@ struct DevelopCanvasInteraction: View {
                 }
             }
             .onChange(of: viewport.size) { _, _ in finishGesture() }
-        }.allowsHitTesting(workspace.isOriginalCanvasReady && (workspace.tool != .basic || workspace.picksWhiteBalance))
+        }.allowsHitTesting(workspace.levelsPicker != nil || (workspace.isOriginalCanvasReady && (workspace.tool != .basic || workspace.picksWhiteBalance)))
             .onChange(of: workspace.tool) { _, _ in finishGesture() }
             .onChange(of: workspace.picksWhiteBalance) { _, _ in finishGesture() }
+            .onChange(of: workspace.levelsPicker) { _, _ in finishGesture() }
             .onChange(of: workspace.isStraightening) { _, _ in finishGesture() }
             .onChange(of: asset.id) { _, _ in finishGesture() }
             .onChange(of: sourceSize) { _, _ in finishGesture() }
@@ -139,6 +164,31 @@ struct DevelopCanvasInteraction: View {
             .onChange(of: workspace.isOriginalCanvasReady) { _, ready in if !ready { finishGesture() } }
             .onChange(of: editor.canEdit) { _, canEdit in if !canEdit { finishGesture() } }
             .onDisappear { finishGesture(); NSCursor.arrow.set() }
+    }
+    private func levelsInput(_ event: DevelopCropInputEvent, rect: CGRect) {
+        if event.phase == .cancelled { workspace.endLevelsPicker(); return }
+        guard event.kind == .pointer, event.phase == .ended, levelsReady,
+              let selection = levelsSelection, let display = workspace.levelsDisplay,
+              let output = normalized(event.location, rect: rect),
+              normalized(event.startLocation, rect: rect) != nil else { return }
+        do {
+            let input = display.frame.actualInput
+            let plan = try DevelopGeometryPlan(sourceExtent: CGRect(x: 0, y: 0,
+                width: input.image.width, height: input.image.height), geometry: display.identity.settings.developGeometry)
+            guard plan.outputSize.width == display.frame.output.image.width,
+                  plan.outputSize.height == display.frame.output.image.height,
+                  let pixel = plan.inputPoint(fromOutputTopLeft: CGPoint(
+                    x: output.x * CGFloat(display.frame.output.image.width),
+                    y: output.y * CGFloat(display.frame.output.image.height))) else {
+                workspace.errorMessage = "Wähle eine Bildfläche innerhalb des gedrehten Bildes; transparente Rotationsränder sind keine Messquelle."
+                return
+            }
+            workspace.applyLevelsPicker(at: CGPoint(x: pixel.x / CGFloat(input.image.width),
+                                                     y: pixel.y / CGFloat(input.image.height)),
+                assetID: asset.id, editor: editor, selection: selection, isCurrent: levelsIsCurrent)
+        } catch {
+            workspace.errorMessage = "Diese Vorschau kann der Messquelle noch nicht eindeutig zugeordnet werden. Warte auf die aktuelle Bildvorschau."
+        }
     }
     private func normalized(_ point: CGPoint, rect: CGRect, clamp: Bool = false) -> CGPoint? {
         guard rect.width > 0, rect.height > 0, clamp || rect.contains(point) else { return nil }

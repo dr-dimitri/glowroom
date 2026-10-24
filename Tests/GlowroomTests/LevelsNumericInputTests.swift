@@ -323,7 +323,7 @@ private final class LevelsNumericHost {
         }.joined(separator: "\n")
     }
     func mount(_ fixture: LevelsNumericFixture) async throws {
-        hosting.rootView = AnyView(LevelsInspector(assetID: fixture.asset.id, library: fixture.library)
+        hosting.rootView = AnyView(LevelsInspector(assetID: fixture.asset.id, library: fixture.library, workspace: DevelopWorkspace())
             .environmentObject(fixture.editor).frame(width: 360).fixedSize(horizontal: false, vertical: true)
             .frame(maxHeight: .infinity, alignment: .top))
         try await settle()

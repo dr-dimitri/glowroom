@@ -259,7 +259,11 @@ struct AdjustedPreviewPipelineTests {
 
     @Test
     func artifactAdmissionIncludesLocalSpatialWorkBeforeCallingTheRenderer() async throws {
-        let resources = ArtifactResourceOwner(limits: try .init(maximumBytes: 50_000))
+        // The unchanged 32×24 input, new output and preceding frame need
+        // 67,584 planned bytes without local work. After its 10,000-byte LRU
+        // allowance this budget fits that baseline, but not the active layer's
+        // additional 36,865 bytes. The spatial rejection remains intentional.
+        let resources = ArtifactResourceOwner(limits: try .init(maximumBytes: 80_000))
         let input = try fixture()
         var phase: ArtifactResourceLease? = try await resources.acquire(kind: .retainedMemory, bytes: 8_192,
             priority: .interactive, retaining: [])

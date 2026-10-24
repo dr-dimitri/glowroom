@@ -50,6 +50,58 @@ Voraussetzungen bleiben als solche im Katalog mit dokumentiertem Skip erfasst.
   native Zahlenfelder decken Fokus ohne Rundung, zweimal Enter, Kanalwechsel,
   ersten Reset bei neutralem gespeicherten Wert und verspätete Ereignisse ab.
 
+## Pipetten und akzeptierte Vorschau prüfen
+
+Die Pipetten-Abnahme läuft mit
+`./scripts/test.sh --jobs 3 --no-parallel --filter 'Levels|DevelopGeometry|AdjustedPreview|ArtifactPreview|DevelopPreviewIdentity|PreviewComparisonViewTests|AIDevelopmentAcceptanceTests'`.
+Am 24.10.2026 bestehen 201 gezielte Tests in 26 Suites. Der vollständige
+isolierte SDK-Katalog ist mit 1752 von 1752 Methoden in 180 Batches verifiziert.
+Im ersten Gesamtlauf bestanden 1748 Methoden; zwei parametrisierte Fälle der
+vier Methoden umfassenden Schärfungs-Suite enthielten noch die alte
+Speicher-Sollrechnung. Nach ausschließlich dieser Testkorrektur wurden alle
+vier Methoden erneut erfolgreich ausgeführt und die XML-Abdeckung sämtlicher
+180 Batches erneut streng geprüft. Die Originalberichte bleiben erhalten.
+Die aktuelle Resizephase zählt beide neuen Provider mit insgesamt 64 statt
+32 Bytes pro Pixel; die exakte Gleichheitsprüfung und alle Budgetgrenzen
+bleiben bestehen. Der saubere vollständige Release-Build besteht (437,33 s).
+Seit diesem Build wurden nur diese Testrechnung und Dokumentation verändert;
+ein weiterer App-Build ist deshalb nicht erforderlich. Der unabhängige finale
+Diff-/Schnittstellenreview enthält keine offenen Befunde.
+
+- Unabhängige skalare Fälle prüfen Schwarz/Weiß, `0.25 → Gamma 2`, Value nach
+  aktiven Einzelkurven, die vollständige vorgeschlagene Masterinverse,
+  unveränderte Fremdparameter, Wiederholung und atomare RGB-Neutralisierung.
+- Float-Uniforms mit separater sowie kontrahierter Multiplikation/Addition und
+  der tatsächliche native Levels-Knoten müssen das RGB-Grauziel innerhalb von
+  acht Float-Einheits-ULPs treffen. Enge instabile Kurven werden abgelehnt;
+  endliche Werte allein reichen für diese Neutralitätszusage nicht aus.
+- Tatsächliche 5×5-Readbacks prüfen sRGB/P3, Alpha 0/0,25/1, Coveragegrenzen,
+  abgeschnittene Randfenster, feinste Floatwerte, NaN/HDR und Encoding vor
+  Mittelung. Ganze Originalbilder werden dafür nicht zur CPU zurückgelesen.
+- Gerenderte Markierungsraster und native AppKit-Klicks prüfen gerundete
+  adaptive Crops, Vierteldrehungen, Spiegelungen, freie Rotation, transparente
+  Ecken, Zoom/Pan/Retina-Koordinaten und schmale geklemmte Crop-Ränder.
+- Tests verzögern Sampling und vollständige Graphvalidierung unabhängig:
+  Revisionen einschließlich Undo/Redo, Selection-A→B→A, Quelle, Profil,
+  Geometrie, Retry/Pending, Read-only und Escape entwerten Erfolge und Fehler.
+  Eingebettete Kameravorschauen und progressive Zwischenframes bleiben gesperrt.
+- Ein akzeptierter Klick bildet genau einen Undo-/Persistenzschritt. Ein
+  außerhalb des Messfensters liegender echter Float-Überlauf wird vor Übernahme
+  erkannt. Speicherfehler bleiben sichtbar, angenommene lokale Änderungen
+  können nach dem bestehenden Vertrag erneut gespeichert werden.
+- Frame-/Provider-Tests prüfen schwachen Inputcache, Rekonstruktion in der
+  besetzten begrenzten Lane, gemeinsame Aliasreservation sowie deren Freigabe.
+  Schärfung, Retusche und lokale Stufen zählen in der vollständigen Admission.
+  Die kleinen injizierten Speicherfixtures wurden rechnerisch um den neuen
+  Eingangs-/Ausgangs-/Altframeplan erweitert; Ablehnungs-, Resize-, Float32-
+  und Budgetprüfungen bleiben erhalten.
+
+Ein vollständig deckendes einzelnes eingefrorenes Retuscheersatzfenster muss
+denselben Original-Balancebezug und dieselbe Pre-Levels-Stufe wie der normale
+Renderer verwenden. Unberührte/deaktivierte Stellen sind erlaubt, Mischungen,
+Feather-/Clone-/Heal- und überlappende Bereiche werden kontrolliert abgelehnt.
+Für diese synthetischen Abnahmen sind keine privaten Fotos oder RAWs erforderlich.
+
 ## Optionale lokale RAW-Messung
 
 Nach dem normalen Testbuild, ohne konkurrierenden Build oder Benchmark:

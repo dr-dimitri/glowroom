@@ -63,6 +63,75 @@ actor AutomaticToneEstimator {
     private var cachedSourceHistogram: FloatToneHistogram?
     private var cachedSourceMaximum: Double?
 
+    /// Reuses this actor's analysis lane and Float context. Only a 5×5 region
+    /// reaches the CPU; admission conservatively covers the native input graph.
+    func sampleLevels(bitmap: PreviewBitmap, settings: EditSettings,
+                      normalizedTopLeft: CGPoint) async throws -> LevelsSampleReport {
+        try Task.checkCancellation()
+        var phase: ArtifactResourceLease?
+        if let resources = bitmap.resourceOwner {
+            let bytes = try Self.levelsAnalysisAdditionalBytes(bitmap: bitmap, settings: settings, validating: false)
+            phase = try await resources.acquire(kind: .codec, bytes: bytes, priority: .interactive,
+                retaining: bitmap.memoryOwnership.map { [$0] } ?? [])
+        }
+        defer { withExtendedLifetime((phase, bitmap)) {} }
+        // Admission may suspend. No further await occurs during graph work;
+        // cancellation keeps the lease/source alive until native work returns.
+        try Task.checkCancellation()
+        return try LevelsRetouchSampling.sample(bitmap: bitmap, settings: settings,
+            normalizedTopLeft: normalizedTopLeft, session: session, context: session.context(for: .consistentV2))
+    }
+
+    func validateLevels(bitmap: PreviewBitmap, settings: EditSettings,
+                        neutralGraySample: LevelsPickerSample? = nil) async throws {
+        try Task.checkCancellation()
+        var phase: ArtifactResourceLease?
+        if let resources = bitmap.resourceOwner {
+            let bytes = try Self.levelsAnalysisAdditionalBytes(bitmap: bitmap, settings: settings, validating: true)
+            phase = try await resources.acquire(kind: .codec, bytes: bytes, priority: .interactive,
+                retaining: bitmap.memoryOwnership.map { [$0] } ?? [])
+        }
+        defer { withExtendedLifetime((phase, bitmap)) {} }
+        try Task.checkCancellation()
+        if let neutralGraySample {
+            try LevelsRenderer.validateNeutralGray(sample: neutralGraySample, settings: settings.levels,
+                                                    context: session.context(for: settings))
+        }
+        // filterGraph invokes the full-input interval certificate and finite
+        // suffix proof, including masks/geometry, without rasterizing a CGImage.
+        _ = try EditRenderer.filterGraph(bitmap.image, settings: settings,
+                                        context: session.context(for: settings), sourcePixelScale: bitmap.sourcePixelScale)
+        try Task.checkCancellation()
+    }
+
+    static func levelsAnalysisAdditionalBytes(bitmap: PreviewBitmap, settings: EditSettings, validating: Bool) throws -> Int64 {
+        let base = try Self.estimatedAdditionalBytes(sourceBytes: Int64(bitmap.byteCost),
+            width: bitmap.image.width, height: bitmap.image.height, version: .consistentV2,
+            ownsSource: bitmap.memoryOwnership != nil, levelsActive: validating && !settings.levels.isNeutral)
+        // Retouch sampling can use the same frozen replacement prefix; final
+        // validation additionally includes local compositing and geometry.
+        guard let local = LocalAdjustmentRenderer.estimatedAdditionalBytes(adjustments: validating ? settings.localAdjustments : [],
+            width: bitmap.image.width, height: bitmap.image.height,
+            additionalRenderCount: DevelopGeometryRenderer.replacementCount(in: settings.developGeometry),
+            toneProcessingVersion: settings.workingMemoryVersion),
+            let geometry = DevelopGeometryRenderer.estimatedAdditionalBytes(geometry: settings.developGeometry,
+                width: bitmap.image.width, height: bitmap.image.height,
+                replacementColorBytesPerPixel: EditRenderer.replacementColorBytesPerPixel(settings: settings)) else {
+            throw ArtifactResourceError.capacityExceeded
+        }
+        let extra = local.addingReportingOverflow(geometry)
+        guard !extra.overflow, extra.partialValue <= UInt64(Int64.max) else { throw ArtifactResourceError.capacityExceeded }
+        let pixels = UInt64(bitmap.image.width).multipliedReportingOverflow(by: UInt64(bitmap.image.height))
+        let sharpening = pixels.partialValue.multipliedReportingOverflow(
+            by: validating ? DevelopSharpening.additionalBytesPerPixel(settings: settings) : 0)
+        let native = extra.partialValue.addingReportingOverflow(sharpening.partialValue)
+        guard !pixels.overflow, !sharpening.overflow, !native.overflow,
+              native.partialValue <= UInt64(Int64.max) else { throw ArtifactResourceError.capacityExceeded }
+        let total = base.addingReportingOverflow(Int64(native.partialValue))
+        guard !total.overflow else { throw ArtifactResourceError.capacityExceeded }
+        return total.partialValue
+    }
+
     /// V1 retains its historical estimator. V2 distinguishes a valid absolute
     /// zero from unavailable evidence so the latter never resets a saved value.
     func estimate(for control: AutomaticToneControl, bitmap: PreviewBitmap,
