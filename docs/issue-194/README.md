@@ -265,3 +265,8 @@ fehlgeschlagenen Paketstatus sowie die erfolgreiche gezielte Nachprüfung
 getrennt. Das [Quellmanifest](source-hashes.json) umfasst abschließend 311
 App-, Paket- und zugehörige Prüf-/Harnessdateien. Auch das Review des korrigierten
 privaten Aufnahmehelfers und der Dokumentation ist ohne offene Befunde beendet.
+
+Die 311 Manifestdateien wurden byteweise dem Implementierungscommit
+`54a58cb801fdbc53cbd0b67dbe4a953004f05cb5` zugeordnet. Die abschließende Zuordnung
+der JSON-Metadaten und dieses Protokolls ändert ausschließlich Dokumentation;
+App- und Testquellen sowie die geprüften PNG-Aufnahmen bleiben identisch.

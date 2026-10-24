@@ -314,5 +314,6 @@
     "Tests/GlowroomTests/WorkspaceProposalLifecycleTests.swift": "f41234907bde7e6cc84004ee3e30702e17144083a9de4e42ca32f20f6d4bf589",
     "scripts/test.sh": "99a1f3ba3d82a64f786a7688e914e75460c806f494147eaa7370ee0d99a76038"
   },
-  "sourceState": "working-tree; exact compiled app, package and native harness bytes identified by sha256"
+  "sourceState": "App, package and associated test/harness bytes verified against the implementation commit.",
+  "sourceCommit": "54a58cb801fdbc53cbd0b67dbe4a953004f05cb5"
 }
