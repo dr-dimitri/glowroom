@@ -4,10 +4,15 @@ import GlowroomCore
 struct PhotoMetadataSection: View {
     @ObservedObject var model: PhotoMetadataModel
     @Environment(\.openAIModels) private var openAIModels
+    @ViewState private var showsHelp = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Bildinformationen").font(.system(size: 15, weight: .semibold))
+            HStack {
+                Text("Bildinformationen").font(.system(size: 15, weight: .semibold))
+                Spacer(minLength: 0)
+                Button("Hilfe", systemImage: "questionmark.circle") { showsHelp = true }
+            }
             suggestionActions
             if model.isLoading { ProgressView("Bildinformationen werden geladen …") }
             recoveryAndErrors
@@ -41,6 +46,7 @@ struct PhotoMetadataSection: View {
         }.font(.system(size: 13)).fixedSize(horizontal: false, vertical: true)
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("metadata.form")
+            .sheet(isPresented: $showsHelp) { metadataHelp }
             .task {
                 model.synchronizeContext()
                 await model.refreshAvailability()
@@ -157,16 +163,26 @@ struct PhotoMetadataSection: View {
                 Button("Als manuelle Angaben bearbeiten") { model.useProposalAsManual() }
                     .disabled(!model.canUseProposalAsManual)
             }
-            if let analysis = draft.source.analyzedRaster {
-                DisclosureGroup("Analysedetails") {
-                    Text("\(analysis.providerID) · \(analysis.modelID) · \(analysis.analyzedAt.formatted(date: .abbreviated, time: .shortened))")
-                        .foregroundStyle(Theme.muted).textSelection(.enabled)
-                    Text("Eingaberaster: \(analysis.raster.pixelWidth) × \(analysis.raster.pixelHeight) · SHA256 \(analysis.raster.sha256)")
-                        .foregroundStyle(Theme.muted).textSelection(.enabled)
-                }
-            }
         }.accessibilityElement(children: .contain)
             .accessibilityIdentifier("metadata.proposal")
+    }
+
+    private var metadataHelp: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Hilfe zu Bildinformationen").font(.title2)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("Titel, Beschreibung und Tags lassen sich manuell bearbeiten oder mit KI vorschlagen. Wähle die zu übernehmenden Felder und bestätige mit Übernehmen. Verwerfen entfernt den offenen Entwurf.")
+                    Text("Bestätigte Angaben und offene Entwürfe bleiben getrennt. Bei einem Konflikt müssen die inzwischen geänderten Angaben vor dem Übernehmen geprüft werden.")
+                    if let analysis = model.record?.draft?.source.analyzedRaster {
+                        Text("Analysedetails").font(.headline)
+                        Text("\(analysis.providerID) · \(analysis.modelID) · \(analysis.analyzedAt.formatted(date: .abbreviated, time: .shortened))")
+                        Text("Eingaberaster: \(analysis.raster.pixelWidth) × \(analysis.raster.pixelHeight) · SHA256 \(analysis.raster.sha256)")
+                    }
+                }.frame(maxWidth: .infinity, alignment: .leading).textSelection(.enabled)
+            }
+            Button("Schließen") { showsHelp = false }.keyboardShortcut(.cancelAction)
+        }.font(.system(size: 13)).padding(24).frame(width: 550, height: 390)
     }
 
     private func tagPolicy(_ policy: Binding<MetadataTagPolicy>) -> some View {

@@ -8,7 +8,7 @@ Ein reiner Gruppen-/Panelwechsel startet keine Inferenz. Die folgenden Abbruchre
 
 ## Qwen einrichten und entfernen
 
-**KI-Modelle → Bildkorrekturen** zeigt Qwen3.5-4B in der lokalen
+**KI-Modelle → KI-Korrektur** zeigt Qwen3.5-4B in der lokalen
 4-Bit-Variante `mlx-community/Qwen3.5-4B-4bit`. Der erste Katalog enthält genau
 dieses Modell; weitere Modelle benötigen einen eigenen geprüften Deskriptor und
 Laufzeitadapter. Revision und Dateiprüfsummen stehen im `LLMModelDescriptor`.
@@ -16,14 +16,14 @@ Laufzeitadapter. Revision und Dateiprüfsummen stehen im `LLMModelDescriptor`.
 - **Download:** 3.061.129.077 Byte, etwa 3,06 GB. Der Dialog zeigt zusätzlich die
   logische Größe der vorhandenen Modelldateien im privaten Verzeichnis und den für die
   Einrichtung erforderlichen freien Speicher.
-- **Herunterladen** benötigt Internetzugang zu Hugging Face. Höchstens zwei
+- **Modell herunterladen** benötigt Internetzugang zu Hugging Face. Höchstens zwei
   Dateien werden gleichzeitig auf Platte übertragen; große Gewichte werden
   gestreamt und nicht vollständig in den Arbeitsspeicher geladen.
 - Downloadfortschritt, Abbruch und Fehler sind sichtbar. Erst nach Prüfung aller
   Größen und SHA-256-Digests wird eine vollständige Installation atomar
   veröffentlicht. Abbruch oder Netzfehler aktivieren kein Teilmodell. Temporäre
   Dateien brauchen zusätzlichen Speicher; die Kapazität wird vorab geprüft.
-- **Modell löschen** entfernt die von Glowroom verwaltete Installation. Ein
+- **Modell entfernen** entfernt die von Glowroom verwaltete Installation. Ein
   aktiver Modellaufruf hält eine Lease und verhindert die Löschung. Fotos und
   bereits übernommene Bearbeitungen benötigen das Modell anschließend nicht.
 

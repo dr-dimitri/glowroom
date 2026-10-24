@@ -19,6 +19,7 @@ struct MaskCanvasView: View {
     @ViewState private var loadingError: String?
     @ViewState private var isActualSize = false
     @ViewState private var sourceRevision: String?
+    @ViewState private var showsHelp = false
 
     private enum Tool: String, CaseIterable {
         case brush, erase, pan
@@ -77,14 +78,16 @@ struct MaskCanvasView: View {
             }
             Divider()
             HStack {
-                Text("Rot: darf ersetzt werden · Ohne Maske: bleibt erhalten").font(.caption)
+                Label("Maskenentwurf", systemImage: "square.and.pencil")
                 Spacer()
-                if mask.isRasterizing { ProgressView().controlSize(.mini).accessibilityLabel("Maskenvorschau wird aktualisiert") }
-                Text("Lokaler Entwurf · keine Bildgenerierung").font(.caption).foregroundStyle(.secondary)
+                if mask.isRasterizing { ProgressView("Maskenvorschau wird aktualisiert …").controlSize(.small) }
+                Button("Hilfe", systemImage: "questionmark.circle") { showsHelp = true }
             }.padding(12)
-            if let message = mask.errorMessage { Text(message).font(.caption).foregroundStyle(.orange).padding(.bottom, 10) }
+            if let message = mask.errorMessage { Text(message).foregroundStyle(.orange).padding(.bottom, 10) }
         }
+        .font(.system(size: 13))
         .frame(minWidth: 980, idealWidth: 1_080, minHeight: 560, idealHeight: 760)
+        .sheet(isPresented: $showsHelp) { maskHelp }
         .task(id: source) {
             mask.discard(); loadingError = nil; fit()
             do {
@@ -103,36 +106,49 @@ struct MaskCanvasView: View {
     }
 
     private var controls: some View {
-        HStack(spacing: 12) {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 12) {
             Picker("Werkzeug", selection: $tool) {
                 ForEach(Tool.allCases, id: \.self) { tool in Label(tool.name, systemImage: tool.symbol).tag(tool) }
             }.pickerStyle(.segmented).frame(width: 245).accessibilityLabel("Maskenwerkzeug")
+                Spacer(minLength: 0)
+                Button("Rückgängig", systemImage: "arrow.uturn.backward") { mask.undo() }
+                    .disabled(!mask.canUndo).accessibilityLabel("Maskenstrich rückgängig")
+                    .accessibilityIdentifier("mask.undo")
+                Button("Wiederholen", systemImage: "arrow.uturn.forward") { mask.redo() }
+                    .disabled(!mask.canRedo).accessibilityLabel("Maskenstrich wiederholen")
+                Menu("Maskenaktionen") {
+                    Button("Maske löschen") { mask.clear() }
+                    Button("Maske invertieren") { mask.invert() }
+                }
+            }
+            HStack(spacing: 24) {
             VStack(alignment: .leading, spacing: 3) {
-                Text("Radius: \(Int(mask.radius)) Bildpixel").font(.caption)
+                Text("Radius: \(Int(mask.radius)) Bildpixel")
                 ResettableSlider(value: $mask.radius, in: 1...500, step: 1, neutralValue: 30).accessibilityLabel("Pinselradius in Bildpixeln")
                     .accessibilityValue("\(Int(mask.radius)) Pixel")
-            }.frame(width: 145).disabled(tool == .pan)
+            }.frame(maxWidth: .infinity).disabled(tool == .pan)
             VStack(alignment: .leading, spacing: 3) {
-                Text("Härte: \(Int(mask.hardness * 100)) %").font(.caption)
+                Text("Härte: \(Int(mask.hardness * 100)) %")
                 ResettableSlider(value: $mask.hardness, in: 0...1, neutralValue: 0.8).accessibilityLabel("Pinselhärte")
                     .accessibilityValue("\(Int(mask.hardness * 100)) Prozent")
-            }.frame(width: 120).disabled(tool == .pan)
+            }.frame(maxWidth: .infinity).disabled(tool == .pan)
             VStack(alignment: .leading, spacing: 3) {
-                Text("Overlay: \(Int(mask.overlayOpacity * 100)) %").font(.caption)
+                Text("Überlagerung: \(Int(mask.overlayOpacity * 100)) %")
                 ResettableSlider(value: $mask.overlayOpacity, in: 0...1, neutralValue: 0.55).accessibilityLabel("Deckkraft des Maskenoverlays")
                     .help("Ändert nur die Anzeige, nicht die Maskengewichte.")
-            }.frame(width: 120)
-            Spacer(minLength: 0)
-            Button { mask.undo() } label: { Image(systemName: "arrow.uturn.backward") }
-                .disabled(!mask.canUndo).help("Maskenstrich rückgängig").accessibilityLabel("Maskenstrich rückgängig")
-                .accessibilityIdentifier("mask.undo")
-            Button { mask.redo() } label: { Image(systemName: "arrow.uturn.forward") }
-                .disabled(!mask.canRedo).help("Maskenstrich wiederholen").accessibilityLabel("Maskenstrich wiederholen")
-            Menu {
-                Button("Maske löschen") { mask.clear() }
-                Button("Maske invertieren") { mask.invert() }
-            } label: { Image(systemName: "ellipsis.circle") }.accessibilityLabel("Maskenaktionen")
+            }.frame(maxWidth: .infinity)
+            }
         }.disabled(mask.document == nil)
+    }
+
+    private var maskHelp: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Maskenentwurf · Hilfe").font(.title2.bold())
+            Text("Pinsel markiert den Bereich, der ersetzt werden darf. Radierer nimmt Bereiche aus der Auswahl; Hand verschiebt das Bild. Die rote Überlagerung zeigt die Auswahl. Ohne Maske bleibt das Foto erhalten.")
+            Text("Dieser lokale Entwurf startet keine Bildgenerierung und ändert das Foto nicht. Entwurf verwerfen und schließen entfernt ihn. Jeder Pinselstrich lässt sich rückgängig machen.")
+            HStack { Spacer(); Button("Hilfe schließen") { showsHelp = false }.keyboardShortcut(.cancelAction) }
+        }.font(.system(size: 13)).padding(24).frame(width: 500)
     }
 
     private func imageCanvas(_ canvas: ArtifactPixelSize, geometry: CanvasGeometry) -> some View {

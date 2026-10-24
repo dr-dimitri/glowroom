@@ -231,7 +231,7 @@ struct CompactMaskLayoutTests {
         defer { host.close(); fixture.close() }
         fixture.model.add(.linear)
         let selectedID = try #require(fixture.model.selectedID)
-        try await host.mount(InlineMaskInspector(workspace: fixture.workspace).padding(.horizontal, 12))
+        try await host.mount(InlineMaskInspector(workspace: fixture.workspace, showsMaskList: false).padding(.horizontal, 12))
 
         #expect(!host.elements.contains { $0.accessibilityIdentifier() == "local-mask.creator" })
         let showCreator = try host.element("local-mask.show-creator")
@@ -271,7 +271,9 @@ struct CompactMaskLayoutTests {
         let host = CompactMaskHost(width: 300, height: 460)
         defer { host.close(); fixture.close() }
         fixture.model.add(.brush)
-        try await host.mount(InlineMaskInspector(workspace: fixture.workspace).padding(.horizontal, 12))
+        try await host.mountScrollable(InlineMaskInspector(workspace: fixture.workspace).padding(.horizontal, 12))
+        #expect(!host.elements.contains { $0.accessibilityIdentifier() == "local-mask.show-creator" },
+            "The visible floating palette owns the single New Mask entry")
         let document = try #require(fixture.workspace.brush.document)
 
         #expect(try host.element("local-mask.invert").accessibilityPerformPress())
@@ -292,6 +294,7 @@ struct CompactMaskLayoutTests {
         #expect(fixture.workspace.brush.mode == .erase)
         #expect(fixture.workspace.brush.document == document, "Changing tool semantics must preserve the accepted mask strokes")
         for identifier in ["local-mask.invert", "local-mask.erase", "local-mask.correction.dehaze"] {
+            if identifier == "local-mask.correction.dehaze" { try await host.revealSlider(identifier) }
             let control = try host.element(identifier)
             #expect(control.isAccessibilityEnabled())
             let frame = control.accessibilityFrame()
@@ -360,20 +363,26 @@ struct CompactMaskLayoutTests {
     }
 
     @Test(arguments: [LocalMaskCreation.brush, .linear, .radial])
-    func localCorrectionsFitBelowTheHistogramInANarrowInspector(_ kind: LocalMaskCreation) async throws {
+    func readableLocalCorrectionsScrollBelowTheHistogramInANarrowInspector(_ kind: LocalMaskCreation) async throws {
         let fixture = try await CompactMaskFixture.make()
         let host = CompactMaskHost(width: 300, height: 460)
         defer { host.close(); fixture.close() }
         fixture.model.add(kind)
-        try await host.mount(InlineMaskInspector(workspace: fixture.workspace).padding(.horizontal, 12))
+        try await host.mountScrollable(InlineMaskInspector(workspace: fixture.workspace).padding(.horizontal, 12))
 
-        #expect(host.fittingHeight <= 460, "The complete local palette must fit in the space below the histogram and toolbar")
+        let target = try host.element("local-mask.target")
+        #expect(host.screenFrame.insetBy(dx: -1, dy: -1).contains(target.accessibilityFrame()))
+        let close = try host.element("local-mask.close")
+        #expect(close.isAccessibilityEnabled())
+        #expect(host.screenFrame.insetBy(dx: -1, dy: -1).contains(close.accessibilityFrame()))
+        #expect(try host.element("local-mask.help").isAccessibilityEnabled())
+        try await host.revealSlider("local-mask.correction.dehaze")
         let lastCorrection = try #require(host.elements.first {
             $0.accessibilityRole() == .slider && $0.accessibilityIdentifier() == "local-mask.correction.dehaze"
         })
         let frame = lastCorrection.accessibilityFrame()
-        #expect(frame.width >= 70 && frame.height > 0, "Compaction must preserve a usable native slider")
-        #expect(host.screenFrame.insetBy(dx: -1, dy: -1).contains(frame), "The final correction must be visible without scrolling")
+        #expect(frame.width >= 70 && frame.height > 0, "Readable labels must preserve a usable native slider")
+        #expect(host.screenFrame.insetBy(dx: -1, dy: -1).contains(frame), "The final correction must be reachable by scrolling the inspector")
         try host.snapshotIfRequested("mask-inspector-\(kind.rawValue)")
         #expect(await fixture.library.finishSaving())
     }
@@ -521,6 +530,39 @@ private final class CompactMaskHost {
     func mount(_ content: some View) async throws {
         hosting.rootView = AnyView(content.frame(width: width).fixedSize(horizontal: false, vertical: true)
             .frame(maxHeight: .infinity, alignment: .top).preferredColorScheme(.dark))
+        try await settle()
+    }
+
+    func mountScrollable(_ content: some View) async throws {
+        hosting.rootView = AnyView(ScrollView { content }
+            .frame(width: width, height: window.contentLayoutRect.height)
+            .preferredColorScheme(.dark))
+        try await settle()
+    }
+
+    func revealSlider(_ identifier: String) async throws {
+        // SwiftUI owns the AX identifier on the representable's accessibility
+        // wrapper; it is not copied to the underlying NSSlider. Use that
+        // visible control's frame to reveal it in its native scroll container.
+        window.makeFirstResponder(nil)
+        try await settle()
+        let target = try element(identifier)
+        let windowRect = window.convertFromScreen(target.accessibilityFrame())
+        var pending: [NSView] = [hosting]
+        var revealed = false
+        while let view = pending.popLast() {
+            pending.append(contentsOf: view.subviews)
+            guard let scroll = view as? NSScrollView, let document = scroll.documentView else { continue }
+            let local = scroll.convert(windowRect, from: nil)
+            guard local.midX >= 0 && local.midX <= scroll.bounds.width else { continue }
+            let rect = document.convert(windowRect, from: nil)
+            let maximum = max(0, document.bounds.height - scroll.contentView.bounds.height)
+            let y = min(maximum, max(0, rect.midY - scroll.contentView.bounds.height / 2))
+            scroll.contentView.scroll(to: CGPoint(x: scroll.contentView.bounds.minX, y: y))
+            scroll.reflectScrolledClipView(scroll.contentView)
+            revealed = true
+        }
+        #expect(revealed, "A native inspector scroll container must own \(identifier)")
         try await settle()
     }
 

@@ -13,7 +13,7 @@ struct PhotoMetadataCatalogReviewPresenter: View {
                 set: { if !$0 { model.dismissCatalogReview(id: review.id) } })) {
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Ordnerzuordnungen prüfen").font(.headline)
-                    Text("Ohne ausdrückliche Zuordnung bleiben beide Seiten getrennt erhalten. Vorhandene bestätigte Zieltexte oder Entwürfe werden niemals überschrieben.")
+                    Label("Nicht zugeordnete Angaben bleiben getrennt", systemImage: "arrow.triangle.branch")
                     ScrollView {
                         LazyVStack(alignment: .leading, spacing: 14) {
                             ForEach(review.change.conflicts) { conflict in
@@ -34,13 +34,13 @@ struct PhotoMetadataCatalogReviewPresenter: View {
                             }
                         }
                     }.frame(minHeight: 200, maxHeight: 400)
-                    Text("\(assignments.count) ausdrücklich zuordnen; alle übrigen Konflikte getrennt behalten. Quellen- und Zielrevisionen werden beim Abschluss erneut geprüft.")
+                    Text("\(assignments.count) Zuordnungen ausgewählt")
                     HStack {
                         Button("Abbrechen", role: .cancel) { model.dismissCatalogReview(id: review.id) }
                         Spacer()
                         Button("Entscheidungen übernehmen") { model.confirmCatalogReview(id: review.id, assignments: assignments) }
                     }
-                }.font(.system(size: 11)).padding(24).frame(width: 650)
+                }.font(.system(size: 13)).padding(24).frame(width: 650)
             }
     }
     private func recordDetails(_ title: String, record: PhotoMetadataRecord?) -> some View {

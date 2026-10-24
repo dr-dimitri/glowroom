@@ -28,12 +28,13 @@ struct IconButton: View {
                 .frame(width: 32, height: 30)
                 .background(active ? Theme.accent.opacity(0.09) : Color.clear, in: RoundedRectangle(cornerRadius: 6))
         }.buttonStyle(.plain).help(help).accessibilityLabel(help)
+            .accessibilityAddTraits(active ? .isSelected : [])
     }
 }
 
 struct AccentButton: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label.font(.system(size: 12, weight: .semibold))
+        configuration.label.font(.system(size: 13, weight: .semibold))
             .foregroundStyle(Theme.background).padding(.horizontal, 17).padding(.vertical, 11)
             .background(Theme.accent.opacity(configuration.isPressed ? 0.75 : 1), in: RoundedRectangle(cornerRadius: 7))
     }
@@ -41,7 +42,7 @@ struct AccentButton: ButtonStyle {
 
 struct SectionLabel: View {
     let text: String
-    var body: some View { Text(text.uppercased()).font(.system(size: 9, weight: .semibold)).tracking(1.7).foregroundStyle(Theme.muted) }
+    var body: some View { Text(text).font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.muted) }
 }
 
 struct RatingStars: View {
@@ -54,6 +55,7 @@ struct RatingStars: View {
                 if let onChange {
                     Button { onChange(star == rating ? 0 : star) } label: { starImage(star) }
                         .buttonStyle(.plain).help("\(star) Sterne").accessibilityLabel("\(star) Sterne bewerten")
+                        .accessibilityAddTraits(star == rating ? .isSelected : [])
                 } else { starImage(star) }
             }
         }.accessibilityElement(children: onChange == nil ? .ignore : .contain)

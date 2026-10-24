@@ -10,21 +10,26 @@ struct InspectorView: View {
             HStack {
                 SectionLabel(text: "Bildinformationen")
                 Spacer()
-                Image(systemName: "info.circle").font(.system(size: 12)).foregroundStyle(Theme.muted)
+                Image(systemName: "info.circle").font(.system(size: 13)).foregroundStyle(Theme.muted).accessibilityHidden(true)
             }.padding(.horizontal, 20).frame(height: 58)
             Rectangle().fill(Theme.line).frame(height: 1)
             if let asset = model.selectedAsset {
                 ScrollViewReader { proxy in
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
-                        EditingThumbnail(asset: asset, size: 400, priority: .selected)
-                            .frame(height: 155).padding(8).background(Color.black.opacity(0.16), in: RoundedRectangle(cornerRadius: 6))
-                            .onTapGesture { model.showsDetail = true }.help("Einzelbildansicht öffnen")
+                        Button { model.showsDetail = true } label: {
+                            VStack(spacing: 8) {
+                                EditingThumbnail(asset: asset, size: 400, priority: .selected)
+                                    .frame(height: 155).padding(8)
+                                    .background(Color.black.opacity(0.16), in: RoundedRectangle(cornerRadius: 6))
+                                Label("Foto öffnen", systemImage: "arrow.up.left.and.arrow.down.right")
+                            }
+                        }.buttonStyle(.plain).accessibilityLabel("Einzelbildansicht öffnen")
                         HStack(alignment: .top, spacing: 8) {
                             VStack(alignment: .leading, spacing: 5) {
                                 Text(asset.fileName).font(.system(size: 13, weight: .medium)).textSelection(.enabled).lineLimit(2)
                                 Text("\(asset.format.uppercased()) · \(ByteCountFormatter.string(fromByteCount: asset.fileSize, countStyle: .file))")
-                                    .font(.system(size: 10)).foregroundStyle(Theme.muted)
+                                    .font(.system(size: 13)).foregroundStyle(Theme.muted)
                             }
                             Spacer(minLength: 0)
                             IconButton(symbol: asset.isFavorite ? "heart.fill" : "heart", help: "Favorit · F", active: asset.isFavorite) { model.toggleFavorite() }.disabled(!model.canModify)
@@ -32,7 +37,7 @@ struct InspectorView: View {
                         HStack {
                             RatingStars(rating: asset.rating, size: 13, onChange: { model.setRating($0) }).disabled(!model.canModify)
                             Spacer()
-                            Text(asset.rating == 0 ? "Unbewertet" : "\(asset.rating) von 5").font(.system(size: 9)).foregroundStyle(Theme.muted)
+                            Text(asset.rating == 0 ? "Unbewertet" : "\(asset.rating) von 5").font(.system(size: 13)).foregroundStyle(Theme.muted)
                         }.padding(.top, 17)
                         separator
                         PhotoMetadataSection(model: photoMetadata)
@@ -57,8 +62,8 @@ struct InspectorView: View {
                         metadataRow("Geändert", asset.modifiedAt.formatted(date: .abbreviated, time: .omitted))
                         separator
                         SectionLabel(text: "Speicherort").padding(.bottom, 12)
-                        Text(asset.fileURL.deletingLastPathComponent().path).font(.system(size: 10)).foregroundStyle(Theme.muted).lineSpacing(4).textSelection(.enabled)
-                        Button { model.reveal() } label: { Label("Im Finder anzeigen", systemImage: "arrow.up.right.square").font(.system(size: 10)) }
+                        Text(asset.fileURL.deletingLastPathComponent().path).font(.system(size: 13)).foregroundStyle(Theme.muted).lineSpacing(4).textSelection(.enabled)
+                        Button { model.reveal() } label: { Label("Im Finder anzeigen", systemImage: "arrow.up.right.square").font(.system(size: 13)) }
                             .buttonStyle(.plain).foregroundStyle(Theme.accent).padding(.top, 14)
                     }.padding(19)
                 }
@@ -82,12 +87,12 @@ struct InspectorView: View {
             Text(label).foregroundStyle(Theme.muted).frame(width: 73, alignment: .leading)
             Spacer(minLength: 0)
             Text(value).foregroundStyle(Color.white.opacity(0.75)).multilineTextAlignment(.trailing).textSelection(.enabled)
-        }.font(.system(size: 10)).padding(.bottom, 12)
+        }.font(.system(size: 13)).padding(.bottom, 12)
     }
     private func exposureTile(_ value: String, label: String) -> some View {
         VStack(spacing: 7) {
-            Text(value).font(.system(size: 12, weight: .medium, design: .monospaced)).lineLimit(1).minimumScaleFactor(0.7)
-            Text(label).font(.system(size: 7, weight: .medium)).tracking(1).foregroundStyle(Theme.muted)
+            Text(value).font(.system(size: 13, weight: .medium, design: .monospaced)).lineLimit(1).minimumScaleFactor(0.7)
+            Text(label).font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.muted)
         }.frame(maxWidth: .infinity).padding(.vertical, 13).background(Theme.panel, in: RoundedRectangle(cornerRadius: 5))
     }
 }

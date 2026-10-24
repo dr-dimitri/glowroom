@@ -104,8 +104,22 @@ struct UnifiedObjectMaskAcceptanceTests {
         let reopened = EditingModel(directory: editingDirectory)
         try await wait("reopened object mask") { !reopened.isLoading }
         #expect(reopened.settings(for: asset.id).localAdjustments == [layer])
-        try await press("local-mask.show-creator", in: host)
-        try await press("local-mask.create.object", in: host)
+        let create = try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == "local-mask.add" },
+            "The accepted mask must expose the floating palette's New Mask menu")
+        #expect(create.isAccessibilityEnabled())
+        let menuNames = [create.accessibilityLabel(), create.accessibilityTitle()].compactMap { $0 }
+        #expect(menuNames.first { !$0.isEmpty } == "Neue Maske", "Native menu names: \(menuNames)")
+        #expect(!host.accessibilityElements.contains { $0.accessibilityIdentifier() == "local-mask.show-creator" },
+            "The visible floating palette owns the single New Mask entry")
+        // Enter the same creation route as Neue Maske > Objekt beschreiben.
+        // Native menu tracking requires an isolated child process in this
+        // SwiftPM host; this test verifies the shared creator and setup route,
+        // not a native menu-item click. The first request above enters through
+        // the actual empty-state Objekt beschreiben button.
+        masks.finishGesture()
+        masks.showsObjectCreator = true
+        try await host.settle()
+        #expect(host.accessibilityElements.contains { $0.accessibilityIdentifier() == "local-mask.object.generate" })
         for (requirement, name) in [(InlineObjectMaskModel.SetupRequirement.languageModel, "language"), (.subjectModel, "subject")] {
             await service.setRequirement(requirement)
             await object.refreshModels()

@@ -200,9 +200,14 @@ struct AIDevelopmentView: View {
             workspace.picksDetail = false
             workspace.endLevelsPicker()
             workspace.showsAICorrectionProposal = proposal
-        } label: { Text(title).frame(maxWidth: .infinity) }
+        } label: {
+            Label(title, systemImage: workspace.correctionDisplay(library: library, editor: editor)?.showsProposal == proposal
+                  ? "checkmark.circle.fill" : "circle")
+                .frame(maxWidth: .infinity)
+        }
             .tint(workspace.correctionDisplay(library: library, editor: editor)?.showsProposal == proposal ? Theme.accent : nil)
             .accessibilityValue(workspace.correctionDisplay(library: library, editor: editor)?.showsProposal == proposal ? "Aktiv" : "Inaktiv")
+            .accessibilityAddTraits(workspace.correctionDisplay(library: library, editor: editor)?.showsProposal == proposal ? .isSelected : [])
             .accessibilityIdentifier("ai-development.\(identifier)")
     }
 }

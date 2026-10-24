@@ -16,11 +16,7 @@ struct DevelopCropInspector: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text("Werkzeug:").foregroundStyle(Theme.muted)
-                Spacer(minLength: 0)
-                Text("Freistellen und gerade ausrichten").fontWeight(.semibold).multilineTextAlignment(.trailing)
-            }.padding(.vertical, 10)
+            Text("Zuschneiden").font(.system(size: 15, weight: .semibold)).padding(.vertical, 10)
             Divider()
             HStack(spacing: 6) {
                 Image(systemName: "crop").font(.system(size: 19)).frame(width: 25)
@@ -29,39 +25,37 @@ struct DevelopCropInspector: View {
                     Text("1 : 1").tag("1:1"); Text("3 : 2").tag("3:2"); Text("4 : 3").tag("4:3")
                     Text("16 : 9").tag("16:9"); Text("2 : 3").tag("2:3")
                 }.accessibilityIdentifier("develop.crop.aspect")
-                Button(action: toggleLock) {
-                    Image(systemName: workspace.cropAspectLocked ? "lock.fill" : "lock.open")
-                        .font(.system(size: 17)).frame(width: 24, height: 26)
-                }.buttonStyle(.plain)
-                    .help("Seitenverhältnis beim Ziehen beibehalten")
-                    .accessibilityLabel("Seitenverhältnis sperren")
-                    .accessibilityValue(workspace.cropAspectLocked ? "Gesperrt" : "Entsperrt")
-                    .accessibilityIdentifier("develop.crop.lock")
             }.padding(.vertical, 12).disabled(!editor.canEdit)
+            Button(action: toggleLock) {
+                Label(workspace.cropAspectLocked ? "Seitenverhältnis gesperrt" : "Seitenverhältnis sperren",
+                    systemImage: workspace.cropAspectLocked ? "lock.fill" : "lock.open")
+            }.buttonStyle(.plain).padding(.bottom, 12).disabled(!editor.canEdit)
+                .accessibilityLabel("Seitenverhältnis sperren")
+                .accessibilityValue(workspace.cropAspectLocked ? "Gesperrt" : "Entsperrt")
+                .accessibilityIdentifier("develop.crop.lock")
             Divider()
             VStack(spacing: 7) {
                 HStack {
                     Spacer()
-                    Button(workspace.isAutoStraightening ? "Ermitteln …" : "Auto", action: straightenAutomatically)
-                        .buttonStyle(.bordered).controlSize(.mini)
+                    Button(workspace.isAutoStraightening ? "Horizont wird ermittelt …" : "Automatisch ausrichten", action: straightenAutomatically)
+                        .buttonStyle(.bordered).controlSize(.small)
                         .disabled(workspace.isAutoStraightening || !workspace.isOriginalCanvasReady)
                         .help("Erkannten Horizont automatisch waagerecht ausrichten")
                         .accessibilityIdentifier("develop.crop.auto")
                 }
-                HStack(spacing: 6) {
-                    Button {
+                Button {
                         autoTask?.cancel()
                         editor.endEditing(assetID: asset.id)
                         workspace.isStraightening.toggle()
                     } label: {
-                        Image(systemName: "level").font(.system(size: 18)).frame(width: 25, height: 26)
-                            .foregroundStyle(workspace.isStraightening ? Theme.accent : Theme.muted)
-                            .background(workspace.isStraightening ? Theme.elevated : .clear, in: RoundedRectangle(cornerRadius: 4))
+                        Label(workspace.isStraightening ? "Gerade ausrichten · aktiv" : "Gerade ausrichten",
+                            systemImage: workspace.isStraightening ? "checkmark.circle.fill" : "level")
                     }.buttonStyle(.plain)
                         .help("Eine waagerechte oder senkrechte Bezugslinie im Bild ziehen")
                         .accessibilityLabel("Gerade ausrichten")
                         .accessibilityValue(workspace.isStraightening ? "Aktiv" : "Inaktiv")
                         .accessibilityIdentifier("develop.crop.straighten")
+                HStack(spacing: 6) {
                     Text("Winkel")
                     ResettableSlider(value: Binding(get: { geometry.straightenAngle }, set: { angle in
                         autoTask?.cancel()
@@ -70,8 +64,8 @@ struct DevelopCropInspector: View {
                         if editing { editor.endEditing(assetID: asset.id); editor.beginEditing(assetID: asset.id) }
                         else { editor.endEditing(assetID: asset.id) }
                     }).accessibilityLabel("Winkel").accessibilityIdentifier("develop.crop.angle")
-                    Text(geometry.straightenAngle, format: .number.precision(.fractionLength(2)))
-                        .monospacedDigit().frame(width: 40, alignment: .trailing)
+                    Text("\(geometry.straightenAngle, format: .number.precision(.fractionLength(2)))°")
+                        .monospacedDigit().frame(width: 60, alignment: .trailing)
                 }
             }.padding(.vertical, 10).disabled(!editor.canEdit)
             Divider()
@@ -95,7 +89,7 @@ struct DevelopCropInspector: View {
                     workspace.isStraightening = false; workspace.tool = .basic
                 }.accessibilityIdentifier("develop.crop.close")
             }.buttonStyle(.plain).padding(.vertical, 10)
-        }.font(.system(size: 11)).foregroundStyle(Theme.text)
+        }.font(.system(size: 13)).foregroundStyle(Theme.text)
             .onAppear { reconcileAspect() }
             .onDisappear { autoTask?.cancel(); workspace.isStraightening = false; editor.endEditing(assetID: asset.id) }
             .onChange(of: workspace.sourceIdentity) { _, _ in autoTask?.cancel() }

@@ -40,7 +40,7 @@ enum LLMModelError: Error, LocalizedError, Equatable {
         case .operationInProgress: "Die Modellverwaltung arbeitet bereits. Warte auf den Abschluss oder brich den Download ab."
         case .modelInUse: "Das Modell wird gerade verwendet. Beende den KI-Auftrag, bevor du es löschst."
         case .insufficientDiskSpace: "Es ist nicht genügend freier Speicher für das Modell und den Download vorhanden."
-        case .modelNotInstalled: "Richte das Modell unter „KI-Modelle → Bildkorrekturen“ ein."
+        case .modelNotInstalled: "Richte das Modell unter „KI-Modelle → KI-Korrektur“ ein."
         case .invalidDownload: "Der Modelldownload ist unvollständig oder stimmt nicht mit der geprüften Version überein."
         }
     }

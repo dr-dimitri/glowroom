@@ -1,0 +1,402 @@
+diff --git a/Tests/GlowroomTests/UIClarityScreenshotTests.swift b/Tests/GlowroomTests/UIClarityScreenshotTests.swift
+new file mode 100644
+index 0000000..b37cb97
+--- /dev/null
++++ b/Tests/GlowroomTests/UIClarityScreenshotTests.swift
+@@ -0,0 +1,396 @@
++import AppKit
++import CryptoKit
++import GlowroomCore
++import ImageIO
++import SwiftUI
++import Testing
++import UniformTypeIdentifiers
++@testable import Glowroom
++
++/// All cases share AppKit/SwiftUI window state and therefore run in order.
++/// Image loading and persistence retain the production bounded background work.
++@Suite("UI clarity native acceptance", .serialized, .timeLimit(.minutes(4)))
++@MainActor
++struct UIClarityScreenshotTests {
++    @Test(.enabled(if: ProcessInfo.processInfo.environment["GLOWROOM_200_SNAPSHOTS"] != nil),
++          arguments: [NSSize(width: 1_000, height: 660), NSSize(width: 1_440, height: 900)])
++    func namedActionsStatesAndFocus(size: NSSize) async throws {
++        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("Glowroom-UI-Clarity-\(UUID())")
++        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
++        defer { try? FileManager.default.removeItem(at: directory) }
++        let folderURL = directory.appendingPathComponent("Synthetische Fotos")
++        try FileManager.default.createDirectory(at: folderURL, withIntermediateDirectories: true)
++        let imageURL = folderURL.appendingPathComponent("Morgenlicht.png"), image = try fixtureImage()
++        let destination = try #require(CGImageDestinationCreateWithURL(imageURL as CFURL, UTType.png.identifier as CFString, 1, nil))
++        CGImageDestinationAddImage(destination, image, nil)
++        try #require(CGImageDestinationFinalize(destination))
++        let bytes = try Data(contentsOf: imageURL), date = Date(timeIntervalSince1970: 1)
++        try FileManager.default.setAttributes([.modificationDate: date], ofItemAtPath: imageURL.path)
++        let folder = LibraryFolder(url: folderURL)
++        let asset = PhotoAsset(id: "synthetic-morgenlicht", folderID: folder.id, fileURL: imageURL,
++            fileSize: Int64(bytes.count), pixelWidth: 900, pixelHeight: 600,
++            createdAt: date, modifiedAt: date, rating: 4)
++        let repository = CatalogRepository(directory: directory.appendingPathComponent("Catalog"))
++        try repository.save(LibraryCatalog(folders: [folder], assets: [asset]))
++        let search = ClarityCaptureSearchService()
++        let metadataStore = PhotoMetadataRepository(directory: directory.appendingPathComponent("Metadata"))
++        let library = LibraryModel(repository: repository, semanticSearch: search, metadataStore: metadataStore)
++        let editor = EditingModel(directory: directory.appendingPathComponent("Edits"))
++        try await wait { !library.isLoading && !library.isProjecting && !editor.isLoading }
++        library.selectedID = asset.id; library.showsDetail = true; library.workspaceMode = .develop
++        let source = MetadataSourceFingerprint(standardizedPath: imageURL.path, modifiedAt: date, fileSize: Int64(bytes.count))
++        let suggestor = ClarityCaptureSuggestor(source: source)
++        let metadata = PhotoMetadataModel(store: metadataStore, suggestor: suggestor, library: library, editor: editor)
++        let suite = "Glowroom-UI-Clarity-\(UUID())", defaults = try #require(UserDefaults(suiteName: suite))
++        defer { defaults.removePersistentDomain(forName: suite) }
++        let layout = WorkspaceLayoutModel(defaults: defaults)
++        layout.update(developing: true) {
++            $0.showsLibrary = false; $0.showsTools = true; $0.showsFilmstrip = true
++            $0.toolsWidth = 330; $0.openGroups = [.aiDevelopment, .edit]
++        }
++        let workspace = DevelopWorkspace(scopeDefaults: defaults)
++        let masks = LocalAdjustmentEditorModel(settings: editor.settings(for: asset.id))
++        let exporter = JPEGExportModel(preferences: nil)
++        let host = ClarityCaptureHost(size: size)
++        defer { host.close(); workspace.clear() }
++        func root() -> some View {
++            LibraryView(model: library, dataDirectory: directory, localMaskModel: masks, developWorkspace: workspace)
++                .environmentObject(editor).environmentObject(exporter).environmentObject(layout)
++                .environmentObject(metadata).preferredColorScheme(.dark)
++        }
++        #if GLOWROOM_200_BASELINE
++        let prefix = "before"
++        #else
++        let prefix = "after"
++        #endif
++        func capture(_ name: String, issue: String, steps: [String], evidence: String = "production LibraryView; synthetic photo; no model inference") async throws {
++            try await host.settle()
++            #expect(host.contentSize == size)
++            if name == "metadata-manual" || name == "metadata-proposal" {
++                try host.requireVisibleAction(identifier: "metadata.accept", companion: "Verwerfen")
++            }
++            let output = URL(fileURLWithPath: ProcessInfo.processInfo.environment["GLOWROOM_200_SNAPSHOTS"]!, isDirectory: true)
++            try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
++            let png = output.appendingPathComponent("\(prefix)-\(name)-\(Int(size.width)).png")
++            try host.snapshot(to: png)
++            let record: [String: Any] = [
++                "uiIssue": "200 · " + issue, "state": name, "steps": steps,
++                "sourceCommit": ProcessInfo.processInfo.environment["GLOWROOM_WORKSPACE_SNAPSHOT_COMMIT"] ?? "working-tree",
++                "macOS": ProcessInfo.processInfo.operatingSystemVersionString,
++                "windowWidthPoints": size.width, "windowHeightPoints": size.height, "scaleFactor": host.scaleFactor,
++                "photoID": asset.id, "photoName": asset.fileName,
++                "fixture": "900x600 synthetic sRGB landscape generated by UIClarityScreenshotTests",
++                "fixtureSHA256": digest(bytes), "screenshotSHA256": digest(try Data(contentsOf: png)),
++                "activeTool": workspace.tool.rawValue, "isFocused": layout.isFocused,
++                "navigationVisible": layout.panels(developing: library.isDeveloping).showsLibrary,
++                "toolsVisible": layout.panels(developing: library.isDeveloping).showsTools,
++                "proposalState": metadata.proposalState?.rawValue ?? "absent", "evidence": evidence,
++                "limits": "Layout and visible states only; no proof of inference quality, persistence, cancellation or data integrity."
++            ]
++            try JSONSerialization.data(withJSONObject: record, options: [.prettyPrinted, .sortedKeys])
++                .write(to: png.deletingPathExtension().appendingPathExtension("json"))
++        }
++        try await host.mount(root())
++        try await wait { workspace.isFinalPreviewReady && workspace.navigatorImage != nil }
++        try await capture("develop", issue: "TEXT-01 / LAYOUT-01",
++            steps: ["Select Morgenlicht.png", "Open Entwickeln", "Show KI-Korrektur and Licht; navigation hidden; filmstrip visible"])
++        for tool in DevelopCanvasTool.toolbarCases {
++            let element = try #require(host.elements.first { $0.accessibilityIdentifier() == "develop.tool." + tool.rawValue })
++            #expect(element.accessibilityLabel() == tool.title)
++            try host.requireHorizontallyVisible(element)
++        }
++        try await host.reveal(identifier: "ai-development.generate")
++        try await capture("develop-actions", issue: "TEXT-01 / LAYOUT-01",
++            steps: ["Keep Entwickeln and KI-Korrektur open", "Scroll correction form to Vorschlag erstellen and model availability", "Do not start inference"])
++        try await host.press(identifier: "develop.tool.masks")
++        try await wait { masks.canvasSize != nil && !masks.isLoading }
++        masks.add(.linear)
++        try await host.settle()
++        try await capture("mask", issue: "TEXT-02",
++            steps: ["Open Maskieren using its named toolbar action", "Add linear gradient", "Keep selected mask and local controls visible"])
++        #expect(workspace.tool == .masks)
++        try await host.press(identifier: "develop.tool.repair")
++        try await wait { workspace.tool.isRepairTool }
++        try await capture("repair", issue: "TEXT-02",
++            steps: ["Open Reparieren using its named toolbar action", "Select Entfernen", "Inspect size, source and AI availability"])
++        for mode in DevelopRepairMode.allCases {
++            let element = try #require(host.elements.first { $0.accessibilityIdentifier() == "develop.repair.mode." + mode.rawValue })
++            #expect(element.accessibilityLabel() == mode.title)
++            try host.requireHorizontallyVisible(element)
++        }
++        workspace.tool = .basic
++        layout.update(developing: true) { $0.showsTools = false; $0.showsLibrary = true; $0.openGroups = [.metadata] }
++        WorkspaceActions.reveal(.metadata, layout: layout, library: library)
++        try await wait { metadata.canEditManual }
++        metadata.editManualFields(.init(title: "Morgenlicht", description: "Synthetische Landschaft mit Sonne und Bergen.", tags: ["Landschaft"]))
++        try await wait { !metadata.isSaving }
++        WorkspaceActions.reveal(.metadata, layout: layout, library: library)
++        try await host.settle()
++        try await capture("metadata-manual-top", issue: "TEXT-03",
++            steps: ["Open Bildinformationen", "Enter manual title, description and tag", "Show form heading, draft state and suggestion action before scrolling"])
++        try await host.reveal(identifier: "metadata.accept")
++        try await capture("metadata-manual", issue: "TEXT-03",
++            steps: ["Open Bildinformationen", "Enter manual title, description and tag", "Keep unconfirmed draft and Übernehmen visible"])
++        metadata.acceptManualFields()
++        try await wait { !metadata.isSaving && metadata.record?.confirmedRevision == 1 }
++        await metadata.refreshAvailability(); metadata.suggest()
++        try await wait { metadata.record?.draft != nil && !metadata.isSaving && !metadata.isAnalyzing }
++        WorkspaceActions.reveal(.metadata, layout: layout, library: library)
++        try await host.settle()
++        try await capture("metadata-proposal-top", issue: "TEXT-03",
++            steps: ["Confirm manual values", "Request Mit KI vorschlagen", "Show form heading, editor choice and unconfirmed proposal state before scrolling"],
++            evidence: "production LibraryView and PhotoMetadataSection; controlled PhotoMetadataSuggesting response, no real inference")
++        try await host.reveal(identifier: "metadata.accept")
++        try await capture("metadata-proposal", issue: "TEXT-03",
++            steps: ["Confirm manual values", "Request Mit KI vorschlagen", "Review controlled proposal without accepting it"],
++            evidence: "production LibraryView and PhotoMetadataSection; controlled PhotoMetadataSuggesting response, no real inference")
++        WorkspaceActions.toggleFocus(layout, library: library)
++        try await host.settle()
++        try await capture("focus", issue: "LAYOUT-02",
++            steps: ["Enter Bildfokus", "Keep navigation, tools and filmstrip hidden", "Inspect named return and tool actions"])
++        let returnButton = try #require(host.elements.first { $0.accessibilityIdentifier() == "workspace.focus" })
++        #expect(returnButton.isAccessibilityEnabled())
++        try host.requireHorizontallyVisible(returnButton)
++        try await host.press(label: "Licht")
++        try await wait { layout.panels(developing: true).showsTools }
++        try await capture("focus-tools", issue: "LAYOUT-02",
++            steps: ["In Bildfokus activate Licht in dock", "Keep expanded adjustment panel and close/return actions visible"])
++        WorkspaceActions.toggleFocus(layout, library: library)
++        await search.setMissing(); library.refreshSemanticStatus()
++        try await wait { library.semanticState.availability != .available }
++        try await host.mount(AIModelsView(library: library, destination: .index).preferredColorScheme(.dark))
++        try await capture("model-missing", issue: "TEXT-04",
++            steps: ["Open KI-Modelle → Suchindex", "Controlled service reports missing model", "Show concrete model setup action"],
++            evidence: "production AIModelsView; explicitly controlled missing semantic model; no installation or inference")
++        try #require(host.elements.contains { $0.accessibilityIdentifier() == "ai-models.index.setup-model" })
++        await search.setReady(); library.refreshSemanticStatus()
++        try await wait { library.semanticState.availability == .available }
++        library.prepareSemanticIndex()
++        try await wait { library.semanticError != nil && library.semanticOperationLabel == nil }
++        try await capture("model-error", issue: "TEXT-04",
++            steps: ["Restore controlled model availability", "Start Suchindex aufbauen", "Controlled service throws a concrete error"],
++            evidence: "production error handling after controlled SemanticSearchServing failure; no real indexing or model inference")
++        #expect(library.semanticError == SemanticEmbeddingError.indexUnavailable.localizedDescription)
++        #expect(host.elements.contains { $0.accessibilityLabel() == library.semanticError || $0.accessibilityValue() as? String == library.semanticError })
++        exporter.present(asset: asset, settings: editor.settings(for: asset.id))
++        // A publication-safe location; this harness never creates an export.
++        exporter.destinationDirectory = URL(fileURLWithPath: "/private/tmp/Glowroom-Abnahme/Export", isDirectory: true)
++        try await host.mount(JPEGExportView(model: exporter))
++        try await capture("export", issue: "TEXT-01 / cross-view terminology",
++            steps: ["Open native Foto exportieren view", "Keep JPEG, sRGB, quality and size settings visible", "Do not export"],
++            evidence: "production JPEGExportView in isolated native host; no file export; publication-safe destination")
++        #if !GLOWROOM_200_BASELINE
++        for title in ["Foto exportieren", exporter.sourceName, "Abbrechen", "Exportieren"] {
++            let element = try #require(host.elements.first {
++                $0.accessibilityLabel() == title || $0.accessibilityValue() as? String == title
++            }, "Export header/action missing: \(title)")
++            try host.requireFullyVisible(element)
++        }
++        #endif
++        if size.width == 1_000, let text = ProcessInfo.processInfo.environment["GLOWROOM_200_MANUAL_PAUSE_SECONDS"],
++           let duration = Double(text), duration > 0 {
++            exporter.cancel()
++            workspace.tool = .basic
++            layout.update(developing: true) { $0.showsLibrary = false; $0.showsTools = true; $0.openGroups = [.aiDevelopment, .edit] }
++            try await host.mount(root())
++            host.prepareManualInteraction()
++            // An opt-in, bounded manual inspection window; Task.sleep services
++            // the main run loop so keyboard and VoiceOver remain interactive.
++            try await Task.sleep(for: .seconds(min(duration, 180)))
++        }
++        #expect(await suggestor.requests == 1)
++        #expect(await search.prepareCalls == 1)
++        #expect(try Data(contentsOf: imageURL) == bytes)
++        #expect(await editor.flush()); #expect(await metadata.finishSaving()); #expect(await library.finishSaving())
++        library.beginTermination()
++    }
++
++    private func digest(_ bytes: Data) -> String { SHA256.hash(data: bytes).map { String(format: "%02x", $0) }.joined() }
++    private func wait(_ condition: () -> Bool) async throws {
++        let deadline = ContinuousClock.now + .seconds(20)
++        while !condition() { try #require(ContinuousClock.now < deadline); try await Task.sleep(for: .milliseconds(20)) }
++    }
++    private func fixtureImage() throws -> CGImage {
++        let c = try #require(CGContext(data: nil, width: 900, height: 600, bitsPerComponent: 8, bytesPerRow: 0,
++            space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
++        c.setFillColor(CGColor(srgbRed: 0.21, green: 0.45, blue: 0.72, alpha: 1)); c.fill(CGRect(x: 0, y: 0, width: 900, height: 600))
++        c.setFillColor(CGColor(srgbRed: 0.93, green: 0.7, blue: 0.31, alpha: 1)); c.fillEllipse(in: CGRect(x: 650, y: 390, width: 120, height: 120))
++        c.setFillColor(CGColor(srgbRed: 0.18, green: 0.3, blue: 0.19, alpha: 1))
++        c.move(to: CGPoint(x: 0, y: 0)); c.addLine(to: CGPoint(x: 0, y: 160)); c.addLine(to: CGPoint(x: 250, y: 390))
++        c.addLine(to: CGPoint(x: 570, y: 120)); c.addLine(to: CGPoint(x: 900, y: 240)); c.addLine(to: CGPoint(x: 900, y: 0)); c.closePath(); c.fillPath()
++        return try #require(c.makeImage())
++    }
++}
++
++private actor ClarityCaptureSuggestor: PhotoMetadataSuggesting {
++    let source: MetadataSourceFingerprint
++    private(set) var requests = 0
++    init(source: MetadataSourceFingerprint) { self.source = source }
++    func availability() -> ImageAnalysisAvailability { .available }
++    func suggest(_ request: PhotoMetadataSuggestionRequest) -> PhotoMetadataSuggestionResult {
++        requests += 1
++        let raster = MetadataRasterIdentity(sha256: String(repeating: "a", count: 64), pixelWidth: 900, pixelHeight: 600,
++            byteCount: 900 * 600 * 4, colorProfile: "sRGB", orientation: "up", preprocessingVersion: 1)
++        let analysis = MetadataAnalysisProvenance(providerID: "controlled-ui-fixture", modelID: "synthetic-proposal",
++            analyzedAt: Date(timeIntervalSince1970: 1), source: source, raster: raster,
++            analysisTaskVersion: 1, analysisSchemaVersion: 1, metadataPromptVersion: 1, metadataSchemaVersion: 1)
++        return .init(request: request, fields: .init(title: "Sonne über den Bergen", description: "Goldene Sonne über grünen Bergen vor blauem Himmel.", tags: ["Landschaft", "Sonnenaufgang"]), source: .init(original: source, analyzedRaster: analysis))
++    }
++}
++
++private actor ClarityCaptureSearchService: SemanticSearchServing {
++    private var session = UUID(), generation = 0, missing = true
++    private var version: UInt64 = 1
++    private var continuation: AsyncStream<SemanticSearchState>.Continuation?
++    private(set) var prepareCalls = 0
++    private static let descriptor = SemanticModelDescriptor(modelID: "controlled-ui-fixture", sourceRevision: "fixture-v1", releaseID: "fixture-v1", dimension: 2, maximumTextTokens: 64, tokenizerVersion: "v1", preprocessingVersion: 1, normalizationVersion: 1)
++    func updateCatalog(snapshotSessionID: UUID, generation: Int, assets: [PhotoAsset]) { session = snapshotSessionID; self.generation = generation }
++    func status(scope: [PhotoAsset]) -> SemanticSearchState {
++        .init(version: version, availability: missing ? .unavailable(.modelNotInstalled) : .available, indexGenerationID: nil,
++            indexedCount: 0, totalCount: scope.count, staleCount: 0, missingCount: scope.count,
++            processedCount: 0, isIndexing: false, notice: nil,
++            modelDescriptor: missing ? nil : Self.descriptor)
++    }
++    func updates() -> AsyncStream<SemanticSearchState> { AsyncStream { continuation = $0 } }
++    func setMissing() { missing = true; version += 1 }
++    func setReady() { missing = false; version += 1 }
++    func search(query: String, candidates: [PhotoAsset], topK: Int) throws -> SemanticSearchResult { throw CaptureError() }
++    func search(similarTo reference: PhotoAsset, candidates: [PhotoAsset], topK: Int) throws -> SemanticSearchResult { throw CaptureError() }
++    func prepareIndex(scope: [PhotoAsset], rebuild: Bool) throws { prepareCalls += 1; throw SemanticEmbeddingError.indexUnavailable }
++    func cancelIndexing() {}
++    func deleteIndex() {}
++    func inspectModel(source: URL) throws -> SemanticModelImportReview { throw CancellationError() }
++    func installModel(_ review: SemanticModelImportReview) {}
++    func removeModel() {}
++    func shutdown() { continuation?.finish() }
++    private struct CaptureError: LocalizedError {
++        var errorDescription: String? { "Kontrollierter Testfehler: Suchindex konnte nicht geschrieben werden." }
++    }
++}
++
++@MainActor
++private final class ClarityCaptureHost {
++    let window: NSWindow
++    private let hosting = NSHostingView(rootView: AnyView(EmptyView()))
++    private let size: NSSize
++    var elements: [WorkspaceAccessibilityElement] { WorkspaceAccessibilityElement.descendants(of: hosting) }
++    var contentSize: NSSize { hosting.bounds.size }
++    var scaleFactor: CGFloat { window.backingScaleFactor }
++    init(size: NSSize) {
++        self.size = size
++        _ = NSApplication.shared; WorkspaceAccessibilityElement.enableInProcess()
++        hosting.sizingOptions = []
++        window = NSWindow(contentRect: NSRect(origin: NSPoint(x: -10_000, y: -10_000), size: size), styleMask: .borderless, backing: .buffered, defer: false)
++        window.isReleasedWhenClosed = false; window.ignoresMouseEvents = true
++        window.appearance = NSAppearance(named: .darkAqua); window.contentView = hosting; window.orderBack(nil)
++    }
++    func mount(_ view: some View) async throws {
++        hosting.rootView = AnyView(view.id(UUID()))
++        window.setContentSize(size); hosting.frame = NSRect(origin: .zero, size: size)
++        try await settle()
++    }
++    func settle() async throws {
++        hosting.layoutSubtreeIfNeeded(); try await Task.sleep(for: .milliseconds(250))
++        hosting.layoutSubtreeIfNeeded(); hosting.displayIfNeeded()
++    }
++    func snapshot(to url: URL) throws {
++        let bitmap = try #require(hosting.bitmapImageRepForCachingDisplay(in: hosting.bounds))
++        hosting.cacheDisplay(in: hosting.bounds, to: bitmap)
++        try #require(bitmap.representation(using: .png, properties: [:])).write(to: url)
++    }
++    func press(identifier: String? = nil, label: String? = nil) async throws {
++        try await settle()
++        let element = try #require(elements.first { (identifier != nil && $0.accessibilityIdentifier() == identifier) || (label != nil && $0.accessibilityLabel() == label) }, "Missing \(identifier ?? label ?? "action")")
++        try #require(element.isAccessibilityEnabled()); try #require(element.accessibilityPerformPress())
++        try await settle()
++    }
++    func requireHorizontallyVisible(_ element: WorkspaceAccessibilityElement) throws {
++        let frame = window.convertFromScreen(element.accessibilityFrame())
++        #expect(frame.width > 0 && frame.minX >= -1 && frame.maxX <= size.width + 1,
++            "\(element.accessibilityLabel() ?? "Action") must fit horizontally: \(frame)")
++    }
++    func requireFullyVisible(_ element: WorkspaceAccessibilityElement) throws {
++        let frame = window.convertFromScreen(element.accessibilityFrame())
++        #expect(frame.width > 0 && frame.height > 0 && frame.minX >= -1 && frame.maxX <= size.width + 1
++            && frame.minY >= -1 && frame.maxY <= size.height + 1,
++            "\(element.accessibilityLabel() ?? element.accessibilityValue() as? String ?? "Element") must fit fully: \(frame)")
++    }
++    func reveal(identifier: String) async throws {
++        window.makeFirstResponder(nil); try await settle()
++        // A form replacement or production ScrollViewReader reveal can leave
++        // the first virtual AX frame stale. Refetch after every native scroll;
++        // never publish an action capture from that first frame alone.
++        for attempt in 0..<12 {
++            let target = try #require(action(identifier: identifier))
++            let owner = try #require(owningScrollView(identifier: identifier, target: target))
++            if isVisible(target, in: owner) {
++                try await settle()
++                if let fresh = action(identifier: identifier), isVisible(fresh, in: owner) { return }
++            }
++            let document = try #require(owner.documentView)
++            let minimum = document.bounds.minY
++            let maximum = max(minimum, document.bounds.maxY - owner.contentView.bounds.height)
++            let targetFrame = window.convertFromScreen(target.accessibilityFrame())
++            let y: CGFloat
++            if attempt.isMultiple(of: 2), targetFrame.width > 0, targetFrame.height > 0 {
++                let rect = document.convert(targetFrame, from: nil)
++                y = min(maximum, max(minimum, rect.midY - owner.contentView.bounds.height / 2))
++            } else {
++                // Materialize offscreen AX nodes if their reported geometry
++                // was empty/stale. Six bounded samples cover this short form.
++                let progress = CGFloat(attempt / 2) / 5
++                y = document.isFlipped ? minimum + (maximum - minimum) * progress
++                    : maximum - (maximum - minimum) * progress
++            }
++            owner.contentView.scroll(to: CGPoint(x: owner.contentView.bounds.minX, y: y))
++            owner.reflectScrolledClipView(owner.contentView)
++            try await settle()
++        }
++        try requireVisibleAction(identifier: identifier)
++    }
++    func requireVisibleAction(identifier: String, companion: String? = nil) throws {
++        let target = try #require(action(identifier: identifier))
++        let owner = try #require(owningScrollView(identifier: identifier, target: target))
++        try #require(isVisible(target, in: owner), "\(identifier) must fit inside its scroll viewport and host before capture")
++        if let companion {
++            try #require(elements.contains {
++                ($0.accessibilityLabel() == companion || $0.accessibilityTitle() == companion)
++                    && isVisible($0, in: owner)
++            }, "\(companion) must share the visible action row")
++        }
++    }
++    private func action(identifier: String) -> WorkspaceAccessibilityElement? {
++        let matches = elements.filter { $0.accessibilityIdentifier() == identifier }
++        return matches.first { $0.isAccessibilityEnabled() } ?? matches.first
++    }
++    private func owningScrollView(identifier: String, target: WorkspaceAccessibilityElement) -> NSScrollView? {
++        let anchorID = identifier.hasPrefix("metadata.") ? "metadata.form" : "ai-development.panel"
++        let anchor = elements.first { $0.accessibilityIdentifier() == anchorID } ?? target
++        let anchorFrame = window.convertFromScreen(anchor.accessibilityFrame())
++        var pending: [NSView] = [hosting], candidates: [NSScrollView] = []
++        while let next = pending.popLast() {
++            pending.append(contentsOf: next.subviews)
++            guard let scroll = next as? NSScrollView, let document = scroll.documentView,
++                  document.bounds.height > scroll.contentView.bounds.height + 1 else { continue }
++            let viewport = scroll.contentView.convert(scroll.contentView.bounds, to: nil)
++            if anchorFrame.midX >= viewport.minX && anchorFrame.midX <= viewport.maxX { candidates.append(scroll) }
++        }
++        // Exclude nested text editors by preferring the full column viewport.
++        return candidates.max { $0.contentView.bounds.width < $1.contentView.bounds.width }
++    }
++    private func isVisible(_ element: WorkspaceAccessibilityElement, in owner: NSScrollView) -> Bool {
++        let frame = window.convertFromScreen(element.accessibilityFrame())
++        let viewport = owner.contentView.convert(owner.contentView.bounds, to: nil)
++        let host = hosting.convert(hosting.bounds, to: nil)
++        return frame.width > 0 && frame.height > 0
++            && viewport.insetBy(dx: -1, dy: -1).contains(frame) && host.insetBy(dx: -1, dy: -1).contains(frame)
++    }
++    func close() { hosting.rootView = AnyView(EmptyView()); window.close() }
++    func prepareManualInteraction() {
++        window.styleMask = [.titled, .closable, .resizable]
++        window.title = "Glowroom · Issue 200 · synthetische Abnahme"
++        window.ignoresMouseEvents = false
++        window.setContentSize(size); window.center(); window.makeKeyAndOrderFront(nil)
++        NSApplication.shared.activate(ignoringOtherApps: true)
++    }
++}

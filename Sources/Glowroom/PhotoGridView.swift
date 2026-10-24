@@ -426,7 +426,7 @@ struct PhotoFilmstrip: View {
         VStack(spacing: 0) {
             HStack(spacing: 8) {
                 Text(model.title).fontWeight(.medium).lineLimit(1)
-                Text("\(model.visibleAssets.count) Fotos").foregroundStyle(Theme.muted).fixedSize()
+                Text("\(model.visibleAssets.count) \(model.visibleAssets.count == 1 ? "Foto" : "Fotos")").foregroundStyle(Theme.muted).fixedSize()
                 Spacer(minLength: 0)
                 if model.isDeveloping {
                     Menu {

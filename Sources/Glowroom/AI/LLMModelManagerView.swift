@@ -96,7 +96,7 @@ struct LLMModelManagerView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            Text("Bildkorrekturen").font(.title2.bold())
+            Text("KI-Korrektur").font(.title2.bold())
             VStack(alignment: .leading, spacing: 12) {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 4) {
@@ -135,18 +135,19 @@ struct LLMModelManagerView: View {
                             .accessibilityIdentifier("llm-model.cancel")
                     } else {
                         if model.installation == nil {
-                            Button("Herunterladen") { model.download() }.buttonStyle(.borderedProminent)
+                            Button("Modell herunterladen") { model.download() }.buttonStyle(.borderedProminent)
                                 .disabled(model.isBusy || !supportsLocalModel)
                                 .accessibilityIdentifier("llm-model.download")
                         }
                         if model.installation != nil || model.occupiedBytes > 0 || model.errorMessage != nil {
-                            Button("Modell löschen", role: .destructive) { model.remove() }
+                            Button("Modell entfernen", role: .destructive) { model.remove() }
                                 .disabled(model.isBusy).accessibilityIdentifier("llm-model.delete")
                         }
                     }
                 }
                 if !supportsLocalModel {
-                    Text("Dieses Modell benötigt einen Mac mit Apple Silicon.").font(.system(size: 13)).foregroundStyle(.secondary)
+                    Label("Nicht verfügbar · Apple Silicon erforderlich", systemImage: "exclamationmark.triangle")
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }.padding(16).background(.quaternary, in: RoundedRectangle(cornerRadius: 10))
             if !embedded {

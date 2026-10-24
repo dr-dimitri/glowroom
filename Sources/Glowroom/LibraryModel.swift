@@ -681,7 +681,7 @@ final class LibraryModel: ObservableObject {
                 try Task.checkCancellation()
                 guard semanticOperationID == id, generation == catalogGeneration, metadataID == metadataProjectionID,
                       key == semanticScopeKey(semanticScope), canManageSemanticSearch else { throw CancellationError() }
-                semanticActiveScopeLabel = "\(scopeLabel) · \(scope.assets.count) Bilder"
+                semanticActiveScopeLabel = "\(scopeLabel) · \(scope.assets.count) \(scope.assets.count == 1 ? "Bild" : "Bilder")"
                 await semanticSearch.updateCatalog(snapshotSessionID: semanticCatalogSessionID, generation: generation, assets: snapshot.assets)
                 try Task.checkCancellation()
                 guard semanticOperationID == id, generation == catalogGeneration, metadataID == metadataProjectionID, canManageSemanticSearch else { throw CancellationError() }
