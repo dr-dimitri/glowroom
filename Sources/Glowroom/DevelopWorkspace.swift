@@ -66,6 +66,7 @@ final class DevelopWorkspace: ObservableObject {
     @Published var repairFeather = 0.5
     @Published var redEyeStrength = 1.0
     @Published var repairSource: LocalMaskPoint?
+    @Published var repairSelectedStrokeID: UUID?
     // Small details often belong to a much larger foreground instance (a berry
     // to a whole tree). Keep the painted footprint unless explicitly requested.
     @Published var repairObjectDetection = false

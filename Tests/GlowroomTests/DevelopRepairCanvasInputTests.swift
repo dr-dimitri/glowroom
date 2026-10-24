@@ -9,6 +9,164 @@ import Testing
 @Suite("Repair canvas native gestures", .serialized)
 @MainActor
 struct DevelopRepairCanvasInputTests {
+    @Test func anOlderRepairCanBeSelectedMovedAndRestoredWithoutChangingNewerRepairs() async throws {
+        let fixture = try await RepairCanvasFixture.make()
+        let older = try DevelopRetouchStroke(source: LocalMaskPoint(x: 0.1, y: 0.15),
+            target: LocalMaskPoint(x: 0.3, y: 0.4), radius: 0.03,
+            path: [LocalMaskPoint(x: 0.3, y: 0.4), LocalMaskPoint(x: 0.45, y: 0.4)])
+        let newer = try DevelopRetouchStroke(source: LocalMaskPoint(x: 0.1, y: 0.1),
+            target: LocalMaskPoint(x: 0.8, y: 0.75), radius: 0.04)
+        let baseline = try await fixture.installRepairs([older, newer])
+        let host = RepairCanvasHost()
+        defer { host.close(); fixture.workspace.clear() }
+        try await host.mount(fixture)
+
+        try host.send(.leftMouseDown, at: CGPoint(x: 0.3, y: 0.4))
+        #expect(fixture.workspace.repairSelectedStrokeID == older.id)
+        try host.send(.leftMouseDragged, at: CGPoint(x: 0.4, y: 0.5))
+        #expect(fixture.editor.settings(for: fixture.asset.id) == baseline,
+            "A moving overlay must not create intermediate persisted edits")
+        try host.send(.leftMouseUp, at: CGPoint(x: 0.4, y: 0.5))
+        try await fixture.waitForRepairs(2)
+        let moved = fixture.editor.settings(for: fixture.asset.id)
+        let changed = try #require(moved.developGeometry.retouchStrokes.first)
+        #expect(changed.id == older.id && changed.source == older.source)
+        #expect(abs(changed.target.x - 0.4) < 0.000_001 && abs(changed.target.y - 0.5) < 0.000_001)
+        #expect(abs(changed.path.last!.x - 0.55) < 0.000_001 && abs(changed.path.last!.y - 0.5) < 0.000_001)
+        #expect(moved.developGeometry.retouchStrokes.last == newer)
+        #expect(moved.exposure == baseline.exposure)
+        #expect(host.doubleClicks == 0)
+        fixture.editor.undo(assetID: fixture.asset.id)
+        #expect(fixture.editor.settings(for: fixture.asset.id) == baseline)
+        fixture.editor.redo(assetID: fixture.asset.id)
+        #expect(fixture.editor.settings(for: fixture.asset.id) == moved)
+        #expect(await fixture.editor.flush())
+        #expect(await fixture.store.loadAll()[fixture.asset.id] == moved)
+    }
+
+    @Test func draggingASourcePinKeepsTheTargetAndPaintedPath() async throws {
+        let fixture = try await RepairCanvasFixture.make()
+        let stroke = try DevelopRetouchStroke(mode: .clone, source: LocalMaskPoint(x: 0.2, y: 0.25),
+            target: LocalMaskPoint(x: 0.65, y: 0.55), radius: 0.03,
+            path: [LocalMaskPoint(x: 0.65, y: 0.55), LocalMaskPoint(x: 0.75, y: 0.6)])
+        let baseline = try await fixture.installRepairs([stroke])
+        let host = RepairCanvasHost()
+        defer { host.close(); fixture.workspace.clear() }
+        try await host.mount(fixture)
+        try host.send(.leftMouseDown, at: CGPoint(x: 0.2, y: 0.25))
+        try host.send(.leftMouseDragged, at: CGPoint(x: 0.3, y: 0.35))
+        try host.send(.leftMouseUp, at: CGPoint(x: 0.3, y: 0.35))
+        try await fixture.waitForRepairs(1)
+        let moved = try #require(fixture.editor.settings(for: fixture.asset.id).developGeometry.retouchStrokes.first)
+        #expect(moved.id == stroke.id && moved.target == stroke.target && moved.path == stroke.path)
+        #expect(abs(moved.source.x - 0.3) < 0.000_001 && abs(moved.source.y - 0.35) < 0.000_001)
+        fixture.editor.undo(assetID: fixture.asset.id)
+        #expect(fixture.editor.settings(for: fixture.asset.id) == baseline)
+        #expect(await fixture.editor.flush())
+    }
+
+    @Test func draggingAFrozenMaskMovesItsSelectionAndAIPatchWithoutAModel() async throws {
+        let fixture = try await RepairCanvasFixture.make()
+        var weights = Data(repeating: 0, count: 100)
+        for index in [44, 45, 54, 55] { weights[index] = 255 }
+        let mask = try LocalMaskRaster(width: 10, height: 10, bytes: weights)
+        let replacement = try DevelopRetouchReplacement(bounds: DevelopCropRect(x: 0.3, y: 0.3, width: 0.5, height: 0.5),
+            width: 2, height: 2, rgba: Data(repeating: 127, count: 16))
+        let point = try LocalMaskPoint(x: 0.2, y: 0.2)
+        let stroke = try DevelopRetouchStroke(source: point, target: point, radius: 0.03,
+            path: [point], mask: mask, replacement: replacement)
+        let baseline = try await fixture.installRepairs([stroke])
+        let host = RepairCanvasHost()
+        defer { host.close(); fixture.workspace.clear() }
+        try await host.mount(fixture)
+        #expect(!fixture.workspace.repairAIReady)
+        // The painted mask is hit well away from the repair's target pin.
+        try host.send(.leftMouseDown, at: CGPoint(x: 0.55, y: 0.55))
+        #expect(fixture.workspace.repairSelectedStrokeID == stroke.id)
+        try host.send(.leftMouseDragged, at: CGPoint(x: 0.65, y: 0.65))
+        try host.send(.leftMouseUp, at: CGPoint(x: 0.65, y: 0.65))
+        try await fixture.waitForRepairs(1)
+        let moved = try #require(fixture.editor.settings(for: fixture.asset.id).developGeometry.retouchStrokes.first)
+        let movedPatch = try #require(moved.replacement)
+        #expect(moved.id == stroke.id && moved.mask != mask)
+        #expect(moved.mask?.bytes[66] == 255 && moved.mask?.bytes[44] == 0)
+        #expect(movedPatch.rgba == replacement.rgba)
+        #expect(movedPatch.bounds == replacement.bounds)
+        #expect(abs(movedPatch.offsetX - 0.1) < 0.000_001 && abs(movedPatch.offsetY - 0.1) < 0.000_001)
+        fixture.editor.undo(assetID: fixture.asset.id)
+        #expect(fixture.editor.settings(for: fixture.asset.id) == baseline)
+        #expect(await fixture.editor.flush())
+    }
+
+    @Test(arguments: ["keyboard", "inspector"])
+    func deletingTheSelectedOlderRepairIsOneUndoableEdit(action: String) async throws {
+        let fixture = try await RepairCanvasFixture.make()
+        let older = try DevelopRetouchStroke(source: LocalMaskPoint(x: 0.1, y: 0.15),
+            target: LocalMaskPoint(x: 0.3, y: 0.4), radius: 0.03)
+        let newer = try DevelopRetouchStroke(source: LocalMaskPoint(x: 0.15, y: 0.1),
+            target: LocalMaskPoint(x: 0.8, y: 0.75), radius: 0.04)
+        let baseline = try await fixture.installRepairs([older, newer])
+        let host = RepairCanvasHost()
+        defer { host.close(); fixture.workspace.clear() }
+        try await host.mount(fixture, withInspector: action == "inspector")
+        try host.send(.leftMouseDown, at: CGPoint(x: 0.3, y: 0.4))
+        try host.send(.leftMouseUp, at: CGPoint(x: 0.3, y: 0.4))
+        #expect(fixture.workspace.repairSelectedStrokeID == older.id)
+        #expect(fixture.editor.settings(for: fixture.asset.id) == baseline)
+        try await host.settle()
+        if action == "keyboard" { try host.deleteSelectedRepair() }
+        else { #expect(try host.pressInspectorControl("develop.repair.delete-selected")) }
+        try await fixture.waitForRepairs(1)
+        #expect(fixture.editor.settings(for: fixture.asset.id).developGeometry.retouchStrokes == [newer])
+        #expect(fixture.workspace.repairSelectedStrokeID == nil)
+        fixture.editor.undo(assetID: fixture.asset.id)
+        #expect(fixture.editor.settings(for: fixture.asset.id) == baseline)
+        fixture.editor.redo(assetID: fixture.asset.id)
+        #expect(fixture.editor.settings(for: fixture.asset.id).developGeometry.retouchStrokes == [newer])
+        #expect(await fixture.editor.flush())
+        #expect(await fixture.store.loadAll()[fixture.asset.id] == fixture.editor.settings(for: fixture.asset.id))
+    }
+
+    @Test(arguments: ["cancel", "undo", "source"])
+    func interruptedExistingRepairDragsCannotCommitAStaleMovement(reason: String) async throws {
+        let fixture = try await RepairCanvasFixture.make()
+        let stroke = try DevelopRetouchStroke(source: LocalMaskPoint(x: 0.1, y: 0.15),
+            target: LocalMaskPoint(x: 0.3, y: 0.4), radius: 0.03)
+        let baseline = try await fixture.installRepairs([stroke])
+        let host = RepairCanvasHost()
+        defer { host.close(); fixture.workspace.clear() }
+        try await host.mount(fixture)
+        try host.send(.leftMouseDown, at: CGPoint(x: 0.3, y: 0.4))
+        try host.send(.leftMouseDragged, at: CGPoint(x: 0.4, y: 0.5))
+        switch reason {
+        case "undo": fixture.editor.undo(assetID: fixture.asset.id)
+        case "source": fixture.workspace.bind(source: nil)
+        default: try host.cancel("cancel")
+        }
+        try host.send(.leftMouseUp, at: CGPoint(x: 0.4, y: 0.5))
+        try await host.settle()
+        #expect(fixture.editor.settings(for: fixture.asset.id) == (reason == "undo" ? .newEditingSettings : baseline))
+        #expect(!fixture.workspace.repairBusy)
+        #expect(await fixture.editor.flush())
+    }
+
+    @Test func hiddenOverlaysDoNotInterceptANewPaintedRepair() async throws {
+        let fixture = try await RepairCanvasFixture.make()
+        let original = try DevelopRetouchStroke(source: LocalMaskPoint(x: 0.1, y: 0.15),
+            target: LocalMaskPoint(x: 0.45, y: 0.5), radius: 0.03)
+        _ = try await fixture.installRepairs([original])
+        fixture.workspace.repairOverlay = .never
+        let host = RepairCanvasHost()
+        defer { host.close(); fixture.workspace.clear() }
+        try await host.mount(fixture)
+        try host.send(.leftMouseDown, at: CGPoint(x: 0.45, y: 0.5))
+        try host.send(.leftMouseUp, at: CGPoint(x: 0.45, y: 0.5))
+        try await fixture.waitForRepairs(2)
+        #expect(fixture.workspace.repairSelectedStrokeID == nil)
+        #expect(fixture.editor.settings(for: fixture.asset.id).developGeometry.retouchStrokes.first == original)
+        #expect(await fixture.editor.flush())
+    }
+
     @Test func rapidPointClicksWithoutAZoomCallbackAreBothAccepted() async throws {
         let fixture = try await RepairCanvasFixture.make()
         let host = RepairCanvasHost()
@@ -349,6 +507,21 @@ private struct RepairCanvasFixture {
     let workspace: DevelopWorkspace
     let store: RepairCanvasSnapshotStore
 
+    func installRepairs(_ strokes: [DevelopRetouchStroke]) async throws -> EditSettings {
+        var settings = EditSettings(exposure: 0.5)
+        settings.developGeometry.retouchStrokes = strokes
+        editor.setSettings(settings, for: asset.id)
+        #expect(await editor.flush())
+        let deadline = ContinuousClock.now + .seconds(10)
+        while !editor.canEdit {
+            guard ContinuousClock.now < deadline else {
+                throw TestSchedulingTimeout(operation: "install canvas repairs", lastState: "editor cannot edit")
+            }
+            try await Task.sleep(for: .milliseconds(5))
+        }
+        return settings
+    }
+
     static func make(source: (@Sendable (PreviewBitmap, [LocalMaskPoint], Double, LocalMaskRaster?) async throws -> LocalMaskPoint)? = nil) async throws -> Self {
         let sourcePoint = try LocalMaskPoint(x: 0.15, y: 0.2)
         let services = DevelopRepairServices(source: source ?? { _, _, _, _ in sourcePoint },
@@ -461,6 +634,20 @@ private final class RepairCanvasHost {
             $0.accessibilityIdentifier() == identifier
         }, "Missing native repair inspector action: \(identifier)")
         return element.accessibilityPerformPress()
+    }
+
+    func settle() async throws {
+        try await Task.sleep(for: .milliseconds(40))
+        hosting.layoutSubtreeIfNeeded(); hosting.displayIfNeeded()
+    }
+
+    func deleteSelectedRepair() throws {
+        let input = try inputView()
+        #expect(window.firstResponder === input, "Selecting a repair gives the native canvas keyboard focus")
+        let event = try #require(NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [],
+            timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber,
+            context: nil, characters: "\u{7f}", charactersIgnoringModifiers: "\u{7f}", isARepeat: false, keyCode: 51))
+        input.keyDown(with: event)
     }
 
     func send(_ type: NSEvent.EventType, at point: CGPoint, clickCount: Int = 1) throws {

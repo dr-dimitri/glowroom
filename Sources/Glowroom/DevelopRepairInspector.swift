@@ -156,10 +156,20 @@ struct DevelopRepairInspector: View {
                     .accessibilityIdentifier("develop.repair.choose-source")
             }
             if !strokes.isEmpty {
+                if let selected = workspace.repairSelectedStrokeID, strokes.contains(where: { $0.id == selected }) {
+                    Button("Ausgewählte Reparatur löschen") {
+                        workspace.removeRepair(id: selected, asset: asset, editor: editor)
+                    }.controlSize(.small).disabled(!ready)
+                        .help("Entfernt die ausgewählte Maske einschließlich ihrer Punkte. Mit ⌘Z wiederherstellen.")
+                        .accessibilityIdentifier("develop.repair.delete-selected")
+                }
                 Button("Letzte Reparatur entfernen", action: removeLastStroke)
                     .controlSize(.small).disabled(!ready)
                     .accessibilityIdentifier("develop.repair.remove-last")
             }
+            Text("Vorhandene Maske oder Punkt anklicken und ziehen. Löschtaste entfernt die ausgewählte Reparatur.")
+                .font(.system(size: 10)).foregroundStyle(Theme.muted)
+                .fixedSize(horizontal: false, vertical: true)
             Divider()
             Picker("Werkzeugüberlagerung", selection: $workspace.repairOverlay) {
                 ForEach(DevelopRepairOverlay.allCases) { overlay in Text(overlay.title).tag(overlay) }
@@ -270,11 +280,8 @@ struct DevelopRepairInspector: View {
     }
 
     private func removeLastStroke() {
-        guard ready, !strokes.isEmpty else { return }
-        editor.endEditing(assetID: asset.id)
-        var settings = editor.settings(for: asset.id)
-        settings.developGeometry.retouchStrokes.removeLast()
-        editor.setSettings(settings, for: asset.id)
+        guard ready, let last = strokes.last else { return }
+        workspace.removeRepair(id: last.id, asset: asset, editor: editor)
     }
 }
 

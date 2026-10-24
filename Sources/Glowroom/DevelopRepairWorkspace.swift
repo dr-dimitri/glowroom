@@ -41,6 +41,7 @@ extension DevelopWorkspace {
         repairRequest = UUID(); repairTask?.cancel(); repairTask = nil; repairBusy = false
         if clearCandidates {
             repairCandidates = []; repairSelectedCandidateIDs = []
+            repairSelectedStrokeID = nil
             repairTriedSourceStrokeID = nil; repairTriedSources = []
         }
     }
@@ -57,6 +58,61 @@ extension DevelopWorkspace {
         settings.developGeometry.retouchStrokes = []
         editor.setSettings(settings, for: asset.id)
         errorMessage = nil
+    }
+
+    func removeRepair(id: UUID, asset: PhotoAsset, editor: EditingModel) {
+        guard tool == .repair, isOriginalCanvasReady, editor.canEdit else { return }
+        var settings = editor.settings(for: asset.id)
+        guard settings.developGeometry.retouchStrokes.contains(where: { $0.id == id }) else { return }
+        cancelRepairWork(clearCandidates: false)
+        editor.endEditing(assetID: asset.id)
+        settings.developGeometry.retouchStrokes.removeAll { $0.id == id }
+        editor.setSettings(settings, for: asset.id)
+        guard editor.settings(for: asset.id) == settings else { return }
+        repairSelectedStrokeID = nil
+        repairTriedSourceStrokeID = nil; repairTriedSources = []
+        errorMessage = nil; repairStatus = "Reparatur gelöscht. Mit ⌘Z wiederherstellen."
+    }
+
+    /// Pointer motion previews only the overlay. Translate frozen mask pixels
+    /// and validate the durable snapshot once, off MainActor, after mouseUp.
+    func moveRepair(id: UUID, handle: DevelopRepairEditHandle, translation: CGSize,
+                    asset: PhotoAsset, editor: EditingModel, expectedRevision: Int64, expectedSession: UUID) {
+        guard tool == .repair, isOriginalCanvasReady, editor.canEdit,
+              editor.localRevision(for: asset.id) == expectedRevision, editor.aiEditSessionID == expectedSession,
+              let sourceIdentity else { return }
+        let baseline = editor.settings(for: asset.id)
+        guard let index = baseline.developGeometry.retouchStrokes.firstIndex(where: { $0.id == id }) else { return }
+        let stroke = baseline.developGeometry.retouchStrokes[index]
+        cancelRepairWork(clearCandidates: false)
+        let request = repairRequest
+        repairBusy = true; errorMessage = nil
+        repairTask = Task { [weak self, weak editor] in
+            defer { if let self, self.repairRequest == request { self.repairBusy = false; self.repairTask = nil } }
+            do {
+                let worker = Task.detached {
+                    try Task.checkCancellation()
+                    let moved = try DevelopRepairEditing.moved(stroke, handle: handle, translation: translation)
+                    var settings = baseline
+                    settings.developGeometry.retouchStrokes[index] = moved
+                    settings = settings.normalized
+                    _ = try ArtifactJSONCodec.encode(EditingSnapshot(settings: settings))
+                    return settings
+                }
+                let settings = try await withTaskCancellationHandler { try await worker.value } onCancel: { worker.cancel() }
+                try Task.checkCancellation()
+                guard let self, let editor, self.repairRequest == request, self.sourceIdentity == sourceIdentity,
+                      self.tool == .repair, self.isOriginalCanvasReady, editor.canEdit,
+                      editor.localRevision(for: asset.id) == expectedRevision, editor.aiEditSessionID == expectedSession else { return }
+                guard settings != baseline else { return }
+                editor.endEditing(assetID: asset.id)
+                editor.setSettings(settings, for: asset.id)
+                guard editor.settings(for: asset.id) == settings else { return }
+                self.repairTriedSourceStrokeID = nil; self.repairTriedSources = []
+                self.repairStatus = "Reparatur verschoben. Mit ⌘Z rückgängig machen."
+            } catch is CancellationError { }
+            catch { if let self, self.repairRequest == request { self.errorMessage = error.localizedDescription } }
+        }
     }
 
     /// A painted gesture is stored once, after source selection/segmentation.

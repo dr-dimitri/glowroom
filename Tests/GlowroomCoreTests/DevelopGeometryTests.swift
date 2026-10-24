@@ -4,6 +4,58 @@ import Testing
 
 @Suite("Persistent develop geometry")
 struct DevelopGeometryTests {
+    @Test func legacyReplacementBytesKeepZeroOffsetsAndMovedReplacementsRoundTrip() throws {
+        let historical = Data("{\"bounds\":{\"height\":0.4,\"width\":0.3,\"x\":0.1,\"y\":0.2},\"height\":1,\"rgba\":\"FB4o/w==\",\"width\":1}".utf8)
+        let decoded = try ArtifactJSONCodec.decode(DevelopRetouchReplacement.self, from: historical)
+        #expect(decoded.offsetX == 0 && decoded.offsetY == 0)
+        #expect(try ArtifactJSONCodec.encode(decoded) == historical)
+        let explicitZero = try DevelopRetouchReplacement(bounds: decoded.bounds, width: decoded.width,
+            height: decoded.height, rgba: decoded.rgba, offsetX: 0, offsetY: -0.0)
+        #expect(try ArtifactJSONCodec.encode(explicitZero) == historical)
+
+        for offsets in [(0.5, 0.0), (-0.25, 0.5), (0.5, -0.5)] {
+            let moved = try DevelopRetouchReplacement(bounds: .init(x: 0.25, y: 0.25, width: 0.5, height: 0.5),
+                width: 1, height: 1, rgba: decoded.rgba, offsetX: offsets.0, offsetY: offsets.1)
+            let bytes = try ArtifactJSONCodec.encode(moved)
+            #expect(try ArtifactJSONCodec.decode(DevelopRetouchReplacement.self, from: bytes) == moved)
+            if offsets.1 == 0 { #expect(!String(decoding: bytes, as: UTF8.self).contains("offsetY")) }
+            let point = try LocalMaskPoint(x: 0.5, y: 0.5)
+            let stroke = try DevelopRetouchStroke(source: point, target: point, radius: 0.05, replacement: moved)
+            let snapshot = try EditingSnapshot(settings: .init(developGeometry: .init(retouchStrokes: [stroke])))
+            #expect(try ArtifactJSONCodec.decode(EditingSnapshot.self, from: ArtifactJSONCodec.encode(snapshot)) == snapshot)
+        }
+    }
+
+    @Test func replacementOffsetsMustBeFiniteBoundedAndKeepAPositiveImageIntersection() throws {
+        let bounds = try DevelopCropRect(x: 0.25, y: 0.25, width: 0.5, height: 0.5)
+        let pixels = Data([20, 30, 40, 255])
+        for invalid in [Double.nan, .infinity, -.infinity, -1.01, 1.01, -1, 1, -0.75, 0.75] {
+            #expect(throws: ArtifactContractError.self) {
+                try DevelopRetouchReplacement(bounds: bounds, width: 1, height: 1, rgba: pixels, offsetX: invalid)
+            }
+            #expect(throws: ArtifactContractError.self) {
+                try DevelopRetouchReplacement(bounds: bounds, width: 1, height: 1, rgba: pixels, offsetY: invalid)
+            }
+        }
+        let valid = try DevelopRetouchReplacement(bounds: bounds, width: 1, height: 1, rgba: pixels)
+        let encoded = try ArtifactJSONCodec.encode(valid)
+        let original = try #require(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+        for axis in ["offsetX", "offsetY"] {
+            for invalid in [-1.01, 1.01, -0.75, 0.75] {
+                var malformed = original; malformed[axis] = invalid
+                #expect(throws: ArtifactContractError.self) {
+                    try ArtifactJSONCodec.decode(DevelopRetouchReplacement.self,
+                        from: JSONSerialization.data(withJSONObject: malformed))
+                }
+            }
+        }
+        // Partly off-canvas context remains valid while its ROI intersects.
+        for offset in [-0.749_999, 0.749_999] {
+            _ = try DevelopRetouchReplacement(bounds: bounds, width: 1, height: 1,
+                rgba: pixels, offsetX: offset, offsetY: offset)
+        }
+    }
+
     @Test func historicalRetouchBytesRemainUnchangedAndNewSelectionsRoundTrip() throws {
         let historical = Data("{\"feather\":0.5,\"id\":\"00000000-0000-0000-0000-000000000001\",\"mode\":\"heal\",\"opacity\":1,\"radius\":0.04,\"source\":{\"x\":0.2,\"y\":0.3},\"target\":{\"x\":0.6,\"y\":0.5}}".utf8)
         let decoded = try ArtifactJSONCodec.decode(DevelopRetouchStroke.self, from: historical)

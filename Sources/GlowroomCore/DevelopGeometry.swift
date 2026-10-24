@@ -36,20 +36,39 @@ public struct DevelopRetouchReplacement: Codable, Hashable, Sendable {
     public let width: Int
     public let height: Int
     public let rgba: Data
+    /// Translation from the original ROI. Keeping its pixels and rectangle
+    /// intact avoids cumulative resampling when a repair crosses image edges.
+    public let offsetX: Double
+    public let offsetY: Double
 
-    public init(bounds: DevelopCropRect, width: Int, height: Int, rgba: Data) throws {
+    public init(bounds: DevelopCropRect, width: Int, height: Int, rgba: Data,
+                offsetX: Double = 0, offsetY: Double = 0) throws {
         guard (1...Self.maximumDimension).contains(width), (1...Self.maximumDimension).contains(height),
-              rgba.count == width * height * 4 else {
+              rgba.count == width * height * 4,
+              offsetX.isFinite, offsetY.isFinite, (-1...1).contains(offsetX), (-1...1).contains(offsetY),
+              bounds.x + offsetX < 1, bounds.x + offsetX + bounds.width > 0,
+              bounds.y + offsetY < 1, bounds.y + offsetY + bounds.height > 0 else {
             throw ArtifactContractError.invalidValue("develop retouch replacement")
         }
         self.bounds = bounds; self.width = width; self.height = height; self.rgba = rgba
+        self.offsetX = offsetX; self.offsetY = offsetY
     }
-    private enum CodingKeys: String, CodingKey { case bounds, width, height, rgba }
+    private enum CodingKeys: String, CodingKey { case bounds, width, height, rgba, offsetX, offsetY }
     public init(from decoder: Decoder) throws {
         let value = try decoder.container(keyedBy: CodingKeys.self)
         try self.init(bounds: value.decode(DevelopCropRect.self, forKey: .bounds),
                       width: value.decode(Int.self, forKey: .width), height: value.decode(Int.self, forKey: .height),
-                      rgba: value.decode(Data.self, forKey: .rgba))
+                      rgba: value.decode(Data.self, forKey: .rgba),
+                      offsetX: value.decodeIfPresent(Double.self, forKey: .offsetX) ?? 0,
+                      offsetY: value.decodeIfPresent(Double.self, forKey: .offsetY) ?? 0)
+    }
+    public func encode(to encoder: Encoder) throws {
+        var value = encoder.container(keyedBy: CodingKeys.self)
+        try value.encode(bounds, forKey: .bounds); try value.encode(width, forKey: .width)
+        try value.encode(height, forKey: .height); try value.encode(rgba, forKey: .rgba)
+        // Unmoved repairs retain the historical snapshot bytes and digests.
+        if offsetX != 0 { try value.encode(offsetX, forKey: .offsetX) }
+        if offsetY != 0 { try value.encode(offsetY, forKey: .offsetY) }
     }
 }
 

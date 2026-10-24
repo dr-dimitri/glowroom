@@ -35,6 +35,7 @@ struct DevelopCropInputSurface: NSViewRepresentable {
     let pansWithPointer: Bool
     let onTeardown: (() -> Void)?
     let onScroll: ((CGSize) -> Void)?
+    let onDelete: (() -> Void)?
     /// Opt in only when the containing SwiftUI hit-test gate also permits input.
     let allowsViewportHitFallback: Bool
 
@@ -47,7 +48,8 @@ struct DevelopCropInputSurface: NSViewRepresentable {
          pansWithPointer: Bool = false, canvasIdentifier: String = "develop.interactive-canvas",
          capturesEscapeWhileIdle: Bool = true, onTeardown: (() -> Void)? = nil,
          onScroll: ((CGSize) -> Void)? = nil,
-         allowsViewportHitFallback: Bool = false) {
+         allowsViewportHitFallback: Bool = false,
+         onDelete: (() -> Void)? = nil) {
         self.onInput = onInput
         self.onHover = onHover
         self.isEnabled = isEnabled
@@ -63,6 +65,7 @@ struct DevelopCropInputSurface: NSViewRepresentable {
         self.pansWithPointer = pansWithPointer
         self.onTeardown = onTeardown
         self.onScroll = onScroll
+        self.onDelete = onDelete
         self.allowsViewportHitFallback = allowsViewportHitFallback
     }
 
@@ -79,7 +82,8 @@ struct DevelopCropInputSurface: NSViewRepresentable {
                        onDoubleClickBegan: onDoubleClickBegan,
                        pansEnclosingScrollView: photoCanvasPanning, pansWithPointer: pansWithPointer,
                        capturesEscapeWhileIdle: capturesEscapeWhileIdle, onTeardown: onTeardown,
-                       onScroll: onScroll, allowsViewportHitFallback: allowsViewportHitFallback && environmentIsEnabled)
+                       onScroll: onScroll, allowsViewportHitFallback: allowsViewportHitFallback && environmentIsEnabled,
+                       onDelete: onDelete)
         view.setAccessibilityLabel(canvasLabel)
         view.setAccessibilityIdentifier(canvasIdentifier)
     }
@@ -186,6 +190,7 @@ final class DevelopCropNativeInputView: NSView {
     var onCancel: (() -> Void)?
     var onTeardown: (() -> Void)?
     var onScroll: ((CGSize) -> Void)?
+    var onDelete: (() -> Void)?
     var onDoubleClickBegan: (() -> Void)?
     var inputIdentity: AnyHashable?
     var inputEnabled = true {
@@ -243,6 +248,7 @@ final class DevelopCropNativeInputView: NSView {
     required init?(coder: NSCoder) { fatalError("init(coder:) is not used") }
 
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+    override var acceptsFirstResponder: Bool { onDelete != nil && inputEnabled && !isInvalidated }
 
     func configure(onInput: @escaping (DevelopCropInputEvent) -> Void,
                    onHover: @escaping (CGPoint?) -> Void, isEnabled: Bool,
@@ -253,7 +259,8 @@ final class DevelopCropNativeInputView: NSView {
                    pansEnclosingScrollView: Bool = false, pansWithPointer: Bool = false,
                    capturesEscapeWhileIdle: Bool = true, onTeardown: (() -> Void)? = nil,
                    onScroll: ((CGSize) -> Void)? = nil,
-                   allowsViewportHitFallback: Bool = false) {
+                   allowsViewportHitFallback: Bool = false,
+                   onDelete: (() -> Void)? = nil) {
         // End an old asset/tool transaction using its old callback before a new
         // identity's closures replace it.
         if self.inputIdentity != inputIdentity || (!isEnabled && inputEnabled)
@@ -268,6 +275,7 @@ final class DevelopCropNativeInputView: NSView {
         self.onCancel = onCancel
         self.onTeardown = onTeardown
         self.onScroll = onScroll
+        self.onDelete = onDelete
         self.viewportHitFallbackEnabled = allowsViewportHitFallback
         self.onDoubleClickBegan = onDoubleClickBegan
         self.inputIdentity = inputIdentity
@@ -332,6 +340,7 @@ final class DevelopCropNativeInputView: NSView {
     override func mouseDown(with event: NSEvent) {
         guard inputEnabled, !isInvalidated, touchStart == nil, !suppressesPointerUntilMouseUp else { return }
         cancelPointer()
+        if onDelete != nil { window?.makeFirstResponder(self) }
         // Tools also map local document coordinates. Complete a pending zoom
         // before either a tool or hand gesture captures its starting point.
         (enclosingScrollView as? PhotoCanvasScrollView)?.prepareForManualNavigation()
@@ -366,6 +375,17 @@ final class DevelopCropNativeInputView: NSView {
         pointerLocation = point
         publishInput(DevelopCropInputEvent(phase: .changed, kind: .pointer, startLocation: start, location: point))
         publishHover(event)
+    }
+
+    override func keyDown(with event: NSEvent) {
+        let commandModifiers: NSEvent.ModifierFlags = [.command, .option, .control]
+        if inputEnabled, !isInvalidated, window?.firstResponder === self,
+           !menuTracking.isTracking, event.modifierFlags.intersection(commandModifiers).isEmpty,
+           event.keyCode == 51 || event.keyCode == 117, let onDelete {
+            onDelete()
+            return
+        }
+        super.keyDown(with: event)
     }
 
     override func scrollWheel(with event: NSEvent) {
