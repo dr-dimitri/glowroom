@@ -1,0 +1,33 @@
+--- a/Tests/GlowroomTests/WorkspaceProposalLifecycleTests.swift
++++ b/Tests/GlowroomTests/WorkspaceProposalLifecycleTests.swift
+@@ -33,8 +33,17 @@
+         let exporter = JPEGExportModel(preferences: nil)
+         try await host.mount(LibraryView(model: f.library, dataDirectory: directory)
+             .environmentObject(f.editor).environmentObject(exporter).environmentObject(layout).environmentObject(metadata))
++        WorkspaceActions.reveal(.edit, layout: layout, library: f.library)
++        try await host.settle()
++        try await Task.sleep(for: .seconds(2))
++        if let path = ProcessInfo.processInfo.environment["GLOWROOM_WORKSPACE_SNAPSHOTS"] {
++            let output = URL(fileURLWithPath: path, isDirectory: true)
++            try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
++            try host.snapshot(to: output.appendingPathComponent("develop-\(Int(size.width)).png"))
++        }
+         WorkspaceActions.reveal(.aiDevelopment, layout: layout, library: f.library)
+         try await host.settle()
++        try await Task.sleep(for: .seconds(1))
+         #expect(f.library.workspaceMode == .aiDevelop && f.library.isDeveloping)
+         #expect(host.accessibilityElements.contains { $0.accessibilityIdentifier() == "workspace.ai-develop" })
+         #expect(host.accessibilityElements.contains { $0.accessibilityIdentifier() == "ai-workspace.inspector" })
+@@ -904,7 +913,11 @@
+     private func fixture() async throws -> WorkspaceProposalFixture {
+         let photos = directory.appendingPathComponent("Photos")
+         try FileManager.default.createDirectory(at: photos, withIntermediateDirectories: true)
+-        let png = try #require(Data(base64Encoded: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="))
++        let tinyPNG = try #require(Data(base64Encoded: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="))
++        let png: Data
++        if let path = ProcessInfo.processInfo.environment["GLOWROOM_WORKSPACE_SNAPSHOT_FIXTURE"] {
++            png = try Data(contentsOf: URL(fileURLWithPath: path))
++        } else { png = tinyPNG }
+         let folder = LibraryFolder(url: photos)
+         let assets = try ["A.png", "B.png"].map { name in
+             let url = photos.appendingPathComponent(name)

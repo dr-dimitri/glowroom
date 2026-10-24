@@ -1,0 +1,21 @@
+{
+  "sourceCommit": "5511b9993cbbb7d7369a37b3c71234b496fce247",
+  "windowWidthPoints": 1000,
+  "windowHeightPoints": 660,
+  "pixelWidth": 2000,
+  "pixelHeight": 1320,
+  "scaleFactor": 2.0,
+  "activeGroups": [
+    "edit"
+  ],
+  "state": "Entwickeln",
+  "fixture": "synthetic-Morgenlicht.jpg",
+  "fixtureSHA256": "9a714f89f05ec783c535a832c4afa5e8cf808544a502569ca0ee04562fcebc87",
+  "selectedPhoto": "A.png",
+  "settings": "neutral",
+  "zoom": "fit",
+  "macOS": "27.0.1",
+  "imageSHA256": "b8587829f18ebae5ceae0d831b7c1406ee386644e1fffe752b3a63608c3e39ac",
+  "testHarnessPatch": "../baseline-harness.patch",
+  "inference": "none"
+}

@@ -1,0 +1,24 @@
+{
+  "activeGroups": [
+    "edit"
+  ],
+  "compactHistogram": "expanded",
+  "fixture": "../synthetic-Morgenlicht.jpg",
+  "fixtureSHA256": "9a714f89f05ec783c535a832c4afa5e8cf808544a502569ca0ee04562fcebc87",
+  "focused": true,
+  "imageSHA256": "3b34bc0de186694887ca624c943966e38072d5d21ee7a43b95d8c9ee09d7b0d4",
+  "inference": "none",
+  "macOS": "Version 27.0.1 (Build 26A434)",
+  "pixelHeight": 1800,
+  "pixelWidth": 2880,
+  "scaleFactor": 2.0,
+  "selectedPhoto": "A.png",
+  "settings": "neutral",
+  "sourceCommit": "554b9c313d6424835657761b7d557c7b22fd9239",
+  "sourceManifest": "../source-hashes.json",
+  "sourceManifestSHA256": "1ff18e0acdd32b17b7ad6fc85f07dc908bb46e8dc8d275ffcf2c3e56a8091b63",
+  "state": "develop-focus",
+  "windowHeightPoints": 900,
+  "windowWidthPoints": 1440,
+  "zoom": "fit"
+}
