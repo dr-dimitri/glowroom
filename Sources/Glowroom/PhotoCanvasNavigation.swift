@@ -30,15 +30,16 @@ enum PhotoCanvasCursors {
             handle.move(to: CGPoint(x: 14.5, y: 14.5))
             handle.line(to: CGPoint(x: 22, y: 22))
             handle.lineCapStyle = .round
-            NSColor.white.setStroke(); handle.lineWidth = 6; handle.stroke()
-            NSColor.black.setStroke(); handle.lineWidth = 3.5; handle.stroke()
+            NSColor.white.setStroke(); handle.lineWidth = 4; handle.stroke()
+            NSColor.black.setStroke(); handle.lineWidth = 2; handle.stroke()
             let lens = NSBezierPath(ovalIn: CGRect(x: 2, y: 2, width: 16, height: 16))
             NSColor.white.setFill(); lens.fill()
-            NSColor.black.setStroke(); lens.lineWidth = 1.7; lens.stroke()
+            NSColor.black.setStroke(); lens.lineWidth = 1.2; lens.stroke()
             let plus = NSBezierPath()
             plus.move(to: CGPoint(x: 6, y: 10)); plus.line(to: CGPoint(x: 14, y: 10))
             plus.move(to: CGPoint(x: 10, y: 6)); plus.line(to: CGPoint(x: 10, y: 14))
-            plus.lineWidth = 1.6; plus.stroke()
+            plus.lineCapStyle = .round
+            plus.lineWidth = 1.2; plus.stroke()
             return true
         }
         return NSCursor(image: image, hotSpot: CGPoint(x: 10, y: 10))

@@ -117,15 +117,23 @@ struct DevelopDetailWorkspaceIntegrationTests {
         #expect(await fixture.library.finishSaving())
     }
 
-    @Test(arguments: [false, true])
-    func photoClickAndNavigatorDragShareTheActualViewportWithoutEditing(portrait: Bool) async throws {
+    @Test(arguments: [false, true], [false, true])
+    func photoClickAndNavigatorDragShareTheActualViewportWithoutEditing(portrait: Bool, developing: Bool) async throws {
         let fixture = try await DetailWorkspaceFixture.make(pixelWidth: portrait ? 800 : 1_200,
             pixelHeight: portrait ? 1_200 : 800, withAlternateAsset: true)
-        fixture.layout.update(developing: true) { $0.showsLibrary = true }
+        fixture.library.isDeveloping = developing
+        fixture.layout.update(developing: developing) {
+            $0.showsLibrary = true
+            $0.showsFilmstrip = false
+        }
         let workspace = DevelopWorkspace()
         let host = DetailWorkspaceHost()
         defer { workspace.clear(); host.close(); fixture.removeTemporaryFiles() }
         try await host.mount(fixture, workspace: workspace)
+        if !developing {
+            host.window.setContentSize(NSSize(width: 1_000, height: 660))
+            try await host.settle()
+        }
         let asset = try #require(fixture.library.selectedAsset)
         let snapshot = fixture.editor.snapshot(for: asset.id)
         let canvas = try host.input("workspace.photo-navigation")
@@ -143,7 +151,9 @@ struct DevelopDetailWorkspaceIntegrationTests {
             "An off-center click must select a different viewport from a centered click")
         #expect(try host.input("workspace.photo-navigation").cursor(point) === NSCursor.openHand)
         if !portrait, let path = ProcessInfo.processInfo.environment["GLOWROOM_ZOOM_CAPTURE"] {
-            try host.capture(to: URL(fileURLWithPath: path))
+            let url = URL(fileURLWithPath: path)
+            try host.capture(to: developing ? url : url.deletingPathExtension()
+                .appendingPathExtension("library.png"))
         }
 
         // Exercise native dispatch in the lower visible image too: SwiftUI's
@@ -170,6 +180,20 @@ struct DevelopDetailWorkspaceIntegrationTests {
         #expect(abs(moved.width - beforeNavigator.width) < 0.001 && abs(moved.height - beforeNavigator.height) < 0.001)
         #expect(fixture.editor.snapshot(for: asset.id) == snapshot)
         #expect(!fixture.editor.canUndo(assetID: asset.id))
+
+        if !developing {
+            let sidebar = try #require(navigator.enclosingScrollView)
+            let document = try #require(sidebar.documentView)
+            let clip = sidebar.contentView
+            #expect(clip.bounds.height > 100)
+            #expect(document.bounds.height > clip.bounds.height,
+                "At minimum window height, the navigator and folders must share scrollable space")
+            clip.scroll(to: CGPoint(x: 0, y: document.bounds.height - clip.bounds.height))
+            sidebar.reflectScrolledClipView(clip)
+            try await host.settle()
+            #expect(navigator.visibleRect.intersection(navigator.bounds).height < navigator.bounds.height,
+                "The navigator must scroll away so every folder remains reachable")
+        }
 
         let alternate = try #require(fixture.library.visibleAssets.first { $0.id != asset.id })
         fixture.library.select(alternate)
@@ -637,7 +661,8 @@ private final class DetailWorkspaceHost {
             .environment(\.displayScale, 2).preferredColorScheme(.dark))
         try await wait {
             self.nativeViews.contains { ($0 as? NSImageView)?.image?.size == fixture.imageSize }
-                && self.inputIfPresent("develop.detail-loupe") != nil
+                && self.inputIfPresent(fixture.library.isDeveloping
+                    ? "develop.detail-loupe" : "workspace.photo-navigation") != nil
         }
         try await settle()
     }

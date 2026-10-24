@@ -353,6 +353,7 @@ struct DetailView: View {
                 .accessibilityIdentifier("workspace.reveal-in-finder")
             Button { toggleZoom() } label: {
                 Image(systemName: zoomed ? "minus.magnifyingglass" : "plus.magnifyingglass")
+                    .font(.system(size: 12, weight: .regular))
                     .frame(width: 28, height: 30)
             }.buttonStyle(.plain).help(zoomed ? "Einpassen · Klick auf das Bild · Drei-Finger-Ziehen zum Verschieben" : "Vergrößern · Klick auf das Bild")
                 .accessibilityLabel(zoomed ? "Einpassen" : "Vergrößern")
