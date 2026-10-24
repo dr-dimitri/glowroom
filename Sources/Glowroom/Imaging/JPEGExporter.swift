@@ -183,11 +183,11 @@ actor JPEGExporter {
                 throw JPEGExportError.incompleteOriginal
             }
             try Task.checkCancellation()
-            let context = request.settings.toneProcessingVersion == .consistentV2 ? preciseContext : self.context
+            let context = request.settings.usesFloatWorkingGraph ? preciseContext : self.context
             defer { context.clearCaches() }
             var renderSettings = request.settings
             if request.options.format == .heif10HDR { renderSettings.developColor.hdrEnabled = true }
-            var image = try EditRenderer.filterGraph(original, settings: renderSettings)
+            var image = try EditRenderer.filterGraph(original, settings: renderSettings, context: context)
             if Int(image.extent.width) != size.width || Int(image.extent.height) != size.height {
                 let horizontal = Double(size.width) / Double(image.extent.width)
                 let vertical = Double(size.height) / Double(image.extent.height)
@@ -347,17 +347,17 @@ actor JPEGExporter {
         let target = UInt64(output.width).multipliedReportingOverflow(by: UInt64(output.height))
         let decoded = source.partialValue.multipliedReportingOverflow(
             by: 48 + DevelopSharpening.additionalBytesPerPixel(settings: settings)
-                + LocalAdjustmentRenderer.additionalToneWorkingBytesPerPixel(version: settings.toneProcessingVersion))
+                + LocalAdjustmentRenderer.additionalToneWorkingBytesPerPixel(version: settings.workingMemoryVersion) + settings.additionalLevelsBytesPerPixel)
         // HEIF additionally retains the encoder's bounded returned Data buffer.
         // V2 also reserves one RGBAf target plane for resampling/profile output;
         // the encoded JPEG/HEIF representation retains its original precision.
-        let targetFloatBytes: UInt64 = settings.toneProcessingVersion == .consistentV2 ? 16 : 0
+        let targetFloatBytes: UInt64 = settings.usesFloatWorkingGraph ? 16 : 0
         let rendered = target.partialValue.multipliedReportingOverflow(by: (format == .jpeg ? 12 : 32) + targetFloatBytes)
         let base = decoded.partialValue.addingReportingOverflow(rendered.partialValue)
         guard let local = LocalAdjustmentRenderer.estimatedAdditionalBytes(adjustments: settings.localAdjustments,
             width: sourceWidth, height: sourceHeight,
             additionalRenderCount: DevelopGeometryRenderer.replacementCount(in: settings.developGeometry),
-            toneProcessingVersion: settings.toneProcessingVersion) else { throw JPEGExportError.insufficientMemory }
+            toneProcessingVersion: settings.workingMemoryVersion) else { throw JPEGExportError.insufficientMemory }
         guard let geometry = DevelopGeometryRenderer.estimatedAdditionalBytes(geometry: settings.developGeometry,
             width: sourceWidth, height: sourceHeight,
             replacementColorBytesPerPixel: EditRenderer.replacementColorBytesPerPixel(settings: settings)) else { throw JPEGExportError.insufficientMemory }

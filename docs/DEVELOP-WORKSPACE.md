@@ -96,6 +96,39 @@ rückgängig machbar; wegen der geänderten Kennlinien kann sich das Bild änder
 Reset erhält die gewählte Version. Der [Farbvertrag](DEVELOP-COLOR.md#versionierte-tonwertverarbeitung)
 beschreibt die Reihenfolge, Präzision, Migration und SDR-/HDR-Grenzen.
 
+## Globale Tonwertkorrektur
+
+Unter **Tonwert** öffnet **Tonwertkorrektur** die Levels-Regler für
+**RGB gemeinsam**, **Rot**, **Grün** und **Blau**. Jeder Kanal bietet
+Eingangsschwarz und -weiß, Gamma sowie Ausgangsschwarz und -weiß als Regler
+und Zahlenfelder. Endpunkte liegen zwischen 0 und 1, Gamma zwischen 0,1 und 10.
+Der Eingangsabstand muss mindestens 0,0001 betragen und auch in der verwendeten
+Float-Darstellung erhalten bleiben. Gleiche Ausgangspunkte erlauben eine
+konstante Abbildung. Gamma über 1 hellt Mitteltöne auf. Einzelkanäle wirken vor
+**RGB gemeinsam**; die gemeinsame Kurve kann den Farbton verändern.
+
+**Eingang auf 0–1 begrenzen** wirkt vor Gamma, **Ausgang auf 0–1 begrenzen**
+nach der Ausgangsabbildung. Beide sind standardmäßig ausgeschaltet, damit
+negative und erweiterte Werte erhalten bleiben. Ein Punkt an der Kanalauswahl
+und **Weitere aktive Kanäle** zeigen zusätzliche aktive Kurven an.
+**Kanal zurücksetzen** und **Alle zurücksetzen** betreffen ausschließlich
+Levels; andere Korrekturen und die Prozessversion bleiben erhalten.
+
+Eingabetaste oder Verlassen eines Zahlenfeldes übernimmt den eingegebenen Wert.
+Kanalwechsel und Reset übernehmen eine laufende Eingabe vorher synchron;
+spätere Fokusmeldungen können sie nicht erneut anwenden. Unverändert verlassene
+Zahlenfelder runden den gespeicherten Wert nicht auf ihre Anzeigegenauigkeit.
+Ungültige Eingaben lassen den letzten gültigen Wert stehen und zeigen einen
+Hinweis. Eine Zahleneingabe, eine abgeschlossene Reglergeste und jeder Reset
+bilden jeweils einen Rückgängig-Schritt.
+
+Die bisherigen Weiß-/Schwarzregler und ihre Umschalt-Doppelklick-Automatik
+bleiben eigenständig. Die Schwarz-/Grau-/Weißpipetten und Endpunkt-Automatik
+folgen in #170 und #171. Der [Levels-Vertrag](DEVELOP-COLOR.md#globale-tonwertkorrektur-levels)
+beschreibt die Berechnung, Speicherung und Einordnung im Rendergraphen.
+Die [Levels-Prüfanleitung](LEVELS-VALIDATION.md) beschreibt synthetische Abnahmen
+und optionale lokale RAW-Messungen.
+
 ## Zuschneiden und Ausrichten
 
 Die Palette enthält **Werkzeug**, **Seitenverhältnis** mit Schloss, **Winkel** mit **Wasserwaage** und **Auto** sowie **Zurücksetzen / Schließen**. Die vier zusätzlichen Dreh-/Spiegelsymbole, **Auf Bild beschränken** und **Werkzeugüberlagerung** wurden entfernt. Ihr nicht mehr benötigter UI- und Überlagerungszustand entfällt. Bereits gespeicherte Drehungen, Spiegelungen und Bildbegrenzungen bleiben für alte Bearbeitungen lesbar und werden im Ergebnis weiterhin berücksichtigt.

@@ -77,7 +77,8 @@ actor AutomaticToneEstimator {
         if let resources = bitmap.resourceOwner {
             let planned = try Self.estimatedAdditionalBytes(sourceBytes: Int64(bitmap.byteCost),
                 width: bitmap.image.width, height: bitmap.image.height,
-                version: settings.toneProcessingVersion, ownsSource: bitmap.memoryOwnership != nil)
+                version: settings.toneProcessingVersion, ownsSource: bitmap.memoryOwnership != nil,
+                levelsActive: !settings.levels.isNeutral)
             phase = try await resources.acquire(kind: .codec, bytes: planned, priority: .interactive,
                                                 retaining: bitmap.memoryOwnership.map { [$0] } ?? [])
         }
@@ -94,7 +95,7 @@ actor AutomaticToneEstimator {
     /// V2 retains the full source graph until its Float readback is downsampled.
     /// This is a conservative allocation plan, not a process/GPU memory limit.
     static func estimatedAdditionalBytes(sourceBytes: Int64, width: Int, height: Int,
-                                         version: ToneProcessingVersion, ownsSource: Bool) throws -> Int64 {
+                                         version: ToneProcessingVersion, ownsSource: Bool, levelsActive: Bool = false) throws -> Int64 {
         guard sourceBytes >= 0, width > 0, height > 0 else { throw ArtifactResourceError.invalidRequest }
         let scratch: Int64
         let buffers: Int64
@@ -110,10 +111,10 @@ actor AutomaticToneEstimator {
             scratch = sourceImport.partialValue
             // Proxy, candidate/output, RGBA8 histogram buffers and bounded
             // native half-float scratch; no full-source Float analysis exists.
-            buffers = Int64(proxyWidth * proxyHeight) * 64 + 3 * 1_024 * 8
+            buffers = Int64(proxyWidth * proxyHeight) * (levelsActive ? 144 : 64) + 3 * 1_024 * 8
         case .consistentV2:
             let pixels = Int64(width).multipliedReportingOverflow(by: Int64(height))
-            let native = pixels.partialValue.multipliedReportingOverflow(by: 96)
+            let native = pixels.partialValue.multipliedReportingOverflow(by: levelsActive ? 128 : 96)
             guard !pixels.overflow, !native.overflow else { throw ArtifactResourceError.capacityExceeded }
             scratch = native.partialValue
             buffers = Int64(FloatAnalysis.maximumWorkingBytes)
@@ -207,7 +208,8 @@ actor AutomaticToneEstimator {
     func value(for control: AutomaticToneControl, bitmap: PreviewBitmap, settings: EditSettings) throws -> Double {
         try Task.checkCancellation()
         let size = try EditRenderer.outputSize(bitmap, maximumPixelSize: 256)
-        let proxy = try EditRenderer.resized(bitmap, width: size.width, height: size.height, priority: .thumbnail)
+        let proxy = try EditRenderer.resized(bitmap, width: size.width, height: size.height, priority: .thumbnail,
+                                             toneProcessingVersion: settings.workingMemoryVersion)
         let source = try AutomaticToneHistogram(proxy.image)
         // A flat field, nearly uniform noise or isolated specular outliers do
         // not provide enough tonal evidence to justify an automatic change.

@@ -109,6 +109,7 @@ public struct EditingSnapshot: Codable, Hashable, Sendable {
         guard settings == settings.normalized else { throw ArtifactContractError.invalidValue("settings") }
         try settings.validateLocalAdjustments()
         try settings.developGeometry.validate()
+        try settings.levels.validate()
         schemaVersion = 2; self.source = source; self.settings = settings
     }
     private enum CodingKeys: String, CodingKey { case schemaVersion, source, settings }
@@ -129,6 +130,7 @@ public struct EditingSnapshot: Codable, Hashable, Sendable {
         static let developColor = SettingKey(stringValue: "developColor")!
         static let developGeometry = SettingKey(stringValue: "developGeometry")!
         static let toneProcessingVersion = SettingKey(stringValue: "toneProcessingVersion")!
+        static let levels = SettingKey(stringValue: "levels")!
         init?(stringValue: String) { self.stringValue = stringValue }
         init?(intValue: Int) { return nil }
     }
@@ -148,6 +150,7 @@ public struct EditingSnapshot: Codable, Hashable, Sendable {
         if !settings.localAdjustments.isEmpty { try controls.encode(settings.localAdjustments, forKey: .localAdjustments) }
         if !settings.developColor.isNeutral { try controls.encode(settings.developColor, forKey: .developColor) }
         if !settings.developGeometry.isNeutral { try controls.encode(settings.developGeometry, forKey: .developGeometry) }
+        if !settings.levels.isNeutral { try controls.encode(settings.levels, forKey: .levels) }
     }
     public static func == (lhs: Self, rhs: Self) -> Bool {
         lhs.schemaVersion == rhs.schemaVersion && lhs.source == rhs.source && lhs.settings == rhs.settings

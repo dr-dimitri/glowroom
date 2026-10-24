@@ -7,6 +7,7 @@ enum EditRenderError: LocalizedError, Equatable {
     case oversizedPreview
     case insufficientMaskMemory
     case unsupportedSpatialRadius
+    case unrepresentableLevels
 
     var errorDescription: String? {
         switch self {
@@ -14,6 +15,7 @@ enum EditRenderError: LocalizedError, Equatable {
         case .oversizedPreview: "Die Vorschau ist für die Bildbearbeitung zu groß."
         case .insufficientMaskMemory: "Die Vorschau mit Schärfung, Masken oder Retusche überschreitet das verfügbare Speicherbudget. Verkleinere die Vorschau oder reduziere vorübergehend die Korrekturen."
         case .unsupportedSpatialRadius: "Dieses Bild benötigt einen zu großen räumlichen Float-Filter. Deaktiviere Präsenz, Entrauschen und Schärfen oder verwende eine kleinere Bildquelle."
+        case .unrepresentableLevels: "Diese Tonwertkorrektur überschreitet den darstellbaren Float-Bereich oder erhält ungültige Bildwerte. Der bisherige Bildstand bleibt erhalten."
         }
     }
 }
@@ -33,6 +35,9 @@ enum EditRenderer {
         func context(for version: ToneProcessingVersion) -> CIContext {
             version == .consistentV2 ? preciseContext : context
         }
+        func context(for settings: EditSettings) -> CIContext {
+            settings.usesFloatWorkingGraph ? preciseContext : context
+        }
         private let cachesPrefix: Bool
         private let lock = NSLock()
         private var original: CGImage?
@@ -41,7 +46,67 @@ enum EditRenderer {
         private var balanced: CIImage?
         private var noise: NoiseKey?
         private var balanceKey: BalanceKey?
+        private var levelsRangeKey: LevelsRangeKey?
+        private var levelsRange: LevelsRenderer.InputRange?
+        private var rangeMeasurements = 0
+        private var rangeCacheHits = 0
         fileprivate let localMaskCache = LocalMaskImageCache()
+
+        private struct LevelsRangeKey: Equatable {
+            let source: UUID
+            let width: Int
+            let height: Int
+            let sourceLongEdge: Int
+            let upstream: EditSettings
+            let precise: Bool
+
+            init(bitmap: PreviewBitmap, settings: EditSettings) {
+                source = bitmap.rangeSourceIdentity
+                width = bitmap.image.width; height = bitmap.image.height
+                sourceLongEdge = bitmap.sourceLongEdge
+                precise = settings.usesFloatWorkingGraph
+                var upstream = settings
+                // The node's input cannot depend on its own curve, or anything
+                // after it. Keep version, profiles, WB, noise, balance and tone.
+                upstream.levels = .neutral
+                upstream.texture = 0; upstream.clarity = 0
+                upstream.sharpeningAmount = 0; upstream.sharpeningRadius = 1
+                upstream.sharpeningDetail = 25; upstream.sharpeningMasking = 0
+                upstream.developColor.isMonochrome = false
+                upstream.localAdjustments = []; upstream.developGeometry = .neutral
+                if upstream.naturalBalanceAmount == 0 { upstream.naturalBalanceColorAmount = 50 }
+                self.upstream = upstream
+            }
+        }
+
+        struct LevelsRangeDiagnostics: Equatable, Sendable {
+            let measurements: Int
+            let cacheHits: Int
+        }
+        func levelsRangeDiagnostics() -> LevelsRangeDiagnostics {
+            lock.lock(); defer { lock.unlock() }
+            return LevelsRangeDiagnostics(measurements: rangeMeasurements, cacheHits: rangeCacheHits)
+        }
+
+        fileprivate func levelsInputRange(_ image: CIImage, bitmap: PreviewBitmap,
+                                          settings: EditSettings, extent: CGRect) throws -> LevelsRenderer.InputRange {
+            // A stable decoded-source revision survives deterministic adaptive
+            // resizes. This bounded one-entry proof retains only UUID/settings
+            // and six Doubles, never a CGImage, decoded source or artifact owner.
+            let key = LevelsRangeKey(bitmap: bitmap, settings: settings)
+            lock.lock(); defer { lock.unlock() }
+            if cachesPrefix, levelsRangeKey == key, let levelsRange {
+                rangeCacheHits += 1
+                return levelsRange
+            }
+            rangeMeasurements += 1
+            // Serialize the tiny cached proof with its source identity. Each
+            // session already belongs to one bounded render lane, so no extra
+            // queue or concurrent full-image reduction is introduced here.
+            let range = try LevelsRenderer.inputRange(of: image, extent: extent, context: context(for: settings))
+            if cachesPrefix { levelsRangeKey = key; levelsRange = range }
+            return range
+        }
 
         private struct BalanceKey: Equatable {
             let legacy: Double
@@ -90,10 +155,12 @@ enum EditRenderer {
                     lock.unlock()
                 }
                 return try EditRenderer.prefix(CIImage(cgImage: bitmap.image), original: bitmap.image,
-                                               settings: settings, extent: extent, scale: scale)
+                    settings: settings, extent: extent, scale: scale,
+                    analysisIdentity: SourceAnalysisIdentity(bitmap: bitmap))
             }
-            // Only immutable graph construction and the small cached histogram
-            // analysis are serialized. GPU rendering runs after releasing the lock.
+            // Prefix construction is serialized. The final raster render runs
+            // after releasing the lock; the separately cached range proof below
+            // serializes its tiny readback with this same source identity.
             lock.lock()
             defer { lock.unlock() }
             try Task.checkCancellation()
@@ -120,7 +187,8 @@ enum EditRenderer {
             let key = BalanceKey(legacy: settings.autoToneAmount, amount: settings.naturalBalanceAmount,
                                  color: settings.naturalBalanceColorAmount)
             if balanceKey != key {
-                balanced = try EditRenderer.balance(denoised!, original: bitmap.image, settings: settings, extent: extent)
+                balanced = try EditRenderer.balance(denoised!, original: bitmap.image, settings: settings, extent: extent,
+                    analysisIdentity: SourceAnalysisIdentity(bitmap: bitmap))
                 balanceKey = key
             }
             try Task.checkCancellation()
@@ -163,16 +231,20 @@ enum EditRenderer {
     /// Core Image converts from the tagged source into the chosen RGB profile.
     /// A resize alone keeps the source format; the neutral render stays a no-op.
     private static func rasterOutput(for original: CGImage, developing: Bool,
-                                     hdrEnabled: Bool = false) throws -> RasterOutput {
+                                     hdrEnabled: Bool = false, requiresFloat: Bool = false) throws -> RasterOutput {
         let sourceSpace = original.colorSpace ?? CGColorSpace(name: CGColorSpace.sRGB)!
         let colorSpace = hdrEnabled ? CGColorSpace(name: CGColorSpace.extendedLinearSRGB)!
             : developing && sourceSpace.model == .monochrome ? CGColorSpace(name: CGColorSpace.sRGB)! : sourceSpace
         let highPrecision = original.bitsPerComponent > 8
         let floatingPoint = hdrEnabled || (!developing && original.bitmapInfo.contains(.floatComponents))
+        // A certified Float graph can exceed half-float's 65,504 ceiling. HDR
+        // output must retain the graph's precision instead of quantizing it to
+        // infinity. Legacy V1 without levels keeps its historical output path.
+        let floatingFormat: CIFormat = requiresFloat ? .RGBAf : .RGBAh
         let format: CIFormat
         switch colorSpace.model {
-        case .rgb: format = floatingPoint ? .RGBAh : highPrecision ? .RGBA16 : .RGBA8
-        case .monochrome: format = floatingPoint ? .RGBAh : highPrecision ? .LA16 : .LA8
+        case .rgb: format = floatingPoint ? floatingFormat : highPrecision ? .RGBA16 : .RGBA8
+        case .monochrome: format = floatingPoint ? floatingFormat : highPrecision ? .LA16 : .LA8
         default: throw EditRenderError.unavailable
         }
         return RasterOutput(colorSpace: colorSpace, format: format)
@@ -181,8 +253,10 @@ enum EditRenderer {
     /// Add the RGB readback expansion to the existing global preview budget.
     /// Row padding is already covered by the retained source's actual byte cost.
     static func additionalColorOutputBytesPerPixel(for original: CGImage, settings: EditSettings) -> UInt64 {
-        guard !settings.isNeutral, !settings.developColor.hdrEnabled,
-              original.colorSpace?.model == .monochrome else { return 0 }
+        guard !settings.isNeutral else { return 0 }
+        // Float HDR output expands the former half-float plane by eight bytes.
+        if settings.developColor.hdrEnabled { return settings.usesFloatWorkingGraph ? 8 : 0 }
+        guard original.colorSpace?.model == .monochrome else { return 0 }
         let outputBytes = (original.bitsPerComponent > 8 ? 2 : 1) * 4
         return UInt64(max(0, outputBytes - (original.bitsPerPixel + 7) / 8))
     }
@@ -214,7 +288,9 @@ enum EditRenderer {
                                                              format: format, colorSpace: colorSpace, deferred: false)
             else { throw EditRenderError.unavailable }
             try Task.checkCancellation()
-            return PreviewBitmap(image: result, sourceLongEdge: bitmap.sourceLongEdge, rangeProvenance: bitmap.rangeProvenance)
+            return PreviewBitmap(image: result, sourceLongEdge: bitmap.sourceLongEdge, rangeProvenance: bitmap.rangeProvenance,
+                                 rangeSourceIdentity: bitmap.rangeIdentityForResize(width: width, height: height,
+                                    format: format, precise: toneProcessingVersion == .consistentV2))
         }
     }
 
@@ -240,11 +316,12 @@ enum EditRenderer {
         let globalBytes = UInt64(original.width) * UInt64(original.height)
             * (DevelopSharpening.additionalBytesPerPixel(settings: settings)
                 + additionalColorOutputBytesPerPixel(for: original, settings: settings)
-                + LocalAdjustmentRenderer.additionalToneWorkingBytesPerPixel(version: settings.toneProcessingVersion))
+                + LocalAdjustmentRenderer.additionalToneWorkingBytesPerPixel(version: settings.workingMemoryVersion)
+                + settings.additionalLevelsBytesPerPixel)
         guard let localBytes = LocalAdjustmentRenderer.estimatedAdditionalBytes(adjustments: settings.localAdjustments,
             width: original.width, height: original.height,
             additionalRenderCount: DevelopGeometryRenderer.replacementCount(in: settings.developGeometry),
-            toneProcessingVersion: settings.toneProcessingVersion),
+            toneProcessingVersion: settings.workingMemoryVersion),
               let geometryBytes = DevelopGeometryRenderer.estimatedAdditionalBytes(geometry: settings.developGeometry,
                 width: original.width, height: original.height,
                 replacementColorBytesPerPixel: replacementColorBytesPerPixel(settings: settings)),
@@ -262,8 +339,12 @@ enum EditRenderer {
             // Keep spatial effects comparable at progressive preview sizes.
             let scale = max(0.25, Double(max(original.width, original.height)) / 1_600)
             let prefix = try session.prefix(bitmap, settings: settings, extent: extent, scale: scale)
+            let context = session.context(for: settings)
             let global = try manualAdjustments(prefix, settings: settings, extent: extent, scale: scale,
-                                               sourcePixelScale: bitmap.sourcePixelScale)
+                sourcePixelScale: bitmap.sourcePixelScale, context: context,
+                levelsInputRange: { image in
+                    try session.levelsInputRange(image, bitmap: bitmap, settings: settings, extent: extent)
+                }, validatesLevelsOutput: false)
             // Artifact mask allocations belong to this render's admitted phase;
             // retaining their CPU rasters in a global cache would outlive it.
             let maskCache = bitmap.resourceOwner == nil ? session.localMaskCache : nil
@@ -272,16 +353,21 @@ enum EditRenderer {
                                                           preservesExtendedRange: settings.developColor.hdrEnabled,
             toneProcessingVersion: settings.toneProcessingVersion)
             let replacements = try replacementImages(original, settings: settings, extent: extent,
-                scale: scale, maskCache: maskCache, sourcePixelScale: bitmap.sourcePixelScale)
+                scale: scale, maskCache: maskCache, sourcePixelScale: bitmap.sourcePixelScale, context: context,
+                analysisIdentity: SourceAnalysisIdentity(bitmap: bitmap))
             let developed = try DevelopGeometryRenderer.apply(to: image,
                 geometry: settings.developGeometry, extent: extent, replacementImages: replacements)
+            if needsLevelsOutputValidation(settings, includingDocumentStages: true) {
+                try LevelsRenderer.validateFiniteOutput(developed, context: context)
+            }
 
-            let output = try rasterOutput(for: original, developing: true, hdrEnabled: settings.developColor.hdrEnabled)
+            let output = try rasterOutput(for: original, developing: true, hdrEnabled: settings.developColor.hdrEnabled,
+                requiresFloat: settings.usesFloatWorkingGraph)
             let outputExtent = developed.extent
             graphSpan.end(); graphEnded = true
             let renderSpan = PipelineTrace.begin(.render)
             defer { renderSpan.end() }
-            guard let rendered = session.context(for: settings.toneProcessingVersion).createCGImage(developed, from: outputExtent,
+            guard let rendered = context.createCGImage(developed, from: outputExtent,
                 format: output.format, colorSpace: output.colorSpace, deferred: false) else {
                 throw EditRenderError.unavailable
             }
@@ -292,21 +378,28 @@ enum EditRenderer {
 
     /// Builds the full-size graph without converting to a preview or imposing
     /// preview dimensions. The exporter validates its own memory/format limits.
-    static func filterGraph(_ original: CGImage, settings: EditSettings) throws -> CIImage {
+    static func filterGraph(_ original: CGImage, settings: EditSettings, context: CIContext? = nil) throws -> CIImage {
         try Task.checkCancellation()
         let settings = settings.normalized
         let image = CIImage(cgImage: original)
         guard !settings.isNeutral else { return image }
         let extent = image.extent
+        let context = context ?? background.context(for: settings)
         let scale = max(0.25, Double(max(original.width, original.height)) / 1_600)
         let prefix = try prefix(image, original: original, settings: settings, extent: extent, scale: scale)
-        let global = try manualAdjustments(prefix, settings: settings, extent: extent, scale: scale)
+        let global = try manualAdjustments(prefix, settings: settings, extent: extent, scale: scale,
+            context: context, validatesLevelsOutput: false)
         let local = try LocalAdjustmentRenderer.apply(to: global, adjustments: settings.localAdjustments,
             extent: extent, scale: scale, preservesExtendedRange: settings.developColor.hdrEnabled,
             toneProcessingVersion: settings.toneProcessingVersion)
-        let replacements = try replacementImages(original, settings: settings, extent: extent, scale: scale, maskCache: nil)
-        return try DevelopGeometryRenderer.apply(to: local, geometry: settings.developGeometry, extent: extent,
-                                                 replacementImages: replacements)
+        let replacements = try replacementImages(original, settings: settings, extent: extent, scale: scale,
+            maskCache: nil, context: context)
+        let developed = try DevelopGeometryRenderer.apply(to: local, geometry: settings.developGeometry, extent: extent,
+                                                          replacementImages: replacements)
+        if needsLevelsOutputValidation(settings, includingDocumentStages: true) {
+            try LevelsRenderer.validateFiniteOutput(developed, context: context)
+        }
+        return developed
     }
 
     /// Shared precision analysis graph. Reuses the decoded source and cached
@@ -318,14 +411,84 @@ enum EditRenderer {
         let extent = CGRect(x: 0, y: 0, width: bitmap.image.width, height: bitmap.image.height)
         let scale = max(0.25, Double(max(bitmap.image.width, bitmap.image.height)) / 1_600)
         let base = try session.prefix(bitmap, settings: settings, extent: extent, scale: scale)
-        return try manualAdjustments(base, settings: settings, extent: extent, scale: scale,
-                                     sourcePixelScale: bitmap.sourcePixelScale)
+        let context = session.context(for: settings)
+        let image = try manualAdjustments(base, settings: settings, extent: extent, scale: scale,
+            sourcePixelScale: bitmap.sourcePixelScale, context: context,
+            levelsInputRange: { image in
+                try session.levelsInputRange(image, bitmap: bitmap, settings: settings, extent: extent)
+            }, validatesLevelsOutput: false)
+        if needsLevelsOutputValidation(settings, includingDocumentStages: false) {
+            try LevelsRenderer.validateFiniteOutput(image, context: context)
+        }
+        return image
+    }
+
+    /// Exact global input of the whole levels node: denoise/balance, input
+    /// profile/white balance, then the existing versioned tone controls. No
+    /// levels, presence, output monochrome, sharpening, local masks, retouch or
+    /// geometry. The graph is premultiplied extended-linear sRGB, with original
+    /// alpha. A measuring consumer must unpremultiply each visible pixel and
+    /// apply signed-sRGB encoding before averaging encoded straight samples.
+    static func globalLevelsInputGraph(_ bitmap: PreviewBitmap, settings: EditSettings,
+                                       session: Session) throws -> CIImage {
+        try Task.checkCancellation()
+        let settings = settings.normalized
+        let extent = CGRect(x: 0, y: 0, width: bitmap.image.width, height: bitmap.image.height)
+        let scale = max(0.25, Double(max(bitmap.image.width, bitmap.image.height)) / 1_600)
+        let base = try session.prefix(bitmap, settings: settings, extent: extent, scale: scale)
+        return try beforeLevels(base, settings: settings, extent: extent,
+                                preservesExtendedRange: settings.developColor.hdrEnabled)
     }
 
     static func manualAdjustments(_ input: CIImage, settings: EditSettings,
                                   extent: CGRect, scale: Double, preservesExtendedRange: Bool = false,
-                                  sourcePixelScale: Double = 1) throws -> CIImage {
+                                  sourcePixelScale: Double = 1, levelsScope: LevelsScope = .global,
+                                  context: CIContext? = nil,
+                                  levelsInputRange: ((CIImage) throws -> LevelsRenderer.InputRange)? = nil,
+                                  validatesLevelsOutput: Bool = true) throws -> CIImage {
         try Task.checkCancellation()
+        let extended = preservesExtendedRange || settings.developColor.hdrEnabled
+        var image = try beforeLevels(input, settings: settings, extent: extent, preservesExtendedRange: extended)
+        if levelsScope == .global, !settings.levels.isNeutral {
+            let context = context ?? background.context(for: settings)
+            let range = try levelsInputRange?(image)
+            image = try LevelsRenderer.apply(to: image, settings: settings.levels, extent: extent,
+                context: context, inputRange: range)
+        }
+        try Task.checkCancellation()
+        if settings.texture != 0 || settings.clarity != 0 {
+            let fine = settings.texture != 0 ? try blur(image, radius: 2.5 * scale, extent: extent, version: settings.toneProcessingVersion) : image
+            let broad = settings.clarity != 0 ? try blur(image, radius: 18 * scale, extent: extent, version: settings.toneProcessingVersion) : image
+            if settings.toneProcessingVersion == .consistentV2 {
+                image = try TonePipelineV2.presence(image, fine: fine, broad: broad, settings: settings, extent: extent)
+            } else {
+                guard let result = presenceKernel?.apply(extent: extent, arguments: [
+                    image, fine, broad, settings.texture / 100, settings.clarity / 100, extended ? 1.0 : 0.0
+                ]) else { throw EditRenderError.unavailable }
+                image = result
+            }
+        }
+        try Task.checkCancellation()
+        image = try DevelopColorAdjustments.output(image, settings: settings.developColor, extent: extent)
+        image = try DevelopSharpening.apply(to: image, settings: settings, extent: extent,
+                                           sourcePixelScale: sourcePixelScale)
+        if validatesLevelsOutput, levelsScope == .global,
+           needsLevelsOutputValidation(settings, includingDocumentStages: false) {
+            try LevelsRenderer.validateFiniteOutput(image, context: context ?? background.context(for: settings))
+        }
+        return image
+    }
+
+    private static func needsLevelsOutputValidation(_ settings: EditSettings, includingDocumentStages: Bool) -> Bool {
+        guard !settings.levels.isNeutral else { return false }
+        if settings.texture != 0 || settings.clarity != 0 || settings.developColor.isMonochrome ||
+            settings.sharpeningAmount > 0 { return true }
+        return includingDocumentStages && (settings.localAdjustments.contains { $0.isEffective } ||
+            !settings.developGeometry.isNeutral)
+    }
+
+    private static func beforeLevels(_ input: CIImage, settings: EditSettings, extent: CGRect,
+                                     preservesExtendedRange: Bool) throws -> CIImage {
         let extended = preservesExtendedRange || settings.developColor.hdrEnabled
         var image = try DevelopColorAdjustments.input(input, settings: settings.developColor, extent: extent)
         if settings.exposure != 0 || settings.contrast != 0 || settings.highlights != 0 || settings.shadows != 0 ||
@@ -343,34 +506,21 @@ enum EditRenderer {
             }
         }
         try Task.checkCancellation()
-        if settings.texture != 0 || settings.clarity != 0 {
-            let fine = settings.texture != 0 ? try blur(image, radius: 2.5 * scale, extent: extent, version: settings.toneProcessingVersion) : image
-            let broad = settings.clarity != 0 ? try blur(image, radius: 18 * scale, extent: extent, version: settings.toneProcessingVersion) : image
-            if settings.toneProcessingVersion == .consistentV2 {
-                image = try TonePipelineV2.presence(image, fine: fine, broad: broad, settings: settings, extent: extent)
-            } else {
-                guard let result = presenceKernel?.apply(extent: extent, arguments: [
-                    image, fine, broad, settings.texture / 100, settings.clarity / 100, extended ? 1.0 : 0.0
-                ]) else { throw EditRenderError.unavailable }
-                image = result
-            }
-        }
-        try Task.checkCancellation()
-        image = try DevelopColorAdjustments.output(image, settings: settings.developColor, extent: extent)
-        return try DevelopSharpening.apply(to: image, settings: settings, extent: extent,
-                                          sourcePixelScale: sourcePixelScale)
+        return image
     }
 
     private static func prefix(_ image: CIImage, original: CGImage, settings: EditSettings,
-                               extent: CGRect, scale: Double) throws -> CIImage {
+                               extent: CGRect, scale: Double, analysisIdentity: SourceAnalysisIdentity? = nil) throws -> CIImage {
         let denoised = try denoise(image, settings: settings, extent: extent, scale: scale)
         try Task.checkCancellation()
-        return try balance(denoised, original: original, settings: settings, extent: extent)
+        return try balance(denoised, original: original, settings: settings, extent: extent,
+                           analysisIdentity: analysisIdentity)
     }
 
     private static func replacementImages(_ original: CGImage, settings: EditSettings, extent: CGRect,
                                           scale: Double, maskCache: LocalMaskImageCache?,
-                                          sourcePixelScale: Double = 1) throws -> [UUID: CIImage] {
+                                          sourcePixelScale: Double = 1, context: CIContext,
+                                          analysisIdentity: SourceAnalysisIdentity? = nil) throws -> [UUID: CIImage] {
         var result: [UUID: CIImage] = [:]
         let input = CIImage(cgImage: original)
         // Each frozen ROI gets the identical source color pipeline. The actual
@@ -380,9 +530,12 @@ enum EditRenderer {
             guard let replacement = stroke.replacement else { continue }
             try Task.checkCancellation()
             let candidate = try DevelopGeometryRenderer.replacementInput(replacement, original: input, extent: extent)
-            let base = try prefix(candidate, original: original, settings: settings, extent: extent, scale: scale)
+            // Existing balance semantics analyze the original canvas, not the
+            // replacement ROI. Share that original's analysis identity only.
+            let base = try prefix(candidate, original: original, settings: settings, extent: extent, scale: scale,
+                                  analysisIdentity: analysisIdentity)
             let global = try manualAdjustments(base, settings: settings, extent: extent, scale: scale,
-                                               sourcePixelScale: sourcePixelScale)
+                sourcePixelScale: sourcePixelScale, context: context, validatesLevelsOutput: false)
             result[stroke.id] = try LocalAdjustmentRenderer.apply(to: global, adjustments: settings.localAdjustments,
                 extent: extent, scale: scale, cache: maskCache, preservesExtendedRange: settings.developColor.hdrEnabled,
             toneProcessingVersion: settings.toneProcessingVersion)
@@ -396,7 +549,7 @@ enum EditRenderer {
     /// GPU residency or a performance claim.
     static func replacementColorBytesPerPixel(settings: EditSettings) -> UInt64 {
         guard DevelopGeometryRenderer.replacementCount(in: settings.developGeometry) > 0 else { return 0 }
-        var bytes: UInt64 = 16 // Raw ROI/source composition.
+        var bytes: UInt64 = 16 + settings.additionalLevelsBytesPerPixel // Raw ROI/source and Levels proof planes.
         if settings.luminanceNoiseReduction > 0 || settings.colorNoiseReduction > 0 {
             bytes += 16
             if settings.luminanceNoiseReduction > 0 { bytes += 16 }
@@ -417,15 +570,18 @@ enum EditRenderer {
         return bytes
     }
 
-    private static func balance(_ image: CIImage, original: CGImage, settings: EditSettings, extent: CGRect) throws -> CIImage {
+    private static func balance(_ image: CIImage, original: CGImage, settings: EditSettings, extent: CGRect,
+                                analysisIdentity: SourceAnalysisIdentity? = nil) throws -> CIImage {
         // New user-selected balancing replaces, rather than stacks with, the
         // legacy curve. Previously saved edits keep their original renderer.
         if settings.naturalBalanceAmount > 0 {
             return try NaturalBalanceRenderer.apply(to: image, original: original,
-                amount: settings.naturalBalanceAmount, colorAmount: settings.naturalBalanceColorAmount, extent: extent)
+                amount: settings.naturalBalanceAmount, colorAmount: settings.naturalBalanceColorAmount, extent: extent,
+                analysisIdentity: analysisIdentity)
         }
         return settings.autoToneAmount > 0
-            ? try AutoToneRenderer.apply(to: image, original: original, amount: settings.autoToneAmount, extent: extent)
+            ? try AutoToneRenderer.apply(to: image, original: original, amount: settings.autoToneAmount, extent: extent,
+                                         analysisIdentity: analysisIdentity)
             : image
     }
 

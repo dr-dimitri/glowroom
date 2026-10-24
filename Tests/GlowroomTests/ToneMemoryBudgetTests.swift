@@ -51,7 +51,8 @@ struct ToneMemoryBudgetTests {
         }
     }
 
-    @Test func artifactPreviewAdmitsFloatResizeBeforeEnteringItsExistingWorker() async throws {
+    @Test(arguments: [false, true])
+    func artifactPreviewAdmitsFloatResizeBeforeEnteringItsExistingWorker(legacyWithLevels: Bool) async throws {
         let image = try image(width: 128, height: 96)
         let resources = ArtifactResourceOwner(limits: try .init(maximumBytes: 1_000_000))
         var phase: ArtifactResourceLease? = try await resources.acquire(kind: .retainedMemory,
@@ -69,8 +70,10 @@ struct ToneMemoryBudgetTests {
             calls.update { $0 += 1 }
             return bitmap
         })
-        let result = try await pipeline.image(source, request: request,
-            settings: EditSettings(exposure: 0.5, toneProcessingVersion: .consistentV2))
+        var settings = EditSettings(exposure: 0.5, toneProcessingVersion: legacyWithLevels ? .legacyV1 : .consistentV2)
+        if legacyWithLevels { settings.levels.master.gamma = 1.2 }
+        let result = try await pipeline.image(source, request: request, settings: settings)
+        #expect(settings.toneProcessingVersion == (legacyWithLevels ? .legacyV1 : .consistentV2))
         #expect(calls.value == 1)
         #expect(result.image.width < 128 && result.image.height < 96)
         #expect(result.image.bitsPerComponent == 32, "The resized V2 basis must retain Float precision")
@@ -78,7 +81,8 @@ struct ToneMemoryBudgetTests {
         #expect(await resources.state().chargedBytes <= 1_000_000)
     }
 
-    @Test func floatExportRejectsBeforeReplacingTheTargetWhileLegacyBudgetStaysUnchanged() async throws {
+    @Test(arguments: [false, true])
+    func floatExportRejectsBeforeReplacingTheTargetWhileLegacyBudgetStaysUnchanged(legacyWithLevels: Bool) async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("tone-memory-\(UUID())", isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -93,9 +97,11 @@ struct ToneMemoryBudgetTests {
         let target = directory.appendingPathComponent("existing.jpg")
         let sentinel = Data("Keep the existing result".utf8)
         try sentinel.write(to: target)
+        var precise = EditSettings(exposure: 0.5, toneProcessingVersion: legacyWithLevels ? .legacyV1 : .consistentV2)
+        if legacyWithLevels { precise.levels.master.gamma = 1.2 }
         await #expect(throws: JPEGExportError.insufficientMemory) {
             try await exporter.export(.init(sourceURL: source, destinationURL: target,
-                settings: EditSettings(exposure: 0.5, toneProcessingVersion: .consistentV2), options: .init(), overwriteExisting: true))
+                settings: precise, options: .init(), overwriteExisting: true))
         }
         #expect(try Data(contentsOf: source) == original)
         #expect(try Data(contentsOf: target) == sentinel)

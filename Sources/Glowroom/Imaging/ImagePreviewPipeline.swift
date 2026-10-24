@@ -52,12 +52,18 @@ struct PreviewBitmap: @unchecked Sendable {
     let memoryOwnership: ArtifactMemoryReservation?
     let resourceOwner: (any ArtifactResourceAdmitting)?
     let rangeProvenance: PreviewRangeProvenance
+    /// A fresh decode gets a new token; deterministic resizes derive one from
+    /// their parent's token, dimensions and format. Ownership wrappers keep it.
+    /// This prevents pointer reuse from validating an unrelated raster.
+    let rangeSourceIdentity: UUID
     init(image: CGImage, sourceLongEdge: Int? = nil, memoryOwnership: ArtifactMemoryReservation? = nil,
-         resourceOwner: (any ArtifactResourceAdmitting)? = nil, rangeProvenance: PreviewRangeProvenance? = nil) {
+         resourceOwner: (any ArtifactResourceAdmitting)? = nil, rangeProvenance: PreviewRangeProvenance? = nil,
+         rangeSourceIdentity: UUID = UUID()) {
         self.image = image
         self.sourceLongEdge = max(1, sourceLongEdge ?? max(image.width, image.height))
         self.memoryOwnership = memoryOwnership; self.resourceOwner = resourceOwner
         self.rangeProvenance = rangeProvenance ?? .inferred(from: image)
+        self.rangeSourceIdentity = rangeSourceIdentity
     }
     var sourcePixelScale: Double { Double(max(image.width, image.height)) / Double(sourceLongEdge) }
     var byteCost: Int { image.bytesPerRow * image.height }

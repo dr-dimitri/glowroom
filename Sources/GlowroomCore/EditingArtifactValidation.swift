@@ -137,6 +137,9 @@ public enum ArtifactJSONCodec {
             guard v == v.normalized else { throw ArtifactContractError.invalidValue("settings") }
             try v.validateLocalAdjustments()
             try v.developGeometry.validate()
+            try v.levels.validate()
+        case let v as LevelsSettings: try v.validate()
+        case let v as LevelsCurve: try v.validate()
         case let v as DevelopColorSettings:
             guard v == v.normalized else { throw ArtifactContractError.invalidValue("develop color settings") }
         case let v as DevelopGeometry:

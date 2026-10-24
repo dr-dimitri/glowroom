@@ -2,11 +2,18 @@ import CoreGraphics
 import Foundation
 
 /// A small identity cache shares the original's analysis across slider changes.
-/// Weak source references avoid extending the decoded preview's lifetime and
-/// prevent a reused object address from matching a different image. The caller's
+/// Stable raster tokens share deterministic resizes without retaining pixels.
+/// Calls without tokens use weak references plus verified object identity to
+/// avoid extending source lifetimes or matching a reused address. The caller's
 /// bounded render workers provide concurrency; this cache creates no worker pool.
 final class NaturalBalanceAnalysisCache: @unchecked Sendable {
     static let shared = NaturalBalanceAnalysisCache()
+
+    private enum Key: Hashable {
+        case source(SourceAnalysisIdentity)
+        case image(ObjectIdentifier)
+        var isStable: Bool { if case .source = self { true } else { false } }
+    }
 
     private final class Entry {
         weak var image: CGImage?
@@ -25,7 +32,7 @@ final class NaturalBalanceAnalysisCache: @unchecked Sendable {
     // Short test observation under condition; must not reenter the cache.
     private let didJoinInFlight: (@Sendable () -> Void)?
     // All mutable state, including each entry, is protected by condition.
-    private var entries: [ObjectIdentifier: Entry] = [:]
+    private var entries: [Key: Entry] = [:]
     private var access: UInt64 = 0
 
     init(maximumEntries: Int = 8,
@@ -36,15 +43,16 @@ final class NaturalBalanceAnalysisCache: @unchecked Sendable {
         self.analyzeImage = analyze
     }
 
-    func analysis(for image: CGImage) throws -> NaturalBalanceAnalysis {
-        let identity = ObjectIdentifier(image)
+    func analysis(for image: CGImage, identity: SourceAnalysisIdentity? = nil) throws -> NaturalBalanceAnalysis {
+        let stable = identity.flatMap { $0.matches(image) ? $0 : nil }
+        let key = stable.map(Key.source) ?? .image(ObjectIdentifier(image))
         var reportedJoin = false
         while true {
             try Task.checkCancellation()
             condition.lock()
-            entries = entries.filter { $0.value.image != nil }
+            entries = entries.filter { $0.key.isStable || $0.value.image != nil }
             access &+= 1
-            if let entry = entries[identity], entry.image === image {
+            if let entry = entries[key], stable != nil || entry.image === image {
                 entry.lastAccess = access
                 if let analysis = entry.analysis {
                     condition.unlock()
@@ -76,19 +84,19 @@ final class NaturalBalanceAnalysisCache: @unchecked Sendable {
                 return result
             }
             let entry = Entry(image: image, lastAccess: access)
-            entries[identity] = entry
+            entries[key] = entry
             condition.unlock()
             do {
                 let analysis = try analyzeImage(image)
                 try Task.checkCancellation()
                 condition.lock()
-                if entries[identity] === entry { entry.analysis = analysis }
+                if entries[key] === entry { entry.analysis = analysis }
                 condition.broadcast()
                 condition.unlock()
                 return analysis
             } catch {
                 condition.lock()
-                if entries[identity] === entry { entries.removeValue(forKey: identity) }
+                if entries[key] === entry { entries.removeValue(forKey: key) }
                 condition.broadcast()
                 condition.unlock()
                 // A canceled or failed producer must not poison future requests;

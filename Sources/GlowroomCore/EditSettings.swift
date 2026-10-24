@@ -35,6 +35,8 @@ public struct EditSettings: Codable, Hashable, Sendable {
     public var localAdjustments: [LocalAdjustment]
     public var developColor: DevelopColorSettings
     public var developGeometry: DevelopGeometry
+    /// Optional global levels node; neutral values remain absent on the wire.
+    public var levels: LevelsSettings
 
     public init(exposure: Double = 0, contrast: Double = 0, highlights: Double = 0,
                 shadows: Double = 0, whites: Double = 0, blacks: Double = 0,
@@ -46,6 +48,7 @@ public struct EditSettings: Codable, Hashable, Sendable {
                 autoToneAmount: Double = 0, naturalBalanceAmount: Double = 0,
                 naturalBalanceColorAmount: Double = 50, localAdjustments: [LocalAdjustment] = [],
                 developColor: DevelopColorSettings = .neutral, developGeometry: DevelopGeometry = .neutral,
+                levels: LevelsSettings = .neutral,
                 toneProcessingVersion: ToneProcessingVersion = .legacyV1) {
         self.toneProcessingVersion = toneProcessingVersion
         self.exposure = exposure
@@ -71,6 +74,7 @@ public struct EditSettings: Codable, Hashable, Sendable {
         self.localAdjustments = localAdjustments
         self.developColor = developColor
         self.developGeometry = developGeometry
+        self.levels = levels
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -82,6 +86,7 @@ public struct EditSettings: Codable, Hashable, Sendable {
         case localAdjustments
         case developColor, developGeometry
         case toneProcessingVersion
+        case levels
     }
 
     public init(from decoder: Decoder) throws {
@@ -123,6 +128,8 @@ public struct EditSettings: Codable, Hashable, Sendable {
             ? try values.decode(DevelopColorSettings.self, forKey: .developColor) : .neutral
         developGeometry = values.contains(.developGeometry)
             ? try values.decode(DevelopGeometry.self, forKey: .developGeometry) : .neutral
+        levels = values.contains(.levels) ? try values.decode(LevelsSettings.self, forKey: .levels) : .neutral
+        try levels.validate()
         try developGeometry.validate()
         try validateLocalAdjustments()
     }
@@ -155,6 +162,8 @@ public struct EditSettings: Codable, Hashable, Sendable {
         if !localAdjustments.isEmpty { try values.encode(localAdjustments, forKey: .localAdjustments) }
         if !developColor.isNeutral { try values.encode(developColor, forKey: .developColor) }
         if !developGeometry.isNeutral { try values.encode(developGeometry, forKey: .developGeometry) }
+        try levels.validate()
+        if !levels.isNeutral { try values.encode(levels, forKey: .levels) }
     }
 
     public func validateLocalAdjustments() throws {
@@ -217,7 +226,8 @@ public struct EditSettings: Codable, Hashable, Sendable {
                     naturalBalanceAmount: clamp(naturalBalanceAmount, 0...100),
                     naturalBalanceColorAmount: clamp(naturalBalanceColorAmount, 0...100),
                     localAdjustments: localAdjustments.map(\.normalized), developColor: developColor.normalized,
-                    developGeometry: developGeometry.normalized, toneProcessingVersion: toneProcessingVersion)
+                    developGeometry: developGeometry.normalized, levels: levels.normalized,
+                    toneProcessingVersion: toneProcessingVersion)
     }
 
     public var isNeutral: Bool {

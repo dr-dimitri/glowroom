@@ -52,8 +52,9 @@ zur Verfügung.
 ## HDR-Verarbeitung
 
 HDR ist eine gesondert gespeicherte Einstellung. Der Rendergraph kann Werte über
-SDR-Weiß erhalten: die Ausgabe verwendet Halbpräzisions-Fließkomma in erweitertem
-linearem sRGB. Weißabgleich, Profile, globale Regler und lokale Maskenkorrekturen
+SDR-Weiß erhalten: die Ausgabe verwendet erweitertes lineares sRGB, bei V2 oder
+aktiven Levels mit Float32, bei V1 ohne Levels mit Halbpräzision.
+Weißabgleich, Profile, globale Regler und lokale Maskenkorrekturen
 schneiden diese Werte im HDR-Modus nicht an der SDR-Grenze ab. Auch die
 Verkleinerung einer Vorschau behält Fließkommawerte.
 
@@ -111,7 +112,9 @@ Nach Entrauschung, Bildausgleich sowie Profil und Weißabgleich folgen:
 2. Kontrast und Tonbereiche, deren Gewichtung vor der Belichtung bestimmt wird.
 3. sRGB-Decoding, linearer Faktor `2^EV`, danach erneutes Encoding.
 4. Dehaze und Farbregler nach den bestehenden Formeln, danach Decoding.
-5. Präsenz, Schwarzweiß und Schärfen; lokale Masken erben dieselbe Prozessversion.
+5. Globale Tonwertkorrektur (Levels) in vorzeichenrichtiger sRGB-Domäne, danach
+   wieder Decoding. Neutrale Levels überspringen diese zusätzliche Stufe.
+6. Präsenz, Schwarzweiß und Schärfen; lokale Masken erben dieselbe Prozessversion.
 
 Für das Encoding gilt betragsweise `12.92*x` bis `0.0031308`, sonst
 `1.055*x^(1/2.4)-0.055`; das Vorzeichen bleibt erhalten. Das Decoding verwendet
@@ -175,3 +178,78 @@ Float-Analyse- oder RAW-Sensor-Clippingnachweis.
 
 Reproduzierbare Prüfungen und die Grenzen der optionalen lokalen RAW-Messung
 stehen in [TONE-PIPELINE-VALIDATION.md](TONE-PIPELINE-VALIDATION.md).
+
+## Globale Tonwertkorrektur (Levels)
+
+Die globale Tonwertkorrektur besitzt eine gemeinsame RGB-Kurve
+und drei Einzelkanalkurven. Jede Kurve beschreibt Eingangsschwarz/-weiß,
+Gamma, Ausgangsschwarz/-weiß sowie getrennte Eingangs- und Ausgangsclamps.
+Der Neutralzustand (0/1, Gamma 1, 0/1, Clamps aus) wird nicht als zusätzlicher
+`levels`-Schlüssel gespeichert. Alte Bearbeitungen und kanonische Snapshots
+behalten so ihre bisherige Darstellung und Serialisierung.
+
+In der vorzeichenrichtigen sRGB-Domäne gilt pro Kurve
+`u = (x - inputBlack) / (inputWhite - inputBlack)`, danach optional der
+Eingangsclamp, `v = u > 0 ? pow(u, 1 / gamma) : u` und
+`y = outputBlack + v * (outputWhite - outputBlack)`, danach optional der
+Ausgangsclamp. Gamma größer 1 hellt Mitteltöne auf. Einzelkanäle werden vor
+der gemeinsamen Kurve ausgewertet; diese komponentenweise gemeinsame Kurve
+verspricht keine Farbtonerhaltung. Alpha gehört nicht zur RGB-Kurve.
+
+Eingangs- und Ausgangspunkte liegen zwischen 0 und 1, Gamma zwischen 0,1
+und 10. Der Eingang benötigt mindestens `1e-4` Abstand; invertierte Ausgänge
+sind unzulässig, gleiche Ausgänge erlauben eine konstante Abbildung. Die
+CPU-Referenz und Intervallprüfung weisen nicht darstellbare Float-Zwischenwerte
+kontrolliert zurück, auch wenn ein späterer Clamp das Ergebnis begrenzen würde.
+Persistierte ungültige Werte werden abgewiesen; Normalisierung ist eine
+gesonderte deterministische Funktion für bearbeitbare Werte. Der Mindestabstand
+muss sowohl als Double als auch nach Umwandlung der Endpunkte in Float gelten.
+Unbekannte Levels-Versionen und Transferfunktionen werden abgewiesen.
+
+Levels folgt den bisherigen globalen Tonwert- und Farbreglern und liegt vor
+Präsenz, Schwarzweiß und Schärfen. Diese eigene Stufe verwendet für V1 und V2
+dieselbe vorzeichenrichtige sRGB-Transferfunktion. Die davorliegende V1-Stufe
+behält ihre historische Gamma-2,2-Kennlinie. Vor der Kurvenauswertung werden
+RGB-Werte von Alpha entkoppelt; anschließend wird Alpha unverändert wieder
+angewendet. Neutrale Levels fügen keinen Kernel und keine Bereichsanalyse ein.
+
+Vor der Ausführung aktiver Levels reduziert der vorhandene Core-Image-Graph
+seine Eingangsbereiche. Die konservative Float-Intervallprüfung umfasst jede
+Rechenstufe der Einzelkanäle, der anschließenden gemeinsamen Kurve und des
+Rückwegs durch die sRGB-Decodierung. Dadurch
+werden überlaufende Zwischenwerte vor dem Aufbau des Levels-Kernels als
+Renderfehler zurückgewiesen; der letzte gültige Bildstand bleibt sichtbar.
+Die Bereichsprüfung begrenzt keine gültigen negativen oder erweiterten Werte.
+Sie ersetzt keinen HDR-Quellvertrag für spätere Automatiken.
+
+Der Nachweis liest nur acht Float-Werte aus vollständigen Min-/Max-Reduktionen
+zurück, kein Histogramm und keinen CPU-Bildraster. Eine einzelne kleine
+Cacheposition bindet ihn an die UUID der decodierten Quelle, tatsächliche
+Proxymaße, Präzision und vorgelagerte Einstellungen. Resizes leiten aus der
+Elternidentität, Eingangs-/Zielmaßen und Rasterformat einen deterministischen
+Token ab. Identische direkte Resizes teilen den Beweis; unterschiedliche
+Präzision oder mehrstufiges Resampling teilen ihn nicht. Speicherbesitz-Wrapper
+erhalten den Token; ein neuer Decode bekommt eine neue UUID. Levels-Regler
+und spätere Stufen entwerten den Eingangsbeweis nicht.
+Der Beweis hält keine Bild- oder Artefaktressource zusätzlich fest. Auch die
+kleinen Analysen des bisherigen und natürlichen Bildausgleichs verwenden die
+stabile Rasteridentität. Dadurch lösen gleiche, neu materialisierte Proxys bei
+Levels-Reglerbewegungen keine erneute Histogramm-/Szenenanalyse aus. Beide
+Analysescaches bleiben auf acht Einträge begrenzt und halten keine Pixel fest.
+
+Nachgelagerte Präsenz, Masken, Schärfung oder Geometrie können extreme, zuvor
+noch endliche Werte erneut überlaufen lassen. In diesen Fällen prüft eine
+abschließende native Reduktion den gesamten Ausgabegrafen; nur vier Float-Werte
+werden zurückgelesen. Ungültige Ergebnisse werden vor Vorschauübernahme oder
+Export zurückgewiesen. Zwei zusätzliche RGBAf-Ebenen sind konservativ im
+Speicherplan berücksichtigt. Aktive Levels verwenden auch bei V1 Float32,
+ohne dessen Tonwertversion umzuschalten. Die HDR-Vorschau verwendet für V2
+oder aktive Levels ebenfalls Float32 und verliert daher große endliche Werte
+nicht an der bisherigen Half-Float-Ausgabegrenze von 65.504.
+
+Levels gehört ausschließlich zur globalen Bearbeitung. Lokale Masken wenden
+den globalen Levels-Schritt nicht erneut an; ihre Korrekturen arbeiten auf der
+global entwickelten Grundlage. Vorschau, Export und entwickelte Ersatzpixel
+verwenden denselben Levels-Graphen. Die bestehenden Weiß-/Schwarzregler sowie
+ihre Umschalt-Doppelklick-Automatik bleiben eigenständige Funktionen. Pipetten
+und Endpunkt-Automatik sind die nachfolgenden Erweiterungen #170 und #171.
