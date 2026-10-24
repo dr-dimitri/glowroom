@@ -253,7 +253,7 @@ den globalen Levels-Schritt nicht erneut an; ihre Korrekturen arbeiten auf der
 global entwickelten Grundlage. Vorschau, Export und entwickelte Ersatzpixel
 verwenden denselben Levels-Graphen. Die bestehenden Weiß-/Schwarzregler sowie
 ihre Umschalt-Doppelklick-Automatik bleiben eigenständige Funktionen. Die
-Endpunkt-Automatik folgt in #171.
+Aktion **„Tonwertbereich automatisch“** ersetzt ausschließlich Levels nach dem unten dokumentierten konservativen Vertrag.
 
 ### Präzise Levels-Pipetten
 
@@ -304,3 +304,77 @@ Nach Probe und vollständiger Graphvalidierung wird derselbe Gültigkeitsbeweis
 erneut geprüft, auch für Fehler. Der Renderer prüft mögliche Überläufe außerhalb
 der Probe und in nachfolgenden Stufen vor der einzigen atomaren Settingsübernahme.
 Bedienung und Grenzen beschreibt die [Workspace-Anleitung](DEVELOP-WORKSPACE.md#schwarz--grau--und-weißpipetten).
+
+## Automatische gemeinsame Levels-Endpunkte
+
+Die Levels-Automatik analysiert ausschließlich den gemeinsamen benannten
+Pre-Levels-Graphen. Aus einem maximal 256 × 256 großen RGBAf-Readback werden
+unpremultiplizierte Komponenten mit der signed-sRGB-Transferfunktion codiert und
+alpha-gewichtet in drei feste Histogramme mit 4096 Bins eingetragen. Unter-/
+Überschreitungen werden zusätzlich ausgewiesen. Die kleine geordnete
+CPU-Reduktion bleibt seriell: zusätzliche Tasks würden Start- und
+Synchronisationskosten erzeugen; Core Image verarbeitet den Bildgraphen im
+bestehenden begrenzten Analyse-Actor. Es gibt keinen zusätzlichen Decoder oder
+Worker-Pool.
+
+Ein unabhängig implementierter Vergleichsschätzer folgt dem GIMP-Prinzip einer
+möglichst nahen kumulierten Randmasse von 0,6 Prozent je RGB-Kanal. Gleichstände
+gehen weiter nach innen. Die Referenz verwendet Glowrooms ausdrücklich benannte
+4096-Bin/signed-sRGB-Domäne. GIMPs untersuchter Drawable-Pfad verwendet dagegen
+lineare TRC und andere Histogrammauflösungen; der Vergleich behauptet keine
+Pixelgleichheit mit einer GIMP-Anwendung. Keine GPL-Implementierung und keine
+GIMP-/GEGL-Laufzeitabhängigkeit werden übernommen. Die rohe Min-/Max-Automatik
+von darktable wird wegen fehlender robuster Ausreißer- und Clippingprüfung an
+dieser Stelle nicht übernommen.
+
+Die Produktion verwendet den kleinsten der drei Referenz-Schwarzpunkte und den
+größten Weißpunkt als gemeinsame Basis. Fest vor der Bildauswertung gelten:
+N ≥ 64 sichtbare Pixeläquivalente, mindestens 0,125 robuste Kanalspanne und
+0,03125 Interquartilspanne, ein gewichteter RGB-Medianproxy in 0,3…0,7,
+Verstärkung 1,01…3 und höchstens 0,075 Proxyverschiebung. Aus der festen Folge
+1; 0,875; 0,75; 0,625; 0,5; 0,375; 0,25; 0,1875; 0,125; 0,09375; 0,0625;
+0,046875; 0,03125 wird der stärkste zulässige Kandidat gewählt. Bei Stärke λ
+werden Bλ = λB und Wλ = 1 − λ(1 − W) geprüft und genau diese Werte gespeichert.
+Es gibt keine angenommene Monotonie des nachfolgenden Looks und keine adaptive
+Suche, die einen stärkeren ungeprüften Zustand übernehmen könnte.
+
+Jeder Kandidat wird mit neutralen Levels auf derselben Basis im vollständigen
+aktiven globalen SDR-Ausgabepfad verglichen: aktive Präsenz-/Schärfungs-/Look-
+Stufen bleiben enthalten, Masken/Retusche/Geometrie bleiben ausgeschlossen. Der
+Float-Readback erfolgt im tatsächlichen linearisierten Zielprofil vor SDR-Clamp
+und Quantisierung; entwickelte Graubilder verwenden wie die Ausgabe sRGB.
+Vier gepaarte pixelweise Prüfungen zählen neu erreichte untere/obere Grenzen
+irgendeines Kanals sowie vollständig schwarze/weiße Pixel. Für jede Kategorie
+gilt Σα·(!Baseline && Kandidat) ≤ 0,006N + 1. Alte Clip-Pixel dürfen neue Clip-
+Pixel an anderen Stellen nicht kompensieren. Ein gewöhnlicher Differenzwert
+zweier aggregierter Histogramme wäre dafür unzureichend.
+
+Echte HDR-Quellluminanz wird an der ganzen bereits decodierten Quellbasis nachgewiesen,
+auch wenn ein einzelner heller Pixel im adaptiven Input verschwunden ist.
+Arbeitsraum-Komponenten außerhalb 0–1 allein belegen kein HDR. V1/V2 und die
+Levels-Transfer-/Versionskennung werden erhalten. Ausgabecache, akzeptierte
+Frameidentität, Edit-/Selectiongeneration und Quelltoken schützen die Übernahme
+vor veralteten Ergebnissen. Die normale Analyse hält höchstens einen kleinen
+Histogramm-/Baselinecache ohne Bildprovider; Artefaktanalysen leeren/deaktivieren
+diesen Cache und halten beide Quellen samt sämtlichem Scratch innerhalb ihrer
+Admission. Eine nachfolgende vollständige Graphvalidierung hat eine eigene
+Reservation, bevor genau ein Settings-Snapshot übernommen wird.
+
+Für eingefrorene V1-Bearbeitungen mit aktiver Struktur/Klarheit oder Schärfung
+liefert die Endpunkt-Automatik ausdrücklich keinen Vorschlag. Diese historischen
+nachgelagerten Stufen begrenzen bereits im Arbeitsraum, bevor ins Zielprofil
+konvertiert wird; daraus lässt sich der geforderte zusätzliche Clippingnachweis
+im Zielprofil nicht zuverlässig gewinnen. Die Fehlermeldung benennt diese
+Vertragsgrenze. V1 ohne diese Stufen bleibt unterstützt; vorhandene Bearbeitungen
+werden weder verändert noch still auf V2 umgestellt. V2 prüft die aktiven
+nachgelagerten Stufen vor der Zielprofilbegrenzung vollständig mit.
+
+Der gewichtete Proxy aus separaten Kanalmedianen ist keine Motivklassifikation
+und kein Helligkeitsmedian. Auch ein helles gesättigtes Motiv kann deshalb
+vorsichtshalber ohne Vorschlag bleiben; die Rückmeldung behauptet keine
+nachgewiesene Low-/High-Key-Stimmung. Die festen Gates bleiben unverändert.
+
+Die Analyse und die anschließende vollständige Levels-Validierung reservieren
+für jeden aktiven Struktur-/Klarheits-Gaußfilter zusätzlich zwei RGBAf-
+Zwischenflächen (horizontal/vertikal), insgesamt 32 Bytes pro Pixel je Filter.
+Die Quellfläche zählt bereits im Basisplan; Schärfung bleibt separat erfasst.

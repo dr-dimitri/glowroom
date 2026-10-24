@@ -274,7 +274,8 @@ struct LevelsPickerFixture {
 
     static func make(initial: EditSettings = .neutral, sample: @escaping DevelopWorkspace.SampleLevels,
                      validate: @escaping DevelopWorkspace.ValidateLevels = { _, _, _ in },
-                     input: PreviewBitmap? = nil, failsSave: Bool = false) async throws -> Self {
+                     input: PreviewBitmap? = nil, failsSave: Bool = false,
+                     estimate: DevelopWorkspace.EstimateLevels? = nil) async throws -> Self {
         let asset = PhotoAsset(folderID: UUID(), fileURL: URL(fileURLWithPath: "/tmp/levels-picker-\(UUID()).png"), pixelWidth: 16, pixelHeight: 16)
         let store = LevelsPickerTestStore(assetID: asset.id, settings: initial, failsSave: failsSave)
         let editor = EditingModel(database: LegacySnapshotTestAdapter(store))
@@ -282,7 +283,7 @@ struct LevelsPickerFixture {
         let workspace = DevelopWorkspace(analyze: { _ in
             DevelopPreviewAnalysis(width: 1, height: 1, pixels: [128, 128, 128, 255],
                 channels: [[Int]](repeating: [Int](repeating: 0, count: 128), count: 3), shadows: 0, highlights: 0)
-        }, sampleLevels: sample, validateLevels: validate)
+        }, sampleLevels: sample, validateLevels: validate, estimateLevels: estimate)
         let source = AISourceIdentity.original(.init(fileURL: asset.fileURL, modifiedAt: asset.modifiedAt, fileSize: asset.fileSize))
         let result = Self(asset: asset, editor: editor, workspace: workspace, store: store, source: source,
             selection: .init(sessionID: UUID(), generation: 4), decoded: try levelsTransactionBitmap(edge: 16), input: try input ?? levelsTransactionBitmap(edge: 8))

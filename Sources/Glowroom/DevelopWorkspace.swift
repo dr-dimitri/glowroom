@@ -29,6 +29,7 @@ final class DevelopWorkspace: ObservableObject {
     @Published var levelsPicker: DevelopLevelsPickerSelection?
     @Published var levelsDisplay: DevelopPreviewHandoff?
     @Published var levelsSampleDescription: String?
+    @Published var automaticLevelsBusy = false
     var levelsTask: Task<Void, Never>?
     var levelsRequest = UUID()
     let detailPosition = DevelopDetailPosition()
@@ -106,22 +107,25 @@ final class DevelopWorkspace: ObservableObject {
     typealias EstimateHorizon = @Sendable (PreviewBitmap) async throws -> Double?
     typealias EstimateTone = @Sendable (AutomaticToneControl, PreviewBitmap, EditSettings) async throws -> AutomaticToneEstimate
     typealias SampleLevels = @Sendable (PreviewBitmap, EditSettings, CGPoint) async throws -> LevelsSampleReport
+    typealias EstimateLevels = @Sendable (PreviewBitmap, PreviewBitmap, EditSettings) async throws -> AutomaticLevelsEstimate
     typealias ValidateLevels = @Sendable (PreviewBitmap, EditSettings, LevelsPickerSample?) async throws -> Void
     private let analyze: Analyze
     private let estimateHorizon: EstimateHorizon
     let estimateTone: EstimateTone
     let sampleLevels: SampleLevels
     let validateLevels: ValidateLevels
+    let estimateLevels: EstimateLevels
 
     init(analyze: Analyze? = nil, estimateHorizon: EstimateHorizon? = nil, estimateTone: EstimateTone? = nil,
          sampleLevels: SampleLevels? = nil,
-         validateLevels: ValidateLevels? = nil,
+         validateLevels: ValidateLevels? = nil, estimateLevels: EstimateLevels? = nil,
          repairServices: DevelopRepairServices = .live, repairAIStore: DevelopRepairAIModelStore = .shared) {
         self.repairServices = repairServices
         self.repairAIStore = repairAIStore
         self.estimateHorizon = estimateHorizon ?? { try await DevelopHorizonEstimator.shared.estimate($0) }
         self.estimateTone = estimateTone ?? { try await AutomaticToneEstimator.shared.estimate(for: $0, bitmap: $1, settings: $2) }
         self.sampleLevels = sampleLevels ?? { try await AutomaticToneEstimator.shared.sampleLevels(bitmap: $0, settings: $1, normalizedTopLeft: $2) }
+        self.estimateLevels = estimateLevels ?? { try await AutomaticToneEstimator.shared.estimateLevels(bitmap: $0, sourceBitmap: $1, settings: $2) }
         self.validateLevels = validateLevels ?? { try await AutomaticToneEstimator.shared.validateLevels(bitmap: $0, settings: $1, neutralGraySample: $2) }
         if let analyze { self.analyze = analyze }
         else {

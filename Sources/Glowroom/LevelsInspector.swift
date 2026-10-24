@@ -96,6 +96,22 @@ struct LevelsInspector: View {
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityIdentifier("develop.levels.other-active-channels")
                 }
+                Button {
+                    finishInput()
+                    let selection = DevelopSelectionIdentity(sessionID: library.aiSelectionSessionID,
+                                                            generation: library.aiSelectionGeneration)
+                    workspace.applyAutomaticLevels(assetID: assetID, editor: editor, selection: selection,
+                        isCurrent: {
+                            pickerContextIsCurrent && selection.matches(library)
+                        })
+                } label: {
+                    HStack(spacing: 6) {
+                        Text("Tonwertbereich automatisch")
+                        if workspace.automaticLevelsBusy { ProgressView().controlSize(.mini) }
+                    }
+                }
+                .accessibilityIdentifier("develop.levels.automatic")
+                .help("Ersetzt alle Levels: gemeinsame Eingangsgrenzen, Gamma 1 und Ausgang 0–1; Rot, Grün, Blau und alle Begrenzungen werden zurückgesetzt. Andere Bearbeitungen bleiben erhalten. Nur bei einem sicheren SDR-Vorschlag.")
                 pickerControls
                 ForEach(LevelsUIParameter.allCases) { parameter in
                     parameterRow(parameter, channel: selectedChannel)

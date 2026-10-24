@@ -226,6 +226,13 @@ enum EditRenderer {
         let format: CIFormat
     }
 
+    /// Analysis must measure clipping in the same developed destination as
+    /// preview/export, before integer quantization constrains its RGB values.
+    /// In particular, a gray input develops into sRGB rather than gray output.
+    static func developedOutputColorSpace(for original: CGImage, hdrEnabled: Bool = false) throws -> CGColorSpace {
+        try rasterOutput(for: original, developing: true, hdrEnabled: hdrEnabled).colorSpace
+    }
+
     /// A monochrome source profile describes the input, not the developed
     /// result: white balance and other color edits can separate RGB channels.
     /// Core Image converts from the tagged source into the chosen RGB profile.

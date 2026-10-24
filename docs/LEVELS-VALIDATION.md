@@ -64,8 +64,9 @@ vier Methoden erneut erfolgreich ausgeführt und die XML-Abdeckung sämtlicher
 Die aktuelle Resizephase zählt beide neuen Provider mit insgesamt 64 statt
 32 Bytes pro Pixel; die exakte Gleichheitsprüfung und alle Budgetgrenzen
 bleiben bestehen. Der saubere vollständige Release-Build besteht (437,33 s).
-Seit diesem Build wurden nur diese Testrechnung und Dokumentation verändert;
-ein weiterer App-Build ist deshalb nicht erforderlich. Der unabhängige finale
+Zum Abschluss von #170 wurden seit diesem Build nur diese Testrechnung und
+Dokumentation verändert; für diesen historischen #170-Stand war deshalb kein
+weiterer App-Build erforderlich. #171 erhält einen eigenen sauberen Build. Der unabhängige finale
 Diff-/Schnittstellenreview enthält keine offenen Befunde.
 
 - Unabhängige skalare Fälle prüfen Schwarz/Weiß, `0.25 → Gamma 2`, Value nach
@@ -153,3 +154,131 @@ lokalem Vorher-/Nachher-Vergleich unverändert. Große Ergebnisse überschreiten
 absichtlich den unveränderten 32-MiB-Ausgabecache. Die Laufzeit des großen Falls
 und der separaten automatischen Tonwertanalyse ist ausdrücklich eine Grenze
 dieser Arbeitslast; diese Messung verspricht keine interaktive Bildrate.
+
+## Automatische Levels-Endpunkte (#171)
+
+Die feste Richtlinie steht in `AutomaticLevelsPolicy`; sie ist zugleich die
+Quelle für den reproduzierbaren Vergleichsbericht. Qualitätsgrenzen werden
+nicht anhand nachträglicher Bildresultate gelockert. Die Referenz folgt nur
+GIMPs dokumentiertem 0,6-%-Prinzip im ausdrücklich anderen Glowroom-Arbeitsraum;
+rohe Minima/Maxima nach dem untersuchten darktable-Pfad ersetzen sie nicht.
+
+Die obligatorische synthetische Abnahme benötigt keine privaten Bilder:
+
+```sh
+./scripts/test.sh --jobs 3 --no-parallel --filter 'AutomaticLevels|PairedLevelsClipping|AutomaticToneEstimatorTests|DevelopAutomaticToneTests'
+```
+
+Histogramm-Goldens stammen aus rationalen Binmassen, einschließlich exakter
+Gleichstände, leerer Plateaus, Ausreißer und kleiner Probenzahlen. Paarweise
+Clipping-Fixtures prüfen zusätzlich die Grenze 0,006N+1 und den Fall, dass
+verschwundene alte Clip-Pixel neue Clip-Pixel an anderen Stellen nicht aufheben.
+Die Bildfälle enthalten unter anderem flaue Rampen, Gegenlicht, Low-/High-Key,
+gesättigte sRGB-/P3-Farben, unterschiedliche Alphaabdeckung, Glanzpunkte, Flat-
+Fields und nahezu flache verrauschte Flächen. V1/V2 bleiben getrennt benannt.
+Ungeeignete Referenzendpunkte werden ausdrücklich als nicht verfügbar/degeneriert
+berichtet, statt durch Normalisierung in eine vorgetäuschte Referenz überzugehen.
+
+Der optionale Vergleich schreibt lokale JSON-/HTML-/PNG-Artefakte in einen
+frischen temporären Ordner. Er erfasst Eingaben, Profil/TRC, Endpunkte, Gates,
+Clippingmassen und Gründe für ausbleibende Vorschläge. Private Testfotos sind
+nur nach ausdrücklicher lokaler Auswahl einzubeziehen; Originale und abgeleitete
+Fotodateien bleiben außerhalb von Git und GitHub. Synthetische Vergleichsbilder
+sind kein Ersatz für eine benannte Fotoauswahl und begründen keine Überlegenheit
+gegenüber GIMP oder darktable. Es werden keine Leistungsgewinne behauptet.
+
+Nach einem erfolgreichen Testbuild lassen sich die Vergleiche ausdrücklich
+lokal erzeugen:
+
+```sh
+GLOWROOM_LEVELS_REPORT=1 ./scripts/test.sh --skip-build --no-parallel \
+  --filter optionalSyntheticPNGAndHTMLReport
+GLOWROOM_LEVELS_LOCAL_IMAGES=/absoluter/pfad/zu/Fixtures/LocalTestImages \
+  GLOWROOM_LEVELS_LOCAL_COVERAGE=/privater/pfad/motivzuordnung.json \
+  ./scripts/test.sh --skip-build --no-parallel \
+  --filter optionalPrivateJPEGReportIsSeparateAndLeavesEveryOriginalUnchanged
+```
+
+Die optionale private Zuordnung ist ein JSON-Objekt von Dateinamen auf
+Motivlisten mit `lowContrast`, `backlit`, `lowKey`, `highKey`, `saturated`.
+Sie ist eine manuelle Sichtannotation und keine numerische Groundtruth.
+Fehlende Dateien, Fehler und fehlende Fotomotive stehen ausdrücklich im Bericht.
+Keine dieser privaten Eingaben oder Ausgaben wird committet.
+
+Der Review korrigiert außerdem die Gauß-Speicherplanung: je aktiver Struktur/
+Klarheit zählen zwei RGBAf-Pässe mit 32 Bytes pro Pixel, sowohl in der
+Endpunktanalyse als auch in der vollständigen Levels-Validierung.
+`AutomaticLevelsAdmissionTests.precisePresenceCountsBothPassesOfEachActiveGaussian`
+prüft beide Rechnungen exakt. Escape wird über den echten Workspace-Tastaturpfad
+mit Fenster-, Button- und Textresponder sowie Fokus ein/aus geprüft.
+
+Die Automatik-Schaltfläche bindet ihre eingefrorene Selection zusätzlich an die
+**live** Session/Generation des Library-Modells. Ein synchroner A→B→A-Wechsel
+muss bereits vor dem nächsten SwiftUI-Pending-Callback ablehnen. Der direkte
+Library-Regressionstest prüft dies ohne View und ohne `await`; der ergänzende
+native AX-Buttonfall prüft späte Worker-Erfolge und Fehler samt unveränderter
+Persistenz. Ein alter Frame allein darf seine eigene alte Selection nicht als
+aktuell bestätigen.
+
+### Lokaler Vergleich vom 24.10.2026
+
+24 synthetische Varianten (zwölf Motive jeweils V1/V2) und sieben ausdrücklich
+lokale JPEGs bestehen die unveränderten unabhängigen Gates. Die mittlere
+Graurampe wählt Stärke 0,875 mit B=0,1790598291 und W=0,8209401709; ihr
+5–95-%-Value-Bereich wächst von 0,5433071 auf 0,8464303. Alle vier neu geclippten
+Massen sind dabei null. Der volle Kandidat hätte je 96 neue Grenzpixel bei
+höchstens 74,728 erlaubter Masse erzeugt und wurde deshalb verworfen.
+Die Low-/High-Key-Rampen bleiben unverändert; gesättigte P3-Komponenten außerhalb
+des sRGB-Würfels werden nicht als HDR fehlklassifiziert.
+
+Sechs lokale JPEGs erhalten eine begrenzte Spreizung, eines bleibt wegen der
+konservativen Verteilungsgates unverändert. Alle sieben Originalhashes sind
+vor/nach dem Vergleich gleich. Flaue, Gegenlicht-, helle und gesättigte Motive
+wurden lokal visuell zugeordnet; ein eindeutig absichtlich gestaltetes Low-Key-
+Foto fehlt weiterhin und ist als fehlende Fotoabdeckung ausgewiesen. Der
+Low-Key-Pflichtfall ist synthetisch abgedeckt. Die lokale Sichtprüfung ausgewählter
+Vorher-/Nachher-Paare begründet keine allgemeine Qualitätsüberlegenheit. Private
+Bilder, Ableitungen, Zuordnung und Hashberichte bleiben außerhalb des Repositorys.
+RAW-Reaktionszeiten wurden für #171 nicht gemessen; die vorhandenen tatsächlichen
+RAW-Messungen für #168/#169 sind getrennt und belegen keine Beschleunigung dieser
+neuen Automatik.
+
+### Abschließende Prüfungen für #171
+
+Der vollständige isolierte Lauf besteht mit 1814/1814 SDK-Methoden. Danach
+wurden ausschließlich die live Auswahlprüfung der Schaltfläche und zwei
+zugehörige Testmethoden ergänzt. Die vier betroffenen Suites wurden mit dem
+neu kompilierten Stand erneut einzeln ausgeführt; alle übrigen XML-Ergebnisse
+wurden streng gegen den frisch entdeckten SDK-Katalog validiert. Damit sind
+1816/1816 Methoden in 185 Batches vollständig verifiziert, ohne fehlende oder
+unerwartete Methoden zu akzeptieren. Die zwei optionalen Bildbericht-Tests
+liefen zusätzlich aktiviert im gezielten Lauf mit insgesamt 92 Tests in
+14 Suites (46,406 s). Die Originalberichte bleiben nachvollziehbar erhalten.
+
+Im Zuge des kontrollierten Abbruchs vor einer letzten Rückmeldungskorrektur
+wurde ein Buildskript-Bug sichtbar: native Compiler können die Prozessgruppe
+ihres Workers verlassen und nach dessen Ende kurz weiterarbeiten. Der
+Abbruchpfad friert deshalb den nachgewiesenen eigenen Prozessbaum anhand von
+Startdaten/Benutzerkennung vor der Baumaufnahme ein und beendet nur verifizierte
+PIDs. Unvollständige Nachweise, verschwundene Worker oder fehlgeschlagene Waits
+erhalten Lock und Staging für eine kontrollierte manuelle Prüfung. Die bisherige
+App bleibt erhalten. Alle elf isolierten Skriptprüfungen bestehen, einschließlich
+TERM-ignorierender Enkel in anderer Prozessgruppe, echtem exit-41-Orphan und
+überlebendem fremdem Sentinel. Die betrieblichen Folgen stehen im README.
+
+Anfängliche Test-Kompilierungen scheiterten an einem fehlenden `try` in einer
+neuen Makroanforderung und einer untypisierten Int/Int64-Testrechnung; beides
+wurde korrigiert. Der erste Releaseversuch wurde vor der letzten Quellkorrektur
+kontrolliert abgebrochen und ist kein erfolgreicher Buildnachweis. Vor dem
+abschließenden sauberen Build wurden Prozessruhe und fehlender aktiver Lock
+erneut geprüft; anschließend wurden die generierten Ergebnisse vollständig
+entfernt.
+
+Der abschließende saubere vollständige Release-Build für #171 besteht
+(435,51 s SwiftPM-Kompilierung), einschließlich Bundle-Plist, lokaler Signierung
+und strikter Signaturprüfung. Der erfolgreiche Pfad entfernt seinen Build-Lock
+und sein privates Staging. Seit diesem Build wurden nur die Prüfergebnisse in
+Dokumentation/PR-Text ergänzt; ein weiterer App-Build ist dafür nicht erforderlich.
+Der finale unabhängige Diff-, Schnittstellen-, Test-, Skript- und
+Dokumentationsreview enthält keine offenen Befunde. Die vor Beginn vorhandene
+fremde Teständerung im Haupt-Checkout ist bytegleich erhalten.
