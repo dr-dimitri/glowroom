@@ -1,0 +1,13 @@
+{
+  "canMigrate" : true,
+  "capture" : "actual native sheet route and action state asserted; identical production view in standalone native host with explicit system window background",
+  "macOS" : "Version 27.0.1 (Build 26A434)",
+  "nativeView" : "ToneProcessingMigrationView",
+  "parentWindowHeightPoints" : 900,
+  "parentWindowWidthPoints" : 1440,
+  "screenshotSHA256" : "39fa9660268b5b5e30358d0db3812ae9479a330f3a56f7328a81ab4f443968a5",
+  "sourceCommit" : "working-tree-based-on-dbde04d867d2aad7626bd4869a34b8197de10db8",
+  "state" : "after-migration-review",
+  "windowHeightPoints" : 231,
+  "windowWidthPoints" : 540
+}

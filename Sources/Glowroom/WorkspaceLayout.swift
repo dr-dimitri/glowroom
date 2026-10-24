@@ -6,6 +6,8 @@ enum LibraryWorkspace: String, Equatable {
 }
 
 enum WorkspaceTool: String, CaseIterable, Codable, Identifiable {
+    // Keep persisted identifiers stable when the inspector's visible grouping changes.
+    // In particular, the Light group continues to restore the former `edit` choice.
     case edit, color, details, aiDevelopment, metadata, versions
 
     var id: String { rawValue }
@@ -119,7 +121,7 @@ struct WorkspacePanels: Codable, Equatable {
         libraryWidth = Self.bounded(libraryWidth, fallback: navigation ? 300 : 218, range: leftRange)
         toolsWidth = Self.bounded(toolsWidth, fallback: 320, range: WorkspaceLayoutMetrics.toolsRange)
         filmstripHeight = Self.bounded(filmstripHeight, fallback: 98, range: WorkspaceLayoutMetrics.filmstripRange)
-        openAdjustmentGroups.formIntersection(["tone", "presence", "sharpening", "noise"])
+        openAdjustmentGroups.formIntersection(["tone", "presence", "sharpening", "noise", "levels"])
         if singleGroup {
             let firstNavigation = WorkspaceTool.allCases.first { $0.isNavigationTool && openGroups.contains($0) }
             let firstAdjustment = WorkspaceTool.allCases.first { !$0.isNavigationTool && openGroups.contains($0) }

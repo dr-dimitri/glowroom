@@ -244,7 +244,7 @@ struct DevelopDetailWorkspaceIntegrationTests {
         let fixture = try await DetailWorkspaceFixture.make(withAlternateAsset: true)
         fixture.layout.update(developing: true) {
             $0.openGroups = [.edit, .details]
-            $0.openAdjustmentGroups.insert("tone")
+            $0.openAdjustmentGroups.formUnion(["tone", "levels"])
         }
         let host = DetailWorkspaceHost()
         defer { latch.releaseAll(); workspace.clear(); host.close(); fixture.removeTemporaryFiles() }

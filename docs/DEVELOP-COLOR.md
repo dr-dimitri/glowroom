@@ -1,6 +1,6 @@
-# Grundeinstellungen, Weißabgleich und Profile
+# Globale Korrekturen, Weißabgleich und Profile
 
-Die Grundeinstellungen gelten nicht destruktiv für die aktive Bildquelle. Vorschau
+Die globalen Korrekturen gelten nicht destruktiv für die aktive Bildquelle. Vorschau
 und Export verwenden denselben Core-Image-Graphen; die Originaldatei bleibt
 unverändert. Die Bildoperationen laufen in den vorhandenen begrenzten
 Hintergrund-Renderern. Die bisherige Weißabgleichspipette verwendet die bereits
@@ -89,8 +89,7 @@ einschließlich lokaler Masken und zwischengespeicherter Renderpräfixe.
 
 Neue Bearbeitungen verwenden **sRGB Float (V2)**. Gespeicherte Bearbeitungen
 ohne `toneProcessingVersion` behalten **Bisherig (V1)** einschließlich der
-bisherigen Gamma-2,2-Kennlinien und Automatik. Im Inspector stellt der Befehl
-**Auf sRGB Float (V2) umstellen** ausschließlich die Prozessversion um; die
+bisherigen Gamma-2,2-Kennlinien und Automatik. Unter **Bildstände → Erweitert** öffnet **Tonwertverarbeitung umstellen …** eine Prüfung; deren ausdrücklich betätigter Befehl **Auf sRGB Float (V2) umstellen** stellt ausschließlich die Prozessversion um. Die Prüfung ist an Bild, Revision und Snapshot gebunden; bei geändertem Stand muss sie neu geöffnet werden. Die
 Reglerwerte bleiben erhalten. Der sichtbare Farbeindruck kann sich dadurch
 ändern. Einmal Rückgängig stellt die bisherige Version wieder her. Reset und
 Rückkehr zum Original erhalten die gewählte Prozessversion. Auch neue
@@ -253,7 +252,7 @@ den globalen Levels-Schritt nicht erneut an; ihre Korrekturen arbeiten auf der
 global entwickelten Grundlage. Vorschau, Export und entwickelte Ersatzpixel
 verwenden denselben Levels-Graphen. Die bestehenden Weiß-/Schwarzregler sowie
 ihre Umschalt-Doppelklick-Automatik bleiben eigenständige Funktionen. Die
-Aktion **„Tonwertbereich automatisch“** ersetzt ausschließlich Levels nach dem unten dokumentierten konservativen Vertrag.
+Aktion **„Levels automatisch setzen“** ersetzt ausschließlich Levels nach dem unten dokumentierten konservativen Vertrag.
 
 ### Präzise Levels-Pipetten
 
@@ -378,3 +377,7 @@ Die Analyse und die anschließende vollständige Levels-Validierung reservieren
 für jeden aktiven Struktur-/Klarheits-Gaußfilter zusätzlich zwei RGBAf-
 Zwischenflächen (horizontal/vertikal), insgesamt 32 Bytes pro Pixel je Filter.
 Die Quellfläche zählt bereits im Basisplan; Schärfung bleibt separat erfasst.
+
+## Bedienordnung der Korrekturen (#196)
+
+**Licht** besitzt die sechs globalen Lichtregler, natürlichen Bildausgleich, Einzelregler-Automatik, HDR und erweiterte Levels. **Farbe** besitzt Profil, Weißabgleich, Dynamik/Sättigung und Schwarzweiß. **Details** besitzt Präsenz, Detailvorschau, Schärfen und Entrauschen. HDR bleibt in `developColor.hdrEnabled` gespeichert; nur seine Bedienung und Änderungsanzeige gehören nun zu Licht. Das Öffnen/Schließen einer Gruppe verändert keine Einstellungen oder Tonwertversion. HDR-/Exportverträge, Levels-Kanäle und Clamps sowie die Bildberechnungen bleiben unverändert. Hilfe öffnet sich ausdrücklich in normaler Textgröße.

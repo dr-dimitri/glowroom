@@ -1,0 +1,110 @@
+{
+  "afterNative": {
+    "compileSeconds": 20.79,
+    "localLog": "/private/tmp/glowroom-196-after-complete.log",
+    "seconds": 29.026,
+    "status": "passed",
+    "suiteNames": [
+      "Develop grouping native acceptance"
+    ],
+    "suites": 1,
+    "tests": 1
+  },
+  "baseCommit": "dbde04d867d2aad7626bd4869a34b8197de10db8",
+  "baselineNative": {
+    "compileSeconds": 96.91,
+    "localLog": "/private/tmp/glowroom-196-baseline-complete.log",
+    "seconds": 14.915,
+    "status": "passed",
+    "suiteNames": [
+      "Develop grouping native acceptance"
+    ],
+    "suites": 1,
+    "tests": 1
+  },
+  "baselineSourceFilesVerified": 302,
+  "captureValidation": {
+    "afterCount": 22,
+    "beforeCount": 12,
+    "fixtureSHA256": "299e4221aca966be6c17153706a6583e0bfd58f90b2cc4dd8bc1095cbccbbd57",
+    "nonHDRSettingsSHA256": "470b6140e4afc23303c02061670e2bfb7c9c65a93ef540baa77c282a59dddf7c",
+    "screenshotSHA256AllMatch": true,
+    "status": "passed",
+    "visualReview": "All 34 images reviewed. Main groups independently reviewed; no unresolved visual findings."
+  },
+  "cleanReleaseBuild": {
+    "localLog": "/private/tmp/glowroom-196-build-final.log",
+    "product": "dist/Glowroom.app",
+    "seconds": 380.81,
+    "status": "passed",
+    "strictSignatureVerification": "passed"
+  },
+  "earlierAttempts": [
+    {
+      "reason": "Detail view was not opened; waiting for the preview timed out.",
+      "scope": "test harness",
+      "status": "failed"
+    },
+    {
+      "reason": "Group-heading focus restored the previous scroll position; fresh full LibraryView hosts with saved group preferences and visibility assertions resolve this.",
+      "scope": "screenshot harness",
+      "status": "rejected"
+    },
+    {
+      "reason": "Advanced container ID inherited by children, then static error text exposed as AX value instead of label; product ID placement and harness lookup corrected.",
+      "scope": "test harness",
+      "status": "failed"
+    },
+    {
+      "reason": "Own test invocation briefly used the wrong package directory with the isolated scratch path; stopped intentionally and relaunched from the correct isolated source directory.",
+      "scope": "test build",
+      "status": "interrupted"
+    },
+    {
+      "reason": "Visual review subsequently found truncated compact tool names and an inherited migration ID; final source was rebuilt cleanly.",
+      "seconds": 394.29,
+      "status": "passed intermediate build"
+    }
+  ],
+  "finalDetailAndLevelsRegression": {
+    "compileSeconds": null,
+    "localLog": "/private/tmp/glowroom-196-final-regressions.log",
+    "seconds": 20.363,
+    "status": "passed",
+    "suiteNames": [
+      "Detail picker workspace integration",
+      "Levels navigation preserves settings"
+    ],
+    "suites": 2,
+    "tests": 13
+  },
+  "finalSourceFilesVerified": 556,
+  "limits": [
+    "No real model inference.",
+    "No physical VoiceOver pass or HDR luminance measurement.",
+    "Controlled error message in the production workspace.",
+    "Migration sheet visuals use the identical production view in a documented native host after verifying the actual sheet route."
+  ],
+  "targetedRegression": {
+    "compileSeconds": 63.41,
+    "localLog": "/private/tmp/glowroom-196-tests.log",
+    "seconds": 23.588,
+    "status": "passed",
+    "suiteNames": [
+      "Detail picker workspace integration",
+      "Levels native field and channel boundaries",
+      "Workspace layout preferences",
+      "Natural image balance",
+      "Levels synchronous numeric drafts",
+      "Automatic tone workspace transactions",
+      "Sharpening workspace native interaction",
+      "Automatic tone native routing",
+      "Editing controller",
+      "Levels navigation preserves settings",
+      "Levels inspector validated transactions",
+      "Local mask draft"
+    ],
+    "suites": 12,
+    "tests": 123
+  }
+}

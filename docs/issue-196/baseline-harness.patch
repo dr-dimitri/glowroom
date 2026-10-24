@@ -1,0 +1,282 @@
+diff --git a/Tests/GlowroomTests/DevelopGroupingScreenshotTests.swift b/Tests/GlowroomTests/DevelopGroupingScreenshotTests.swift
+new file mode 100644
+index 0000000..37c6a25
+--- /dev/null
++++ b/Tests/GlowroomTests/DevelopGroupingScreenshotTests.swift
+@@ -0,0 +1,276 @@
++import AppKit
++import CryptoKit
++import GlowroomCore
++import ImageIO
++import SwiftUI
++import Testing
++import UniformTypeIdentifiers
++@testable import Glowroom
++
++/// Native AppKit windows share process UI state, so capture cases stay ordered.
++/// Image decoding and rendering still use the production background workers.
++@Suite("Develop grouping native acceptance", .serialized, .timeLimit(.minutes(3)))
++@MainActor
++struct DevelopGroupingScreenshotTests {
++    @Test(.enabled(if: ProcessInfo.processInfo.environment["GLOWROOM_196_SNAPSHOTS"] != nil),
++          arguments: [NSSize(width: 1_440, height: 900), NSSize(width: 1_000, height: 660)])
++    func correctionGroupsPreserveAcceptedSettings(size: NSSize) async throws {
++        let baselineRun = ProcessInfo.processInfo.environment["GLOWROOM_196_BASELINE"] == "1"
++        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("Glowroom-Grouping-\(UUID())")
++        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
++        defer { try? FileManager.default.removeItem(at: directory) }
++        let url = directory.appendingPathComponent("Morgenlicht.png")
++        let image = try fixtureImage()
++        let destination = try #require(CGImageDestinationCreateWithURL(url as CFURL, UTType.png.identifier as CFString, 1, nil))
++        CGImageDestinationAddImage(destination, image, nil)
++        try #require(CGImageDestinationFinalize(destination))
++        let bytes = try Data(contentsOf: url)
++        try FileManager.default.setAttributes([.modificationDate: Date(timeIntervalSince1970: 1)], ofItemAtPath: url.path)
++        let folder = LibraryFolder(url: directory)
++        let asset = PhotoAsset(folderID: folder.id, fileURL: url, fileSize: Int64(bytes.count), pixelWidth: 768, pixelHeight: 512,
++            createdAt: Date(timeIntervalSince1970: 1), modifiedAt: Date(timeIntervalSince1970: 1))
++        let repository = CatalogRepository(directory: directory.appendingPathComponent("Catalog"))
++        try repository.save(LibraryCatalog(folders: [folder], assets: [asset]))
++        let library = LibraryModel(repository: repository)
++        let editor = EditingModel(directory: directory.appendingPathComponent("Editing"))
++        try await wait { !library.isLoading && !library.isProjecting && !editor.isLoading }
++        library.selectedID = asset.id; library.workspaceMode = .develop; library.showsDetail = true
++        var settings = EditSettings(exposure: 0.3, highlights: -12, texture: 15, vibrance: 8, sharpeningAmount: 20,
++                                    naturalBalanceAmount: 35, toneProcessingVersion: .legacyV1)
++        settings.levels.red.inputBlack = 0.02; settings.levels.master.outputWhite = 0.98
++        editor.setSettings(settings, for: asset.id)
++        #expect(await editor.flush())
++        let accepted = editor.snapshot(for: asset.id), revision = editor.localRevision(for: asset.id)
++        let workspace = DevelopWorkspace()
++        let suite = "Glowroom-Grouping-\(UUID())"
++        let defaults = try #require(UserDefaults(suiteName: suite))
++        func freshLayout(_ tool: WorkspaceTool) -> WorkspaceLayoutModel {
++            let value = WorkspaceLayoutModel(defaults: defaults)
++            value.update(developing: true) {
++                $0.showsFilmstrip = false; $0.toolsWidth = 340; $0.singleGroup = true
++                $0.openGroups = [tool]; $0.openAdjustmentGroups = ["tone", "presence", "sharpening", "noise"]
++            }
++            return value
++        }
++        let service = ImageAnalysisService(provider: UnavailableImageAnalysisProvider(reason: .sdkUnavailable), budget: AIResourceBudget())
++        let metadata = PhotoMetadataModel(store: PhotoMetadataRepository(directory: directory.appendingPathComponent("Metadata")),
++            suggestor: LocalPhotoMetadataSuggestor(service: service), library: library, editor: editor)
++        let host = GroupingCaptureHost(size: size)
++        defer { host.close(); workspace.clear(); defaults.removePersistentDomain(forName: suite) }
++        func mount(_ layout: WorkspaceLayoutModel) async throws {
++            try await host.mount(LibraryView(model: library, dataDirectory: directory, developWorkspace: workspace)
++                .environmentObject(editor).environmentObject(JPEGExportModel(preferences: nil))
++                .environmentObject(layout).environmentObject(metadata).preferredColorScheme(.dark))
++            try await wait { workspace.isFinalPreviewReady && workspace.isOriginalCanvasReady }
++        }
++        let navigationLayout = freshLayout(.edit)
++        try await mount(navigationLayout)
++        // The real reveal route deliberately focuses its heading. Capture
++        // scrolling uses a fresh host with the same saved group preferences.
++        for tool in [WorkspaceTool.edit, .color, .details] {
++            WorkspaceActions.reveal(tool, layout: navigationLayout, library: library)
++            try await host.settle()
++            if !baselineRun {
++                for (identifier, owner) in [("develop.hdr", WorkspaceTool.edit), ("develop.monochrome", .color),
++                                            ("develop.white-balance-picker", .color), ("develop.adjustment.texture", .details)] {
++                    #expect(host.elements.contains { $0.accessibilityIdentifier() == identifier } == (tool == owner))
++                }
++                #expect(!host.elements.contains { $0.accessibilityIdentifier() == "develop.tone-processing.upgrade" })
++            }
++            #expect(editor.snapshot(for: asset.id) == accepted && editor.localRevision(for: asset.id) == revision)
++        }
++        try await host.unmount()
++        let prefix = baselineRun ? "before" : "after"
++        for (tool, name) in [(WorkspaceTool.edit, "light"), (.color, "color"), (.details, "details")] {
++            let layout = freshLayout(tool)
++            try await mount(layout)
++            try await capture(host, size: size, name: "\(prefix)-\(name)", bytes: bytes, settings: editor.settings(for: asset.id), layout: layout)
++            if tool == .details {
++                try await host.reveal(identifier: "develop.adjustment.colorNoiseReduction")
++                try await capture(host, size: size, name: "\(prefix)-details-lower", bytes: bytes, settings: editor.settings(for: asset.id), layout: layout)
++            }
++            #expect(editor.snapshot(for: asset.id) == accepted && editor.localRevision(for: asset.id) == revision)
++            try await host.unmount()
++        }
++        let levelsLayout = freshLayout(.edit)
++        levelsLayout.update(developing: true) { $0.openAdjustmentGroups.remove("tone"); $0.openAdjustmentGroups.insert("levels") }
++        try await mount(levelsLayout)
++        try await host.reveal(identifier: "develop.levels.picker-mode")
++        try await capture(host, size: size, name: "\(prefix)-levels-top", bytes: bytes, settings: editor.settings(for: asset.id), layout: levelsLayout)
++        try await host.reveal(identifier: "develop.levels.reset-all")
++        try await capture(host, size: size, name: "\(prefix)-levels", bytes: bytes, settings: editor.settings(for: asset.id), layout: levelsLayout)
++        #expect(editor.snapshot(for: asset.id) == accepted && editor.localRevision(for: asset.id) == revision)
++        try await host.unmount()
++        if !baselineRun {
++            let layout = freshLayout(.versions)
++            try await mount(layout)
++            if !host.elements.contains(where: { $0.accessibilityIdentifier() == "develop.tone-processing.upgrade" }) {
++                try await host.press(identifier: "develop.versions.advanced", fallbackLabels: ["Tonwertverarbeitung", "Erweitert", "Bildstand · Erweitert"])
++            }
++            try await host.reveal(identifier: "develop.tone-processing.upgrade", label: "Tonwertverarbeitung umstellen …")
++            try await capture(host, size: size, name: "after-migration", bytes: bytes, settings: editor.settings(for: asset.id), layout: layout)
++            try await host.press(identifier: "develop.tone-processing.upgrade", fallbackLabels: ["Tonwertverarbeitung umstellen …"])
++            try await host.waitForSheet()
++            #expect(try #require(host.sheetElements.first { $0.accessibilityIdentifier() == "develop.tone-processing.confirm" }).isAccessibilityEnabled())
++            try await captureMigrationReview(host, size: size, name: "after-migration-review", canMigrate: true)
++            // A decision belongs to the reviewed snapshot. Changing the image
++            // while the sheet is open must invalidate its confirmation action.
++            var changed = settings; changed.exposure += 0.1
++            editor.setSettings(changed, for: asset.id)
++            try await host.settle()
++            #expect(try #require(host.sheetElements.first { $0.accessibilityIdentifier() == "develop.tone-processing.confirm" }).isAccessibilityEnabled() == false)
++            #expect(try #require(host.sheetElements.first { $0.accessibilityLabel() == "Abbrechen" }).isAccessibilityEnabled())
++            try await captureMigrationReview(host, size: size, name: "after-migration-stale", canMigrate: false)
++            try await host.pressSheet(fallbackLabel: "Abbrechen")
++            #expect(editor.settings(for: asset.id).toneProcessingVersion == .legacyV1)
++            editor.undo(assetID: asset.id)
++            #expect(editor.settings(for: asset.id) == settings)
++            try await host.press(identifier: "develop.tone-processing.upgrade", fallbackLabels: ["Tonwertverarbeitung umstellen …"])
++            try await host.pressSheet(identifier: "develop.tone-processing.confirm")
++            var migrated = settings; migrated.toneProcessingVersion = .consistentV2
++            #expect(editor.settings(for: asset.id) == migrated)
++            editor.undo(assetID: asset.id)
++            #expect(editor.settings(for: asset.id) == settings)
++            layout.update(developing: true) { $0.openGroups = [.edit]; $0.openAdjustmentGroups.remove("tone") }
++            try await host.settle()
++            try await wait { workspace.isFinalPreviewReady }
++            try await host.settle()
++            workspace.errorMessage = "Automatische Korrektur nicht verfügbar. Der gespeicherte Bildstand bleibt erhalten."
++            try await host.settle()
++            try await host.reveal(label: workspace.errorMessage)
++            try await capture(host, size: size, name: "after-error", bytes: bytes, settings: editor.settings(for: asset.id), layout: layout)
++            workspace.errorMessage = nil
++            try await host.press(identifier: "develop.hdr")
++            try await wait { workspace.isFinalPreviewReady && workspace.hdrDisplayed }
++            #expect(editor.settings(for: asset.id).developColor.hdrEnabled)
++            try await host.reveal(identifier: "develop.hdr")
++            try await capture(host, size: size, name: "after-hdr", bytes: bytes, settings: editor.settings(for: asset.id), layout: layout)
++            editor.undo(assetID: asset.id)
++            #expect(editor.settings(for: asset.id) == settings)
++            try await host.unmount()
++        }
++        #expect(try Data(contentsOf: url) == bytes)
++        #expect(await editor.finishSaving()); #expect(await library.finishSaving()); #expect(await metadata.finishSaving())
++    }
++
++    private func capture(_ host: GroupingCaptureHost, size: NSSize, name: String, bytes: Data,
++                         settings: EditSettings, layout: WorkspaceLayoutModel) async throws {
++        let output = URL(fileURLWithPath: ProcessInfo.processInfo.environment["GLOWROOM_196_SNAPSHOTS"]!, isDirectory: true)
++        try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
++        try await host.settle()
++        let png = output.appendingPathComponent("\(name)-\(Int(size.width)).png")
++        try host.snapshot(to: png)
++        let panels = layout.panels(developing: true)
++        let handles = (panels.showsLibrary ? 6.0 : 0) + (panels.showsTools ? 6.0 : 0)
++        let boundedWidth = layout.boundedWidths(availableWidth: size.width - handles, developing: true).tools
++        let record: [String: Any] = ["state": name, "windowWidthPoints": size.width, "windowHeightPoints": size.height,
++            "preferredPanelWidthPoints": panels.toolsWidth, "boundedPanelWidthPoints": boundedWidth,
++            "accessiblePanelContentWidthPoints": host.elements.first { $0.accessibilityIdentifier() == "develop.adjustments" }?.accessibilityFrame().width ?? 0,
++            "sourceCommit": ProcessInfo.processInfo.environment["GLOWROOM_WORKSPACE_SNAPSHOT_COMMIT"] ?? "working-tree",
++            "fixture": "synthetic landscape, generated by DevelopGroupingScreenshotTests",
++            "fixtureSHA256": digest(bytes), "screenshotSHA256": digest(try Data(contentsOf: png)),
++            "settingsSHA256": digest(try canonicalSettings(settings)),
++            "openGroups": layout.panels(developing: true).openGroups.map(\.rawValue).sorted(),
++            "statusSource": name == "after-error" ? "controlled workspace error, no failed inference" : "production view",
++            "macOS": ProcessInfo.processInfo.operatingSystemVersionString]
++        try JSONSerialization.data(withJSONObject: record, options: [.sortedKeys, .prettyPrinted])
++            .write(to: png.deletingPathExtension().appendingPathExtension("json"))
++    }
++
++    private func captureMigrationReview(_ host: GroupingCaptureHost, size: NSSize, name: String, canMigrate: Bool) async throws {
++        // No migration-review product view exists in the original baseline.
++        // This test-only stub is unreachable with GLOWROOM_196_BASELINE=1.
++        throw NSError(domain: "Glowroom196BaselineOnly", code: 1)
++    }
++
++    private func canonicalSettings(_ settings: EditSettings) throws -> Data {
++        let encoder = JSONEncoder(); encoder.outputFormatting = .sortedKeys
++        return try encoder.encode(settings)
++    }
++    private func digest(_ data: Data) -> String { SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined() }
++    private func fixtureImage() throws -> CGImage {
++        let context = try #require(CGContext(data: nil, width: 768, height: 512, bitsPerComponent: 8, bytesPerRow: 0,
++            space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
++        context.setFillColor(CGColor(srgbRed: 0.21, green: 0.45, blue: 0.72, alpha: 1)); context.fill(CGRect(x: 0, y: 0, width: 768, height: 512))
++        context.setFillColor(CGColor(srgbRed: 0.93, green: 0.7, blue: 0.31, alpha: 1)); context.fillEllipse(in: CGRect(x: 530, y: 330, width: 105, height: 105))
++        context.setFillColor(CGColor(srgbRed: 0.18, green: 0.3, blue: 0.19, alpha: 1))
++        context.move(to: CGPoint(x: 0, y: 0)); context.addLine(to: CGPoint(x: 0, y: 145)); context.addLine(to: CGPoint(x: 230, y: 320)); context.addLine(to: CGPoint(x: 500, y: 90)); context.addLine(to: CGPoint(x: 768, y: 200)); context.addLine(to: CGPoint(x: 768, y: 0)); context.closePath(); context.fillPath()
++        return try #require(context.makeImage())
++    }
++    private func wait(_ condition: () -> Bool) async throws {
++        let deadline = ContinuousClock.now + .seconds(20)
++        while !condition() { try #require(ContinuousClock.now < deadline, "Native grouping capture timed out"); try await Task.sleep(for: .milliseconds(20)) }
++    }
++}
++
++@MainActor
++private final class GroupingCaptureHost {
++    private let window: NSWindow
++    private let hosting = NSHostingView(rootView: AnyView(EmptyView()))
++    var elements: [WorkspaceAccessibilityElement] { WorkspaceAccessibilityElement.descendants(of: hosting) }
++    init(size: NSSize) {
++        _ = NSApplication.shared; WorkspaceAccessibilityElement.enableInProcess()
++        window = NSWindow(contentRect: NSRect(origin: NSPoint(x: -10_000, y: -10_000), size: size), styleMask: .borderless, backing: .buffered, defer: false)
++        window.isReleasedWhenClosed = false; window.ignoresMouseEvents = true
++        window.appearance = NSAppearance(named: .darkAqua); window.contentView = hosting; window.orderBack(nil)
++    }
++    func mount(_ view: some View) async throws { hosting.rootView = AnyView(view); try await settle() }
++    func unmount() async throws { hosting.rootView = AnyView(EmptyView()); try await settle() }
++    func settle() async throws { hosting.layoutSubtreeIfNeeded(); try await Task.sleep(for: .milliseconds(120)); hosting.layoutSubtreeIfNeeded(); hosting.displayIfNeeded() }
++    func snapshot(to url: URL) throws {
++        let bitmap = try #require(hosting.bitmapImageRepForCachingDisplay(in: hosting.bounds))
++        hosting.cacheDisplay(in: hosting.bounds, to: bitmap)
++        try #require(bitmap.representation(using: .png, properties: [:])).write(to: url)
++    }
++    func press(identifier: String, fallbackLabels: [String] = []) async throws {
++        let matching = elements.filter { $0.accessibilityIdentifier() == identifier || fallbackLabels.contains($0.accessibilityLabel() ?? "") }
++        let control = try #require(matching.first(where: { $0.accessibilityRole() == .disclosureTriangle })
++            ?? matching.first(where: { $0.accessibilityRole().map { [NSAccessibility.Role.button, .checkBox].contains($0) } == true }) ?? matching.first,
++            "Missing \(identifier); available labels: \(elements.compactMap { $0.accessibilityLabel() }.joined(separator: ", "))")
++        try #require(control.accessibilityPerformPress(), "Press \(identifier), role \(String(describing: control.accessibilityRole()))")
++        try await settle()
++    }
++    var sheetElements: [WorkspaceAccessibilityElement] { WorkspaceAccessibilityElement.descendants(of: window.attachedSheet?.contentView) }
++    var sheetContentSize: NSSize? { window.attachedSheet?.contentView?.bounds.size }
++    func waitForSheet() async throws {
++        let deadline = ContinuousClock.now + .seconds(5)
++        while window.attachedSheet == nil { try #require(ContinuousClock.now < deadline); try await Task.sleep(for: .milliseconds(20)) }
++        try await settle()
++    }
++    func pressSheet(identifier: String? = nil, fallbackLabel: String? = nil) async throws {
++        try await waitForSheet()
++        let control = try #require(sheetElements.first { (identifier != nil && $0.accessibilityIdentifier() == identifier) || (fallbackLabel != nil && $0.accessibilityLabel() == fallbackLabel) })
++        try #require(control.accessibilityPerformPress())
++        try await settle()
++    }
++    func reveal(identifier: String? = nil, label: String? = nil) async throws {
++        // Finish programmatic group focus before scrolling elsewhere. Native
++        // focus restoration would otherwise reveal the group heading again.
++        window.makeFirstResponder(nil)
++        try await settle()
++        try await Task.sleep(for: .milliseconds(300))
++        let target = try #require(elements.first { (identifier != nil && $0.accessibilityIdentifier() == identifier) || (label != nil && ($0.accessibilityLabel() == label || $0.accessibilityValue() as? String == label)) }, "Missing \(identifier ?? label ?? "reveal target")")
++        let windowRect = window.convertFromScreen(target.accessibilityFrame())
++        var pending: [NSView] = [hosting], scrolls: [NSScrollView] = []
++        while let next = pending.popLast() { pending.append(contentsOf: next.subviews); if let scroll = next as? NSScrollView { scrolls.append(scroll) } }
++        var revealed: (NSScrollView, NSRect)?
++        for scroll in scrolls {
++            guard let document = scroll.documentView else { continue }
++            let viewRect = scroll.convert(windowRect, from: nil)
++            if viewRect.midX >= 0 && viewRect.midX <= scroll.bounds.width {
++                let rect = document.convert(windowRect, from: nil)
++                let maximum = max(0, document.bounds.height - scroll.contentView.bounds.height)
++                let y = min(maximum, max(0, rect.midY - scroll.contentView.bounds.height / 2))
++                scroll.contentView.scroll(to: CGPoint(x: scroll.contentView.bounds.minX, y: y))
++                scroll.reflectScrolledClipView(scroll.contentView)
++                revealed = (scroll, rect)
++            }
++        }
++        try await settle()
++        try await Task.sleep(for: .milliseconds(300))
++        let (scroll, rect) = try #require(revealed, "Native scroll container must own the requested control")
++        try #require(scroll.documentVisibleRect.insetBy(dx: -1, dy: -1).contains(rect),
++                     "The requested control must actually be visible after native scrolling: \(rect), viewport \(scroll.documentVisibleRect)")
++    }
++    func close() { if let sheet = window.attachedSheet { window.endSheet(sheet); sheet.close() }; hosting.rootView = AnyView(EmptyView()); window.close() }
++}

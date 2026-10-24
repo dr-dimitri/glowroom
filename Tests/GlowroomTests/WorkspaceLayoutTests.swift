@@ -8,6 +8,68 @@ import Testing
 @MainActor
 struct WorkspaceLayoutTests {
     @Test
+    func correctionGroupsKeepTheirVisibleNamesAndSavedIdentifiers() throws {
+        let tools: [WorkspaceTool] = [.edit, .color, .details]
+        #expect(tools.map(\.title) == ["Licht", "Farbe", "Details"])
+        #expect(tools.map(\.rawValue) == ["edit", "color", "details"])
+        #expect(tools.allSatisfy { !$0.isNavigationTool && EditingFunction($0) == .adjustments })
+        #expect(try JSONDecoder().decode([WorkspaceTool].self,
+            from: JSONEncoder().encode(tools)) == tools)
+    }
+
+    @Test(arguments: [false, true])
+    func correctionGroupsOpenIndependentlyAndRestoreTheirSubgroupPreferences(_ focused: Bool) throws {
+        let fixture = try Preferences()
+        defer { fixture.remove() }
+        let layout = WorkspaceLayoutModel(defaults: fixture.defaults)
+        if focused { layout.enterFocus() }
+        layout.update(developing: true) {
+            $0.openGroups = [.metadata]
+            $0.openAdjustmentGroups = ["presence", "noise"]
+        }
+        let inactivePanels = focused ? layout.develop : layout.focus
+        for tool in [WorkspaceTool.edit, .color, .details] {
+            layout.toggleGroup(tool, developing: true)
+        }
+        #expect(layout.panels(developing: true).openGroups == [.metadata, .edit, .color, .details])
+        layout.toggleGroup(.color, developing: true)
+        #expect(layout.panels(developing: true).openGroups == [.metadata, .edit, .details])
+        #expect(layout.panels(developing: true).openAdjustmentGroups == ["presence", "noise"])
+        #expect((focused ? layout.develop : layout.focus) == inactivePanels)
+
+        let restored = WorkspaceLayoutModel(defaults: fixture.defaults)
+        #expect(restored.panels(developing: true) == layout.panels(developing: true))
+        restored.toggleGroup(.color, developing: true)
+        #expect(restored.panels(developing: true).openGroups == [.metadata, .edit, .color, .details])
+        #expect(restored.panels(developing: true).openAdjustmentGroups == ["presence", "noise"])
+    }
+
+    @Test(arguments: [false, true])
+    func singleCorrectionGroupModePreservesNavigationAndRestoresTheLastOpenedGroup(_ focused: Bool) throws {
+        let fixture = try Preferences()
+        defer { fixture.remove() }
+        let layout = WorkspaceLayoutModel(defaults: fixture.defaults)
+        if focused { layout.enterFocus() }
+        layout.update(developing: true) {
+            $0.singleGroup = true
+            $0.openGroups = [.metadata, .edit]
+            $0.openAdjustmentGroups = ["presence"]
+        }
+        for tool in [WorkspaceTool.color, .details, .edit] {
+            layout.toggleGroup(tool, developing: true)
+            #expect(layout.panels(developing: true).openGroups == [.metadata, tool])
+            #expect(layout.panels(developing: true).openAdjustmentGroups == ["presence"])
+            #expect(WorkspaceLayoutModel(defaults: fixture.defaults).panels(developing: true)
+                == layout.panels(developing: true))
+        }
+        layout.update(developing: true) { $0.singleGroup = false }
+        layout.toggleGroup(.color, developing: true)
+        layout.toggleGroup(.details, developing: true)
+        #expect(layout.panels(developing: true).openGroups == [.metadata, .edit, .color, .details])
+        #expect(!WorkspaceLayoutModel(defaults: fixture.defaults).panels(developing: true).singleGroup)
+    }
+
+    @Test
     func developDefaultsOpenOnlyBasicAdjustmentsAndPreserveExplicitDetailsChoice() throws {
         let fixture = try Preferences()
         defer { fixture.remove() }
@@ -54,6 +116,22 @@ struct WorkspaceLayoutTests {
         #expect(WorkspaceLayoutModel(defaults: fixture.defaults).develop.openAdjustmentGroups == ["sharpening"])
         layout.update(developing: true) { $0.openAdjustmentGroups.remove("sharpening") }
         #expect(!WorkspaceLayoutModel(defaults: fixture.defaults).develop.openAdjustmentGroups.contains("sharpening"))
+    }
+
+    @Test(arguments: [false, true])
+    func advancedLevelsStartClosedAndRememberOpeningAndClosing(_ focused: Bool) throws {
+        let fixture = try Preferences()
+        defer { fixture.remove() }
+        let layout = WorkspaceLayoutModel(defaults: fixture.defaults)
+        if focused { layout.enterFocus() }
+        #expect(!layout.panels(developing: true).openAdjustmentGroups.contains("levels"))
+        let initial = layout.panels(developing: true)
+        layout.update(developing: true) { $0.openAdjustmentGroups.insert("levels") }
+        let reopened = WorkspaceLayoutModel(defaults: fixture.defaults)
+        #expect(reopened.panels(developing: true).openAdjustmentGroups == initial.openAdjustmentGroups.union(["levels"]))
+        #expect(reopened.panels(developing: true).openGroups == initial.openGroups)
+        reopened.update(developing: true) { $0.openAdjustmentGroups.remove("levels") }
+        #expect(WorkspaceLayoutModel(defaults: fixture.defaults).panels(developing: true) == initial)
     }
 
     @Test

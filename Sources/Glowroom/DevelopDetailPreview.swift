@@ -110,9 +110,9 @@ struct DevelopDetailPreview: View {
                 Button {
                     workspace.picksDetail.toggle()
                 } label: {
-                    Image(systemName: "scope")
-                        .font(.system(size: 17))
-                        .frame(width: 28, height: 28)
+                    Label("Detailbereich auswählen", systemImage: "scope")
+                        .font(.system(size: 13))
+                        .frame(minHeight: 28)
                         .background(workspace.picksDetail ? Color.white.opacity(0.12) : .clear,
                                     in: RoundedRectangle(cornerRadius: 3))
                 }.buttonStyle(.plain)
@@ -120,15 +120,18 @@ struct DevelopDetailPreview: View {
                     .accessibilityLabel("Detailbereich auswählen")
                     .accessibilityValue(workspace.picksDetail ? "Aktiv" : "Inaktiv")
                     .accessibilityIdentifier("develop.detail-picker")
-                    .help("Detailvorschau folgt dem Mauszeiger im Foto. Ein Klick im Foto fixiert den Ausschnitt. Erneutes Klicken auf das Fadenkreuz oder Escape beendet die Auswahl.")
+                    .help("Detailbereich im Foto auswählen")
                     .disabled(!isEnabled || workspace.navigatorImage == nil)
-                Text("Detailvorschau").font(.system(size: 11, weight: .medium))
+                Spacer(minLength: 0)
+            }
+            HStack {
+                Text("Detailvorschau").font(.system(size: 13, weight: .medium))
                 Spacer(minLength: 0)
                 Picker("Vorschauzoom", selection: zoom) {
                     Text("Einpassen").tag(0.0)
                     Text("100 %").tag(1.0)
                     Text("200 %").tag(2.0)
-                }.labelsHidden().fixedSize().controlSize(.small)
+                }.labelsHidden().fixedSize().controlSize(.small).font(.system(size: 13))
                     .accessibilityLabel("Detailvorschau Vergrößerung")
                     .accessibilityIdentifier("develop.detail-zoom")
             }
@@ -179,7 +182,7 @@ struct DevelopDetailPreview: View {
                             .frame(width: viewport.size.width, height: viewport.size.height)
                     } else {
                         Text("Vorschau wird geladen …")
-                            .font(.system(size: 10)).foregroundStyle(Theme.muted)
+                            .font(.system(size: 13)).foregroundStyle(Theme.muted)
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
                 }.frame(width: viewport.size.width, height: viewport.size.height, alignment: .topLeading)
