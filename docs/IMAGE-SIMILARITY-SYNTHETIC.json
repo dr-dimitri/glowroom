@@ -1,0 +1,430 @@
+{
+  "additionalPeakRSSBytes" : 1097728,
+  "conditions" : "Fresh service\/SQLite handle after seeded setup; OS\/filesystem caches warm from setup. First access is not a cold disk or cold OS measurement. No native model loaded. Warm samples reuse the same service. RSS is the process-lifetime high-water increment and can hide allocations below an earlier peak. Synthetic motifs and same-color different-motif counterexamples only; no RAW, GUI or general photo quality claim.",
+  "dimension" : 768,
+  "firstAccessMilliseconds" : 4.1004583472386,
+  "indexedCount" : 30,
+  "topK" : 4,
+  "warmSamples" : [
+    {
+      "color" : "red",
+      "milliseconds" : 2.135583315975964,
+      "motif" : "house",
+      "neighborIDs" : [
+        "fixture-04",
+        "fixture-02",
+        "fixture-05",
+        "fixture-03"
+      ],
+      "referenceID" : "fixture-01",
+      "sameColorDifferentMotifCount" : 0,
+      "sameMotifCount" : 4
+    },
+    {
+      "color" : "blue",
+      "milliseconds" : 2.0432915771380067,
+      "motif" : "house",
+      "neighborIDs" : [
+        "fixture-05",
+        "fixture-01",
+        "fixture-03",
+        "fixture-04"
+      ],
+      "referenceID" : "fixture-02",
+      "sameColorDifferentMotifCount" : 0,
+      "sameMotifCount" : 4
+    },
+    {
+      "color" : "green",
+      "milliseconds" : 1.9811666570603848,
+      "motif" : "house",
+      "neighborIDs" : [
+        "fixture-02",
+        "fixture-05",
+        "fixture-04",
+        "fixture-01"
+      ],
+      "referenceID" : "fixture-03",
+      "sameColorDifferentMotifCount" : 0,
+      "sameMotifCount" : 4
+    },
+    {
+      "color" : "yellow",
+      "milliseconds" : 2.025458379648626,
+      "motif" : "house",
+      "neighborIDs" : [
+        "fixture-01",
+        "fixture-02",
+        "fixture-05",
+        "fixture-03"
+      ],
+      "referenceID" : "fixture-04",
+      "sameColorDifferentMotifCount" : 0,
+      "sameMotifCount" : 4
+    },
+    {
+      "color" : "purple",
+      "milliseconds" : 2.0982499700039625,
+      "motif" : "house",
+      "neighborIDs" : [
+        "fixture-02",
+        "fixture-04",
+        "fixture-01",
+        "fixture-03"
+      ],
+      "referenceID" : "fixture-05",
+      "sameColorDifferentMotifCount" : 0,
+      "sameMotifCount" : 4
+    },
+    {
+      "color" : "red",
+      "milliseconds" : 1.9795417319983244,
+      "motif" : "car",
+      "neighborIDs" : [
+        "fixture-07",
+        "fixture-09",
+        "fixture-08",
+        "fixture-10"
+      ],
+      "referenceID" : "fixture-06",
+      "sameColorDifferentMotifCount" : 0,
+      "sameMotifCount" : 4
+    },
+    {
+      "color" : "blue",
+      "milliseconds" : 1.9833749393001199,
+      "motif" : "car",
+      "neighborIDs" : [
+        "fixture-06",
+        "fixture-10",
+        "fixture-08",
+        "fixture-09"
+      ],
+      "referenceID" : "fixture-07",
+      "sameColorDifferentMotifCount" : 0,
+      "sameMotifCount" : 4
+    },
+    {
+      "color" : "green",
+      "milliseconds" : 2.4347499711439013,
+      "motif" : "car",
+      "neighborIDs" : [
+        "fixture-07",
+        "fixture-06",
+        "fixture-09",
+        "fixture-10"
+      ],
+      "referenceID" : "fixture-08",
+      "sameColorDifferentMotifCount" : 0,
+      "sameMotifCount" : 4
+    },
+    {
+      "color" : "yellow",
+      "milliseconds" : 2.343166619539261,
+      "motif" : "car",
+      "neighborIDs" : [
+        "fixture-07",
+        "fixture-06",
+        "fixture-08",
+        "fixture-10"
+      ],
+      "referenceID" : "fixture-09",
+      "sameColorDifferentMotifCount" : 0,
+      "sameMotifCount" : 4
+    },
+    {
+      "color" : "purple",
+      "milliseconds" : 2.0355000160634518,
+      "motif" : "car",
+      "neighborIDs" : [
+        "fixture-07",
+        "fixture-08",
+        "fixture-06",
+        "fixture-09"
+      ],
+      "referenceID" : "fixture-10",
+      "sameColorDifferentMotifCount" : 0,
+      "sameMotifCount" : 4
+    },
+    {
+      "color" : "red",
+      "milliseconds" : 2.063875086605549,
+      "motif" : "tree",
+      "neighborIDs" : [
+        "fixture-12",
+        "fixture-14",
+        "fixture-15",
+        "fixture-13"
+      ],
+      "referenceID" : "fixture-11",
+      "sameColorDifferentMotifCount" : 0,
+      "sameMotifCount" : 4
+    },
+    {
+      "color" : "blue",
+      "milliseconds" : 2.054625074379146,
+      "motif" : "tree",
+      "neighborIDs" : [
+        "fixture-15",
+        "fixture-13",
+        "fixture-14",
+        "fixture-11"
+      ],
+      "referenceID" : "fixture-12",
+      "sameColorDifferentMotifCount" : 0,
+      "sameMotifCount" : 4
+    },
+    {
+      "color" : "green",
+      "milliseconds" : 2.346875029616058,
+      "motif" : "tree",
+      "neighborIDs" : [
+        "fixture-15",
+        "fixture-12",
+        "fixture-14",
+        "fixture-11"
+      ],
+      "referenceID" : "fixture-13",
+      "sameColorDifferentMotifCount" : 0,
+      "sameMotifCount" : 4
+    },
+    {
+      "color" : "yellow",
+      "milliseconds" : 2.200750051997602,
+      "motif" : "tree",
+      "neighborIDs" : [
+        "fixture-12",
+        "fixture-11",
+        "fixture-15",
+        "fixture-13"
+      ],
+      "referenceID" : "fixture-14",
+      "sameColorDifferentMotifCount" : 0,
+      "sameMotifCount" : 4
+    },
+    {
+      "color" : "purple",
+      "milliseconds" : 2.0274583948776126,
+      "motif" : "tree",
+      "neighborIDs" : [
+        "fixture-12",
+        "fixture-13",
+        "fixture-14",
+        "fixture-11"
+      ],
+      "referenceID" : "fixture-15",
+      "sameColorDifferentMotifCount" : 0,
+      "sameMotifCount" : 4
+    },
+    {
+      "color" : "red",
+      "milliseconds" : 2.1897084079682827,
+      "motif" : "flower",
+      "neighborIDs" : [
+        "fixture-19",
+        "fixture-20",
+        "fixture-17",
+        "fixture-18"
+      ],
+      "referenceID" : "fixture-16",
+      "sameColorDifferentMotifCount" : 0,
+      "sameMotifCount" : 4
+    },
+    {
+      "color" : "blue",
+      "milliseconds" : 2.0801249193027616,
+      "motif" : "flower",
+      "neighborIDs" : [
+        "fixture-20",
+        "fixture-19",
+        "fixture-16",
+        "fixture-18"
+      ],
+      "referenceID" : "fixture-17",
+      "sameColorDifferentMotifCount" : 0,
+      "sameMotifCount" : 4
+    },
+    {
+      "color" : "green",
+      "milliseconds" : 1.9887499511241913,
+      "motif" : "flower",
+      "neighborIDs" : [
+        "fixture-19",
+        "fixture-16",
+        "fixture-17",
+        "fixture-20"
+      ],
+      "referenceID" : "fixture-18",
+      "sameColorDifferentMotifCount" : 0,
+      "sameMotifCount" : 4
+    },
+    {
+      "color" : "yellow",
+      "milliseconds" : 1.9777916604653,
+      "motif" : "flower",
+      "neighborIDs" : [
+        "fixture-18",
+        "fixture-16",
+        "fixture-20",
+        "fixture-17"
+      ],
+      "referenceID" : "fixture-19",
+      "sameColorDifferentMotifCount" : 0,
+      "sameMotifCount" : 4
+    },
+    {
+      "color" : "purple",
+      "milliseconds" : 2.066791639663279,
+      "motif" : "flower",
+      "neighborIDs" : [
+        "fixture-17",
+        "fixture-19",
+        "fixture-16",
+        "fixture-18"
+      ],
+      "referenceID" : "fixture-20",
+      "sameColorDifferentMotifCount" : 0,
+      "sameMotifCount" : 4
+    },
+    {
+      "color" : "red",
+      "milliseconds" : 1.9790416117757559,
+      "motif" : "boat",
+      "neighborIDs" : [
+        "fixture-22",
+        "fixture-24",
+        "fixture-23",
+        "fixture-25"
+      ],
+      "referenceID" : "fixture-21",
+      "sameColorDifferentMotifCount" : 0,
+      "sameMotifCount" : 4
+    },
+    {
+      "color" : "blue",
+      "milliseconds" : 1.98937498498708,
+      "motif" : "boat",
+      "neighborIDs" : [
+        "fixture-24",
+        "fixture-25",
+        "fixture-21",
+        "fixture-23"
+      ],
+      "referenceID" : "fixture-22",
+      "sameColorDifferentMotifCount" : 0,
+      "sameMotifCount" : 4
+    },
+    {
+      "color" : "green",
+      "milliseconds" : 1.990791643038392,
+      "motif" : "boat",
+      "neighborIDs" : [
+        "fixture-22",
+        "fixture-24",
+        "fixture-21",
+        "fixture-25"
+      ],
+      "referenceID" : "fixture-23",
+      "sameColorDifferentMotifCount" : 0,
+      "sameMotifCount" : 4
+    },
+    {
+      "color" : "yellow",
+      "milliseconds" : 1.9993333844467998,
+      "motif" : "boat",
+      "neighborIDs" : [
+        "fixture-22",
+        "fixture-21",
+        "fixture-23",
+        "fixture-25"
+      ],
+      "referenceID" : "fixture-24",
+      "sameColorDifferentMotifCount" : 0,
+      "sameMotifCount" : 4
+    },
+    {
+      "color" : "purple",
+      "milliseconds" : 2.0069166785106063,
+      "motif" : "boat",
+      "neighborIDs" : [
+        "fixture-22",
+        "fixture-24",
+        "fixture-23",
+        "fixture-21"
+      ],
+      "referenceID" : "fixture-25",
+      "sameColorDifferentMotifCount" : 0,
+      "sameMotifCount" : 4
+    },
+    {
+      "color" : "red",
+      "milliseconds" : 1.975708408281207,
+      "motif" : "star",
+      "neighborIDs" : [
+        "fixture-28",
+        "fixture-29",
+        "fixture-27",
+        "fixture-30"
+      ],
+      "referenceID" : "fixture-26",
+      "sameColorDifferentMotifCount" : 0,
+      "sameMotifCount" : 4
+    },
+    {
+      "color" : "blue",
+      "milliseconds" : 1.9360834266990423,
+      "motif" : "star",
+      "neighborIDs" : [
+        "fixture-30",
+        "fixture-28",
+        "fixture-29",
+        "fixture-26"
+      ],
+      "referenceID" : "fixture-27",
+      "sameColorDifferentMotifCount" : 0,
+      "sameMotifCount" : 4
+    },
+    {
+      "color" : "green",
+      "milliseconds" : 1.98358332272619,
+      "motif" : "star",
+      "neighborIDs" : [
+        "fixture-27",
+        "fixture-26",
+        "fixture-30",
+        "fixture-29"
+      ],
+      "referenceID" : "fixture-28",
+      "sameColorDifferentMotifCount" : 0,
+      "sameMotifCount" : 4
+    },
+    {
+      "color" : "yellow",
+      "milliseconds" : 2.0169999916106462,
+      "motif" : "star",
+      "neighborIDs" : [
+        "fixture-27",
+        "fixture-26",
+        "fixture-28",
+        "fixture-30"
+      ],
+      "referenceID" : "fixture-29",
+      "sameColorDifferentMotifCount" : 0,
+      "sameMotifCount" : 4
+    },
+    {
+      "color" : "purple",
+      "milliseconds" : 1.9670833135023713,
+      "motif" : "star",
+      "neighborIDs" : [
+        "fixture-27",
+        "fixture-28",
+        "fixture-29",
+        "fixture-26"
+      ],
+      "referenceID" : "fixture-30",
+      "sameColorDifferentMotifCount" : 0,
+      "sameMotifCount" : 4
+    }
+  ]
+}

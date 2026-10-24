@@ -15,7 +15,7 @@ actor SemanticSearchService: SemanticSearchServing {
     typealias ProviderFactory = @Sendable (SemanticInstalledModel?) -> any SemanticEmbeddingProviding
     private struct CatalogToken: Hashable, Sendable { let session: UUID; let generation: Int; let epoch: UUID }
     private struct Signature: Hashable, Sendable {
-        let query: String; let candidates: [SemanticIndexCandidate]; let topK: Int; let catalog: CatalogToken; let space: UUID
+        let query: String; let reference: SemanticIndexCandidate?; let candidates: [SemanticIndexCandidate]; let topK: Int; let catalog: CatalogToken; let space: UUID
     }
     private struct Context: Sendable {
         let signature: Signature; let generation: SemanticIndexGeneration
@@ -101,7 +101,21 @@ actor SemanticSearchService: SemanticSearchServing {
         // projection. This guard guarantees no empty-text inference at this API.
         guard !normalized.isEmpty, normalized.utf8.count <= 2_048 else { throw SemanticEmbeddingError.invalidInput }
         let token = try validateScope(candidates)
-        let signature = Signature(query: normalized, candidates: candidates.map(Self.candidate), topK: topK, catalog: token, space: querySpace)
+        let signature = Signature(query: normalized, reference: nil, candidates: candidates.map(Self.candidate), topK: topK, catalog: token, space: querySpace)
+        return try await submit(signature)
+    }
+
+    func search(similarTo reference: PhotoAsset, candidates: [PhotoAsset], topK: Int = 100) async throws -> SemanticSearchResult {
+        if Task.isCancelled { throw SemanticEmbeddingError.cancelled }
+        guard (1...500).contains(topK) else { throw SemanticEmbeddingError.invalidInput }
+        let token = try validateScope(candidates)
+        _ = try validateScope([reference])
+        let signature = Signature(query: "", reference: Self.candidate(reference), candidates: candidates.map(Self.candidate),
+            topK: topK, catalog: token, space: querySpace)
+        return try await submit(signature)
+    }
+
+    private func submit(_ signature: Signature) async throws -> SemanticSearchResult {
         latestSignature = signature
         let waiter = UUID()
         return try await withTaskCancellationHandler {
@@ -326,22 +340,36 @@ actor SemanticSearchService: SemanticSearchServing {
         guard let generation = try await store.activeGeneration(), Self.matches(generation, model: model.installation) else { throw SemanticEmbeddingError.indexUnavailable }
         let context = Context(signature: signature, generation: generation, installation: model.installation, provider: model.provider)
         try ensureQueryCurrent(context)
-        let key = CacheKey(descriptor: context.generation.descriptor, installation: context.installation.installationFingerprint, query: context.signature.query)
         let vector: [Float]
-        if let cached = cache[key] { vector = cached; touch(key) }
-        else {
-            let lease = try await budget.acquireLocalInference(priority: .interactive)
-            do { vector = try await context.provider.encodeText(context.signature.query); await budget.release(lease) }
-            catch { await budget.release(lease); throw error }
+        let referenceRevision: String?
+        if let reference = signature.reference {
+            let revisions = try await sourceRevisions(candidates: [reference])
             try ensureQueryCurrent(context)
-            try SemanticVectorSearch.validateVector(vector, dimension: context.generation.descriptor.dimension)
-            cache[key] = vector; touch(key)
+            guard let revision = revisions[reference.assetID],
+                  let record = try await store.record(in: generation, assetID: reference.assetID),
+                  record.source == reference.source, record.sourceRevision == revision else {
+                throw SemanticEmbeddingError.staleSource
+            }
+            vector = record.vector; referenceRevision = revision
+        } else {
+            referenceRevision = nil
+            let key = CacheKey(descriptor: context.generation.descriptor, installation: context.installation.installationFingerprint, query: context.signature.query)
+            if let cached = cache[key] { vector = cached; touch(key) }
+            else {
+                let lease = try await budget.acquireLocalInference(priority: .interactive)
+                do { vector = try await context.provider.encodeText(context.signature.query); await budget.release(lease) }
+                catch { await budget.release(lease); throw error }
+                try ensureQueryCurrent(context)
+                try SemanticVectorSearch.validateVector(vector, dimension: context.generation.descriptor.dimension)
+                cache[key] = vector; touch(key)
+            }
         }
         try ensureQueryCurrent(context)
         let stamps = try await sourceRevisions(candidates: context.signature.candidates)
         try ensureQueryCurrent(context)
+        let rankedCandidates = context.signature.candidates.filter { $0.assetID != context.signature.reference?.assetID }
         var worker = try SemanticVectorSearch(query: vector, dimension: context.generation.descriptor.dimension,
-            candidates: context.signature.candidates, sourceRevisions: stamps, topK: context.signature.topK)
+            candidates: rankedCandidates, sourceRevisions: stamps, topK: context.signature.topK)
         var after: String?
         while true {
             let page = try await store.records(in: context.generation, afterAssetID: after, limit: 256)
@@ -357,6 +385,11 @@ actor SemanticSearchService: SemanticSearchServing {
         let admitted = context.signature.candidates.filter { admittedIDs.contains($0.assetID) }
         let finalStamps = try await sourceRevisions(candidates: admitted)
         try ensureQueryCurrent(context)
+        if let reference = signature.reference {
+            let revisions = try await sourceRevisions(candidates: [reference])
+            try ensureQueryCurrent(context)
+            guard revisions[reference.assetID] == referenceRevision else { throw SemanticEmbeddingError.staleSource }
+        }
         let hits = worker.hits.filter { finalStamps[$0.assetID] != nil && finalStamps[$0.assetID] == stamps[$0.assetID] }
         guard try await store.activeGeneration() == context.generation else { throw SemanticEmbeddingError.superseded }
         try ensureQueryCurrent(context)

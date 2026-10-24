@@ -91,6 +91,8 @@ struct LibraryHeading: View {
                 ForEach(PhotoSort.allCases) { Text($0.rawValue).tag($0) }
             }
             Divider()
+            Button("Ähnliche Bilder finden") { model.findSimilarImages() }
+                .disabled(model.selectedAsset == nil || !model.hasSemanticService)
             Button("Rasteransicht", action: onShowGrid)
             Button("Einzelbildansicht") { if model.selectedAsset != nil { model.showsDetail = true } }
                 .disabled(model.selectedAsset == nil)
@@ -122,16 +124,25 @@ struct LibraryHeading: View {
                 Image(systemName: "magnifyingglass").foregroundStyle(Theme.muted)
                     .accessibilityHidden(true)
             }
-            TextField(model.searchMode == .literal ? "Fotos wörtlich suchen …" : "Bildinhalt auf Deutsch/Englisch …", text: query)
+            if let reference = model.similarityReference {
+                Text("Ähnlich zu \(reference.fileName)").font(.system(size: 12)).lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityLabel("Bildreferenz: \(reference.fileName)")
+            } else {
+                TextField(model.searchMode == .literal ? "Fotos wörtlich suchen …" : "Bildinhalt auf Deutsch/Englisch …", text: query)
                 .textFieldStyle(.plain).font(.system(size: 12))
                 .accessibilityLabel(model.searchMode == .literal ? "Wörtliche Fotosuche" : "Semantische Bildsuche")
                 .accessibilityIdentifier("library.search")
-            if !query.wrappedValue.isEmpty {
-                Button { query.wrappedValue = "" } label: {
+            }
+            if model.similarityReference != nil || !query.wrappedValue.isEmpty {
+                Button {
+                    if model.similarityReference != nil { model.stopFindingSimilarImages() }
+                    else { query.wrappedValue = "" }
+                } label: {
                     Image(systemName: "xmark.circle.fill").foregroundStyle(Theme.muted)
                         .frame(width: 20, height: 28)
-                }.buttonStyle(.plain).help("Suche löschen")
-                    .accessibilityLabel("Suche löschen")
+                }.buttonStyle(.plain).help(model.similarityReference != nil ? "Ähnlichkeitssuche beenden" : "Suche löschen")
+                    .accessibilityLabel(model.similarityReference != nil ? "Ähnlichkeitssuche beenden" : "Suche löschen")
                     .accessibilityIdentifier("library.clear-search")
             }
         }.padding(.horizontal, 8).frame(height: 30)

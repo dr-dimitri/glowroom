@@ -50,6 +50,7 @@ struct SemanticSearchState: Equatable, Sendable {
 protocol SemanticSearchServing: Sendable {
     func updateCatalog(snapshotSessionID: UUID, generation: Int, assets: [PhotoAsset]) async
     func search(query: String, candidates: [PhotoAsset], topK: Int) async throws -> SemanticSearchResult
+    func search(similarTo reference: PhotoAsset, candidates: [PhotoAsset], topK: Int) async throws -> SemanticSearchResult
     func status(scope: [PhotoAsset]) async throws -> SemanticSearchState
     func updates() async -> AsyncStream<SemanticSearchState>
     /// Returns after the bounded indexing operation ends. Cancellation preserves

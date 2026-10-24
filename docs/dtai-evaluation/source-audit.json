@@ -1,0 +1,241 @@
+{
+  "schema": "glowroom-dtai-study-audit-v1",
+  "source_revision": "76513a1e379b4265007bae768825b9a581944ff8",
+  "source_files": [
+    {
+      "path": "uv.lock",
+      "expected_sha256": "20d3f0562c0aa2f45af1cf5817844b7fac1fe725504c7af1685b68859339377b",
+      "actual_sha256": "20d3f0562c0aa2f45af1cf5817844b7fac1fe725504c7af1685b68859339377b",
+      "matches": true
+    },
+    {
+      "path": "models/mask-object-segnext-b2hq/README.md",
+      "expected_sha256": "3a4a4c3845007461bec06f57c68452778200d023f9feb56cc9d61aab7fe3dacc",
+      "actual_sha256": "3a4a4c3845007461bec06f57c68452778200d023f9feb56cc9d61aab7fe3dacc",
+      "matches": true
+    },
+    {
+      "path": "models/mask-object-segnext-b2hq/model.yaml",
+      "expected_sha256": "8f56703ded38d46ce308ccf7f1063c9eb72c26aed5238bee41f4fff5a72dca1d",
+      "actual_sha256": "8f56703ded38d46ce308ccf7f1063c9eb72c26aed5238bee41f4fff5a72dca1d",
+      "matches": true
+    },
+    {
+      "path": "models/mask-object-segnext-b2hq/convert.py",
+      "expected_sha256": "2104b643f44fbb0d0d67b351ee1294a18fae6caf21aa4e0611809318c52540b8",
+      "actual_sha256": "2104b643f44fbb0d0d67b351ee1294a18fae6caf21aa4e0611809318c52540b8",
+      "matches": true
+    },
+    {
+      "path": "models/mask-object-segnext-b2hq/demo.py",
+      "expected_sha256": "cc78651effc2c18ce92d40f6645e2d709487f9087df1250335d7ccd4939339bd",
+      "actual_sha256": "cc78651effc2c18ce92d40f6645e2d709487f9087df1250335d7ccd4939339bd",
+      "matches": true
+    },
+    {
+      "path": "models/denoise-nafnet/README.md",
+      "expected_sha256": "52fa7ef278a2d365430a0521f736d333aa3692e227a94cf91d70e8519aae0402",
+      "actual_sha256": "52fa7ef278a2d365430a0521f736d333aa3692e227a94cf91d70e8519aae0402",
+      "matches": true
+    },
+    {
+      "path": "models/denoise-nafnet/model.yaml",
+      "expected_sha256": "ff487665d8e1edb23e82b9178189c1c3d9242d9f5d6d9f0b16303d39aabc77f0",
+      "actual_sha256": "ff487665d8e1edb23e82b9178189c1c3d9242d9f5d6d9f0b16303d39aabc77f0",
+      "matches": true
+    },
+    {
+      "path": "models/denoise-nafnet/convert.py",
+      "expected_sha256": "bf38896f3ebc1c50d7e112d99e8b062f09decc94ea2ef7268e5fe516ecd0ff70",
+      "actual_sha256": "bf38896f3ebc1c50d7e112d99e8b062f09decc94ea2ef7268e5fe516ecd0ff70",
+      "matches": true
+    },
+    {
+      "path": "models/denoise-nafnet/demo.py",
+      "expected_sha256": "bf5b9e89978430cf465496ef864fc452c408e20b059b75efac2a6b6436bae31f",
+      "actual_sha256": "bf5b9e89978430cf465496ef864fc452c408e20b059b75efac2a6b6436bae31f",
+      "matches": true
+    },
+    {
+      "path": "models/rawdenoise-nind/README.md",
+      "expected_sha256": "731911d6fc39c738f41b49b700755a8e89e089c110f75bdd4677be06106ff003",
+      "actual_sha256": "731911d6fc39c738f41b49b700755a8e89e089c110f75bdd4677be06106ff003",
+      "matches": true
+    },
+    {
+      "path": "models/rawdenoise-nind/model.yaml",
+      "expected_sha256": "afc0285340287746a4c81b3211ec7023cab47bbe2853c58f86c4d3cdc07379b2",
+      "actual_sha256": "afc0285340287746a4c81b3211ec7023cab47bbe2853c58f86c4d3cdc07379b2",
+      "matches": true
+    },
+    {
+      "path": "models/rawdenoise-nind/convert.py",
+      "expected_sha256": "f387d841757f203aba3affceafd170e8225580ea99ca9544553e865eba4d17f0",
+      "actual_sha256": "f387d841757f203aba3affceafd170e8225580ea99ca9544553e865eba4d17f0",
+      "matches": true
+    },
+    {
+      "path": "models/rawdenoise-nind/demo.py",
+      "expected_sha256": "3667abc93564bad3646fd4530b7b07585a1e52e0b5c08169bee8ee48e5d1f06e",
+      "actual_sha256": "3667abc93564bad3646fd4530b7b07585a1e52e0b5c08169bee8ee48e5d1f06e",
+      "matches": true
+    },
+    {
+      "path": "darktable_ai/evaluation/mask.py",
+      "expected_sha256": "4e1ade4c714dd3f36b2ac64a554c58396cda7fba9e86666d4d280dd43d25952c",
+      "actual_sha256": "4e1ade4c714dd3f36b2ac64a554c58396cda7fba9e86666d4d280dd43d25952c",
+      "matches": true
+    }
+  ],
+  "vendors": {
+    "SegNext": {
+      "gitlink": "db045f6d6bab73029457e2ced4fec4a92cc69600",
+      "initialized": false
+    },
+    "NAFNet": {
+      "gitlink": "2b4af71ebe098a92a75910c233a3965a3e93ede4",
+      "initialized": false
+    },
+    "rawnind_jddc": {
+      "gitlink": "4d455aa8ada69214eafa6a91ac0b2e011cf9dcb7",
+      "initialized": false
+    }
+  },
+  "artifacts": {
+    "segnext": [
+      {
+        "path": "temp/mask-object-segnext-b2hq/vitb_sa2_cocolvis_hq44k_epoch_0.pth",
+        "exists": false,
+        "observed_sha256": null,
+        "frozen_sha256": null,
+        "qualified": false
+      },
+      {
+        "path": "output/mask-object-segnext-b2hq/encoder.onnx",
+        "exists": false,
+        "observed_sha256": null,
+        "frozen_sha256": null,
+        "qualified": false
+      },
+      {
+        "path": "output/mask-object-segnext-b2hq/decoder.onnx",
+        "exists": false,
+        "observed_sha256": null,
+        "frozen_sha256": null,
+        "qualified": false
+      }
+    ],
+    "nafnet": [
+      {
+        "path": "temp/denoise-nafnet/NAFNet-SIDD-width32.pth",
+        "exists": false,
+        "observed_sha256": null,
+        "frozen_sha256": null,
+        "qualified": false
+      },
+      {
+        "path": "output/denoise-nafnet/model.onnx",
+        "exists": false,
+        "observed_sha256": null,
+        "frozen_sha256": null,
+        "qualified": false
+      }
+    ],
+    "raw-bayer": [
+      {
+        "path": "temp/rawdenoise-nind/denoiser_bayer2prgb_utnet2.pt",
+        "exists": false,
+        "observed_sha256": null,
+        "frozen_sha256": null,
+        "qualified": false
+      },
+      {
+        "path": "output/rawdenoise-nind/model_bayer.onnx",
+        "exists": false,
+        "observed_sha256": null,
+        "frozen_sha256": null,
+        "qualified": false
+      }
+    ],
+    "raw-linear": [
+      {
+        "path": "temp/rawdenoise-nind/denoiser_prgb2prgb_utnet2.pt",
+        "exists": false,
+        "observed_sha256": null,
+        "frozen_sha256": null,
+        "qualified": false
+      },
+      {
+        "path": "output/rawdenoise-nind/model_linear.onnx",
+        "exists": false,
+        "observed_sha256": null,
+        "frozen_sha256": null,
+        "qualified": false
+      }
+    ]
+  },
+  "host": {
+    "system": "Darwin",
+    "machine": "arm64",
+    "release": "27.0.0"
+  },
+  "tool_versions": {
+    "numpy": null,
+    "Pillow": null,
+    "onnxruntime": null,
+    "coremltools": null,
+    "torch": null,
+    "onnx": null
+  },
+  "raw_bayer_cpu_guard": {
+    "readme_claims_cpu_only": true,
+    "yaml_has_cpu_only": false,
+    "decision": "unqualified; research adapter allows CPU FP32 only"
+  },
+  "issues": {
+    "182": {
+      "decision": "no-go",
+      "scope": "product integration",
+      "missing_evidence": [
+        "checkpoint/export SHA-256 and converter execution receipt",
+        "reviewed HQSeg-44K per-dataset conditions",
+        "twelve licensed photographs, independent binary GT and frozen starts/clicks",
+        "separate tuning split",
+        "native Core ML/reference parity",
+        "named-Mac encoder/first/warm decoder/peak-RSS measurements",
+        "AIResourceBudget and cache/cancellation/image-switch app qualification"
+      ]
+    },
+    "183": {
+      "decision": "no-go",
+      "scope": "product integration",
+      "missing_evidence": [
+        "checkpoint/export SHA-256 and converter execution receipt",
+        "separate code/weight attribution review",
+        "native Core ML/reference parity",
+        "frozen fair-effect tuning and acceptance pairs against consistentV2",
+        "real developed camera-photo GT/review and preview/native export comparisons",
+        "named-Mac load/inference/app-preview/export/peak-RSS measurements",
+        "AIResourceBudget app qualification"
+      ]
+    },
+    "187": {
+      "decision": "no-go",
+      "scope": "product integration",
+      "missing_evidence": [
+        "controlled native pre-tone/pre-clipping linear Rec.2020 input provider",
+        "native Bayer sensor/metadata decoder contract",
+        "checkpoint/export SHA-256 and converter execution receipt",
+        "GPL-3.0 integration-mode/attribution decision",
+        "reference RAW/clean pairs and sensor-specific metadata",
+        "CPU/native parity, finite intermediates and FP16 overflow investigation",
+        "gain/colour/crop/preview/export consistency and resource measurements"
+      ]
+    }
+  },
+  "photo_metrics": null,
+  "native_parity": null,
+  "resource_measurements": null,
+  "decision": "no-go",
+  "reason": "required evidence unavailable; contract smoke tests are not model qualification"
+}

@@ -4,11 +4,10 @@ import Foundation
 /// The original ONNX export, also used by the reproducible sky-model evaluation.
 /// Model identity comes from the app, never from a mutable server manifest.
 enum SkySegApprovedDownload {
-    static let revision = "3ba8c6df1d9ba9ff26f637c7ba9568ac11a9aa7f"
-    static let modelCard = URL(string: "https://huggingface.co/JianyuanWang/skyseg")!
-    static let file = SemanticManifestFile(path: "skyseg.onnx", bytes: 175_997_079,
-        sha256: "ab9c34c64c3d821220a2886a4a06da4642ffa14d5b30e8d5339056a089aa1d39")
-    static let url = URL(string: "https://huggingface.co/JianyuanWang/skyseg/resolve/\(revision)/skyseg.onnx")!
+    static let revision = LocalModelRegistry.skysegRevision
+    static let modelCard = URL(string: "https://huggingface.co/\(LocalModelRegistry.skysegRepository)")!
+    static let file = LocalModelRegistry.skysegFiles[0]
+    static let url = URL(string: "https://huggingface.co/\(LocalModelRegistry.skysegRepository)/resolve/\(revision)/\(file.path)")!
 }
 
 enum SkySegDownloadError: Error, LocalizedError, Equatable {

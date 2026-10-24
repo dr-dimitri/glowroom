@@ -316,3 +316,25 @@ Die Renderer-Tests prüfen mit synthetischen Bildern Richtung und Wirkung der Re
 ## Getrennte Algorithmus-Evaluationen
 
 Die Forschungskandidaten zu Schatten/Lichtern, Mehrskalenschärfung und Luma-/Chroma-Entrauschung sind vom Produktionsgraphen getrennt. Protokolle, vorab eingefrorene Gates, Ausführung und gemessene Go-/No-Go-Grenzen stehen unter [EIGF-Tonwerte](docs/EIGF-TONE-EVALUATION.md), [Mehrskalenschärfung](docs/DARKTABLE-SHARPEN-EVALUATION.md) und [Multiskalen-Entrauschung](docs/MULTISCALE-DENOISE-EVALUATION.md). Nur ein vollständiges Go erlaubt eine spätere versionierte Integration; fehlende unabhängige Foto-, Backend- oder Sichtabnahme wird nicht durch synthetische Metriken ersetzt. Lokale Bilder und Paarbilder bleiben außerhalb der Versionskontrolle.
+
+Die zusätzlichen darktable-ai-Studien (#182–#187) haben eigene lokale Entwicklerwerkzeuge:
+[SegNext, NAFNet und RawNIND](tools/dtai-evaluation/README.md) sowie
+[persönliche Tagzentroide](tools/personal-tag-evaluation/README.md). Fehlende native
+Parität, Herkunfts- oder Fotobelege führen zu einem dokumentierten No-Go für die
+Produktfreigabe. Die bestehende Bildbearbeitung und Bildanalyse bleiben verfügbar.
+Die Wirksamkeitsabnahmen für SegNext, NAFNet und persönliche Tagzentroide (#182–#184)
+bleiben offen: Eingefrorene Fotodaten, unabhängige Referenzen und die jeweils
+geforderten nativen beziehungsweise nutzerbezogenen Belege fehlen noch. RawNIND
+(#187) endet mit dem ausdrücklich vorgesehenen Architektur-No-Go wegen eines
+fehlenden qualifizierten Sensordaten-/Rec.2020-Eingabepfads.
+Die Aktion **Ähnliche Bilder finden** im Foto-Kontextmenü oder Bibliotheksmenü
+verwendet den aktuellen SigLIP2-Index; Referenzfoto und Suchumfang sind sichtbar,
+**Ähnlichkeitssuche beenden** kehrt zur wörtlichen Suche zurück. Siehe
+[Bedienung und Evaluation](docs/SEMANTIC-SEARCH.md).
+
+Für die vorhandenen lokalen Modellfamilien pflegt die
+[Modellregistry](tools/model-registry/README.md) versionierte Karten und erzeugt die
+bisherigen Freigabedaten deterministisch. `python3 tools/model-registry/registry.py check`
+prüft Schema, Herkunftsverweise, Laufzeitverträge und generierte Dateien ohne
+Modelldownload. Neue Versionen benötigen zusätzlich die gesonderte native
+Qualifizierung; Serverinformationen erteilen keine automatische App-Freigabe.

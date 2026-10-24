@@ -42,8 +42,11 @@ final class LibraryModel: ObservableObject {
     private var isApplyingSelection = false
     private var emptySelectionKey: LibraryProjectionKey?
     @Published var search = "" { didSet { scheduleProjection() } }
-    @Published var searchMode: LibrarySearchMode = .literal { didSet { scheduleProjection() } }
-    @Published var semanticQuery = "" { didSet { scheduleProjection() } }
+    @Published var searchMode: LibrarySearchMode = .literal {
+        didSet { if searchMode == .literal { similarityReference = nil }; scheduleProjection() }
+    }
+    @Published private(set) var similarityReference: PhotoAsset?
+    @Published var semanticQuery = "" { didSet { similarityReference = nil; scheduleProjection() } }
     @Published var semanticLiteralFilter = "" { didSet { scheduleProjection() } }
     @Published var semanticTopK = 100 { didSet { scheduleProjection() } }
     enum SemanticScope: String, CaseIterable, Identifiable {
@@ -418,7 +421,8 @@ final class LibraryModel: ObservableObject {
         LibraryProjectionKey(selection: selection,
             query: (searchMode == .literal ? search : semanticLiteralFilter).trimmingCharacters(in: .whitespacesAndNewlines),
             sort: sort, minimumRating: minimumRating, searchMode: searchMode,
-            semanticQuery: semanticQuery.trimmingCharacters(in: .whitespacesAndNewlines), topK: semanticTopK)
+            semanticQuery: semanticQuery.trimmingCharacters(in: .whitespacesAndNewlines), topK: semanticTopK,
+            similarityReference: similarityReference)
     }
 
     private func scheduleProjection() {
@@ -458,7 +462,12 @@ final class LibraryModel: ObservableObject {
                 let result: LibraryProjection
                 if key.usesSemanticRanking {
                     guard let semanticSearch else { throw SemanticEmbeddingError.unavailable(.modelNotInstalled) }
-                    let scores = try await semanticSearch.search(query: key.semanticQuery, candidates: current.assets, topK: key.topK)
+                    let scores: SemanticSearchResult
+                    if let reference = key.similarityReference {
+                        scores = try await semanticSearch.search(similarTo: reference, candidates: current.assets, topK: key.topK)
+                    } else {
+                        scores = try await semanticSearch.search(query: key.semanticQuery, candidates: current.assets, topK: key.topK)
+                    }
                     try Task.checkCancellation()
                     guard number == projectionRevision,
                           (semanticState.indexGenerationID == nil || semanticState.indexGenerationID == scores.indexGenerationID),
@@ -484,7 +493,11 @@ final class LibraryModel: ObservableObject {
                     let empty = await projectionWorker.empty(candidates)
                     guard !Task.isCancelled, !isClosing, number == projectionRevision else { return }
                     projection = empty
-                    semanticError = (error as? SemanticEmbeddingError)?.localizedDescription ?? SemanticEmbeddingError.providerFailure.localizedDescription
+                    if key.similarityReference != nil, (error as? SemanticEmbeddingError).map({ [.staleSource, .indexUnavailable, .superseded].contains($0) }) == true {
+                        semanticError = "Für das Referenzfoto fehlt ein aktueller Vektor im aktiven Suchindex. Referenz gegebenenfalls erneut auswählen und den Suchindex einschließlich dieses Fotos ausdrücklich vorbereiten."
+                    } else {
+                        semanticError = (error as? SemanticEmbeddingError)?.localizedDescription ?? SemanticEmbeddingError.providerFailure.localizedDescription
+                    }
                 } else { errorMessage = error.localizedDescription }
                 isProjecting = false
                 projectionTask = nil
@@ -497,6 +510,40 @@ final class LibraryModel: ObservableObject {
     var hasSemanticService: Bool { semanticSearch != nil }
     var canManageSemanticSearch: Bool { canModify && !isImporting && semanticSearch != nil }
 
+    func findSimilarImages() {
+        guard let reference = selectedAsset, hasSemanticService, !isClosing else { return }
+        similarityReference = reference
+        if searchMode == .literal { semanticLiteralFilter = search }
+        searchMode = .semantic
+        scheduleProjection()
+    }
+
+    func stopFindingSimilarImages() {
+        similarityReference = nil
+        searchMode = .literal
+    }
+
+    func useSemanticTextSearch() {
+        similarityReference = nil
+        searchMode = .semantic
+    }
+
+    var similarityScopeLabel: String {
+        let scope: String
+        switch selection {
+        case .all: scope = "Gesamte Bibliothek"
+        case .favorites: scope = "Favoriten"
+        case .recent: scope = "Zuletzt hinzugefügt"
+        case .folder(let id), .subfolder(let id, _):
+            scope = catalog.folders.first { $0.id == id }?.name ?? "Gewählter Ordner"
+        }
+        let path: String
+        if case .subfolder(_, let relativePath) = selection { path = " / \(relativePath)" } else { path = "" }
+        let rating = minimumRating > 0 ? " · mindestens \(minimumRating) Sterne" : ""
+        let literal = semanticLiteralFilter.isEmpty ? "" : " · wörtlich: \(semanticLiteralFilter)"
+        return scope + path + rating + literal
+    }
+
     private func semanticScopeKey(_ scope: SemanticScope) -> LibraryProjectionKey {
         if scope == .all { return LibraryProjectionKey(selection: .all, query: "", sort: sort, minimumRating: 0) }
         let key = projectionKey
@@ -507,7 +554,7 @@ final class LibraryModel: ObservableObject {
         guard state.version >= semanticState.version, !isClosing else { return }
         let previous = semanticState
         semanticState = state
-        if searchMode == .semantic, !semanticQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+        if projectionKey.usesSemanticRanking,
            previous.indexGenerationID != state.indexGenerationID ||
            (previous.availability != .available && state.availability == .available) ||
            (previous.isIndexing && !state.isIndexing) {

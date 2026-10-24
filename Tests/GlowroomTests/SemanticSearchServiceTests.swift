@@ -5,6 +5,115 @@ import Testing
 
 @Suite("Semantic service scheduling, source identity and maintenance")
 struct SemanticSearchServiceTests {
+    @Test func imageReferenceReusesIndexedVectorWithoutInferenceAndExcludesSelfBeforeTopK() async throws {
+        let f = try await SearchFixture.make(photoCount: 4)
+        let result = try await f.service.search(similarTo: f.photos[1], candidates: Array(f.photos.reversed()), topK: 2)
+        #expect(result.hits.map(\.assetID) == [f.photos[3].id, f.photos[2].id])
+        #expect(result.candidateAssetIDs == f.photos.reversed().map(\.id))
+        #expect(result.indexGenerationID == f.generation?.id)
+        #expect(await f.provider.texts.isEmpty)
+        #expect(await f.provider.imageCalls == 0)
+        #expect(await f.preparer.prepareCalls == 0)
+        #expect(await searchBudgetState(f.budget).activeInferences == 0)
+        // A reference need not match navigation/literal filters itself.
+        let scoped = try await f.service.search(similarTo: f.photos[1], candidates: [f.photos[0]], topK: 1)
+        #expect(scoped.hits.map(\.assetID) == [f.photos[0].id])
+    }
+
+    @Test func missingChangedAndRelocatedImageReferenceCannotTriggerImplicitIndexing() async throws {
+        let missing = try await SearchFixture.make(seed: false)
+        await searchError(.indexUnavailable) { _ = try await missing.service.search(similarTo: missing.photos[0], candidates: missing.photos, topK: 1) }
+        let f = try await SearchFixture.make()
+        try await f.store.remove(assetIDs: [f.photos[0].id], in: f.generation!)
+        await searchError(.staleSource) { _ = try await f.service.search(similarTo: f.photos[0], candidates: f.photos, topK: 1) }
+        await f.preparer.change(f.photos[1].fileURL.path)
+        await searchError(.staleSource) { _ = try await f.service.search(similarTo: f.photos[1], candidates: f.photos, topK: 1) }
+        var relocated = f.photos[1]
+        relocated.fileURL = URL(fileURLWithPath: "/synthetic/relocated.png")
+        await f.service.updateCatalog(snapshotSessionID: f.session, generation: 2, assets: [relocated])
+        await searchError(.superseded) { _ = try await f.service.search(similarTo: f.photos[1], candidates: [relocated], topK: 1) }
+        #expect(await f.provider.texts.isEmpty)
+        #expect(await f.provider.imageCalls == 0)
+        #expect(await f.preparer.prepareCalls == 0)
+    }
+
+    @Test func referenceChangeWhileRankingRejectsWholeResult() async throws {
+        let f = try await SearchFixture.make()
+        // First batch admits the reference, then changes its native revision.
+        await f.preparer.changeAfterNextBatch(f.photos[0].fileURL.path)
+        await searchError(.staleSource) { _ = try await f.service.search(similarTo: f.photos[0], candidates: f.photos, topK: 2) }
+        #expect(await f.provider.texts.isEmpty)
+        #expect(await f.provider.imageCalls == 0)
+    }
+
+    @Test(.timeLimit(.minutes(1))) func imageReferenceRoundTripCancellationAndGenerationChangeRejectHeldWork() async throws {
+        let f = try await SearchFixture.make()
+        let gate = await f.preparer.blockOneStampBatch()
+        let a = Task { try await f.service.search(similarTo: f.photos[0], candidates: f.photos, topK: 1) }
+        defer { a.cancel(); gate.releaseAll() }
+        try await f.preparer.waitForHeldStamp()
+        let b = Task { try await f.service.search(similarTo: f.photos[1], candidates: f.photos, topK: 1) }
+        defer { b.cancel() }
+        _ = try await waitForTestState("replacement image query queued", timeout: .seconds(3), state: { await f.service.schedulingState() }, until: { $0.pending == 1 })
+        let current = Task { try await f.service.search(similarTo: f.photos[0], candidates: f.photos, topK: 1) }
+        defer { current.cancel() }
+        await searchError(.superseded) { _ = try await a.value }
+        await searchError(.superseded) { _ = try await b.value }
+        gate.releaseAll()
+        #expect(try await current.value.hits.map(\.assetID) == [f.photos[1].id])
+
+        let nextGate = await f.preparer.blockOneStampBatch()
+        let cancelled = Task { try await f.service.search(similarTo: f.photos[0], candidates: f.photos, topK: 1) }
+        defer { cancelled.cancel(); nextGate.releaseAll() }
+        try await f.preparer.waitForHeldStamp()
+        cancelled.cancel()
+        await searchError(.cancelled) { _ = try await cancelled.value }
+        nextGate.releaseAll()
+
+        let lastGate = await f.preparer.blockOneStampBatch()
+        let outdated = Task { try await f.service.search(similarTo: f.photos[0], candidates: f.photos, topK: 1) }
+        defer { outdated.cancel(); lastGate.releaseAll() }
+        try await f.preparer.waitForHeldStamp()
+        let replacement = try await f.store.prepareGeneration(for: f.model.descriptor, installationFingerprint: f.model.installationFingerprint, forceNew: true)
+        try await f.store.activate(replacement)
+        lastGate.releaseAll()
+        await searchError(.superseded) { _ = try await outdated.value }
+    }
+
+    @Test func changedCatalogOrModelRejectsImageReferenceQuery() async throws {
+        let f = try await SearchFixture.make()
+        let gate = await f.preparer.blockOneStampBatch()
+        let query = Task { try await f.service.search(similarTo: f.photos[0], candidates: f.photos, topK: 1) }
+        defer { query.cancel(); gate.releaseAll() }
+        try await f.preparer.waitForHeldStamp()
+        await f.service.updateCatalog(snapshotSessionID: f.session, generation: 2, assets: [f.photos[1]])
+        await searchError(.superseded) { _ = try await query.value }
+        gate.releaseAll()
+        let otherModel = SemanticInstalledModel(directory: f.model.directory, descriptor: f.model.descriptor,
+            installationFingerprint: String(repeating: "b", count: 64), installedBytes: 42)
+        await f.installer.setInstalled(otherModel)
+        await searchError(.installationChanged) { _ = try await f.service.search(similarTo: f.photos[1], candidates: [f.photos[1]], topK: 1) }
+    }
+
+    @Test func imageQueryShutdownDrainsNativeStampBeforeReleasingItsSlotAndCanResume() async throws {
+        let f = try await SearchFixture.make()
+        let gate = await f.preparer.blockOneStampBatch()
+        let query = Task { try await f.service.search(similarTo: f.photos[0], candidates: f.photos, topK: 1) }
+        defer { query.cancel(); gate.releaseAll() }
+        try await f.preparer.waitForHeldStamp()
+        let stopping = Task { await f.service.shutdown() }
+        await searchError(.superseded) { _ = try await query.value }
+        #expect(await f.service.schedulingState().actual == 1)
+        #expect(await f.provider.unloads == 0)
+        gate.releaseAll()
+        await stopping.value
+        #expect(await f.service.schedulingState().actual == 0)
+        #expect(await f.provider.unloads == 1)
+        #expect(try await f.service.search(similarTo: f.photos[0], candidates: f.photos, topK: 1).hits.map(\.assetID) == [f.photos[1].id])
+        #expect(await f.provider.imageCalls == 0)
+        #expect(await f.provider.texts.isEmpty)
+    }
+
     @Test(.timeLimit(.minutes(1))) func catalogRemovalDrainsNativeIndexWorkAndReaddingCannotRestoreCachedVectors() async throws {
         let f = try await SearchFixture.make(); let nativeGate = await f.provider.block(image:true)
         let indexing = Task { try await f.service.prepareIndex(scope:f.photos,rebuild:true) }
@@ -741,9 +850,23 @@ private actor SearchPreparerFake: SemanticImagePreprocessing {
     private var stampBatches: [[String]] = []
     private var changeAfterBatch: String?
     private var malformedBatch = false
+    private var nextBatchGate: TestAsyncLatch?
+    private let heldStamp = TestStateSignal(false)
+    var prepareCalls = 0
+    func blockOneStampBatch() -> TestAsyncLatch {
+        let gate = TestAsyncLatch(); nextBatchGate = gate
+        heldStamp.update { $0 = false }
+        return gate
+    }
+    func waitForHeldStamp() async throws {
+        _ = try await heldStamp.wait("reference native stamp entered", timeout: .seconds(3), until: { $0 })
+    }
     func sourceStamps(sources: [AIOriginalSourceFingerprint]) async throws -> [String?] {
         guard sources.count <= SemanticSourceStampBatch.maximumCount else { throw SemanticEmbeddingError.invalidInput }
         stampBatches.append(sources.map(\.standardizedPath))
+        if let gate = nextBatchGate {
+            nextBatchGate = nil; heldStamp.update { $0 = true }; await gate.wait()
+        }
         var values: [String?] = []
         for source in sources {
             try Task.checkCancellation()
@@ -767,6 +890,7 @@ private actor SearchPreparerFake: SemanticImagePreprocessing {
         return changed.contains(source.standardizedPath) ? "stamp1" : "stamp0"
     }
     func prepare(source: AIOriginalSourceFingerprint, priority: PreviewPriority) async throws -> SemanticImageInput {
+        prepareCalls += 1
         if let failure = damaged[source.standardizedPath] { throw failure }
         return SemanticImageInput(values: [source.standardizedPath.contains("opaque-b") ? 1 : 0], rasterSHA256: String(repeating: "c", count: 64), sourceRevision: try await sourceStamp(source: source))
     }

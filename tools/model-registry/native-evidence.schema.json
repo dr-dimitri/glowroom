@@ -1,0 +1,217 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Glowroom native-evidence v1",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "modelID": {
+      "type": "string",
+      "minLength": 1
+    },
+    "cardSHA256": {
+      "type": "string",
+      "pattern": "[0-9a-f]{64}"
+    },
+    "packageSHA256": {
+      "type": "string",
+      "pattern": "[0-9a-f]{64}"
+    },
+    "contractSHA256": {
+      "type": "string",
+      "pattern": "[0-9a-f]{64}"
+    },
+    "platform": {
+      "type": "object",
+      "properties": {
+        "system": {
+          "const": "Darwin"
+        },
+        "macOS": {
+          "type": "string",
+          "minLength": 1
+        },
+        "hardware": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "system",
+        "macOS",
+        "hardware"
+      ],
+      "additionalProperties": false
+    },
+    "runtime": {
+      "type": "object",
+      "properties": {
+        "engine": {
+          "type": "string",
+          "minLength": 1
+        },
+        "requestedComputePolicy": {
+          "type": "string",
+          "minLength": 1
+        },
+        "observedExecutionPath": {
+          "type": "string",
+          "minLength": 1
+        },
+        "observationMethod": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "engine",
+        "requestedComputePolicy",
+        "observedExecutionPath",
+        "observationMethod"
+      ],
+      "additionalProperties": false
+    },
+    "fallback": {
+      "type": "object",
+      "properties": {
+        "policy": {
+          "type": "string",
+          "minLength": 1
+        },
+        "result": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "policy",
+        "result"
+      ],
+      "additionalProperties": false
+    },
+    "checks": {
+      "type": "object",
+      "properties": {
+        "load": {
+          "type": "boolean"
+        },
+        "inputsOutputs": {
+          "type": "boolean"
+        },
+        "referenceComparison": {
+          "type": "boolean"
+        },
+        "fallbackOrUnderstandableError": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "load",
+        "inputsOutputs",
+        "referenceComparison",
+        "fallbackOrUnderstandableError"
+      ],
+      "additionalProperties": false
+    },
+    "reference": {
+      "type": "object",
+      "properties": {
+        "method": {
+          "type": "string",
+          "minLength": 1
+        },
+        "fixtureSHA256": {
+          "type": "string",
+          "pattern": "[0-9a-f]{64}"
+        },
+        "thresholds": {
+          "type": "string",
+          "minLength": 1
+        },
+        "result": {
+          "type": "string",
+          "minLength": 1
+        },
+        "passed": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "method",
+        "fixtureSHA256",
+        "thresholds",
+        "result",
+        "passed"
+      ],
+      "additionalProperties": false
+    },
+    "measurementIsolation": {
+      "const": "one-native-model-process-no-concurrent-GPU-work"
+    },
+    "measurements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "cacheState": {
+            "type": "string",
+            "enum": [
+              "process-first",
+              "model-warm"
+            ]
+          },
+          "elapsedSeconds": {
+            "type": "number",
+            "minimum": 0
+          },
+          "peakResidentBytes": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "cachePreparation": {
+            "type": "string",
+            "minLength": 1
+          },
+          "executionPath": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "cacheState",
+          "elapsedSeconds",
+          "peakResidentBytes",
+          "cachePreparation",
+          "executionPath"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 2
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "modelID",
+    "cardSHA256",
+    "packageSHA256",
+    "contractSHA256",
+    "platform",
+    "runtime",
+    "fallback",
+    "checks",
+    "reference",
+    "measurementIsolation",
+    "measurements",
+    "limitations"
+  ],
+  "additionalProperties": false
+}

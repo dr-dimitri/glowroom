@@ -1,0 +1,136 @@
+{
+  "bindings": [
+    {
+      "contains": "pixelsWide == 800 && $0.pixelsHigh == 800",
+      "path": "Sources/Glowroom/DevelopRepairAIModelStore.swift"
+    }
+  ],
+  "cardVersion": 1,
+  "contract": {
+    "colorSpace": "sRGB; straight RGB",
+    "inputs": [
+      {
+        "dtype": "BGRA8-or-ARGB8",
+        "name": "image",
+        "shape": [
+          800,
+          800
+        ]
+      },
+      {
+        "dtype": "Gray8",
+        "name": "mask",
+        "shape": [
+          800,
+          800
+        ]
+      }
+    ],
+    "normalization": "Unscaled local crop with clamped context; binary model mask; graph normalization is package-specific and unverified",
+    "outputs": [
+      {
+        "dtype": "BGRA8-or-ARGB8",
+        "name": "one-image-output",
+        "shape": [
+          800,
+          800
+        ]
+      }
+    ],
+    "resolution": [
+      800,
+      800
+    ],
+    "tokenizerOrPrompt": "Not applicable"
+  },
+  "conversion": {
+    "evidence": "tools/lama-evaluation/README.md",
+    "method": "User-selected compatible package; no automatic download or publisher approval",
+    "tools": {
+      "upstream-converter": "unknown"
+    }
+  },
+  "identity": "lama-user-import-800",
+  "licenses": {
+    "code": {
+      "declaration": "Uploader declares Apache-2.0; exact weight lineage and redistribution conditions unverified",
+      "evidence": "docs/REPAIR-TOOLS.md"
+    },
+    "limitations": "Publisher declarations and recorded local provenance; no additional training-data or redistribution rights are inferred.",
+    "weights": {
+      "declaration": "Uploader declares Apache-2.0; exact weight lineage and redistribution conditions unverified",
+      "evidence": "docs/REPAIR-TOOLS.md"
+    }
+  },
+  "package": {
+    "kind": "user-import",
+    "limitations": "Reference inventory is evaluation-only, not an allowlist. App preserves explicit compatible user imports and binds each installation to its own complete inventory.",
+    "referenceFiles": [
+      {
+        "bytes": 1101809,
+        "path": "LaMa.mlpackage/Data/com.apple.CoreML/model.mlmodel",
+        "sha256": "06a100ef99e0fd16326a3a8c4a687d13f7b26f544ea906a75338932d8554f953"
+      },
+      {
+        "bytes": 215544960,
+        "path": "LaMa.mlpackage/Data/com.apple.CoreML/weights/weight.bin",
+        "sha256": "d0541f6044a94cd4982bfdac074fc1ccfe11d8f1f590c299d6b5071b501fc184"
+      },
+      {
+        "bytes": 617,
+        "path": "LaMa.mlpackage/Manifest.json",
+        "sha256": "c814fff3cedf827c044094545ef80b0280b6cb8dd0e5c0bcf69fd31921191e58"
+      },
+      {
+        "bytes": 3215,
+        "path": "README.md",
+        "sha256": "2be5f58cc1dcca57b945aa348cf5b4ac78b35c6faea218abb063db73c66da9c8"
+      }
+    ]
+  },
+  "qualification": {
+    "limitations": [
+      "Existing installation approval is preserved; this migration does not newly qualify a model or hardware combination.",
+      "A new release requires a separate native evidence report through the release-check command."
+    ],
+    "reports": [
+      "docs/REPAIR-TOOLS.md",
+      "tools/lama-evaluation/README.md"
+    ],
+    "status": "existing-evidence-only"
+  },
+  "runtime": {
+    "computePolicy": "all",
+    "engine": "CoreML",
+    "fallback": "cpuOnly",
+    "hardware": [
+      "arm64",
+      "x86_64 (unqualified)"
+    ],
+    "limitations": [
+      "Intel and older macOS versions have no retained native qualification in this registry."
+    ],
+    "minimumMacOS": "14.0",
+    "validatedCombinations": [
+      "Apple M2 Pro / macOS 27.0.1; see qualification report for scope"
+    ]
+  },
+  "schemaVersion": 1,
+  "source": {
+    "originalWeights": {
+      "path": "original checkpoint unknown",
+      "repository": "advimman/lama",
+      "revision": "unverified conversion lineage",
+      "sha256": "unknown"
+    },
+    "repository": "mlboydaisuke/LaMa-CoreML",
+    "revision": "5ed76e3799ab4cad31381750d29880c267477e18"
+  },
+  "status": "user-import",
+  "task": "small-region-image-repair-user-import",
+  "trainingData": {
+    "evidence": "docs/REPAIR-TOOLS.md",
+    "limitations": "Exact training images, individual permissions and representativeness are unverified.",
+    "origin": "Not fully documented by the retained source evidence."
+  }
+}

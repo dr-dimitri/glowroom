@@ -14,15 +14,18 @@ struct LibraryProjectionKey: Equatable, Sendable {
     let minimumRating: Int
     let searchMode: LibrarySearchMode
     let semanticQuery: String
+    let similarityReference: PhotoAsset?
     let topK: Int
 
     init(selection: LibrarySelection, query: String, sort: PhotoSort, minimumRating: Int,
-         searchMode: LibrarySearchMode = .literal, semanticQuery: String = "", topK: Int = 100) {
+         searchMode: LibrarySearchMode = .literal, semanticQuery: String = "", topK: Int = 100,
+         similarityReference: PhotoAsset? = nil) {
         self.selection = selection; self.query = query; self.sort = sort; self.minimumRating = minimumRating
         self.searchMode = searchMode; self.semanticQuery = semanticQuery
+        self.similarityReference = similarityReference
         self.topK = min(500, max(1, topK))
     }
-    var usesSemanticRanking: Bool { searchMode == .semantic && !semanticQuery.isEmpty }
+    var usesSemanticRanking: Bool { searchMode == .semantic && (similarityReference != nil || !semanticQuery.isEmpty) }
 }
 
 struct LibraryProjectionCandidates: Sendable {
@@ -164,7 +167,9 @@ actor LibraryProjectionWorker {
         var seen: Set<String> = []
         for (index, hit) in result.hits.enumerated() {
             if index % 256 == 0 { try Task.checkCancellation() }
-            guard hit.score.isFinite, ordinal[hit.assetID] != nil, seen.insert(hit.assetID).inserted else {
+            guard hit.score.isFinite, ordinal[hit.assetID] != nil,
+                  hit.assetID != candidates.base.key.similarityReference?.id,
+                  seen.insert(hit.assetID).inserted else {
                 throw SemanticEmbeddingError.invalidVector
             }
         }

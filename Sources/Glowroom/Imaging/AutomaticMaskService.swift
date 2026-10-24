@@ -121,7 +121,7 @@ actor AutomaticMaskWorker {
         // Each one-shot request releases model weights after completion.
         // Repeated slider movement never triggers inference.
         let stamps = try SkyMaskModelStore.verifyInstallation(installation)
-        let input = try Self.squarePixelBuffer(image, side: 448)
+        let input = try Self.squarePixelBuffer(image, side: LocalModelRegistry.skySide)
         let outputSize = AutomaticMaskRasterConverter.outputSize(width: image.width, height: image.height)
         let raster: LocalMaskRaster
         do { raster = try inferSky(input, installation: installation, outputSize: outputSize, computeUnits: .all) }
@@ -217,7 +217,7 @@ enum AutomaticMaskRasterConverter {
     }
 
     static func skyRaster(_ classes: MLMultiArray, skyClass: Int, outputSize: (width: Int, height: Int)) throws -> LocalMaskRaster {
-        guard classes.dataType == .int32, classes.shape.map(\.intValue) == [448, 448], classes.strides.count == 2 else {
+        guard classes.dataType == .int32, classes.shape.map(\.intValue) == [LocalModelRegistry.skySide, LocalModelRegistry.skySide], classes.strides.count == 2 else {
             throw AutomaticMaskError.invalidModel
         }
         let sx = classes.strides[1].intValue, sy = classes.strides[0].intValue
