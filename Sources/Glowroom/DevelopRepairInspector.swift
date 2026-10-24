@@ -82,7 +82,7 @@ struct DevelopRepairInspector: View {
             Divider()
             detectionControls
             if let error = workspace.errorMessage {
-                Text(error).font(.caption).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true)
+                Text(error).font(.system(size: 13)).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true)
                     .padding(.vertical, 6).accessibilityIdentifier("develop.repair.error")
             }
         }.font(.system(size: 11)).foregroundStyle(Theme.text)
@@ -119,9 +119,6 @@ struct DevelopRepairInspector: View {
                 }
                 Spacer(minLength: 0)
             }.disabled(!ready)
-            Text(modeHelp).font(.system(size: 10)).foregroundStyle(Theme.muted)
-                .fixedSize(horizontal: false, vertical: true)
-                .accessibilityIdentifier("develop.repair.instructions")
             sliderRow("Größe", value: $workspace.repairRadius, range: 0.0005...0.15,
                 valueText: brushDiameterText, identifier: "size", neutral: 0.035)
                 .help("Pinseldurchmesser in Pixeln der aktuellen Quellvorschau. Für Spinnfäden und feine Äste einen kleinen Pinsel wählen.")
@@ -133,16 +130,16 @@ struct DevelopRepairInspector: View {
                 Toggle("Lokale KI", isOn: $workspace.repairUsesAI)
                     .disabled(!ready || !workspace.repairAIReady || workspace.repairMode != .remove)
                     .accessibilityIdentifier("develop.repair.generative")
-                Text(workspace.repairAIModelName.map { "\($0) · lokal · Änderungen werden direkt aktiv" }
-                     ?? "LaMa herunterladen oder ein kompatibles Modell importieren, um kleine Bereiche lokal zu ergänzen.")
-                    .font(.system(size: 10)).foregroundStyle(Theme.muted)
-                    .fixedSize(horizontal: false, vertical: true)
+                if let modelName = workspace.repairAIModelName {
+                    Text(modelName).font(.system(size: 13)).foregroundStyle(Theme.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 if let progress = workspace.repairAISetupProgress {
                     Group {
                         if let fraction = progress.fraction { ProgressView(value: fraction) }
                         else { ProgressView().controlSize(.small) }
                     }.accessibilityIdentifier("develop.repair.ai.progress")
-                    Text(progress.text).font(.system(size: 10)).foregroundStyle(Theme.muted)
+                    Text(progress.text).font(.system(size: 13)).foregroundStyle(Theme.muted)
                         .fixedSize(horizontal: false, vertical: true)
                 } else if !workspace.repairAIReady {
                     Button("LaMa herunterladen (ca. 217 MB)") { workspace.downloadRepairAIModel() }
@@ -181,9 +178,6 @@ struct DevelopRepairInspector: View {
                     .controlSize(.small).disabled(!ready)
                     .accessibilityIdentifier("develop.repair.remove-last")
             }
-            Text("Vorhandene Maske oder Punkt anklicken und ziehen. Löschtaste entfernt die ausgewählte Reparatur.")
-                .font(.system(size: 10)).foregroundStyle(Theme.muted)
-                .fixedSize(horizontal: false, vertical: true)
             Divider()
             Picker("Werkzeugüberlagerung", selection: $workspace.repairOverlay) {
                 ForEach(DevelopRepairOverlay.allCases) { overlay in Text(overlay.title).tag(overlay) }
@@ -206,8 +200,8 @@ struct DevelopRepairInspector: View {
                 Button("Erkennen") {}.controlSize(.mini).disabled(true)
                     .accessibilityIdentifier("develop.repair.detect-reflections")
             }
-            Text("Das lokale Reparaturmodell trennt keine Spiegelungen. Diese Funktion ist nicht verfügbar.")
-                .font(.system(size: 10)).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
+            Text("Spiegelungsentfernung nicht verfügbar.")
+                .font(.system(size: 13)).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
             Divider()
             HStack {
                 Text("Personen")
@@ -222,12 +216,12 @@ struct DevelopRepairInspector: View {
                     .accessibilityLabel("Staub erkennen").accessibilityIdentifier("develop.repair.detect-dust")
             }
             if let status = workspace.repairStatus {
-                Text(status).font(.system(size: 10)).foregroundStyle(Theme.muted)
+                Text(status).font(.system(size: 13)).foregroundStyle(Theme.muted)
                     .fixedSize(horizontal: false, vertical: true).accessibilityIdentifier("develop.repair.status")
             }
             if !workspace.repairCandidates.isEmpty {
                 Divider()
-                Text("Vorschläge prüfen und auswählen").foregroundStyle(Theme.muted)
+                Text("Vorschläge").fontWeight(.semibold)
                 ForEach(workspace.repairCandidates) { candidate in
                     Toggle(candidate.label, isOn: Binding(
                         get: { workspace.repairSelectedCandidateIDs.contains(candidate.id) },
@@ -247,22 +241,6 @@ struct DevelopRepairInspector: View {
                     .accessibilityIdentifier("develop.repair.remove-selected")
             }
         }.padding(.bottom, 10)
-    }
-
-    private var modeHelp: String {
-        switch workspace.repairMode {
-        case .remove: workspace.repairUsesAI
-            ? "Über einen kleinen störenden Bereich malen. Die lokale KI setzt die Reparatur direkt um. Mit ⌘Z rückgängig machen."
-            : workspace.repairSource == nil
-                ? "Störende Stelle übermalen. Änderungen werden direkt aktiv. ⌥-Klick setzt eine eigene Quelle; Andere Quelle sucht eine Alternative."
-                : "Störende Stelle übermalen. Änderungen werden direkt aktiv. Die eigene Quelle wird verwendet; ⌥-Klick wählt sie neu."
-        case .heal: workspace.repairSource == nil
-            ? "Zu heilende Stelle übermalen. Die Quelle wird automatisch gewählt; ⌥-Klick setzt eine eigene Quelle."
-            : "Zu heilende Stelle übermalen. ⌥-Klick wählt eine neue Quelle; Farbe und Helligkeit werden angepasst."
-        case .clone: workspace.repairSource == nil
-            ? "Zuerst den zu kopierenden Quellbereich anklicken, dann über die Zielstelle malen."
-            : "Über die Zielstelle malen. ⌥-Klick wählt eine neue Quelle."
-        }
     }
 
     @ViewBuilder private func modeSymbol(_ mode: DevelopRepairMode) -> some View {

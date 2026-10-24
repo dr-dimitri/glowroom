@@ -31,9 +31,9 @@ struct DevelopRepairInspectorTests {
         #expect(try #require(host.element("threshold")).isAccessibilityEnabled() == false)
         #expect(host.sliders.allSatisfy { $0.bounds.width >= 70 }, "Every slider must retain a usable native track")
         // Static SwiftUI text is exposed as AXValue, while controls commonly
-        // expose AXLabel. Read both public attributes for the explanatory copy.
-        #expect(host.accessibleText.contains("LaMa herunterladen oder ein kompatibles Modell importieren, um kleine Bereiche lokal zu ergänzen."))
-        #expect(host.accessibleText.contains("Das lokale Reparaturmodell trennt keine Spiegelungen. Diese Funktion ist nicht verfügbar."))
+        // expose AXLabel. Read both public attributes for actions and status.
+        #expect(host.accessibleText.contains("LaMa herunterladen (ca. 217 MB)"))
+        #expect(host.accessibleText.contains("Spiegelungsentfernung nicht verfügbar."))
         try host.snapshotIfRequested("repair-inspector-\(Int(width))")
         #expect(await fixture.editor.flush())
     }

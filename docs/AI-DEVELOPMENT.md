@@ -1,18 +1,10 @@
-# AI Entwickeln
+# KI-Korrektur in Entwickeln
 
-**AI Entwickeln** ist ein eigener Arbeitsbereich neben **Bibliothek** und
-**Entwickeln**. Er verwendet dasselbe ausgewählte Foto, dieselbe Vorschau und
-dieselben gespeicherten Bearbeitungen. Der Einstieg in der Kopfzeile und unter
-**Darstellung** funktioniert auch ohne Foto, damit Modelle vorher eingerichtet
-werden können. Im Bildfokus bleibt der Arbeitsbereich erreichbar.
+**KI-Korrektur** ist eine Gruppe im gemeinsamen Arbeitsbereich **Entwickeln**. Kopfzeile und Darstellungsmenü bieten **Bibliothek** und **Entwickeln**. Der Gruppenwechsel zu **Licht**, **Farbe** oder **Details** verwendet dasselbe Foto, dieselbe Vorschau, denselben Bildstand und dieselbe Speicherung. Im Bildfokus öffnen Menü und Dock dieselben Gruppen.
 
-Die rechte Seite bündelt Qwen-Entwicklung, **Bildtexte und Tags vorschlagen**,
-semantische Bildsuche samt Suchmodell, automatische Masken und KI-Reparatur.
-Bestehende Masken-/Suchzugänge bleiben als direkte Bedienwege erhalten.
-Manuelle Bildinformationen bleiben in Bibliothek und Entwickeln;
-KI-Metadatenvorschläge werden im neuen Arbeitsbereich bearbeitet. Die Funktionen
-verwenden ihre jeweiligen Modelle; Qwen ersetzt weder Masken-/Suchmodelle noch
-den lokalen Systemanbieter für Bildtexte.
+Die KI-Gruppe enthält den ausdrücklich auszulösenden Qwen-Auftrag. Vorhandene Zugänge zu Bildtexten, Suche und Modellverwaltung bleiben erreichbar, bis die zugehörigen Navigationsissues sie konsolidieren. Die Funktionen verwenden ihre jeweiligen Modelle; Qwen ersetzt weder Masken-/Suchmodelle noch den lokalen Systemanbieter für Bildtexte.
+
+Ein reiner Gruppen-/Panelwechsel startet keine Inferenz. Beim Einklappen von KI-Korrektur, Verbergen der rechten Spalte oder Wechsel zum Bildwerkzeug werden laufende Vorschläge abgebrochen und unbestätigte Ergebnisse verworfen. Die Rückkehr benötigt einen neuen ausdrücklichen Auftrag. Bereits angenommene Bearbeitungen und Speicheraufträge laufen weiter. Ein Fokuswechsel erhält den gemeinsamen Bearbeitungskontext; wenn er die KI-Gruppe verbirgt, gilt derselbe Vorschlagsabbruch. Veraltete Ergebnisse werden zusätzlich anhand von Quelle, Auswahl und Bearbeitungsgeneration abgewiesen.
 
 ## Qwen einrichten und entfernen
 
@@ -48,10 +40,10 @@ Ein Auftrag in eigenen Worten und die Regler **Helligkeit**, **Kontrast**,
 bedeutet keine zusätzliche Vorgabe. **Stärke** mischt geprüfte Zielwerte mit den
 aktuellen Einstellungen; 0 erhält den aktuellen Stand, 100 % übernimmt den
 vollständigen Modellvorschlag. Die anfängliche Stärke beträgt 50 %.
-Der Abschnitt heißt ausdrücklich **Auftrag für den nächsten Vorschlag**:
+Die optionalen Richtungsregler stehen eingeklappt unter **Vorgaben für den Vorschlag**:
 Reglerbewegungen allein verändern die laufende Bildvorschau nicht. Um einen
 geänderten Auftrag anzuwenden, erneut **Vorschlag erstellen** und anschließend
-**Übernehmen** wählen. Direkte Bildkorrekturen erfolgen unter **Entwickeln**.
+**Übernehmen** wählen. Direkte Bildkorrekturen stehen daneben unter **Licht**, **Farbe** und **Details**.
 
 **Vorschlag erstellen** übergibt die aktuelle entwickelte Vorschau und die
 unterstützten aktuellen Reglerwerte an das Modell. Die Vorbereitung verwendet
@@ -72,7 +64,7 @@ bestehende aktive Maske. Qwen erzeugt keine neuen Bildpixel oder Retuschen.
 **Übernehmen** verwendet die normale Speicherung und erzeugt einen gemeinsamen
 Rückgängig-Schritt. Die Vorschau wird mit den übernommenen Werten neu gerendert;
 dieselben Werte stehen anschließend in den normalen Reglern unter **Entwickeln**.
-Die Richtungsregler im AI-Bereich beschreiben weiterhin den Auftrag und werden
+Die Auftragsregler unter KI-Korrektur beschreiben weiterhin den Auftrag und werden
 durch die Übernahme nicht zurückgesetzt. Enthält der Vorschlag keine wirksame
 Wertänderung (auch bei Stärke 0), bleibt **Übernehmen** deaktiviert und die
 Statusmeldung erklärt, dass keine Änderung vorgeschlagen wird. Ein solcher
@@ -94,14 +86,14 @@ bis zum tatsächlichen Ende; vorher wird keine neue Anfrage gestartet.
 
 ## Vorhandene Masken gezielt entwickeln
 
-Unter **Entwickeln → Anwenden auf** stehen **Gesamtes Bild** und alle am Foto
+Unter **KI-Korrektur → Anwenden auf** stehen **Gesamtes Bild** und alle am Foto
 vorhandenen Masken. Wähle beispielsweise die Maske **Blumenstrauß** und gib
 „Etwas heller und wärmer“ ein. **Vorschlag erstellen** und **Übernehmen** ändern
 nur die Regler dieser gewählten Maske. Name, Form, Pinselkorrekturen, Invertierung,
 Deckkraft, Reihenfolge und die übrigen Masken bleiben erhalten; globale Werte
 werden nicht verändert. Für mehrere Masken nacheinander die jeweilige Maske
 wählen. Ausgeblendete Masken und Masken mit Deckkraft 0 müssen vor dem Auftrag
-unter **Masken anzeigen und bearbeiten** aktiviert werden.
+im Werkzeug **Maskieren** aktiviert werden.
 
 Der Vorschlag nennt die Zielmaske und zeigt ihre lokalen Werte vorher/nachher.
 Auch **Wärme** ist lokal verfügbar: **Masken → Farbe → Weißabgleich** enthält
@@ -118,14 +110,14 @@ Fehlermeldung, niemals zum stillen Wechsel auf eine globale Korrektur.
 
 ## Neue Objektmaske per Auftrag
 
-1. In **AI Entwickeln** die Aufgabe **Neue Maske** wählen.
+1. Unter **Entwickeln → KI-Korrektur** die Aufgabe **Neue Maske** wählen.
 2. Einen Auftrag eingeben, zum Beispiel **„Maskiere den Blumenstrauß“**.
 3. **Vorschlag erstellen** wählen und die rote Fläche auf der unbeschnittenen,
    ungedrehten Gesamtvorschau prüfen.
 4. **Übernehmen** fügt die benannte Maske mit neutralen lokalen Reglern hinzu.
-   **Verwerfen** lässt das Foto unverändert. Unter **Masken anzeigen und bearbeiten**
+   **Verwerfen** lässt das Foto unverändert. Im Werkzeug **Maskieren**
    die neue Maske auswählen und bei Bedarf mit Pinsel/Radierer verfeinern.
-5. Für eine AI-Korrektur auf **Entwickeln** zurückschalten und diese Maske unter
+5. Für eine KI-Korrektur die Aufgabe **Korrektur** wählen und diese Maske unter
    **Anwenden auf** wählen.
 
 Dieser Weg benötigt die lokale Qwen-Installation und das vorhandene
@@ -141,7 +133,7 @@ Korrekturvorschläge.
 
 Die Maske wird einmalig als Gray8-Raster mit höchstens 1024 Pixeln langer Kante
 im vorhandenen `EditSettings.localAdjustments` gespeichert. Es gibt keine getrennte
-AI-Maskenliste: Entwickeln und AI Entwickeln verwenden identische IDs, Formen,
+KI-Maskenliste: KI-Korrektur und das Maskenwerkzeug verwenden identische IDs, Formen,
 Regler und Speicherstände; Masken bleiben nach Neustart und Backup/Restore
 verfügbar. Bestehende Grenzen (16 Masken, 16 MiB Raster insgesamt, 32 MiB
 Einstellungssnapshot) gelten weiterhin. Eine Annahme bildet einen gemeinsamen

@@ -94,7 +94,7 @@ struct AIDevelopmentModelTests {
             await (try #require(f.model.apply(library: f.library, editor: f.editor))).value
         }
         #expect(abs(f.editor.settings(for: f.assetID).exposure - 0.6) < 0.000_001)
-        #expect(f.model.status == "Vorschlag übernommen. Werte unter „Entwickeln“ prüfen. Mit ⌘Z rückgängig machen.")
+        #expect(f.model.status == "Vorschlag übernommen.")
         #expect(await f.editor.flush())
         #expect(abs((await f.store.loadAll()[f.assetID]?.exposure ?? 0) - 0.6) < 0.000_001)
         f.editor.undo(assetID: f.assetID)
@@ -156,7 +156,7 @@ struct AIDevelopmentModelTests {
             #expect(f.editor.canEdit)
             await (try #require(f.model.apply(library: f.library, editor: f.editor))).value
             #expect(abs(f.editor.settings(for: f.assetID).exposure - 0.6) < 0.000_001)
-            #expect(f.model.status == "Vorschlag übernommen. Werte unter „Entwickeln“ prüfen. Mit ⌘Z rückgängig machen.")
+            #expect(f.model.status == "Vorschlag übernommen.")
             #expect(await f.editor.flush())
             f.editor.undo(assetID: f.assetID)
             #expect(f.editor.settings(for: f.assetID).exposure == 0.2)
@@ -169,7 +169,7 @@ struct AIDevelopmentModelTests {
         }
     }
 
-    @Test(arguments: ["editUndo", "selection", "workspace", "intent", "cancel", "bitmap"])
+    @Test(arguments: ["editUndo", "selection", "workspace", "workspaceRoundTrip", "toolRoundTrip", "comparisonRoundTrip", "sourceComparisonRoundTrip", "intent", "cancel", "bitmap"])
     func staleOrCancelledInferenceNeverPublishes(change: String) async throws {
         let latch = TestAsyncLatch()
         let f = try await AIDevelopmentFixture.make(latch: latch)
@@ -182,7 +182,15 @@ struct AIDevelopmentModelTests {
             f.editor.undo(assetID: f.assetID)
         case "selection":
             let id = f.library.selectedID; f.library.selectedID = nil; f.library.selectedID = id
-        case "workspace": f.library.workspaceMode = .develop
+        case "workspace": f.library.workspaceMode = .library
+        case "workspaceRoundTrip":
+            f.library.workspaceMode = .library; f.library.workspaceMode = .develop
+        case "toolRoundTrip":
+            f.workspace.tool = .crop; f.workspace.tool = .basic
+        case "comparisonRoundTrip":
+            f.library.comparesOriginal = true; f.library.comparesOriginal = false
+        case "sourceComparisonRoundTrip":
+            f.library.comparesCurrentSourceWithoutSettings = true; f.library.comparesCurrentSourceWithoutSettings = false
         case "intent": f.model.intent.warmth = 0.3
         case "cancel": f.model.cancel()
         default: f.workspace.clear()
@@ -190,6 +198,67 @@ struct AIDevelopmentModelTests {
         #expect(f.start() == nil, "A cancelled native call keeps admission until it actually returns")
         latch.releaseAll(); await task.value
         #expect(f.model.proposal == nil && !f.model.isRunning)
+        #expect(f.editor.settings(for: f.assetID) == .neutral)
+        #expect(await f.editor.flush())
+    }
+
+    @Test(arguments: ["library", "crop", "original", "source"])
+    func requestAdmissionUsesTheSharedDevelopContext(context: String) async throws {
+        let f = try await AIDevelopmentFixture.make()
+        defer { f.remove() }
+        switch context {
+        case "library": f.library.workspaceMode = .library
+        case "crop": f.workspace.tool = .crop
+        case "original": f.library.comparesOriginal = true
+        default: f.library.comparesCurrentSourceWithoutSettings = true
+        }
+        #expect(f.start() == nil)
+        #expect(await f.probe.calls == 0)
+        #expect(!f.model.isRunning && f.model.proposal == nil)
+        #expect(await f.editor.flush())
+    }
+
+    @Test(arguments: ["inference", "ready"])
+    func displayChangesPreserveTheSharedProposalWithoutStartingInference(phase: String) async throws {
+        let release = TestAsyncLatch(open: phase != "inference")
+        let f = try await AIDevelopmentFixture.make(latch: release)
+        defer { release.releaseAll(); f.remove() }
+        #expect(f.library.workspaceMode == .develop)
+        let generation = try #require(f.start())
+        try await waitForTestState("shared development request entered", state: { await f.probe.calls }, until: { $0 == 1 })
+        if phase == "ready" { await generation.value }
+        let settings = f.editor.settings(for: f.assetID)
+        let token = f.editor.localRevision(for: f.assetID)
+        f.workspace.showsHighlights.toggle()
+        f.workspace.photoViewport.toggleZoom(at: CGPoint(x: 0.3, y: 0.4))
+        f.model.invalidateIfNeeded(library: f.library, editor: f.editor)
+        release.releaseAll(); await generation.value
+        #expect(f.model.canApplyProposal)
+        #expect(f.editor.settings(for: f.assetID) == settings)
+        #expect(f.editor.localRevision(for: f.assetID) == token)
+        #expect(f.workspace.photoViewport.isZoomed)
+        #expect(await f.probe.calls == 1)
+        await (try #require(f.model.apply(library: f.library, editor: f.editor))).value
+        #expect(f.editor.settings(for: f.assetID).exposure == 0.5)
+        #expect(await f.editor.flush())
+    }
+
+    @Test func leavingDevelopAfterAcceptanceKeepsTheQueuedWriteAndUndo() async throws {
+        let save = TestAsyncLatch(), entered = TestAsyncLatch()
+        let f = try await AIDevelopmentFixture.make(saveLatch: save, saveEntered: entered)
+        defer { save.releaseAll(); f.remove() }
+        await (try #require(f.start())).value
+        await (try #require(f.model.apply(library: f.library, editor: f.editor))).value
+        let saving = Task { await f.editor.flush() }
+        await entered.wait()
+        f.library.workspaceMode = .library
+        f.model.cancel()
+        #expect(f.editor.settings(for: f.assetID).exposure == 0.5)
+        save.releaseAll()
+        #expect(await saving.value)
+        #expect(await f.store.loadAll()[f.assetID]?.exposure == 0.5)
+        f.library.workspaceMode = .develop
+        f.editor.undo(assetID: f.assetID)
         #expect(f.editor.settings(for: f.assetID) == .neutral)
         #expect(await f.editor.flush())
     }
@@ -234,7 +303,7 @@ struct AIDevelopmentModelTests {
         #expect(await f.editor.flush())
     }
 
-    @Test func nativeObjectMaskAcceptanceSharesLayerAndHistoryAcrossWorkspaces() async throws {
+    @Test func nativeObjectMaskAcceptanceSharesLayerAndHistoryAcrossTools() async throws {
         let response = try Self.maskResponse()
         let f = try await AIDevelopmentFixture.make(proposeMask: { _, instruction in
             #expect(instruction == "Maskiere den Blumenstrauß")
@@ -261,7 +330,6 @@ struct AIDevelopmentModelTests {
         #expect(accepted.localAdjustments == [response.layer])
         #expect(accepted.exposure == 0 && response.layer.settings == .neutral)
         #expect(await f.probe.calls == 0, "Mask creation never invokes the global development route")
-        f.library.workspaceMode = .develop
         let inline = InlineMaskWorkspace()
         let asset = try #require(f.library.selectedAsset)
         let source = try f.editor.resolvedSource(for: asset).identity
@@ -361,7 +429,7 @@ struct AIDevelopmentModelTests {
         try await waitForTestState("AI development fixture", state: { @MainActor in
             !library.isLoading && !library.isProjecting && !editor.isLoading
         }, until: { $0 })
-        library.selectedID = asset.id; library.workspaceMode = .aiDevelop
+        library.selectedID = asset.id; library.workspaceMode = .develop
         let workspace = DevelopWorkspace(analyze: { _ in
             DevelopPreviewAnalysis(width: 1, height: 1, pixels: [128, 128, 128, 255],
                 channels: [[Int]](repeating: [Int](repeating: 0, count: 128), count: 3), shadows: 0, highlights: 0)

@@ -10,9 +10,7 @@ struct PhotoMetadataSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             SectionLabel(text: "Bildinformationen")
-            Text("Titel, Beschreibung und Tags werden lokal getrennt vom Original gespeichert.")
-                .font(.system(size: 10)).foregroundStyle(Theme.muted)
-            if model.isLoading { ProgressView("Bildinformationen werden geladen …").font(.caption) }
+            if model.isLoading { ProgressView("Bildinformationen werden geladen …").font(.system(size: 13)) }
             if let recovery = model.recovery {
                 Label("Ungesicherter Entwurf für \(URL(fileURLWithPath: recovery.context.source.standardizedPath).lastPathComponent)", systemImage: "exclamationmark.triangle")
                 Text(recovery.message).textSelection(.enabled)
@@ -61,8 +59,6 @@ struct PhotoMetadataSection: View {
             if mode != .manual || (showsRecoveredEditor && model.recoveredEditorIsProposal) {
             Divider()
             Text("KI-Entwurf · noch nicht bestätigt").fontWeight(.medium)
-            Text("Lokale Bildanalyse des Originals. Reglerwerte und Cloud-Textanbieter ändern diese Eingabe nicht.")
-                .foregroundStyle(Theme.muted)
             if case .unavailable(let reason) = model.availability {
                 Text(reason.localizedDescription).foregroundStyle(Theme.muted)
             }
@@ -95,17 +91,17 @@ struct PhotoMetadataSection: View {
                     }.disabled(!model.canUseProposalAsManual)
                 }
                 if let analysis = draft.source.analyzedRaster {
-                    Text("\(analysis.providerID) · \(analysis.modelID) · \(analysis.analyzedAt.formatted(date: .abbreviated, time: .shortened))")
-                        .foregroundStyle(Theme.muted).textSelection(.enabled)
-                    Text("Eingaberaster: \(analysis.raster.pixelWidth) × \(analysis.raster.pixelHeight) · SHA256 \(analysis.raster.sha256)")
-                        .font(.system(size: 9)).foregroundStyle(Theme.muted).textSelection(.enabled)
+                    DisclosureGroup("Analysedetails") {
+                        Text("\(analysis.providerID) · \(analysis.modelID) · \(analysis.analyzedAt.formatted(date: .abbreviated, time: .shortened))")
+                            .foregroundStyle(Theme.muted).textSelection(.enabled)
+                        Text("Eingaberaster: \(analysis.raster.pixelWidth) × \(analysis.raster.pixelHeight) · SHA256 \(analysis.raster.sha256)")
+                            .font(.system(size: 13)).foregroundStyle(Theme.muted).textSelection(.enabled)
+                    }
                 }
             }
             }
             if model.isSaving { ProgressView("Bildinformationen werden gesichert …") }
-            Text("Nur bestätigte Felder sind suchbar. Bearbeitungssicherungen enthalten diese Angaben nicht.")
-                .foregroundStyle(Theme.muted)
-        }.font(.system(size: 10)).fixedSize(horizontal: false, vertical: true)
+        }.font(.system(size: 13)).fixedSize(horizontal: false, vertical: true)
             .task {
                 model.synchronizeContext()
                 if mode != .manual { await model.refreshAvailability() }
@@ -156,14 +152,12 @@ private struct MetadataTextFieldsEditor: View {
             selected(.title, label: "Titel · \(fields.title.count)/120")
             TextField("Titel", text: field(\.title)).textFieldStyle(.roundedBorder)
             selected(.description, label: "Beschreibung · \(fields.description.count)/2000")
-            TextEditor(text: field(\.description)).font(.system(size: 10)).frame(minHeight: 70, maxHeight: 110)
+            TextEditor(text: field(\.description)).font(.system(size: 13)).frame(minHeight: 70, maxHeight: 110)
                 .scrollContentBackground(.hidden).background(Theme.panel)
                 .accessibilityLabel("Beschreibung")
             selected(.tags, label: "Tags · \(fields.tags.count)/20 · ein Tag pro Zeile")
-            TextEditor(text: $tagText).font(.system(size: 10)).frame(height: 54).scrollContentBackground(.hidden)
+            TextEditor(text: $tagText).font(.system(size: 13)).frame(height: 54).scrollContentBackground(.hidden)
                 .background(Theme.panel).accessibilityLabel("Tags, ein Tag pro Zeile")
-            Text("Je Tag höchstens 60 Zeichen. Leere Ersatzliste löscht Tags nur bei ausdrücklich gewähltem Ersetzen.")
-                .foregroundStyle(Theme.muted)
             selected(.language, label: "Sprache ausdrücklich übernehmen")
             TextField("Sprache, z. B. de_DE", text: field(\.language)).textFieldStyle(.roundedBorder)
         }

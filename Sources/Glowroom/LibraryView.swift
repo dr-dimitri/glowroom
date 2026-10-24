@@ -57,8 +57,7 @@ struct LibraryView: View {
                                 layout.update(developing: model.isDeveloping) { $0.toolsWidth = width }
                             }
                             Group {
-                                if model.isAIDeveloping { AIWorkspaceInspector(library: model) }
-                                else if model.isDeveloping { DevelopInspector(library: model, focusedControl: $focusedWorkspaceControl) }
+                                if model.isDeveloping { DevelopInspector(library: model, focusedControl: $focusedWorkspaceControl) }
                                 else { InspectorView(model: model) }
                             }.frame(width: widths.tools)
                         }
@@ -78,7 +77,7 @@ struct LibraryView: View {
             if let error = model.coordinationError {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Speicherzuordnung muss geprüft werden").font(.callout)
-                    Text(error).font(.caption).textSelection(.enabled)
+                    Text(error).font(.system(size: 13)).textSelection(.enabled)
                     Button("Speicherzuordnung erneut prüfen") { model.retryCoordinatedRecovery() }
                         .disabled(model.isRetryingCoordination || model.isClosing)
                 }.padding().frame(maxWidth: .infinity, alignment: .leading)
@@ -93,6 +92,7 @@ struct LibraryView: View {
         .environment(\.developSelectionIdentity, DevelopSelectionIdentity(
             sessionID: model.aiSelectionSessionID, generation: model.aiSelectionGeneration))
         .focusedSceneValue(\.editingHistory, editingHistory)
+        .environment(\.usesWorkspaceEditingHistory, true)
         .environment(\.developPreviewSink, { display in
             let request = display.identity.request
             let settings = display.identity.settings
@@ -117,7 +117,7 @@ struct LibraryView: View {
         .onAppear {
             if layout.isFocused, model.selectedAsset != nil {
                 model.showsDetail = true
-                model.workspaceMode = layout.focusOrigin.aiDeveloping == true ? .aiDevelop : .develop
+                model.workspaceMode = .develop
             }
         }
         .onChange(of: panelVisibility) { previous, current in
@@ -125,8 +125,7 @@ struct LibraryView: View {
             // must not compete to focus different buttons in the same update.
             let target = WorkspaceFocusRouting.target(previous: previous, current: current,
                                                       revealedTool: layout.revealedTool,
-                                                      hasSelection: model.selectedAsset != nil,
-                                                      isAIDeveloping: model.isAIDeveloping)
+                                                      hasSelection: model.selectedAsset != nil)
             focusReturnRequest = target.map { FocusReturnRequest(target: $0) }
             if target != nil { focusedWorkspaceControl = nil }
         }
@@ -141,7 +140,7 @@ struct LibraryView: View {
         .onChange(of: model.showsDetail) { _, detail in if !detail {
             // Empty search results are a selection change, not a request to leave focus.
             // Explicit grid commands use WorkspaceActions.showGrid instead.
-            if !layout.isFocused && !model.isAIDeveloping { model.isDeveloping = false }
+            if !layout.isFocused && model.selectedAsset != nil { model.isDeveloping = false }
             model.comparesOriginal = false; model.comparesCurrentSourceWithoutSettings = false
             model.previewComparisonLayout = .single
         } }
@@ -373,11 +372,9 @@ struct LibraryView: View {
                 } label: { Text("Bibliothek") }
                     .foregroundStyle(!model.isDeveloping ? Theme.text : Theme.muted)
                 Button { WorkspaceActions.reveal(.edit, layout: layout, library: model) } label: { Text("Entwickeln") }
-                    .foregroundStyle(model.workspaceMode == .develop ? Theme.text : Theme.muted)
-                    .disabled(model.selectedAsset == nil || editor.isLoading)
-                Button { WorkspaceActions.reveal(.aiDevelopment, layout: layout, library: model) } label: { Text("AI Entwickeln") }
-                    .foregroundStyle(model.isAIDeveloping ? Theme.text : Theme.muted)
-                    .accessibilityIdentifier("workspace.ai-develop")
+                    .foregroundStyle(model.isDeveloping ? Theme.text : Theme.muted)
+                    .accessibilityIdentifier("workspace.develop")
+                    .disabled(editor.isLoading)
             }.font(.system(size: 14, weight: .medium))
             if !layout.isFocused {
                 Divider().frame(height: 20)
@@ -399,9 +396,6 @@ struct LibraryView: View {
                 Button("Bearbeitungen sichern …") { EditingBackupActions.create(using: editor) }.disabled(!editor.canBackUp)
                 Button("Backup wiederherstellen …") { EditingBackupActions.chooseRestore(using: editor, directory: dataDirectory) }
                     .disabled(editor.isLoading || editor.isRestoring || editor.isBackingUp || editor.isClosing)
-                Divider()
-                Text("Automatisch täglich · letzte 7 Sicherungen")
-                Text("Bearbeitungen und generierte Pixel · Originale separat sichern")
             } label: { Image(systemName: "externaldrive.badge.timemachine") }
                 .menuStyle(.borderlessButton).fixedSize().help("Backups der Bearbeitungen")
                 .accessibilityLabel("Sicherungen")
@@ -509,6 +503,13 @@ struct LibraryView: View {
             }
             if model.isLoading {
                 ProgressView("Bibliothek wird geöffnet …").frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if model.isDeveloping, model.selectedAsset == nil {
+                VStack(spacing: 16) {
+                    Image(systemName: "photo").font(.system(size: 40)).foregroundStyle(Theme.muted)
+                    Text("Kein Foto ausgewählt").font(.title2)
+                    Button("Bibliothek öffnen") { WorkspaceActions.showGrid(layout, library: model) }
+                }.frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .accessibilityIdentifier("develop.empty-selection")
             } else if model.visibleAssets.isEmpty && model.isProjecting {
                 ProgressView("Fotoauswahl wird aktualisiert …").frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if model.visibleAssets.isEmpty {
@@ -639,7 +640,7 @@ struct LibraryView: View {
             Text(saveStatus.text)
                 .foregroundStyle(saveStatus.hasError ? .orange : (saveStatus.isBusy ? Theme.muted : Theme.accent))
                 .accessibilityIdentifier("workspace.saveStatus")
-        }.font(.system(size: 10)).foregroundStyle(Theme.muted).padding(.horizontal, 20).frame(height: 35)
+        }.font(.system(size: 13)).foregroundStyle(Theme.muted).padding(.horizontal, 12).frame(height: 35)
             .background(Theme.sidebar).overlay(alignment: .top) { Rectangle().fill(Theme.line).frame(height: 1) }
     }
 
@@ -665,10 +666,10 @@ struct LibraryView: View {
                 Button("Bildinformationen: manuellen Entwurf prüfen") { revealNoticeTool(.metadata) }
             }
             if photoMetadata.record?.draft != nil {
-                Button("AI Entwickeln: Bildtextvorschlag prüfen") { revealNoticeTool(.aiDevelopment) }
+                Button("KI-Korrektur: Bildtextvorschlag prüfen") { revealNoticeTool(.aiDevelopment) }
             }
             if photoMetadata.isAnalyzing {
-                Button("AI Entwickeln: Bildanalyse läuft") { revealNoticeTool(.aiDevelopment) }
+                Button("KI-Korrektur: Bildanalyse läuft") { revealNoticeTool(.aiDevelopment) }
             }
             if photoMetadata.isSaving {
                 Button("Bildinformationen: Speichern läuft") { revealNoticeTool(metadataNoticeTarget) }
@@ -721,7 +722,7 @@ struct LibraryView: View {
             Divider()
             workspaceNoticeLinks
             Button("Schließen") { showsWorkspaceErrors = false }
-        }.font(.system(size: 12)).textSelection(.enabled).padding(18)
+        }.font(.system(size: 13)).textSelection(.enabled).padding(18)
         }.frame(width: 370, height: 320)
     }
 

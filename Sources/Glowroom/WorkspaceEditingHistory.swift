@@ -17,7 +17,7 @@ enum EditingFunction: Equatable {
 
     init(_ tool: WorkspaceTool) {
         switch tool {
-        case .edit, .details, .aiDevelopment: self = .adjustments
+        case .edit, .color, .details, .aiDevelopment: self = .adjustments
         case .metadata: self = .metadata
         case .versions: self = .versions
         }
@@ -43,5 +43,18 @@ extension FocusedValues {
     var editingHistory: WorkspaceEditingHistory? {
         get { self[WorkspaceEditingHistoryKey.self] }
         set { self[WorkspaceEditingHistoryKey.self] = newValue }
+    }
+}
+
+/// The full workspace owns the single visible history pair. Standalone mask
+/// palettes keep their own controls when they have no workspace history host.
+private struct UsesWorkspaceEditingHistoryKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+extension EnvironmentValues {
+    var usesWorkspaceEditingHistory: Bool {
+        get { self[UsesWorkspaceEditingHistoryKey.self] }
+        set { self[UsesWorkspaceEditingHistoryKey.self] = newValue }
     }
 }

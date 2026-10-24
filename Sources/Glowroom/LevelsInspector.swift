@@ -133,21 +133,19 @@ struct LevelsInspector: View {
                         }
                     }.disabled(levels.isNeutral && !numericInput.hasPendingChanges).accessibilityIdentifier("develop.levels.reset-all")
                 }.buttonStyle(.plain).foregroundStyle(Theme.accent).padding(.top, 3)
-                Text("Gamma über 1 hellt Mitteltöne auf. RGB gemeinsam folgt den Einzelkanälen und kann den Farbton verändern. Beide Begrenzungen sind standardmäßig aus.")
-                    .font(.system(size: 10)).foregroundStyle(Theme.muted)
                     .fixedSize(horizontal: false, vertical: true)
                 if let validationMessage {
-                    Text(validationMessage).font(.system(size: 10)).foregroundStyle(.orange)
+                    Text(validationMessage).font(.system(size: 13)).foregroundStyle(.orange)
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityIdentifier("develop.levels.validation")
                 }
                 if let error = workspace.errorMessage {
-                    Text(error).font(.system(size: 10)).foregroundStyle(.orange)
+                    Text(error).font(.system(size: 13)).foregroundStyle(.orange)
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityIdentifier("develop.levels.picker-message")
                 }
                 if let description = workspace.levelsSampleDescription {
-                    Text(description).font(.system(size: 10)).foregroundStyle(Theme.muted)
+                    Text(description).font(.system(size: 13)).foregroundStyle(Theme.muted)
                 }
             }.font(.system(size: 10)).toggleStyle(.checkbox).controlSize(.mini)
                 .padding(.top, 5).disabled(readOnly)
@@ -172,11 +170,6 @@ struct LevelsInspector: View {
                 Text("Tonwert setzen").tag(LevelsPickerMode.setTone)
                 Text("RGB neutralisieren").tag(LevelsPickerMode.neutralizeRGB)
             }.pickerStyle(.segmented).accessibilityIdentifier("develop.levels.picker-mode")
-            if pickerMode == .neutralizeRGB {
-                Text("Ändert Rot, Grün und Blau gemeinsam. Zusätzlich wird nur der passende gemeinsame Parameter neutralisiert: Schwarz → 0, Weiß → 1 oder Gamma → 1. Andere Parameter bleiben erhalten; unterschiedliche RGB-Ausgangsgrenzen werden abgelehnt.")
-                    .font(.system(size: 10)).foregroundStyle(Theme.muted)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
             ForEach([LevelsPickerPoint.black, .gray, .white], id: \.self) { point in
                 let picker = DevelopLevelsPickerSelection(point: point, mode: pickerMode, channel: selectedChannel)
                 Button {
@@ -198,8 +191,6 @@ struct LevelsInspector: View {
                 }.buttonStyle(.plain).foregroundStyle(workspace.levelsPicker == picker ? Theme.accent : Theme.text)
                     .accessibilityIdentifier("develop.levels.pick-\(point.rawValue)")
             }
-            Text("5 × 5 Pixel der angezeigten Eingangsauflösung; am Rand beschnitten. Gemessen wird vor Levels. Nachfolgende Looks bleiben aktiv. RGB gemeinsam verwendet den größten Kanalwert und verspricht keine neutrale Farbe.")
-                .font(.system(size: 10)).foregroundStyle(Theme.muted)
                 .fixedSize(horizontal: false, vertical: true)
         }.padding(.vertical, 4)
     }

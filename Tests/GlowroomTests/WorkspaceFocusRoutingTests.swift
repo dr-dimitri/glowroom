@@ -19,7 +19,8 @@ struct WorkspaceFocusRoutingTests {
     @Test(arguments: WorkspaceTool.allCases)
     func closingFocusAdjustmentsReturnsToTheirOwningTool(_ tool: WorkspaceTool) {
         #expect(target(from: visibility(focused: true),
-                       to: visibility(focused: true, tools: false), tool: tool) == .tool(.edit))
+                       to: visibility(focused: true, tools: false), tool: tool)
+                == .tool(tool.isNavigationTool ? .edit : tool))
     }
 
     @Test(arguments: WorkspaceTool.allCases)
@@ -40,10 +41,10 @@ struct WorkspaceFocusRoutingTests {
     }
 
     @Test(arguments: [false, true])
-    func closingAIControlsKeepsTheAIWorkspaceAsKeyboardReturnTarget(_ hasSelection: Bool) {
+    func closingAICorrectionKeepsItsGroupAsKeyboardReturnTarget(_ hasSelection: Bool) {
         #expect(WorkspaceFocusRouting.target(previous: visibility(focused: true),
-            current: visibility(focused: true, tools: false), revealedTool: .metadata,
-            hasSelection: hasSelection, isAIDeveloping: true) == .tool(.aiDevelopment))
+            current: visibility(focused: true, tools: false), revealedTool: .aiDevelopment,
+            hasSelection: hasSelection) == .tool(.aiDevelopment))
     }
 
     @Test

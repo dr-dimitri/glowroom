@@ -15,6 +15,8 @@ struct DevelopInspector: View {
     @EnvironmentObject private var maskWorkspace: InlineMaskWorkspace
     @EnvironmentObject private var developWorkspace: DevelopWorkspace
     @ViewState private var fulfilledReveal: UUID?
+    @ViewState private var showsModels = false
+    @ViewState private var showsCompactHistogram = false
 
     private struct RevealFocusIdentity: Hashable {
         let request: UUID
@@ -27,59 +29,79 @@ struct DevelopInspector: View {
     private var saveStatus: WorkspaceSaveStatus { WorkspaceSaveStatus(editor: editor) }
 
     private var groups: [WorkspaceTool] {
-        column == .navigation ? [.metadata, .versions] : [.edit, .details]
+        column == .navigation ? [.metadata, .versions] : [.aiDevelopment, .edit, .color, .details]
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            if let asset = library.selectedAsset {
-                ScrollViewReader { proxy in
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 0) {
-                            if column == .navigation {
-                                navigator(asset)
-                                ForEach(groups, id: \.self) { tool in toolGroup(tool, asset: asset) }
+        GeometryReader { available in
+            VStack(spacing: 0) {
+                if let asset = library.selectedAsset {
+                    if column == .adjustments {
+                        // Keep navigation controls mounted while long palettes scroll.
+                        VStack(spacing: 5) {
+                            if available.size.height < 600 {
+                                DisclosureGroup("Histogramm", isExpanded: $showsCompactHistogram) {
+                                    DevelopHistogram(workspace: developWorkspace, asset: asset, library: library)
+                                }.font(.system(size: 13))
+                                    .accessibilityIdentifier("develop.compact-histogram")
                             } else {
                                 DevelopHistogram(workspace: developWorkspace, asset: asset, library: library)
-                                    .padding(.bottom, 5)
-                                developToolStrip(asset).padding(.bottom, 5)
-                                if developWorkspace.tool == .masks, maskWorkspace.isPresented {
-                                    InlineMaskInspector(workspace: maskWorkspace)
-                                } else if developWorkspace.tool != .basic {
-                                    DevelopGeometryInspector(asset: asset, workspace: developWorkspace)
-                                        .id(asset.id).id(developWorkspace.tool)
-                                } else {
-                                    ForEach(groups, id: \.self) { tool in toolGroup(tool, asset: asset) }
-                                }
                             }
-                        }.padding(.horizontal, 8).padding(.top, 6).padding(.bottom, 12)
+                            developToolStrip(asset, compact: available.size.height < 600)
+                        }.padding(.horizontal, 8).padding(.top, 6).padding(.bottom, 5)
+                        Rectangle().fill(Theme.line).frame(height: 1)
                     }
-                    .task(id: RevealFocusIdentity(request: layout.revealRequest, assetID: asset.id,
-                        canvasTool: developWorkspace.tool, hasMaskDraft: maskWorkspace.isPresented)) {
-                        let request = layout.revealRequest
-                        guard developWorkspace.tool == .basic, !maskWorkspace.isPresented,
-                              fulfilledReveal != request, let tool = layout.revealedTool,
-                              groups.contains(tool), panels.openGroups.contains(tool) else { return }
-                        // Only the owning column scrolls and focuses a reveal.
-                        // A preceding canvas-tool transition publishes its result first.
-                        await Task.yield()
-                        guard !Task.isCancelled, request == layout.revealRequest,
-                              developWorkspace.tool == .basic, !maskWorkspace.isPresented,
-                              library.selectedID == asset.id else { return }
-                        withAnimation(.easeInOut(duration: 0.18)) { proxy.scrollTo(tool, anchor: .top) }
-                        focusedControl.wrappedValue = .group(tool)
-                        fulfilledReveal = request
+                    ScrollViewReader { proxy in
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: 0) {
+                                if column == .navigation {
+                                    navigator(asset)
+                                    ForEach(groups, id: \.self) { tool in toolGroup(tool, asset: asset) }
+                                } else {
+                                    if developWorkspace.tool == .masks, maskWorkspace.isPresented {
+                                        InlineMaskInspector(workspace: maskWorkspace)
+                                    } else if developWorkspace.tool != .basic {
+                                        DevelopGeometryInspector(asset: asset, workspace: developWorkspace)
+                                            .id(asset.id).id(developWorkspace.tool)
+                                    } else {
+                                        ForEach(groups, id: \.self) { tool in toolGroup(tool, asset: asset) }
+                                    }
+                                }
+                            }.padding(.horizontal, 8).padding(.top, 6).padding(.bottom, 12)
+                        }
+                        .task(id: RevealFocusIdentity(request: layout.revealRequest, assetID: asset.id,
+                            canvasTool: developWorkspace.tool, hasMaskDraft: maskWorkspace.isPresented)) {
+                            let request = layout.revealRequest
+                            guard developWorkspace.tool == .basic, !maskWorkspace.isPresented,
+                                  fulfilledReveal != request, let tool = layout.revealedTool,
+                                  groups.contains(tool), panels.openGroups.contains(tool) else { return }
+                            // Only the owning column scrolls and focuses a reveal.
+                            // A preceding canvas-tool transition publishes its result first.
+                            await Task.yield()
+                            guard !Task.isCancelled, request == layout.revealRequest,
+                                  developWorkspace.tool == .basic, !maskWorkspace.isPresented,
+                                  library.selectedID == asset.id else { return }
+                            withAnimation(.easeInOut(duration: 0.18)) { proxy.scrollTo(tool, anchor: .top) }
+                            focusedControl.wrappedValue = .group(tool)
+                            fulfilledReveal = request
+                        }
                     }
+                    Rectangle().fill(Theme.line).frame(height: 1)
+                    editingHistory(assetID: asset.id)
+                } else {
+                    Text("Wähle ein Foto zum Bearbeiten.").font(.callout).foregroundStyle(Theme.muted).padding(24)
+                    if column == .adjustments {
+                        Button("LLM-Modelle verwalten …") { showsModels = true }
+                            .accessibilityLabel("LLM-Modelle verwalten")
+                        AIDevelopmentManagementControls(library: library).padding(12)
+                    }
+                    Spacer()
                 }
-                Rectangle().fill(Theme.line).frame(height: 1)
-                editingHistory(assetID: asset.id)
-            } else {
-                Text("Wähle ein Foto zum Bearbeiten.").font(.callout).foregroundStyle(Theme.muted).padding(24)
-                Spacer()
-            }
-        }.background(Theme.sidebar)
-            .accessibilityElement(children: .contain)
-            .accessibilityIdentifier(column == .navigation ? "develop.navigation" : "develop.adjustments")
+            }.background(Theme.sidebar)
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier(column == .navigation ? "develop.navigation" : "develop.adjustments")
+                .sheet(isPresented: $showsModels) { LLMModelManagerView() }
+        }
     }
 
     private func navigator(_ asset: PhotoAsset) -> some View {
@@ -87,16 +109,18 @@ struct DevelopInspector: View {
                               viewport: developWorkspace.photoViewport)
     }
 
-    private func developToolStrip(_ asset: PhotoAsset) -> some View {
-        HStack(spacing: 0) {
+    private func developToolStrip(_ asset: PhotoAsset, compact: Bool) -> some View {
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 3), count: compact ? 5 : 3), spacing: 3) {
             ForEach(DevelopCanvasTool.allCases) { tool in
                 Button {
                     finishInput(assetID: asset.id)
                     editor.selectEditingFunction(EditingFunction(tool), assetID: asset.id)
                     developWorkspace.tool = tool
                 } label: {
-                    Image(systemName: tool.symbol).font(.system(size: 16))
-                        .frame(maxWidth: .infinity).frame(height: 30)
+                    VStack(spacing: 4) {
+                        Image(systemName: tool.symbol).font(.system(size: 16))
+                        Text(tool.title).font(.system(size: compact ? 10 : 11)).lineLimit(1).minimumScaleFactor(0.9)
+                    }.frame(maxWidth: .infinity).frame(height: 48)
                         .foregroundStyle(developWorkspace.tool == tool ? Color.white.opacity(0.9) : Theme.muted)
                         .background(developWorkspace.tool == tool ? Color.white.opacity(0.09) : .clear)
                 }.buttonStyle(.plain).help(tool.title).accessibilityLabel(tool.title)
@@ -152,16 +176,8 @@ struct DevelopInspector: View {
                 .help("Relativer Weißabgleich auf entwickelten Pixeln. 6500 erhält den Kamera-/ImageIO-Weißabgleich unverändert.")
             colorSlider("Tönung", assetID: assetID, keyPath: \.tint,
                         range: DevelopColorSettings.tintRange, neutral: 0, step: 1)
-            if developWorkspace.picksWhiteBalance {
-                Text("Klicke eine neutrale graue Fläche an. Die Pipette verwendet die entwickelte Quelle vor den Farbkorrekturen.")
-                    .font(.system(size: 10)).foregroundStyle(Theme.accent)
-            }
-            if settings.developColor.hdrEnabled {
-                Text("HDR-Vorschau mit erweitertem Dynamikumfang. JPEG wird als SDR ausgegeben; HDR-Ausgabe über HEIF 10 Bit.")
-                    .font(.system(size: 10)).foregroundStyle(Theme.muted)
-            }
             if let error = developWorkspace.errorMessage {
-                Text(error).font(.system(size: 10)).foregroundStyle(.orange)
+                Text(error).font(.system(size: 13)).foregroundStyle(.orange)
             }
         }.disabled(!editor.canEdit || !library.canModify || library.comparesOriginal || library.comparesCurrentSourceWithoutSettings)
     }
@@ -221,11 +237,6 @@ struct DevelopInspector: View {
                     ))
                 }
             if expanded {
-                if column == .navigation, maskWorkspace.isPresented {
-                    Text("Zum Wechseln die Gruppenüberschrift anklicken und den Maskenentwurf übernehmen.")
-                        .font(.system(size: 10)).foregroundStyle(Theme.muted)
-                        .fixedSize(horizontal: false, vertical: true).padding(6)
-                }
                 toolContent(tool, asset: asset)
                     .disabled(column == .navigation && maskWorkspace.isPresented)
                     // Photo-bound controls reset on selection. Group preferences
@@ -259,15 +270,19 @@ struct DevelopInspector: View {
         switch tool {
         case .edit:
             VStack(alignment: .leading, spacing: 5) {
-                colorBasics(assetID: asset.id)
                 toneProcessingSection(assetID: asset.id)
                 naturalBalanceSection(assetID: asset.id)
                 adjustmentSection("Tonwert", key: "tone", controls: Array(Adjustment.allCases.prefix(6)), assetID: asset.id)
                 LevelsInspector(assetID: asset.id, library: library, workspace: developWorkspace).id("levels-\(asset.id)")
-                adjustmentSection("Präsenz", key: "presence", controls: Array(Adjustment.allCases.dropFirst(6).prefix(5)), assetID: asset.id)
+            }
+        case .color:
+            VStack(alignment: .leading, spacing: 5) {
+                colorBasics(assetID: asset.id)
+                adjustmentSection("Farbintensität", key: "color", controls: [.vibrance, .saturation], assetID: asset.id, collapsible: false)
             }
         case .details:
             VStack(alignment: .leading, spacing: 8) {
+                adjustmentSection("Präsenz", key: "presence", controls: [.texture, .clarity, .dehaze], assetID: asset.id)
                 DevelopDetailPreview(workspace: developWorkspace,
                     isEnabled: developWorkspace.tool == .basic && !maskWorkspace.isPresented
                         && !library.comparesOriginal && !library.comparesCurrentSourceWithoutSettings)
@@ -279,7 +294,7 @@ struct DevelopInspector: View {
             }
             .onDisappear { developWorkspace.picksDetail = false }
         case .aiDevelopment:
-            EmptyView() // AI development owns its separate top-level workspace.
+            AICorrectionInspector(library: library)
         case .metadata:
             VStack(alignment: .leading, spacing: 20) {
                 PhotoMetadataSection(model: photoMetadata)
@@ -297,7 +312,7 @@ struct DevelopInspector: View {
                 }.disabled(!editor.canEdit || editor.snapshot(for: asset.id).source == .original)
                 if let error = editor.errorMessage {
                     Label(error, systemImage: "exclamationmark.triangle")
-                        .font(.system(size: 11)).foregroundStyle(.orange)
+                        .font(.system(size: 13)).foregroundStyle(.orange)
                         .fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
                 }
                 if let retry = saveStatus.retryAction {
@@ -347,7 +362,6 @@ struct DevelopInspector: View {
 
     private func groupTitle(_ tool: WorkspaceTool) -> String {
         switch tool {
-        case .edit: "Grundeinstellungen"
         case .versions: "Bildstände"
         default: tool.title
         }
@@ -397,13 +411,27 @@ struct DevelopInspector: View {
 
     private func status(for tool: WorkspaceTool, assetID: String) -> (text: String, symbol: String, isError: Bool)? {
         switch tool {
-        case .edit, .details:
+        case .edit, .color, .details:
             if editor.isReadOnly { return ("Fehler", "exclamationmark.triangle", true) }
             if editor.isSaving || editor.isLoading || editor.hasPendingChanges { return ("Läuft", "arrow.triangle.2.circlepath", false) }
             let settings = editor.settings(for: assetID)
-            let changed = tool == .details
-                ? settings.sharpeningAmount != 0 || settings.luminanceNoiseReduction != 0 || settings.colorNoiseReduction != 0
-                : !settings.isNeutral
+            let changed: Bool
+            switch tool {
+            case .edit:
+                changed = settings.exposure != 0 || settings.contrast != 0
+                    || settings.highlights != 0 || settings.shadows != 0
+                    || settings.whites != 0 || settings.blacks != 0
+                    || settings.autoToneAmount != 0 || settings.naturalBalanceAmount != 0
+                    || !settings.levels.isNeutral
+            case .color:
+                changed = !settings.developColor.isNeutral || settings.vibrance != 0 || settings.saturation != 0
+            case .details:
+                changed = settings.texture != 0 || settings.clarity != 0 || settings.dehaze != 0
+                    || settings.sharpeningAmount != 0 || settings.luminanceNoiseReduction != 0
+                    || settings.colorNoiseReduction != 0
+            default:
+                changed = false
+            }
             if changed { return ("Geändert", "slider.horizontal.3", false) }
         case .aiDevelopment:
             return nil
@@ -480,11 +508,9 @@ struct DevelopInspector: View {
             if settings.naturalBalanceAmount > 0 {
                 naturalBalanceSlider("Stärke", keyPath: \.naturalBalanceAmount, range: 0...100, assetID: assetID)
                 naturalBalanceSlider("Farbe", keyPath: \.naturalBalanceColorAmount, range: 0...100, assetID: assetID)
-                Text("Farbe 0: nur Tonwerte. Höhere Werte beleben zurückhaltend die Farben.")
-                    .font(.system(size: 10)).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
             } else if settings.autoToneAmount > 0 {
-                Text("Bisherige Tonwert-Automatik aktiv (\(Int(settings.autoToneAmount)) %). Dein gespeicherter Bildstand bleibt erhalten. Einschalten ersetzt sie durch den natürlichen Bildausgleich.")
-                    .font(.system(size: 10)).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
+                Text("Bisherige Tonwert-Automatik: \(Int(settings.autoToneAmount)) %")
+                    .font(.system(size: 13)).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
                 Button("Bisherige Automatik ausschalten") {
                     finishInput(assetID: assetID)
                     var settings = editor.settings(for: assetID)
@@ -500,14 +526,13 @@ struct DevelopInspector: View {
     private func toneProcessingSection(assetID: String) -> some View {
         let version = editor.settings(for: assetID).toneProcessingVersion
         return VStack(alignment: .leading, spacing: 5) {
-            Text(version == .legacyV1 ? "Tonwertverarbeitung: Bisherig (V1)" : "Tonwertverarbeitung: sRGB Float (V2)")
-                .font(.system(size: 10)).foregroundStyle(Theme.muted)
             if version == .legacyV1 {
+                Text("Bisherige Tonwertverarbeitung").font(.system(size: 13)).foregroundStyle(Theme.muted)
                 Button("Auf sRGB Float (V2) umstellen") {
                     finishInput(assetID: assetID)
                     editor.upgradeToneProcessing(assetID: assetID)
                 }
-                .font(.system(size: 10))
+                .font(.system(size: 13))
                 .help("Ändert die Tonwertkennlinien dieses Bildstands. Alle Regler bleiben erhalten. Einmal Rückgängig stellt die bisherige Verarbeitung wieder her.")
                 .accessibilityIdentifier("develop.tone-processing.upgrade")
             }
@@ -604,13 +629,6 @@ struct DevelopInspector: View {
                             else { editor.endEditing(assetID: assetID) }
                         })
                         .disabled(control.isSharpeningPreference && editor.settings(for: assetID).sharpeningAmount == 0)
-                    }
-                    if key == "sharpening" {
-                        Text("Betrag verstärkt Kanten, Radius bestimmt ihre Breite. Details betont feine Strukturen; Maskieren schützt glatte Flächen. Prüfe die Wirkung im Detailzoom.")
-                            .font(.system(size: 10)).foregroundStyle(Theme.muted).lineSpacing(3)
-                    } else if key == "noise" {
-                        Text("Luminanz reduziert Helligkeitsrauschen, Farbe reduziert Farbflecken. Der Detailzoom zeigt die Wirkung am gewählten Ausschnitt.")
-                            .font(.system(size: 10)).foregroundStyle(Theme.muted).lineSpacing(3)
                     }
                 }.disabled(readOnly)
             }

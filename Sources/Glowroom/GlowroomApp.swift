@@ -120,7 +120,7 @@ struct GlowroomApp: App {
                     library.showsDetail = true
                     layout.reveal(.edit, developing: true)
                 }.keyboardShortcut("d", modifiers: .command).disabled(library.selectedAsset == nil || editor.isLoading)
-                Button("AI Entwickeln") {
+                Button("KI-Korrektur") {
                     WorkspaceActions.reveal(.aiDevelopment, layout: layout, library: library)
                 }
                 Button(library.comparesOriginal ? "Bearbeitung anzeigen" : "Importiertes Original anzeigen") { library.comparesOriginal.toggle() }

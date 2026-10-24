@@ -48,7 +48,7 @@ struct AIDevelopmentAcceptanceTests {
         let editor = EditingModel(directory: editingDirectory, loader: { dependencies })
         try await wait("catalog and editor loaded") { !library.isLoading && !library.isProjecting && !editor.isLoading }
         library.selectedID = asset.id
-        library.workspaceMode = .aiDevelop
+        library.workspaceMode = .develop
         let workspace = DevelopWorkspace()
         let frames = AIAcceptanceFrames()
         let proposal = screenshotProposal
@@ -95,12 +95,12 @@ struct AIDevelopmentAcceptanceTests {
                     && frames.latest?.settings == settings && frames.latest?.sourceWidth == image.width
             }
             if masked {
-                #expect(model.status?.contains("nur auf „Blumenstrauß“") == true)
+                #expect(model.status == "Vorschlag auf „Blumenstrauß“ übernommen.")
                 #expect(settings.exposure == baseline.exposure)
                 #expect(settings.localAdjustments[0].settings.exposure == 0.6)
                 #expect(settings.localAdjustments[0].mask == layer.mask)
             } else {
-                #expect(model.status == "Vorschlag übernommen. Werte unter „Entwickeln“ prüfen. Mit ⌘Z rückgängig machen.")
+                #expect(model.status == "Vorschlag übernommen.")
             }
             #expect(model.intent == requestedIntent, "Intent sliders describe the request and retain its directions")
             #expect(frames.latest?.digest != baselineDigest)

@@ -194,12 +194,7 @@ struct DevelopDetailPreview: View {
                 .accessibilityElement(children: .contain)
                 .accessibilityLabel("Vergrößerter Ausschnitt der bearbeiteten Vorschau")
                 .accessibilityIdentifier("develop.detail-preview")
-            Text(workspace.picksDetail
-                 ? "Bewege den Mauszeiger im Foto. Klicken fixiert den Ausschnitt; Escape beendet die Auswahl."
-                 : "Klicken: Zoom / Gesamtansicht · Ziehen: Ausschnitt verschieben.")
-                .font(.system(size: 10))
-                .foregroundStyle(workspace.picksDetail ? Color.white.opacity(0.9) : Theme.muted)
-                .fixedSize(horizontal: false, vertical: true)
+
         }
         .onChange(of: isEnabled) { _, enabled in if !enabled { workspace.picksDetail = false } }
         .onDisappear { workspace.picksDetail = false }

@@ -1,5 +1,6 @@
 import Combine
 import Foundation
+import GlowroomCore
 import Testing
 @testable import Glowroom
 
@@ -236,20 +237,88 @@ struct WorkspaceLayoutTests {
         #expect(WorkspaceLayoutModel(defaults: fixture.defaults).develop == layout.develop)
     }
 
+    @Test(arguments: [WorkspaceTool.edit, .aiDevelopment])
+    func openingDevelopmentWithoutSelectionShowsTheCommonTools(_ tool: WorkspaceTool) async throws {
+        let fixture = try Preferences()
+        defer { fixture.remove() }
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("Glowroom-EmptyWorkspace-\(UUID())")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let library = LibraryModel(repository: CatalogRepository(directory: directory))
+        #expect(await library.finishSaving())
+        let layout = WorkspaceLayoutModel(defaults: fixture.defaults)
+        layout.update(developing: true) { $0.showsTools = false }
+        WorkspaceActions.reveal(tool, layout: layout, library: library)
+        #expect(library.workspaceMode == .develop && library.selectedAsset == nil && !library.showsDetail)
+        #expect(layout.develop.showsTools && layout.develop.openGroups.contains(tool))
+        #expect(layout.revealedTool == tool)
+        #expect(await library.finishSaving())
+    }
+
     @Test
-    func aiFocusOriginSurvivesRestartWithoutChangingLegacyOrigins() throws {
+    func oldAIEntryPersistsOnlyTheSharedDevelopmentOrigin() throws {
         let fixture = try Preferences()
         defer { fixture.remove() }
         let layout = WorkspaceLayoutModel(defaults: fixture.defaults)
-        layout.enterFocus(developing: true, showsDetail: true, aiDeveloping: true)
+        layout.enterFocus(developing: false, showsDetail: true, aiDeveloping: true)
         let restored = WorkspaceLayoutModel(defaults: fixture.defaults)
-        #expect(restored.focusOrigin.aiDeveloping == true)
-        #expect(restored.leaveFocus() == WorkspaceFocusOrigin(developing: true, showsDetail: true, aiDeveloping: true))
+        #expect(restored.focusOrigin.aiDeveloping == nil)
+        #expect(restored.leaveFocus() == WorkspaceFocusOrigin(developing: true, showsDetail: true))
         #expect(EditingFunction(WorkspaceTool.aiDevelopment) == .adjustments)
-        #expect(!WorkspaceTool.aiDevelopment.isNavigationTool)
-        let legacy = try JSONDecoder().decode(WorkspaceFocusOrigin.self,
-            from: Data(#"{"developing":true,"showsDetail":true}"#.utf8))
-        #expect(legacy.aiDeveloping == nil)
+        #expect(EditingFunction(WorkspaceTool.color) == .adjustments)
+        #expect(!WorkspaceTool.aiDevelopment.isNavigationTool && !WorkspaceTool.color.isNavigationTool)
+    }
+
+    @Test(arguments: [false, true])
+    func savedAIFocusMigratesItsTaskAndPreservesPanelPreferences(_ singleGroup: Bool) throws {
+        let fixture = try Preferences()
+        defer { fixture.remove() }
+        let json = """
+        {"isFocused":true,"focusOrigin":{"developing":false,"showsDetail":true,"aiDeveloping":true},
+        "develop":{"toolsWidth":480,"openGroups":["color","metadata"],"singleGroup":\(singleGroup)},
+        "focus":{"showsTools":true,"showsLibrary":true,"libraryWidth":340,"toolsWidth":460,
+        "filmstripHeight":140,"openGroups":["edit","versions"],"singleGroup":\(singleGroup)}}
+        """
+        fixture.defaults.set(Data(json.utf8), forKey: WorkspaceLayoutModel.preferencesKey)
+        let layout = WorkspaceLayoutModel(defaults: fixture.defaults)
+        #expect(layout.isFocused && layout.focusOrigin == WorkspaceFocusOrigin(developing: true, showsDetail: true))
+        #expect(layout.focus.showsTools && layout.focus.showsLibrary)
+        #expect(layout.focus.libraryWidth == 340 && layout.focus.toolsWidth == 460 && layout.focus.filmstripHeight == 140)
+        #expect(layout.focus.openGroups.contains(.aiDevelopment) && layout.focus.openGroups.contains(.versions))
+        #expect(layout.focus.openGroups.contains(.edit) == !singleGroup)
+        #expect(layout.develop.toolsWidth == 480)
+        #expect(layout.develop.openGroups.contains(.aiDevelopment) && layout.develop.openGroups.contains(.metadata))
+        #expect(layout.develop.openGroups.contains(.color) == !singleGroup)
+        let restored = WorkspaceLayoutModel(defaults: fixture.defaults)
+        #expect(restored.focus == layout.focus && restored.develop == layout.develop)
+        #expect(restored.leaveFocus() == WorkspaceFocusOrigin(developing: true, showsDetail: true))
+        let returnedPanels = restored.panels(developing: true)
+        #expect(returnedPanels.openGroups.contains(.aiDevelopment) && returnedPanels.toolsWidth == 480)
+        #expect(returnedPanels.openGroups.contains(.metadata))
+        let stored = try #require(fixture.defaults.data(forKey: WorkspaceLayoutModel.preferencesKey))
+        #expect(!String(decoding: stored, as: UTF8.self).contains("aiDeveloping"))
+    }
+
+    @Test
+    func partiallyDamagedAIFocusOriginKeepsItsValidTaskAndWindowState() throws {
+        let fixture = try Preferences()
+        defer { fixture.remove() }
+        let json = #"{"isFocused":true,"focusOrigin":{"developing":"damaged","aiDeveloping":true},"focus":{"toolsWidth":420,"showsTools":true}}"#
+        fixture.defaults.set(Data(json.utf8), forKey: WorkspaceLayoutModel.preferencesKey)
+        let layout = WorkspaceLayoutModel(defaults: fixture.defaults)
+        #expect(layout.isFocused && layout.focus.toolsWidth == 420 && layout.focus.showsTools)
+        #expect(layout.focus.openGroups.contains(.aiDevelopment))
+        #expect(layout.leaveFocus() == WorkspaceFocusOrigin(developing: true, showsDetail: true))
+    }
+
+    @Test
+    func savedClassicFocusOriginRemainsClassicDuringMigration() throws {
+        let fixture = try Preferences()
+        defer { fixture.remove() }
+        let json = #"{"isFocused":true,"focusOrigin":{"developing":false,"showsDetail":true}}"#
+        fixture.defaults.set(Data(json.utf8), forKey: WorkspaceLayoutModel.preferencesKey)
+        let layout = WorkspaceLayoutModel(defaults: fixture.defaults)
+        #expect(layout.leaveFocus() == WorkspaceFocusOrigin(developing: false, showsDetail: true))
+        #expect(layout.focus.openGroups == [.edit])
     }
 
     @Test(arguments: [false, true])

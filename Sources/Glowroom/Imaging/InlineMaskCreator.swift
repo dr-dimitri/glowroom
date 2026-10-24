@@ -33,7 +33,7 @@ struct InlineMaskCreator: View {
             Divider().overlay(Theme.line)
             DisclosureGroup(isExpanded: $showsPeople) {
                 Text("Personenauswahl noch nicht verfügbar.")
-                    .font(.system(size: 11)).foregroundStyle(Theme.muted)
+                    .font(.system(size: 13)).foregroundStyle(Theme.muted)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.vertical, 5)
@@ -47,7 +47,7 @@ struct InlineMaskCreator: View {
                 .buttonStyle(.plain).font(.system(size: 10)).foregroundStyle(Theme.muted)
                 .accessibilityIdentifier("local-mask.subject-setup")
             if (workspace.model?.settings.localAdjustments.count ?? 0) >= 16 {
-                Text("Maximal 16 Masken pro Bild.").font(.caption).foregroundStyle(Theme.muted)
+                Text("Maximal 16 Masken pro Bild.").font(.system(size: 13)).foregroundStyle(Theme.muted)
             }
         }.foregroundStyle(Theme.text)
             .padding(10).frame(maxWidth: .infinity, alignment: .leading)
