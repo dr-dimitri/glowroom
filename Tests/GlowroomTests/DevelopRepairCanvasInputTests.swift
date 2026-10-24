@@ -9,6 +9,22 @@ import Testing
 @Suite("Repair canvas native gestures", .serialized)
 @MainActor
 struct DevelopRepairCanvasInputTests {
+    @Test func rapidPointClicksWithoutAZoomCallbackAreBothAccepted() async throws {
+        let fixture = try await RepairCanvasFixture.make()
+        let host = RepairCanvasHost()
+        defer { host.close(); fixture.workspace.clear() }
+        try await host.mount(fixture, enablesDoubleClickZoom: false)
+        let point = CGPoint(x: 0.4, y: 0.5)
+        try host.send(.leftMouseDown, at: point)
+        try host.send(.leftMouseUp, at: point)
+        try host.send(.leftMouseDown, at: point, clickCount: 2)
+        try host.send(.leftMouseUp, at: point, clickCount: 2)
+        try await fixture.waitForRepairs(2)
+        #expect(host.doubleClicks == 0)
+        #expect(fixture.editor.settings(for: fixture.asset.id).developGeometry.retouchStrokes.count == 2)
+        #expect(await fixture.editor.flush())
+    }
+
     @Test(arguments: [0.25, 1.25])
     func independentPointClicksKeepTheirOrderAndUndoSteps(interval: Double) async throws {
         let fixture = try await RepairCanvasFixture.make()
@@ -404,12 +420,12 @@ private final class RepairCanvasHost {
         window.contentView = hosting; window.orderBack(nil)
     }
 
-    func mount(_ fixture: RepairCanvasFixture, withInspector: Bool = false) async throws {
+    func mount(_ fixture: RepairCanvasFixture, withInspector: Bool = false, enablesDoubleClickZoom: Bool = true) async throws {
         let canvas = DevelopRepairCanvas(asset: fixture.asset, workspace: fixture.workspace,
-            onDoubleClick: {
+            onDoubleClick: enablesDoubleClickZoom ? {
                 self.doubleClicks += 1
                 if self.replacesCanvasOnDoubleClick { self.replaceCanvasForZoom(fixture) }
-            })
+            } : nil)
             .frame(width: size.width, height: size.height)
         if withInspector {
             window.setContentSize(NSSize(width: 880, height: 760))

@@ -15,6 +15,170 @@ import Testing
 @Suite("Detail picker workspace integration", .serialized, .timeLimit(.minutes(2)))
 @MainActor
 struct DevelopDetailWorkspaceIntegrationTests {
+    @Test
+    func redEyeDragUsesActualImageCoordinatesInTheLowerZoomedViewport() async throws {
+        let fixture = try await DetailWorkspaceFixture.make()
+        let workspace = DevelopWorkspace()
+        let host = DetailWorkspaceHost()
+        defer { workspace.clear(); host.close(); fixture.removeTemporaryFiles() }
+        try await host.mount(fixture, workspace: workspace)
+        let asset = try #require(fixture.library.selectedAsset)
+        fixture.editor.selectEditingFunction(EditingFunction(.redEye), assetID: asset.id)
+        workspace.tool = .redEye
+        try await host.wait { workspace.isOriginalCanvasReady && host.inputIfPresent("develop.interactive-canvas")?.inputEnabled == true }
+        let before = fixture.editor.settings(for: asset.id).developGeometry.redEyeCorrections
+        workspace.photoViewport.toggleZoom()
+        let canvas = try host.input("develop.interactive-canvas")
+        let scroll = try #require(canvas.enclosingScrollView)
+        try await host.wait { scroll.magnification > 1.999 }
+        try await host.settle()
+        let image = DevelopCropCanvasPresentation.imageRect(sourceSize: fixture.imageSize, viewport: canvas.bounds.size)
+        let visible = image.intersection(canvas.visibleRect)
+        let start = CGPoint(x: visible.midX, y: visible.minY + visible.height * 0.8)
+        let end = CGPoint(x: start.x + 15, y: start.y + 10)
+        try host.drag(canvas, from: start, to: end)
+        let corrections = fixture.editor.settings(for: asset.id).developGeometry.redEyeCorrections
+        let correction = try #require(corrections.last)
+        #expect(corrections.count == before.count + 1)
+        #expect(abs(correction.center.x - ((start.x + end.x) / 2 - image.minX) / image.width) < 0.000_001)
+        #expect(abs(correction.center.y - ((start.y + end.y) / 2 - image.minY) / image.height) < 0.000_001)
+        try host.drag(canvas, from: start, to: end,
+            afterMouseDown: { fixture.editor.undo(assetID: asset.id) })
+        #expect(fixture.editor.settings(for: asset.id).developGeometry.redEyeCorrections == before,
+            "Undo must remove one red-eye transaction and reject the held drag's later release")
+        #expect(await fixture.editor.flush())
+        #expect(await fixture.library.finishSaving())
+    }
+
+    @Test(arguments: [0.0, 27.0])
+    func zoomedCropHandlesKeepFourteenWindowPointHitTargets(angle: Double) async throws {
+        let fixture = try await DetailWorkspaceFixture.make()
+        let workspace = DevelopWorkspace()
+        let host = DetailWorkspaceHost()
+        defer { workspace.clear(); host.close(); fixture.removeTemporaryFiles() }
+        try await host.mount(fixture, workspace: workspace)
+        let asset = try #require(fixture.library.selectedAsset)
+        fixture.editor.selectEditingFunction(EditingFunction(.crop), assetID: asset.id)
+        workspace.tool = .crop
+        var settings = fixture.editor.settings(for: asset.id)
+        let crop = try DevelopCropRect(x: 0.2, y: 0.2, width: 0.6, height: 0.6)
+        settings.developGeometry.crop = crop
+        settings.developGeometry.straightenAngle = angle
+        fixture.editor.setSettings(settings, for: asset.id)
+        try await host.wait { workspace.isOriginalCanvasReady && host.inputIfPresent("develop.interactive-canvas")?.inputEnabled == true }
+        workspace.photoViewport.toggleZoom(at: CGPoint(x: 0.25, y: 0.5))
+        let canvas = try host.input("develop.interactive-canvas")
+        let scroll = try #require(canvas.enclosingScrollView)
+        try await host.wait { scroll.magnification > 1.999 }
+        try await host.settle()
+
+        let size = canvas.bounds.size
+        let rect = DevelopCropCanvasPresentation.imageRect(sourceSize: fixture.imageSize, viewport: size)
+        let box = DevelopCropInteraction.box(crop: crop, imageRect: rect)
+        let scale = DevelopCropCanvasPresentation.fittingScale(sourceSize: fixture.imageSize, viewport: size, angle: angle)
+        let radians = angle * .pi / 180
+        let cosine = CGFloat(cos(radians)), sine = CGFloat(sin(radians))
+        let x = box.minX - size.width / 2, y = box.midY - size.height / 2
+        let handle = CGPoint(x: size.width / 2 + scale * (x * cosine - y * sine),
+                             y: size.height / 2 + scale * (x * sine + y * cosine))
+        // Crop tools keep their own click routing. Pan the native viewport so
+        // the tested handle and its entire physical hit area are visible.
+        let clip = scroll.contentView
+        let document = try #require(scroll.documentView)
+        let documentHandle = canvas.convert(handle, to: document)
+        var visible = clip.bounds
+        visible.origin = CGPoint(x: documentHandle.x - visible.width / 2,
+                                 y: documentHandle.y - visible.height / 2)
+        clip.scroll(to: clip.constrainBoundsRect(visible).origin)
+        scroll.reflectScrolledClipView(clip)
+        try await host.settle()
+        let windowHandle = canvas.convert(handle, to: nil)
+        let outward = canvas.convert(CGPoint(x: handle.x - cosine, y: handle.y - sine), to: nil)
+        let length = hypot(outward.x - windowHandle.x, outward.y - windowHandle.y)
+        func point(at distance: CGFloat) -> CGPoint {
+            canvas.convert(CGPoint(x: windowHandle.x + (outward.x - windowHandle.x) * distance / length,
+                                   y: windowHandle.y + (outward.y - windowHandle.y) * distance / length), from: nil)
+        }
+        #expect(canvas.cursor(point(at: 13.9)) === DevelopCropCursor.cursor(for: .left, angle: angle))
+        #expect(canvas.cursor(point(at: 14.1)) === NSCursor.crosshair,
+            "Native magnification must not double a crop handle's physical hit radius")
+        try host.drag(canvas, from: point(at: 13.9), to: point(at: 21.9))
+        let resized = try #require(fixture.editor.settings(for: asset.id).developGeometry.crop)
+        #expect(resized.x < crop.x)
+        #expect(abs(resized.x + resized.width - crop.x - crop.width) < 0.000_01)
+        workspace.photoViewport.toggleZoom()
+        try await host.settle()
+        try #require(scroll.magnification > 1 && scroll.magnification < 2)
+        let fittingCanvas = try host.input("develop.interactive-canvas")
+        try host.click(fittingCanvas, at: host.photoPoint(x: 0.5, y: 0.5, on: fittingCanvas))
+        #expect(scroll.magnification == 1,
+            "A tool click must finish zoom-out before capturing its local coordinates, even after panning mode ends")
+        #expect(await fixture.editor.flush())
+        #expect(await fixture.library.finishSaving())
+    }
+
+    @Test(arguments: [false, true])
+    func photoClickAndNavigatorDragShareTheActualViewportWithoutEditing(portrait: Bool) async throws {
+        let fixture = try await DetailWorkspaceFixture.make(pixelWidth: portrait ? 800 : 1_200,
+            pixelHeight: portrait ? 1_200 : 800, withAlternateAsset: true)
+        fixture.layout.update(developing: true) { $0.showsLibrary = true }
+        let workspace = DevelopWorkspace()
+        let host = DetailWorkspaceHost()
+        defer { workspace.clear(); host.close(); fixture.removeTemporaryFiles() }
+        try await host.mount(fixture, workspace: workspace)
+        let asset = try #require(fixture.library.selectedAsset)
+        let snapshot = fixture.editor.snapshot(for: asset.id)
+        let canvas = try host.input("workspace.photo-navigation")
+        let anchor = CGPoint(x: 0.75, y: 0.7)
+        let point = host.photoPoint(x: anchor.x, y: anchor.y, on: canvas)
+        #expect(canvas.cursor(point) === PhotoCanvasCursors.zoomIn)
+        try host.click(canvas, at: point)
+        let scroll = try #require(canvas.enclosingScrollView)
+        try await host.wait { workspace.photoViewport.isZoomed && scroll.magnification > 1.999 }
+        try await host.settle()
+        let visible = workspace.photoViewport.normalizedVisibleRect
+        #expect(visible.width < 0.99 || visible.height < 0.99)
+        #expect(visible.contains(anchor), "The clicked image location must be visible after the animated zoom")
+        #expect(visible.midX > 0.5 || visible.midY > 0.5,
+            "An off-center click must select a different viewport from a centered click")
+        #expect(try host.input("workspace.photo-navigation").cursor(point) === NSCursor.openHand)
+        if !portrait, let path = ProcessInfo.processInfo.environment["GLOWROOM_ZOOM_CAPTURE"] {
+            try host.capture(to: URL(fileURLWithPath: path))
+        }
+
+        // Exercise native dispatch in the lower visible image too: SwiftUI's
+        // hosting hit graph can otherwise clip this region at magnification.
+        let zoomedCanvas = try host.input("workspace.photo-navigation")
+        let photoRect = DevelopCropCanvasPresentation.imageRect(sourceSize: fixture.imageSize,
+            viewport: zoomedCanvas.bounds.size)
+        let visiblePhoto = zoomedCanvas.visibleRect.intersection(photoRect)
+        let panStart = CGPoint(x: visiblePhoto.midX, y: visiblePhoto.minY + visiblePhoto.height * 0.8)
+        try host.drag(zoomedCanvas, from: panStart,
+            to: CGPoint(x: panStart.x + 15, y: panStart.y + 10))
+        try await host.settle()
+        let beforeNavigator = workspace.photoViewport.normalizedVisibleRect
+        #expect(beforeNavigator != visible, "Dragging the lower zoomed photo must pan the actual viewport")
+
+        let navigator = try host.input("workspace.navigator-input")
+        try host.drag(navigator,
+            from: CGPoint(x: beforeNavigator.midX * navigator.bounds.width, y: beforeNavigator.midY * navigator.bounds.height),
+            to: CGPoint(x: 0, y: 0))
+        try await host.settle()
+        let moved = workspace.photoViewport.normalizedVisibleRect
+        #expect(moved.minX <= beforeNavigator.minX && moved.minY <= beforeNavigator.minY)
+        #expect(moved != beforeNavigator, "Dragging the white navigator rectangle must move the real photo")
+        #expect(abs(moved.width - beforeNavigator.width) < 0.001 && abs(moved.height - beforeNavigator.height) < 0.001)
+        #expect(fixture.editor.snapshot(for: asset.id) == snapshot)
+        #expect(!fixture.editor.canUndo(assetID: asset.id))
+
+        let alternate = try #require(fixture.library.visibleAssets.first { $0.id != asset.id })
+        fixture.library.select(alternate)
+        try await host.wait { !workspace.photoViewport.isZoomed && scroll.magnification < 1.001 }
+        #expect(workspace.photoViewport.normalizedVisibleRect == PhotoViewportGeometry.unitRect)
+        #expect(await fixture.library.finishSaving())
+        #expect(await fixture.editor.flush())
+    }
+
     @Test func capturedLevelsSelectionRejectsSynchronousLibraryABAWithoutAnyViewCallback() async throws {
         let fixture = try await DetailWorkspaceFixture.make(withAlternateAsset: true)
         defer { fixture.removeTemporaryFiles() }
@@ -495,10 +659,33 @@ private final class DetailWorkspaceHost {
 
     func click(_ canvas: DevelopCropNativeInputView, at point: CGPoint) throws {
         try requireHit(canvas, at: point)
-        for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
-            let event = try mouseEvent(type, canvas: canvas, point: point)
-            window.sendEvent(event)
+        // A native mouseDown can finish zoom before mouseUp. Both events
+        // still belong to the same physical window point.
+        let events = try [NSEvent.EventType.leftMouseDown, .leftMouseUp].map {
+            try mouseEvent($0, canvas: canvas, point: point)
         }
+        for event in events { window.sendEvent(event) }
+    }
+
+    func drag(_ canvas: DevelopCropNativeInputView, from start: CGPoint, to end: CGPoint,
+              afterMouseDown: (() -> Void)? = nil) throws {
+        try requireHit(canvas, at: start)
+        // The document moves during a pan; retain the original window-space
+        // trajectory for every event in this physical mouse gesture.
+        let events = try [mouseEvent(.leftMouseDown, canvas: canvas, point: start),
+            mouseEvent(.leftMouseDragged, canvas: canvas, point: end),
+            mouseEvent(.leftMouseUp, canvas: canvas, point: end)]
+        for (index, event) in events.enumerated() {
+            window.sendEvent(event)
+            if index == 0 { afterMouseDown?() }
+        }
+    }
+
+    func capture(to url: URL) throws {
+        hosting.displayIfNeeded()
+        let bitmap = try #require(hosting.bitmapImageRepForCachingDisplay(in: hosting.bounds))
+        hosting.cacheDisplay(in: hosting.bounds, to: bitmap)
+        try #require(bitmap.representation(using: .png, properties: [:])).write(to: url)
     }
 
     func move(_ canvas: DevelopCropNativeInputView, to point: CGPoint) throws {

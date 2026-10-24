@@ -7,7 +7,7 @@ import SwiftUI
 import Testing
 @testable import Glowroom
 
-/// SwiftUI gesture tracking owns native process state. Run the held-pointer
+/// Native pointer tracking owns process state. Run the held-pointer
 /// sequence in an isolated child so other AppKit suites cannot alter delivery.
 @Suite("Inline mask canvas native cursor", .serialized, .timeLimit(.minutes(1)))
 @MainActor
@@ -55,6 +55,91 @@ struct InlineMaskCanvasInputTests {
         fixture.workspace.undo()
         try #require(fixture.workspace.brush.document?.strokes.isEmpty == true,
                      "Both held-drag updates must share one undo boundary")
+
+        let viewport = PhotoViewportState()
+        try await host.mount(fixture.workspace, viewport: viewport)
+        viewport.toggleZoom(at: CGPoint(x: 0.35, y: 0.75))
+        let input = try host.input()
+        let scroll = try #require(input.enclosingScrollView as? PhotoCanvasScrollView)
+        try await inlineMaskCursorWait("native mask magnification") { scroll.magnification == 2 }
+        let canvas = try #require(fixture.workspace.canvasSize)
+        let geometry = try CanvasGeometry(canvasSize: canvas,
+            viewportWidth: input.bounds.width, viewportHeight: input.bounds.height)
+        func viewPoint(_ x: Double, _ y: Double) -> CGPoint {
+            CGPoint(x: geometry.originX + x * geometry.scale, y: geometry.originY + y * geometry.scale)
+        }
+        let magnifiedStart = viewPoint(100, 150), magnifiedEnd = viewPoint(160, 160)
+        try #require(input.visibleRect.contains(magnifiedEnd))
+        try #require(input.convert(magnifiedEnd, to: scroll.documentView).y > scroll.contentView.bounds.height,
+            "Exercise the lower visible region that SwiftUI's magnified hit graph previously rejected")
+        try #require(host.hitsInput(at: magnifiedEnd, input: input))
+        try host.send(.leftMouseDown, at: magnifiedStart, input: input)
+        try host.send(.leftMouseDragged, at: magnifiedEnd, input: input)
+        try await inlineMaskCursorWait("magnified mask preview") {
+            guard let point = fixture.workspace.brush.previewDocument?.strokes.last?.points.last else { return false }
+            return abs(point.x - 160) < 0.000_001 && abs(point.y - 160) < 0.000_001
+        }
+        try host.send(.leftMouseUp, at: magnifiedEnd, input: input)
+        try await inlineMaskCursorWait("magnified mask accepted stroke") { fixture.workspace.brush.document?.strokes.count == 1 }
+        fixture.workspace.undo()
+        try #require(fixture.workspace.brush.document?.strokes.isEmpty == true)
+
+        // Replacing a layer while the pointer is held must discard its draft
+        // and suppress the rest of that drag until a fresh mouse-down.
+        try host.send(.leftMouseDown, at: magnifiedStart, input: input)
+        let previousIdentity = input.inputIdentity
+        fixture.workspace.model?.add(.brush)
+        try await inlineMaskCursorWait("native layer input replacement") { input.inputIdentity != previousIdentity }
+        try host.send(.leftMouseDragged, at: magnifiedEnd, input: input)
+        try host.send(.leftMouseUp, at: magnifiedEnd, input: input)
+        try #require(fixture.workspace.brush.document?.strokes.isEmpty == true)
+        try host.send(.leftMouseDown, at: magnifiedStart, input: input)
+        try host.send(.leftMouseDragged, at: magnifiedEnd, input: input)
+        try host.send(.leftMouseUp, at: magnifiedEnd, input: input)
+        try await inlineMaskCursorWait("fresh native layer input") { fixture.workspace.brush.document?.strokes.count == 1 }
+
+        try host.send(.leftMouseDown, at: magnifiedStart, input: input)
+        try host.send(.leftMouseDragged, at: magnifiedEnd, input: input)
+        let beforeUndo = try #require(fixture.workspace.model?.inputContextID)
+        fixture.workspace.undo()
+        // No view update is allowed between Undo and these held events: the
+        // gesture's captured context must reject them synchronously as well.
+        try host.send(.leftMouseDragged, at: magnifiedEnd, input: input)
+        try host.send(.leftMouseUp, at: magnifiedEnd, input: input)
+        try #require(fixture.workspace.model?.inputContextID != beforeUndo)
+        try #require(fixture.workspace.brush.document?.strokes.isEmpty == true)
+        try #require(fixture.workspace.brush.previewDocument?.strokes.isEmpty != false)
+
+        let previousLayer = fixture.workspace.selected?.id
+        let previousGradientIdentity = input.inputIdentity
+        fixture.workspace.model?.add(.linear)
+        try await inlineMaskCursorWait("native gradient input") {
+            fixture.workspace.selected?.id != previousLayer && input.inputIdentity != previousGradientIdentity
+        }
+        // A handle keeps its twelve-point screen target at 2×. At 11.9 points
+        // the existing end moves; at 12.1 a new gradient starts at the press.
+        for screenOffset in [11.9, 12.1] {
+            let original = try #require(fixture.workspace.selected?.mask.shape)
+            let endHandle = viewPoint(200, 160)
+            let press = CGPoint(x: endHandle.x + screenOffset / 2, y: endHandle.y)
+            let release = CGPoint(x: press.x + 10, y: press.y)
+            try #require(host.hitsInput(at: press, input: input))
+            try host.send(.leftMouseDown, at: press, input: input)
+            try host.send(.leftMouseDragged, at: release, input: input)
+            try host.send(.leftMouseUp, at: release, input: input)
+            guard case .linear(let start, _) = fixture.workspace.selected?.mask.shape else {
+                Issue.record("Native gradient interaction must preserve its shape type"); return
+            }
+            if screenOffset < 12 {
+                try #require(start.x == 0.5 && start.y == 0.2)
+            } else {
+                try #require(abs(start.y - 0.8) < 0.000_001 && start.x > 0.5)
+            }
+            let previousIdentity = input.inputIdentity
+            fixture.workspace.undo()
+            try await inlineMaskCursorWait("restored gradient context") { input.inputIdentity != previousIdentity }
+            try #require(fixture.workspace.selected?.mask.shape == original)
+        }
         try #require(await fixture.editor.flush())
         try #require(await fixture.library.finishSaving())
         // A native AppKit loop can exit its test host early with status zero.
@@ -125,13 +210,36 @@ private final class InlineMaskCursorHost {
         window.orderBack(nil)
     }
 
-    func mount(_ workspace: InlineMaskWorkspace) async throws {
-        hosting.rootView = AnyView(Color.black.overlay { InlineMaskCanvas(workspace: workspace) }
-            .frame(width: 400, height: 200).preferredColorScheme(.dark))
+    func mount(_ workspace: InlineMaskWorkspace, viewport: PhotoViewportState? = nil) async throws {
+        let canvas = Color.black.overlay { InlineMaskCanvas(workspace: workspace) }
+        if let viewport {
+            hosting.rootView = AnyView(PhotoCanvasViewport(state: viewport, imageAspectRatio: 2) { canvas }
+                .frame(width: 400, height: 200).preferredColorScheme(.dark))
+        } else {
+            hosting.rootView = AnyView(canvas.frame(width: 400, height: 200).preferredColorScheme(.dark))
+        }
         hosting.layoutSubtreeIfNeeded()
         try await Task.sleep(for: .milliseconds(40))
         hosting.layoutSubtreeIfNeeded(); hosting.displayIfNeeded()
         try #require(hosting.bounds.size == CGSize(width: 400, height: 200))
+    }
+
+    func input() throws -> DevelopCropNativeInputView {
+        var pending: [NSView] = [hosting]
+        while let view = pending.popLast() {
+            if let input = view as? DevelopCropNativeInputView,
+               input.accessibilityIdentifier() == "local-mask.canvas" { return input }
+            pending.append(contentsOf: view.subviews)
+        }
+        return try #require(nil as DevelopCropNativeInputView?, "Missing native local-mask canvas")
+    }
+
+    func hitsInput(at point: CGPoint, input: DevelopCropNativeInputView) -> Bool {
+        hosting.hitTest(input.convert(point, to: hosting.superview)) === input
+    }
+
+    func send(_ type: NSEvent.EventType, at point: CGPoint, input: DevelopCropNativeInputView) throws {
+        try send(type, at: hosting.convert(input.convert(point, to: nil), from: nil))
     }
 
     func send(_ type: NSEvent.EventType, at point: CGPoint) throws {

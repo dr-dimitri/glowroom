@@ -8,6 +8,79 @@ import Testing
 @Suite("Photo canvas navigation input", .serialized)
 @MainActor
 struct PhotoCanvasNavigationInputTests {
+    @Test func singleClicksPublishLocalImageCoordinatesAndTakePrecedenceOverDoubleClicks() throws {
+        let fixture = PhotoCanvasNavigationInputFixture(origin: CGPoint(x: 200, y: 120))
+        defer { fixture.close() }
+        var clicks: [CGPoint] = []
+        var doubleClicks = 0
+        fixture.configure(onInput: { _ in }, pansWithPointer: true, onClick: { clicks.append($0) },
+                          onDoubleClick: { doubleClicks += 1 })
+        let point = CGPoint(x: 200, y: 180)
+        let expected = fixture.input.convert(point, from: nil)
+        for count in 1...2 {
+            try fixture.send(.leftMouseDown, at: point, clickCount: count)
+            #expect(clicks.count == count - 1, "Zoom waits until release so a drag can take precedence")
+            try fixture.send(.leftMouseUp, at: point, clickCount: count)
+        }
+        try fixture.send(.leftMouseUp, at: point)
+        #expect(clicks == [expected, expected])
+        #expect(expected != point, "A scrolled image's local anchor must differ from window coordinates")
+        #expect(doubleClicks == 0)
+    }
+
+    @Test func pointerDragsNeverClickEvenWhenTheyReturnToTheirStartingPoint() throws {
+        let fixture = PhotoCanvasNavigationInputFixture(origin: CGPoint(x: 200, y: 120))
+        defer { fixture.close() }
+        var clickCount = 0
+        fixture.configure(onInput: { _ in }, pansWithPointer: true, onClick: { _ in clickCount += 1 })
+        let point = CGPoint(x: 200, y: 180)
+        try fixture.send(.leftMouseDown, at: point)
+        try fixture.send(.leftMouseDragged, at: CGPoint(x: point.x + 40, y: point.y))
+        try fixture.send(.leftMouseDragged, at: point)
+        try fixture.send(.leftMouseUp, at: point)
+        #expect(clickCount == 0)
+        // Accessibility can synthesize a moved release without drag events.
+        try fixture.send(.leftMouseDown, at: point)
+        try fixture.send(.leftMouseUp, at: CGPoint(x: point.x + 10, y: point.y))
+        #expect(clickCount == 0)
+    }
+
+    @Test(arguments: PhotoCanvasClickCancellation.allCases)
+    func cancelledClicksCannotZoomAnotherPhotoOrWindow(cancellation: PhotoCanvasClickCancellation) throws {
+        let fixture = PhotoCanvasNavigationInputFixture(origin: CGPoint(x: 200, y: 120))
+        defer { fixture.close() }
+        var clickCount = 0
+        fixture.configure(onInput: { _ in }, onClick: { _ in clickCount += 1 })
+        let point = CGPoint(x: 200, y: 180)
+        try fixture.send(.leftMouseDown, at: point)
+        switch cancellation {
+        case .identity:
+            fixture.configure(onInput: { _ in }, identity: "second", onClick: { _ in clickCount += 1 })
+        case .disable: fixture.input.inputEnabled = false
+        case .windowResign:
+            NotificationCenter.default.post(name: NSWindow.didResignKeyNotification, object: fixture.window)
+        case .detach: fixture.input.removeFromSuperview()
+        case .escape: #expect(fixture.input.cancelForEscape())
+        }
+        try fixture.send(.leftMouseUp, at: point)
+        #expect(clickCount == 0)
+    }
+
+    @Test func magnifiedPointerPanConvertsWindowTravelToDocumentPoints() throws {
+        let fixture = PhotoCanvasNavigationInputFixture(origin: CGPoint(x: 200, y: 120))
+        defer { fixture.close() }
+        fixture.scrollView.allowsMagnification = true
+        fixture.scrollView.magnification = 2
+        fixture.scrollView.contentView.scroll(to: CGPoint(x: 200, y: 120))
+        fixture.scrollView.reflectScrolledClipView(fixture.scrollView.contentView)
+        let initial = fixture.origin
+        fixture.configure(onInput: { _ in }, pansWithPointer: true)
+        try fixture.send(.leftMouseDown, at: CGPoint(x: 100, y: 200))
+        try fixture.send(.leftMouseDragged, at: CGPoint(x: 140, y: 230))
+        try fixture.send(.leftMouseUp, at: CGPoint(x: 140, y: 230))
+        #expect(fixture.origin == CGPoint(x: initial.x - 20, y: initial.y + 15))
+    }
+
     @Test func pointerPanningUsesStableWindowCoordinatesWhileTheDocumentMoves() throws {
         let fixture = PhotoCanvasNavigationInputFixture(origin: CGPoint(x: 200, y: 120))
         defer { fixture.close() }
@@ -213,6 +286,10 @@ enum PhotoCanvasNavigationCancellation: CaseIterable {
     case resize, disable, windowCancel
 }
 
+enum PhotoCanvasClickCancellation: CaseIterable {
+    case identity, disable, windowResign, detach, escape
+}
+
 @MainActor
 private struct PhotoCanvasNavigationInputFixture {
     let scrollView: NSScrollView
@@ -242,9 +319,10 @@ private struct PhotoCanvasNavigationInputFixture {
 
     func configure(onInput: @escaping (DevelopCropInputEvent) -> Void, identity: String = "photo",
                    pansEnclosingScrollView: Bool = true, pansWithPointer: Bool = false,
+                   onClick: ((CGPoint) -> Void)? = nil,
                    onDoubleClick: (() -> Void)? = nil) {
         input.configure(onInput: onInput, onHover: { _ in }, isEnabled: true,
-            inputIdentity: identity, cursor: { _ in .arrow }, onDoubleClick: onDoubleClick,
+            inputIdentity: identity, cursor: { _ in .arrow }, onClick: onClick, onDoubleClick: onDoubleClick,
             pansEnclosingScrollView: pansEnclosingScrollView, pansWithPointer: pansWithPointer)
     }
 

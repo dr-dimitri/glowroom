@@ -6,6 +6,65 @@ import Testing
 @Suite("Native before/after comparison", .serialized)
 @MainActor
 struct PreviewComparisonViewTests {
+    @Test(arguments: [PreviewComparisonLayout.leftRight, .splitLeftRight, .topBottom, .splitTopBottom])
+    func singleClickZoomUsesTheClickedPaneAndRetainsItsImageCoordinates(layout: PreviewComparisonLayout) async throws {
+        let host = ComparisonViewTestHost()
+        defer { host.close() }
+        var clicks: [CGPoint] = []
+        var doubleClickCount = 0
+        host.mount(PreviewComparisonView(layout: layout, onClick: { clicks.append($0) },
+            onDoubleClick: { doubleClickCount += 1 }, before: { Color.red }, after: { Color.blue }))
+        try await host.settle()
+        let input = try host.navigation()
+        let geometry = PreviewComparisonGeometry(layout: layout, size: CGSize(width: 400, height: 240))
+        let point = CGPoint(x: geometry.afterFrame.midX, y: geometry.afterFrame.midY)
+        let expected = try #require(geometry.normalizedImagePoint(at: point, aspectRatio: nil))
+        #expect(input.cursor(point) === PhotoCanvasCursors.zoomIn)
+        let location = input.convert(point, to: nil)
+        input.mouseDown(with: try host.event(.leftMouseDown, at: location))
+        #expect(clicks.isEmpty)
+        input.mouseUp(with: try host.event(.leftMouseUp, at: location))
+        #expect(clicks == [expected])
+        #expect(doubleClickCount == 0)
+    }
+
+    @Test func imageFitGeometryIgnoresLetterboxingAndCentersTheSelectedZoomAnchor() {
+        let horizontal = PreviewComparisonGeometry(layout: .leftRight, size: CGSize(width: 400, height: 240))
+        #expect(horizontal.normalizedImagePoint(at: CGPoint(x: 250, y: 120), aspectRatio: 5 / 3) == CGPoint(x: 0.25, y: 0.5))
+        #expect(horizontal.normalizedImagePoint(at: CGPoint(x: 250, y: 20), aspectRatio: 5 / 3) == nil)
+        #expect(horizontal.initialZoomPan(anchor: CGPoint(x: 0.75, y: 0.5), aspectRatio: 5 / 3) == CGSize(width: -100, height: 0))
+        #expect(horizontal.initialZoomPan(anchor: CGPoint(x: 1, y: 1), aspectRatio: 5 / 3) == CGSize(width: -100, height: 0))
+        let split = PreviewComparisonGeometry(layout: .splitLeftRight, size: CGSize(width: 400, height: 240), fraction: 0.3)
+        #expect(split.normalizedImagePoint(at: CGPoint(x: 300, y: 120), aspectRatio: 5 / 3) == CGPoint(x: 0.75, y: 0.5))
+        #expect(split.initialZoomPan(anchor: CGPoint(x: 0.75, y: 0.25), aspectRatio: 5 / 3) == CGSize(width: -200, height: 120))
+    }
+
+    @Test func originalAndCroppedPanesUseTheirOwnImageFitsAndShareTheTighterPanBound() async throws {
+        let geometry = PreviewComparisonGeometry(layout: .leftRight, size: CGSize(width: 400, height: 240))
+        let beforePoint = CGPoint(x: 50, y: 95)
+        #expect(geometry.normalizedImagePoint(at: beforePoint, aspectRatio: 1, beforeAspectRatio: 2)
+                == CGPoint(x: 0.25, y: 0.25))
+        #expect(geometry.normalizedImagePoint(at: CGPoint(x: 250, y: 95), aspectRatio: 1, beforeAspectRatio: 2)
+                == CGPoint(x: 0.25, y: 0.375))
+        #expect(geometry.normalizedImagePoint(at: CGPoint(x: 50, y: 30), aspectRatio: 1, beforeAspectRatio: 2) == nil)
+        #expect(geometry.clampedPan(CGSize(width: 150, height: 80), aspectRatio: 1, beforeAspectRatio: 2)
+                == CGSize(width: 100, height: 0))
+        #expect(geometry.initialZoomPan(anchor: CGPoint(x: 0.75, y: 0.25), aspectRatio: 1, beforeAspectRatio: 2)
+                == CGSize(width: -100, height: 0))
+        let host = ComparisonViewTestHost()
+        defer { host.close() }
+        var clicks: [CGPoint] = []
+        host.mount(PreviewComparisonView(layout: .leftRight, imageAspectRatio: 1, beforeImageAspectRatio: 2,
+            onClick: { clicks.append($0) }, before: { Color.red }, after: { Color.blue }))
+        try await host.settle()
+        let input = try host.navigation()
+        #expect(input.cursor(CGPoint(x: 50, y: 30)) === NSCursor.arrow)
+        let location = input.convert(beforePoint, to: nil)
+        input.mouseDown(with: try host.event(.leftMouseDown, at: location))
+        input.mouseUp(with: try host.event(.leftMouseUp, at: location))
+        #expect(clicks == [CGPoint(x: 0.25, y: 0.25)])
+    }
+
     @Test(arguments: PreviewComparisonLayout.allCases)
     func nativePhotosStayInsideTheirVisiblePane(layout: PreviewComparisonLayout) async throws {
         let host = ComparisonViewTestHost()
@@ -214,7 +273,8 @@ struct PreviewComparisonViewTests {
 
         let presentation = ComparisonTestPresentation()
         presentation.layout = layout
-        host.mount(ComparisonZoomPresentationView(presentation: presentation, before: before, after: after).background(.black))
+        host.mount(ComparisonZoomPresentationView(presentation: presentation, before: before, after: after)
+            .background(.black))
         try await host.settle()
         let navigation = try host.navigation()
         #expect(navigation.bounds.size == CGSize(width: 400, height: 240))
@@ -258,8 +318,10 @@ struct PreviewComparisonViewTests {
         navigation.scrollWheel(with: try host.scroll(horizontal: 40))
         try await host.settle()
         presentation.zoomed = false
+        try await Task.sleep(for: .milliseconds(260))
         try await host.settle()
         presentation.zoomed = true
+        try await Task.sleep(for: .milliseconds(260))
         try await host.settle()
         let reset = try host.snapshot()
         try expectColor(reset, at: beforePoint, matches: layout == .splitLeftRight ? red : green)

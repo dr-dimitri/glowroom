@@ -33,6 +33,7 @@ final class DevelopWorkspace: ObservableObject {
     var levelsTask: Task<Void, Never>?
     var levelsRequest = UUID()
     let detailPosition = DevelopDetailPosition()
+    let photoViewport = PhotoViewportState()
     var detailCenter: CGPoint {
         get { detailPosition.center }
         set { if detailPosition.center != newValue { detailPosition.center = newValue } }
@@ -251,6 +252,7 @@ final class DevelopWorkspace: ObservableObject {
         isAutoStraightening = false
     }
     func clear() {
+        photoViewport.reset()
         endLevelsPicker(); levelsDisplay = nil; levelsSampleDescription = nil
         cancelAutomaticTone()
         cancelRepairWork(); repairSpotTask?.cancel(); repairSpotTask = nil

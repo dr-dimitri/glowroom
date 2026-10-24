@@ -83,28 +83,8 @@ struct DevelopInspector: View {
     }
 
     private func navigator(_ asset: PhotoAsset) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("Navigator").font(.system(size: 12, weight: .medium))
-                Spacer(minLength: 0)
-                Text("Einpassen").font(.system(size: 10)).foregroundStyle(Theme.muted)
-            }.frame(height: 26)
-            Group {
-                if let image = developWorkspace.navigatorImage {
-                    Image(decorative: image, scale: 1).resizable().aspectRatio(contentMode: .fit)
-                } else {
-                    Image(systemName: "photo").font(.system(size: 28, weight: .ultraLight))
-                        .foregroundStyle(Theme.muted)
-                }
-            }.frame(maxWidth: .infinity).frame(height: 155)
-                .padding(6).background(Theme.panel)
-                .overlay { Rectangle().stroke(Theme.line) }
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel("Navigator: \(asset.fileName)")
-                .accessibilityIdentifier("workspace.navigator")
-            Text(asset.fileName).font(.system(size: 10)).foregroundStyle(Theme.muted)
-                .lineLimit(1).truncationMode(.middle)
-        }.padding(.bottom, 16)
+        DevelopPhotoNavigator(asset: asset, image: developWorkspace.navigatorImage,
+                              viewport: developWorkspace.photoViewport)
     }
 
     private func developToolStrip(_ asset: PhotoAsset) -> some View {

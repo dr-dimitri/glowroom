@@ -254,7 +254,7 @@ struct DevelopDetailCanvas: View {
                     },
                     canvasLabel: "Detailvorschau folgt dem Mauszeiger im Foto · Klicken fixiert den Ausschnitt",
                     onCancel: { workspace.picksDetail = false },
-                    canvasIdentifier: "develop.detail-canvas")
+                    canvasIdentifier: "develop.detail-canvas", allowsViewportHitFallback: ready)
             }
         }.onDisappear { NSCursor.arrow.set() }
     }
