@@ -37,31 +37,23 @@ struct LibraryView: View {
             appHeader
             Rectangle().fill(Theme.line).frame(height: 1)
             GeometryReader { geometry in
-                let handleSpace = (panels.showsLibrary ? 6.0 : 0) + (panels.showsTools ? 6.0 : 0)
-                let widths = layout.boundedWidths(availableWidth: geometry.size.width - handleSpace, developing: model.isDeveloping)
                 VStack(spacing: 0) {
-                    HStack(spacing: 0) {
-                        if panels.showsLibrary {
-                            Group {
-                                if model.isDeveloping {
-                                    DevelopInspector(library: model, focusedControl: $focusedWorkspaceControl, column: .navigation)
-                                } else { sidebar }
-                            }.frame(width: widths.library)
-                            WorkspaceResizeHandle(horizontal: true, label: model.isDeveloping ? "Breite der Navigation" : "Breite der Bibliothek", value: panels.libraryWidth, step: 1) { width in
-                                layout.update(developing: model.isDeveloping) { $0.libraryWidth = width }
-                            }
+                    WorkspaceColumns(panels: panels, navigation: layout.isFocused || model.isDeveloping,
+                                     focused: layout.isFocused,
+                                     libraryLabel: model.isDeveloping ? "Breite der Navigation" : "Breite der Bibliothek",
+                                     commit: { widths in
+                        layout.update(developing: model.isDeveloping) {
+                            if $0.showsLibrary { $0.libraryWidth = widths.library }
+                            if $0.showsTools { $0.toolsWidth = widths.tools }
                         }
-                        workspace.frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity)
-                        if panels.showsTools {
-                            WorkspaceResizeHandle(horizontal: true, label: "Breite der Werkzeuge", value: panels.toolsWidth, step: -1) { width in
-                                layout.update(developing: model.isDeveloping) { $0.toolsWidth = width }
-                            }
-                            Group {
-                                if model.isDeveloping { DevelopInspector(library: model, focusedControl: $focusedWorkspaceControl) }
-                                else { InspectorView(model: model) }
-                            }.frame(width: widths.tools)
-                        }
-                    }
+                    }, library: {
+                        if model.isDeveloping {
+                            DevelopInspector(library: model, focusedControl: $focusedWorkspaceControl, column: .navigation)
+                        } else { sidebar }
+                    }, content: { workspace }, tools: {
+                        if model.isDeveloping { DevelopInspector(library: model, focusedControl: $focusedWorkspaceControl) }
+                        else { InspectorView(model: model) }
+                    })
                     if model.isDeveloping, model.showsDetail, model.selectedAsset != nil, panels.showsFilmstrip {
                         let height = layout.boundedFilmstripHeight(availableHeight: max(0, geometry.size.height - 78), developing: true)
                         WorkspaceResizeHandle(horizontal: false, label: "Höhe des Filmstreifens", value: height, step: 1) { height in
@@ -815,6 +807,11 @@ final class WorkspaceKeyboardInputView: NSView {
     fileprivate var processEvent: ((NSEvent) -> NSEvent?)?
 
     func process(_ event: NSEvent) -> NSEvent? {
+        // Escape belongs to the held resize before the workspace's own Escape
+        // command can leave the photo, focus mode or an active picker.
+        if let window, event.window === window, window.attachedSheet == nil, NSApp.modalWindow == nil,
+           let resize = window.firstResponder as? WorkspaceResizeInputView,
+           resize.processKeyEvent(event) { return nil }
         guard let processEvent else { return event }
         return processEvent(event)
     }
@@ -845,7 +842,7 @@ private struct KeyboardHandler: NSViewRepresentable {
     }
     @MainActor
     final class Coordinator {
-        weak var view: NSView?
+        weak var view: WorkspaceKeyboardInputView?
         var action: (NSEvent) -> Bool
         var handlesTextUndo: () -> Bool
         var handlesLevelsEscape: () -> Bool
@@ -856,8 +853,8 @@ private struct KeyboardHandler: NSViewRepresentable {
             self.handlesTextUndo = handlesTextUndo
             self.handlesLevelsEscape = handlesLevelsEscape
             monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-                guard let self else { return event }
-                return self.process(event)
+                guard let view = self?.view else { return event }
+                return view.process(event)
             }
         }
         func process(_ event: NSEvent) -> NSEvent? {

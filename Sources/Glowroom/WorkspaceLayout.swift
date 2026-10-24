@@ -47,6 +47,82 @@ private enum WorkspaceLayoutMetrics {
     static let filmstripRange = 80.0...220.0
     static let canvasWidth = 320.0
     static let canvasHeight = 240.0
+    static let windowWidth = 1_000.0
+}
+
+struct WorkspaceColumnWidths: Equatable {
+    let library: Double
+    let tools: Double
+
+    /// The available width includes the seven-point resize handles.
+    static func fitting(panels: WorkspacePanels, navigation: Bool, availableWidth: Double) -> Self {
+        let width = availableWidth.isFinite ? max(0, availableWidth) : WorkspaceLayoutMetrics.windowWidth
+        let handles = Double((panels.showsLibrary ? 1 : 0) + (panels.showsTools ? 1 : 0)) * 7
+        return fitting(panels: panels, navigation: navigation,
+                       panelBudget: max(0, width - WorkspaceLayoutMetrics.canvasWidth - handles))
+    }
+
+    fileprivate static func fitting(panels: WorkspacePanels, navigation: Bool, panelBudget budget: Double) -> Self {
+        let desiredLibrary = panels.showsLibrary ? panels.libraryWidth : 0
+        let desiredTools = panels.showsTools ? panels.toolsWidth : 0
+        let desiredTotal = desiredLibrary + desiredTools
+        guard desiredTotal > budget else { return Self(library: desiredLibrary, tools: desiredTools) }
+
+        let leftRange = navigation ? WorkspaceLayoutMetrics.navigationRange : WorkspaceLayoutMetrics.libraryRange
+        let minimumLibrary = panels.showsLibrary ? leftRange.lowerBound : 0
+        let minimumTools = panels.showsTools ? WorkspaceLayoutMetrics.toolsRange.lowerBound : 0
+        let minimumTotal = minimumLibrary + minimumTools
+        guard minimumTotal > 0 else { return Self(library: 0, tools: 0) }
+        if budget < minimumTotal {
+            // Window creation can briefly report less than the supported minimum.
+            let scale = budget / minimumTotal
+            return Self(library: minimumLibrary * scale, tools: minimumTools * scale)
+        }
+        let extraTotal = desiredTotal - minimumTotal
+        guard extraTotal > 0 else { return Self(library: minimumLibrary, tools: minimumTools) }
+        let scale = (budget - minimumTotal) / extraTotal
+        return Self(library: minimumLibrary + (desiredLibrary - minimumLibrary) * scale,
+                    tools: minimumTools + (desiredTools - minimumTools) * scale)
+    }
+}
+
+/// A drag captures visible geometry once. Its opposite column never moves, and
+/// its calculations stay local instead of publishing persistent layout changes.
+struct WorkspaceColumnResize {
+    enum Column { case library, tools }
+
+    let initial: WorkspaceColumnWidths
+    private let column: Column
+    private let range: ClosedRange<Double>
+    private let isVisible: Bool
+
+    init(panels: WorkspacePanels, navigation: Bool, availableWidth: Double, column: Column) {
+        initial = WorkspaceColumnWidths.fitting(panels: panels, navigation: navigation, availableWidth: availableWidth)
+        self.column = column
+        let width = availableWidth.isFinite ? max(0, availableWidth) : WorkspaceLayoutMetrics.windowWidth
+        let handles = Double((panels.showsLibrary ? 1 : 0) + (panels.showsTools ? 1 : 0)) * 7
+        let budget = max(0, width - WorkspaceLayoutMetrics.canvasWidth - handles)
+        let preferredRange = column == .library
+            ? (navigation ? WorkspaceLayoutMetrics.navigationRange : WorkspaceLayoutMetrics.libraryRange)
+            : WorkspaceLayoutMetrics.toolsRange
+        let oppositeWidth = column == .library ? initial.tools : initial.library
+        let maximum = min(preferredRange.upperBound, max(0, budget - oppositeWidth))
+        // At transient undersized geometry the canvas and unchanged opposite
+        // panel take priority over the active panel's usual minimum width.
+        range = min(preferredRange.lowerBound, maximum)...maximum
+        isVisible = column == .library ? panels.showsLibrary : panels.showsTools
+    }
+
+    /// Translation is the cursor's horizontal displacement in a fixed space.
+    func size(for translation: Double) -> WorkspaceColumnWidths {
+        guard isVisible, translation.isFinite else { return initial }
+        let start = column == .library ? initial.library : initial.tools
+        let proposed = start + (column == .library ? translation : -translation)
+        let width = min(range.upperBound, max(range.lowerBound, proposed))
+        return column == .library
+            ? WorkspaceColumnWidths(library: width, tools: initial.tools)
+            : WorkspaceColumnWidths(library: initial.library, tools: width)
+    }
 }
 
 struct WorkspacePanels: Codable, Equatable {
@@ -162,7 +238,7 @@ struct WorkspaceFocusOrigin: Codable, Equatable {
 @MainActor
 final class WorkspaceLayoutModel: ObservableObject {
     static let preferencesKey = "workspace.layout.v1"
-    static let minimumWindowWidth = 1_000.0
+    static let minimumWindowWidth = WorkspaceLayoutMetrics.windowWidth
     static let minimumCanvasWidth = WorkspaceLayoutMetrics.canvasWidth
     static let minimumCanvasHeight = WorkspaceLayoutMetrics.canvasHeight
 
@@ -243,6 +319,7 @@ final class WorkspaceLayoutModel: ObservableObject {
         var panels = panels(developing: developing)
         mutate(&panels)
         panels.normalize(navigation: isFocused || developing)
+        guard panels != self.panels(developing: developing) else { return }
         if isFocused { focus = panels }
         else if developing { develop = panels }
         else { library = panels }
@@ -304,29 +381,11 @@ final class WorkspaceLayoutModel: ObservableObject {
     func boundedWidths(availableWidth: Double, developing: Bool) -> (library: Double, tools: Double) {
         let panels = panels(developing: developing)
         let width = availableWidth.isFinite ? max(0, availableWidth) : Self.minimumWindowWidth
-        let desiredLibrary = panels.showsLibrary ? panels.libraryWidth : 0
-        let desiredTools = panels.showsTools ? panels.toolsWidth : 0
         let dividers = Double((panels.showsLibrary ? 1 : 0) + (panels.showsTools ? 1 : 0))
         let budget = max(0, width - Self.minimumCanvasWidth - dividers)
-        let desiredTotal = desiredLibrary + desiredTools
-        guard desiredTotal > budget else { return (desiredLibrary, desiredTools) }
-
-        let leftRange = isFocused || developing ? WorkspaceLayoutMetrics.navigationRange : WorkspaceLayoutMetrics.libraryRange
-        let minimumLibrary = panels.showsLibrary ? leftRange.lowerBound : 0
-        let minimumTools = panels.showsTools ? WorkspaceLayoutMetrics.toolsRange.lowerBound : 0
-        let minimumTotal = minimumLibrary + minimumTools
-        guard minimumTotal > 0 else { return (0, 0) }
-        if budget < minimumTotal {
-            // This fallback also keeps the canvas usable in transient pre-minimum
-            // geometry during window creation and display changes.
-            let scale = budget / minimumTotal
-            return (minimumLibrary * scale, minimumTools * scale)
-        }
-        let extraTotal = desiredTotal - minimumTotal
-        guard extraTotal > 0 else { return (minimumLibrary, minimumTools) }
-        let scale = (budget - minimumTotal) / extraTotal
-        return (minimumLibrary + (desiredLibrary - minimumLibrary) * scale,
-                minimumTools + (desiredTools - minimumTools) * scale)
+        let fitted = WorkspaceColumnWidths.fitting(panels: panels, navigation: isFocused || developing,
+                                                  panelBudget: budget)
+        return (fitted.library, fitted.tools)
     }
 
     func boundedFilmstripHeight(availableHeight: Double, developing: Bool) -> Double {

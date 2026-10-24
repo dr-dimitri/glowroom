@@ -194,14 +194,16 @@ struct WorkspaceDock: View {
     }
 }
 
-/// Dragging is a short MainActor preference update. Image decoding/rendering stays in its existing pipeline.
+/// Window coordinates stay fixed when the handle moves under the pointer.
 struct WorkspaceResizeHandle: View {
     let horizontal: Bool
     let label: String
     let value: Double
     let step: Double
+    var begin: () -> Void = {}
+    var end: (Bool) -> Void = { _ in }
+    var adjust: ((Double) -> Void)? = nil
     let change: (Double) -> Void
-    @ViewState private var dragStart: Double?
 
     var body: some View {
         Rectangle().fill(Theme.line)
@@ -209,20 +211,128 @@ struct WorkspaceResizeHandle: View {
             .overlay {
                 Capsule().fill(Theme.muted.opacity(0.65))
                     .frame(width: horizontal ? 2 : 32, height: horizontal ? 32 : 2)
-            }.contentShape(Rectangle())
-            .gesture(DragGesture(minimumDistance: 1).onChanged { event in
-                if dragStart == nil { dragStart = value }
-                change((dragStart ?? value) + (horizontal ? event.translation.width : -event.translation.height) * step)
-            }.onEnded { _ in dragStart = nil })
+            }.overlay {
+                WorkspaceResizeInput(horizontal: horizontal, value: value, step: step,
+                                     begin: begin, change: change, end: end)
+            }
             .accessibilityElement().accessibilityLabel(label)
             .accessibilityValue("\(Int(value)) Punkte")
             .accessibilityAdjustableAction { direction in
                 switch direction {
-                case .increment: change(value + 10)
-                case .decrement: change(value - 10)
+                case .increment: (adjust ?? change)(value + 10)
+                case .decrement: (adjust ?? change)(value - 10)
                 @unknown default: break
                 }
             }
+    }
+}
+
+private struct WorkspaceResizeInput: NSViewRepresentable {
+    let horizontal: Bool
+    let value: Double
+    let step: Double
+    let begin: () -> Void
+    let change: (Double) -> Void
+    let end: (Bool) -> Void
+
+    func makeNSView(context: Context) -> WorkspaceResizeInputView { WorkspaceResizeInputView() }
+
+    func updateNSView(_ view: WorkspaceResizeInputView, context: Context) {
+        view.horizontal = horizontal
+        view.value = value
+        view.step = step
+        view.begin = begin
+        view.change = change
+        view.end = end
+    }
+}
+
+/// Native event delivery avoids a gesture's moving local coordinate system.
+/// Only tiny geometry updates run here; image work retains its background lanes.
+final class WorkspaceResizeInputView: NSView {
+    var horizontal = true
+    var value = 0.0
+    var step = 1.0
+    var begin: () -> Void = {}
+    var change: (Double) -> Void = { _ in }
+    var end: (Bool) -> Void = { _ in }
+
+    private struct Drag {
+        let origin: NSPoint
+        let value: Double
+        let horizontal: Bool
+        let step: Double
+        let change: (Double) -> Void
+        let end: (Bool) -> Void
+    }
+    private var drag: Drag?
+    private let menus = WorkspaceMenuTracking()
+
+    override var acceptsFirstResponder: Bool { true }
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+    override func isAccessibilityElement() -> Bool { false }
+
+    override func resetCursorRects() {
+        addCursorRect(bounds, cursor: horizontal ? .resizeLeftRight : .resizeUpDown)
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        guard drag == nil else { return }
+        window?.makeFirstResponder(self)
+        drag = Drag(origin: event.locationInWindow, value: value, horizontal: horizontal,
+                    step: step, change: change, end: end)
+        begin()
+    }
+
+    override func mouseDragged(with event: NSEvent) {
+        guard let drag else { return }
+        let translation = drag.horizontal ? event.locationInWindow.x - drag.origin.x
+            : event.locationInWindow.y - drag.origin.y
+        drag.change(drag.value + translation * drag.step)
+    }
+
+    override func mouseUp(with event: NSEvent) {
+        guard let drag else { return }
+        mouseDragged(with: event)
+        self.drag = nil
+        drag.end(true)
+    }
+
+    override func cancelOperation(_ sender: Any?) {
+        let previous = drag
+        drag = nil
+        previous?.end(false)
+    }
+
+    func processKeyEvent(_ event: NSEvent) -> Bool {
+        guard drag != nil, event.type == .keyDown, event.keyCode == 53, !menus.isTracking,
+              event.modifierFlags.intersection([.command, .control, .option]).isEmpty else { return false }
+        cancelOperation(nil)
+        return true
+    }
+
+    override func keyDown(with event: NSEvent) {
+        if !processKeyEvent(event) { super.keyDown(with: event) }
+    }
+
+    @objc private func windowResigned(_ notification: Notification) { cancelOperation(nil) }
+
+    override func viewWillMove(toWindow newWindow: NSWindow?) {
+        // Removing the handle cancels its local preview. Never call a stale
+        // commit closure while SwiftUI is replacing the workspace hierarchy.
+        if newWindow !== window {
+            NotificationCenter.default.removeObserver(self, name: NSWindow.didResignKeyNotification, object: window)
+            drag = nil
+        }
+        super.viewWillMove(toWindow: newWindow)
+    }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        if let window {
+            NotificationCenter.default.addObserver(self, selector: #selector(windowResigned(_:)),
+                name: NSWindow.didResignKeyNotification, object: window)
+        }
     }
 }
 

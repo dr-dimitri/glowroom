@@ -125,7 +125,7 @@ struct DetailView: View {
     @EnvironmentObject private var layout: WorkspaceLayoutModel
     @Environment(\.workspaceCanvasMeasurement) private var measureCanvas
     private var zoomed: Bool { photoViewport.isZoomed }
-    @ViewState private var canvasSize = CGSize.zero
+    @ViewState private var showsCanvasRating = false
     @ViewState private var comparisonZoomAnchor = CGPoint(x: 0.5, y: 0.5)
     @ViewState private var photoHeaderHeight = CGFloat(30)
     @EnvironmentObject private var maskWorkspace: InlineMaskWorkspace
@@ -163,10 +163,11 @@ struct DetailView: View {
                             developCanvas(asset: asset)
                         }
                     }
-                }.onGeometryChange(for: CGSize.self) { $0.size } action: {
-                    canvasSize = $0
-                    measureCanvas?($0)
                 }
+                    // Only this threshold affects the controls. Publishing every
+                    // resize pixel would invalidate the entire photo hierarchy.
+                    .onGeometryChange(for: Bool.self) { $0.size.width >= 410 } action: { showsCanvasRating = $0 }
+                    .onGeometryChange(for: CGSize.self) { $0.size } action: { measureCanvas?($0) }
                     .overlay {
                         InlineMaskViewportOverlays(workspace: maskWorkspace,
                             showsMaskList: layout.panels(developing: model.isDeveloping).showsTools
@@ -397,7 +398,7 @@ struct DetailView: View {
                 .accessibilityLabel("Vergleich").accessibilityValue(comparisonTitle)
                 .accessibilityIdentifier("workspace.compare").help("Vergleich: " + comparisonTitle)
             Spacer(minLength: 0)
-            if canvasSize.width >= 410 {
+            if showsCanvasRating {
                 RatingStars(rating: asset.rating, size: 11, onChange: { model.setRating($0) }).disabled(!model.canModify)
                 IconButton(symbol: asset.isFavorite ? "heart.fill" : "heart", help: "Favorit · F", active: asset.isFavorite) { model.toggleFavorite() }.disabled(!model.canModify)
             }

@@ -43,6 +43,8 @@ Native Zoom-Popups teilen sich AppKit-Tracking und den Prozess-Runloop. Die vier
 
 Vollständiger sauberer App-Build und finales Diffreview bleiben zusätzlich nach `AGENTS.md` erforderlich; konkrete Kontroll- und Testresultate stehen im jeweiligen Pull Request.
 
+Auch gezielte Prüfungen mehrerer nativer Workspace-Suites verwenden getrennte Prozesse entsprechend `scripts/test-isolated.py`. Ein kombinierter Filter konnte bei der Seitenleistenprüfung vorhandene Zoomtests mit festen Zwischenframe-Fristen stören; die isolierten Zoomprüfungen bestanden. Die native Workspace-Geometrieprüfung wartete zusätzlich nur 80 ms nach Beginn einer 240-ms-Vergrößerung und verglich diesen Zwischenstand mit dem nach einem Panelwechsel beendeten Zoom. Sie wartet jetzt auf den tatsächlichen nativen Zielmaßstab, bevor sie die unverändert geforderte Bildgröße erfasst und vergleicht.
+
 ## Beim Performance-Vollvergleich gefundene Test-Rennen (#44)
 
 Die JPEG-Controller-Tests verwenden gepufferte Ereignisse des Export-Fakes und der vorhandenen Modellpublisher statt einer Fünfsekunden-Pollingfrist. Im parallelen Vollvergleich konnte der MainActor erst nach dieser Frist fortgesetzt werden, obwohl die geprüfte Zustandsfolge korrekt war. Registrierung und erster Zählerstand des Fakes sind actor-atomar; zu viele Exportaufrufe bleiben ein Fehler. Abbruch entfernt die Beobachter. Das Cleanup bricht den Controller ab, schließt den Fake, gibt eine absichtlich suspendierte Exportfortsetzung genau einmal frei und weist verspätete neue Exporte zurück. Eine äußere Minutengrenze erkennt einen echten Test-Hang; sie verändert keine Produktionsdeadline.
