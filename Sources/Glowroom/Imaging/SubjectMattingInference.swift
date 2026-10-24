@@ -29,11 +29,11 @@ struct SubjectMattingResultCache {
 /// The imported model owns normalization and sigmoid. Image coverage is scalar
 /// data, not display gray; retain its fractional edges without gamma or erosion.
 enum SubjectMattingModelInterface {
-    static let side = 1_920
+    static let side = LocalModelRegistry.subjectSide
     static let residentBytes: Int64 = 6 * 1_024 * 1_024 * 1_024
-    static let contract = "birefnet-hr-matting-v1"
-    static let sourceRevision = "5d6b6f8adcb5b417c871b1d84ceaae9871355b7f"
-    static let weightsSHA256 = "a5a4de698739ea5e0e8bbab28e1b293dde95092b87a442d566cbc585c53cef55"
+    static let contract = LocalModelRegistry.subjectContract
+    static let sourceRevision = LocalModelRegistry.subjectRevision
+    static let weightsSHA256 = LocalModelRegistry.subjectWeightsSHA256
 
     private struct PinnedPackage: Decodable {
         let schemaVersion: Int

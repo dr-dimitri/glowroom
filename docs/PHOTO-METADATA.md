@@ -26,6 +26,12 @@ Nach erfolgreichem Katalogstart lädt **Bildinformationen** die gespeicherten An
 
 Nur bestätigte, aktuell zugeordnete Inhalte sind suchbar. Die Bibliothek übergibt einen unveränderlichen Snapshot mit eigener Generation an den Hintergrund-Projektionsworker. Titel, Beschreibung und Tags ergänzen Dateiname/Kamera/Format; Ordner, Bewertung und Favoriten sowie ein wörtlicher Filter gelten vor der semantischen Top-K-Auswahl. Entwürfe bleiben außerhalb der Suche. Eine Textänderung erzeugt keine neuen Bildembeddings.
 
+Das getrennte [Tagzentroid-Experiment](PERSONAL-TAG-EVALUATION.md) untersucht persönliche
+Begriffe aus bestätigten Tags und vorhandenen SigLIP2-Bildvektoren. Es ist mangels
+kontrollierter Fotostudie nicht für die Oberfläche freigegeben. Das lokale
+Evaluationswerkzeug liest ausschließlich ausdrücklich vorbereitete Snapshots und
+ändert weder Metadaten noch Herkunft oder Sprache; Entwürfe sind keine Lernbeispiele.
+
 Beim Refresh bleiben bestätigte Inhalte vorhandener Katalogbilder erhalten. Eine Originaländerung kennzeichnet die vorherige Analyse und ihren Quellenbezug als veraltet; ein vorübergehend nicht lesbares Original löscht keine Texte. Vollständig aus dem Katalog entfernte Fotos verlieren ihre Datensätze einschließlich bestätigter Texte, manueller/KI-Entwürfe, Operationsbelege und abgeschlossener Zuordnungsjournale in der aktiven Datenbank. Beim Start werden auch alte verwaiste Datensätze bereinigt. Erneutes Hinzufügen beginnt ohne frühere Bildinformationen. Laufende oder ungeklärte Zuordnungsänderungen verhindern die Bereinigung. Überlappende Ordner und Wechsel der Ordnerzuständigkeit duplizieren keine Angaben und erhalten weiterhin eingebundene Bilder.
 
 Bookmark-Relocation verwendet ein ausdrücklich geprüftes Mapping zwischen alten und neuen Asset-IDs. Ein gleicher Dateiname genügt nie. Native historische Identität verlangt zusätzliche belastbare Belege; andernfalls bleibt die Zuordnung offen oder bedarf bewusster Auswahl. Bestehender Zielinhalt wird niemals automatisch überschrieben. Getrennt behalten erhält beide Datensätze; Übertragen ist nur auf ein tatsächlich unbestätigtes und entwurfsfreies Ziel möglich.

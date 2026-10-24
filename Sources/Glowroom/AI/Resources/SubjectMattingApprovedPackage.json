@@ -1,23 +1,23 @@
 {
-  "schemaVersion": 1,
   "contract": "birefnet-hr-matting-v1",
-  "sourceRevision": "5d6b6f8adcb5b417c871b1d84ceaae9871355b7f",
-  "weightsSHA256": "a5a4de698739ea5e0e8bbab28e1b293dde95092b87a442d566cbc585c53cef55",
   "files": [
     {
-      "path": "Data/com.apple.CoreML/model.mlmodel",
       "bytes": 4211315,
+      "path": "Data/com.apple.CoreML/model.mlmodel",
       "sha256": "68e652515e34d2cb26e19f8194a35fdb4ce3442eeabbe9ec617e70ff5a08526d"
     },
     {
-      "path": "Data/com.apple.CoreML/weights/weight.bin",
       "bytes": 472984480,
+      "path": "Data/com.apple.CoreML/weights/weight.bin",
       "sha256": "b7a129ce6d27738235b6677007aaedd084d52c8b4fbbffbeb765aa0be9dd79b6"
     },
     {
-      "path": "Manifest.json",
       "bytes": 617,
+      "path": "Manifest.json",
       "sha256": "c4e54cefe20d52bd0c1bdce615dbbb48337960c4c69acd3bcd16acd490c629d1"
     }
-  ]
+  ],
+  "schemaVersion": 1,
+  "sourceRevision": "5d6b6f8adcb5b417c871b1d84ceaae9871355b7f",
+  "weightsSHA256": "a5a4de698739ea5e0e8bbab28e1b293dde95092b87a442d566cbc585c53cef55"
 }

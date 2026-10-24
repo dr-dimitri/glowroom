@@ -1,0 +1,652 @@
+{
+  "binding": {
+    "catalog_session": "00000000-0000-0000-0000-000000000002",
+    "descriptor": {
+      "dimension": 768,
+      "maximumTextTokens": 64,
+      "modelID": "google/siglip2-base-patch32-256",
+      "normalizationVersion": 1,
+      "preprocessingVersion": 1,
+      "releaseID": "siglip2-base-p32-256-fp32-image-fp16-text-v1",
+      "sourceRevision": "94dffa8cb1179de3e03f091dbc3917e5d5a9ae84",
+      "tokenizerVersion": "gemma-json-swift-transformers-e37cacea-v1"
+    },
+    "index_generation": "00000000-0000-0000-0000-000000000001",
+    "metadata_generation": 1
+  },
+  "blockers": [
+    "synthetic fixtures do not establish photo quality",
+    "independent confirmation-utility study and native resource measurements required before product release"
+  ],
+  "cases": [
+    {
+      "asset_id": "test0",
+      "baseline": [],
+      "candidates": [
+        {
+          "cosine": 1.0,
+          "key": "bäume",
+          "value": "Bäume"
+        }
+      ],
+      "independently_reviewed": true,
+      "predicted": [
+        "bäume"
+      ],
+      "truth": [
+        "bäume"
+      ],
+      "unscorable": null
+    },
+    {
+      "asset_id": "test1",
+      "baseline": [],
+      "candidates": [
+        {
+          "cosine": 1.0,
+          "key": "trees",
+          "value": "Trees"
+        }
+      ],
+      "independently_reviewed": true,
+      "predicted": [
+        "trees"
+      ],
+      "truth": [
+        "trees"
+      ],
+      "unscorable": null
+    },
+    {
+      "asset_id": "test10",
+      "baseline": [],
+      "candidates": [
+        {
+          "cosine": 1.0,
+          "key": "bäume",
+          "value": "Bäume"
+        }
+      ],
+      "independently_reviewed": true,
+      "predicted": [
+        "bäume"
+      ],
+      "truth": [
+        "bäume"
+      ],
+      "unscorable": null
+    },
+    {
+      "asset_id": "test11",
+      "baseline": [],
+      "candidates": [
+        {
+          "cosine": 1.0,
+          "key": "trees",
+          "value": "Trees"
+        }
+      ],
+      "independently_reviewed": true,
+      "predicted": [
+        "trees"
+      ],
+      "truth": [
+        "trees"
+      ],
+      "unscorable": null
+    },
+    {
+      "asset_id": "test2",
+      "baseline": [],
+      "candidates": [
+        {
+          "cosine": 1.0,
+          "key": "bäume",
+          "value": "Bäume"
+        }
+      ],
+      "independently_reviewed": true,
+      "predicted": [
+        "bäume"
+      ],
+      "truth": [
+        "bäume"
+      ],
+      "unscorable": null
+    },
+    {
+      "asset_id": "test3",
+      "baseline": [],
+      "candidates": [
+        {
+          "cosine": 1.0,
+          "key": "trees",
+          "value": "Trees"
+        }
+      ],
+      "independently_reviewed": true,
+      "predicted": [
+        "trees"
+      ],
+      "truth": [
+        "trees"
+      ],
+      "unscorable": null
+    },
+    {
+      "asset_id": "test4",
+      "baseline": [],
+      "candidates": [
+        {
+          "cosine": 1.0,
+          "key": "bäume",
+          "value": "Bäume"
+        }
+      ],
+      "independently_reviewed": true,
+      "predicted": [
+        "bäume"
+      ],
+      "truth": [
+        "bäume"
+      ],
+      "unscorable": null
+    },
+    {
+      "asset_id": "test5",
+      "baseline": [],
+      "candidates": [
+        {
+          "cosine": 1.0,
+          "key": "trees",
+          "value": "Trees"
+        }
+      ],
+      "independently_reviewed": true,
+      "predicted": [
+        "trees"
+      ],
+      "truth": [
+        "trees"
+      ],
+      "unscorable": null
+    },
+    {
+      "asset_id": "test6",
+      "baseline": [],
+      "candidates": [
+        {
+          "cosine": 1.0,
+          "key": "bäume",
+          "value": "Bäume"
+        }
+      ],
+      "independently_reviewed": true,
+      "predicted": [
+        "bäume"
+      ],
+      "truth": [
+        "bäume"
+      ],
+      "unscorable": null
+    },
+    {
+      "asset_id": "test7",
+      "baseline": [],
+      "candidates": [
+        {
+          "cosine": 1.0,
+          "key": "trees",
+          "value": "Trees"
+        }
+      ],
+      "independently_reviewed": true,
+      "predicted": [
+        "trees"
+      ],
+      "truth": [
+        "trees"
+      ],
+      "unscorable": null
+    },
+    {
+      "asset_id": "test8",
+      "baseline": [],
+      "candidates": [
+        {
+          "cosine": 1.0,
+          "key": "bäume",
+          "value": "Bäume"
+        }
+      ],
+      "independently_reviewed": true,
+      "predicted": [
+        "bäume"
+      ],
+      "truth": [
+        "bäume"
+      ],
+      "unscorable": null
+    },
+    {
+      "asset_id": "test9",
+      "baseline": [],
+      "candidates": [
+        {
+          "cosine": 1.0,
+          "key": "trees",
+          "value": "Trees"
+        }
+      ],
+      "independently_reviewed": true,
+      "predicted": [
+        "trees"
+      ],
+      "truth": [
+        "trees"
+      ],
+      "unscorable": null
+    }
+  ],
+  "config": {
+    "minimum_examples": 3,
+    "minimum_f1_gain": 0.05,
+    "minimum_mean_norm": 1e-06,
+    "minimum_precision": 0.8,
+    "minimum_recall": 0.4,
+    "minimum_test_photos": 12,
+    "thresholds": [
+      0.0,
+      0.2,
+      0.4,
+      0.6,
+      0.8,
+      0.9,
+      1.0
+    ],
+    "top_k": 5
+  },
+  "contract": "siglip2-confirmed-tag-centroids-v1",
+  "decision": "NO-GO",
+  "eligible_tag_counts": {
+    "bäume": 3,
+    "trees": 3
+  },
+  "image_analysis_baseline": {
+    "abstained": 12,
+    "f1": 0.0,
+    "fn": 12,
+    "fp": 0,
+    "per_tag": {
+      "bäume": {
+        "abstained_on_positive": 6,
+        "f1": 0.0,
+        "fn": 6,
+        "fp": 0,
+        "positive_photos": 6,
+        "precision": 0.0,
+        "recall": 0.0,
+        "tp": 0
+      },
+      "trees": {
+        "abstained_on_positive": 6,
+        "f1": 0.0,
+        "fn": 6,
+        "fp": 0,
+        "positive_photos": 6,
+        "precision": 0.0,
+        "recall": 0.0,
+        "tp": 0
+      }
+    },
+    "photos": 12,
+    "precision": 0.0,
+    "recall": 0.0,
+    "tp": 0
+  },
+  "independent_test_groups": 12,
+  "measurement": {
+    "cache": "offline snapshot, no model inference",
+    "peak_rss_bytes": 26148864,
+    "python": "3.15.0",
+    "rows": 22,
+    "seconds": 0.007787875016219914,
+    "system": "macOS-27.0.1-arm64-arm-64bit-Mach-O"
+  },
+  "plan": {
+    "config": {
+      "minimum_examples": 3,
+      "minimum_f1_gain": 0.05,
+      "minimum_mean_norm": 1e-06,
+      "minimum_precision": 0.8,
+      "minimum_recall": 0.4,
+      "minimum_test_photos": 12,
+      "thresholds": [
+        0.0,
+        0.2,
+        0.4,
+        0.6,
+        0.8,
+        0.9,
+        1.0
+      ],
+      "top_k": 5
+    },
+    "contract": "siglip2-confirmed-tag-centroids-v1",
+    "dataset_sha256": "f665a8b9b1c3b68aacabcaa138ef024f686fc530ae5d382b78f0c001234035e8",
+    "evaluator_sha256": "43f5369e71ae651b1548f00dfc144ffc6073d02f2713e8c1ae5a4163aed4a716"
+  },
+  "test": {
+    "abstained": 0,
+    "f1": 1.0,
+    "fn": 0,
+    "fp": 0,
+    "per_tag": {
+      "bäume": {
+        "abstained_on_positive": 0,
+        "f1": 1.0,
+        "fn": 0,
+        "fp": 0,
+        "positive_photos": 6,
+        "precision": 1.0,
+        "recall": 1.0,
+        "tp": 6
+      },
+      "trees": {
+        "abstained_on_positive": 0,
+        "f1": 1.0,
+        "fn": 0,
+        "fp": 0,
+        "positive_photos": 6,
+        "precision": 1.0,
+        "recall": 1.0,
+        "tp": 6
+      }
+    },
+    "photos": 12,
+    "precision": 1.0,
+    "recall": 1.0,
+    "tp": 12
+  },
+  "threshold": 1.0,
+  "training": {
+    "confirmed_origins": {
+      "manual": 6
+    },
+    "example_revisions": {
+      "train0": {
+        "confirmed": 1,
+        "source": "synthetic-native-1"
+      },
+      "train1": {
+        "confirmed": 1,
+        "source": "synthetic-native-1"
+      },
+      "train2": {
+        "confirmed": 1,
+        "source": "synthetic-native-1"
+      },
+      "train3": {
+        "confirmed": 1,
+        "source": "synthetic-native-1"
+      },
+      "train4": {
+        "confirmed": 1,
+        "source": "synthetic-native-1"
+      },
+      "train5": {
+        "confirmed": 1,
+        "source": "synthetic-native-1"
+      }
+    },
+    "excluded_examples": {},
+    "rejected_tags": {}
+  },
+  "tuning": [
+    {
+      "metrics": {
+        "abstained": 0,
+        "f1": 0.6666666666666666,
+        "fn": 0,
+        "fp": 4,
+        "per_tag": {
+          "bäume": {
+            "abstained_on_positive": 0,
+            "f1": 0.6666666666666666,
+            "fn": 0,
+            "fp": 2,
+            "positive_photos": 2,
+            "precision": 0.5,
+            "recall": 1.0,
+            "tp": 2
+          },
+          "trees": {
+            "abstained_on_positive": 0,
+            "f1": 0.6666666666666666,
+            "fn": 0,
+            "fp": 2,
+            "positive_photos": 2,
+            "precision": 0.5,
+            "recall": 1.0,
+            "tp": 2
+          }
+        },
+        "photos": 4,
+        "precision": 0.5,
+        "recall": 1.0,
+        "tp": 4
+      },
+      "threshold": 0.0
+    },
+    {
+      "metrics": {
+        "abstained": 0,
+        "f1": 1.0,
+        "fn": 0,
+        "fp": 0,
+        "per_tag": {
+          "bäume": {
+            "abstained_on_positive": 0,
+            "f1": 1.0,
+            "fn": 0,
+            "fp": 0,
+            "positive_photos": 2,
+            "precision": 1.0,
+            "recall": 1.0,
+            "tp": 2
+          },
+          "trees": {
+            "abstained_on_positive": 0,
+            "f1": 1.0,
+            "fn": 0,
+            "fp": 0,
+            "positive_photos": 2,
+            "precision": 1.0,
+            "recall": 1.0,
+            "tp": 2
+          }
+        },
+        "photos": 4,
+        "precision": 1.0,
+        "recall": 1.0,
+        "tp": 4
+      },
+      "threshold": 0.2
+    },
+    {
+      "metrics": {
+        "abstained": 0,
+        "f1": 1.0,
+        "fn": 0,
+        "fp": 0,
+        "per_tag": {
+          "bäume": {
+            "abstained_on_positive": 0,
+            "f1": 1.0,
+            "fn": 0,
+            "fp": 0,
+            "positive_photos": 2,
+            "precision": 1.0,
+            "recall": 1.0,
+            "tp": 2
+          },
+          "trees": {
+            "abstained_on_positive": 0,
+            "f1": 1.0,
+            "fn": 0,
+            "fp": 0,
+            "positive_photos": 2,
+            "precision": 1.0,
+            "recall": 1.0,
+            "tp": 2
+          }
+        },
+        "photos": 4,
+        "precision": 1.0,
+        "recall": 1.0,
+        "tp": 4
+      },
+      "threshold": 0.4
+    },
+    {
+      "metrics": {
+        "abstained": 0,
+        "f1": 1.0,
+        "fn": 0,
+        "fp": 0,
+        "per_tag": {
+          "bäume": {
+            "abstained_on_positive": 0,
+            "f1": 1.0,
+            "fn": 0,
+            "fp": 0,
+            "positive_photos": 2,
+            "precision": 1.0,
+            "recall": 1.0,
+            "tp": 2
+          },
+          "trees": {
+            "abstained_on_positive": 0,
+            "f1": 1.0,
+            "fn": 0,
+            "fp": 0,
+            "positive_photos": 2,
+            "precision": 1.0,
+            "recall": 1.0,
+            "tp": 2
+          }
+        },
+        "photos": 4,
+        "precision": 1.0,
+        "recall": 1.0,
+        "tp": 4
+      },
+      "threshold": 0.6
+    },
+    {
+      "metrics": {
+        "abstained": 0,
+        "f1": 1.0,
+        "fn": 0,
+        "fp": 0,
+        "per_tag": {
+          "bäume": {
+            "abstained_on_positive": 0,
+            "f1": 1.0,
+            "fn": 0,
+            "fp": 0,
+            "positive_photos": 2,
+            "precision": 1.0,
+            "recall": 1.0,
+            "tp": 2
+          },
+          "trees": {
+            "abstained_on_positive": 0,
+            "f1": 1.0,
+            "fn": 0,
+            "fp": 0,
+            "positive_photos": 2,
+            "precision": 1.0,
+            "recall": 1.0,
+            "tp": 2
+          }
+        },
+        "photos": 4,
+        "precision": 1.0,
+        "recall": 1.0,
+        "tp": 4
+      },
+      "threshold": 0.8
+    },
+    {
+      "metrics": {
+        "abstained": 0,
+        "f1": 1.0,
+        "fn": 0,
+        "fp": 0,
+        "per_tag": {
+          "bäume": {
+            "abstained_on_positive": 0,
+            "f1": 1.0,
+            "fn": 0,
+            "fp": 0,
+            "positive_photos": 2,
+            "precision": 1.0,
+            "recall": 1.0,
+            "tp": 2
+          },
+          "trees": {
+            "abstained_on_positive": 0,
+            "f1": 1.0,
+            "fn": 0,
+            "fp": 0,
+            "positive_photos": 2,
+            "precision": 1.0,
+            "recall": 1.0,
+            "tp": 2
+          }
+        },
+        "photos": 4,
+        "precision": 1.0,
+        "recall": 1.0,
+        "tp": 4
+      },
+      "threshold": 0.9
+    },
+    {
+      "metrics": {
+        "abstained": 0,
+        "f1": 1.0,
+        "fn": 0,
+        "fp": 0,
+        "per_tag": {
+          "bäume": {
+            "abstained_on_positive": 0,
+            "f1": 1.0,
+            "fn": 0,
+            "fp": 0,
+            "positive_photos": 2,
+            "precision": 1.0,
+            "recall": 1.0,
+            "tp": 2
+          },
+          "trees": {
+            "abstained_on_positive": 0,
+            "f1": 1.0,
+            "fn": 0,
+            "fp": 0,
+            "positive_photos": 2,
+            "precision": 1.0,
+            "recall": 1.0,
+            "tp": 2
+          }
+        },
+        "photos": 4,
+        "precision": 1.0,
+        "recall": 1.0,
+        "tp": 4
+      },
+      "threshold": 1.0
+    }
+  ]
+}

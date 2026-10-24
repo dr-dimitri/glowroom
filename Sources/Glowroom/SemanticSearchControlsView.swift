@@ -13,6 +13,18 @@ struct SemanticSearchControlsView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             if model.searchMode == .semantic {
+                if let reference = model.similarityReference {
+                    HStack {
+                        Label("Ähnliche Bilder zu: \(reference.fileName)", systemImage: "photo.on.rectangle")
+                            .font(.system(size: 11)).textSelection(.enabled)
+                        Spacer()
+                        Button("Ähnlichkeitssuche beenden") { model.stopFindingSimilarImages() }
+                            .font(.system(size: 10))
+                    }
+                    Text("Suchumfang: \(model.similarityScopeLabel) · Referenzfoto ausgeschlossen.")
+                        .font(.system(size: 10)).foregroundStyle(Theme.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 HStack(spacing: 10) {
                     TextField("Optional: Dateiname/Kamera/Format filtern", text: $model.semanticLiteralFilter)
                         .textFieldStyle(.roundedBorder).font(.system(size: 11))
@@ -20,7 +32,9 @@ struct SemanticSearchControlsView: View {
                     Stepper("Top \(min(500, max(1, model.semanticTopK)))", value: $model.semanticTopK, in: 1...500)
                         .font(.system(size: 10)).fixedSize()
                 }
-                Text("Relevanz innerhalb aller aktiven Filter · höchstens \(min(500, max(1, model.semanticTopK))) Treffer. Scores sind keine Wahrscheinlichkeiten. Eine leere Bildsuche zeigt die normale Bibliothek.")
+                Text(model.similarityReference == nil
+                     ? "Relevanz innerhalb aller aktiven Filter · höchstens \(min(500, max(1, model.semanticTopK))) Treffer. Scores sind keine Wahrscheinlichkeiten. Eine leere Bildsuche zeigt die normale Bibliothek."
+                     : "Visuelle Ähnlichkeit · höchstens \(min(500, max(1, model.semanticTopK))) Treffer. Keine Wahrscheinlichkeit und kein Duplikatnachweis. Ein aktueller Indexvektor wird ohne erneute Bild- oder Textinferenz verwendet.")
                     .font(.system(size: 10)).foregroundStyle(Theme.muted)
                     .fixedSize(horizontal: false, vertical: true)
             }

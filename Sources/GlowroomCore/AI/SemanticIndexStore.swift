@@ -168,6 +168,25 @@ public actor SemanticIndexStore {
         return result
     }
 
+    /// Indexed reference lookup; image-to-image queries never scan the index to
+    /// discover their reference or decode the original again.
+    public func record(in generation: SemanticIndexGeneration, assetID: String) throws -> SemanticIndexRecord? {
+        guard Self.identifier(assetID) else { throw SemanticEmbeddingError.invalidInput }
+        let connection = try open(); try require(generation, writable: false, on: connection)
+        var result: SemanticIndexRecord?
+        try Self.statement(connection, "SELECT asset_id,source_path,source_mtime_reference,source_size,source_revision,raster_digest,vector FROM semantic_entries WHERE generation_id=? AND asset_id=?") { statement in
+            try Self.bind(generation.id.uuidString, 1, statement); try Self.bind(assetID, 2, statement)
+            try Self.consume(statement) { row in
+                if Task.isCancelled { throw SemanticEmbeddingError.cancelled }
+                let metadata = try Self.readMetadata(row)
+                result = SemanticIndexRecord(assetID: metadata.assetID, source: metadata.source,
+                    sourceRevision: metadata.sourceRevision, inputRasterSHA256: metadata.inputRasterSHA256,
+                    vector: try Self.decodeVector(row, column: 6, dimension: generation.descriptor.dimension))
+            }
+        }
+        return result
+    }
+
     public func records(in generation: SemanticIndexGeneration, afterAssetID: String? = nil, limit: Int = 256) throws -> [SemanticIndexRecord] {
         guard (1...Self.maximumPageSize).contains(limit), afterAssetID.map(Self.identifier) ?? true else { throw SemanticEmbeddingError.invalidInput }
         let connection = try open(); try require(generation, writable: false, on: connection)

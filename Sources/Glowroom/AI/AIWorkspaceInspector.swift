@@ -148,7 +148,7 @@ private struct AISemanticSearchView: View {
                 Button("Schließen") { dismiss() }
                 Spacer()
                 Button("Treffer in der Bibliothek zeigen") {
-                    library.searchMode = .semantic
+                    library.useSemanticTextSearch()
                     WorkspaceActions.showGrid(layout, library: library)
                     dismiss()
                 }.buttonStyle(.borderedProminent)

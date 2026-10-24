@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "cards": [
+    "cards/siglip2-base-p32-256-fp32-image-fp16-text-v1.json",
+    "cards/birefnet-hr-matting-v1-1920.json",
+    "cards/qwen35-4b-4bit.json",
+    "cards/apple-detr-resnet50-semantic-f16.json",
+    "cards/skyseg-u2net-download.json",
+    "cards/lama-user-import-800.json"
+  ]
+}

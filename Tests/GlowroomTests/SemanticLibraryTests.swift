@@ -14,6 +14,86 @@ final class SemanticLibraryTests {
     }
     deinit { try? FileManager.default.removeItem(at: directory) }
 
+    @Test func explicitImageReferenceKeepsFiltersAndCanBeLeftWithoutMetadataWrites() async throws {
+        let (model, service, folders, photos) = try await fixture()
+        model.selectedID = photos[3].id
+        model.findSimilarImages()
+        await model.waitForProjection()
+        #expect(model.similarityReference?.id == photos[3].id)
+        #expect(!model.visibleAssets.contains { $0.id == photos[3].id })
+        #expect(await service.calls.last?.query == "image:\(photos[3].id)")
+        model.selection = .subfolder(folders[0].id, "Trip")
+        model.minimumRating = 4
+        model.semanticLiteralFilter = "Canon"
+        model.semanticTopK = 1
+        await model.waitForProjection()
+        #expect(model.visibleAssets.map(\.id) == [photos[0].id])
+        #expect(await service.calls.last?.candidateIDs == [photos[0].id])
+        #expect(model.similarityScopeLabel.contains("Trip"))
+        #expect(model.similarityScopeLabel.contains("4 Sterne"))
+        #expect(model.similarityScopeLabel.contains("Canon"))
+        model.selection = .favorites
+        model.semanticLiteralFilter = ""
+        await model.waitForProjection()
+        #expect(model.visibleAssets.map(\.id) == [photos[1].id])
+        #expect(model.similarityReference?.id == photos[3].id)
+        model.selection = .recent
+        await model.waitForProjection()
+        #expect(Set(await service.calls.last?.candidateIDs ?? []) == Set([photos[0].id, photos[1].id]))
+        model.stopFindingSimilarImages()
+        await model.waitForProjection()
+        #expect(model.searchMode == .literal && model.similarityReference == nil)
+        #expect(model.catalog.assets == photos)
+        #expect(await service.preparedScopes.isEmpty)
+        #expect(await model.finishSaving())
+    }
+
+    @Test func rapidImageReferenceRoundTripAndLeavingSearchRejectOldReplies() async throws {
+        let (model, service, _, photos) = try await fixture(blocked: true)
+        model.selectedID = photos[0].id; model.findSimilarImages()
+        try await wait { await service.calls.count >= 1 }
+        let a = try #require(await service.calls.last)
+        model.selectedID = photos[1].id; model.findSimilarImages()
+        try await wait { await service.calls.count >= 2 }
+        let b = try #require(await service.calls.last)
+        model.selectedID = photos[0].id; model.findSimilarImages()
+        try await wait { await service.calls.count >= 3 }
+        let current = try #require(await service.calls.last)
+        await service.complete(a.id, only: photos[1].id)
+        await service.complete(b.id, only: photos[0].id)
+        #expect(model.isProjecting)
+        await service.complete(current.id, only: photos[2].id)
+        await model.waitForProjection()
+        #expect(model.visibleAssets.map(\.id) == [photos[2].id])
+        #expect(model.similarityReference?.id == photos[0].id)
+        model.selectedID = photos[2].id; model.findSimilarImages()
+        try await wait { await service.calls.count >= 4 }
+        let abandoned = try #require(await service.calls.last)
+        model.stopFindingSimilarImages()
+        await service.complete(abandoned.id, only: photos[3].id)
+        await model.waitForProjection()
+        #expect(Set(model.visibleAssets.map(\.id)) == Set(photos.map(\.id)))
+        #expect(model.similarityReference == nil)
+        #expect(await model.finishSaving())
+    }
+
+    @Test func semanticTextEntryReplacesImageReference() async throws {
+        let (model, service, _, photos) = try await fixture()
+        model.selectedID = photos[0].id; model.findSimilarImages()
+        await model.waitForProjection()
+        model.semanticQuery = "forest"
+        await model.waitForProjection()
+        #expect(model.similarityReference == nil)
+        #expect(await service.calls.last?.query == "forest")
+        model.findSimilarImages()
+        await model.waitForProjection()
+        model.useSemanticTextSearch()
+        await model.waitForProjection()
+        #expect(model.similarityReference == nil)
+        #expect(await service.calls.last?.query == "forest")
+        #expect(await model.finishSaving())
+    }
+
     @Test func literalAndEmptySemanticQueriesNeverRequestEmbeddingsOrIndex() async throws {
         let (model, service, _, photos) = try await fixture()
         #expect(model.searchMode == .literal)
@@ -471,6 +551,12 @@ private actor SemanticLibraryFake: SemanticSearchServing {
             hits: ordered.prefix(topK).map { .init(assetID: $0.element.id, score: scores[$0.element.id, default: 1]) })
         if !blocked { return result }
         return try await withCheckedThrowingContinuation { pending[id] = (result,$0) }
+    }
+    func search(similarTo reference: PhotoAsset, candidates: [PhotoAsset], topK: Int) async throws -> SemanticSearchResult {
+        let result = try await search(query: "image:\(reference.id)", candidates: candidates.filter { $0.id != reference.id }, topK: topK)
+        return SemanticSearchResult(catalogSessionID: result.catalogSessionID, catalogGeneration: result.catalogGeneration,
+            indexGenerationID: result.indexGenerationID, modelDescriptor: result.modelDescriptor,
+            candidateAssetIDs: candidates.map(\.id), hits: result.hits)
     }
     func complete(_ id: UUID, only assetID: String) {
         guard let (result, continuation) = pending.removeValue(forKey: id) else { return }

@@ -1,0 +1,46 @@
+{
+  "schema": "glowroom-dtai-source-pins-v1",
+  "revision": "76513a1e379b4265007bae768825b9a581944ff8",
+  "repository": "https://github.com/darktable-org/darktable-ai",
+  "files": {
+    "uv.lock": "20d3f0562c0aa2f45af1cf5817844b7fac1fe725504c7af1685b68859339377b",
+    "models/mask-object-segnext-b2hq/README.md": "3a4a4c3845007461bec06f57c68452778200d023f9feb56cc9d61aab7fe3dacc",
+    "models/mask-object-segnext-b2hq/model.yaml": "8f56703ded38d46ce308ccf7f1063c9eb72c26aed5238bee41f4fff5a72dca1d",
+    "models/mask-object-segnext-b2hq/convert.py": "2104b643f44fbb0d0d67b351ee1294a18fae6caf21aa4e0611809318c52540b8",
+    "models/mask-object-segnext-b2hq/demo.py": "cc78651effc2c18ce92d40f6645e2d709487f9087df1250335d7ccd4939339bd",
+    "models/denoise-nafnet/README.md": "52fa7ef278a2d365430a0521f736d333aa3692e227a94cf91d70e8519aae0402",
+    "models/denoise-nafnet/model.yaml": "ff487665d8e1edb23e82b9178189c1c3d9242d9f5d6d9f0b16303d39aabc77f0",
+    "models/denoise-nafnet/convert.py": "bf38896f3ebc1c50d7e112d99e8b062f09decc94ea2ef7268e5fe516ecd0ff70",
+    "models/denoise-nafnet/demo.py": "bf5b9e89978430cf465496ef864fc452c408e20b059b75efac2a6b6436bae31f",
+    "models/rawdenoise-nind/README.md": "731911d6fc39c738f41b49b700755a8e89e089c110f75bdd4677be06106ff003",
+    "models/rawdenoise-nind/model.yaml": "afc0285340287746a4c81b3211ec7023cab47bbe2853c58f86c4d3cdc07379b2",
+    "models/rawdenoise-nind/convert.py": "f387d841757f203aba3affceafd170e8225580ea99ca9544553e865eba4d17f0",
+    "models/rawdenoise-nind/demo.py": "3667abc93564bad3646fd4530b7b07585a1e52e0b5c08169bee8ee48e5d1f06e",
+    "darktable_ai/evaluation/mask.py": "4e1ade4c714dd3f36b2ac64a554c58396cda7fba9e86666d4d280dd43d25952c"
+  },
+  "vendors": {
+    "SegNext": "db045f6d6bab73029457e2ced4fec4a92cc69600",
+    "NAFNet": "2b4af71ebe098a92a75910c233a3965a3e93ede4",
+    "rawnind_jddc": "4d455aa8ada69214eafa6a91ac0b2e011cf9dcb7"
+  },
+  "artifacts": {
+    "segnext": [
+      "temp/mask-object-segnext-b2hq/vitb_sa2_cocolvis_hq44k_epoch_0.pth",
+      "output/mask-object-segnext-b2hq/encoder.onnx",
+      "output/mask-object-segnext-b2hq/decoder.onnx"
+    ],
+    "nafnet": [
+      "temp/denoise-nafnet/NAFNet-SIDD-width32.pth",
+      "output/denoise-nafnet/model.onnx"
+    ],
+    "raw-bayer": [
+      "temp/rawdenoise-nind/denoiser_bayer2prgb_utnet2.pt",
+      "output/rawdenoise-nind/model_bayer.onnx"
+    ],
+    "raw-linear": [
+      "temp/rawdenoise-nind/denoiser_prgb2prgb_utnet2.pt",
+      "output/rawdenoise-nind/model_linear.onnx"
+    ]
+  },
+  "artifact_sha256_status": "not acquired; inference requires a separate SHA-256 conversion receipt; filenames/URLs are not immutable weight pins"
+}

@@ -14,14 +14,10 @@ struct SkyMaskSetupProgress: Sendable {
 /// Source bytes are an immutable, publicly released Apple Core ML package.
 /// Package filenames, sizes and SHA-256 are app-owned, never server-supplied.
 enum SkyMaskApprovedPackage {
-    static let revision = "bfcb6e4210d7289310082d7c93bf9a1417b3699f"
-    static let modelCard = URL(string: "https://huggingface.co/apple/coreml-detr-semantic-segmentation")!
-    static let baseURL = URL(string: "https://huggingface.co/apple/coreml-detr-semantic-segmentation/resolve/\(revision)/DETRResnet50SemanticSegmentationF16.mlpackage/")!
-    static let files: [SemanticManifestFile] = [
-        .init(path: "Manifest.json", bytes: 617, sha256: "0749549c6b11139e11a40aaab82add4843a9977010337e596cce3dbb35c98512"),
-        .init(path: "Data/com.apple.CoreML/model.mlmodel", bytes: 309_817, sha256: "61e05678150bcae26deac589b998dffe13c2977a9ba6f802938a9f3a60bfdcce"),
-        .init(path: "Data/com.apple.CoreML/weights/weight.bin", bytes: 85_158_176, sha256: "2f4de3dfed1aeced35ad7096d7c8721fcfb59571110a9e9138d73a7e56480408")
-    ]
+    static let revision = LocalModelRegistry.skyRevision
+    static let modelCard = URL(string: "https://huggingface.co/\(LocalModelRegistry.skyRepository)")!
+    static let baseURL = URL(string: "https://huggingface.co/\(LocalModelRegistry.skyRepository)/resolve/\(revision)/\(LocalModelRegistry.skyFolder)/")!
+    static let files = LocalModelRegistry.skyFiles
     static let totalBytes = files.reduce(Int64(0)) { $0 + $1.bytes }
 }
 

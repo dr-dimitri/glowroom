@@ -6,13 +6,7 @@ import GlowroomCore
 /// CPU-only is intentional: the measured all-device first-load RSS had too
 /// little reserve to enable it in an application with its own image caches.
 enum SemanticLocalProviderFactory {
-    static let descriptor = SemanticModelDescriptor(
-        modelID: "google/siglip2-base-patch32-256",
-        sourceRevision: "94dffa8cb1179de3e03f091dbc3917e5d5a9ae84",
-        releaseID: "siglip2-base-p32-256-fp32-image-fp16-text-v1",
-        dimension: 768, maximumTextTokens: 64,
-        tokenizerVersion: "gemma-json-swift-transformers-e37cacea-v1",
-        preprocessingVersion: 1, normalizationVersion: 1)
+    static let descriptor = LocalModelRegistry.semantic
 
     static func makeProvider(installation: SemanticInstalledModel?) -> any SemanticEmbeddingProviding {
         SemanticLocalEmbeddingProvider(installation: installation)

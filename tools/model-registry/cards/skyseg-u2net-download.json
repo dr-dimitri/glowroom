@@ -1,0 +1,115 @@
+{
+  "bindings": [
+    {
+      "contains": "static let file = LocalModelRegistry.skysegFiles[0]",
+      "path": "Sources/Glowroom/Imaging/SkySegModelDownloadStore.swift"
+    }
+  ],
+  "cardVersion": 1,
+  "contract": {
+    "colorSpace": "sRGB (offline evaluator)",
+    "inputs": [
+      {
+        "dtype": "float32",
+        "name": "offline-evaluation-input",
+        "shape": [
+          1,
+          3,
+          320,
+          320
+        ]
+      }
+    ],
+    "normalization": "Offline evaluator contract only; no app inference or automatic activation",
+    "outputs": [
+      {
+        "dtype": "float32",
+        "name": "offline-evaluation-output",
+        "shape": [
+          1,
+          1,
+          320,
+          320
+        ]
+      }
+    ],
+    "resolution": [
+      320,
+      320
+    ],
+    "tokenizerOrPrompt": "Not applicable"
+  },
+  "conversion": {
+    "evidence": "Sources/Glowroom/AI/Resources/SkyMaskLicenses/Skyseg-NOTICE.txt",
+    "method": "Unmodified public ONNX export; converter version absent",
+    "tools": {
+      "upstream-converter": "unknown"
+    }
+  },
+  "identity": "skyseg-u2net-download",
+  "licenses": {
+    "code": {
+      "declaration": "MIT (mirror declaration)",
+      "evidence": "docs/AUTOMATIC-MASKS.md"
+    },
+    "limitations": "Publisher declarations and recorded local provenance; no additional training-data or redistribution rights are inferred.",
+    "weights": {
+      "declaration": "MIT (mirror declaration)",
+      "evidence": "docs/AUTOMATIC-MASKS.md"
+    }
+  },
+  "package": {
+    "files": [
+      {
+        "bytes": 175997079,
+        "path": "skyseg.onnx",
+        "sha256": "ab9c34c64c3d821220a2886a4a06da4642ffa14d5b30e8d5339056a089aa1d39"
+      }
+    ],
+    "kind": "skyseg-swift"
+  },
+  "qualification": {
+    "limitations": [
+      "Existing installation approval is preserved; this migration does not newly qualify a model or hardware combination.",
+      "A new release requires a separate native evidence report through the release-check command."
+    ],
+    "reports": [
+      "docs/AUTOMATIC-MASKS.md",
+      "tools/mask-evaluation/u2net_sky_README.md"
+    ],
+    "status": "existing-evidence-only"
+  },
+  "runtime": {
+    "computePolicy": "none",
+    "engine": "none-download-only",
+    "fallback": "understandable-error",
+    "hardware": [
+      "any supported macOS; no inference backend"
+    ],
+    "limitations": [
+      "Intel and older macOS versions have no retained native qualification in this registry."
+    ],
+    "minimumMacOS": "14.0",
+    "validatedCombinations": [
+      "Apple M2 Pro / macOS 27.0.1; see qualification report for scope"
+    ]
+  },
+  "schemaVersion": 1,
+  "source": {
+    "originalWeights": {
+      "path": "skyseg.onnx",
+      "repository": "xiongzhu666/Sky-Segmentation-and-Post-processing",
+      "revision": "1f7811b32b64ddc957269defff84bc87a3f0b74f",
+      "sha256": "ab9c34c64c3d821220a2886a4a06da4642ffa14d5b30e8d5339056a089aa1d39"
+    },
+    "repository": "JianyuanWang/skyseg",
+    "revision": "3ba8c6df1d9ba9ff26f637c7ba9568ac11a9aa7f"
+  },
+  "status": "download-only",
+  "task": "sky-segmentation-download-only",
+  "trainingData": {
+    "evidence": "docs/AUTOMATIC-MASKS.md",
+    "limitations": "Exact training images, individual permissions and representativeness are unverified.",
+    "origin": "Not fully documented by the retained source evidence."
+  }
+}

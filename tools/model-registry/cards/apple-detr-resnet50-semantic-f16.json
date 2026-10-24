@@ -1,0 +1,127 @@
+{
+  "bindings": [
+    {
+      "contains": "static let files = LocalModelRegistry.skyFiles",
+      "path": "Sources/Glowroom/Imaging/AutomaticMaskModelStore.swift"
+    },
+    {
+      "contains": "side: LocalModelRegistry.skySide",
+      "path": "Sources/Glowroom/Imaging/AutomaticMaskService.swift"
+    }
+  ],
+  "cardVersion": 1,
+  "contract": {
+    "colorSpace": "sRGB; black alpha backing",
+    "inputs": [
+      {
+        "dtype": "ARGB8",
+        "name": "image",
+        "shape": [
+          448,
+          448
+        ]
+      }
+    ],
+    "normalization": "Published model preprocessing embedded in graph; choose sky (other); full-image high-quality resize",
+    "outputs": [
+      {
+        "dtype": "int32",
+        "name": "semanticPredictions",
+        "shape": [
+          448,
+          448
+        ]
+      }
+    ],
+    "resolution": [
+      448,
+      448
+    ],
+    "tokenizerOrPrompt": "Not applicable"
+  },
+  "conversion": {
+    "evidence": "Sources/Glowroom/AI/Resources/SkyMaskLicenses/SkyMask-NOTICE.txt",
+    "method": "Unmodified published Apple Core ML package; converter versions not supplied in retained evidence",
+    "tools": {
+      "upstream-converter": "unknown"
+    }
+  },
+  "identity": "apple-detr-resnet50-semantic-f16",
+  "licenses": {
+    "code": {
+      "declaration": "Apache-2.0 (publisher and embedded metadata)",
+      "evidence": "docs/AUTOMATIC-MASKS.md"
+    },
+    "limitations": "Publisher declarations and recorded local provenance; no additional training-data or redistribution rights are inferred.",
+    "weights": {
+      "declaration": "Apache-2.0 (publisher and embedded metadata)",
+      "evidence": "docs/AUTOMATIC-MASKS.md"
+    }
+  },
+  "package": {
+    "files": [
+      {
+        "bytes": 617,
+        "path": "Manifest.json",
+        "sha256": "0749549c6b11139e11a40aaab82add4843a9977010337e596cce3dbb35c98512"
+      },
+      {
+        "bytes": 309817,
+        "path": "Data/com.apple.CoreML/model.mlmodel",
+        "sha256": "61e05678150bcae26deac589b998dffe13c2977a9ba6f802938a9f3a60bfdcce"
+      },
+      {
+        "bytes": 85158176,
+        "path": "Data/com.apple.CoreML/weights/weight.bin",
+        "sha256": "2f4de3dfed1aeced35ad7096d7c8721fcfb59571110a9e9138d73a7e56480408"
+      }
+    ],
+    "folder": "DETRResnet50SemanticSegmentationF16.mlpackage",
+    "kind": "sky-swift"
+  },
+  "qualification": {
+    "limitations": [
+      "Existing installation approval is preserved; this migration does not newly qualify a model or hardware combination.",
+      "A new release requires a separate native evidence report through the release-check command."
+    ],
+    "reports": [
+      "docs/AUTOMATIC-MASKS.md",
+      "Sources/Glowroom/AI/Resources/SkyMaskLicenses/SkyMask-NOTICE.txt"
+    ],
+    "status": "existing-evidence-only"
+  },
+  "runtime": {
+    "computePolicy": "all",
+    "engine": "CoreML",
+    "fallback": "cpuOnly",
+    "hardware": [
+      "arm64",
+      "x86_64 (unqualified)"
+    ],
+    "limitations": [
+      "Intel and older macOS versions have no retained native qualification in this registry."
+    ],
+    "minimumMacOS": "14.0",
+    "validatedCombinations": [
+      "Apple M2 Pro / macOS 27.0.1; see qualification report for scope"
+    ]
+  },
+  "schemaVersion": 1,
+  "source": {
+    "originalWeights": {
+      "path": "original weights not redistributed by Glowroom",
+      "repository": "facebook/detr-resnet-50-panoptic",
+      "revision": "not recorded by retained Apple conversion provenance",
+      "sha256": "unknown"
+    },
+    "repository": "apple/coreml-detr-semantic-segmentation",
+    "revision": "bfcb6e4210d7289310082d7c93bf9a1417b3699f"
+  },
+  "status": "app-pinned",
+  "task": "sky-semantic-segmentation",
+  "trainingData": {
+    "evidence": "docs/AUTOMATIC-MASKS.md",
+    "limitations": "Exact training images, individual permissions and representativeness are unverified.",
+    "origin": "Not fully documented by the retained source evidence."
+  }
+}

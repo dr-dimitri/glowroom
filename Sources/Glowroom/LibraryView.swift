@@ -524,11 +524,15 @@ struct LibraryView: View {
     private var compactLibraryBar: some View {
         HStack(spacing: 10) {
             Image(systemName: "magnifyingglass").foregroundStyle(Theme.muted)
-            TextField(model.searchMode == .literal ? "Fotos suchen …" : "Bildinhalt suchen …", text: Binding(
+            if let reference = model.similarityReference {
+                Text("Ähnlich zu \(reference.fileName)").lineLimit(1).frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                TextField(model.searchMode == .literal ? "Fotos suchen …" : "Bildinhalt suchen …", text: Binding(
                 get: { model.searchMode == .literal ? model.search : model.semanticQuery },
                 set: { if model.searchMode == .literal { model.search = $0 } else { model.semanticQuery = $0 } }))
                 .textFieldStyle(.plain).frame(minWidth: 60)
                 .accessibilityLabel(model.searchMode == .literal ? "Wörtliche Fotosuche" : "Semantische Bildsuche")
+            }
             libraryOptionsMenu
         }.font(.system(size: 11)).padding(.horizontal, 14).frame(height: 48)
     }
@@ -569,6 +573,11 @@ struct LibraryView: View {
                 ForEach(PhotoSort.allCases) { Text($0.rawValue).tag($0) }
             }
             Divider()
+            Button("Ähnliche Bilder finden") { model.findSimilarImages() }
+                .disabled(model.selectedAsset == nil || !model.hasSemanticService)
+            if model.similarityReference != nil {
+                Button("Ähnlichkeitssuche beenden") { model.stopFindingSimilarImages() }
+            }
             Button("Rasteransicht") { WorkspaceActions.showGrid(layout, library: model) }
             Button("Einzelbildansicht") { if model.selectedAsset != nil { model.showsDetail = true } }
                 .disabled(model.selectedAsset == nil)

@@ -102,6 +102,8 @@ private struct PhotoContextMenu: View {
 
     var body: some View {
         Button("In Einzelbildansicht öffnen") { model.select(asset); model.showsDetail = true }
+        Button("Ähnliche Bilder finden") { model.select(asset); model.findSimilarImages() }
+            .disabled(!model.hasSemanticService)
         Button(exportCount > 1 ? "\(exportCount) Fotos als JPEG exportieren …" : "Foto als JPEG exportieren …") {
             JPEGExportActions.present(using: exporter, library: model, editor: editor, contextAsset: asset)
         }.disabled(!model.canExportJPEG || model.isProjecting || editor.isLoading || editor.isRestoring || editor.isClosing || exporter.isPresented)

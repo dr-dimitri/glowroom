@@ -1,0 +1,166 @@
+{
+  "bindings": [
+    {
+      "contains": "static let qwen35 = LocalModelRegistry.qwen35",
+      "path": "Sources/Glowroom/AI/LLMModelDescriptor.swift"
+    }
+  ],
+  "cardVersion": 1,
+  "contract": {
+    "colorSpace": "sRGB",
+    "inputs": [
+      {
+        "dtype": "RGB8",
+        "name": "image",
+        "shape": [
+          "height<=1024",
+          "width<=1024"
+        ]
+      },
+      {
+        "dtype": "utf8",
+        "name": "prompt",
+        "shape": [
+          "variable"
+        ]
+      }
+    ],
+    "normalization": "Pinned processor_config.json and preprocessor_config.json; no additional normalization claimed",
+    "outputs": [
+      {
+        "dtype": "schema-constrained-json",
+        "name": "response",
+        "shape": [
+          "max 768 tokens"
+        ]
+      }
+    ],
+    "resolution": [
+      1024,
+      1024
+    ],
+    "tokenizerOrPrompt": "Pinned tokenizer.json, vocab.json, chat_template.jinja; thinking disabled; greedy; prefill 512"
+  },
+  "conversion": {
+    "evidence": "docs/AI-QWEN-RUNTIME.md",
+    "method": "Existing MLX community affine 4-bit snapshot; no Glowroom conversion",
+    "tools": {
+      "mlx-metal": "0.32.2",
+      "mlx-swift": "0.32.3",
+      "mlx-swift-lm": "3.32.3",
+      "swift-transformers": "e37cacea74498bba66002bb83ecafee3e4ab8884"
+    }
+  },
+  "identity": "qwen35-4b-4bit",
+  "licenses": {
+    "code": {
+      "declaration": "MIT (MLX runtime); Apache-2.0 (Transformers tokenizer); see bundled third-party notices",
+      "evidence": "docs/AI-QWEN-RUNTIME.md"
+    },
+    "limitations": "Publisher declarations and recorded local provenance; no additional training-data or redistribution rights are inferred.",
+    "weights": {
+      "declaration": "Upstream and quantized weight license declarations must be independently revalidated before redistribution; no new legal approval in this migration",
+      "evidence": "docs/AI-QWEN-RUNTIME.md"
+    }
+  },
+  "package": {
+    "files": [
+      {
+        "bytes": 7756,
+        "path": "chat_template.jinja",
+        "sha256": "a4aee8afcf2e0711942cf848899be66016f8d14a889ff9ede07bca099c28f715"
+      },
+      {
+        "bytes": 3366,
+        "path": "config.json",
+        "sha256": "f3efc81b2ea8d96a45301037d3ccccbcccdef44a961845c87f286aaddbc6eaaa"
+      },
+      {
+        "bytes": 3034300695,
+        "path": "model.safetensors",
+        "sha256": "5fb9acd0246866381cf8c5c354c6db1019f6498eec4ccb4f5edcc71ffeacb2db"
+      },
+      {
+        "bytes": 101944,
+        "path": "model.safetensors.index.json",
+        "sha256": "52e534c41f7b97708329c85f762e5882bf48bd5955a422c6ae74eba321e6048a"
+      },
+      {
+        "bytes": 390,
+        "path": "preprocessor_config.json",
+        "sha256": "27225450ac9c6529872ee1924fcb0962ff5634834f817040f444118116f4e516"
+      },
+      {
+        "bytes": 1300,
+        "path": "processor_config.json",
+        "sha256": "14932921ca485d458a04dafd8069fbb0a4505622a48208d19ed247115801385b"
+      },
+      {
+        "bytes": 19989343,
+        "path": "tokenizer.json",
+        "sha256": "87a7830d63fcf43bf241c3c5242e96e62dd3fdc29224ca26fed8ea333db72de4"
+      },
+      {
+        "bytes": 1139,
+        "path": "tokenizer_config.json",
+        "sha256": "e98f1901ac6f0adff67b1d540bfa0c36ac1a0cf59eb72ed78146ef89aafa1182"
+      },
+      {
+        "bytes": 385,
+        "path": "video_preprocessor_config.json",
+        "sha256": "7768af27c1fafa9cc9011c1dc20067e03f8915e03b63504550e11d5066986d13"
+      },
+      {
+        "bytes": 6722759,
+        "path": "vocab.json",
+        "sha256": "ce99b4cb2983d118806ce0a8b777a35b093e2000a503ebde25853284c9dfa003"
+      }
+    ],
+    "kind": "llm-swift",
+    "name": "Qwen3.5-4B"
+  },
+  "qualification": {
+    "limitations": [
+      "Existing installation approval is preserved; this migration does not newly qualify a model or hardware combination.",
+      "A new release requires a separate native evidence report through the release-check command."
+    ],
+    "reports": [
+      "docs/AI-QWEN-RUNTIME.md",
+      "docs/AI-QWEN35-EVALUATION.md"
+    ],
+    "status": "existing-evidence-only"
+  },
+  "runtime": {
+    "computePolicy": "Metal",
+    "engine": "MLX",
+    "fallback": "understandable-error",
+    "hardware": [
+      "arm64 with Metal"
+    ],
+    "limitations": [
+      "Intel and older macOS versions have no retained native qualification in this registry."
+    ],
+    "minimumMacOS": "14.0",
+    "validatedCombinations": [
+      "Apple M2 Pro / macOS 27.0.1; see qualification report for scope"
+    ]
+  },
+  "schemaVersion": 1,
+  "source": {
+    "originalWeights": {
+      "path": "original weights not redistributed by Glowroom",
+      "repository": "Qwen/Qwen3.5-4B",
+      "revision": "not recorded in retained quantization provenance",
+      "sha256": "unknown"
+    },
+    "repository": "mlx-community/Qwen3.5-4B-4bit",
+    "revision": "0e7ffd5c629ef7719d4cbc04069232580bfa9d9c"
+  },
+  "status": "app-pinned",
+  "task": "vision-language-development-proposals",
+  "trainingData": {
+    "evidence": "docs/AI-QWEN-RUNTIME.md",
+    "limitations": "Exact training images, individual permissions and representativeness are unverified.",
+    "origin": "Not fully documented by the retained source evidence."
+  }
+}
