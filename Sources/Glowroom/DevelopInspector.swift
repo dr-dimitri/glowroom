@@ -17,6 +17,16 @@ struct DevelopInspector: View {
     @ViewState private var fulfilledReveal: UUID?
     @ViewState private var showsModels = false
     @ViewState private var showsCompactHistogram = false
+    @ViewState private var showsAdjustmentHelp = false
+    @ViewState private var toneMigrationTarget: ToneMigrationTarget?
+
+    private struct ToneMigrationTarget: Identifiable {
+        let id = UUID()
+        let assetID: String
+        let revision: Int64
+        let snapshot: EditingSnapshot
+    }
+    @ViewState private var showsAdvancedVersions = false
 
     private struct RevealFocusIdentity: Hashable {
         let request: UUID
@@ -47,7 +57,7 @@ struct DevelopInspector: View {
                             } else {
                                 DevelopHistogram(workspace: developWorkspace, asset: asset, library: library)
                             }
-                            developToolStrip(asset, compact: available.size.height < 600)
+                            developToolStrip(asset)
                         }.padding(.horizontal, 8).padding(.top, 6).padding(.bottom, 5)
                         Rectangle().fill(Theme.line).frame(height: 1)
                     }
@@ -64,6 +74,7 @@ struct DevelopInspector: View {
                                         DevelopGeometryInspector(asset: asset, workspace: developWorkspace)
                                             .id(asset.id).id(developWorkspace.tool)
                                     } else {
+                                        adjustmentNavigation
                                         ForEach(groups, id: \.self) { tool in toolGroup(tool, asset: asset) }
                                     }
                                 }
@@ -103,6 +114,16 @@ struct DevelopInspector: View {
                 .accessibilityElement(children: .contain)
                 .accessibilityIdentifier(column == .navigation ? "develop.navigation" : "develop.adjustments")
                 .sheet(isPresented: $showsModels) { LLMModelManagerView() }
+                .sheet(isPresented: $showsAdjustmentHelp) { DevelopAdjustmentsHelp() }
+                .sheet(item: $toneMigrationTarget) { target in
+                    ToneProcessingMigrationView(canMigrate: canMigrate(target)) {
+                        guard canMigrate(target) else { return }
+                        finishInput(assetID: target.assetID)
+                        editor.upgradeToneProcessing(assetID: target.assetID)
+                        toneMigrationTarget = nil
+                    }
+                }
+                .onChange(of: library.selectedID) { _, _ in toneMigrationTarget = nil }
         }
     }
 
@@ -111,8 +132,8 @@ struct DevelopInspector: View {
                               viewport: developWorkspace.photoViewport)
     }
 
-    private func developToolStrip(_ asset: PhotoAsset, compact: Bool) -> some View {
-        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 3), count: compact ? 5 : 3), spacing: 3) {
+    private func developToolStrip(_ asset: PhotoAsset) -> some View {
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 3), count: 3), spacing: 3) {
             ForEach(DevelopCanvasTool.allCases) { tool in
                 Button {
                     finishInput(assetID: asset.id)
@@ -121,8 +142,8 @@ struct DevelopInspector: View {
                 } label: {
                     VStack(spacing: 4) {
                         Image(systemName: tool.symbol).font(.system(size: 16))
-                        Text(tool.title).font(.system(size: compact ? 10 : 11)).lineLimit(1).minimumScaleFactor(0.9)
-                    }.frame(maxWidth: .infinity).frame(height: 48)
+                        Text(tool.title).font(.system(size: 13)).lineLimit(2)
+                    }.frame(maxWidth: .infinity).frame(height: 58)
                         .foregroundStyle(developWorkspace.tool == tool ? Color.white.opacity(0.9) : Theme.muted)
                         .background(developWorkspace.tool == tool ? Color.white.opacity(0.09) : .clear)
                 }.buttonStyle(.plain).help(tool.title).accessibilityLabel(tool.title)
@@ -135,32 +156,98 @@ struct DevelopInspector: View {
             .overlay { Rectangle().stroke(Theme.line) }
     }
 
+    private var adjustmentNavigation: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Globale Korrekturen").font(.system(size: 13, weight: .semibold))
+                Spacer(minLength: 0)
+                Button { showsAdjustmentHelp = true } label: { Image(systemName: "questionmark.circle") }
+                    .buttonStyle(.plain).accessibilityLabel("Hilfe zu Korrekturen")
+                    .accessibilityIdentifier("develop.adjustments.help")
+            }
+            Toggle("Einzelgruppenmodus", isOn: Binding(get: { panels.singleGroup }, set: { enabled in
+                if let assetID = library.selectedID { finishInput(assetID: assetID) }
+                layout.update(developing: library.isDeveloping) { $0.singleGroup = enabled }
+            })).toggleStyle(.checkbox).font(.system(size: 13))
+                .accessibilityIdentifier("develop.single-group")
+        }.padding(.horizontal, 7).padding(.vertical, 8)
+    }
+
+    private func hdrSection(assetID: String) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Toggle("HDR · erweiterter Tonwertbereich", isOn: colorBinding(assetID: assetID, keyPath: \.hdrEnabled))
+                .toggleStyle(.checkbox).font(.system(size: 13))
+                .accessibilityIdentifier("develop.hdr")
+                .disabled(!editor.canEdit || !library.canModify || library.comparesOriginal || library.comparesCurrentSourceWithoutSettings)
+            if editor.settings(for: assetID).developColor.hdrEnabled {
+                Label(developWorkspace.hdrDisplayed ? "HDR-Verarbeitung aktiv" : "HDR-Vorschau wird vorbereitet …", systemImage: "circle.lefthalf.filled")
+                    .font(.system(size: 13)).fixedSize(horizontal: false, vertical: true)
+                Button("HDR und Export erklären") { showsAdjustmentHelp = true }.font(.system(size: 13))
+            }
+        }.padding(.vertical, 8)
+    }
+
+    private func automaticToneMenu(assetID: String) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Menu("Einzelregler automatisch setzen") {
+                ForEach(Array(Adjustment.allCases.prefix(6))) { control in
+                    if let toneControl = control.automaticToneControl {
+                        Button("\(control.label) automatisch setzen") { applyAutomaticTone(toneControl, assetID: assetID) }
+                    }
+                }
+            }.font(.system(size: 13)).accessibilityIdentifier("develop.automatic-tone")
+                .disabled(!editor.canEdit || !library.canModify || library.comparesOriginal || library.comparesCurrentSourceWithoutSettings)
+            if developWorkspace.automaticToneTask != nil {
+                ProgressView("Einzelregler wird berechnet …").font(.system(size: 13))
+            }
+            if let error = developWorkspace.errorMessage {
+                Text(error).font(.system(size: 13)).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private func applyAutomaticTone(_ toneControl: AutomaticToneControl, assetID: String) {
+        finishInput(assetID: assetID)
+        let selectionSession = library.aiSelectionSessionID
+        let selectionGeneration = library.aiSelectionGeneration
+        developWorkspace.applyAutomaticTone(toneControl, assetID: assetID, editor: editor) {
+            guard let selected = library.selectedAsset, selected.id == assetID,
+                  library.aiSelectionSessionID == selectionSession,
+                  library.aiSelectionGeneration == selectionGeneration,
+                  library.isDeveloping, library.canModify,
+                  !library.comparesOriginal, !library.comparesCurrentSourceWithoutSettings,
+                  !maskWorkspace.isPresented,
+                  let source = try? editor.resolvedSource(for: selected) else { return false }
+            return source.identity == developWorkspace.sourceIdentity
+        }
+    }
+
     private func colorBasics(assetID: String) -> some View {
         let settings = editor.settings(for: assetID)
         return VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 7) {
-                Toggle("S/W", isOn: colorBinding(assetID: assetID, keyPath: \.isMonochrome))
-                    .toggleStyle(.button).help("Schwarzweiß ohne die vorherigen Farbregler zu verlieren")
-                Toggle("HDR", isOn: colorBinding(assetID: assetID, keyPath: \.hdrEnabled))
-                    .toggleStyle(.button).help("Erweiterten Dynamikumfang bearbeiten und auf HDR-fähigen Displays anzeigen")
-            }.buttonStyle(.bordered).controlSize(.small)
+            Toggle("Schwarzweiß", isOn: colorBinding(assetID: assetID, keyPath: \.isMonochrome))
+                .toggleStyle(.switch).controlSize(.small).font(.system(size: 13))
+                .accessibilityIdentifier("develop.monochrome")
             Picker("Profil", selection: Binding(get: { editor.settings(for: assetID).developColor.profile }, set: { profile in
                 finishInput(assetID: assetID)
                 var value = editor.settings(for: assetID); value.developColor.profile = profile
                 setAdjustmentSettings(value, for: assetID)
             })) {
                 ForEach(DevelopColorProfile.allCases, id: \.self) { Text($0.title).tag($0) }
-            }.font(.system(size: 11))
+            }.font(.system(size: 13))
             Divider()
             HStack {
                 Button { developWorkspace.picksWhiteBalance.toggle() } label: {
-                    Image(systemName: "eyedropper").font(.system(size: 16)).frame(width: 28, height: 24)
+                    Label("Neutralgrau wählen", systemImage: "eyedropper").font(.system(size: 13))
                 }.buttonStyle(.plain).foregroundStyle(developWorkspace.picksWhiteBalance ? Theme.accent : Theme.muted)
-                    .help("Weißabgleich: eine neutrale graue Fläche auf dem Bild anklicken")
+                    .help("Neutralgrau im Foto wählen")
                     .accessibilityIdentifier("develop.white-balance-picker")
                     .disabled(developWorkspace.sourceAnalysis == nil)
-                Text("Weißabgleich").font(.system(size: 11))
-                Spacer()
+                Spacer(minLength: 0)
+            }
+            HStack {
+                Text("Weißabgleich").font(.system(size: 13))
+                Spacer(minLength: 0)
                 Menu {
                     Button("Wie Aufnahme") { setWhiteBalance(6_500, assetID: assetID) }
                     Divider()
@@ -171,11 +258,11 @@ struct DevelopInspector: View {
                     Button("Leuchtstoff") { setWhiteBalance(4_000, tint: 15, assetID: assetID) }
                 } label: {
                     Text(settings.developColor.temperature == 6_500 && settings.developColor.tint == 0 ? "Wie Aufnahme" : "Benutzerdefiniert")
-                }.menuStyle(.borderlessButton).fixedSize().font(.system(size: 10)).foregroundStyle(Theme.muted)
+                }.menuStyle(.borderlessButton).fixedSize().font(.system(size: 13)).foregroundStyle(Theme.muted)
             }
             colorSlider("Temperatur", assetID: assetID, keyPath: \.temperature,
                         range: DevelopColorSettings.temperatureRange, neutral: 6_500, step: 50)
-                .help("Relativer Weißabgleich auf entwickelten Pixeln. 6500 erhält den Kamera-/ImageIO-Weißabgleich unverändert.")
+                .help("Relative Farbtemperatur")
             colorSlider("Tönung", assetID: assetID, keyPath: \.tint,
                         range: DevelopColorSettings.tintRange, neutral: 0, step: 1)
             if let error = developWorkspace.errorMessage {
@@ -201,7 +288,7 @@ struct DevelopInspector: View {
     private func colorSlider(_ title: String, assetID: String, keyPath: WritableKeyPath<DevelopColorSettings, Double>,
                              range: ClosedRange<Double>, neutral: Double, step: Double) -> some View {
         HStack(spacing: 7) {
-            Text(title).font(.system(size: 10)).foregroundStyle(Theme.muted).frame(width: 68, alignment: .trailing)
+            Text(title).font(.system(size: 13)).foregroundStyle(Theme.muted).frame(width: 90, alignment: .leading)
             ResettableSlider(value: Binding(get: { editor.settings(for: assetID).developColor[keyPath: keyPath] }, set: { amount in
                 var value = editor.settings(for: assetID); value.developColor[keyPath: keyPath] = amount
                 setAdjustmentSettings(value, for: assetID)
@@ -209,8 +296,8 @@ struct DevelopInspector: View {
                 if editing { beginAdjustment(assetID: assetID) } else { editor.endEditing(assetID: assetID) }
             }).controlSize(.mini).accessibilityLabel(title)
             Text("\(Int(editor.settings(for: assetID).developColor[keyPath: keyPath]))")
-                .monospacedDigit().font(.system(size: 10)).frame(width: 43, alignment: .trailing)
-        }.frame(minHeight: 20)
+                .monospacedDigit().font(.system(size: 13)).frame(width: 43, alignment: .trailing)
+        }.frame(minHeight: 28)
     }
 
     private func toolGroup(_ tool: WorkspaceTool, asset: PhotoAsset) -> some View {
@@ -254,16 +341,16 @@ struct DevelopInspector: View {
     private func toolGroupHeading(_ tool: WorkspaceTool, expanded: Bool,
                                  status: (text: String, symbol: String, isError: Bool)?) -> some View {
         HStack(spacing: 8) {
-            Text(groupTitle(tool)).font(.system(size: 12, weight: .medium))
+            Text(groupTitle(tool)).font(.system(size: 13, weight: .medium))
                 .lineLimit(1).minimumScaleFactor(0.85)
             Spacer(minLength: 3)
             if let status {
                 Label(status.text, systemImage: status.symbol)
-                    .font(.system(size: 9)).foregroundStyle(status.isError ? Color.orange : Theme.muted)
-                    .labelStyle(.iconOnly).help(status.text)
+                    .font(.system(size: 13)).foregroundStyle(status.isError ? Color.orange : Theme.muted)
+                    .help(status.text)
             }
             Image(systemName: expanded ? "chevron.down" : "chevron.left")
-                .font(.system(size: 10, weight: .semibold)).foregroundStyle(Theme.muted)
+                .font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.muted)
         }.padding(.horizontal, 7).frame(maxWidth: .infinity, minHeight: 31, alignment: .leading)
             .background(Theme.panel).contentShape(Rectangle())
     }
@@ -272,10 +359,21 @@ struct DevelopInspector: View {
         switch tool {
         case .edit:
             VStack(alignment: .leading, spacing: 5) {
-                toneProcessingSection(assetID: asset.id)
                 naturalBalanceSection(assetID: asset.id)
-                adjustmentSection("Tonwert", key: "tone", controls: Array(Adjustment.allCases.prefix(6)), assetID: asset.id)
-                LevelsInspector(assetID: asset.id, library: library, workspace: developWorkspace).id("levels-\(asset.id)")
+                automaticToneMenu(assetID: asset.id)
+                adjustmentSection("Lichtregler", key: "tone", controls: Array(Adjustment.allCases.prefix(6)), assetID: asset.id)
+                hdrSection(assetID: asset.id)
+                LevelsInspector(assetID: asset.id, library: library, workspace: developWorkspace,
+                    initialExpanded: false, isExpanded: Binding(
+                        get: { panels.openAdjustmentGroups.contains("levels") },
+                        set: { expanded in
+                            finishInput(assetID: asset.id)
+                            layout.update(developing: library.isDeveloping) {
+                                if expanded { $0.openAdjustmentGroups.insert("levels") }
+                                else { $0.openAdjustmentGroups.remove("levels") }
+                            }
+                        }))
+                    .id("levels-\(asset.id)")
             }
         case .color:
             VStack(alignment: .leading, spacing: 5) {
@@ -305,7 +403,7 @@ struct DevelopInspector: View {
         case .versions:
             VStack(alignment: .leading, spacing: 13) {
                 Text("Aktive Quelle: \(editor.snapshot(for: asset.id).source == .original ? "Importiertes Original" : "Generierter Bildstand")")
-                    .font(.system(size: 11, weight: .medium))
+                    .font(.system(size: 13, weight: .medium))
                 Button("Zum importierten Original zurückkehren") {
                     finishInput(assetID: asset.id)
                     editor.returnToOriginal(assetID: asset.id)
@@ -327,6 +425,13 @@ struct DevelopInspector: View {
                     }.disabled(!saveStatus.canRetry)
                 }
                 ArtifactVariantsSection(assetID: asset.id)
+                DisclosureGroup(isExpanded: $showsAdvancedVersions) {
+                    toneProcessingSection(assetID: asset.id).padding(.top, 8)
+                } label: {
+                    // A container ID would override the migration button's AX ID.
+                    Text("Erweitert").accessibilityIdentifier("develop.versions.advanced")
+                }
+                .font(.system(size: 13))
             }
         }
     }
@@ -351,14 +456,14 @@ struct DevelopInspector: View {
                     .disabled(!editor.canEdit || (maskWorkspace.isPresented ? maskWorkspace.model?.canRedo != true : !editor.canRedo(assetID: assetID)))
                     .accessibilityIdentifier("workspace.redo")
             } else {
-                Button("Zurücksetzen") {
+                Button("Alle Bildkorrekturen zurücksetzen") {
                     finishInput(assetID: assetID)
                     editor.reset(assetID: assetID)
                 }.frame(maxWidth: .infinity)
                     .disabled(maskWorkspace.isPresented || !editor.canEdit || editor.settings(for: assetID).isNeutral)
                     .accessibilityIdentifier("workspace.reset")
             }
-        }.buttonStyle(.bordered).controlSize(.small).font(.system(size: 10))
+        }.buttonStyle(.bordered).controlSize(.small).font(.system(size: 13))
             .padding(.horizontal, 8).frame(height: 38)
     }
 
@@ -424,9 +529,11 @@ struct DevelopInspector: View {
                     || settings.highlights != 0 || settings.shadows != 0
                     || settings.whites != 0 || settings.blacks != 0
                     || settings.autoToneAmount != 0 || settings.naturalBalanceAmount != 0
-                    || !settings.levels.isNeutral
+                    || !settings.levels.isNeutral || settings.developColor.hdrEnabled
             case .color:
-                changed = !settings.developColor.isNeutral || settings.vibrance != 0 || settings.saturation != 0
+                var color = settings.developColor
+                color.hdrEnabled = false
+                changed = !color.isNeutral || settings.vibrance != 0 || settings.saturation != 0
             case .details:
                 changed = settings.texture != 0 || settings.clarity != 0 || settings.dehaze != 0
                     || settings.sharpeningAmount != 0 || settings.luminanceNoiseReduction != 0
@@ -473,10 +580,10 @@ struct DevelopInspector: View {
             Divider()
             SectionLabel(text: "Speicherort")
             Text(asset.fileURL.deletingLastPathComponent().path)
-                .font(.system(size: 11)).foregroundStyle(Theme.muted).textSelection(.enabled)
+                .font(.system(size: 13)).foregroundStyle(Theme.muted).textSelection(.enabled)
                 .fixedSize(horizontal: false, vertical: true)
             Button { library.reveal() } label: { Label("Im Finder anzeigen", systemImage: "arrow.up.right.square") }
-                .font(.system(size: 11)).buttonStyle(.plain).foregroundStyle(Theme.accent)
+                .font(.system(size: 13)).buttonStyle(.plain).foregroundStyle(Theme.accent)
         }
     }
 
@@ -485,7 +592,7 @@ struct DevelopInspector: View {
             Text(title).foregroundStyle(Theme.muted)
             Spacer(minLength: 0)
             Text(value).multilineTextAlignment(.trailing).textSelection(.enabled)
-        }.font(.system(size: 11)).fixedSize(horizontal: false, vertical: true)
+        }.font(.system(size: 13)).fixedSize(horizontal: false, vertical: true)
     }
 
     private func naturalBalanceSection(assetID: String) -> some View {
@@ -502,10 +609,10 @@ struct DevelopInspector: View {
                 }
             )) {
                 Label("Natürlicher Bildausgleich", systemImage: "wand.and.stars")
-                    .font(.system(size: 11, weight: .medium))
+                    .font(.system(size: 13, weight: .medium))
             }.toggleStyle(.switch).controlSize(.small)
                 .accessibilityIdentifier("develop.naturalBalance")
-                .help("Analysiert dieses Foto lokal und gleicht Helligkeit, Lichter, Schatten und Farben zurückhaltend aus. Manuelle Regler bleiben zusätzlich wirksam.")
+                .help("Natürlichen Bildausgleich einschalten")
 
             if settings.naturalBalanceAmount > 0 {
                 naturalBalanceSlider("Stärke", keyPath: \.naturalBalanceAmount, range: 0...100, assetID: assetID)
@@ -518,11 +625,19 @@ struct DevelopInspector: View {
                     var settings = editor.settings(for: assetID)
                     settings.autoToneAmount = 0
                     setAdjustmentSettings(settings, for: assetID)
-                }.font(.system(size: 10))
+                }.font(.system(size: 13))
             }
         }.disabled(!editor.canEdit || !library.canModify || library.comparesOriginal || library.comparesCurrentSourceWithoutSettings)
             .padding(.vertical, 8)
             .overlay(alignment: .top) { Rectangle().fill(Theme.line).frame(height: 1) }
+    }
+
+    private func canMigrate(_ target: ToneMigrationTarget) -> Bool {
+        editor.canEdit && library.canModify && library.selectedID == target.assetID
+            && !library.comparesOriginal && !library.comparesCurrentSourceWithoutSettings
+            && editor.localRevision(for: target.assetID) == target.revision
+            && editor.snapshot(for: target.assetID) == target.snapshot
+            && target.snapshot.settings.toneProcessingVersion == .legacyV1
     }
 
     private func toneProcessingSection(assetID: String) -> some View {
@@ -530,13 +645,17 @@ struct DevelopInspector: View {
         return VStack(alignment: .leading, spacing: 5) {
             if version == .legacyV1 {
                 Text("Bisherige Tonwertverarbeitung").font(.system(size: 13)).foregroundStyle(Theme.muted)
-                Button("Auf sRGB Float (V2) umstellen") {
+                Button("Tonwertverarbeitung umstellen …") {
                     finishInput(assetID: assetID)
-                    editor.upgradeToneProcessing(assetID: assetID)
+                    toneMigrationTarget = ToneMigrationTarget(assetID: assetID,
+                        revision: editor.localRevision(for: assetID), snapshot: editor.snapshot(for: assetID))
                 }
                 .font(.system(size: 13))
-                .help("Ändert die Tonwertkennlinien dieses Bildstands. Alle Regler bleiben erhalten. Einmal Rückgängig stellt die bisherige Verarbeitung wieder her.")
+                .help("Umstellung auf sRGB Float (V2) prüfen")
                 .accessibilityIdentifier("develop.tone-processing.upgrade")
+            } else {
+                Label("Tonwertverarbeitung: sRGB Float (V2)", systemImage: "checkmark.circle")
+                    .font(.system(size: 13))
             }
         }.disabled(!editor.canEdit || !library.canModify || library.comparesOriginal || library.comparesCurrentSourceWithoutSettings)
     }
@@ -544,8 +663,8 @@ struct DevelopInspector: View {
     private func naturalBalanceSlider(_ title: String, keyPath: WritableKeyPath<EditSettings, Double>,
                                       range: ClosedRange<Double>, assetID: String) -> some View {
         HStack(spacing: 7) {
-            Text(title).font(.system(size: 10)).foregroundStyle(Theme.muted)
-                .frame(width: 68, alignment: .trailing)
+            Text(title).font(.system(size: 13)).foregroundStyle(Theme.muted)
+                .frame(width: 90, alignment: .leading)
             ResettableSlider(value: Binding(
                 get: { editor.settings(for: assetID)[keyPath: keyPath] },
                 set: { newValue in
@@ -558,9 +677,9 @@ struct DevelopInspector: View {
                 else { editor.endEditing(assetID: assetID) }
             }).controlSize(.mini).accessibilityLabel("Bildausgleich · \(title)")
             Text("\(Int(editor.settings(for: assetID)[keyPath: keyPath])) %")
-                .monospacedDigit().font(.system(size: 10)).foregroundStyle(Theme.accent)
+                .monospacedDigit().font(.system(size: 13)).foregroundStyle(Theme.accent)
                 .frame(width: 43, alignment: .trailing)
-        }.frame(minHeight: 20)
+        }.frame(minHeight: 28)
     }
 
     private func adjustmentSection(_ title: String, key: String, controls: [Adjustment], assetID: String,
@@ -574,10 +693,10 @@ struct DevelopInspector: View {
                         toggleAdjustmentGroup(key, assetID: assetID)
                     } label: {
                         HStack(spacing: 8) {
-                            Text(title).font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.muted)
+                            Text(title).font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.muted)
                             Spacer(minLength: 0)
                             Image(systemName: expanded ? "chevron.down" : "chevron.left")
-                                .font(.system(size: 9, weight: .semibold)).foregroundStyle(Theme.muted)
+                                .font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.muted)
                         }.frame(minHeight: 24).contentShape(Rectangle())
                     }.buttonStyle(.plain)
                         .workspaceFocusTarget(focusedControl, equals: .adjustmentGroup(key)) {
@@ -586,7 +705,7 @@ struct DevelopInspector: View {
                         .accessibilityLabel(title).accessibilityValue(expanded ? "Geöffnet" : "Geschlossen")
                         .accessibilityHint(expanded ? "Reglergruppe zuklappen" : "Reglergruppe aufklappen")
                 } else {
-                    Text(title).font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.muted)
+                    Text(title).font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.muted)
                         .frame(maxWidth: .infinity, minHeight: 24, alignment: .leading)
                         .accessibilityAddTraits(.isHeader)
                         .accessibilityIdentifier("develop.adjustment-group.\(key)")
@@ -596,7 +715,7 @@ struct DevelopInspector: View {
                     var settings = editor.settings(for: assetID)
                     for item in controls { settings[keyPath: item.keyPath] = item.neutralValue }
                     setAdjustmentSettings(settings, for: assetID)
-                } label: { Image(systemName: "arrow.counterclockwise").font(.system(size: 11)).frame(width: 24, height: 24) }
+                } label: { Text("Zurücksetzen").font(.system(size: 13)) }
                     .buttonStyle(.plain).foregroundStyle(Theme.muted).help("\(title) zurücksetzen")
                     .accessibilityLabel("\(title) zurücksetzen").disabled(readOnly)
             }
@@ -612,19 +731,7 @@ struct DevelopInspector: View {
                             }
                         ), onAutomaticValue: control.automaticToneControl.map { toneControl in
                             {
-                                finishInput(assetID: assetID)
-                                let selectionSession = library.aiSelectionSessionID
-                                let selectionGeneration = library.aiSelectionGeneration
-                                developWorkspace.applyAutomaticTone(toneControl, assetID: assetID, editor: editor) {
-                                    guard let selected = library.selectedAsset, selected.id == assetID,
-                                          library.aiSelectionSessionID == selectionSession,
-                                          library.aiSelectionGeneration == selectionGeneration,
-                                          library.isDeveloping, library.canModify,
-                                          !library.comparesOriginal, !library.comparesCurrentSourceWithoutSettings,
-                                          !maskWorkspace.isPresented,
-                                          let source = try? editor.resolvedSource(for: selected) else { return false }
-                                    return source.identity == developWorkspace.sourceIdentity
-                                }
+                                applyAutomaticTone(toneControl, assetID: assetID)
                             }
                         }, onEditingChanged: { editing in
                             if editing { beginAdjustment(assetID: assetID) }
@@ -658,36 +765,31 @@ struct AdjustmentSlider: View {
 
     var body: some View {
         HStack(spacing: 7) {
-            Text(control.label).font(.system(size: 10)).foregroundStyle(.white.opacity(0.7))
-                .frame(width: 76, alignment: .trailing)
+            Text(control.label).font(.system(size: 13)).foregroundStyle(.white.opacity(0.7))
+                .frame(width: 98, alignment: .leading).fixedSize(horizontal: false, vertical: true)
                 .onTapGesture(count: 2, perform: resetValue)
                 .highPriorityGesture(TapGesture(count: 2).modifiers(.shift).onEnded { _ in
                     guard isEnabled else { return }
                     if let onAutomaticValue { onEditingChanged(false); onAutomaticValue() }
                     else { resetValue() }
-                }).help(gestureHelp)
+                }).help("\(control.label) zurücksetzen")
             ResettableSlider(value: $value, in: control.range, step: control.step, neutralValue: control.neutralValue,
                              onAutomaticValue: onAutomaticValue,
                              onEditingChanged: onEditingChanged)
-                .controlSize(.mini).accessibilityLabel(control.label).help(gestureHelp)
-                .accessibilityHint(gestureHelp)
+                .controlSize(.mini).accessibilityLabel(control.label).help("\(control.label) zurücksetzen")
+                .accessibilityHint(onAutomaticValue == nil ? "Doppelklick setzt zurück" : "Umschalt-Doppelklick setzt automatisch")
             TextField(control.label, value: numericValue,
                       format: .number.precision(.fractionLength(control.fractionDigits)))
                 .textFieldStyle(.plain).multilineTextAlignment(.trailing)
-                .font(.system(size: 10, design: .monospaced))
+                .font(.system(size: 13, design: .monospaced))
                 .foregroundStyle(value == control.neutralValue ? Theme.muted : Theme.accent)
-                .frame(width: 38).accessibilityLabel("\(control.label) Wert")
+                .frame(width: 44).accessibilityLabel("\(control.label) Wert")
                 .focused($valueFocused)
                 .onSubmit { onEditingChanged(false) }
                 .onChange(of: valueFocused) { _, focused in if !focused { onEditingChanged(false) } }
                 .onDisappear { onEditingChanged(false) }
-        }.frame(minHeight: 20)
+        }.frame(minHeight: 28)
             .accessibilityIdentifier("develop.adjustment.\(control.rawValue)")
-    }
-
-    private var gestureHelp: String {
-        onAutomaticValue == nil ? "Doppelklick setzt den Wert zurück" :
-            "Shift-Doppelklick berechnet diesen Tonwert automatisch. Doppelklick setzt den Wert zurück."
     }
 
     private func resetValue() {

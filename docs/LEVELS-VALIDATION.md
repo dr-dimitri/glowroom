@@ -282,3 +282,9 @@ Dokumentation/PR-Text ergänzt; ein weiterer App-Build ist dafür nicht erforder
 Der finale unabhängige Diff-, Schnittstellen-, Test-, Skript- und
 Dokumentationsreview enthält keine offenen Befunde. Die vor Beginn vorhandene
 fremde Teständerung im Haupt-Checkout ist bytegleich erhalten.
+
+## Erweiterte Levels im Arbeitsbereich (#196)
+
+**Licht → Erweiterte Levels** ist die einzige globale Levels-Palette. Sie beginnt geschlossen und speichert ihren Zustand im Workspace. Kanalwahl, fünf Regler/Zahlenfelder, beide Begrenzungsoptionen, Pipetten, **Levels automatisch setzen**, **Levels im Kanal zurücksetzen** und **Levels in allen Kanälen zurücksetzen** bleiben vollständig erreichbar. Bedienung, Zahlen und Status verwenden mindestens 13 pt; **Hilfe zu Levels …** öffnet die fachlichen Erläuterungen mit 14 pt. Präzise gespeicherte Werte werden durch Navigation oder die gröbere Anzeige nicht gerundet. Die neue Navigationstest-Suite prüft dies bei 300 pt Breite mit aktiven RGB-Kurven, HDR, V1 und beiden Clamps. Der vollständige Workspace-Test öffnet die gespeicherte Levels-Untergruppe ausdrücklich, bevor er die automatische Levels-Aktion prüft.
+
+Gezielte Regression: `./scripts/test.sh --jobs 3 --no-parallel --filter 'LevelsInspector|LevelsNumeric|DevelopAutomaticToneTests|NaturalBalanceRendererTests|DevelopDetailWorkspaceIntegrationTests|WorkspaceLayoutTests|DevelopSharpeningWorkspaceTests|EditingModelTests'`. Native Suites bei Bedarf in getrennten Prozessen ausführen, damit gemeinsamer AppKit-Zustand den Abschluss nicht beeinflusst. Visuelle Nachweise und Grenzen stehen unter [Issue 196](issue-196/README.md).

@@ -23,9 +23,8 @@ private struct ArtifactVariantsContent: View {
     var body: some View {
         DisclosureGroup("Gespeicherte Bildstände", isExpanded: $expanded) {
             VStack(alignment: .leading, spacing: 8) {
-                Text("Der Wechsel ist rückgängig machbar. Er startet keine Generierung.").font(.caption)
-                if !loadIdentity.isReady || editor.isLoadingVariants { ProgressView() }
-                else if currentVariants.isEmpty { Text("Keine früheren Bildstände gespeichert.").font(.caption) }
+                if !loadIdentity.isReady || editor.isLoadingVariants { ProgressView("Bildstände werden geladen …") }
+                else if currentVariants.isEmpty { Text("Keine früheren Bildstände gespeichert.").font(.system(size: 13)) }
                 else {
                     ForEach(page, id: \.id) { variant in
                         Button {
@@ -33,7 +32,7 @@ private struct ArtifactVariantsContent: View {
                         } label: {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(variant.snapshot.source == .original ? "Original mit Reglern" : "Generierter Bildstand")
-                                Text(variant.createdAt.formatted(date: .abbreviated, time: .shortened)).font(.caption2)
+                                Text(variant.createdAt.formatted(date: .abbreviated, time: .shortened)).font(.system(size: 13))
                             }
                         }.disabled(!editor.canEdit)
                     }
@@ -43,7 +42,7 @@ private struct ArtifactVariantsContent: View {
                     }
                 }
             }.padding(.top, 8)
-        }.font(.system(size: 11))
+        }.font(.system(size: 13))
             .task(id: loadIdentity) {
                 let identity = loadIdentity
                 offset = 0

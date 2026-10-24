@@ -61,10 +61,21 @@ struct LevelsInspector: View {
     @ObservedObject var workspace: DevelopWorkspace
     @EnvironmentObject private var editor: EditingModel
     @ViewState private var selectedChannel: LevelsChannel = .master
-    @ViewState private var expanded = true
+    @ViewState private var expanded: Bool
+    @ViewState private var showsHelp = false
+    private let expansion: Binding<Bool>?
     @ViewState private var validationMessage: String?
     @ViewState private var pickerMode: LevelsPickerMode = .setTone
     @StateObject private var numericInput = LevelsNumericInput()
+
+    init(assetID: String, library: LibraryModel, workspace: DevelopWorkspace,
+         initialExpanded: Bool = true, isExpanded: Binding<Bool>? = nil) {
+        self.assetID = assetID
+        self.library = library
+        self.workspace = workspace
+        self.expansion = isExpanded
+        _expanded = ViewState(initialValue: initialExpanded)
+    }
 
     private var levels: LevelsSettings { editor.settings(for: assetID).levels }
     private var readOnly: Bool {
@@ -79,9 +90,9 @@ struct LevelsInspector: View {
     }
 
     var body: some View {
-        DisclosureGroup(isExpanded: Binding(get: { expanded }, set: { value in
+        DisclosureGroup(isExpanded: Binding(get: { expansion?.wrappedValue ?? expanded }, set: { value in
             if !value { finishInput(); workspace.endLevelsPicker() }
-            expanded = value
+            if let expansion { expansion.wrappedValue = value } else { expanded = value }
         })) {
             VStack(alignment: .leading, spacing: 5) {
                 HStack {
@@ -89,10 +100,10 @@ struct LevelsInspector: View {
                     LevelsChannelPicker(selection: Binding(get: { selectedChannel }, set: { channel in
                         finishInput(); workspace.endLevelsPicker(); selectedChannel = channel; validationMessage = nil
                     }), titles: LevelsChannel.allCases.map { title($0) + (levels[$0].isNeutral ? "" : " •") })
-                }.font(.system(size: 11))
+                }.font(.system(size: 13))
                 if !otherActiveChannels.isEmpty {
                     Text("Weitere aktive Kanäle: " + otherActiveChannels.map(title).joined(separator: ", "))
-                        .font(.system(size: 10)).foregroundStyle(Theme.accent)
+                        .font(.system(size: 13)).foregroundStyle(Theme.accent)
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityIdentifier("develop.levels.other-active-channels")
                 }
@@ -106,28 +117,24 @@ struct LevelsInspector: View {
                         })
                 } label: {
                     HStack(spacing: 6) {
-                        Text("Tonwertbereich automatisch")
+                        Text(workspace.automaticLevelsBusy ? "Levels werden berechnet …" : "Levels automatisch setzen")
                         if workspace.automaticLevelsBusy { ProgressView().controlSize(.mini) }
                     }
                 }
                 .accessibilityIdentifier("develop.levels.automatic")
-                .help("Ersetzt alle Levels: gemeinsame Eingangsgrenzen, Gamma 1 und Ausgang 0–1; Rot, Grün, Blau und alle Begrenzungen werden zurückgesetzt. Andere Bearbeitungen bleiben erhalten. Nur bei einem sicheren SDR-Vorschlag.")
                 pickerControls
                 ForEach(LevelsUIParameter.allCases) { parameter in
                     parameterRow(parameter, channel: selectedChannel)
                 }
                 Toggle("Eingang auf 0–1 begrenzen", isOn: clampBinding(\.clampInput))
-                    .help("Begrenzt den normalisierten Eingang vor Gamma. Ausgeschaltet bleiben Werte außerhalb des Eingangsbereichs erhalten.")
                     .accessibilityIdentifier("develop.levels.clamp-input")
                 Toggle("Ausgang auf 0–1 begrenzen", isOn: clampBinding(\.clampOutput))
-                    .help("Begrenzt das Ergebnis dieses Kanals nach Gamma und Ausgangsabbildung.")
                     .accessibilityIdentifier("develop.levels.clamp-output")
-                HStack {
-                    Button("Kanal zurücksetzen") { atomicChange { $0[selectedChannel] = .neutral } }
+                VStack(alignment: .leading, spacing: 8) {
+                    Button("Levels im Kanal zurücksetzen") { atomicChange { $0[selectedChannel] = .neutral } }
                         .disabled(levels[selectedChannel].isNeutral && !numericInput.hasPendingChanges)
                         .accessibilityIdentifier("develop.levels.reset-channel")
-                    Spacer(minLength: 4)
-                    Button("Alle zurücksetzen") {
+                    Button("Levels in allen Kanälen zurücksetzen") {
                         atomicChange {
                             $0.master = .neutral; $0.red = .neutral; $0.green = .neutral; $0.blue = .neutral
                         }
@@ -147,16 +154,19 @@ struct LevelsInspector: View {
                 if let description = workspace.levelsSampleDescription {
                     Text(description).font(.system(size: 13)).foregroundStyle(Theme.muted)
                 }
-            }.font(.system(size: 10)).toggleStyle(.checkbox).controlSize(.mini)
+            }.font(.system(size: 13)).toggleStyle(.checkbox).controlSize(.small)
                 .padding(.top, 5).disabled(readOnly)
+            Button("Hilfe zu Levels …") { showsHelp = true }
+                .font(.system(size: 13)).accessibilityIdentifier("develop.levels.help")
         } label: {
-            Text("Tonwertkorrektur").font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.muted)
+            Text("Erweiterte Levels").font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.muted)
                 // A group identifier is inherited by SwiftUI's virtual AX
                 // children and would replace their individual control IDs.
                 .accessibilityIdentifier("develop.levels")
         }
         .padding(.vertical, 6)
         .overlay(alignment: .top) { Rectangle().fill(Theme.line).frame(height: 1) }
+        .sheet(isPresented: $showsHelp) { levelsHelp }
         .onDisappear { finishInput(); workspace.endLevelsPicker() }
         .onChange(of: readOnly) { _, value in if value { workspace.endLevelsPicker() } }
         .onChange(of: editor.localRevision(for: assetID)) { _, _ in workspace.endLevelsPicker() }
@@ -167,9 +177,9 @@ struct LevelsInspector: View {
             Picker("Pipettenmodus", selection: Binding(get: { pickerMode }, set: {
                 finishInput(); workspace.endLevelsPicker(); pickerMode = $0
             })) {
-                Text("Tonwert setzen").tag(LevelsPickerMode.setTone)
+                Text("Tonwert im Kanal setzen").tag(LevelsPickerMode.setTone)
                 Text("RGB neutralisieren").tag(LevelsPickerMode.neutralizeRGB)
-            }.pickerStyle(.segmented).accessibilityIdentifier("develop.levels.picker-mode")
+            }.pickerStyle(.menu).accessibilityIdentifier("develop.levels.picker-mode")
             ForEach([LevelsPickerPoint.black, .gray, .white], id: \.self) { point in
                 let picker = DevelopLevelsPickerSelection(point: point, mode: pickerMode, channel: selectedChannel)
                 Button {
@@ -184,15 +194,45 @@ struct LevelsInspector: View {
                 } label: {
                     HStack(spacing: 5) {
                         Image(systemName: "eyedropper")
-                        Text(point == .black ? "Schwarzpunkt setzen" : point == .gray ? "Mittelton auf 50 % setzen" : "Weißpunkt setzen")
-                        Spacer(minLength: 0)
-                        if workspace.levelsPicker == picker { Text("Aktiv · Esc") }
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(pickerTitle(point))
+                            if workspace.levelsPicker == picker { Text("Aktiv · Esc") }
+                        }.frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }.buttonStyle(.plain).foregroundStyle(workspace.levelsPicker == picker ? Theme.accent : Theme.text)
                     .accessibilityIdentifier("develop.levels.pick-\(point.rawValue)")
             }
                 .fixedSize(horizontal: false, vertical: true)
         }.padding(.vertical, 4)
+    }
+
+    private func pickerTitle(_ point: LevelsPickerPoint) -> String {
+        switch (pickerMode, point) {
+        case (.setTone, .black): "Schwarzpunkt im Kanal setzen"
+        case (.setTone, .gray): "Mittelton im Kanal setzen"
+        case (.setTone, .white): "Weißpunkt im Kanal setzen"
+        case (.neutralizeRGB, .black): "Schwarzpunkt in RGB neutralisieren"
+        case (.neutralizeRGB, .gray): "Mittelton in RGB neutralisieren"
+        case (.neutralizeRGB, .white): "Weißpunkt in RGB neutralisieren"
+        }
+    }
+
+    private var levelsHelp: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Erweiterte Levels").font(.title2)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("Die Levels wirken auf das ganze Foto. RGB gemeinsam folgt den einzelnen Kanälen Rot, Grün und Blau. Ein Punkt hinter dem Kanalnamen markiert geänderte Werte.")
+                    Text("Levels automatisch setzen ersetzt ausschließlich die Levels: gemeinsame Eingangsgrenzen, Gamma 1 und Ausgang 0–1. Die einzelnen RGB-Kanäle und Begrenzungen werden zurückgesetzt. Die Automatik übernimmt nur einen sicheren SDR-Vorschlag.")
+                    Text("Tonwert setzen misst den gewählten Kanal. Die Pipetten setzen den Eingangs-Schwarzpunkt, den Mittelton oder den Eingangs-Weißpunkt. Der Mittelton wird vor den Ausgangsgrenzen auf 50 % gesetzt.")
+                    Text("RGB neutralisieren passt Rot, Grün und Blau gemeinsam an, um einen Farbstich der angeklickten Probe auszugleichen. Dafür müssen die Ausgangsgrenzen der drei Kanäle übereinstimmen. Die Mittelton-Pipette zielt auf 50 % im vollständigen Levels-Ergebnis.")
+                    Text("Nach Auswahl einer Pipette eine geeignete Bildstelle anklicken. Escape beendet die Auswahl. Eine Fehlermeldung bedeutet, dass der bisherige Stand erhalten bleibt.")
+                    Text("Eingang auf 0–1 begrenzen beschränkt den normalisierten Eingang vor Gamma. Ausgang auf 0–1 begrenzen beschränkt das Kanalergebnis nach Gamma und Ausgangsabbildung. Ohne diese Begrenzungen bleiben Werte außerhalb dieses Bereichs erhalten, etwa bei HDR.")
+                    Text("Zahlen mit Eingabetaste oder beim Verlassen des Felds übernehmen. Ein Doppelklick auf einen Reglernamen setzt nur diesen Wert zurück. Die beiden Zurücksetzen-Aktionen betreffen den gewählten Kanal beziehungsweise alle Levels-Kanäle. Änderungen lassen sich rückgängig machen.")
+                }.frame(maxWidth: .infinity, alignment: .leading)
+            }
+            HStack { Spacer(); Button("Fertig") { showsHelp = false }.keyboardShortcut(.defaultAction) }
+        }.font(.system(size: 14)).padding(24).frame(width: 520, height: 600)
     }
 
     private var otherActiveChannels: [LevelsChannel] {
@@ -267,8 +307,8 @@ private struct LevelsChannelPicker: NSViewRepresentable {
     func makeCoordinator() -> Coordinator { Coordinator(self) }
     func makeNSView(context: Context) -> NSPopUpButton {
         let button = NSPopUpButton(frame: .zero, pullsDown: false)
-        button.controlSize = .mini
-        button.font = .systemFont(ofSize: 11)
+        button.controlSize = .small
+        button.font = .systemFont(ofSize: 13)
         button.setContentHuggingPriority(.defaultLow, for: .horizontal)
         button.setAccessibilityLabel("Kanal")
         button.setAccessibilityIdentifier("develop.levels.channel")
@@ -315,17 +355,24 @@ private struct LevelsParameterRow: View {
     @Environment(\.isEnabled) private var isEnabled
 
     var body: some View {
-        HStack(spacing: 6) {
-            Text(parameter.title).font(.system(size: 10)).foregroundStyle(Theme.muted)
-                .frame(width: 78, alignment: .trailing).lineLimit(1).minimumScaleFactor(0.8)
-                .onTapGesture(count: 2) {
-                    guard isEnabled else { return }
-                    numericInput.commit()
-                    NSApp.keyWindow?.makeFirstResponder(nil)
-                    ResettableNativeSlider.cancelInputs(in: NSApp.keyWindow?.contentView)
-                    onEditingChanged(false); onEditingChanged(true)
-                    value = parameter.neutral; onEditingChanged(false)
-                }.help("Doppelklick setzt diesen Wert zurück")
+        VStack(alignment: .leading, spacing: 3) {
+            HStack(spacing: 6) {
+                Text(parameter.title).font(.system(size: 13)).foregroundStyle(Theme.muted)
+                    .onTapGesture(count: 2) {
+                        guard isEnabled else { return }
+                        numericInput.commit()
+                        NSApp.keyWindow?.makeFirstResponder(nil)
+                        ResettableNativeSlider.cancelInputs(in: NSApp.keyWindow?.contentView)
+                        onEditingChanged(false); onEditingChanged(true)
+                        value = parameter.neutral; onEditingChanged(false)
+                    }.help("Wert zurücksetzen: Doppelklick")
+                Spacer(minLength: 4)
+                LevelsNumericField(parameter: parameter, value: $value, input: numericInput,
+                    onEditingChanged: onEditingChanged, onInvalidNumber: onInvalidNumber)
+                    .frame(width: 68)
+                    .accessibilityLabel("\(parameter.title) Wert")
+                    .accessibilityIdentifier("develop.levels.\(parameter.rawValue).value")
+            }
             ResettableSlider(value: $value, in: sliderRange, step: parameter.step,
                 neutralValue: parameter.neutral, onEditingChanged: { editing in
                     if editing {
@@ -334,15 +381,9 @@ private struct LevelsParameterRow: View {
                     }
                     onEditingChanged(editing)
                 })
-                .controlSize(.mini).accessibilityLabel(parameter.title)
+                .controlSize(.small).accessibilityLabel(parameter.title)
                 .accessibilityIdentifier("develop.levels.\(parameter.rawValue).slider")
-            LevelsNumericField(parameter: parameter, value: $value, input: numericInput,
-                onEditingChanged: onEditingChanged, onInvalidNumber: onInvalidNumber)
-                .frame(width: 54)
-                .accessibilityLabel("\(parameter.title) Wert")
-                .accessibilityIdentifier("develop.levels.\(parameter.rawValue).value")
-                .help("Mit Eingabetaste oder beim Verlassen übernehmen")
-        }.frame(minHeight: 20)
+        }.frame(minHeight: 38)
     }
 }
 
@@ -414,7 +455,7 @@ private struct LevelsNumericField: NSViewRepresentable {
         let field = NSTextField()
         field.isBordered = false; field.drawsBackground = false
         field.alignment = .right; field.focusRingType = .none
-        field.font = .monospacedDigitSystemFont(ofSize: 10, weight: .regular)
+        field.font = .monospacedDigitSystemFont(ofSize: 13, weight: .regular)
         context.coordinator.field = field
         field.delegate = context.coordinator
         field.target = context.coordinator; field.action = #selector(Coordinator.submit(_:))

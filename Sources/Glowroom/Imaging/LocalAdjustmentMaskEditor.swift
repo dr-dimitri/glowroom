@@ -525,7 +525,7 @@ struct InlineMaskInspector: View {
             Divider()
             ForEach(LocalMaskControlGroup.allCases) { group in
                 HStack {
-                    Text(group == .tone ? "Lokale Korrekturen" : group.title)
+                    Text(group == .tone ? "Lokale Korrekturen · Licht" : group.title)
                         .font(.system(size: group == .tone ? 13 : 10, weight: .semibold)).foregroundStyle(Theme.muted)
                         .accessibilityIdentifier(group == .tone ? "local-mask.local-scope" : "local-mask.group.\(group.rawValue)")
                     Spacer()
@@ -624,7 +624,7 @@ private enum LocalMaskControlGroup: String, CaseIterable, Identifiable {
     case tone, color, effects
     var id: String { rawValue }
     var title: String {
-        switch self { case .tone: "Tonwert"; case .color: "Farbe"; case .effects: "Effekte" }
+        switch self { case .tone: "Licht"; case .color: "Farbe"; case .effects: "Präsenz" }
     }
     var controls: [LocalMaskControl] {
         switch self {
