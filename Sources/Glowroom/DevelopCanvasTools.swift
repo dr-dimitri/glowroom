@@ -63,6 +63,7 @@ struct DevelopCanvasInteraction: View {
     var levelsSelection: DevelopSelectionIdentity? = nil
     var levelsIsCurrent: @MainActor () -> Bool = { false }
     @EnvironmentObject private var editor: EditingModel
+    @Environment(\.photoCanvasMagnification) private var photoCanvasMagnification
     @ViewState private var start: CGPoint?
     @ViewState private var current: CGPoint?
     @ViewState private var originalCrop: DevelopCropRect?
@@ -78,6 +79,7 @@ struct DevelopCanvasInteraction: View {
         let source: AISourceIdentity?
         let angle: Double
         let straightening: Bool
+        let magnification: CGFloat
     }
     private struct WhiteBalanceInputIdentity: Hashable {
         let asset: String
@@ -110,7 +112,8 @@ struct DevelopCanvasInteraction: View {
                         inputIdentity: AnyHashable(LevelsInputIdentity(display: workspace.levelsDisplay?.identity,
                             picker: workspace.levelsPicker, selection: levelsSelection)),
                         cursor: { levelsReady && levelsRect.contains($0) ? .crosshair : .arrow },
-                        canvasLabel: "Bildfläche für Tonwertpipette wählen · Escape beendet die Pipette")
+                        canvasLabel: "Bildfläche für Tonwertpipette wählen · Escape beendet die Pipette",
+                        allowsViewportHitFallback: workspace.levelsPicker != nil)
                         .accessibilityIdentifier("develop.levels.canvas")
                 } else if workspace.picksWhiteBalance {
                     DevelopCropInputSurface(onInput: { whiteBalanceInput($0, rect: rect) }, onHover: { _ in },
@@ -118,9 +121,10 @@ struct DevelopCanvasInteraction: View {
                         inputIdentity: AnyHashable(WhiteBalanceInputIdentity(asset: asset.id, source: workspace.sourceIdentity)),
                         cursor: { DevelopWhiteBalanceCursor.cursor(at: $0, in: rect,
                             isEnabled: workspace.picksWhiteBalance && editor.canEdit && workspace.isOriginalCanvasReady) },
-                        canvasLabel: "Neutrale Fläche für Weißabgleich wählen")
+                        canvasLabel: "Neutrale Fläche für Weißabgleich wählen",
+                        allowsViewportHitFallback: workspace.isOriginalCanvasReady && workspace.picksWhiteBalance)
                 } else if workspace.tool == .crop {
-                    cropOutline(rect, displayScale: fit)
+                    cropOutline(rect, displayScale: fit * photoCanvasMagnification)
                         .scaleEffect(fit).rotationEffect(.degrees(angle))
                         .opacity(workspace.isOriginalCanvasReady ? 1 : 0)
                     // Native input remains in viewport coordinates. Inverse-map
@@ -131,9 +135,11 @@ struct DevelopCanvasInteraction: View {
                         if point == nil { NSCursor.arrow.set() }
                     }, isEnabled: editor.canEdit && workspace.isOriginalCanvasReady,
                         inputIdentity: AnyHashable(CropInputIdentity(asset: asset.id, source: workspace.sourceIdentity,
-                            angle: angle, straightening: workspace.isStraightening)),
+                            angle: angle, straightening: workspace.isStraightening,
+                            magnification: photoCanvasMagnification)),
                         cursor: { point in cropCursor(at: point, rect: rect, viewport: viewport.size, angle: angle, scale: fit) },
-                        onDoubleClick: onDoubleClick)
+                        onDoubleClick: onDoubleClick,
+                        allowsViewportHitFallback: workspace.isOriginalCanvasReady && workspace.tool == .crop)
                         .accessibilityLabel(workspace.isStraightening ? "Bezugslinie zum Ausrichten auf dem Bild ziehen" : workspace.tool.title + " auf dem Bild")
                         .accessibilityIdentifier("develop.interactive-canvas")
                 } else if workspace.tool == .repair {
@@ -145,10 +151,14 @@ struct DevelopCanvasInteraction: View {
                             .position(x: rect.minX + (current.x + start.x) / 2 * rect.width, y: rect.minY + (current.y + start.y) / 2 * rect.height)
                             .allowsHitTesting(false)
                     }
-                    if workspace.tool != .basic {
-                        Color.clear.contentShape(Rectangle()).gesture(drag(rect))
-                            .accessibilityLabel(workspace.tool.title + " auf dem Bild")
-                            .accessibilityIdentifier("develop.interactive-canvas")
+                    if workspace.tool == .redEye {
+                        DevelopCropInputSurface(onInput: { redEyeInput($0, rect: rect) }, onHover: { _ in },
+                            isEnabled: editor.canEdit && workspace.isOriginalCanvasReady,
+                            inputIdentity: AnyHashable(WhiteBalanceInputIdentity(asset: asset.id, source: workspace.sourceIdentity)),
+                            cursor: { rect.contains($0) ? .crosshair : .arrow },
+                            canvasLabel: workspace.tool.title + " auf dem Bild",
+                            onCancel: { finishGesture() },
+                            allowsViewportHitFallback: workspace.isOriginalCanvasReady && workspace.tool == .redEye)
                     }
                 }
             }
@@ -158,6 +168,7 @@ struct DevelopCanvasInteraction: View {
             .onChange(of: workspace.picksWhiteBalance) { _, _ in finishGesture() }
             .onChange(of: workspace.levelsPicker) { _, _ in finishGesture() }
             .onChange(of: workspace.isStraightening) { _, _ in finishGesture() }
+            .onChange(of: photoCanvasMagnification) { _, _ in finishGesture() }
             .onChange(of: asset.id) { _, _ in finishGesture() }
             .onChange(of: sourceSize) { _, _ in finishGesture() }
             .onChange(of: workspace.sourceIdentity) { _, _ in finishGesture() }
@@ -229,7 +240,8 @@ struct DevelopCanvasInteraction: View {
               let initial = DevelopCropCanvasPresentation.canvasPoint(from: event.startLocation, viewport: viewport, angle: angle, scale: scale) else { return }
         if event.phase == .began {
             let action = DevelopCropInteraction.dragAction(at: initial, crop: geometry.crop, imageRect: rect,
-                forceMove: event.kind == .threeFinger || NSEvent.modifierFlags.contains(.command), hitRadius: DevelopCropInteraction.hitRadius / scale)
+                forceMove: event.kind == .threeFinger || NSEvent.modifierFlags.contains(.command),
+                hitRadius: DevelopCropInteraction.hitRadius / (scale * photoCanvasMagnification))
             let touchesHandle: Bool
             if case .resize = action { touchesHandle = true } else { touchesHandle = false }
             guard let point = normalized(initial, rect: rect, clamp: touchesHandle) else { return }
@@ -281,7 +293,7 @@ struct DevelopCanvasInteraction: View {
               let location = DevelopCropCanvasPresentation.canvasPoint(from: point, viewport: viewport, angle: angle, scale: scale) else { return .arrow }
         if straighteningGesture || workspace.isStraightening { return .crosshair }
         let action = cropAction ?? DevelopCropInteraction.dragAction(at: location, crop: geometry.crop, imageRect: rect,
-            forceMove: false, hitRadius: DevelopCropInteraction.hitRadius / scale)
+            forceMove: false, hitRadius: DevelopCropInteraction.hitRadius / (scale * photoCanvasMagnification))
         switch action {
         case .resize(let handle): return DevelopCropCursor.cursor(for: handle, angle: angle)
         case .move: return start == nil ? .openHand : .closedHand
@@ -289,29 +301,35 @@ struct DevelopCanvasInteraction: View {
         }
     }
 
-    private func drag(_ rect: CGRect) -> some Gesture {
-        DragGesture(minimumDistance: 0).onChanged { value in
-            guard editor.canEdit, workspace.isOriginalCanvasReady,
-                  let point = normalized(value.location, rect: rect, clamp: start != nil) else { return }
-            if start == nil {
-                guard let initial = normalized(value.startLocation, rect: rect) else { return }
-                start = initial; current = initial
-                editor.endEditing(assetID: asset.id); editor.beginEditing(assetID: asset.id)
-
-            }
+    private func redEyeInput(_ event: DevelopCropInputEvent, rect: CGRect) {
+        if event.phase == .cancelled { finishGesture(); return }
+        guard event.kind == .pointer, workspace.tool == .redEye,
+              editor.canEdit, workspace.isOriginalCanvasReady else { return }
+        if event.phase == .began {
+            guard let initial = normalized(event.startLocation, rect: rect) else { return }
+            start = initial; current = initial
+            editor.endEditing(assetID: asset.id); editor.beginEditing(assetID: asset.id)
+            expectedCropRevision = editor.localRevision(for: asset.id)
+            expectedCropSession = editor.aiEditSessionID
+        }
+        guard start != nil, expectedCropRevision == editor.localRevision(for: asset.id),
+              expectedCropSession == editor.aiEditSessionID else {
+            finishGesture()
+            return
+        }
+        if event.phase == .began || event.phase == .changed {
+            guard let point = normalized(event.location, rect: rect, clamp: true) else { return }
             current = point
-
-        }.onEnded { value in
+        }
+        if event.phase == .ended {
             defer { finishGesture() }
-            guard let start, let end = normalized(value.location, rect: rect, clamp: true) else { return }
-            if workspace.tool == .redEye {
-                let center = CGPoint(x: (start.x + end.x) / 2, y: (start.y + end.y) / 2)
-                do {
-                    let correction = try DevelopRedEyeCorrection(center: LocalMaskPoint(x: center.x, y: center.y),
-                        radiusX: max(0.005, abs(end.x - start.x) / 2), radiusY: max(0.005, abs(end.y - start.y) / 2), strength: workspace.redEyeStrength)
-                    update { $0.redEyeCorrections.append(correction) }
-                } catch { workspace.errorMessage = error.localizedDescription }
-            }
+            guard let start, let end = normalized(event.location, rect: rect, clamp: true) else { return }
+            let center = CGPoint(x: (start.x + end.x) / 2, y: (start.y + end.y) / 2)
+            do {
+                let correction = try DevelopRedEyeCorrection(center: LocalMaskPoint(x: center.x, y: center.y),
+                    radiusX: max(0.005, abs(end.x - start.x) / 2), radiusY: max(0.005, abs(end.y - start.y) / 2), strength: workspace.redEyeStrength)
+                update { $0.redEyeCorrections.append(correction) }
+            } catch { workspace.errorMessage = error.localizedDescription }
         }
     }
     private func whiteBalanceInput(_ event: DevelopCropInputEvent, rect: CGRect) {

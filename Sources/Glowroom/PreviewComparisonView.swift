@@ -78,21 +78,71 @@ struct PreviewComparisonGeometry {
         return CGSize(width: value.width.isFinite ? min(limit.width, max(-limit.width, value.width)) : 0,
                       height: value.height.isFinite ? min(limit.height, max(-limit.height, value.height)) : 0)
     }
+
+    func normalizedImagePoint(at point: CGPoint, aspectRatio: CGFloat?, beforeAspectRatio: CGFloat? = nil) -> CGPoint? {
+        let pane = beforeFrame.contains(point) ? beforeFrame : afterFrame
+        guard pane.contains(point) else { return nil }
+        let isBefore = pane == beforeFrame
+        let content = isBefore ? beforeContentFrame : afterContentFrame
+        let paneAspect = isBefore ? beforeAspectRatio ?? aspectRatio : aspectRatio
+        let image = fittedImageFrame(in: content.size, aspectRatio: paneAspect)
+            .offsetBy(dx: pane.minX + content.minX, dy: pane.minY + content.minY)
+        guard image.width > 0, image.height > 0, image.contains(point) else { return nil }
+        return CGPoint(x: (point.x - image.minX) / image.width, y: (point.y - image.minY) / image.height)
+    }
+
+    func initialZoomPan(anchor: CGPoint, aspectRatio: CGFloat?, beforeAspectRatio: CGFloat? = nil) -> CGSize {
+        let image = fittedImageFrame(in: afterContentFrame.size, aspectRatio: aspectRatio)
+        let x = anchor.x.isFinite ? min(1, max(0, anchor.x)) : 0.5
+        let y = anchor.y.isFinite ? min(1, max(0, anchor.y)) : 0.5
+        return clampedPan(CGSize(width: (0.5 - x) * image.width * 2,
+                                height: (0.5 - y) * image.height * 2), aspectRatio: aspectRatio,
+                          beforeAspectRatio: beforeAspectRatio)
+    }
+
+    func clampedPan(_ value: CGSize, aspectRatio: CGFloat?, beforeAspectRatio: CGFloat? = nil) -> CGSize {
+        let image = fittedImageFrame(in: afterContentFrame.size, aspectRatio: aspectRatio)
+        var limit = CGSize(width: max(0, image.width - afterContentFrame.width / 2),
+                           height: max(0, image.height - afterContentFrame.height / 2))
+        if !beforeContentFrame.isEmpty {
+            let original = fittedImageFrame(in: beforeContentFrame.size, aspectRatio: beforeAspectRatio ?? aspectRatio)
+            // A cropped after-image can fit differently from its original.
+            // Shared panning must honor the tighter bound of both canvases.
+            limit.width = min(limit.width, max(0, original.width - beforeContentFrame.width / 2))
+            limit.height = min(limit.height, max(0, original.height - beforeContentFrame.height / 2))
+        }
+        return CGSize(width: value.width.isFinite ? min(limit.width, max(-limit.width, value.width)) : 0,
+                      height: value.height.isFinite ? min(limit.height, max(-limit.height, value.height)) : 0)
+    }
+
+    private func fittedImageFrame(in size: CGSize, aspectRatio: CGFloat?) -> CGRect {
+        guard let aspectRatio, aspectRatio.isFinite, aspectRatio > 0, size.width > 0, size.height > 0 else {
+            return CGRect(origin: .zero, size: size)
+        }
+        let width = min(size.width, size.height * aspectRatio)
+        let height = width / aspectRatio
+        return CGRect(x: (size.width - width) / 2, y: (size.height - height) / 2, width: width, height: height)
+    }
 }
 
 /// Layout and divider movement only update a few UI scalars. The existing
 /// bounded preview pipeline owns all decoding and image rendering, so adding
 /// a worker for this constant-size geometry would add scheduling overhead.
 struct PreviewComparisonView<Before: View, After: View>: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let layout: PreviewComparisonLayout
     let navigationIdentity: AnyHashable
     let zoomed: Bool
+    let zoomAnchor: CGPoint
+    let imageAspectRatio: CGFloat?
+    let beforeImageAspectRatio: CGFloat?
+    let onClick: ((CGPoint) -> Void)?
     let onDoubleClick: () -> Void
     private let before: Before
     private let after: After
     @ViewState private var fraction = 0.5
     @ViewState private var dragStart: Double?
-    @ViewState private var pan = CGSize.zero
+    @ViewState private var pan: CGSize?
     @ViewState private var panStart: CGSize?
     private struct DividerIdentity: Hashable {
         let layout: PreviewComparisonLayout
@@ -106,17 +156,22 @@ struct PreviewComparisonView<Before: View, After: View>: View {
 
     init(layout: PreviewComparisonLayout,
          navigationIdentity: AnyHashable = AnyHashable("comparison"),
-         zoomed: Bool = false, onDoubleClick: @escaping () -> Void = {},
+         zoomed: Bool = false, zoomAnchor: CGPoint = CGPoint(x: 0.5, y: 0.5),
+         imageAspectRatio: CGFloat? = nil, beforeImageAspectRatio: CGFloat? = nil,
+         onClick: ((CGPoint) -> Void)? = nil,
+         onDoubleClick: @escaping () -> Void = {},
          @ViewBuilder before: () -> Before, @ViewBuilder after: () -> After) {
         self.layout = layout; self.navigationIdentity = navigationIdentity
         self.zoomed = zoomed; self.onDoubleClick = onDoubleClick
+        self.zoomAnchor = zoomAnchor; self.imageAspectRatio = imageAspectRatio; self.onClick = onClick
+        self.beforeImageAspectRatio = beforeImageAspectRatio
         self.before = before(); self.after = after()
     }
 
     var body: some View {
         GeometryReader { viewport in
             let geometry = PreviewComparisonGeometry(layout: layout, size: viewport.size, fraction: fraction)
-            let visiblePan = geometry.clampedPan(pan)
+            let visiblePan = currentPan(in: geometry)
             ZStack(alignment: .topLeading) {
                 if layout == .single {
                     after
@@ -129,9 +184,23 @@ struct PreviewComparisonView<Before: View, After: View>: View {
                     // input surface so pointer drags cannot start a photo pan.
                     DevelopCropInputSurface(onInput: { movePhoto($0, size: viewport.size) }, onHover: { _ in }, isEnabled: true,
                         inputIdentity: AnyHashable(NavigationIdentity(layout: layout, source: navigationIdentity, zoomed: zoomed)),
-                        cursor: { _ in zoomed ? (panStart != nil ? .closedHand : .openHand) : .arrow },
-                        onDoubleClick: onDoubleClick,
-                        canvasLabel: zoomed ? "Vergleich verschieben · Doppelklick zum Einpassen" : "Vergleich · Doppelklick zum Vergrößern",
+                        cursor: { point in
+                            zoomed ? (panStart != nil ? .closedHand : .openHand)
+                                : (geometry.normalizedImagePoint(at: point, aspectRatio: imageAspectRatio,
+                                                                 beforeAspectRatio: beforeImageAspectRatio) != nil
+                                    ? PhotoCanvasCursors.zoomIn : .arrow)
+                        },
+                        onClick: onClick.map { action in
+                            { point in
+                                if zoomed { action(zoomAnchor) }
+                                else if let normalized = geometry.normalizedImagePoint(at: point, aspectRatio: imageAspectRatio,
+                                                                                       beforeAspectRatio: beforeImageAspectRatio) {
+                                    action(normalized)
+                                }
+                            }
+                        },
+                        onDoubleClick: onClick == nil ? onDoubleClick : nil,
+                        canvasLabel: zoomed ? "Vergleich verschieben · Klicken zum Einpassen" : "Vergleich · Klicken zum Vergrößern",
                         onCancel: { panStart = nil }, pansWithPointer: false,
                         canvasIdentifier: "workspace.comparison-navigation", capturesEscapeWhileIdle: false,
                         onScroll: zoomed ? { scrollPhoto($0, size: viewport.size) } : nil)
@@ -145,6 +214,8 @@ struct PreviewComparisonView<Before: View, After: View>: View {
         .onChange(of: layout) { _, _ in resetPan(); dragStart = nil }
         .onChange(of: navigationIdentity) { _, _ in resetPan(); dragStart = nil }
         .onChange(of: zoomed) { _, _ in resetPan() }
+        .onChange(of: zoomAnchor) { _, _ in resetPan() }
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.22), value: zoomed)
     }
 
     private func pane<Content: View>(_ content: Content, frame: CGRect, contentFrame: CGRect, pan: CGSize,
@@ -212,18 +283,25 @@ struct PreviewComparisonView<Before: View, After: View>: View {
         guard zoomed else { panStart = nil; return }
         if event.phase == .cancelled { panStart = nil; return }
         let geometry = PreviewComparisonGeometry(layout: layout, size: size, fraction: fraction)
-        if event.phase == .began { panStart = geometry.clampedPan(pan) }
+        if event.phase == .began { panStart = currentPan(in: geometry) }
         guard let panStart else { return }
         pan = geometry.clampedPan(CGSize(width: panStart.width + event.translation.width,
-                                       height: panStart.height + event.translation.height))
+                                       height: panStart.height + event.translation.height), aspectRatio: imageAspectRatio,
+                                  beforeAspectRatio: beforeImageAspectRatio)
         if event.phase == .ended { self.panStart = nil }
     }
-    private func resetPan() { pan = .zero; panStart = nil }
+    private func resetPan() { pan = nil; panStart = nil }
+    private func currentPan(in geometry: PreviewComparisonGeometry) -> CGSize {
+        geometry.clampedPan(pan ?? geometry.initialZoomPan(anchor: zoomAnchor, aspectRatio: imageAspectRatio,
+                                                           beforeAspectRatio: beforeImageAspectRatio),
+                            aspectRatio: imageAspectRatio, beforeAspectRatio: beforeImageAspectRatio)
+    }
     private func scrollPhoto(_ delta: CGSize, size: CGSize) {
         guard zoomed else { return }
         let geometry = PreviewComparisonGeometry(layout: layout, size: size, fraction: fraction)
-        let current = geometry.clampedPan(pan)
-        pan = geometry.clampedPan(CGSize(width: current.width + delta.width, height: current.height + delta.height))
+        let current = currentPan(in: geometry)
+        pan = geometry.clampedPan(CGSize(width: current.width + delta.width, height: current.height + delta.height),
+                                 aspectRatio: imageAspectRatio, beforeAspectRatio: beforeImageAspectRatio)
     }
 }
 

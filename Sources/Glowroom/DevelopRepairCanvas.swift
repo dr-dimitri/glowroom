@@ -83,16 +83,17 @@ struct DevelopRepairCanvas: View {
                 DevelopCropInputSurface(onInput: { input($0, in: rect) }, onHover: { hover = $0 },
                     isEnabled: editor.canEdit && workspace.isOriginalCanvasReady,
                     inputIdentity: AnyHashable(InputIdentity(asset: asset.id, source: workspace.sourceIdentity, mode: workspace.repairMode)),
-                    cursor: { rect.contains($0) ? .crosshair : .arrow }, onDoubleClick: {
+                    cursor: { rect.contains($0) ? .crosshair : .arrow }, onDoubleClick: onDoubleClick.map { action in {
                         finishPointer(); inputQueue.cancelPending()
                         // DetailView replaces its native canvas when zooming.
                         // Keep earlier independent commands in the workspace.
-                        replacesCanvasForZoom = onDoubleClick != nil; onDoubleClick?()
-                    },
+                        replacesCanvasForZoom = true; action()
+                    } },
                     canvasLabel: "Reparieren auf dem Bild", onCancel: {
                         finish(); workspace.cancelRepairWork(clearCandidates: false)
-                    }, onDoubleClickBegan: { finishPointer(); inputQueue.cancelPending() },
-                    onTeardown: { teardown() })
+                    }, onDoubleClickBegan: onDoubleClick == nil ? nil : { finishPointer(); inputQueue.cancelPending() },
+                    onTeardown: { teardown() },
+                    allowsViewportHitFallback: workspace.isOriginalCanvasReady && workspace.tool == .repair)
             }.onChange(of: viewport.size) { _, _ in teardown() }
         }.opacity(workspace.isOriginalCanvasReady ? 1 : 0)
             .onChange(of: asset.id) { _, _ in finish() }

@@ -118,12 +118,13 @@ private struct PhotoContextMenu: View {
 
 struct DetailView: View {
     @ObservedObject var model: LibraryModel
+    @ObservedObject var photoViewport: PhotoViewportState
     @EnvironmentObject private var editor: EditingModel
     @EnvironmentObject private var layout: WorkspaceLayoutModel
     @Environment(\.workspaceCanvasMeasurement) private var measureCanvas
-    @ViewState<Bool> private var zoomed = false
+    private var zoomed: Bool { photoViewport.isZoomed }
     @ViewState private var canvasSize = CGSize.zero
-    @ViewState private var zoomCanvasSize = CGSize.zero
+    @ViewState private var comparisonZoomAnchor = CGPoint(x: 0.5, y: 0.5)
     @ViewState private var photoHeaderHeight = CGFloat(30)
     @EnvironmentObject private var maskWorkspace: InlineMaskWorkspace
     @EnvironmentObject private var developWorkspace: DevelopWorkspace
@@ -131,10 +132,6 @@ struct DetailView: View {
     private var usesNativeCropInput: Bool {
         !comparesBeforeAfter && model.isDeveloping && developWorkspace.tool == .crop && model.editingRenderIntent == .currentEditing
             && !maskWorkspace.isPresented && !developWorkspace.picksWhiteBalance
-    }
-    private var usesNativeDevelopInput: Bool {
-        !comparesBeforeAfter && model.isDeveloping && [.crop, .repair].contains(developWorkspace.tool)
-            && model.editingRenderIntent == .currentEditing && !maskWorkspace.isPresented && !developWorkspace.picksWhiteBalance
     }
     private var usesPhotoNavigationInput: Bool {
         comparesBeforeAfter || (!maskWorkspace.isPresented && !developWorkspace.picksDetail && developWorkspace.levelsPicker == nil && (!model.isDeveloping || model.editingRenderIntent != .currentEditing
@@ -154,20 +151,14 @@ struct DetailView: View {
                 DevelopPhotoHeader(asset: asset, previewLabel: previewLabel)
                     .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { photoHeaderHeight = $0 }
                 GeometryReader { geometry in
-                    if zoomed && !comparesBeforeAfter {
-                        ScrollView([.horizontal, .vertical]) {
-                            developCanvas(asset: asset)
-                                // Capture magnification once; resizing panels only
-                                // changes the viewport around this scroll content.
-                                .frame(width: zoomCanvasSize.width, height: zoomCanvasSize.height)
-                                .environment(\.photoCanvasPanning, true)
-                                .onTapGesture(count: 2) { if !usesNativeDevelopInput && !usesPhotoNavigationInput && !developWorkspace.picksDetail { zoomed = false } }
-                        }
-                    } else {
+                    if comparesBeforeAfter {
                         developCanvas(asset: asset)
                             .padding(18)
                             .frame(width: geometry.size.width, height: geometry.size.height)
-                            .onTapGesture(count: 2) { if !usesNativeDevelopInput && !usesPhotoNavigationInput && !developWorkspace.picksDetail { toggleZoom(viewport: geometry.size) } }
+                    } else {
+                        PhotoCanvasViewport(state: photoViewport, imageAspectRatio: imageAspectRatio(for: asset)) {
+                            developCanvas(asset: asset)
+                        }
                     }
                 }.onGeometryChange(for: CGSize.self) { $0.size } action: {
                     canvasSize = $0
@@ -205,7 +196,9 @@ struct DetailView: View {
                 }
             }
         }.frame(maxWidth: .infinity, maxHeight: .infinity).background(model.isDeveloping ? Theme.canvas : Theme.background)
-            .onChange(of: model.selectedID) { _, _ in zoomed = false }
+            .onChange(of: model.selectedID) { _, _ in photoViewport.reset() }
+            .onChange(of: navigatorAvailable) { _, value in photoViewport.setNavigationAvailable(value) }
+            .onAppear { photoViewport.setNavigationAvailable(navigatorAvailable) }
         }
     }
 
@@ -221,7 +214,10 @@ struct DetailView: View {
                         navigationIdentity: AnyHashable(NavigationIdentity(asset: asset.id,
                             source: developWorkspace.sourceIdentity, comparesOriginal: false,
                             comparesSource: false, comparisonLayout: model.previewComparisonLayout)),
-                        zoomed: zoomed, onDoubleClick: { toggleZoom(viewport: canvasSize) }) {
+                        zoomed: zoomed, zoomAnchor: comparisonZoomAnchor,
+                        imageAspectRatio: imageAspectRatio(for: asset),
+                        beforeImageAspectRatio: CGFloat(max(1, asset.pixelWidth)) / CGFloat(max(1, asset.pixelHeight)),
+                        onClick: { toggleZoom(at: $0) }) {
                         EditingPhotoPreview(asset: asset, intent: .importedOriginal, developing: true)
                     } after: {
                         EditingPhotoPreview(asset: asset, intent: .currentEditing,
@@ -234,7 +230,8 @@ struct DetailView: View {
                         // Composite the cached source immediately while the crop tool is
                         // open. Only the photo rotates; the shared status stays upright.
                     if maskWorkspace.isPresented {
-                        InlineMaskCanvas(workspace: maskWorkspace).allowsHitTesting(developWorkspace.isOriginalCanvasReady)
+                        InlineMaskCanvas(workspace: maskWorkspace, isEnabled: developWorkspace.isOriginalCanvasReady)
+                            .allowsHitTesting(developWorkspace.isOriginalCanvasReady)
                     } else if model.isDeveloping, model.editingRenderIntent == .currentEditing {
                         if developWorkspace.picksDetail {
                             DevelopDetailCanvas(workspace: developWorkspace,
@@ -243,7 +240,7 @@ struct DetailView: View {
                             let selection = DevelopSelectionIdentity(sessionID: model.aiSelectionSessionID,
                                                                     generation: model.aiSelectionGeneration)
                             DevelopCanvasInteraction(asset: asset, workspace: developWorkspace,
-                                onDoubleClick: { toggleZoom(viewport: canvasSize) }, levelsSelection: selection,
+                                levelsSelection: selection,
                                 levelsIsCurrent: {
                                     guard model.selectedID == asset.id && model.aiSelectionSessionID == selection.sessionID &&
                                     model.aiSelectionGeneration == selection.generation && model.canModify &&
@@ -269,20 +266,49 @@ struct DetailView: View {
                             source: developWorkspace.sourceIdentity, comparesOriginal: model.comparesOriginal,
                             comparesSource: model.comparesCurrentSourceWithoutSettings,
                             comparisonLayout: model.previewComparisonLayout)),
-                        cursor: { _ in zoomed ? .openHand : .arrow },
-                        onDoubleClick: { toggleZoom(viewport: canvasSize) },
-                        canvasLabel: zoomed ? "Vergrößertes Bild verschieben · Doppelklick zum Einpassen" : "Bild · Doppelklick zum Vergrößern",
-                        pansWithPointer: true, canvasIdentifier: "workspace.photo-navigation")
+                        cursor: { point in
+                            let rect = displayedImageRect(for: asset, in: viewport.size)
+                            return rect.contains(point) ? (zoomed ? .openHand : PhotoCanvasCursors.zoomIn) : .arrow
+                        },
+                        onClick: { point in
+                            let rect = displayedImageRect(for: asset, in: viewport.size)
+                            guard rect.contains(point), rect.width > 0, rect.height > 0 else { return }
+                            toggleZoom(at: CGPoint(x: (point.x - rect.minX) / rect.width,
+                                                   y: (point.y - rect.minY) / rect.height))
+                        },
+                        canvasLabel: zoomed ? "Vergrößertes Bild verschieben · Klick zum Einpassen" : "Bild · Klick zum Vergrößern",
+                        pansWithPointer: true, canvasIdentifier: "workspace.photo-navigation",
+                        allowsViewportHitFallback: true)
                 }
             }
         }
     }
 
-    private func toggleZoom(viewport: CGSize) {
-        if !zoomed {
-            zoomCanvasSize = CGSize(width: max(1, viewport.width * 2), height: max(1, viewport.height * 2))
+    private func toggleZoom(at point: CGPoint? = nil) {
+        if !zoomed { comparisonZoomAnchor = point ?? CGPoint(x: 0.5, y: 0.5) }
+        photoViewport.toggleZoom(at: point)
+    }
+
+    private var navigatorAvailable: Bool {
+        !comparesBeforeAfter && !maskWorkspace.isPresented && !developWorkspace.tool.usesOriginalCanvas
+            && !developWorkspace.picksWhiteBalance && model.editingRenderIntent == .currentEditing
+    }
+
+    private func imageAspectRatio(for asset: PhotoAsset) -> CGFloat {
+        if let image = developWorkspace.navigatorImage,
+           comparesBeforeAfter || (!developWorkspace.tool.usesOriginalCanvas && !developWorkspace.picksWhiteBalance
+               && model.editingRenderIntent == .currentEditing) {
+            return CGFloat(image.width) / CGFloat(max(1, image.height))
         }
-        zoomed.toggle()
+        let size = developWorkspace.sourceSize ?? CGSize(width: max(1, asset.pixelWidth), height: max(1, asset.pixelHeight))
+        return size.width / max(1, size.height)
+    }
+
+    private func displayedImageRect(for asset: PhotoAsset, in size: CGSize) -> CGRect {
+        let ratio = imageAspectRatio(for: asset)
+        let width = min(size.width, size.height * ratio)
+        let height = width / ratio
+        return CGRect(x: (size.width - width) / 2, y: (size.height - height) / 2, width: width, height: height)
     }
 
     private var previewLabel: String {
@@ -325,10 +351,10 @@ struct DetailView: View {
             }.buttonStyle(.plain).help("Originalbild im Finder anzeigen")
                 .accessibilityLabel("Im Finder anzeigen")
                 .accessibilityIdentifier("workspace.reveal-in-finder")
-            Button { toggleZoom(viewport: canvasSize) } label: {
+            Button { toggleZoom() } label: {
                 Image(systemName: zoomed ? "minus.magnifyingglass" : "plus.magnifyingglass")
                     .frame(width: 28, height: 30)
-            }.buttonStyle(.plain).help(zoomed ? "Einpassen · Doppelklick auf das Bild · Drei-Finger-Ziehen zum Verschieben" : "Vergrößern · Doppelklick auf das Bild")
+            }.buttonStyle(.plain).help(zoomed ? "Einpassen · Klick auf das Bild · Drei-Finger-Ziehen zum Verschieben" : "Vergrößern · Klick auf das Bild")
                 .accessibilityLabel(zoomed ? "Einpassen" : "Vergrößern")
                 .accessibilityIdentifier("workspace.zoom")
             Button { model.showPreviewComparison(.single) } label: {

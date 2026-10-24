@@ -8,13 +8,29 @@ import GlowroomCore
 @MainActor
 struct InlineMaskCanvas: View {
     @ObservedObject var workspace: InlineMaskWorkspace
+    var isEnabled = true
+    @Environment(\.photoCanvasMagnification) private var photoCanvasMagnification
     @StateObject private var overlay = LocalMaskOverlayModel()
     @ViewState private var cursor: CGPoint?
     @ViewState private var gesture: GradientGesture?
     @ViewState private var inputIdentity: InputIdentity?
     @ViewState private var interruptsUntilMouseUp = false
-    @GestureState private var pointerIsDown = false
-    private struct InputIdentity { let source: AISourceIdentity; let layerID: UUID }
+    private struct InputIdentity {
+        let source: AISourceIdentity
+        let layerID: UUID
+        let context: UUID
+    }
+    private struct CanvasInputIdentity: Hashable {
+        let source: AISourceIdentity?
+        let layerID: UUID?
+        let refines: Bool
+        let erases: Bool
+        let inverted: Bool?
+        let context: UUID?
+        let magnification: CGFloat
+        let width: CGFloat
+        let height: CGFloat
+    }
     private var overlayRequest: LocalMaskOverlayRequest? {
         guard workspace.isPresented, workspace.showsOverlay, !workspace.comparesBefore,
               let source = workspace.source, let canvas = workspace.canvasSize,
@@ -36,14 +52,18 @@ struct InlineMaskCanvas: View {
                 ZStack(alignment: .topLeading) {
                     if !workspace.comparesBefore { maskImage(geometry: geometry) }
                     brushCursor(geometry: geometry)
-                    Color.clear.contentShape(Rectangle())
-                        .gesture(drag(geometry))
-                        .onContinuousHover { phase in
-                            switch phase { case .active(let point): cursor = point; case .ended: cursor = nil }
-                        }
-                        .accessibilityLabel("Lokale Maske auf dem Bild zeichnen")
-                        .accessibilityIdentifier("local-mask.canvas")
-                        .allowsHitTesting(workspace.isCurrent && !workspace.comparesBefore && workspace.model?.isGenerating != true)
+                    let acceptsInput = isEnabled && workspace.isCurrent && !workspace.comparesBefore
+                        && workspace.model?.isGenerating != true
+                    DevelopCropInputSurface(onInput: { input($0, geometry: geometry) },
+                        onHover: { cursor = $0 }, isEnabled: acceptsInput,
+                        inputIdentity: AnyHashable(CanvasInputIdentity(source: workspace.source,
+                            layerID: workspace.selected?.id, refines: workspace.refines,
+                            erases: workspace.erases, inverted: workspace.selected?.mask.isInverted,
+                            context: workspace.model?.inputContextID, magnification: photoCanvasMagnification,
+                            width: viewport.size.width, height: viewport.size.height)), cursor: { _ in .arrow },
+                        canvasLabel: "Lokale Maske auf dem Bild zeichnen", onCancel: { cancelGesture() },
+                        canvasIdentifier: "local-mask.canvas", capturesEscapeWhileIdle: false,
+                        onTeardown: { cancelGesture() }, allowsViewportHitFallback: acceptsInput)
                 }.clipped()
                     .onChange(of: viewport.size) { _, _ in cancelGesture() }
             }
@@ -53,15 +73,14 @@ struct InlineMaskCanvas: View {
             if message != nil || workspace.errorMessage == previous { workspace.errorMessage = message }
         }
         .onChange(of: workspace.model?.selectedID) { _, _ in cancelGesture() }
+        .onChange(of: workspace.model?.inputContextID) { _, _ in cancelGesture() }
         .onChange(of: workspace.selected?.mask.isInverted) { _, _ in cancelGesture() }
         .onChange(of: workspace.refines) { _, _ in cancelGesture() }
+        .onChange(of: workspace.erases) { _, _ in cancelGesture() }
+        .onChange(of: photoCanvasMagnification) { _, _ in cancelGesture() }
         .onChange(of: workspace.comparesBefore) { _, _ in cancelGesture() }
+        .onChange(of: isEnabled) { _, enabled in if !enabled { cancelGesture() } }
         .onChange(of: workspace.model?.isGenerating) { _, generating in if generating == true { cancelGesture() } }
-        .onChange(of: pointerIsDown) { _, down in
-            // GestureState also resets when SwiftUI cancels hit testing during
-            // inference; the next real pointer down must remain usable.
-            if !down { cancelGesture(); interruptsUntilMouseUp = false }
-        }
         .onDisappear { cancelGesture(); overlay.update(nil) }
     }
 
@@ -90,18 +109,22 @@ struct InlineMaskCanvas: View {
     }
 
     private var gradientHandles: some View {
-        Canvas { context, size in
+        let magnification = photoCanvasMagnification
+        return Canvas { context, size in
             guard let shape = workspace.selected?.mask.shape else { return }
             func pixel(_ point: LocalMaskPoint) -> CGPoint { CGPoint(x: point.x * size.width, y: point.y * size.height) }
             func dot(_ point: CGPoint, radius: Double = 4) {
+                let radius = radius / Double(magnification)
                 let path = Path(ellipseIn: CGRect(x: point.x - radius, y: point.y - radius, width: radius * 2, height: radius * 2))
-                context.fill(path, with: .color(.white)); context.stroke(path, with: .color(.black.opacity(0.7)), lineWidth: 1)
+                context.fill(path, with: .color(.white))
+                context.stroke(path, with: .color(.black.opacity(0.7)), lineWidth: 1 / magnification)
             }
             switch shape {
             case .linear(let start, let end):
                 let a = pixel(start), b = pixel(end)
                 var path = Path(); path.move(to: a); path.addLine(to: b)
-                context.stroke(path, with: .color(.white), style: StrokeStyle(lineWidth: 2, dash: [5, 3]))
+                context.stroke(path, with: .color(.white), style: StrokeStyle(lineWidth: 2 / magnification,
+                    dash: [5 / magnification, 3 / magnification]))
                 dot(a); dot(b); dot(CGPoint(x: (a.x + b.x) / 2, y: (a.y + b.y) / 2), radius: 3)
             case .radial(let center, let rx, let ry, let rotation):
                 // Rotate in image pixels, matching the renderer for both
@@ -114,7 +137,8 @@ struct InlineMaskCanvas: View {
                         y: center.y * size.height + sin(rotation) * x + cos(rotation) * y)
                     if index == 0 { path.move(to: point) } else { path.addLine(to: point) }
                 }
-                context.stroke(path, with: .color(.white), style: StrokeStyle(lineWidth: 1, dash: [5, 3]))
+                context.stroke(path, with: .color(.white), style: StrokeStyle(lineWidth: 1 / magnification,
+                    dash: [5 / magnification, 3 / magnification]))
                 dot(pixel(center))
                 dot(CGPoint(x: center.x * size.width + cos(rotation) * rx * size.width, y: center.y * size.height + sin(rotation) * rx * size.width))
                 dot(CGPoint(x: center.x * size.width - sin(rotation) * ry * size.height, y: center.y * size.height + cos(rotation) * ry * size.height))
@@ -123,74 +147,94 @@ struct InlineMaskCanvas: View {
         }.accessibilityHidden(true)
     }
 
-    private func drag(_ geometry: CanvasGeometry) -> some Gesture {
-        DragGesture(minimumDistance: 0).updating($pointerIsDown) { _, down, _ in down = true }.onChanged { value in
-            // Hover callbacks pause during a drag on macOS. Follow the actual
-            // input event independently of the asynchronous mask bitmap.
-            cursor = value.location
-            guard !interruptsUntilMouseUp, workspace.isCurrent, !workspace.comparesBefore,
-                  let model = workspace.model, !model.isGenerating,
-                  let source = workspace.source, let selected = workspace.selected else { return }
-            if let inputIdentity {
-                guard workspace.acceptsCanvasInput(source: inputIdentity.source, layerID: inputIdentity.layerID) else { cancelGesture(); return }
-            } else { inputIdentity = InputIdentity(source: source, layerID: selected.id) }
-            guard let point = try? MaskPoint(x: value.location.x, y: value.location.y),
-                  let native = geometry.viewToCanvas(point) else {
-                workspace.brush.breakStrokeSegment(); return
+    private func input(_ event: DevelopCropInputEvent, geometry: CanvasGeometry) {
+        if event.phase == .cancelled { cancelGesture(); return }
+        // The native surface routes zoomed three-finger input to viewport
+        // navigation. Fitted touch input must never start a mask stroke.
+        guard event.kind == .pointer else { return }
+        if event.phase == .began { interruptsUntilMouseUp = false }
+        if event.phase == .ended {
+            if !interruptsUntilMouseUp, let inputIdentity,
+               workspace.model?.inputContextID == inputIdentity.context,
+               workspace.acceptsCanvasInput(source: inputIdentity.source, layerID: inputIdentity.layerID) {
+                workspace.finishGesture()
+            } else { cancelGesture() }
+            gesture = nil; inputIdentity = nil; interruptsUntilMouseUp = false
+            return
+        }
+        updateGesture(at: event.location, geometry: geometry)
+    }
+
+    private func updateGesture(at location: CGPoint, geometry: CanvasGeometry) {
+        // Native document coordinates remain correct while NSScrollView
+        // magnifies and pans the image. Track the held pointer directly.
+        cursor = location
+        guard isEnabled, !interruptsUntilMouseUp, workspace.isCurrent, !workspace.comparesBefore,
+              let model = workspace.model, !model.isGenerating,
+              let source = workspace.source, let selected = workspace.selected else { return }
+        if let inputIdentity {
+            guard model.inputContextID == inputIdentity.context,
+                  workspace.acceptsCanvasInput(source: inputIdentity.source, layerID: inputIdentity.layerID) else {
+                cancelGesture(); return
             }
-            if workspace.usesBrush {
-                if let document = workspace.brush.document,
-                   let point = try? MaskPoint(x: native.x * Double(document.canvasSize.width) / Double(geometry.canvasSize.width),
-                    y: native.y * Double(document.canvasSize.height) / Double(geometry.canvasSize.height)) {
-                    workspace.brush.appendPoint(point)
-                }
-                return
+        } else { inputIdentity = InputIdentity(source: source, layerID: selected.id, context: model.inputContextID) }
+        guard let point = try? MaskPoint(x: location.x, y: location.y),
+              let native = geometry.viewToCanvas(point) else {
+            workspace.brush.breakStrokeSegment(); return
+        }
+        if workspace.usesBrush {
+            if let document = workspace.brush.document,
+               let point = try? MaskPoint(x: native.x * Double(document.canvasSize.width) / Double(geometry.canvasSize.width),
+                y: native.y * Double(document.canvasSize.height) / Double(geometry.canvasSize.height)) {
+                workspace.brush.appendPoint(point)
             }
-            guard let normalized = try? LocalMaskPoint(x: native.x / Double(geometry.canvasSize.width), y: native.y / Double(geometry.canvasSize.height)) else { return }
-            if gesture == nil {
-                gesture = GradientGesture(handle: nearestHandle(to: normalized, shape: selected.mask.shape, geometry: geometry),
-                    initial: selected.mask.shape, start: normalized)
-                model.beginChange()
+            return
+        }
+        guard let normalized = try? LocalMaskPoint(x: native.x / Double(geometry.canvasSize.width), y: native.y / Double(geometry.canvasSize.height)) else { return }
+        if gesture == nil {
+            gesture = GradientGesture(handle: nearestHandle(to: normalized, shape: selected.mask.shape, geometry: geometry),
+                initial: selected.mask.shape, start: normalized)
+            model.beginChange()
+        }
+        guard let gesture else { return }
+        switch gesture.initial {
+        case .linear(let start, let end):
+            switch gesture.handle {
+            case .start: if normalized != end { model.updateSelected { $0.mask.shape = .linear(start: normalized, end: end) } }
+            case .end: if normalized != start { model.updateSelected { $0.mask.shape = .linear(start: start, end: normalized) } }
+            case .center:
+                let dx = min(1 - max(start.x, end.x), max(-min(start.x, end.x), normalized.x - gesture.start.x))
+                let dy = min(1 - max(start.y, end.y), max(-min(start.y, end.y), normalized.y - gesture.start.y))
+                let a = clampedPoint(x: start.x + dx, y: start.y + dy), b = clampedPoint(x: end.x + dx, y: end.y + dy)
+                if a != b { model.updateSelected { $0.mask.shape = .linear(start: a, end: b) } }
+            default: if gesture.start != normalized { model.updateSelected { $0.mask.shape = .linear(start: gesture.start, end: normalized) } }
             }
-            guard let gesture else { return }
-            switch gesture.initial {
-            case .linear(let start, let end):
-                switch gesture.handle {
-                case .start: if normalized != end { model.updateSelected { $0.mask.shape = .linear(start: normalized, end: end) } }
-                case .end: if normalized != start { model.updateSelected { $0.mask.shape = .linear(start: start, end: normalized) } }
-                case .center:
-                    let dx = min(1 - max(start.x, end.x), max(-min(start.x, end.x), normalized.x - gesture.start.x))
-                    let dy = min(1 - max(start.y, end.y), max(-min(start.y, end.y), normalized.y - gesture.start.y))
-                    let a = clampedPoint(x: start.x + dx, y: start.y + dy), b = clampedPoint(x: end.x + dx, y: end.y + dy)
-                    if a != b { model.updateSelected { $0.mask.shape = .linear(start: a, end: b) } }
-                default: if gesture.start != normalized { model.updateSelected { $0.mask.shape = .linear(start: gesture.start, end: normalized) } }
-                }
-            case .radial(let center, let rx, let ry, let rotation):
-                switch gesture.handle {
-                case .center:
-                    let moved = clampedPoint(x: center.x + normalized.x - gesture.start.x, y: center.y + normalized.y - gesture.start.y)
-                    model.updateSelected { $0.mask.shape = .radial(center: moved, radiusX: rx, radiusY: ry, rotation: rotation) }
-                case .radiusX:
-                    let aspect = Double(geometry.canvasSize.height) / Double(geometry.canvasSize.width)
-                    let radius = max(0.002, abs((normalized.x - center.x) * cos(rotation) + (normalized.y - center.y) * aspect * sin(rotation)))
-                    model.updateSelected { $0.mask.shape = .radial(center: center, radiusX: radius, radiusY: ry, rotation: rotation) }
-                case .radiusY:
-                    let aspect = Double(geometry.canvasSize.width) / Double(geometry.canvasSize.height)
-                    let radius = max(0.002, abs(-(normalized.x - center.x) * aspect * sin(rotation) + (normalized.y - center.y) * cos(rotation)))
-                    model.updateSelected { $0.mask.shape = .radial(center: center, radiusX: rx, radiusY: radius, rotation: rotation) }
-                default:
-                    model.updateSelected { $0.mask.shape = .radial(center: gesture.start,
-                        radiusX: max(0.002, abs(normalized.x - gesture.start.x)), radiusY: max(0.002, abs(normalized.y - gesture.start.y)), rotation: 0) }
-                }
-            default: break
+        case .radial(let center, let rx, let ry, let rotation):
+            switch gesture.handle {
+            case .center:
+                let moved = clampedPoint(x: center.x + normalized.x - gesture.start.x, y: center.y + normalized.y - gesture.start.y)
+                model.updateSelected { $0.mask.shape = .radial(center: moved, radiusX: rx, radiusY: ry, rotation: rotation) }
+            case .radiusX:
+                let aspect = Double(geometry.canvasSize.height) / Double(geometry.canvasSize.width)
+                let radius = max(0.002, abs((normalized.x - center.x) * cos(rotation) + (normalized.y - center.y) * aspect * sin(rotation)))
+                model.updateSelected { $0.mask.shape = .radial(center: center, radiusX: radius, radiusY: ry, rotation: rotation) }
+            case .radiusY:
+                let aspect = Double(geometry.canvasSize.width) / Double(geometry.canvasSize.height)
+                let radius = max(0.002, abs(-(normalized.x - center.x) * aspect * sin(rotation) + (normalized.y - center.y) * cos(rotation)))
+                model.updateSelected { $0.mask.shape = .radial(center: center, radiusX: rx, radiusY: radius, rotation: rotation) }
+            default:
+                model.updateSelected { $0.mask.shape = .radial(center: gesture.start,
+                    radiusX: max(0.002, abs(normalized.x - gesture.start.x)), radiusY: max(0.002, abs(normalized.y - gesture.start.y)), rotation: 0) }
             }
-        }.onEnded { _ in
-            workspace.finishGesture(); gesture = nil; inputIdentity = nil; interruptsUntilMouseUp = false
+        default: break
         }
     }
     private func nearestHandle(to point: LocalMaskPoint, shape: LocalMaskShape, geometry: CanvasGeometry) -> Handle {
         let w = Double(geometry.canvasSize.width) * geometry.scale, h = Double(geometry.canvasSize.height) * geometry.scale
-        func near(_ x: Double, _ y: Double) -> Bool { hypot((point.x - x) * w, (point.y - y) * h) <= 12 }
+        let magnification = Double(photoCanvasMagnification)
+        func near(_ x: Double, _ y: Double) -> Bool {
+            hypot((point.x - x) * w, (point.y - y) * h) <= 12 / magnification
+        }
         switch shape {
         case .linear(let start, let end):
             if near(start.x, start.y) { return .start }

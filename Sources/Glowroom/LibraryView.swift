@@ -492,7 +492,7 @@ struct LibraryView: View {
             } else if model.visibleAssets.isEmpty {
                 emptyState.frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if model.showsDetail {
-                DetailView(model: model)
+                DetailView(model: model, photoViewport: developWorkspace.photoViewport)
             } else {
                 PhotoGridView(model: model)
             }
