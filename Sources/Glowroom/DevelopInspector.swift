@@ -91,6 +91,8 @@ struct DevelopInspector: View {
                 } else {
                     Text("Wähle ein Foto zum Bearbeiten.").font(.callout).foregroundStyle(Theme.muted).padding(24)
                     if column == .adjustments {
+                        Button("Foto auswählen") { WorkspaceActions.showGrid(layout, library: library) }
+                            .accessibilityIdentifier("ai-development.select-photo")
                         Button("LLM-Modelle verwalten …") { showsModels = true }
                             .accessibilityLabel("LLM-Modelle verwalten")
                         AIDevelopmentManagementControls(library: library).padding(12)

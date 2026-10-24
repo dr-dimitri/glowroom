@@ -48,6 +48,7 @@ final class AIDevelopmentModel: ObservableObject {
     typealias Propose = @Sendable (AIEditingSnapshot, PreviewBitmap, AIDevelopmentIntent) async throws -> AIDevelopmentResponse
     typealias ProposeMask = @Sendable (AIEditingSnapshot, String) async throws -> AIObjectMaskResponse
     typealias ValidateSource = @Sendable (AIEditingSnapshot, ImageAnalysisSourceStamp) async throws -> Void
+    typealias RenderCorrection = @Sendable (PreviewBitmap, AIEditingSnapshot, EditSettings, ImageAnalysisSourceStamp?) async throws -> PreviewBitmap
     @Published var intent = AIDevelopmentIntent() {
         didSet { if intent != oldValue { discard() } }
     }
@@ -58,10 +59,17 @@ final class AIDevelopmentModel: ObservableObject {
     @Published private(set) var proposal: AIDevelopmentReview?
     @Published private(set) var status: String?
     @Published private(set) var isRunning = false
-    var canApplyProposal: Bool { proposal?.changes.isEmpty == false }
+    var canApplyProposal: Bool {
+        guard let proposal, !proposal.changes.isEmpty else { return false }
+        if proposal.createdMaskID != nil { return true }
+        guard let expected, let preview = previewWorkspace?.aiCorrectionPreview else { return false }
+        return preview.snapshot == expected && preview.settings == proposal.settings
+    }
     private let propose: Propose
     private let proposeMask: ProposeMask
     private let validateSource: ValidateSource
+    private let renderCorrection: RenderCorrection
+    private weak var previewWorkspace: DevelopWorkspace?
     private var task: Task<Void, Never>?
     private var expected: AIEditingSnapshot?
     private var sourceStamp: ImageAnalysisSourceStamp?
@@ -77,7 +85,19 @@ final class AIDevelopmentModel: ObservableObject {
         guard try await ImageAnalysisPreparer().sourceStamp(for: request) == stamp else {
             throw AIDevelopmentError.staleContext
         }
-    }) { self.propose = propose; self.proposeMask = proposeMask; self.validateSource = validateSource }
+    }, renderCorrection: @escaping RenderCorrection = { bitmap, snapshot, settings, sourceStamp in
+        // Reuse the exact decoded canvas source. The shared render actor bounds
+        // Core Image work and caches repeated proposals without another RAW decode.
+        let request = PreviewRequest(source: snapshot.source,
+            pixelSize: min(2_400, max(bitmap.image.width, bitmap.image.height)),
+            allowsEmbeddedPreview: false, sourceRevision: sourceStamp?.cacheRevision,
+            allowsHDR: snapshot.settings.developColor.hdrEnabled)
+        return try await AdjustedPreviewPipeline.shared.image(bitmap, request: request,
+            settings: settings, priority: .selected, maximumOutputPixelSize: request.pixelSize)
+    }) {
+        self.propose = propose; self.proposeMask = proposeMask
+        self.validateSource = validateSource; self.renderCorrection = renderCorrection
+    }
 
     deinit { task?.cancel() }
 
@@ -91,6 +111,7 @@ final class AIDevelopmentModel: ObservableObject {
         editor.selectEditingFunction(.adjustments, assetID: assetID)
         editor.endEditing(assetID: assetID)
         guard let snapshot = editor.aiSnapshot(in: library), let bitmap = workspace.originalBitmap,
+              workspace.isFinalPreviewReady,
               workspace.sourceIdentity == snapshot.source else {
             status = AIDevelopmentError.missingPreview.localizedDescription; return nil
         }
@@ -106,7 +127,9 @@ final class AIDevelopmentModel: ObservableObject {
         let requestedIntent = intent
         let createsMask = self.createsMask
         let bitmapID = ObjectIdentifier(bitmap.image)
+        let bitmapStamp = workspace.originalSourceStamp
         expected = snapshot
+        previewWorkspace = workspace
         isCurrentContext = { [weak library, weak editor, weak workspace] in
             guard let library, let editor, let workspace else { return false }
             return Self.matchesEditingContext(snapshot, editor.localEditingAnchorSnapshot(in: library))
@@ -114,6 +137,7 @@ final class AIDevelopmentModel: ObservableObject {
                 && !library.comparesOriginal && !library.comparesCurrentSourceWithoutSettings
                 && workspace.tool == .basic && workspace.sourceIdentity == snapshot.source
                 && workspace.originalBitmap.map { ObjectIdentifier($0.image) } == bitmapID
+                && workspace.originalSourceStamp == bitmapStamp
         }
         subscriptions.removeAll()
         // Published values invalidate synchronously at navigation boundaries.
@@ -137,16 +161,29 @@ final class AIDevelopmentModel: ObservableObject {
         isRunning = true; status = "Qwen3.5‑4B erstellt einen lokalen Vorschlag …"
         // The worker captures immutable values only. No file IO, source stamps,
         // prompt validation or native inference blocks the main actor.
-        let worker = Task.detached(priority: .userInitiated) { [propose, proposeMask] in
+        let worker = Task.detached(priority: .userInitiated) { [propose, proposeMask, renderCorrection] in
             if createsMask {
                 let response = try await proposeMask(snapshot, requestedIntent.instruction)
+                if let bitmapStamp, response.sourceStamp != bitmapStamp { throw AIDevelopmentError.staleContext }
                 let review = try AIDevelopmentReview(mask: response, baseline: snapshot.settings)
-                return (review, response.sourceStamp, response.preview)
+                return (review, response.sourceStamp, response.preview, Optional<PreviewBitmap>.none)
             }
             let response = try await propose(snapshot, bitmap, requestedIntent)
+            // A native replacement can preserve the catalog size and mtime.
+            // Never preview a proposal from that new file on an older decoded
+            // canvas, even when its public source identity still compares equal.
+            if let bitmapStamp, response.sourceStamp != bitmapStamp { throw AIDevelopmentError.staleContext }
             let review = try AIDevelopmentReview(proposal: response.proposal, baseline: snapshot.settings,
                 strength: requestedIntent.strength, targetMaskID: requestedIntent.targetMaskID)
-            return (review, response.sourceStamp, Optional<PreviewBitmap>.none)
+            try Task.checkCancellation()
+            let preview: PreviewBitmap?
+            if review.changes.isEmpty { preview = nil }
+            else {
+                do { preview = try await renderCorrection(bitmap, snapshot, review.settings, bitmapStamp) }
+                catch is CancellationError { throw CancellationError() }
+                catch { throw AICorrectionRenderingError() }
+            }
+            return (review, response.sourceStamp, Optional<PreviewBitmap>.none, preview)
         }
         let operation = Task { [weak self] in
             defer {
@@ -160,6 +197,11 @@ final class AIDevelopmentModel: ObservableObject {
                 self.proposal = result.0
                 self.sourceStamp = result.1
                 self.maskPreview = result.2
+                if let preview = result.3 {
+                    workspace.aiCorrectionPreview = AICorrectionPreview(snapshot: snapshot,
+                        settings: result.0.settings, bitmap: preview)
+                    workspace.showsAICorrectionProposal = true
+                }
                 self.status = self.proposal?.changes.isEmpty == true
                     ? "Keine Änderung vorgeschlagen." : "Vorschlag bereit."
             } catch {
@@ -208,6 +250,7 @@ final class AIDevelopmentModel: ObservableObject {
                 // The final snapshot check and ordinary undo/write stay atomic.
                 editor.setSettings(proposal.settings, for: expected.assetID)
                 let applied = editor.settings(for: expected.assetID) == proposal.settings
+                self.clearCorrectionPreview()
                 self.expected = nil; self.proposal = nil; self.sourceStamp = nil; self.maskPreview = nil
                 self.subscriptions.removeAll(); self.isCurrentContext = nil
                 if !applied { self.status = "Der Vorschlag konnte nicht gespeichert werden." }
@@ -218,6 +261,7 @@ final class AIDevelopmentModel: ObservableObject {
                 } else { self.status = "Vorschlag übernommen." }
             } catch {
                 guard let self, self.expected == expected, !Task.isCancelled else { return }
+                self.clearCorrectionPreview()
                 self.expected = nil; self.proposal = nil; self.sourceStamp = nil; self.maskPreview = nil
                 self.status = AIDevelopmentError.staleContext.localizedDescription
             }
@@ -255,6 +299,7 @@ final class AIDevelopmentModel: ObservableObject {
     }
 
     func cancel() {
+        clearCorrectionPreview()
         task?.cancel(); expected = nil; proposal = nil; sourceStamp = nil; maskPreview = nil
         status = isRunning ? "Abbruch wird abgeschlossen …" : nil
     }
@@ -263,4 +308,13 @@ final class AIDevelopmentModel: ObservableObject {
         cancel(); subscriptions.removeAll(); isCurrentContext = nil
         if !isRunning { status = nil }
     }
+
+    private func clearCorrectionPreview() {
+        previewWorkspace?.aiCorrectionPreview = nil
+        previewWorkspace = nil
+    }
+}
+
+private struct AICorrectionRenderingError: LocalizedError {
+    var errorDescription: String? { "Die Vorschau des Vorschlags konnte nicht erstellt werden. Erstelle den Vorschlag erneut." }
 }

@@ -1,0 +1,90 @@
+--- a/Tests/GlowroomTests/AIDevelopmentAcceptanceTests.swift
++++ b/Tests/GlowroomTests/AIDevelopmentAcceptanceTests.swift
+@@ -18,7 +18,11 @@
+         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+         defer { try? FileManager.default.removeItem(at: directory) }
+         let imageURL = directory.appendingPathComponent("photo.png")
+-        let image = try Self.image()
++        let image: CGImage
++        if let fixture = ProcessInfo.processInfo.environment["GLOWROOM_194_FIXTURE"] {
++            let source = try #require(CGImageSourceCreateWithURL(URL(fileURLWithPath: fixture) as CFURL, nil))
++            image = try #require(CGImageSourceCreateThumbnailAtIndex(source, 0, [kCGImageSourceCreateThumbnailFromImageAlways: true, kCGImageSourceThumbnailMaxPixelSize: 768] as CFDictionary))
++        } else { image = try Self.image() }
+         let destination = try #require(CGImageDestinationCreateWithURL(imageURL as CFURL, UTType.png.identifier as CFString, 1, nil))
+         CGImageDestinationAddImage(destination, image, nil)
+         try #require(CGImageDestinationFinalize(destination))
+@@ -37,8 +41,7 @@
+         let editingDirectory = directory.appendingPathComponent("Editing")
+         let dependencies = try await ArtifactAppBootstrap(directory: editingDirectory).editingDependencies()
+         let state = try await dependencies.database.loadState()
+-        var baseline = screenshotProposal ? EditSettings(texture: 21)
+-            : EditSettings(exposure: 0.2, contrast: -4, shadows: 12, texture: 21)
++        var baseline = EditSettings.neutral
+         let layer = try LocalAdjustment(name: "Blumenstrauß", mask: LocalAdjustmentMask(shape: .radial(
+             center: LocalMaskPoint(x: 0.5, y: 0.5), radiusX: 0.3, radiusY: 0.3, rotation: 0)))
+         if masked { baseline.localAdjustments = [layer] }
+@@ -54,8 +57,8 @@
+         let proposal = screenshotProposal
+             ? AIDevelopmentProposal(summary: "Weiß und Dynamik leicht erhöhen, Weißabgleich wärmer abstimmen.",
+                 adjustments: .init(whites: 10, vibrance: 20, temperature: 6_800))
+-            : AIDevelopmentProposal(summary: "Belichtung und Schatten aufhellen, Kontrast erhöhen.",
+-                adjustments: .init(exposure: 1.2, contrast: 16, shadows: 40))
++            : AIDevelopmentProposal(summary: "Licht aufhellen und Farben wärmer abstimmen.",
++                adjustments: .init(exposure: 1.2, contrast: 16, shadows: 40, temperature: 7_100))
+         let controls: [Adjustment] = screenshotProposal ? [.whites, .vibrance] : [.exposure, .contrast, .shadows]
+         var scope = AIDevelopmentIntent()
+         scope.targetMaskID = masked ? layer.id : nil
+@@ -70,13 +73,17 @@
+         })
+         model.intent.targetMaskID = scope.targetMaskID
+         model.intent.brightness = screenshotProposal ? 0 : 0.6
++        model.intent.instruction = "Natürliches Licht, wärmere Farben"
+         let requestedIntent = model.intent
+         defer { model.discard(); workspace.clear() }
+         let host = WorkspaceSectionTestHost(size: NSSize(width: 1_160, height: 1_100))
+         defer { host.close() }
+         do {
+             try await host.mount(AIAcceptanceHarness(library: library, editor: editor, workspace: workspace,
+-                model: model, asset: asset, frames: frames, controls: controls))
++                model: model, asset: asset, frames: frames, controls: controls)
++                .frame(width: 1_160, height: 1_100, alignment: .top)
++                .background(Theme.background).foregroundStyle(Theme.text).tint(Theme.accent)
++                .preferredColorScheme(.dark))
+             // The progressive 512px frame can precede the full source. Start only
+             // after the real canvas has handed off the 768px source bitmap.
+             try await wait("full baseline canvas") {
+@@ -84,10 +91,21 @@
+                     && workspace.sourceSize?.width == CGFloat(image.width)
+             }
+             let baselineDigest = try #require(frames.latest?.digest)
++            if scenario == "global", let path = ProcessInfo.processInfo.environment["GLOWROOM_194_SNAPSHOTS"] {
++                let disclosure = try #require(host.accessibilityElements.first { $0.accessibilityLabel() == "Vorgaben für den Vorschlag" })
++                try #require(disclosure.accessibilityPerformPress())
++                try await host.settle()
++                try FileManager.default.createDirectory(atPath: path, withIntermediateDirectories: true)
++                try host.snapshot(to: URL(fileURLWithPath: path).appendingPathComponent("before-order-intents.png"))
++            }
+             #expect(!editor.canUndo(assetID: asset.id))
+             try await press("ai-development.generate", in: host)
+             try await wait("proposal displayed") { model.proposal != nil && !model.isRunning }
+             #expect(model.proposal?.settings == settings)
++            if scenario == "global", let path = ProcessInfo.processInfo.environment["GLOWROOM_194_SNAPSHOTS"] {
++                try await host.settle()
++                try host.snapshot(to: URL(fileURLWithPath: path).appendingPathComponent("before-proposal-values.png"))
++            }
+             #expect(editor.settings(for: asset.id) == baseline)
+             try await press("ai-development.apply", in: host)
+             try await wait("proposal accepted and rendered") {
+--- a/Tests/GlowroomTests/WorkspaceProposalLifecycleTests.swift
++++ b/Tests/GlowroomTests/WorkspaceProposalLifecycleTests.swift
+@@ -1032,8 +1032,10 @@
+         _ = NSApplication.shared
+         WorkspaceAccessibilityElement.enableInProcess()
+         hosting = NSHostingView(rootView: AnyView(EmptyView()))
++        hosting.appearance = NSAppearance(named: .darkAqua)
+         window = NSWindow(contentRect: NSRect(origin: NSPoint(x: -10_000, y: -10_000), size: size),
+             styleMask: .borderless, backing: .buffered, defer: false)
++        window.appearance = NSAppearance(named: .darkAqua)
+         window.isReleasedWhenClosed = false
+         window.ignoresMouseEvents = true
+         window.contentView = hosting

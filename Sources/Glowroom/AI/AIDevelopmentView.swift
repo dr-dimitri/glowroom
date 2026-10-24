@@ -1,28 +1,37 @@
 import SwiftUI
 import GlowroomCore
 
-/// Intent controls are sent together on an explicit request. Moving them never
-/// schedules inference or mutates the photo's persisted adjustment settings.
+/// Orders and explicit presets only affect the next requested proposal.
 struct AIDevelopmentView: View {
     @ObservedObject var library: LibraryModel
     @EnvironmentObject private var editor: EditingModel
     @EnvironmentObject private var workspace: DevelopWorkspace
     @StateObject private var model: AIDevelopmentModel
+    @StateObject private var readiness: AICorrectionReadiness
     @ViewState private var showsModels = false
     @ViewState private var showsSubjectModel = false
     @ViewState private var showsIntent = false
+    @ViewState private var showsChanges = false
 
     @MainActor
-    init(library: LibraryModel, model: AIDevelopmentModel? = nil) {
+    init(library: LibraryModel, model: AIDevelopmentModel? = nil,
+         checkModel: AICorrectionReadiness.CheckModel? = nil) {
         self.library = library
         _model = StateObject(wrappedValue: model ?? AIDevelopmentModel())
+        // Injected services can run without installed weights in native tests.
+        let check: AICorrectionReadiness.CheckModel = checkModel ?? (model == nil
+            ? { try await AICorrectionReadiness.installedModel() } : { true })
+        _readiness = StateObject(wrappedValue: AICorrectionReadiness(checkModel: check))
     }
 
-    private var canRequest: Bool {
+    private var canEditPhoto: Bool {
         editor.canEdit && library.canModify && !library.isImporting && !library.isProjecting
             && !library.comparesOriginal && !library.comparesCurrentSourceWithoutSettings
-            && workspace.navigatorImage != nil
+            && workspace.isFinalPreviewReady && workspace.originalBitmap != nil
+            && workspace.sourceIdentity == editor.aiSnapshot(in: library)?.source
     }
+
+    private var canRequest: Bool { canEditPhoto && readiness.state == .ready }
 
     private var layers: [LocalAdjustment] {
         library.selectedID.map { editor.settings(for: $0).localAdjustments } ?? []
@@ -39,67 +48,22 @@ struct AIDevelopmentView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .top, spacing: 8) {
+            HStack {
                 Spacer(minLength: 0)
-                Button { showsModels = true } label: {
-                    Label("Modelle", systemImage: "externaldrive")
-                }.controlSize(.small)
+                Button { showsModels = true } label: { Label("Modelle", systemImage: "externaldrive") }
                     .accessibilityIdentifier("ai-development.models")
             }
-
-            VStack(alignment: .leading, spacing: 7) {
-                Picker("Aufgabe", selection: $model.createsMask) {
-                    Text("Korrektur").tag(false)
-                    Text("Neue Maske").tag(true)
-                }.pickerStyle(.segmented).accessibilityIdentifier("ai-development.task")
-                if !model.createsMask {
-                    Picker("Anwenden auf", selection: $model.intent.targetMaskID) {
-                        Text("Gesamtes Bild").tag(Optional<UUID>.none)
-                        ForEach(layers) { layer in
-                            Text(layer.name + (layer.isEnabled && layer.mask.opacity > 0 ? "" : " (ausgeblendet)"))
-                                .tag(Optional(layer.id))
-                        }
-                        if let id = model.intent.targetMaskID, !layers.contains(where: { $0.id == id }) {
-                            Text("Maske nicht mehr verfügbar").tag(Optional(id))
-                        }
-                    }.accessibilityIdentifier("ai-development.scope")
-                    if !validRequest {
-                        Text(AIDevelopmentError.unavailableMask.localizedDescription)
-                            .font(.system(size: 13)).foregroundStyle(Theme.muted)
-                    }
-                }
-                Text("Auftrag").font(.system(size: 13, weight: .medium))
-                TextField(model.createsMask ? "Zum Beispiel: Maskiere den Blumenstrauß" : "Zum Beispiel: natürliches Licht, wärmere Farben", text: $model.intent.instruction, axis: .vertical)
-                    .textFieldStyle(.roundedBorder).lineLimit(3...5)
-                    .accessibilityIdentifier("ai-development.instruction")
-                if model.createsMask {
-                    Button("Freistellungsmodell einrichten …") { showsSubjectModel = true }
-                        .controlSize(.small).accessibilityIdentifier("ai-development.subject-model")
-                    if layers.count >= LocalAdjustment.maximumCount {
-                        Text("Pro Foto sind höchstens 16 Masken möglich.").font(.system(size: 13))
-                    }
-                } else {
-                    DisclosureGroup("Vorgaben für den Vorschlag", isExpanded: $showsIntent) {
-                        intentSlider("Helligkeit", value: $model.intent.brightness,
-                                 low: "Dunkler", high: "Heller", identifier: "brightness")
-                        intentSlider("Kontrast", value: $model.intent.contrast,
-                                 low: "Weicher", high: "Kräftiger", identifier: "contrast")
-                        intentSlider("Wärme", value: $model.intent.warmth,
-                                 low: "Kühler", high: "Wärmer", identifier: "warmth")
-                        intentSlider("Farbkraft", value: $model.intent.color,
-                                 low: "Gedämpft", high: "Lebendig", identifier: "color")
-                        intentSlider("Stärke", value: $model.intent.strength,
-                                 low: "Dezent", high: "Deutlich", identifier: "strength", range: 0...1, neutral: 0.5)
-                    }
-                }
-            }.disabled(model.isRunning)
+            order.disabled(model.isRunning)
+            prerequisites
 
             if model.isRunning {
                 HStack(spacing: 8) {
                     ProgressView().controlSize(.small)
-                    Text("Vorschlag wird erstellt …").font(.system(size: 13))
+                    Text(model.status ?? "Vorschlag wird erstellt …")
+                        .fixedSize(horizontal: false, vertical: true)
                     Spacer(minLength: 0)
-                    Button("Abbrechen") { model.cancel() }.controlSize(.small)
+                    Button("Abbrechen") { model.cancel() }
+                        .accessibilityIdentifier("ai-development.cancel")
                 }
             } else {
                 Button {
@@ -107,47 +71,33 @@ struct AIDevelopmentView: View {
                     model.start(library: library, editor: editor, workspace: workspace)
                 } label: {
                     Label("Vorschlag erstellen", systemImage: "sparkles").frame(maxWidth: .infinity)
-                }.buttonStyle(.borderedProminent).controlSize(.small)
+                }.buttonStyle(.borderedProminent)
                     .disabled(!canRequest || !validRequest)
                     .accessibilityIdentifier("ai-development.generate")
-            }
-
-            if let status = model.status {
-                Text(status).font(.system(size: 13)).foregroundStyle(Theme.muted)
-                    .fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
-                    .accessibilityIdentifier("ai-development.status")
+                if let status = model.status {
+                    Text(status).foregroundStyle(Theme.muted)
+                        .fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
+                        .accessibilityIdentifier("ai-development.status")
+                    if status == AIDevelopmentError.staleContext.localizedDescription {
+                        Button("Foto neu laden") {
+                            model.discard()
+                            workspace.previewReloadID = UUID()
+                        }.accessibilityIdentifier("ai-development.reload-photo")
+                    } else if status == ImageAnalysisError.staleSource.localizedDescription {
+                        Button("Ordner aktualisieren") { library.refreshCurrentFolder() }
+                            .accessibilityIdentifier("ai-development.refresh-folder")
+                    }
+                }
             }
 
             if let proposal = model.proposal {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(proposal.createdMaskID == nil ? "Korrekturvorschlag" : "Maskenvorschlag")
-                        .font(.system(size: 13, weight: .medium))
-                    if let name = proposal.targetName, proposal.createdMaskID == nil {
-                        Text("Nur Maske: \(name)").font(.system(size: 13, weight: .medium))
-                    }
-                    if let preview = model.maskPreview {
-                        Image(decorative: preview.image, scale: 1).resizable().aspectRatio(contentMode: .fit)
-                            .frame(maxHeight: 240).accessibilityLabel("Vorgeschlagene Maske als rote Fläche auf dem vollständigen Foto")
-                            .accessibilityIdentifier("ai-development.mask-preview")
-                    }
-                    Text(proposal.summary).font(.system(size: 13))
-                        .fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
-                    ForEach(Array(proposal.changes.enumerated()), id: \.offset) { _, change in
-                        Text(change).font(.system(size: 13)).foregroundStyle(Theme.muted)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    HStack {
-                        Button("Verwerfen") { model.discard() }
-                        Spacer(minLength: 0)
-                        Button("Übernehmen") { model.apply(library: library, editor: editor) }
-                            .buttonStyle(.borderedProminent).disabled(!canRequest || model.isRunning || !model.canApplyProposal)
-                            .accessibilityIdentifier("ai-development.apply")
-                    }.controlSize(.small)
-                }.padding(10).background(Theme.panel, in: RoundedRectangle(cornerRadius: 6))
+                review(proposal)
             }
         }
-        .sheet(isPresented: $showsModels) { LLMModelManagerView() }
+        .font(.system(size: 13))
+        .sheet(isPresented: $showsModels, onDismiss: { Task { await readiness.refresh() } }) { LLMModelManagerView() }
         .sheet(isPresented: $showsSubjectModel) { SubjectMattingModelSetupView() }
+        .task { await readiness.refresh() }
         .onChange(of: editor.aiSnapshot(in: library)) { _, _ in
             model.invalidateIfNeeded(library: library, editor: editor)
         }
@@ -156,24 +106,132 @@ struct AIDevelopmentView: View {
         .accessibilityIdentifier("ai-development.panel")
     }
 
-    private func intentSlider(_ title: String, value: Binding<Double>, low: String, high: String,
-                              identifier: String, range: ClosedRange<Double> = -1...1,
-                              neutral: Double = 0) -> some View {
-        VStack(spacing: 2) {
-            HStack {
-                Text(title).font(.system(size: 13))
-                Spacer(minLength: 0)
-                Text("\(Int((value.wrappedValue * 100).rounded())) %")
-                    .font(.system(size: 13)).monospacedDigit().foregroundStyle(Theme.muted)
+    private var order: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Picker("Aufgabe", selection: $model.createsMask) {
+                Text("Korrektur").tag(false)
+                Text("Neue Maske").tag(true)
+            }.pickerStyle(.segmented).accessibilityIdentifier("ai-development.task")
+            if !model.createsMask {
+                Picker("Zielbereich", selection: $model.intent.targetMaskID) {
+                    Text("Gesamtes Bild").tag(Optional<UUID>.none)
+                    ForEach(layers) { layer in
+                        Text(layer.name + (layer.isEnabled && layer.mask.opacity > 0 ? "" : " (ausgeblendet)"))
+                            .tag(Optional(layer.id))
+                    }
+                    if let id = model.intent.targetMaskID, !layers.contains(where: { $0.id == id }) {
+                        Text("Maske nicht mehr verfügbar").tag(Optional(id))
+                    }
+                }.accessibilityIdentifier("ai-development.scope")
             }
-            ResettableSlider(value: value, in: range, step: 0.05, neutralValue: neutral)
-                .controlSize(.small).accessibilityLabel(title)
-                .accessibilityIdentifier("ai-development.\(identifier)")
-            HStack {
-                Text(low)
-                Spacer(minLength: 0)
-                Text(high)
-            }.font(.system(size: 9)).foregroundStyle(Theme.muted)
+            Text("Auftrag").fontWeight(.medium)
+            TextField(model.createsMask ? "Zum Beispiel: Maskiere den Blumenstrauß" : "Zum Beispiel: natürliches Licht, wärmere Farben", text: $model.intent.instruction, axis: .vertical)
+                .textFieldStyle(.roundedBorder).lineLimit(2...3)
+                .accessibilityIdentifier("ai-development.instruction")
+            if model.createsMask {
+                Button("Freistellungsmodell einrichten …") { showsSubjectModel = true }
+                    .accessibilityIdentifier("ai-development.subject-model")
+                if layers.count >= LocalAdjustment.maximumCount {
+                    Text("Pro Foto sind höchstens 16 Masken möglich.")
+                }
+            } else {
+                Menu("Auftragsvorgabe wählen") {
+                    ForEach(["Natürliches Licht und ausgewogene Farben", "Schatten behutsam aufhellen", "Wärmere Farben", "Zurückhaltende Farben"], id: \.self) { instruction in
+                        Button(instruction) { model.intent.instruction = instruction }
+                    }
+                }.accessibilityIdentifier("ai-development.presets")
+                DisclosureGroup("Erweiterte Auftragsvorgaben", isExpanded: $showsIntent) {
+                    Picker("Stärke des nächsten Vorschlags", selection: $model.intent.strength) {
+                        Text("Dezent").tag(0.25)
+                        Text("Mittel").tag(0.5)
+                        Text("Kräftig").tag(1.0)
+                        if ![0.25, 0.5, 1].contains(model.intent.strength) {
+                            Text("\(Int((model.intent.strength * 100).rounded())) %").tag(model.intent.strength)
+                        }
+                    }.accessibilityIdentifier("ai-development.strength")
+                }
+            }
         }
+    }
+
+    @ViewBuilder private var prerequisites: some View {
+        if library.selectedAsset == nil {
+            Text("Kein Foto ausgewählt.")
+            Button("Foto auswählen") { library.workspaceMode = .library }
+                .accessibilityIdentifier("ai-development.select-photo")
+        } else if !validRequest && !model.createsMask {
+            Text(AIDevelopmentError.unavailableMask.localizedDescription)
+            Button("Gesamtes Bild verwenden") { model.intent.targetMaskID = nil }
+                .accessibilityIdentifier("ai-development.reset-scope")
+        } else if library.comparesOriginal || library.comparesCurrentSourceWithoutSettings {
+            Text("Importiertes Original oder Quelle ohne Regler wird angezeigt.")
+            Button("Aktuellen Stand anzeigen") { library.showPreviewComparison(.single) }
+        } else if !workspace.isFinalPreviewReady {
+            Text("Fotovorschau nicht verfügbar.")
+            Button("Foto in Bibliothek auswählen") { library.workspaceMode = .library }
+            Button("Ordner aktualisieren") { library.refreshCurrentFolder() }
+                .accessibilityIdentifier("ai-development.refresh-folder")
+        }
+        switch readiness.state {
+        case .checking:
+            ProgressView("Modell wird geprüft …").controlSize(.small)
+        case .missing:
+            Text("KI-Modell fehlt.").accessibilityIdentifier("ai-development.model-required")
+            Button("KI-Modell einrichten …") { showsModels = true }
+                .accessibilityIdentifier("ai-development.setup-model")
+        case .failed(let message):
+            Text(message).textSelection(.enabled)
+                .accessibilityIdentifier("ai-development.model-error")
+            Button("Modell prüfen und einrichten …") { showsModels = true }
+                .accessibilityIdentifier("ai-development.setup-model")
+        case .ready: EmptyView()
+        }
+    }
+
+    private func review(_ proposal: AIDevelopmentReview) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(proposal.createdMaskID == nil ? "Korrekturvorschlag" : "Maskenvorschlag").fontWeight(.medium)
+            Text(proposal.targetName.map { "Zielbereich: \($0)" } ?? "Zielbereich: Gesamtes Bild")
+            if proposal.createdMaskID == nil, workspace.aiCorrectionPreview != nil {
+                HStack(spacing: 6) {
+                    comparisonButton("Aktueller Stand", proposal: false, identifier: "current")
+                    comparisonButton("Vorschlag", proposal: true, identifier: "proposal")
+                }
+            }
+            if let preview = model.maskPreview {
+                Image(decorative: preview.image, scale: 1).resizable().aspectRatio(contentMode: .fit)
+                    .frame(maxHeight: 240).accessibilityLabel("Vorgeschlagene Maske als rote Fläche auf dem vollständigen Foto")
+                    .accessibilityIdentifier("ai-development.mask-preview")
+            }
+            HStack {
+                Button("Verwerfen") { model.discard() }
+                    .accessibilityIdentifier("ai-development.discard")
+                Spacer(minLength: 0)
+                Button("Übernehmen") { model.apply(library: library, editor: editor) }
+                    .buttonStyle(.borderedProminent).disabled(!canEditPhoto || model.isRunning || !model.canApplyProposal)
+                    .accessibilityIdentifier("ai-development.apply")
+            }.disabled(model.isRunning)
+            Text(proposal.summary).fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
+            if !proposal.changes.isEmpty {
+                DisclosureGroup("Geänderte Werte", isExpanded: $showsChanges) {
+                    ForEach(Array(proposal.changes.enumerated()), id: \.offset) { _, change in
+                        Text(change).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+        }.padding(10).background(Theme.panel, in: RoundedRectangle(cornerRadius: 6))
+    }
+
+    private func comparisonButton(_ title: String, proposal: Bool, identifier: String) -> some View {
+        Button {
+            library.showPreviewComparison(.single)
+            workspace.picksWhiteBalance = false
+            workspace.picksDetail = false
+            workspace.endLevelsPicker()
+            workspace.showsAICorrectionProposal = proposal
+        } label: { Text(title).frame(maxWidth: .infinity) }
+            .tint(workspace.correctionDisplay(library: library, editor: editor)?.showsProposal == proposal ? Theme.accent : nil)
+            .accessibilityValue(workspace.correctionDisplay(library: library, editor: editor)?.showsProposal == proposal ? "Aktiv" : "Inaktiv")
+            .accessibilityIdentifier("ai-development.\(identifier)")
     }
 }

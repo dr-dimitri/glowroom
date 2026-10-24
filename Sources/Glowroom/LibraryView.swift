@@ -89,6 +89,8 @@ struct LibraryView: View {
         .tint(Theme.accent)
         .environmentObject(maskWorkspace)
         .environmentObject(developWorkspace)
+        .environment(\.aiCorrectionDisplay, developWorkspace.correctionDisplay(library: model, editor: editor))
+        .environment(\.photoPreviewReloadID, developWorkspace.previewReloadID)
         .environment(\.developSelectionIdentity, DevelopSelectionIdentity(
             sessionID: model.aiSelectionSessionID, generation: model.aiSelectionGeneration))
         .focusedSceneValue(\.editingHistory, editingHistory)
@@ -99,11 +101,13 @@ struct LibraryView: View {
             guard isCurrentDevelopPreview(display.identity) else { return }
             developWorkspace.bind(source: request.source)
             developWorkspace.markDisplayed(source: request.source, settings: settings)
-            developWorkspace.receive(display.frame.output, sourceBitmap: display.decodedSource)
+            developWorkspace.receive(display.frame.output, sourceBitmap: display.decodedSource, sourceStamp: display.sourceStamp,
+                                     finalSourceReady: display.identity.finalSourceReady)
             developWorkspace.receiveLevelsDisplay(display)
         })
         .environment(\.developPreviewPending, { identity in
             guard isCurrentDevelopPreview(identity) else { return }
+            developWorkspace.markPreviewPending(identity)
             developWorkspace.invalidateLevelsDisplay()
         })
         .overlay { if dropTargeted { RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.accent, style: StrokeStyle(lineWidth: 3, dash: [8])).padding(6).allowsHitTesting(false) } }

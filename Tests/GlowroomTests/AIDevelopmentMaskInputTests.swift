@@ -92,6 +92,36 @@ struct AIDevelopmentMaskInputTests {
         }
     }
 
+    @Test func scopedCorrectionPreviewRetainsAcceptedGeometryAndUnrelatedGlobalValues() async throws {
+        let source = try fixture()
+        let mask = try LocalAdjustmentMask(shape: .subject(
+            LocalMaskRaster(width: 2, height: 2, bytes: Data([255, 0, 0, 0]))), feather: 0)
+        let layer = try LocalAdjustment(name: "Blumenstrauß", mask: mask, settings: .init(exposure: 0.2))
+        let geometry = try DevelopGeometry(crop: .init(x: 0.1, y: 0.1, width: 0.7, height: 0.7),
+            quarterTurns: 1, flipHorizontal: true)
+        let baseline = EditSettings(exposure: 0.3, contrast: 4, localAdjustments: [layer], developGeometry: geometry)
+        let proposal = AIDevelopmentProposal(summary: "Blumenstrauß aufhellen.", adjustments: .init(exposure: 1.2))
+        let review = try AIDevelopmentReview(proposal: proposal, baseline: baseline, strength: 0.5,
+            targetMaskID: layer.id)
+        #expect(review.settings.exposure == baseline.exposure && review.settings.contrast == baseline.contrast)
+        #expect(review.settings.developGeometry == geometry)
+        #expect(review.settings.localAdjustments[0].mask == mask)
+        #expect(review.settings.localAdjustments[0].settings.exposure == 0.7)
+        #expect(baseline.localAdjustments[0].settings.exposure == 0.2)
+
+        let request = PreviewRequest(url: URL(fileURLWithPath: "/synthetic-scoped-correction.png"),
+            modifiedAt: .distantPast, pixelSize: 128)
+        let pipeline = AdjustedPreviewPipeline()
+        let rendered = try await pipeline.image(source, request: request, settings: review.settings, priority: .selected)
+        let accepted = try await pipeline.image(source, request: request, settings: baseline, priority: .selected)
+        let expected = try EditRenderer.render(source, settings: review.settings)
+        #expect(rendered.image.width == accepted.image.width && rendered.image.height == accepted.image.height,
+            "Current and proposal share the accepted crop, rotation and zoom geometry")
+        #expect(try pixels(rendered.image) == pixels(expected.image))
+        #expect(try pixels(rendered.image) != pixels(accepted.image))
+        #expect(source.image.width == 96 && source.image.height == 64)
+    }
+
     private func fixture() throws -> PreviewBitmap {
         var bytes = [UInt8]()
         for y in 0..<64 {

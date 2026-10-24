@@ -100,6 +100,12 @@ final class WorkspaceProposalLifecycleTests {
             #expect(host.accessibilityElements.contains { $0.accessibilityIdentifier() == identifier },
                     "Existing model and search setup stays reachable without a selected photo")
         }
+        let selectPhoto = try #require(host.accessibilityElements.first {
+            $0.accessibilityIdentifier() == "ai-development.select-photo"
+        })
+        try #require(selectPhoto.accessibilityPerformPress())
+        try await host.settle()
+        #expect(f.library.workspaceMode == .library && !f.library.showsDetail)
         #expect(await f.service.requests.isEmpty)
         #expect(await metadata.finishSaving())
         #expect(await f.library.finishSaving())
@@ -1028,12 +1034,14 @@ final class WorkspaceSectionTestHost {
     private var appearances = 0
     private var disappearances = 0
 
-    init(size: NSSize = NSSize(width: 340, height: 900)) {
+    init(size: NSSize = NSSize(width: 340, height: 900), appearance: NSAppearance? = nil) {
         _ = NSApplication.shared
         WorkspaceAccessibilityElement.enableInProcess()
         hosting = NSHostingView(rootView: AnyView(EmptyView()))
+        hosting.appearance = appearance
         window = NSWindow(contentRect: NSRect(origin: NSPoint(x: -10_000, y: -10_000), size: size),
             styleMask: .borderless, backing: .buffered, defer: false)
+        window.appearance = appearance
         window.isReleasedWhenClosed = false
         window.ignoresMouseEvents = true
         window.contentView = hosting

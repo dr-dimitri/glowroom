@@ -84,11 +84,38 @@ struct AIDevelopmentAcceptanceTests {
                     && workspace.sourceSize?.width == CGFloat(image.width)
             }
             let baselineDigest = try #require(frames.latest?.digest)
+            let baselineExportDigest = scenario == "global"
+                ? try await exportPixelDigest(asset: asset, editor: editor, to: directory.appendingPathComponent("baseline.jpg")) : nil
             #expect(!editor.canUndo(assetID: asset.id))
             try await press("ai-development.generate", in: host)
             try await wait("proposal displayed") { model.proposal != nil && !model.isRunning }
             #expect(model.proposal?.settings == settings)
             #expect(editor.settings(for: asset.id) == baseline)
+            let candidate = try #require(workspace.aiCorrectionPreview)
+            #expect(candidate.settings == settings && candidate.snapshot.settings == baseline)
+            #expect(workspace.showsAICorrectionProposal)
+            try await host.settle()
+            #expect(frames.latest?.settings == baseline && frames.latest?.digest == baselineDigest,
+                "Proposal display must not hand unaccepted pixels to scopes, sampling or accepted preview consumers")
+            if let baselineExportDigest {
+                let reviewingExport = try await exportPixelDigest(asset: asset, editor: editor,
+                    to: directory.appendingPathComponent("while-reviewing.jpg"))
+                #expect(reviewingExport == baselineExportDigest,
+                    "The real JPEG exporter must use accepted settings while the proposal is visible")
+            }
+            try #require(await editor.flush())
+            #expect(try await dependencies.database.loadState().byAsset[asset.id]?.snapshot.settings == baseline)
+            #expect(!editor.canUndo(assetID: asset.id))
+            try await press("ai-development.current", in: host)
+            #expect(!workspace.showsAICorrectionProposal)
+            try await press("ai-development.proposal", in: host)
+            #expect(workspace.showsAICorrectionProposal)
+            #expect(frames.latest?.settings == baseline && editor.settings(for: asset.id) == baseline)
+            try await press("ai-development.discard", in: host)
+            #expect(workspace.aiCorrectionPreview == nil && model.proposal == nil)
+            #expect(editor.settings(for: asset.id) == baseline && !editor.canUndo(assetID: asset.id))
+            try await press("ai-development.generate", in: host)
+            try await wait("proposal rendered again") { model.proposal != nil && !model.isRunning }
             try await press("ai-development.apply", in: host)
             try await wait("proposal accepted and rendered") {
                 !model.isRunning && model.proposal == nil && editor.settings(for: asset.id) == settings
@@ -104,6 +131,12 @@ struct AIDevelopmentAcceptanceTests {
             }
             #expect(model.intent == requestedIntent, "Intent sliders describe the request and retain its directions")
             #expect(frames.latest?.digest != baselineDigest)
+            if let baselineExportDigest {
+                let acceptedExport = try await exportPixelDigest(asset: asset, editor: editor,
+                    to: directory.appendingPathComponent("after-acceptance.jpg"))
+                #expect(acceptedExport != baselineExportDigest,
+                    "Only accepting the correction may change the exported JPEG pixels")
+            }
             try await expectNativeControls(settings, controls: controls, in: host)
             #expect(editor.settings(for: asset.id).texture == baseline.texture)
             // The first accepted write schedules the real daily backup. Drain
@@ -161,9 +194,23 @@ struct AIDevelopmentAcceptanceTests {
 
     private func press(_ identifier: String, in host: WorkspaceSectionTestHost) async throws {
         try await host.settle()
-        let button = try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == identifier })
+        let button = try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == identifier },
+            "Missing \(identifier); available: \(host.accessibilityElements.compactMap { $0.accessibilityIdentifier() })")
         try #require(button.isAccessibilityEnabled(), "\(identifier) must be enabled")
         try #require(button.accessibilityPerformPress())
+    }
+
+    private func exportPixelDigest(asset: PhotoAsset, editor: EditingModel, to target: URL) async throws -> String {
+        let resolved = try editor.resolvedSource(for: asset, intent: .currentEditing)
+        guard case .original(let source) = resolved.identity else {
+            throw ArtifactContractError.invalidCapability
+        }
+        let result = try await JPEGExporter().export(.init(
+            sourceURL: URL(fileURLWithPath: source.standardizedPath), destinationURL: target,
+            settings: resolved.settings, options: .init(quality: 100), protectedSourceURLs: [asset.fileURL]))
+        let encoded = try #require(CGImageSourceCreateWithURL(result.url as CFURL, nil))
+        let bitmap = PreviewBitmap(image: try #require(CGImageSourceCreateImageAtIndex(encoded, 0, nil)))
+        return try ImageAnalysisPreparer.describeRaster(bitmap).digest
     }
 
     private func expectNativeControls(_ settings: EditSettings, controls: [Adjustment],
@@ -257,6 +304,9 @@ private struct AIAcceptanceHarness: View {
         .padding(20)
         .environmentObject(editor)
         .environmentObject(workspace)
+        .environment(\.developSelectionIdentity, DevelopSelectionIdentity(
+            sessionID: library.aiSelectionSessionID, generation: library.aiSelectionGeneration))
+        .environment(\.aiCorrectionDisplay, workspace.correctionDisplay(library: library, editor: editor))
         .environment(\.developPreviewSink, { handoff in
             let request = handoff.identity.request
             let settings = handoff.identity.settings
@@ -264,7 +314,8 @@ private struct AIAcceptanceHarness: View {
             let source = handoff.decodedSource
             workspace.bind(source: request.source)
             workspace.markDisplayed(source: request.source, settings: settings)
-            workspace.receive(bitmap, sourceBitmap: source)
+            workspace.receive(bitmap, sourceBitmap: source, sourceStamp: handoff.sourceStamp,
+                finalSourceReady: handoff.identity.finalSourceReady)
             frames.receive(settings: settings, bitmap: bitmap, source: source)
         })
     }

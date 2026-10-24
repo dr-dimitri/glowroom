@@ -35,15 +35,23 @@ Download arbeitet die Inferenz offline; Fotos werden nicht hochgeladen.
 
 ## Bildwirkung steuern
 
-Ein Auftrag in eigenen Worten und die Regler **Helligkeit**, **Kontrast**,
-**Wärme** und **Farbkraft** beschreiben die gewünschte Richtung. Ihre Mitte
-bedeutet keine zusätzliche Vorgabe. **Stärke** mischt geprüfte Zielwerte mit den
-aktuellen Einstellungen; 0 erhält den aktuellen Stand, 100 % übernimmt den
-vollständigen Modellvorschlag. Die anfängliche Stärke beträgt 50 %.
-Die optionalen Richtungsregler stehen eingeklappt unter **Vorgaben für den Vorschlag**:
-Reglerbewegungen allein verändern die laufende Bildvorschau nicht. Um einen
-geänderten Auftrag anzuwenden, erneut **Vorschlag erstellen** und anschließend
-**Übernehmen** wählen. Direkte Bildkorrekturen stehen daneben unter **Licht**, **Farbe** und **Details**.
+Ein Auftrag in eigenen Worten beschreibt die gewünschte Korrektur. Kurze
+Auftragsvorgaben füllen das Auftragsfeld aus. Sie gelten ausschließlich für den nächsten
+mit **Vorschlag erstellen** gestarteten Auftrag und ändern weder die aktuelle
+Bildvorschau noch gespeicherte Einstellungen. Es gibt einen Satz direkter
+Licht-/Farbregler: die regulären Gruppen **Licht** und **Farbe** sowie die lokalen
+Regler einer Maske. Die erweiterten Vorgaben enthalten die ausdrücklich benannte
+Stärke für den nächsten Vorschlag; anfänglich werden geprüfte Zielwerte zu
+50 % mit dem aktuellen Stand gemischt. 0 erhält den aktuellen Stand,
+100 % verwendet den vollständigen Modellvorschlag.
+
+Vor dem Start sind **Auftrag** und **Zielbereich** sichtbar: **Gesamtes Bild** oder
+der Name einer vorhandenen aktiven Maske. Fehlende Fotos, unzugängliche Masken
+und ein fehlendes Modell bieten die zugehörige nächste Aktion. Der Startknopf
+wird während der Arbeit an derselben Stelle durch Fortschritt und **Abbrechen**
+ersetzt. Solange nur eine vorläufige Bildstufe geladen ist, bleibt der Start
+bis zur vollständigen Vorschau gesperrt. Panelöffnung und die Auswahl einer
+Auftragsvorgabe starten keine Inferenz.
 
 **Vorschlag erstellen** übergibt die aktuelle entwickelte Vorschau und die
 unterstützten aktuellen Reglerwerte an das Modell. Die Vorbereitung verwendet
@@ -54,27 +62,38 @@ keine alten Pixel an das Modell liefern. Fehlt eine so geprüfte Basis im Cache,
 wird sie beim ausdrücklichen Auftrag geladen. Eine Reglerbewegung startet weder
 Inferenz noch RAW-Decodierung.
 
-Das Ergebnis zeigt eine Erläuterung sowie die tatsächlich zur Übernahme
-vorgesehenen Werte (vorher → nachher, einschließlich Stärke). Unterstützt sind
-Belichtung, Kontrast, Lichter, Tiefen, Weiß, Schwarz, Dynamik, Sättigung,
-Temperatur und Tönung. Alle anderen Einstellungen bleiben erhalten. Der Bereich
-**Anwenden auf** begrenzt den Vorschlag wahlweise auf das gesamte Bild oder eine
-bestehende aktive Maske. Qwen erzeugt keine neuen Bildpixel oder Retuschen.
+Ein gültiger Korrekturvorschlag wird auf derselben Bildfläche mit demselben
+Zoom, Beschnitt und derselben Quelle gerendert. **Aktueller Stand** und
+**Vorschlag** wechseln die Ansicht; die Bildfläche kennzeichnet den Vorschlag
+ausdrücklich. Navigator, Originalvergleich, Export und Speicherung verwenden bis zur Übernahme weiterhin die angenommenen
+Einstellungen. Der Vorschlag bleibt ein flüchtiger Prüfstand. Seine Darstellung
+verwendet die bereits decodierte Bildbasis und den begrenzten Vorschau-Renderer;
+der Ansichtswechsel benötigt weder Modellinferenz noch erneute RAW-Decodierung.
 
-**Übernehmen** verwendet die normale Speicherung und erzeugt einen gemeinsamen
-Rückgängig-Schritt. Die Vorschau wird mit den übernommenen Werten neu gerendert;
-dieselben Werte stehen anschließend in den normalen Reglern unter **Entwickeln**.
-Die Auftragsregler unter KI-Korrektur beschreiben weiterhin den Auftrag und werden
-durch die Übernahme nicht zurückgesetzt. Enthält der Vorschlag keine wirksame
-Wertänderung (auch bei Stärke 0), bleibt **Übernehmen** deaktiviert und die
-Statusmeldung erklärt, dass keine Änderung vorgeschlagen wird. Ein solcher
-Vorschlag erzeugt weder eine Bearbeitung noch eine Erfolgsmeldung.
+Unterstützt sind Belichtung, Kontrast, Lichter, Tiefen, Weiß, Schwarz, Dynamik,
+Sättigung, Temperatur und Tönung. Alle anderen Einstellungen bleiben erhalten.
+Der **Zielbereich** begrenzt die Korrektur auf das gesamte Bild oder die benannte
+aktive Maske. Qwen erzeugt keine neuen Bildpixel oder Retuschen.
+
+**Übernehmen** aktiviert genau die geprüften Werte mit der normalen Speicherung
+und einem gemeinsamen Rückgängig-Schritt. Ein bereits gerenderter gültiger
+Vorschlag benötigt dafür keine weiterhin installierten Modellgewichte; das
+Modell ist nur für einen neuen Auftrag erforderlich. Die regulären Licht-/Farbregler zeigen
+danach diese tatsächlich angenommenen Werte. **Rückgängig** stellt den gesamten
+vorherigen Bildstand wieder her. Die Vorgaben in KI-Korrektur bleiben Vorgaben
+für einen späteren Auftrag. Enthält die Antwort keine wirksame Wertänderung
+(auch bei Stärke 0), bleibt **Übernehmen** deaktiviert und **Keine Änderung
+vorgeschlagen** ist von Fehler und Abbruch unterscheidbar. Es entsteht kein
+leerer Bearbeitungs- oder Erfolgseintrag.
 
 **Verwerfen** verändert kein Foto. Ein Ergebnis nach
 Foto-/Quellenwechsel, zwischenzeitlicher Bearbeitung (auch nach Undo), neuem
 Auftrag oder Abbruch darf nicht übernommen werden. Vor der Übernahme wird die
-native Quellenidentität erneut im Hintergrund geprüft, anschließend nochmals
-der Bearbeitungskontext. Der Abschluss einer Hintergrundspeicherung derselben
+native Quellenidentität erneut im Hintergrund geprüft. Wurde die Datei außerhalb
+von Glowroom ersetzt, verhindert diese Prüfung die Übernahme; **Foto neu laden**
+lädt anschließend die neue Quelle. Bei geänderter Dateigröße oder Änderungszeit
+bietet **Ordner aktualisieren** die passende Aktion. Anschließend wird auch der
+Bearbeitungskontext erneut geprüft. Der Abschluss einer Hintergrundspeicherung derselben
 bereits angenommenen Einstellungen entwertet einen Vorschlag nicht. Quelle,
 Einstellungen, Bearbeitungs- und Auswahlgeneration sowie Store-Epoch müssen
 unverändert bleiben; die strikten Persistenzprüfungen der Datenbank gelten
@@ -86,7 +105,7 @@ bis zum tatsächlichen Ende; vorher wird keine neue Anfrage gestartet.
 
 ## Vorhandene Masken gezielt entwickeln
 
-Unter **KI-Korrektur → Anwenden auf** stehen **Gesamtes Bild** und alle am Foto
+Unter **KI-Korrektur → Zielbereich** stehen **Gesamtes Bild** und alle am Foto
 vorhandenen Masken. Wähle beispielsweise die Maske **Blumenstrauß** und gib
 „Etwas heller und wärmer“ ein. **Vorschlag erstellen** und **Übernehmen** ändern
 nur die Regler dieser gewählten Maske. Name, Form, Pinselkorrekturen, Invertierung,
@@ -95,7 +114,7 @@ werden nicht verändert. Für mehrere Masken nacheinander die jeweilige Maske
 wählen. Ausgeblendete Masken und Masken mit Deckkraft 0 müssen vor dem Auftrag
 im Werkzeug **Maskieren** aktiviert werden.
 
-Der Vorschlag nennt die Zielmaske und zeigt ihre lokalen Werte vorher/nachher.
+Der Vorschlag nennt die Zielmaske und zeigt die lokale Bildwirkung auf der gemeinsamen Bildfläche.
 Auch **Wärme** ist lokal verfügbar: **Masken → Farbe → Weißabgleich** enthält
 Temperatur und Tönung. 6500/0 sind neutrale relative Werte auf dem bereits
 entwickelten Bild. Alte Masken erhalten diese neutralen Werte; vorhandene
@@ -118,7 +137,7 @@ Fehlermeldung, niemals zum stillen Wechsel auf eine globale Korrektur.
    **Verwerfen** lässt das Foto unverändert. Im Werkzeug **Maskieren**
    die neue Maske auswählen und bei Bedarf mit Pinsel/Radierer verfeinern.
 5. Für eine KI-Korrektur die Aufgabe **Korrektur** wählen und diese Maske unter
-   **Anwenden auf** wählen.
+   **Zielbereich** wählen.
 
 Dieser Weg benötigt die lokale Qwen-Installation und das vorhandene
 **Freistellungsmodell BiRefNet**. Dessen Einrichtung ist direkt unter **Neue Maske**
@@ -367,3 +386,13 @@ und Locks blieben erhalten. `GLOWROOM_BUILD_JOBS=4 ./scripts/build-app.sh`
 bestand anschließend einschließlich Bundle-, Plist- und Signaturprüfung.
 Das neue Release-Bundle liegt unter `dist/Glowroom.app`. Es bleiben keine
 offenen Review-, Test- oder Buildhindernisse.
+
+## KI-Korrektur am Foto prüfen (UX-02, Issue 194)
+
+Die native visuelle Abnahme und ihr reproduzierbarer Testaufbau stehen im
+[Prüfprotokoll zu Issue 194](issue-194/README.md). Die Standardprüfungen verwenden
+kontrollierte Modellantworten, synthetische Bilder und echte Vorschau-, Quellen-,
+Undo- und Speicherpfade. Sie belegen keine neue Modellqualität. Der neue Ablauf
+ändert weder Modellgewichte noch Antwortvalidierung oder KI-Fähigkeitsgrenzen.
+Objektmaskenerstellung bleibt der bestehende gesonderte Auftrag; ihre fachliche
+Konsolidierung gehört zu UX-03.

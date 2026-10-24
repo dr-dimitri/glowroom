@@ -538,6 +538,7 @@ struct DevelopDetailWorkspaceIntegrationTests {
         defer { host.close(); fixture.removeTemporaryFiles() }
         try await host.mount(fixture)
         try await host.activatePicker()
+        try await host.revealLoupe()
         let canvas = try host.input("develop.detail-canvas")
         try #require(host.window.isKeyWindow && host.window.acceptsMouseMovedEvents && canvas.inputEnabled)
 
@@ -641,6 +642,7 @@ private final class DetailWorkspaceHost {
     let window: NSWindow
     private let hosting = NSHostingView(rootView: AnyView(EmptyView()))
     private var imageSize = CGSize.zero
+    private var workspace: DevelopWorkspace?
 
     init() {
         _ = NSApplication.shared
@@ -655,12 +657,15 @@ private final class DetailWorkspaceHost {
 
     func mount(_ fixture: DetailWorkspaceFixture, workspace: DevelopWorkspace? = nil) async throws {
         imageSize = fixture.imageSize
-        hosting.rootView = AnyView(LibraryView(model: fixture.library, dataDirectory: fixture.directory, developWorkspace: workspace)
+        let activeWorkspace = workspace ?? DevelopWorkspace()
+        self.workspace = activeWorkspace
+        hosting.rootView = AnyView(LibraryView(model: fixture.library, dataDirectory: fixture.directory, developWorkspace: activeWorkspace)
             .environmentObject(fixture.editor).environmentObject(fixture.layout)
             .environmentObject(fixture.metadata).environmentObject(fixture.exporter)
             .environment(\.displayScale, 2).preferredColorScheme(.dark))
         try await wait {
             self.nativeViews.contains { ($0 as? NSImageView)?.image?.size == fixture.imageSize }
+                && activeWorkspace.isFinalPreviewReady
                 && self.inputIfPresent(fixture.library.isDeveloping
                     ? "develop.detail-loupe" : "workspace.photo-navigation") != nil
         }
@@ -668,12 +673,19 @@ private final class DetailWorkspaceHost {
     }
 
     func activatePicker() async throws {
+        // Returning from comparison mounts a new progressive canvas. Wait for
+        // that canvas's accepted final basis before creating a pointer session;
+        // replacing its source dimensions correctly cancels an earlier session.
+        try await settle()
+        try await wait { self.workspace?.isFinalPreviewReady == true }
         let button = try element("develop.detail-picker")
         try #require(button.isAccessibilityEnabled())
         try #require(button.accessibilityPerformPress(), "Activate the production inspector button through its AX action")
         try await wait { self.inputIfPresent("develop.detail-canvas")?.inputEnabled == true }
         try await settle()
-        #expect(try element("develop.detail-picker").accessibilityValue() as? String == "Aktiv")
+        let value = try element("develop.detail-picker").accessibilityValue() as? String
+        #expect(value == "Aktiv",
+            "Picker AX state=\(value ?? "nil"), model active=\(workspace?.picksDetail == true), final source=\(workspace?.isFinalPreviewReady == true)")
     }
 
     func photoPoint(x: CGFloat, y: CGFloat, on canvas: NSView) -> CGPoint {
@@ -730,13 +742,25 @@ private final class DetailWorkspaceHost {
             clickCount: type == .mouseMoved ? 0 : 1, pressure: type == .leftMouseDown ? 1 : 0))
     }
 
-    func loupeRed() async throws -> CGFloat {
+    func revealLoupe() async throws {
+        // In the complete inspector only the upper half may initially fit in
+        // the scroll viewport. Reveal the actual image before capturing its
+        // center; otherwise cacheDisplay reads the panel behind clipped pixels.
+        let loupe = try input("develop.detail-loupe")
+        loupe.scrollToVisible(loupe.bounds)
         try await settle()
+    }
+
+    func loupeRed() async throws -> CGFloat {
+        try await revealLoupe()
         return try captureLoupeRed()
     }
 
     private func captureLoupeRed() throws -> CGFloat {
         let loupe = try input("develop.detail-loupe")
+        let center = CGPoint(x: loupe.bounds.midX, y: loupe.bounds.midY)
+        try #require(loupe.visibleRect.contains(center),
+            "Loupe center must be visible before capturing its pixels; bounds=\(loupe.bounds), visible=\(loupe.visibleRect), center=\(workspace?.detailCenter ?? .zero)")
         // Capture the real image behind the transparent native loupe
         // surface, not the surface itself. Its center is away from all chrome.
         for view in nativeViews { view.needsDisplay = true }
