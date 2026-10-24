@@ -69,17 +69,147 @@ fi
 STAGING=""
 COMPILE_PID=""
 ICON_PID=""
+COMPILE_IDENTITY=""
+ICON_IDENTITY=""
 DESTINATION="$ROOT/dist/Glowroom.app"
+
+# SwiftPM may give clang/Metal children their own process groups. Record birth
+# metadata rather than relying on a process group, command name or build path.
+# LC_ALL fixes ps's date representation; UID is part of the fingerprint too.
+process_identity() {
+    LC_ALL=C /bin/ps -p "$1" -o lstart=,uid= 2>/dev/null | /usr/bin/awk '{$1=$1; print}'
+}
+process_snapshot() {
+    LC_ALL=C /bin/ps -axo pid=,ppid=,state=,lstart=,uid= 2>/dev/null |
+        /usr/bin/awk '{$1=$1; print}'
+}
+freeze_process() {
+    local pid="$1" expected="$2" metadata state identity attempt
+    [[ "$(process_identity "$pid")" == "$expected" ]] || return 1
+    kill -STOP "$pid" 2>/dev/null || return 1
+    for ((attempt = 0; attempt < 50; attempt++)); do
+        metadata="$(LC_ALL=C /bin/ps -p "$pid" -o state=,lstart=,uid= 2>/dev/null |
+            /usr/bin/awk '{$1=$1; print}')" || return 1
+        read -r state identity <<< "$metadata"
+        [[ "$identity" == "$expected" && "$state" != Z* ]] || return 1
+        [[ "$state" != T* ]] || return 0
+        sleep 0.01
+    done
+    return 1
+}
+capture_owned_workers() {
+    local snapshot pid parent state identity index found round changed worker expected
+    local complete=1
+    # These arrays and count are scoped by stop_owned_workers. Keeping partial
+    # capture data lets that caller terminate verified processes even if a later
+    # generation cannot be proven complete.
+    # A worker waits for its launch file until its identity has been recorded.
+    # Thus cancellation during startup cannot lose a newly spawned compiler.
+    for worker in "$COMPILE_PID" "$ICON_PID"; do
+        [[ -n "$worker" ]] || continue
+        if [[ "$worker" == "$COMPILE_PID" ]]; then expected="$COMPILE_IDENTITY"; else expected="$ICON_IDENTITY"; fi
+        snapshot="$(process_snapshot)" || return 1
+        found=0
+        while read -r pid parent state identity; do
+            [[ "$pid" == "$worker" && "$parent" == "$$" ]] || continue
+            if [[ -n "$expected" && "$identity" != "$expected" ]]; then complete=0; continue; fi
+            if [[ "$state" == Z* ]]; then complete=0; continue; fi
+            found=1
+            owned_pids[count]="$pid"
+            owned_identities[count]="$identity"
+            count=$((count + 1))
+            # Freeze parents before discovering children so they cannot fork or
+            # exit and reparent their children while the tree is being captured.
+            freeze_process "$pid" "$identity" || return 1
+        done <<< "$snapshot"
+        # An active recorded root that has disappeared may have orphaned its
+        # descendants. Only successful waits explicitly clear recorded roots.
+        (( found != 0 )) || complete=0
+    done
+    if (( count == 0 )); then (( complete == 1 )); return; fi
+
+    # Descendant discovery is deliberately serial: each frozen generation makes
+    # the next snapshot stable, including descendants that escaped job control.
+    for ((round = 0; round < 64; round++)); do
+        changed=0
+        snapshot="$(process_snapshot)" || return 1
+        while read -r pid parent state identity; do
+            found=0
+            for ((index = 0; index < count; index++)); do
+                if [[ "$pid" == "${owned_pids[index]}" ]]; then found=1; break; fi
+            done
+            (( found == 0 )) || continue
+            for ((index = 0; index < count; index++)); do
+                [[ "$parent" == "${owned_pids[index]}" ]] || continue
+                # A zombie may already have reparented its children to PID 1.
+                [[ "$state" != Z* ]] || return 1
+                # Recheck the parent's birth before accepting this ancestry.
+                [[ "$(process_identity "$parent")" == "${owned_identities[index]}" ]] || return 1
+                # A child that disappears before it can be frozen might have
+                # reparented grandchildren; do not claim a complete tree then.
+                [[ "$(process_identity "$pid")" == "$identity" ]] || return 1
+                (( count < 4096 )) || return 1
+                owned_pids[count]="$pid"
+                owned_identities[count]="$identity"
+                count=$((count + 1))
+                freeze_process "$pid" "$identity" || return 1
+                changed=1
+                break
+            done
+        done <<< "$snapshot"
+        (( changed != 0 )) || break
+    done
+    (( changed == 0 )) || return 1
+    (( complete == 1 ))
+}
+stop_owned_workers() {
+    local snapshot pid parent state identity index found round signal
+    local owned_pids=() owned_identities=()
+    local count=0 complete=0
+    if capture_owned_workers; then complete=1; fi
+    if (( count == 0 )); then (( complete == 1 )); return; fi
+
+    # Keep the tree stopped throughout termination: resuming an arbitrary
+    # compiler signal handler would reopen the fork/reparent race. TERM records
+    # cancellation; KILL then guarantees a TERM-ignoring child cannot write on.
+    for signal in TERM KILL; do
+        for ((index = count - 1; index >= 0; index--)); do
+            pid="${owned_pids[index]}"
+            if [[ "$(process_identity "$pid")" == "${owned_identities[index]}" ]]; then
+                kill -"$signal" "$pid" 2>/dev/null || true
+            fi
+        done
+    done
+    # A zombie cannot write; wait below reaps our direct children. Never signal
+    # a PID again after KILL, even if a new process has since reused its number.
+    for ((round = 0; round < 100; round++)); do
+        snapshot="$(process_snapshot)" || return 1
+        found=0
+        while read -r pid parent state identity; do
+            [[ "$state" != Z* ]] || continue
+            for ((index = 0; index < count; index++)); do
+                if [[ "$pid" == "${owned_pids[index]}" && "$identity" == "${owned_identities[index]}" ]]; then found=1; break; fi
+            done
+        done <<< "$snapshot"
+        if (( found == 0 )); then (( complete == 1 )); return; fi
+        sleep 0.05
+    done
+    return 1
+}
 cleanup() {
     local result=$?
     local worker
     local keep_staging=0
-    trap - EXIT INT TERM
+    trap - EXIT
+    trap '' INT TERM
+    if ! stop_owned_workers; then
+        echo "Could not verify that all owned build processes stopped; retaining $LOCK and $STAGING." >&2
+        echo "Do not clean the build directories until the remaining processes have been checked." >&2
+        (( result != 0 )) || result=1
+        exit "$result"
+    fi
     for worker in "$COMPILE_PID" "$ICON_PID"; do
         if [[ -n "$worker" ]]; then
-            # Each background job has its own process group, including compiler
-            # children. Stop and reap it before deleting its staging files.
-            kill -TERM -- "-$worker" 2>/dev/null || true
             wait "$worker" 2>/dev/null || true
         fi
     done
@@ -137,10 +267,12 @@ PLIST
 
 ICONSET="$STAGING/AppIcon.iconset"
 build_product() {
+    while [[ ! -f "$STAGING/compile.start" ]]; do sleep 0.01; done
     "$ROOT/scripts/prepare-mlx-runtime.sh" "$BUILD_PATH/MLXRuntime"
     swift build "${BUILD_ARGS[@]}" --product Glowroom
 }
 create_icon() {
+    while [[ ! -f "$STAGING/icon.start" ]]; do sleep 0.01; done
     # Independent, persistent caches prevent compiler/icon workers contending
     # for the same module files and avoid recompiling imports on every build.
     export CLANG_MODULE_CACHE_PATH="$BUILD_PATH/IconModuleCache"
@@ -157,19 +289,31 @@ wait_for_worker() {
     exit "$result"
 }
 
-# Bash 3.2 on macOS supports job-control groups. They let the cleanup trap
-# terminate a worker and its descendants without signaling unrelated builds.
+# Job control preserves normal interactive compiler behavior. Cancellation uses
+# the verified descendant tree instead, because native tools can leave a group.
 set -m
 echo "Build budget: $JOB_BUDGET workers ($COMPILER_JOBS compiler jobs; icon generation $([[ "$JOB_BUDGET" == 1 ]] && echo sequential || echo parallel))."
 build_product &
 COMPILE_PID=$!
+COMPILE_IDENTITY="$(process_identity "$COMPILE_PID")"
+[[ -n "$COMPILE_IDENTITY" ]] || { echo "Cannot identify the compiler worker." >&2; exit 1; }
+touch "$STAGING/compile.start"
 if (( JOB_BUDGET > 1 )); then
     create_icon &
     ICON_PID=$!
+    ICON_IDENTITY="$(process_identity "$ICON_PID")"
+    [[ -n "$ICON_IDENTITY" ]] || { echo "Cannot identify the icon worker." >&2; exit 1; }
+    touch "$STAGING/icon.start"
 fi
 wait_for_worker "$COMPILE_PID" "Compilation"
 COMPILE_PID=""
-if [[ -z "$ICON_PID" ]]; then create_icon & ICON_PID=$!; fi
+if [[ -z "$ICON_PID" ]]; then
+    create_icon &
+    ICON_PID=$!
+    ICON_IDENTITY="$(process_identity "$ICON_PID")"
+    [[ -n "$ICON_IDENTITY" ]] || { echo "Cannot identify the icon worker." >&2; exit 1; }
+    touch "$STAGING/icon.start"
+fi
 wait_for_worker "$ICON_PID" "Icon generation"
 ICON_PID=""
 set +m

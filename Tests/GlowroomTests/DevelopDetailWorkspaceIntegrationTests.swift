@@ -15,6 +15,153 @@ import Testing
 @Suite("Detail picker workspace integration", .serialized, .timeLimit(.minutes(2)))
 @MainActor
 struct DevelopDetailWorkspaceIntegrationTests {
+    @Test func capturedLevelsSelectionRejectsSynchronousLibraryABAWithoutAnyViewCallback() async throws {
+        let fixture = try await DetailWorkspaceFixture.make(withAlternateAsset: true)
+        defer { fixture.removeTemporaryFiles() }
+        let first = try #require(fixture.library.selectedAsset)
+        let second = try #require(fixture.library.visibleAssets.first { $0.id != first.id })
+        let captured = DevelopSelectionIdentity(sessionID: fixture.library.aiSelectionSessionID,
+                                                generation: fixture.library.aiSelectionGeneration)
+        let editGeneration = fixture.editor.aiEditGeneration
+        let snapshot = fixture.editor.snapshot(for: first.id)
+        #expect(captured.matches(fixture.library))
+
+        // No host is mounted and no suspension occurs between the two real
+        // selection actions and the checks. View teardown/pending callbacks
+        // therefore cannot be the mechanism that makes the old token stale.
+        fixture.library.select(second)
+        fixture.library.select(first)
+        #expect(fixture.library.selectedID == first.id)
+        #expect(fixture.library.aiSelectionGeneration == captured.generation + 2)
+        #expect(fixture.editor.aiEditGeneration == editGeneration)
+        #expect(fixture.editor.snapshot(for: first.id) == snapshot)
+        #expect(!captured.matches(fixture.library),
+            "Returning to the same asset and source must not revive an earlier automatic Levels request")
+        let fresh = DevelopSelectionIdentity(sessionID: fixture.library.aiSelectionSessionID,
+                                             generation: fixture.library.aiSelectionGeneration)
+        #expect(fresh.matches(fixture.library))
+        #expect(!DevelopSelectionIdentity(sessionID: UUID(), generation: fresh.generation).matches(fixture.library))
+        #expect(await fixture.library.finishSaving())
+        #expect(await fixture.editor.flush())
+    }
+
+    @Test(arguments: [false, true])
+    func actualAutomaticLevelsButtonRejectsLateSuccessAndFailureAfterLibraryABA(fails: Bool) async throws {
+        let latch = TestAsyncLatch()
+        let workspace = DevelopWorkspace(validateLevels: { _, _, _ in }, estimateLevels: { _, _, _ in
+            await latch.wait() // Native work may finish after cancellation.
+            if fails { throw EditRenderError.unavailable }
+            return .value(LevelsSettings(master: .init(inputBlack: 0.2, inputWhite: 0.8)))
+        })
+        let fixture = try await DetailWorkspaceFixture.make(withAlternateAsset: true)
+        fixture.layout.update(developing: true) {
+            $0.openGroups = [.edit, .details]
+            $0.openAdjustmentGroups.insert("tone")
+        }
+        let host = DetailWorkspaceHost()
+        defer { latch.releaseAll(); workspace.clear(); host.close(); fixture.removeTemporaryFiles() }
+        try await host.mount(fixture, workspace: workspace)
+        let first = try #require(fixture.library.selectedAsset)
+        let second = try #require(fixture.library.visibleAssets.first { $0.id != first.id })
+        let captured = DevelopSelectionIdentity(sessionID: fixture.library.aiSelectionSessionID,
+                                                generation: fixture.library.aiSelectionGeneration)
+        try await host.wait { workspace.matchesLevelsDisplay(assetID: first.id, editor: fixture.editor, selection: captured) }
+        let snapshot = fixture.editor.snapshot(for: first.id)
+        let revision = fixture.editor.localRevision(for: first.id)
+        let persisted = fixture.editor.persistedState(for: first.id)
+        let editGeneration = fixture.editor.aiEditGeneration
+        let button = try host.element("develop.levels.automatic")
+        try #require(button.isAccessibilityEnabled())
+        try #require(button.accessibilityPerformPress(), "Start the production automatic Levels action through its native AX button")
+        try await host.wait { latch.waitingCount == 1 }
+        let operation = try #require(workspace.levelsTask)
+        let request = workspace.levelsRequest
+        let display = try #require(workspace.levelsDisplay)
+
+        // Keep A → B → A in one MainActor turn. The asset/source values and
+        // accepted frame still match; only the live selection token differs.
+        // The separate unmounted test above proves this guard independently
+        // of any subsequent SwiftUI cancellation or render callback.
+        fixture.library.select(second)
+        fixture.library.select(first)
+        #expect(fixture.library.selectedID == first.id)
+        #expect(!captured.matches(fixture.library))
+        #expect(workspace.levelsRequest == request)
+        #expect(workspace.levelsDisplay?.identity == display.identity)
+        #expect(fixture.editor.aiEditGeneration == editGeneration)
+        workspace.errorMessage = "Rückmeldung der neueren Auswahl"
+        latch.releaseAll()
+        await operation.value
+
+        #expect(fixture.editor.snapshot(for: first.id) == snapshot)
+        #expect(fixture.editor.localRevision(for: first.id) == revision)
+        #expect(!fixture.editor.canUndo(assetID: first.id))
+        #expect(workspace.errorMessage == "Rückmeldung der neueren Auswahl")
+        #expect(workspace.levelsSampleDescription == nil && !workspace.automaticLevelsBusy)
+        #expect(await fixture.library.finishSaving())
+        #expect(await fixture.editor.flush())
+        #expect(fixture.editor.persistedState(for: first.id) == persisted)
+    }
+
+    @Test(arguments: [false, true], [0, 1, 2])
+    func escapeCancelsAutomaticLevelsThroughTheRealWorkspaceKeyboardWithoutNavigating(focused: Bool, responder: Int) async throws {
+        let latch = TestAsyncLatch()
+        let workspace = DevelopWorkspace(estimateLevels: { _, _, _ in
+            // Deliberately ignores cancellation until released, like an
+            // already executing native operation. Late success must be inert.
+            await latch.wait()
+            return .value(LevelsSettings(master: .init(inputBlack: 0.2, inputWhite: 0.8)))
+        })
+        let fixture = try await DetailWorkspaceFixture.make()
+        if focused {
+            WorkspaceActions.toggleFocus(fixture.layout, library: fixture.library)
+            fixture.layout.update(developing: true) { $0.showsTools = true; $0.openGroups = [.details] }
+        }
+        let host = DetailWorkspaceHost()
+        defer { latch.releaseAll(); workspace.clear(); host.close(); fixture.removeTemporaryFiles() }
+        try await host.mount(fixture, workspace: workspace)
+        let assetID = try #require(fixture.library.selectedID)
+        let selection = DevelopSelectionIdentity(sessionID: fixture.library.aiSelectionSessionID,
+                                                 generation: fixture.library.aiSelectionGeneration)
+        try await host.wait { workspace.matchesLevelsDisplay(assetID: assetID, editor: fixture.editor, selection: selection) }
+        let snapshot = fixture.editor.snapshot(for: assetID)
+        let revision = fixture.editor.localRevision(for: assetID)
+        let task = try #require(workspace.applyAutomaticLevels(assetID: assetID, editor: fixture.editor,
+            selection: selection, isCurrent: { fixture.library.selectedID == assetID }))
+        try await host.wait { latch.waitingCount == 1 }
+        try #require(workspace.automaticLevelsBusy && workspace.levelsPicker == nil)
+        let request = workspace.levelsRequest
+        let detail = fixture.library.showsDetail
+        let input = try host.keyboardInput()
+        let button = AutomaticLevelsEscapeTestButton(title: "Automatic Levels", target: nil, action: nil)
+        if responder == 1 {
+            host.window.contentView?.addSubview(button)
+            try #require(host.window.makeFirstResponder(button))
+            try #require(host.window.firstResponder === button)
+        } else if responder == 2 {
+            let text = NSTextView(frame: NSRect(x: 0, y: 0, width: 100, height: 30))
+            text.string = "Active native text input"
+            host.window.contentView?.addSubview(text)
+            try #require(host.window.makeFirstResponder(text))
+            try #require(host.window.firstResponder === text)
+        } else {
+            try #require(host.window.makeFirstResponder(nil))
+            try #require(!(host.window.firstResponder is NSControl))
+        }
+        try #require(input.process(try host.escapeEvent()) == nil,
+            "The mounted production keyboard route must consume Escape for automatic Levels even without a picker")
+        // Check synchronously: later View teardown must not be what cancels it.
+        #expect(workspace.levelsRequest != request && !workspace.automaticLevelsBusy && workspace.levelsTask == nil)
+        #expect(fixture.layout.isFocused == focused && fixture.library.showsDetail == detail)
+        #expect(fixture.library.selectedID == assetID)
+        latch.releaseAll(); await task.value
+        #expect(fixture.editor.snapshot(for: assetID) == snapshot)
+        #expect(fixture.editor.localRevision(for: assetID) == revision)
+        #expect(!fixture.editor.canUndo(assetID: assetID))
+        #expect(await fixture.library.finishSaving())
+        #expect(await fixture.editor.flush())
+    }
+
     @Test func comparisonPausesDirectInputAndSingleButtonRestoresThePicker() async throws {
         let fixture = try await DetailWorkspaceFixture.make()
         let host = DetailWorkspaceHost()
@@ -242,7 +389,8 @@ private struct DetailWorkspaceFixture {
     let metadata: PhotoMetadataModel
     let exporter: JPEGExportModel
 
-    static func make(pixelWidth: Int = 1_200, pixelHeight: Int = 800) async throws -> Self {
+    static func make(pixelWidth: Int = 1_200, pixelHeight: Int = 800,
+                     withAlternateAsset: Bool = false) async throws -> Self {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("Glowroom-DetailWorkspace-\(UUID())")
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let preferenceSuite = "Glowroom-DetailWorkspace-\(UUID())"
@@ -270,8 +418,15 @@ private struct DetailWorkspaceFixture {
         let folder = LibraryFolder(url: directory)
         let asset = PhotoAsset(folderID: folder.id, fileURL: imageURL, fileSize: Int64(png.count),
             pixelWidth: pixelWidth, pixelHeight: pixelHeight, createdAt: modifiedAt, modifiedAt: modifiedAt)
+        var assets = [asset]
+        if withAlternateAsset {
+            let alternateURL = directory.appendingPathComponent("synthetic-detail-alternate.png")
+            try png.write(to: alternateURL)
+            assets.append(PhotoAsset(folderID: folder.id, fileURL: alternateURL, fileSize: Int64(png.count),
+                pixelWidth: pixelWidth, pixelHeight: pixelHeight, createdAt: modifiedAt, modifiedAt: modifiedAt))
+        }
         let repository = CatalogRepository(directory: directory.appendingPathComponent("Catalog"))
-        try repository.save(LibraryCatalog(folders: [folder], assets: [asset]))
+        try repository.save(LibraryCatalog(folders: [folder], assets: assets))
         let library = LibraryModel(repository: repository)
         let editor = EditingModel(directory: directory.appendingPathComponent("Editing"))
         let analysis = ImageAnalysisService(provider: UnavailableImageAnalysisProvider(reason: .sdkUnavailable),
@@ -310,9 +465,9 @@ private final class DetailWorkspaceHost {
         window.orderBack(nil)
     }
 
-    func mount(_ fixture: DetailWorkspaceFixture) async throws {
+    func mount(_ fixture: DetailWorkspaceFixture, workspace: DevelopWorkspace? = nil) async throws {
         imageSize = fixture.imageSize
-        hosting.rootView = AnyView(LibraryView(model: fixture.library, dataDirectory: fixture.directory)
+        hosting.rootView = AnyView(LibraryView(model: fixture.library, dataDirectory: fixture.directory, developWorkspace: workspace)
             .environmentObject(fixture.editor).environmentObject(fixture.layout)
             .environmentObject(fixture.metadata).environmentObject(fixture.exporter)
             .environment(\.displayScale, 2).preferredColorScheme(.dark))
@@ -473,6 +628,11 @@ private final class DetailWorkspaceHost {
         hosting.rootView = AnyView(EmptyView())
         window.close()
     }
+}
+
+@MainActor
+private final class AutomaticLevelsEscapeTestButton: NSButton {
+    override var acceptsFirstResponder: Bool { true }
 }
 
 private let nativeZoomChildResult = "GLOWROOM_TEST_ZOOM_MENU_RESULT"

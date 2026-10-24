@@ -8,6 +8,7 @@ extension DevelopWorkspace {
     func applyAutomaticTone(_ control: AutomaticToneControl, assetID: String, editor: EditingModel,
                             isCurrent: @escaping @MainActor () -> Bool) -> Task<Void, Never>? {
         cancelAutomaticTone()
+        endLevelsPicker()
         guard editor.canEdit, tool == .basic, isCurrent() else { return nil }
         guard let bitmap = originalBitmap, let source = sourceIdentity else {
             errorMessage = "Die Bildvorschau wird noch geladen. Versuche Shift-Doppelklick erneut, sobald sie sichtbar ist."

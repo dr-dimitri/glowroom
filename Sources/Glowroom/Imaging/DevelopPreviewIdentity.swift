@@ -7,6 +7,13 @@ import SwiftUI
 struct DevelopSelectionIdentity: Hashable, Sendable {
     let sessionID: UUID
     let generation: UInt64
+
+    /// Read the live model at adoption time; the preceding frame can still
+    /// carry this old identity until SwiftUI schedules its pending callback.
+    @MainActor
+    func matches(_ library: LibraryModel) -> Bool {
+        sessionID == library.aiSelectionSessionID && generation == library.aiSelectionGeneration
+    }
 }
 
 /// Captured before starting a render. A completed frame never receives the

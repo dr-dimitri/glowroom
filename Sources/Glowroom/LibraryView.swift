@@ -15,7 +15,7 @@ struct LibraryView: View {
     @ViewState<Bool> private var dropTargeted = false
     @ViewState<Bool> private var showsWorkspaceErrors = false
     @StateObject private var maskWorkspace = InlineMaskWorkspace()
-    @StateObject private var developWorkspace = DevelopWorkspace()
+    @StateObject private var developWorkspace: DevelopWorkspace
     @ViewState private var focusReturnRequest: FocusReturnRequest?
     @ViewState private var pendingToolReveal: UUID?
 
@@ -24,10 +24,12 @@ struct LibraryView: View {
         let identity = UUID()
     }
 
-    init(model: LibraryModel, dataDirectory: URL, localMaskModel: LocalAdjustmentEditorModel? = nil) {
+    init(model: LibraryModel, dataDirectory: URL, localMaskModel: LocalAdjustmentEditorModel? = nil,
+         developWorkspace: DevelopWorkspace? = nil) {
         self.model = model
         self.dataDirectory = dataDirectory
         self.localMaskModel = localMaskModel
+        _developWorkspace = StateObject(wrappedValue: developWorkspace ?? DevelopWorkspace())
     }
 
     var body: some View {
@@ -109,6 +111,8 @@ struct LibraryView: View {
         .background(KeyboardHandler(handlesTextUndo: {
             guard let id = model.selectedID else { return false }
             return editor.hasActiveEditing(assetID: id) || maskWorkspace.model?.hasActiveChange == true
+        }, handlesLevelsEscape: {
+            developWorkspace.levelsPicker != nil || developWorkspace.automaticLevelsBusy
         }, action: { event in handleKey(event) }))
         .onAppear {
             if layout.isFocused, model.selectedAsset != nil {
@@ -749,7 +753,7 @@ struct LibraryView: View {
         case 125: model.navigate(model.showsDetail ? 1 : model.gridColumnCount, extending: extending)
         case 126: model.navigate(model.showsDetail ? -1 : -model.gridColumnCount, extending: extending)
         case 53:
-            if developWorkspace.levelsPicker != nil { developWorkspace.endLevelsPicker() }
+            if developWorkspace.levelsPicker != nil || developWorkspace.automaticLevelsBusy { developWorkspace.endLevelsPicker() }
             else if developWorkspace.picksDetail { developWorkspace.picksDetail = false }
             else if layout.isFocused { WorkspaceActions.toggleFocus(layout, library: model) }
             else { model.showsDetail = false }
@@ -782,6 +786,7 @@ final class WorkspaceKeyboardInputView: NSView {
 
 private struct KeyboardHandler: NSViewRepresentable {
     let handlesTextUndo: () -> Bool
+    let handlesLevelsEscape: () -> Bool
     let action: (NSEvent) -> Bool
     func makeNSView(context: Context) -> WorkspaceKeyboardInputView {
         let view = WorkspaceKeyboardInputView()
@@ -795,8 +800,9 @@ private struct KeyboardHandler: NSViewRepresentable {
     func updateNSView(_ nsView: WorkspaceKeyboardInputView, context: Context) {
         context.coordinator.action = action
         context.coordinator.handlesTextUndo = handlesTextUndo
+        context.coordinator.handlesLevelsEscape = handlesLevelsEscape
     }
-    func makeCoordinator() -> Coordinator { Coordinator(handlesTextUndo: handlesTextUndo, action: action) }
+    func makeCoordinator() -> Coordinator { Coordinator(handlesTextUndo: handlesTextUndo, handlesLevelsEscape: handlesLevelsEscape, action: action) }
     static func dismantleNSView(_ nsView: WorkspaceKeyboardInputView, coordinator: Coordinator) {
         nsView.processEvent = nil
         coordinator.stop()
@@ -806,11 +812,13 @@ private struct KeyboardHandler: NSViewRepresentable {
         weak var view: NSView?
         var action: (NSEvent) -> Bool
         var handlesTextUndo: () -> Bool
+        var handlesLevelsEscape: () -> Bool
         var monitor: Any?
         private let menus = WorkspaceMenuTracking()
-        init(handlesTextUndo: @escaping () -> Bool, action: @escaping (NSEvent) -> Bool) {
+        init(handlesTextUndo: @escaping () -> Bool, handlesLevelsEscape: @escaping () -> Bool, action: @escaping (NSEvent) -> Bool) {
             self.action = action
             self.handlesTextUndo = handlesTextUndo
+            self.handlesLevelsEscape = handlesLevelsEscape
             monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
                 guard let self else { return event }
                 return self.process(event)
@@ -823,9 +831,10 @@ private struct KeyboardHandler: NSViewRepresentable {
                   event.modifierFlags.intersection([.control, .option]).isEmpty else { return event }
             let historyKey = event.modifierFlags.contains(.command)
                 && event.charactersIgnoringModifiers?.lowercased() == "z"
+            let levelsEscape = event.keyCode == 53 && handlesLevelsEscape()
             if window.firstResponder is NSTextView {
-                guard historyKey, handlesTextUndo() else { return event }
-            } else if window.firstResponder is NSControl, !historyKey { return event }
+                guard levelsEscape || (historyKey && handlesTextUndo()) else { return event }
+            } else if window.firstResponder is NSControl, !historyKey, !levelsEscape { return event }
             return action(event) ? nil : event
         }
         func stop() {

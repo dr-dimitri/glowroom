@@ -62,6 +62,70 @@ actor AutomaticToneEstimator {
     private var cachedDomain: FloatAnalysisDomain?
     private var cachedSourceHistogram: FloatToneHistogram?
     private var cachedSourceMaximum: Double?
+    private var levelsCache = AutomaticLevelsEstimator.Cache()
+
+    /// Reuses this actor's bounded lane, accepted adaptive input and original
+    /// decoded range witness. Neither analysis nor candidates reopen the file.
+    func estimateLevels(bitmap: PreviewBitmap, sourceBitmap: PreviewBitmap,
+                        settings: EditSettings) async throws -> AutomaticLevelsEstimate {
+        try Task.checkCancellation()
+        let resources = bitmap.resourceOwner ?? sourceBitmap.resourceOwner
+        if let inputOwner = bitmap.resourceOwner, let sourceOwner = sourceBitmap.resourceOwner,
+           ObjectIdentifier(inputOwner) != ObjectIdentifier(sourceOwner) {
+            throw ArtifactResourceError.invalidOwnership
+        }
+        var phase: ArtifactResourceLease?
+        if let resources {
+            // A preceding normal-photo cache must not survive inside an
+            // artifact operation without its arrays being charged to a phase.
+            levelsCache = AutomaticLevelsEstimator.Cache()
+            let bytes = try Self.automaticLevelsAdditionalBytes(bitmap: bitmap, sourceBitmap: sourceBitmap,
+                                                               settings: settings)
+            phase = try await resources.acquire(kind: .codec, bytes: bytes, priority: .interactive,
+                retaining: [bitmap.memoryOwnership, sourceBitmap.memoryOwnership].compactMap { $0 })
+        }
+        defer { withExtendedLifetime((phase, bitmap, sourceBitmap)) {} }
+        // Admission is the only suspension. Keep source ownership and the
+        // occupied slot until synchronous native work actually returns.
+        try Task.checkCancellation()
+        return try AutomaticLevelsEstimator.analyze(bitmap: bitmap, sourceBitmap: sourceBitmap,
+            settings: settings, session: session, cache: &levelsCache).estimate
+    }
+
+    static func automaticLevelsAdditionalBytes(bitmap: PreviewBitmap, sourceBitmap: PreviewBitmap,
+                                               settings: EditSettings) throws -> Int64 {
+        let base = try estimatedAdditionalBytes(sourceBytes: Int64(bitmap.byteCost),
+            width: bitmap.image.width, height: bitmap.image.height, version: .consistentV2,
+            ownsSource: bitmap.memoryOwnership != nil, levelsActive: true)
+        func product(_ a: Int64, _ b: Int64) throws -> Int64 {
+            let value = a.multipliedReportingOverflow(by: b)
+            guard a >= 0, b >= 0, !value.overflow else { throw ArtifactResourceError.capacityExceeded }
+            return value.partialValue
+        }
+        func sum(_ a: Int64, _ b: Int64) throws -> Int64 {
+            let value = a.addingReportingOverflow(b)
+            guard a >= 0, b >= 0, !value.overflow else { throw ArtifactResourceError.capacityExceeded }
+            return value.partialValue
+        }
+        let pixels = try product(Int64(bitmap.image.width), Int64(bitmap.image.height))
+        let sharpening = try product(pixels, Int64(DevelopSharpening.additionalBytesPerPixel(settings: settings)))
+        // Each active presence blur adds horizontal and vertical RGBAf
+        // intermediates. Its input is already included in the base plan.
+        let presencePlanes: Int64 = (settings.texture != 0 ? 2 : 0) + (settings.clarity != 0 ? 2 : 0)
+        let presence = try product(pixels, presencePlanes * 16)
+        // Input histogram, neutral baseline and candidate are each bounded.
+        // The base already includes two readbacks and histogram arrays; this
+        // extra raster also covers transient/replacement of the one-entry cache.
+        var total = try sum(try sum(try sum(base, sharpening), presence),
+                            Int64(256 * 256 * 4 * MemoryLayout<Float>.stride))
+        if sourceBitmap.rangeSourceIdentity != bitmap.rangeSourceIdentity {
+            let sourcePixels = try product(Int64(sourceBitmap.image.width), Int64(sourceBitmap.image.height))
+            let proof = try sum(try product(sourcePixels, 32), try product(Int64(sourceBitmap.byteCost), 4))
+            total = try sum(total, proof)
+            if sourceBitmap.memoryOwnership == nil { total = try sum(total, Int64(sourceBitmap.byteCost)) }
+        }
+        return total
+    }
 
     /// Reuses this actor's analysis lane and Float context. Only a 5×5 region
     /// reaches the CPU; admission conservatively covers the native input graph.
@@ -124,8 +188,12 @@ actor AutomaticToneEstimator {
         let pixels = UInt64(bitmap.image.width).multipliedReportingOverflow(by: UInt64(bitmap.image.height))
         let sharpening = pixels.partialValue.multipliedReportingOverflow(
             by: validating ? DevelopSharpening.additionalBytesPerPixel(settings: settings) : 0)
-        let native = extra.partialValue.addingReportingOverflow(sharpening.partialValue)
-        guard !pixels.overflow, !sharpening.overflow, !native.overflow,
+        let presencePlanes: UInt64 = validating ?
+            UInt64((settings.texture != 0 ? 2 : 0) + (settings.clarity != 0 ? 2 : 0)) : 0
+        let presence = pixels.partialValue.multipliedReportingOverflow(by: presencePlanes * 16)
+        let suffix = sharpening.partialValue.addingReportingOverflow(presence.partialValue)
+        let native = extra.partialValue.addingReportingOverflow(suffix.partialValue)
+        guard !pixels.overflow, !sharpening.overflow, !presence.overflow, !suffix.overflow, !native.overflow,
               native.partialValue <= UInt64(Int64.max) else { throw ArtifactResourceError.capacityExceeded }
         let total = base.addingReportingOverflow(Int64(native.partialValue))
         guard !total.overflow else { throw ArtifactResourceError.capacityExceeded }

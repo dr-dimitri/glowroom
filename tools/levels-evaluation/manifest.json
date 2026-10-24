@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "generatorVersion": 1,
+  "width": 128,
+  "height": 96,
+  "seed": 17120261024,
+  "reference": "Independently implemented closest-tail 0.6 percent principle, 4096 signed-sRGB bins; not a GIMP or GEGL render",
+  "gates": {
+    "newClippingFraction": 0.006,
+    "newClippingAllowance": 1,
+    "minimumGraySpanImprovement": 0.05,
+    "maximumLowKeyMedian": 0.25,
+    "minimumHighKeyMedian": 0.75,
+    "maximumGrayChannelSpread": 0.0001,
+    "maximumAlphaError": 0.000001
+  },
+  "scenes": [
+    {"id":"gray-midrange","title":"Flaues mittleres Grauband","gate":"spread","profile":"sRGB"},
+    {"id":"color-midrange","title":"Flaues farbiges Motiv","gate":"safe","profile":"sRGB"},
+    {"id":"backlit","title":"Dunkler Vordergrund vor hellem Hintergrund","gate":"safe","profile":"sRGB"},
+    {"id":"low-key","title":"Bewusst dunkles schmales Tonwertband","gate":"lowKey","profile":"sRGB"},
+    {"id":"high-key","title":"Bewusst helles schmales Tonwertband","gate":"highKey","profile":"sRGB"},
+    {"id":"saturated-srgb","title":"Gesättigte sRGB-Farben mit engem Headroom","gate":"safe","profile":"sRGB"},
+    {"id":"saturated-p3","title":"SDR-P3-Farben außerhalb des sRGB-Würfels","gate":"safe","profile":"displayP3"},
+    {"id":"alpha-edges","title":"Transparente und halbtransparente Ränder","gate":"safe","profile":"sRGB"},
+    {"id":"isolated-highlights","title":"Grauband mit einzelnen Extrempixeln","gate":"spread","profile":"sRGB"},
+    {"id":"flat","title":"Einfarbige Fläche","gate":"unchanged","profile":"sRGB"},
+    {"id":"nearly-flat-noise","title":"Nahezu flache deterministische Rauschfläche","gate":"unchanged","profile":"sRGB"},
+    {"id":"transparent","title":"Vollständig transparent","gate":"unchanged","profile":"sRGB"}
+  ]
+}

@@ -6,11 +6,29 @@ set -euo pipefail
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 TEST_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/glowroom-build-tests.XXXXXX")"
 ACTIVE_PID=""
+ACTIVE_IDENTITY=""
+SENTINEL_PID=""
+SENTINEL_IDENTITY=""
+ORPHAN_PID=""
+ORPHAN_IDENTITY=""
+fixture_identity() {
+    LC_ALL=C /bin/ps -p "$1" -o lstart=,uid= 2>/dev/null | /usr/bin/awk '{$1=$1; print}'
+}
+signal_fixture() {
+    local pid="$1" identity="$2" signal="$3"
+    [[ -n "$pid" && -n "$identity" ]] || return 0
+    if [[ "$(fixture_identity "$pid")" == "$identity" ]]; then kill -"$signal" "$pid" 2>/dev/null || true; fi
+}
 cleanup() {
     if [[ -n "$ACTIVE_PID" ]]; then
-        kill -TERM "$ACTIVE_PID" 2>/dev/null || true
+        signal_fixture "$ACTIVE_PID" "$ACTIVE_IDENTITY" TERM
         wait "$ACTIVE_PID" 2>/dev/null || true
     fi
+    if [[ -n "$SENTINEL_PID" ]]; then
+        signal_fixture "$SENTINEL_PID" "$SENTINEL_IDENTITY" KILL
+        wait "$SENTINEL_PID" 2>/dev/null || true
+    fi
+    signal_fixture "$ORPHAN_PID" "$ORPHAN_IDENTITY" KILL
     rm -rf -- "$TEST_ROOT"
 }
 trap cleanup EXIT
@@ -82,8 +100,33 @@ case "$tool" in
                 ;;
             fail-compile) [[ "$role" != compile ]] || exit 41 ;;
             fail-icon) [[ "$role" != icon ]] || exit 42 ;;
+            fail-orphan)
+                if [[ "$role" == compile ]]; then
+                    set -m
+                    (trap '' TERM; exec sleep 300) &
+                    echo "$!" > "$MOCK_ROOT/orphan.pid"
+                    LC_ALL=C /bin/ps -p "$!" -o lstart=,uid= | /usr/bin/awk '{$1=$1; print}' > "$MOCK_ROOT/orphan.identity"
+                    exit 41
+                fi
+                ;;
             hold)
                 sleep 30 &
+                child=$!
+                echo "$child" > "$MOCK_ROOT/$role.child.pid"
+                wait "$child"
+                ;;
+            hold-escaped)
+                # Both generations escape the build worker's process group.
+                # Ignoring TERM is inherited by sleep, so group TERM alone
+                # cannot satisfy this cancellation fixture.
+                set -m
+                (
+                    trap '' TERM
+                    sleep 30 &
+                    grandchild=$!
+                    echo "$grandchild" > "$MOCK_ROOT/$role.grandchild.pid"
+                    wait "$grandchild"
+                ) &
                 child=$!
                 echo "$child" > "$MOCK_ROOT/$role.child.pid"
                 wait "$child"
@@ -151,7 +194,7 @@ run_build() {
     env PATH="$MOCK_TOOLS:$PATH" MOCK_ROOT="$CASE" MOCK_MODE="$1" \
         GLOWROOM_DEVELOPER_TOOL=editing \
         GLOWROOM_BUILD_PATH="$CASE/cache" GLOWROOM_BUILD_JOBS="$2" \
-        /bin/bash "$CASE/scripts/build-app.sh" > "$CASE/output.log" 2>&1
+        /bin/bash "$CASE/scripts/build-app.sh" > "${3:-"$CASE/output.log"}" 2>&1
 }
 assert_clean() {
     local leftover
@@ -162,6 +205,15 @@ assert_clean() {
 assert_previous_app() {
     [[ -f "$CASE/dist/Glowroom.app/previous" ]] || fail "Previous app lost in $CASE"
     [[ "$(cat "$CASE/dist/Glowroom.app/previous")" == 'previous app' ]] || fail "Previous app changed"
+}
+assert_retained() {
+    local leftover found=0
+    [[ -d "$CASE/dist/.glowroom-build.lock" ]] || fail "Unproven worker cleanup released the lock"
+    for leftover in "$CASE/dist"/.glowroom-build.??????; do
+        [[ ! -d "$leftover" ]] || found=1
+    done
+    (( found == 1 )) || fail "Unproven worker cleanup removed staging"
+    [[ -f "$CASE/output.log" ]] && /usr/bin/grep -q 'Could not verify' "$CASE/output.log" || fail "Incomplete process proof was not reported"
 }
 assert_success() {
     [[ -x "$CASE/dist/Glowroom.app/Contents/MacOS/Glowroom" ]] || fail "Missing executable"
@@ -230,13 +282,31 @@ for invalid in 0 -1 abc 1.5 1025 999999999999999999999999; do
 done
 pass "Invalid job budgets are rejected before work starts"
 
-for failure in fail-compile fail-icon fail-sign; do
+for failure in fail-compile fail-icon; do
     new_case "$failure"
     if run_build "$failure" 4; then fail "Ignored $failure"; fi
     assert_previous_app
-    assert_clean
+    assert_retained
 done
-pass "Compiler, icon and signing failures preserve the previous app"
+pass "Failed worker waits preserve the previous app, lock and staging for verified manual cleanup"
+
+new_case fail-sign
+if run_build fail-sign 4; then fail "Ignored fail-sign"; fi
+assert_previous_app
+assert_clean
+pass "Signing failure after successful worker waits preserves the previous app and cleans staging"
+
+new_case fail-orphan
+if run_build fail-orphan 4; then fail "Ignored an orphaning compiler failure"; fi
+ORPHAN_PID="$(cat "$CASE/orphan.pid")"
+ORPHAN_IDENTITY="$(cat "$CASE/orphan.identity")"
+[[ "$(fixture_identity "$ORPHAN_PID")" == "$ORPHAN_IDENTITY" ]] || fail "Orphan fixture did not survive its compiler parent"
+assert_previous_app
+assert_retained
+signal_fixture "$ORPHAN_PID" "$ORPHAN_IDENTITY" KILL
+ORPHAN_PID=""
+ORPHAN_IDENTITY=""
+pass "An exited worker with an escaped live orphan cannot release the build lock or staging"
 
 new_case fail-publish
 if run_build fail-publish 4; then fail "Ignored a publication failure"; fi
@@ -246,16 +316,32 @@ assert_previous_app
 assert_clean
 pass "Publication failure restores the previous app and removes staging"
 
-new_case cancellation
-env PATH="$MOCK_TOOLS:$PATH" MOCK_ROOT="$CASE" MOCK_MODE=hold \
+check_cancellation() {
+local mode="$1"
+local status pid_file worker_pid attempt worker_group descendant_group
+new_case "cancellation-$mode"
+# Same executable name as the mock compiler's deepest child, but unrelated to
+# the build tree. Cancellation must leave it alive, even across process groups.
+sleep 300 &
+SENTINEL_PID=$!
+SENTINEL_IDENTITY="$(fixture_identity "$SENTINEL_PID")"
+env PATH="$MOCK_TOOLS:$PATH" MOCK_ROOT="$CASE" MOCK_MODE="$mode" \
     GLOWROOM_BUILD_PATH="$CASE/cache" GLOWROOM_BUILD_JOBS=4 \
     /bin/bash "$CASE/scripts/build-app.sh" > "$CASE/output.log" 2>&1 &
 ACTIVE_PID=$!
+ACTIVE_IDENTITY="$(fixture_identity "$ACTIVE_PID")"
 wait_for_file "$CASE/compile.child.pid"
 wait_for_file "$CASE/icon.child.pid"
-if run_build hold 4; then fail "A second invocation acquired the active build lock"; fi
+if [[ "$mode" == hold-escaped ]]; then
+    wait_for_file "$CASE/compile.grandchild.pid"
+    wait_for_file "$CASE/icon.grandchild.pid"
+    worker_group="$(/bin/ps -p "$(cat "$CASE/compile.pid")" -o pgid= | tr -d ' ')"
+    descendant_group="$(/bin/ps -p "$(cat "$CASE/compile.grandchild.pid")" -o pgid= | tr -d ' ')"
+    [[ -n "$worker_group" && -n "$descendant_group" && "$worker_group" != "$descendant_group" ]] || fail "Fixture did not escape the worker process group"
+fi
+if run_build hold 4 "$CASE/second-invocation.log"; then fail "A second invocation acquired the active build lock"; fi
 [[ -d "$CASE/dist/.glowroom-build.lock" ]] || fail "Second invocation removed the first build's lock"
-kill -TERM "$ACTIVE_PID"
+signal_fixture "$ACTIVE_PID" "$ACTIVE_IDENTITY" TERM
 status=0
 wait "$ACTIVE_PID" || status=$?
 ACTIVE_PID=""
@@ -270,6 +356,13 @@ for pid_file in "$CASE"/*.pid; do
 done
 assert_previous_app
 assert_clean
-pass "Lock excludes a second invocation; TERM stops workers and descendants and cleans staging"
+kill -0 "$SENTINEL_PID" 2>/dev/null || fail "Cancellation killed an unrelated process"
+signal_fixture "$SENTINEL_PID" "$SENTINEL_IDENTITY" KILL
+wait "$SENTINEL_PID" 2>/dev/null || true
+SENTINEL_PID=""
+pass "$mode: lock excludes a second invocation; TERM stops only owned descendants and cleans staging"
+}
+check_cancellation hold
+check_cancellation hold-escaped
 
 echo "All local build orchestration checks passed."

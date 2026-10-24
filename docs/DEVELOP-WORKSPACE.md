@@ -123,7 +123,7 @@ Hinweis. Eine Zahleneingabe, eine abgeschlossene Reglergeste und jeder Reset
 bilden jeweils einen Rückgängig-Schritt.
 
 Die bisherigen Weiß-/Schwarzregler und ihre Umschalt-Doppelklick-Automatik
-bleiben eigenständig. Die Endpunkt-Automatik folgt in #171.
+bleiben eigenständig. Die Aktion **„Tonwertbereich automatisch“** ersetzt ausschließlich die Levels nach dem unten dokumentierten konservativen Vertrag.
 Der [Levels-Vertrag](DEVELOP-COLOR.md#globale-tonwertkorrektur-levels)
 beschreibt die Berechnung, Speicherung und Einordnung im Rendergraphen.
 Die [Levels-Prüfanleitung](LEVELS-VALIDATION.md) beschreibt synthetische Abnahmen
@@ -234,3 +234,43 @@ Die HDR-Anzeige folgt Apples [NSImageView-Dynamikumfang](https://developer.apple
 ## Regressionen für direkte Aktivierung
 
 Die Prüfungen decken sofortige Maskenpersistenz mit Neustart, Reparaturen ohne Bestätigung sowie Rückgängig über mehr als die früheren 32 beziehungsweise 100 Schritte ab. Die montierte native Oberfläche prüft Command-Z/Shift-Command-Z durch denselben Ereignisfilter wie der AppKit-Monitor, inklusive Reglerfokus und lokaler Maskenhistorie. Weitere Fälle prüfen Funktionswechsel, Bildwechsel A → B → A und nachlaufende native Regleraktionen nach Undo. Originalvergleich und vollständiger Menü-Reset sind während einer Maskensitzung wie die entsprechenden Bild-/Seitenleistenaktionen gesperrt; **Vorher** in der Maskenliste bleibt verfügbar.
+
+### Automatischen Levels-Tonwertbereich setzen
+
+Die ausdrücklich betätigte Aktion **„Tonwertbereich automatisch“** in
+**Tonwertkorrektur** berechnet gemeinsame RGB-Eingangsgrenzen. Sie ersetzt alle
+Levels gemeinsam: Master-Gamma 1, Ausgang 0–1, neutrale Rot-/Grün-/Blaukurven und
+sämtliche Input-/Output-Begrenzungen aus. Weißabgleich, Belichtung, natürlicher
+Bildausgleich, Profil, Verarbeitungsversion und andere Bearbeitungen bleiben
+erhalten. Ein Undo stellt auch zuvor gesetzte Einzelkanäle und Begrenzungen
+vollständig wieder her. Die Aktion läuft niemals automatisch beim Laden.
+
+Die Analyse verwendet die bereits decodierte Quelle und den tatsächlich
+angezeigten adaptiven Renderinput unmittelbar vor dem gesamten Levels-Knoten.
+Vorige Levels sind für die Schätzung neutral; lokale Masken, Retusche und
+Geometrie sind aus dieser globalen Analyse ausgeschlossen. Eine zweite Prüfung
+schützt vor nicht darstellbaren Ergebnissen im vollständigen bearbeiteten Bild.
+Erneutes Anwenden desselben Vorschlags erzeugt keine zusätzliche Revision.
+
+Die Automatik erhält Low-/High-Key-Stimmungen durch bewusst konservative
+Grenzen. Flache, nahezu flache, transparente, unzureichend belegte oder unsichere
+Bilder bleiben unverändert und zeigen einen verständlichen Grund. Aktive
+HDR-Ausgabe, nachgewiesene HDR-Quellluminanz oder ein unbekannter Range-Vertrag
+liefern keinen SDR-Vorschlag. Gültige SDR-P3-Farben werden nicht allein wegen
+negativer oder über 1 liegender Arbeitsraumkomponenten als HDR abgelehnt.
+
+Während einer Berechnung können weitere Klicks den vorigen Auftrag ersetzen.
+Bild-/Quellwechsel, manuelle Bearbeitung, Undo/Redo, andere Werkzeuge, Escape,
+Read-only oder eine noch ausstehende Vorschau entwerten alte Erfolge und Fehler.
+Die nächste endgültige Vorschau muss sichtbar sein, bevor eine neue Analyse
+startet. Ein Speicherfehler nach Annahme bleibt im normalen Speicherdialog
+sichtbar; der angenommene lokale Stand kann erneut gespeichert werden.
+
+Bei älteren V1-Bearbeitungen mit aktiver Struktur/Klarheit oder Schärfung ist
+kein automatischer Vorschlag möglich: deren historische interne Begrenzung
+verhindert den zuverlässigen Clippingnachweis. Der Hinweis erklärt das; eine
+Verarbeitungsversion wird dabei niemals automatisch umgestellt.
+
+Der Stimmungsschutz ist eine konservative Grenze, keine automatische
+Motivklassifikation. Auch gesättigte helle Motive können deshalb unverändert
+bleiben; die Rückmeldung benennt vorsichtig die Tonwertverteilung.

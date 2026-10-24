@@ -27,7 +27,8 @@ extension DevelopWorkspace {
 
     func receiveLevelsDisplay(_ display: DevelopPreviewHandoff) {
         if levelsDisplay?.identity != display.identity ||
-            levelsDisplay?.frame.actualInput.rangeSourceIdentity != display.frame.actualInput.rangeSourceIdentity {
+            levelsDisplay?.frame.actualInput.rangeSourceIdentity != display.frame.actualInput.rangeSourceIdentity ||
+            levelsDisplay?.decodedSource.rangeSourceIdentity != display.decodedSource.rangeSourceIdentity {
             cancelLevelsRequest()
         }
         levelsDisplay = display
@@ -56,6 +57,7 @@ extension DevelopWorkspace {
 
     func cancelLevelsRequest() {
         levelsRequest = UUID(); levelsTask?.cancel(); levelsTask = nil
+        automaticLevelsBusy = false
     }
 
     /// Point is already inverse-mapped through the exact accepted geometry
