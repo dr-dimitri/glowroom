@@ -72,6 +72,7 @@ struct DevelopRepairModelSetupTests {
         case .cancel: workspace.cancelRepairWork()
         case .close: workspace.closeRepair()
         case .photoChange: workspace.clear()
+        case .modeChange: workspace.selectRepairMode(.redEye)
         }
         workspace.repairMode = .clone
         workspace.errorMessage = "Hinweis der neueren Aktion"
@@ -84,7 +85,8 @@ struct DevelopRepairModelSetupTests {
         #expect(workspace.repairAISetupProgress == nil)
         #expect(!workspace.repairBusy && workspace.repairTask == nil)
         #expect(workspace.errorMessage == "Hinweis der neueren Aktion")
-        if cancellation != .cancel { #expect(workspace.tool == .basic) }
+        if cancellation == .modeChange { #expect(workspace.tool == .redEye) }
+        else if cancellation != .cancel { #expect(workspace.tool == .basic) }
     }
 
     @Test func canceledDownloadCannotReplaceMetadataFromANewerManualImport() async throws {
@@ -178,7 +180,7 @@ struct DevelopRepairModelSetupTests {
     }
 }
 
-enum RepairModelSetupCancellation: CaseIterable, Sendable { case cancel, close, photoChange }
+enum RepairModelSetupCancellation: CaseIterable, Sendable { case cancel, close, photoChange, modeChange }
 private enum RepairModelSetupFailure: Error, LocalizedError {
     case offline
     var errorDescription: String? { "Testdownload ist offline." }

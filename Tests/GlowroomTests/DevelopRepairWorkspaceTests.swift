@@ -7,6 +7,88 @@ import Testing
 @Suite("Repair workspace live transactions")
 @MainActor
 struct DevelopRepairWorkspaceTests {
+    @Test func retouchHasOneToolbarEntryAndEveryModeSelectsTheMatchingCanvas() {
+        #expect(DevelopCanvasTool.toolbarCases.filter(\.isRepairTool) == [.repair])
+        #expect(!DevelopCanvasTool.toolbarCases.contains(.redEye))
+        let workspace = DevelopWorkspace()
+        defer { workspace.clear() }
+        for mode in DevelopRepairMode.allCases {
+            workspace.selectRepairMode(mode)
+            #expect(workspace.tool == (mode == .redEye ? .redEye : .repair))
+            if mode != .redEye { #expect(workspace.repairMode == mode) }
+        }
+    }
+
+    @Test(arguments: [DevelopRepairMode.heal, .clone, .redEye])
+    func changingModeRejectsALateSourceAndPreservesAcceptedCorrections(mode: DevelopRepairMode) async throws {
+        let latch = TestAsyncLatch()
+        let probe = try RepairWorkspaceProbe(sourceLatch: latch)
+        let fixture = try await RepairWorkspaceFixture.make(services: probe.services)
+        defer { latch.releaseAll(); fixture.workspace.clear() }
+        var baseline = EditSettings(exposure: 0.75)
+        baseline.developGeometry.redEyeCorrections = [try DevelopRedEyeCorrection(
+            center: LocalMaskPoint(x: 0.4, y: 0.4), radiusX: 0.03, radiusY: 0.04, strength: 0.8)]
+        fixture.editor.setSettings(baseline, for: fixture.asset.id)
+        fixture.beginPaint([try repairWorkspacePoint(0.5, 0.5)])
+        let operation = try #require(fixture.workspace.repairTask)
+        try await waitForTestState("repair source before mode change", state: { await probe.state() }, until: { $0.sourceCalls == 1 })
+        let request = fixture.workspace.repairRequest
+        fixture.workspace.selectRepairMode(mode)
+        #expect(fixture.workspace.repairRequest != request)
+        latch.releaseAll(); await operation.value
+        #expect(fixture.editor.settings(for: fixture.asset.id) == baseline)
+        #expect(!fixture.workspace.repairBusy && fixture.workspace.repairTask == nil)
+        #expect(fixture.workspace.repairSource == nil)
+        #expect(fixture.workspace.repairCandidates.isEmpty && fixture.workspace.repairSelectedCandidateIDs.isEmpty)
+        #expect(await fixture.editor.flush())
+    }
+
+    @Test func switchingFromAIToRedEyesRejectsAnUncancellableInferenceResult() async throws {
+        let latch = TestAsyncLatch()
+        let probe = try RepairWorkspaceProbe(replacementLatch: latch)
+        let fixture = try await RepairWorkspaceFixture.make(services: probe.services)
+        defer { latch.releaseAll(); fixture.workspace.clear() }
+        fixture.workspace.repairUsesAI = true
+        fixture.beginPaint([try repairWorkspacePoint(0.5, 0.5)])
+        let operation = try #require(fixture.workspace.repairTask)
+        try await waitForTestState("AI replacement before red-eye mode", state: { await probe.state() }, until: { $0.replacementCalls == 1 })
+        fixture.workspace.selectRepairMode(.redEye)
+        latch.releaseAll(); await operation.value
+        #expect(fixture.workspace.tool == .redEye)
+        #expect(fixture.editor.settings(for: fixture.asset.id) == .newEditingSettings)
+        #expect(!fixture.workspace.repairBusy && fixture.workspace.repairTask == nil)
+        #expect(!fixture.editor.canUndo(assetID: fixture.asset.id))
+        #expect(await fixture.editor.flush())
+    }
+
+    @Test func localAIRemovesOnlySelectedCandidatesAndKeepsUnselectedSuggestions() async throws {
+        let probe = try RepairWorkspaceProbe()
+        let fixture = try await RepairWorkspaceFixture.make(services: probe.services)
+        defer { fixture.workspace.clear() }
+        let selected = try repairWorkspaceCandidate()
+        let unselected = DevelopRepairCandidate(id: UUID(), label: "Person 2",
+            mask: try LocalMaskRaster(width: 4, height: 4, bytes: Data([255] + [UInt8](repeating: 0, count: 15))),
+            center: try repairWorkspacePoint(0.1, 0.1), radius: 0.03)
+        fixture.workspace.repairUsesAI = true
+        fixture.workspace.repairCandidates = [selected, unselected]
+        fixture.workspace.repairSelectedCandidateIDs = [selected.id]
+        await fixture.workspace.removeSelectedRepairCandidates(asset: fixture.asset, editor: fixture.editor)
+        await (try #require(fixture.workspace.repairTask)).value
+        let settings = fixture.editor.settings(for: fixture.asset.id)
+        let stroke = try #require(settings.developGeometry.retouchStrokes.first)
+        #expect(settings.developGeometry.retouchStrokes.count == 1)
+        #expect(stroke.mask == selected.mask && stroke.target == selected.center)
+        #expect(stroke.replacement != nil)
+        #expect(fixture.workspace.repairCandidates.map(\.id) == [unselected.id])
+        #expect(fixture.workspace.repairSelectedCandidateIDs.isEmpty)
+        #expect(await probe.state().replacementCalls == 1)
+        fixture.editor.undo(assetID: fixture.asset.id)
+        #expect(fixture.editor.settings(for: fixture.asset.id) == .newEditingSettings)
+        fixture.editor.redo(assetID: fixture.asset.id)
+        #expect(fixture.editor.settings(for: fixture.asset.id) == settings)
+        #expect(await fixture.editor.flush())
+    }
+
     @Test func completePaintedPathCommitsOneStrokeAndOneUndo() async throws {
         let probe = try RepairWorkspaceProbe()
         let fixture = try await RepairWorkspaceFixture.make(services: probe.services)

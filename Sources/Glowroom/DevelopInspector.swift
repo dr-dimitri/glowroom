@@ -72,7 +72,7 @@ struct DevelopInspector: View {
                                         InlineMaskInspector(workspace: maskWorkspace)
                                     } else if developWorkspace.tool != .basic {
                                         DevelopGeometryInspector(asset: asset, workspace: developWorkspace)
-                                            .id(asset.id).id(developWorkspace.tool)
+                                            .id(asset.id).id(developWorkspace.tool.isRepairTool ? .repair : developWorkspace.tool)
                                     } else {
                                         adjustmentNavigation
                                         ForEach(groups, id: \.self) { tool in toolGroup(tool, asset: asset) }
@@ -134,26 +134,36 @@ struct DevelopInspector: View {
 
     private func developToolStrip(_ asset: PhotoAsset) -> some View {
         LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 3), count: 3), spacing: 3) {
-            ForEach(DevelopCanvasTool.allCases) { tool in
+            ForEach(DevelopCanvasTool.toolbarCases) { tool in
                 Button {
                     finishInput(assetID: asset.id)
-                    editor.selectEditingFunction(EditingFunction(tool), assetID: asset.id)
-                    developWorkspace.tool = tool
+                    if tool == .repair {
+                        let mode = developWorkspace.repairMode
+                        editor.selectEditingFunction(.repair, assetID: asset.id)
+                        developWorkspace.selectRepairMode(mode)
+                    } else {
+                        editor.selectEditingFunction(EditingFunction(tool), assetID: asset.id)
+                        developWorkspace.tool = tool
+                    }
                 } label: {
                     VStack(spacing: 4) {
                         Image(systemName: tool.symbol).font(.system(size: 16))
                         Text(tool.title).font(.system(size: 13)).lineLimit(2)
                     }.frame(maxWidth: .infinity).frame(height: 58)
-                        .foregroundStyle(developWorkspace.tool == tool ? Color.white.opacity(0.9) : Theme.muted)
-                        .background(developWorkspace.tool == tool ? Color.white.opacity(0.09) : .clear)
+                        .foregroundStyle(toolIsActive(tool) ? Color.white.opacity(0.9) : Theme.muted)
+                        .background(toolIsActive(tool) ? Color.white.opacity(0.09) : .clear)
                 }.buttonStyle(.plain).help(tool.title).accessibilityLabel(tool.title)
                     .accessibilityIdentifier("develop.tool.\(tool.rawValue)")
-                    .accessibilityValue(developWorkspace.tool == tool ? "Aktiv" : "Inaktiv")
+                    .accessibilityValue(toolIsActive(tool) ? "Aktiv" : "Inaktiv")
                     .disabled(!editor.canEdit || !library.canModify || library.comparesOriginal || library.comparesCurrentSourceWithoutSettings
                               || (maskWorkspace.model?.isGenerating ?? false))
             }
         }.padding(3).background(Theme.panel)
             .overlay { Rectangle().stroke(Theme.line) }
+    }
+
+    private func toolIsActive(_ tool: DevelopCanvasTool) -> Bool {
+        tool == .repair ? developWorkspace.tool.isRepairTool : developWorkspace.tool == tool
     }
 
     private var adjustmentNavigation: some View {

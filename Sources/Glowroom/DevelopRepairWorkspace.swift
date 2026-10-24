@@ -43,11 +43,26 @@ extension DevelopWorkspace {
         if !preservingInputQueue { repairInputQueue.cancel(cancelWorker: false) }
         repairRequest = UUID(); repairTask?.cancel(); repairTask = nil; repairBusy = false
         repairAISetupProgress = nil
+        repairChoosesSource = false
         if clearCandidates {
             repairCandidates = []; repairSelectedCandidateIDs = []
             repairSelectedStrokeID = nil
             repairTriedSourceStrokeID = nil; repairTriedSources = []
         }
+    }
+
+    func selectRepairMode(_ mode: DevelopRepairMode) {
+        cancelRepairWork()
+        repairSource = nil; repairStatus = nil; errorMessage = nil
+        repairMode = mode
+        tool = mode == .redEye ? .redEye : .repair
+    }
+
+    func chooseRepairSource() {
+        guard tool == .repair, !repairBusy, !(repairMode == .remove && repairUsesAI) else { return }
+        cancelRepairWork(clearCandidates: false)
+        repairSource = nil; repairChoosesSource = true
+        repairStatus = nil; errorMessage = nil
     }
 
     func closeRepair() {
@@ -124,6 +139,7 @@ extension DevelopWorkspace {
     func applyRepair(path: [LocalMaskPoint], selection: LocalMaskRaster? = nil, asset: PhotoAsset, editor: EditingModel,
                      expectedRevision: Int64, expectedSession: UUID, brush: DevelopRepairBrush? = nil,
                      preservingInputQueue: Bool = false,
+                     removingCandidateIDs: Set<UUID>? = nil,
                      onAccepted: (@MainActor () -> Void)? = nil) {
         guard !path.isEmpty, editor.canEdit, isOriginalCanvasReady, tool == .repair,
               editor.localRevision(for: asset.id) == expectedRevision,
@@ -135,6 +151,7 @@ extension DevelopWorkspace {
         let baseline = editor.settings(for: asset.id)
         let brush = brush ?? DevelopRepairBrush(self)
         let mode = brush.mode, radius = brush.radius, feather = brush.feather
+        guard mode != .redEye else { return }
         let usesAI = brush.usesAI && mode == .remove
         if usesAI && baseline.developColor.hdrEnabled {
             errorMessage = "Das lokale Reparaturmodell verarbeitet SDR-Farben. Deaktiviere HDR, bevor du eine KI-Reparatur erstellst."
@@ -189,10 +206,16 @@ extension DevelopWorkspace {
                       editor.localRevision(for: asset.id) == expectedRevision,
                       editor.aiEditSessionID == expectedSession else { return }
                 try self.appendRepairs([stroke], asset: asset, editor: editor)
-                onAccepted?()
                 self.repairTriedSourceStrokeID = usesAI ? nil : stroke.id
                 self.repairTriedSources = usesAI ? [] : [source]
-                self.repairCandidates = []; self.repairSelectedCandidateIDs = []
+                self.repairSelectedStrokeID = stroke.id
+                if let removingCandidateIDs {
+                    self.repairCandidates.removeAll { removingCandidateIDs.contains($0.id) }
+                    self.repairSelectedCandidateIDs.subtract(removingCandidateIDs)
+                } else {
+                    self.repairCandidates = []; self.repairSelectedCandidateIDs = []
+                }
+                onAccepted?()
                 self.repairStatus = (status.map { $0 + " " } ?? "")
                     + (usesAI ? "Lokale KI-Reparatur aktiv. Mit ⌘Z rückgängig machen."
                        : "Reparatur aktiv. Mit ⌘Z rückgängig machen.")
@@ -204,7 +227,7 @@ extension DevelopWorkspace {
     }
 
     func detectRepairCandidates(_ kind: DevelopRepairDetectionKind) async {
-        guard tool == .repair, isOriginalCanvasReady, let bitmap = originalBitmap, let sourceIdentity else { return }
+        guard tool == .repair, repairMode == .remove, isOriginalCanvasReady, let bitmap = originalBitmap, let sourceIdentity else { return }
         cancelRepairWork()
         let request = repairRequest, sensitivity = repairSpotThreshold
         repairBusy = true; errorMessage = nil; repairStatus = nil
@@ -224,19 +247,27 @@ extension DevelopWorkspace {
 
     func removeSelectedRepairCandidates(asset: PhotoAsset, editor: EditingModel) async {
         let candidates = repairCandidates.filter { repairSelectedCandidateIDs.contains($0.id) }
-        guard !candidates.isEmpty, !repairBusy, tool == .repair, editor.canEdit,
+        let selectedIDs = Set(candidates.map(\.id))
+        guard !candidates.isEmpty, !repairBusy, tool == .repair, repairMode == .remove, editor.canEdit,
               let bitmap = originalBitmap, let sourceIdentity else { return }
         if repairUsesAI, let first = candidates.first {
+            cancelRepairWork(clearCandidates: false)
             let revision = editor.localRevision(for: asset.id), session = editor.aiEditSessionID
             let request = repairRequest
+            let brush = DevelopRepairBrush(self)
+            repairBusy = true; errorMessage = nil
+            let maskTask = Task.detached { try DevelopRepairMaskUnion.combine(candidates.map(\.mask)) }
+            repairTask = Task { await withTaskCancellationHandler { _ = try? await maskTask.value } onCancel: { maskTask.cancel() } }
+            defer { if repairRequest == request { repairBusy = false; repairTask = nil } }
             do {
-                let mask = try await Task.detached { try DevelopRepairMaskUnion.combine(candidates.map(\.mask)) }.value
+                let mask = try await withTaskCancellationHandler { try await maskTask.value } onCancel: { maskTask.cancel() }
                 try Task.checkCancellation()
                 guard repairRequest == request, self.sourceIdentity == sourceIdentity, tool == .repair, editor.canEdit,
                       editor.localRevision(for: asset.id) == revision, editor.aiEditSessionID == session else { return }
                 applyRepair(path: [first.center], selection: mask, asset: asset, editor: editor,
-                    expectedRevision: revision, expectedSession: session)
-            } catch { if !Task.isCancelled { errorMessage = error.localizedDescription } }
+                    expectedRevision: revision, expectedSession: session, brush: brush, removingCandidateIDs: selectedIDs)
+            } catch is CancellationError { }
+            catch { if repairRequest == request && !Task.isCancelled { errorMessage = error.localizedDescription } }
             return
         }
         cancelRepairWork(clearCandidates: false)
@@ -265,8 +296,9 @@ extension DevelopWorkspace {
             guard repairRequest == request, self.sourceIdentity == sourceIdentity, tool == .repair,
                   editor.canEdit, editor.localRevision(for: asset.id) == revision, editor.aiEditSessionID == session else { return }
             try appendRepairs(strokes, asset: asset, editor: editor)
-            repairCandidates.removeAll { repairSelectedCandidateIDs.contains($0.id) }
-            repairSelectedCandidateIDs = []; repairStatus = "\(strokes.count) Bereiche lokal entfernt."
+            repairCandidates.removeAll { selectedIDs.contains($0.id) }
+            repairSelectedCandidateIDs.subtract(selectedIDs)
+            repairStatus = strokes.count == 1 ? "1 Bereich lokal entfernt." : "\(strokes.count) Bereiche lokal entfernt."
         } catch is CancellationError { }
         catch { if repairRequest == request { errorMessage = error.localizedDescription } }
     }
@@ -346,16 +378,19 @@ extension DevelopWorkspace {
     }
 
     func refreshRepairAIAvailability() async {
-        let request = repairRequest
+        // Model metadata is independent of brush cancellation and source picking.
+        // Only a newer scan or a committed installation supersedes this result.
+        let request = UUID()
+        repairAIAvailabilityRequest = request
         do {
             let installation = try await repairAIStore.installedModel()
             try Task.checkCancellation()
-            guard repairRequest == request else { return }
+            guard repairAIAvailabilityRequest == request else { return }
             repairAIReady = installation != nil; repairAIModelName = installation?.displayName
             if installation == nil { repairUsesAI = false }
         } catch is CancellationError { }
         catch {
-            guard repairRequest == request else { return }
+            guard repairAIAvailabilityRequest == request, !Task.isCancelled else { return }
             repairAIReady = false; repairUsesAI = false; errorMessage = error.localizedDescription
         }
     }
@@ -388,6 +423,7 @@ extension DevelopWorkspace {
                     await Task { @MainActor [weak self] in await self?.refreshRepairAIAvailability() }.value
                     return
                 }
+                self.repairAIAvailabilityRequest = UUID()
                 self.repairAIReady = true; self.repairAIModelName = installation.displayName
                 self.repairMode = .remove; self.repairUsesAI = true
                 self.repairStatus = "LaMa wurde heruntergeladen und eingerichtet. Markiere einen kleinen Bereich für eine KI-Reparatur."
@@ -407,6 +443,7 @@ extension DevelopWorkspace {
             let installation = try await repairAIStore.importModel(from: url)
             try Task.checkCancellation()
             guard repairRequest == request, tool == .repair else { return }
+            repairAIAvailabilityRequest = UUID()
             repairAIReady = true; repairAIModelName = installation.displayName; repairUsesAI = true
             repairStatus = "Lokales Modell eingerichtet. Markiere einen kleinen Bereich für eine KI-Reparatur."
         } catch is CancellationError { }

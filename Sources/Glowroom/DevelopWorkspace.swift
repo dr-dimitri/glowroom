@@ -17,7 +17,7 @@ final class DevelopWorkspace: ObservableObject {
     @Published var tool: DevelopCanvasTool = .basic {
         didSet {
             if oldValue != tool { cancelAutomaticTone(); endLevelsPicker(); picksDetail = false }
-            if oldValue == .repair && tool != .repair { cancelRepairWork(); repairSpotImage = nil }
+            if oldValue.isRepairTool && oldValue != tool { cancelRepairWork(); repairSpotImage = nil }
         }
     }
     @Published var picksWhiteBalance = false {
@@ -70,6 +70,7 @@ final class DevelopWorkspace: ObservableObject {
     @Published var repairFeather = 0.5
     @Published var redEyeStrength = 1.0
     @Published var repairSource: LocalMaskPoint?
+    @Published var repairChoosesSource = false
     @Published var repairSelectedStrokeID: UUID?
     // Small details often belong to a much larger foreground instance (a berry
     // to a whole tree). Keep the painted footprint unless explicitly requested.
@@ -91,6 +92,7 @@ final class DevelopWorkspace: ObservableObject {
     var repairTask: Task<Void, Never>?
     var repairSpotTask: Task<Void, Never>?
     var repairRequest = UUID()
+    var repairAIAvailabilityRequest = UUID()
     let repairInputQueue = DevelopRepairInputQueue()
     var repairDisplayBitmap: PreviewBitmap?
     let repairServices: DevelopRepairServices
@@ -307,6 +309,9 @@ struct DevelopCanvasMapping: Hashable {
 
 enum DevelopCanvasTool: String, CaseIterable, Identifiable {
     case basic, crop, repair, redEye, masks
+    /// Red-eye input keeps its coordinate/history identity inside the single repair entry.
+    static let toolbarCases: [Self] = [.basic, .crop, .repair, .masks]
+    var isRepairTool: Bool { self == .repair || self == .redEye }
     var id: String { rawValue }
     var title: String {
         switch self {

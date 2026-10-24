@@ -7,7 +7,7 @@ import Testing
 @Suite("Existing repair edit transactions")
 @MainActor
 struct DevelopRepairEditTransactionTests {
-    @Test(arguments: ["undo", "cancel", "source", "clear"])
+    @Test(arguments: ["undo", "cancel", "source", "clear", "mode"])
     func invalidationBeforeAMoveCanReturnPreservesTheAcceptedSnapshot(reason: String) async throws {
         let fixture = try await RepairEditTransactionFixture.make()
         defer { fixture.workspace.clear() }
@@ -23,6 +23,7 @@ struct DevelopRepairEditTransactionTests {
         switch reason {
         case "undo": fixture.editor.undo(assetID: fixture.asset.id)
         case "cancel": fixture.workspace.cancelRepairWork()
+        case "mode": fixture.workspace.selectRepairMode(.redEye)
         case "source":
             let other = AISourceIdentity.original(.init(fileURL: URL(fileURLWithPath: "/tmp/repair-edit-other.png"),
                 modifiedAt: .distantPast, fileSize: 1))
