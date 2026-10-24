@@ -2,10 +2,31 @@ import Combine
 import Foundation
 import GlowroomCore
 
+enum PhotoMetadataEditor: Hashable { case manual, proposal }
+
 /// Owns forms and accepted user commands. Analysis observers may be canceled;
 /// admitted persistence tasks are held separately until commit or rollback.
 @MainActor
 final class PhotoMetadataModel: ObservableObject {
+    private struct FormKey: Hashable {
+        let assetID: String
+        let source: AIOriginalSourceFingerprint
+        let catalogSessionID: UUID
+        init(_ context: PhotoMetadataSelectionContext) {
+            assetID = context.assetID; source = context.source; catalogSessionID = context.catalogSessionID
+        }
+    }
+    private struct FormPresentation {
+        var editor: PhotoMetadataEditor = .manual
+        var manualSelection = Set(PhotoMetadataField.allCases)
+        var proposalSelection: Set<PhotoMetadataField> = [.title, .description, .tags]
+        var manualPolicy: MetadataTagPolicy = .append
+        var proposalPolicy: MetadataTagPolicy = .append
+        var manualTags = MetadataTagEditorState()
+        var proposalTags = MetadataTagEditorState()
+        var manualDraftPresent = false
+        var proposalID: UUID?
+    }
     struct Recovery: Identifiable {
         let id = UUID()
         let context: PhotoMetadataSelectionContext
@@ -58,10 +79,13 @@ final class PhotoMetadataModel: ObservableObject {
     // destination editor on the model, rather than losing it with view state.
     @Published private(set) var recoveredEditorContext: PhotoMetadataSelectionContext?
     private(set) var recoveredEditorIsProposal = false
+    private var recoveredProposalID: UUID?
+    private var recoveredProposalContext: PhotoMetadataSelectionContext?
     @Published private(set) var importReview: MetadataImportReview?
     @Published private(set) var catalogReview: CatalogReview?
     @Published private(set) var catalogComparison: CatalogComparison?
     @Published private(set) var availability: ImageAnalysisAvailability = .unavailable(.unknown)
+    @Published var editor: PhotoMetadataEditor = .manual
     @Published var manualSelection = Set(PhotoMetadataField.allCases)
     @Published var proposalSelection: Set<PhotoMetadataField> = [.title, .description, .tags]
     @Published var manualTagPolicy: MetadataTagPolicy = .append
@@ -92,6 +116,7 @@ final class PhotoMetadataModel: ObservableObject {
     private var formGeneration: UInt64 = 0
     private var manualTagDraftPresent = false
     private var proposalTagDraftID: UUID?
+    private var presentations: [FormKey: FormPresentation] = [:]
     private var storeReady = false
     private var lastWriteFailed = false
     private var manualDirty = false
@@ -155,7 +180,16 @@ final class PhotoMetadataModel: ObservableObject {
         canAdmitAction && currentMatchesContext() && !proposalDirty && hasManualDraft
     }
     var canUseProposalAsManual: Bool {
-        canAdmitAction && currentMatchesContext() && !isLoading && !manualDirty && record?.draft != nil
+        canAdmitAction && currentMatchesContext() && !isLoading && !manualDirty &&
+            (record?.draft != nil || hasDetachedRecoveredProposal)
+    }
+    var hasDetachedRecoveredProposal: Bool {
+        guard proposalDirty, recoveredEditorIsProposal, let recoveredEditorContext,
+              matchesRecordSource(context, recoveredEditorContext) else { return false }
+        return record?.draft?.id != recoveredProposalID || context?.source != recoveredProposalContext?.source
+    }
+    var canDiscardRecoveredProposal: Bool {
+        hasDetachedRecoveredProposal && canAdmitAction && currentMatchesContext()
     }
     var canEditManual: Bool { editable(proposalID: nil) }
     var proposalState: MetadataDraftState? {
@@ -166,7 +200,7 @@ final class PhotoMetadataModel: ObservableObject {
         return draft.state
     }
     var canEditProposal: Bool {
-        guard let draft = record?.draft, proposalState == .pending || proposalState == .edited else { return false }
+        guard !hasDetachedRecoveredProposal, let draft = record?.draft, proposalState == .pending || proposalState == .edited else { return false }
         return editable(proposalID: draft.id)
     }
     var canSuggest: Bool { canManage && currentMatchesContext() && availability == .available && !isLoading && !isAnalyzing }
@@ -180,10 +214,12 @@ final class PhotoMetadataModel: ObservableObject {
     }
     var canConfirmProposal: Bool {
         canAdmitAction && !manualDirty && currentMatchesContext() && !isLoading && !proposalSelection.isEmpty &&
+        !hasDetachedRecoveredProposal &&
         (proposalState == .pending || proposalState == .edited)
     }
     var canRejectProposal: Bool {
         canAdmitAction && !manualDirty && currentMatchesContext() &&
+        !hasDetachedRecoveredProposal &&
         (proposalState == .pending || proposalState == .edited || proposalState == .outdated)
     }
 
@@ -200,16 +236,35 @@ final class PhotoMetadataModel: ObservableObject {
         let next = currentContext()
         if let old = context, old != next { invalidateAnalysis() }
         let changedSource = context?.assetID != next?.assetID || context?.source != next?.source
+            || context?.catalogSessionID != next?.catalogSessionID
+        if let next, context?.catalogSessionID != next.catalogSessionID {
+            presentations = presentations.filter { $0.key.catalogSessionID == next.catalogSessionID }
+        }
+        if changedSource, let old = context, next == nil || old.catalogSessionID == next?.catalogSessionID {
+            // Only presentation state is cached here. Persisted fields still
+            // come from the ordered store and its revision checks on reload.
+            presentations[FormKey(old)] = FormPresentation(editor: editor,
+                manualSelection: manualSelection, proposalSelection: proposalSelection,
+                manualPolicy: manualTagPolicy, proposalPolicy: proposalTagPolicy,
+                manualTags: manualTagEditor, proposalTags: proposalTagEditor,
+                manualDraftPresent: manualTagDraftPresent, proposalID: proposalTagDraftID)
+        }
         if changedSource, let old = context, recovery == nil, draftWriter == nil {
-            if manualDirty { recovery = Recovery(context: old, fields: manualFields, proposalID: nil,
-                message: errorMessage ?? "Der manuelle Entwurf ist noch nicht gesichert.") }
-            else if proposalDirty { recovery = Recovery(context: old, fields: proposalFields, proposalID: record?.draft?.id,
-                message: errorMessage ?? "Die Entwurfskorrektur ist noch nicht gesichert.") }
+            recovery = unsavedRecovery(context: old)
         }
         context = next
         if changedSource {
-            manualTagEditor = MetadataTagEditorState(); proposalTagEditor = MetadataTagEditorState()
-            manualTagDraftPresent = false; proposalTagDraftID = nil
+            clearRecoveredEditor()
+            // The outgoing raw form is now held by recovery or its admitted
+            // writer. It must never masquerade as the still-loading next photo.
+            manualDirty = false; proposalDirty = false
+            manualFields = .empty; proposalFields = .empty
+            let presentation = next.flatMap { presentations[FormKey($0)] } ?? FormPresentation()
+            editor = presentation.editor
+            manualSelection = presentation.manualSelection; proposalSelection = presentation.proposalSelection
+            manualTagPolicy = presentation.manualPolicy; proposalTagPolicy = presentation.proposalPolicy
+            manualTagEditor = presentation.manualTags; proposalTagEditor = presentation.proposalTags
+            manualTagDraftPresent = presentation.manualDraftPresent; proposalTagDraftID = presentation.proposalID
             loadRecord()
         }
         else { objectWillChange.send() }
@@ -218,12 +273,25 @@ final class PhotoMetadataModel: ObservableObject {
     func retryLoading() {
         guard !isSaving else { return }
         if recovery == nil, let context {
-            if manualDirty { recovery = Recovery(context: context, fields: manualFields, proposalID: nil,
-                message: "Der ungesicherte manuelle Entwurf bleibt erhalten.") }
-            else if proposalDirty { recovery = Recovery(context: context, fields: proposalFields, proposalID: record?.draft?.id,
-                message: "Die ungesicherte Entwurfskorrektur bleibt erhalten.") }
+            recovery = unsavedRecovery(context: context)
         }
         errorMessage = nil; loadRecord()
+    }
+
+    private func unsavedRecovery(context: PhotoMetadataSelectionContext) -> Recovery? {
+        if manualDirty {
+            return Recovery(context: context, fields: manualFields, proposalID: nil,
+                message: errorMessage ?? "Der manuelle Entwurf ist noch nicht gesichert.")
+        }
+        guard proposalDirty else { return nil }
+        // Repeated navigation must retain the original proposal's identity and
+        // source, even if the store now contains another draft or no draft.
+        let recovered = recoveredEditorIsProposal && recoveredEditorContext.map {
+            matchesRecordSource(context, $0)
+        } == true
+        return Recovery(context: recovered ? (recoveredProposalContext ?? context) : context,
+            fields: proposalFields, proposalID: recovered ? recoveredProposalID : record?.draft?.id,
+            message: errorMessage ?? "Die Entwurfskorrektur ist noch nicht gesichert.")
     }
 
     private func loadRecord() {
@@ -262,6 +330,7 @@ final class PhotoMetadataModel: ObservableObject {
                 self.manualFields = value?.manualDraft?.fields ?? value?.confirmed ?? .empty
                 self.proposalFields = value?.draft?.fields ?? .empty
                 self.synchronizeTagDrafts(value)
+                if value?.draft == nil { self.editor = .manual }
                 self.manualDirty = false; self.proposalDirty = false
                 self.errorMessage = nil
             } catch {
@@ -363,7 +432,9 @@ final class PhotoMetadataModel: ObservableObject {
                 apply(result, context: intent.context, generation: intent.generation)
             } catch {
                 let failed = draftIntent ?? intent; draftIntent = nil
-                if currentContext()?.assetID != failed.context.assetID || currentContext()?.source != failed.context.source {
+                let rawFormStillVisible = matchesRecordSource(context, failed.context) &&
+                    (failed.proposalID == nil ? manualDirty : proposalDirty)
+                if !rawFormStillVisible {
                     recovery = Recovery(context: failed.context, fields: failed.fields,
                         proposalID: failed.proposalID, message: Self.message(error))
                 }
@@ -380,15 +451,20 @@ final class PhotoMetadataModel: ObservableObject {
         selectAsset(recovery.context.assetID)
         synchronizeContext()
         let recoveryID = recovery.id
+        let target = context, targetLoadID = loadID, targetLoad = loadTask
         Task { [weak self] in
             guard let self else { return }
-            if let loadTask { await loadTask.value }
-            guard self.recovery?.id == recoveryID, self.currentContext()?.assetID == recovery.context.assetID else { return }
+            if let targetLoad { await targetLoad.value }
+            guard self.recovery?.id == recoveryID, self.context == target, self.currentContext() == target,
+                  self.loadID == targetLoadID, target?.assetID == recovery.context.assetID else { return }
             self.recovery = nil
             if recovery.proposalID != nil { self.proposalFields = recovery.fields; self.proposalDirty = true }
             else { self.manualFields = recovery.fields; self.manualDirty = true }
             self.recoveredEditorIsProposal = recovery.proposalID != nil
             self.recoveredEditorContext = self.context
+            self.recoveredProposalID = recovery.proposalID
+            self.recoveredProposalContext = recovery.context
+            self.editor = recovery.proposalID == nil ? .manual : .proposal
             self.advanceForm()
             self.errorMessage = "Der ungesicherte Entwurf bleibt erhalten. Bitte korrigieren und übernehmen."
 
@@ -396,6 +472,19 @@ final class PhotoMetadataModel: ObservableObject {
     }
 
     func discardRecovery() { recovery = nil; errorMessage = nil; lastWriteFailed = false }
+
+    private func clearRecoveredEditor() {
+        recoveredEditorContext = nil; recoveredEditorIsProposal = false
+        recoveredProposalID = nil; recoveredProposalContext = nil
+    }
+
+    func discardRecoveredProposal() {
+        guard canDiscardRecoveredProposal else { return }
+        proposalDirty = false; proposalFields = record?.draft?.fields ?? .empty
+        proposalTagEditor = MetadataTagEditorState(); proposalTagEditor.synchronize(proposalFields.tags)
+        clearRecoveredEditor()
+        editor = .manual; errorMessage = nil; lastWriteFailed = false; advanceForm()
+    }
 
     func acceptManualFields() {
         guard canConfirmManual, let context else { return }
@@ -481,6 +570,8 @@ final class PhotoMetadataModel: ObservableObject {
         // never a confirmation or a claim of current model/source provenance.
         let fields = proposalFields
         proposalDirty = false
+        clearRecoveredEditor()
+        editor = .manual
         editManualFields(fields)
     }
 
@@ -505,7 +596,15 @@ final class PhotoMetadataModel: ObservableObject {
                 self.suggestionID = nil; self.isAnalyzing = false; self.suggestionTask = nil
                 let operation = MetadataAIDraftOperation(header: MetadataCommandHeader(assetID: context.assetID, expectedVersion: request.expectedVersion),
                     mutation: .createSuggested(draftID: UUID(), fields: result.fields, source: result.source))
-                self.accept(context: context) { try await self.store.saveAIDraft(operation) }
+                self.accept(context: context) {
+                    let result = try await self.store.saveAIDraft(operation)
+                    // A late accepted write may finish after a photo switch.
+                    // Only the form that requested this proposal is revealed.
+                    if self.matchesRecordSource(self.context, context), self.formGeneration == request.formGeneration {
+                        self.editor = .proposal
+                    }
+                    return result
+                }
             } catch {
                 guard let self, self.suggestionID == request.id else { return }
                 self.suggestionID = nil; self.suggestionTask = nil; self.isAnalyzing = false
@@ -563,6 +662,16 @@ final class PhotoMetadataModel: ObservableObject {
     }
 
     var canRetryAcceptedWrite: Bool { hasPendingRetry && !isSaving && !isClosing && canModifyLibrary() }
+    func revealPendingState() {
+        let target = recovery?.context ?? acceptedRetry?.context
+        if let target {
+            selectAsset(target.assetID)
+            synchronizeContext()
+        }
+        if let recovery { editor = recovery.proposalID == nil ? .manual : .proposal }
+        else if proposalDirty { editor = .proposal }
+        else if manualDirty { editor = .manual }
+    }
     func retryAcceptedWrite() {
         guard canRetryAcceptedWrite, let retry = acceptedRetry else { return }
         startAccepted(context: retry.context, generation: retry.generation, operation: retry.operation)
@@ -593,6 +702,7 @@ final class PhotoMetadataModel: ObservableObject {
         manualFields = current.manualDraft?.fields ?? current.confirmed
         proposalFields = current.draft?.fields ?? .empty
         synchronizeTagDrafts(current)
+        clearRecoveredEditor()
         manualDirty = false; proposalDirty = false; manualConflictReviewed = false; errorMessage = nil
     }
 

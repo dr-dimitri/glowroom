@@ -659,19 +659,25 @@ struct LibraryView: View {
     private var workspaceNoticeLinks: some View {
         Group {
             if photoMetadata.hasManualDraft {
-                Button("Bildinformationen: manuellen Entwurf prüfen") { revealNoticeTool(.metadata) }
+                Button("Bildinformationen: manuellen Entwurf prüfen") {
+                    photoMetadata.editor = .manual; revealNoticeTool(.metadata)
+                }
             }
             if photoMetadata.record?.draft != nil {
-                Button("KI-Korrektur: Bildtextvorschlag prüfen") { revealNoticeTool(.aiDevelopment) }
+                Button("Bildinformationen: KI-Vorschlag prüfen") {
+                    photoMetadata.editor = .proposal; revealNoticeTool(.metadata)
+                }
             }
             if photoMetadata.isAnalyzing {
-                Button("KI-Korrektur: Bildanalyse läuft") { revealNoticeTool(.aiDevelopment) }
+                Button("Bildinformationen: Bildanalyse läuft") { revealNoticeTool(.metadata) }
             }
             if photoMetadata.isSaving {
-                Button("Bildinformationen: Speichern läuft") { revealNoticeTool(metadataNoticeTarget) }
+                Button("Bildinformationen: Speichern läuft") { revealNoticeTool(.metadata) }
             }
             if photoMetadata.errorMessage != nil || photoMetadata.hasPendingRetry || photoMetadata.recovery != nil {
-                Button("Bildinformationen: Fehler prüfen") { revealNoticeTool(metadataNoticeTarget) }
+                Button("Bildinformationen: Fehler prüfen") {
+                    photoMetadata.revealPendingState(); revealNoticeTool(.metadata)
+                }
             }
             if editor.failedArtifactCommitID != nil || editor.isReadOnly || editor.errorMessage != nil {
                 Button("Bearbeitung: Speicherfehler prüfen") { revealNoticeTool(.versions) }
@@ -705,7 +711,9 @@ struct LibraryView: View {
             if let error = photoMetadata.errorMessage { Text(error) }
             if let recovery = photoMetadata.recovery {
                 Text(recovery.message)
-                Button("Metadatenentwurf bearbeiten") { photoMetadata.recoverUnsavedDraft() }
+                Button("Metadatenentwurf bearbeiten") {
+                    photoMetadata.recoverUnsavedDraft(); revealNoticeTool(.metadata)
+                }
             }
             if photoMetadata.hasPendingRetry {
                 Button("Angenommenen Metadatenauftrag erneut speichern") { photoMetadata.retryAcceptedWrite() }
@@ -727,11 +735,6 @@ struct LibraryView: View {
         if photoMetadata.isAnalyzing { return "Bildinformationen: Analyse" }
         if photoMetadata.hasManualDraft || photoMetadata.record?.draft != nil { return "Entwurf vorhanden" }
         return "Hinweise"
-    }
-
-    private var metadataNoticeTarget: WorkspaceTool {
-        if let recovery = photoMetadata.recovery { return recovery.proposalID == nil ? .metadata : .aiDevelopment }
-        return photoMetadata.hasManualDraft ? .metadata : .aiDevelopment
     }
 
     private func reveal(_ tool: WorkspaceTool) { WorkspaceActions.reveal(tool, layout: layout, library: model) }

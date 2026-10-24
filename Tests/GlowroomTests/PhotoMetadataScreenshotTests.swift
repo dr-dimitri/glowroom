@@ -1,0 +1,213 @@
+import AppKit
+import CryptoKit
+@testable import GlowroomCore
+import ImageIO
+import SwiftUI
+import Testing
+import UniformTypeIdentifiers
+@testable import Glowroom
+
+/// AppKit capture cases share native state and remain ordered. Production
+/// metadata persistence still runs through its bounded background repository.
+@Suite("Unified metadata native acceptance", .serialized, .timeLimit(.minutes(3)))
+@MainActor
+struct PhotoMetadataScreenshotTests {
+    @Test(.enabled(if: ProcessInfo.processInfo.environment["GLOWROOM_198_SNAPSHOTS"] != nil),
+          arguments: [NSSize(width: 1_440, height: 900), NSSize(width: 1_000, height: 660)])
+    func metadataReviewAndConflict(size: NSSize) async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("Glowroom-Metadata-Capture-\(UUID())")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("Morgenlicht.png"), image = try fixtureImage()
+        let destination = try #require(CGImageDestinationCreateWithURL(url as CFURL, UTType.png.identifier as CFString, 1, nil))
+        CGImageDestinationAddImage(destination, image, nil)
+        try #require(CGImageDestinationFinalize(destination))
+        let bytes = try Data(contentsOf: url)
+        try FileManager.default.setAttributes([.modificationDate: Date(timeIntervalSince1970: 1)], ofItemAtPath: url.path)
+        let source = MetadataSourceFingerprint(standardizedPath: url.path, modifiedAt: Date(timeIntervalSince1970: 1), fileSize: Int64(bytes.count))
+        let reference = MetadataSourceReference(original: source)
+        let context = PhotoMetadataSelectionContext(assetID: "synthetic-morgenlicht", source: .init(fileURL: url,
+            modifiedAt: source.modifiedAt, fileSize: source.fileSize), selectionSessionID: UUID(), selectionGeneration: 1,
+            catalogSessionID: UUID(), catalogGeneration: 1, canModify: true, isClosing: false)
+        let catalogURL = directory.appendingPathComponent("catalog.json")
+        try Data("{}".utf8).write(to: catalogURL)
+        let store = PhotoMetadataRepository(directory: directory)
+        _ = try await store.reconcile(.init(catalogSessionID: context.catalogSessionID, catalogGeneration: 1,
+            persistedReference: try PhotoMetadataFiles.reference(catalogURL), assets: [.init(assetID: context.assetID, source: reference)]))
+        _ = try await store.confirm(.init(header: .init(assetID: context.assetID, expectedVersion: .absent),
+            values: .init(title: "Morgenlicht", description: "Synthetische Landschaft mit Sonne und Bergen.", tags: ["Landschaft", "Testfoto"]),
+            fields: Set(PhotoMetadataField.allCases), source: reference,
+            origin: .manual(expectedManualDraftRevision: nil, reviewedConfirmedRevision: 0)))
+        let suggestor = MetadataCaptureSuggestor(source: source)
+        let model = PhotoMetadataModel(store: store, suggestor: suggestor, currentContext: { context }, canModifyLibrary: { true },
+            protection: { .init(originalURLs: [url], managedFileURLs: [], managedDirectoryURLs: []) })
+        try await wait { model.canEditManual }
+        await model.refreshAvailability()
+        let host = MetadataCaptureHost(size: size)
+        defer { host.close() }
+        #if GLOWROOM_198_BASELINE
+        try await host.mount(captureView(image: image, model: model, panelWidth: size.width == 1_000 ? 300 : 340, ai: false))
+        try await capture(host, model: model, size: size, name: "before-manual", bytes: bytes, evidence: "existing manual production form")
+        try await host.mount(captureView(image: image, model: model, panelWidth: size.width == 1_000 ? 300 : 340, ai: true))
+        try await capture(host, model: model, size: size, name: "before-ai", bytes: bytes, evidence: "existing separate AI production form")
+        #else
+        try await host.mount(captureView(image: image, model: model, panelWidth: size.width == 1_000 ? 300 : 340))
+        #expect(host.elements.filter { $0.accessibilityLabel() == "Mit KI vorschlagen" }.count == 1)
+        try await capture(host, model: model, size: size, name: "after-unified", bytes: bytes, evidence: "single production PhotoMetadataSection")
+        #endif
+        let confirmed = try #require(model.record?.confirmed)
+        await model.refreshAvailability()
+        model.suggest()
+        try await wait { model.record?.draft != nil && !model.isSaving && !model.isAnalyzing }
+        model.editProposalTags("Landschaft\nSonnenaufgang korrigiert")
+        model.proposalSelection = [.title, .tags]
+        try await wait { !model.isSaving }
+        #expect(model.record?.confirmed == confirmed && model.proposalState == .edited)
+        #if GLOWROOM_198_BASELINE
+        try await host.mount(captureView(image: image, model: model, panelWidth: size.width == 1_000 ? 300 : 340, ai: true))
+        try await host.reveal(label: "Übernehmen")
+        try await capture(host, model: model, size: size, name: "before-proposal", bytes: bytes, evidence: "controlled suggestor; edited tag; no real inference")
+        #else
+        #expect(model.editor == .proposal)
+        try await host.reveal(identifier: "metadata.accept")
+        try await capture(host, model: model, size: size, name: "after-proposal", bytes: bytes, evidence: "controlled suggestor; edited tag; no real inference")
+        #endif
+        // A genuine SQLite revision conflict: this old manual draft is retained
+        // while another accepted command confirms a newer title.
+        model.editManualFields(.init(title: "Noch offener manueller Titel", tags: ["Landschaft"]))
+        try await wait { !model.isSaving }
+        let prior = try #require(model.record)
+        _ = try await store.confirm(.init(header: .init(assetID: context.assetID, expectedVersion: prior.version),
+            values: .init(title: "Anderweitig bestätigter Titel"), fields: [.title], source: reference,
+            origin: .manual(expectedManualDraftRevision: prior.manualDraft?.revision, reviewedConfirmedRevision: prior.confirmedRevision)))
+        // Partial confirmation deliberately retains the older manual draft,
+        // whose reviewed basis must now be compared with the new revision.
+        model.retryLoading()
+        try await wait { model.canEditManual && model.manualHasConflict }
+        #expect(!model.canConfirmManual && model.proposalState == .outdated)
+        #if GLOWROOM_198_BASELINE
+        try await host.mount(captureView(image: image, model: model, panelWidth: size.width == 1_000 ? 300 : 340, ai: false))
+        try await host.reveal(label: "Aktuelle bestätigte Revision geprüft")
+        try await capture(host, model: model, size: size, name: "before-conflict", bytes: bytes, evidence: "persisted old draft versus newer SQLite confirmed revision; controlled conflict")
+        #else
+        model.editor = .manual
+        try await host.settle()
+        try await host.reveal(identifier: "metadata.conflict-reviewed")
+        try await capture(host, model: model, size: size, name: "after-conflict", bytes: bytes, evidence: "persisted old draft versus newer SQLite confirmed revision; controlled conflict")
+        #endif
+        #expect(await suggestor.requests == 1)
+        #expect(try Data(contentsOf: url) == bytes)
+        #expect(await model.finishSaving())
+    }
+
+    private func captureView(image: CGImage, model: PhotoMetadataModel, panelWidth: CGFloat, ai: Bool = false) -> some View {
+        HStack(spacing: 0) {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Morgenlicht.png").font(.system(size: 16, weight: .medium))
+                Image(decorative: image, scale: 1).resizable().scaledToFit().frame(maxWidth: .infinity, maxHeight: .infinity)
+                Text("Synthetisches Testfoto · META-01 / META-02 / META-03").font(.system(size: 13)).foregroundStyle(Theme.muted)
+            }.padding(28).frame(maxWidth: .infinity, maxHeight: .infinity)
+            Divider()
+            ScrollView {
+                #if GLOWROOM_198_BASELINE
+                PhotoMetadataSection(model: model, mode: ai ? .ai : .manual).padding(20)
+                #else
+                PhotoMetadataSection(model: model).padding(20)
+                #endif
+            }.frame(width: panelWidth).background(Theme.sidebar)
+        }.background(Theme.panel).preferredColorScheme(.dark)
+    }
+    private func capture(_ host: MetadataCaptureHost, model: PhotoMetadataModel, size: NSSize,
+                         name: String, bytes: Data, evidence: String) async throws {
+        let output = URL(fileURLWithPath: ProcessInfo.processInfo.environment["GLOWROOM_198_SNAPSHOTS"]!, isDirectory: true)
+        try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
+        try await host.settle()
+        let png = output.appendingPathComponent("\(name)-\(Int(size.width)).png")
+        try host.snapshot(to: png)
+        let encoder = JSONEncoder(); encoder.outputFormatting = .sortedKeys
+        let record: [String: Any] = ["state": name, "windowWidthPoints": size.width, "windowHeightPoints": size.height,
+            "panelWidthPoints": size.width == 1_000 ? 300 : 340, "scaleFactor": host.scaleFactor,
+            "sourceCommit": ProcessInfo.processInfo.environment["GLOWROOM_WORKSPACE_SNAPSHOT_COMMIT"] ?? "working-tree",
+            "photoID": "synthetic-morgenlicht", "fixture": "synthetic landscape generated by PhotoMetadataScreenshotTests",
+            "fixtureSHA256": digest(bytes), "screenshotSHA256": digest(try Data(contentsOf: png)),
+            "confirmedSHA256": digest(try encoder.encode(model.record?.confirmed)),
+            "confirmedRevision": model.record?.confirmedRevision ?? 0,
+            "proposalState": model.proposalState?.rawValue ?? "absent", "selectedProposalFields": model.proposalSelection.map(\.rawValue).sorted(),
+            "manualConflict": model.manualHasConflict, "canConfirmManual": model.canConfirmManual, "canConfirmProposal": model.canConfirmProposal,
+            "evidence": evidence, "nativeView": "PhotoMetadataSection in isolated native AppKit host; surrounding image scaffold is test-only",
+            "macOS": ProcessInfo.processInfo.operatingSystemVersionString]
+        try JSONSerialization.data(withJSONObject: record, options: [.sortedKeys, .prettyPrinted])
+            .write(to: png.deletingPathExtension().appendingPathExtension("json"))
+    }
+    private func fixtureImage() throws -> CGImage {
+        let context = try #require(CGContext(data: nil, width: 900, height: 600, bitsPerComponent: 8, bytesPerRow: 0,
+            space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+        context.setFillColor(CGColor(srgbRed: 0.21, green: 0.45, blue: 0.72, alpha: 1)); context.fill(CGRect(x: 0, y: 0, width: 900, height: 600))
+        context.setFillColor(CGColor(srgbRed: 0.93, green: 0.7, blue: 0.31, alpha: 1)); context.fillEllipse(in: CGRect(x: 650, y: 390, width: 120, height: 120))
+        context.setFillColor(CGColor(srgbRed: 0.18, green: 0.3, blue: 0.19, alpha: 1))
+        context.move(to: CGPoint(x: 0, y: 0)); context.addLine(to: CGPoint(x: 0, y: 160)); context.addLine(to: CGPoint(x: 250, y: 390)); context.addLine(to: CGPoint(x: 570, y: 120)); context.addLine(to: CGPoint(x: 900, y: 240)); context.addLine(to: CGPoint(x: 900, y: 0)); context.closePath(); context.fillPath()
+        return try #require(context.makeImage())
+    }
+    private func digest(_ data: Data) -> String { SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined() }
+    private func wait(_ condition: () -> Bool) async throws {
+        let deadline = ContinuousClock.now + .seconds(20)
+        while !condition() { try #require(ContinuousClock.now < deadline); try await Task.sleep(for: .milliseconds(10)) }
+    }
+}
+
+private actor MetadataCaptureSuggestor: PhotoMetadataSuggesting {
+    let source: MetadataSourceFingerprint
+    private(set) var requests = 0
+    init(source: MetadataSourceFingerprint) { self.source = source }
+    func availability() -> ImageAnalysisAvailability { .available }
+    func suggest(_ request: PhotoMetadataSuggestionRequest) -> PhotoMetadataSuggestionResult {
+        requests += 1
+        let raster = MetadataRasterIdentity(sha256: String(repeating: "a", count: 64), pixelWidth: 900, pixelHeight: 600,
+            byteCount: 900 * 600 * 4, colorProfile: "sRGB", orientation: "up", preprocessingVersion: 1)
+        let analysis = MetadataAnalysisProvenance(providerID: "controlled-ui-fixture", modelID: "synthetic-proposal",
+            analyzedAt: Date(timeIntervalSince1970: 1), source: source, raster: raster,
+            analysisTaskVersion: 1, analysisSchemaVersion: 1, metadataPromptVersion: 1, metadataSchemaVersion: 1)
+        return .init(request: request, fields: .init(title: "Sonne über den Bergen", description: "Goldene Sonne über grünen Bergen vor blauem Himmel.", tags: ["Landschaft", "Sonnenaufgang"]),
+            source: .init(original: source, analyzedRaster: analysis))
+    }
+}
+
+@MainActor
+private final class MetadataCaptureHost {
+    let window: NSWindow
+    private let hosting = NSHostingView(rootView: AnyView(EmptyView()))
+    var elements: [WorkspaceAccessibilityElement] { WorkspaceAccessibilityElement.descendants(of: hosting) }
+    var scaleFactor: CGFloat { window.backingScaleFactor }
+    init(size: NSSize) {
+        _ = NSApplication.shared; WorkspaceAccessibilityElement.enableInProcess()
+        window = NSWindow(contentRect: NSRect(origin: NSPoint(x: -10_000, y: -10_000), size: size), styleMask: .borderless, backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false; window.ignoresMouseEvents = true
+        window.appearance = NSAppearance(named: .darkAqua); window.contentView = hosting; window.orderBack(nil)
+    }
+    func mount(_ view: some View) async throws { hosting.rootView = AnyView(view); try await settle() }
+    func settle() async throws { hosting.layoutSubtreeIfNeeded(); try await Task.sleep(for: .milliseconds(150)); hosting.layoutSubtreeIfNeeded(); hosting.displayIfNeeded() }
+    func snapshot(to url: URL) throws {
+        let bitmap = try #require(hosting.bitmapImageRepForCachingDisplay(in: hosting.bounds))
+        hosting.cacheDisplay(in: hosting.bounds, to: bitmap)
+        try #require(bitmap.representation(using: .png, properties: [:])).write(to: url)
+    }
+    func reveal(identifier: String? = nil, label: String? = nil) async throws {
+        window.makeFirstResponder(nil)
+        try await settle()
+        let target = try #require(elements.first { (identifier != nil && $0.accessibilityIdentifier() == identifier) || (label != nil && ($0.accessibilityLabel() == label || $0.accessibilityValue() as? String == label)) }, "Missing \(identifier ?? label ?? "target")")
+        let windowRect = window.convertFromScreen(target.accessibilityFrame())
+        var pending: [NSView] = [hosting]
+        while let next = pending.popLast() {
+            pending.append(contentsOf: next.subviews)
+            if let scroll = next as? NSScrollView, let document = scroll.documentView {
+                let rect = document.convert(windowRect, from: nil)
+                let viewRect = scroll.convert(windowRect, from: nil)
+                guard viewRect.midX >= 0 && viewRect.midX <= scroll.bounds.width else { continue }
+                let y = min(max(0, document.bounds.height - scroll.contentView.bounds.height), max(0, rect.midY - scroll.contentView.bounds.height / 2))
+                scroll.contentView.scroll(to: CGPoint(x: scroll.contentView.bounds.minX, y: y)); scroll.reflectScrolledClipView(scroll.contentView)
+            }
+        }
+        try await settle()
+    }
+    func close() { hosting.rootView = AnyView(EmptyView()); window.close() }
+}

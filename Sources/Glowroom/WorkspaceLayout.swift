@@ -357,7 +357,7 @@ final class WorkspaceLayoutModel: ObservableObject {
 
     func reveal(_ tool: WorkspaceTool, developing: Bool) {
         update(developing: developing) { panels in
-            if tool.isNavigationTool { panels.showsLibrary = true }
+            if tool.isNavigationTool && developing { panels.showsLibrary = true }
             else { panels.showsTools = true }
             if panels.singleGroup {
                 panels.openGroups = panels.openGroups.filter { $0.isNavigationTool != tool.isNavigationTool }

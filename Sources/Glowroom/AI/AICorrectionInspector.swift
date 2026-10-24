@@ -1,39 +1,18 @@
 import SwiftUI
 import GlowroomCore
 
-/// Correction, metadata proposals and setup reuse the common develop context.
+/// Correction and setup reuse the common develop context.
 /// The enclosing inspector owns scrolling, histogram and editing history.
 struct AICorrectionInspector: View {
     @ObservedObject var library: LibraryModel
-    @EnvironmentObject private var metadata: PhotoMetadataModel
-    @EnvironmentObject private var layout: WorkspaceLayoutModel
-    @ViewState private var showsMetadata = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             AIDevelopmentView(library: library)
-            Divider()
-            DisclosureGroup("Bildtexte und Tags vorschlagen", isExpanded: $showsMetadata) {
-                PhotoMetadataSection(model: metadata, mode: .ai).padding(.top, 8)
-            }
             AIDevelopmentManagementControls(library: library)
         }.font(.system(size: 13))
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("ai-correction.inspector")
-            .onAppear { revealMetadataIfNeeded() }
-            .onChange(of: layout.revealRequest) { _, _ in
-                if layout.revealedTool == .aiDevelopment { revealMetadataIfNeeded() }
-            }
-            .onChange(of: metadata.record?.draft?.id) { _, _ in revealMetadataIfNeeded() }
-            .onChange(of: metadata.errorMessage) { _, _ in revealMetadataIfNeeded() }
-            .onChange(of: metadata.hasPendingRetry) { _, _ in revealMetadataIfNeeded() }
-    }
-
-    private func revealMetadataIfNeeded() {
-        if metadata.record?.draft != nil || metadata.isAnalyzing || metadata.recovery?.proposalID != nil
-            || metadata.errorMessage != nil || metadata.hasPendingRetry {
-            showsMetadata = true
-        }
     }
 }
 
