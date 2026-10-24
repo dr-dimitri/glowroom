@@ -119,6 +119,17 @@ Bei der Implementierung README und die Fachanleitungen `WORKSPACE-LAYOUT.md`, `D
 
 ## Issues und Prüfung dieses Konzepts
 
-Die konkreten Issue-Links werden nach Veröffentlichung hier ergänzt. Das übergeordnete Issue hält die Reihenfolge und Screenshot-Abnahme zusammen.
+[Übergeordnetes Issue #201](https://github.com/dr-dimitri/glowroom/issues/201) hält Reihenfolge und Screenshot-Abnahme zusammen.
 
-Dieser Auftrag umfasst ausschließlich Dokumentation, Konzeptgrafiken und Issues. Daher ist gemäß `AGENTS.md` kein sauberer App-Build erforderlich. Der gezielte UI-Testlauf dient der reproduzierbaren Ist-Dokumentation, nicht dem Nachweis einer implementierten neuen Oberfläche. Abschließend werden Quellenbelege, Bildkennzeichnung, Links, Issue-Abgrenzung und der vollständige Dokumentationsdiff unabhängig geprüft.
+| Aufgabe | GitHub-Issue |
+| --- | --- |
+| UX-01 | [Entwickeln und AI Entwickeln zu einem gemeinsamen Arbeitsbereich zusammenführen](https://github.com/dr-dimitri/glowroom/issues/193) |
+| UX-02 | [KI-Korrekturen im gemeinsamen Foto prüfen und mit den regulären Reglern verbinden](https://github.com/dr-dimitri/glowroom/issues/194) |
+| UX-03 | [KI-Objektmasken und manuelle Maskierung in einer gemeinsamen Maskenansicht bündeln](https://github.com/dr-dimitri/glowroom/issues/195) |
+| UX-04 | [Licht, Farbe und Details klar gruppieren und erklärenden Kleindruck aus der Bedienung entfernen](https://github.com/dr-dimitri/glowroom/issues/196) |
+| UX-05 | [Entfernen, Heilen, Kopierstempel und KI-Retusche in einem Werkzeug zusammenführen](https://github.com/dr-dimitri/glowroom/issues/197) |
+| UX-06 | [Bildinformationen und KI-Bildtexte in einem gemeinsamen Formular bearbeiten](https://github.com/dr-dimitri/glowroom/issues/198) |
+| UX-07 | [Bildsuche in der Bibliothek bündeln und KI-Modelle zentral verwalten](https://github.com/dr-dimitri/glowroom/issues/199) |
+| UX-08 | [Kleinsthinweise durch klare Bedienung ersetzen und die neue Oberfläche visuell abnehmen](https://github.com/dr-dimitri/glowroom/issues/200) |
+
+Dieser Auftrag umfasst ausschließlich Dokumentation, Konzeptgrafiken und Issues. Daher ist gemäß `AGENTS.md` kein sauberer App-Build erforderlich. Der gezielte UI-Testlauf dient der reproduzierbaren Ist-Dokumentation, nicht dem Nachweis einer implementierten neuen Oberfläche. Zwei unabhängige Reviews prüften Quellenbelege, Bildkennzeichnung, Links, Issue-Abgrenzung und den vollständigen Dokumentationsdiff. Dabei wurden die fehlende Zuordnung von Rote Augen, die zunächst übersehene Filterdopplung, der fehlende sichtbare KI-Zielbereich und ein uneinheitlicher Parametername korrigiert und erneut geprüft. Keine offenen Review-Befunde. Der vorhandene UI-Snapshot-Lauf bestand mit zwei parameterisierten Tests, vier Fällen und einer Suite; SVG-XML, lokale Dokumentlinks sowie Screenshot-Hashes und -Maße wurden geprüft.
