@@ -79,6 +79,7 @@ struct LibraryView: View {
         .background(Theme.background)
         .foregroundStyle(Theme.text)
         .tint(Theme.accent)
+        .environment(\.openAIModels, { model.aiModelsDestination = $0 })
         .environmentObject(maskWorkspace)
         .environmentObject(developWorkspace)
         .environment(\.aiCorrectionDisplay, developWorkspace.correctionDisplay(library: model, editor: editor))
@@ -179,6 +180,15 @@ struct LibraryView: View {
         .onChange(of: model.selection) { _, _ in model.reconcileSelection() }
         .onChange(of: model.search) { _, _ in model.reconcileSelection() }
         .onChange(of: model.minimumRating) { _, _ in model.reconcileSelection() }
+        .sheet(item: $model.aiModelsDestination, onDismiss: {
+            Task {
+                async let masks: Void = maskWorkspace.objectMask.refreshModels()
+                async let repair: Void = developWorkspace.refreshRepairAIAvailability()
+                _ = await (masks, repair)
+            }
+        }) { destination in
+            AIModelsView(library: model, destination: destination)
+        }
         .sheet(isPresented: Binding(get: { exporter.isPresented }, set: { if !$0 { exporter.cancel() } })) {
             JPEGExportView(model: exporter)
         }
@@ -386,6 +396,14 @@ struct LibraryView: View {
                 .help("Bildfokus umschalten · ⇧⌘F")
                 .accessibilityLabel(layout.isFocused ? "Zur vorherigen Ansicht" : "Bildfokus")
                 .accessibilityIdentifier("workspace.focus")
+            Button { model.aiModelsDestination = .overview } label: {
+                Label("KI-Modelle", systemImage: "cpu")
+                if model.semanticOperationLabel != nil || model.semanticState.isIndexing {
+                    ProgressView().controlSize(.small)
+                } else if model.semanticImportReview != nil {
+                    Image(systemName: "exclamationmark.circle")
+                }
+            }.accessibilityIdentifier("workspace.ai-models")
             Menu("Ansicht") { WorkspaceViewCommands(layout: layout, library: model) }
                 .menuStyle(.borderlessButton).fixedSize()
             Menu {
@@ -426,11 +444,10 @@ struct LibraryView: View {
             VStack(alignment: .leading, spacing: 16) {
                 HStack(spacing: 7) {
                     Circle().fill(model.isReadOnly ? Color.orange : Theme.accent).frame(width: 5, height: 5)
-                    Text(model.isReadOnly ? "Katalog nicht verfügbar" : "Lokaler Katalog").font(.system(size: 10)).foregroundStyle(Theme.muted)
+                    Text(model.isReadOnly ? "Katalog nicht verfügbar" : "Lokaler Katalog").font(.system(size: 13)).foregroundStyle(Theme.muted)
                 }
                 Button { model.chooseFolders() } label: { Label("Ordner hinzufügen", systemImage: "plus").frame(maxWidth: .infinity) }
                     .buttonStyle(AccentButton()).disabled(!model.canModify || model.isImporting)
-                Text("Originale bleiben unverändert.").font(.system(size: 9)).foregroundStyle(Theme.muted.opacity(0.8)).frame(maxWidth: .infinity)
             }.padding(18)
         }.background(Theme.sidebar)
     }
@@ -457,7 +474,7 @@ struct LibraryView: View {
     private var libraryFolders: some View {
         VStack(spacing: 3) {
             if model.folders.isEmpty {
-                Text("Deine Fotoordner\nerscheinen hier.").font(.system(size: 11)).foregroundStyle(Theme.muted).lineSpacing(4)
+                Text("Keine Fotoordner").font(.system(size: 13)).foregroundStyle(Theme.muted).lineSpacing(4)
                     .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 22).padding(.vertical, 8)
             }
             ForEach(model.folders) { folder in
@@ -483,19 +500,13 @@ struct LibraryView: View {
     private var workspace: some View {
         VStack(alignment: .leading, spacing: 0) {
             if !model.isDeveloping && (!layout.isFocused || panels.showsLibrary) {
-                if layout.isFocused {
-                    compactLibraryBar
-                } else {
-                    LibraryHeading(model: model) {
-                        WorkspaceActions.showGrid(layout, library: model)
-                    }
+                LibraryHeading(model: model) {
+                    WorkspaceActions.showGrid(layout, library: model)
                 }
-            if model.searchMode == .semantic || model.semanticOperationLabel != nil || model.semanticState.isIndexing || model.semanticImportReview != nil {
-                ScrollView([.horizontal, .vertical]) {
-                    SemanticSearchControlsView(model: model).frame(minWidth: 420)
-                }.frame(height: 150)
-            }
-            Rectangle().fill(Theme.line).frame(height: 1)
+                if model.searchMode == .semantic || model.hasVisibleSearch || model.semanticOperationLabel != nil || model.semanticState.isIndexing {
+                    LibrarySearchStatusView(model: model)
+                }
+                Rectangle().fill(Theme.line).frame(height: 1)
             }
             if model.isLoading {
                 ProgressView("Bibliothek wird geöffnet …").frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -516,22 +527,6 @@ struct LibraryView: View {
                 PhotoGridView(model: model)
             }
         }
-    }
-
-    private var compactLibraryBar: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "magnifyingglass").foregroundStyle(Theme.muted)
-            if let reference = model.similarityReference {
-                Text("Ähnlich zu \(reference.fileName)").lineLimit(1).frame(maxWidth: .infinity, alignment: .leading)
-            } else {
-                TextField(model.searchMode == .literal ? "Fotos suchen …" : "Bildinhalt suchen …", text: Binding(
-                get: { model.searchMode == .literal ? model.search : model.semanticQuery },
-                set: { if model.searchMode == .literal { model.search = $0 } else { model.semanticQuery = $0 } }))
-                .textFieldStyle(.plain).frame(minWidth: 60)
-                .accessibilityLabel(model.searchMode == .literal ? "Wörtliche Fotosuche" : "Semantische Bildsuche")
-            }
-            libraryOptionsMenu
-        }.font(.system(size: 11)).padding(.horizontal, 14).frame(height: 48)
     }
 
     private var panelControls: some View {
@@ -557,56 +552,19 @@ struct LibraryView: View {
         }.fixedSize()
     }
 
-    private var libraryOptionsMenu: some View {
-        Menu {
-            Picker("Bewertung", selection: $model.minimumRating) {
-                Text("Alle Bewertungen").tag(0)
-                ForEach(1...5, id: \.self) { Text("Mindestens \($0) Sterne").tag($0) }
-            }
-            Picker("Suchmodus", selection: $model.searchMode) {
-                ForEach(LibrarySearchMode.allCases) { Text($0.label).tag($0) }
-            }
-            Picker("Sortieren", selection: $model.sort) {
-                ForEach(PhotoSort.allCases) { Text($0.rawValue).tag($0) }
-            }
-            Divider()
-            Button("Ähnliche Bilder finden") { model.findSimilarImages() }
-                .disabled(model.selectedAsset == nil || !model.hasSemanticService)
-            if model.similarityReference != nil {
-                Button("Ähnlichkeitssuche beenden") { model.stopFindingSimilarImages() }
-            }
-            Button("Rasteransicht") { WorkspaceActions.showGrid(layout, library: model) }
-            Button("Einzelbildansicht") { if model.selectedAsset != nil { model.showsDetail = true } }
-                .disabled(model.selectedAsset == nil)
-            Button("Ordner aktualisieren") { model.refreshCurrentFolder() }
-                .disabled(model.isImporting || model.folders.isEmpty || !model.canModify)
-        } label: { Label("Filter & Sortierung", systemImage: "line.3.horizontal.decrease") }
-            .menuStyle(.borderlessButton).fixedSize().font(.system(size: 11))
-            .foregroundStyle(model.minimumRating > 0 || model.searchMode == .semantic ? Theme.accent : Theme.muted)
-    }
-
     private var emptyState: some View {
-        VStack(spacing: 0) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 16).fill(Theme.panel).frame(width: 110, height: 90).rotationEffect(.degrees(-12)).offset(x: -16, y: 2)
-                RoundedRectangle(cornerRadius: 16).fill(Theme.elevated).frame(width: 110, height: 90).rotationEffect(.degrees(9)).offset(x: 12, y: -7)
-                Image(systemName: model.folders.isEmpty ? "photo.on.rectangle.angled" : "magnifyingglass").font(.system(size: 33, weight: .ultraLight)).foregroundStyle(Theme.accent).offset(y: -5)
-            }.frame(height: 132).padding(.bottom, 22)
-            Text(model.isReadOnly ? "Katalog nicht verfügbar" : model.folders.isEmpty ? "Platz für deinen Blick." : "Keine passenden Fotos")
-                .font(.system(size: 25, weight: .medium)).tracking(-0.5)
-            Text(model.isReadOnly ? "Der vorhandene Katalog wurde zum Schutz deiner Daten nicht verändert." : model.folders.isEmpty ? "Füge deinen ersten Fotoordner hinzu und entdecke\ndeine Bilder in einer neuen Übersicht." : "Wähle einen anderen Ordner oder passe\ndeine Suche und Bewertungsfilter an.")
-                .font(.system(size: 12)).foregroundStyle(Theme.muted).multilineTextAlignment(.center).lineSpacing(5).padding(.top, 12)
-            if model.folders.isEmpty && !model.isReadOnly {
+        VStack(spacing: 20) {
+            Image(systemName: model.folders.isEmpty ? "photo.on.rectangle.angled" : "magnifyingglass")
+                .font(.system(size: 38, weight: .ultraLight)).foregroundStyle(Theme.accent)
+            Text(model.isReadOnly ? "Katalog nicht verfügbar" : model.folders.isEmpty ? "Fotoordner hinzufügen" : model.semanticError != nil ? "Bildsuche nicht bereit" : "Keine passenden Fotos")
+                .font(.system(size: 25, weight: .medium))
+            if model.isReadOnly {
+                Text("Der Katalog konnte nicht geöffnet werden.").font(.system(size: 13))
+            } else if model.folders.isEmpty {
                 Button { model.chooseFolders() } label: { Label("Fotoordner hinzufügen", systemImage: "plus") }
-                    .buttonStyle(AccentButton()).padding(.top, 25).disabled(model.isImporting || !model.canModify)
-                Text("oder einen Ordner hierher ziehen  ·  ⌘O").font(.system(size: 10)).foregroundStyle(Theme.muted).padding(.top, 15)
-                HStack(spacing: 15) { ForEach(["JPEG", "HEIC", "PNG", "TIFF", "RAW*"], id: \.self) { Text($0).font(.system(size: 8, weight: .medium, design: .monospaced)).tracking(1) } }
-                    .foregroundStyle(Theme.muted.opacity(0.65)).padding(.top, 35)
-                Text("* abhängig von der Kameraunterstützung in macOS").font(.system(size: 9)).foregroundStyle(Theme.muted.opacity(0.55)).padding(.top, 8)
-            } else if !model.search.isEmpty || !model.semanticQuery.isEmpty || !model.semanticLiteralFilter.isEmpty || model.minimumRating > 0 {
-                Button("Filter zurücksetzen") {
-                    model.search = ""; model.semanticQuery = ""; model.semanticLiteralFilter = ""; model.minimumRating = 0
-                }.buttonStyle(AccentButton()).padding(.top, 23)
+                    .buttonStyle(AccentButton()).disabled(model.isImporting || !model.canModify)
+            } else if model.hasVisibleSearch {
+                Button("Suche zurücksetzen") { model.resetVisibleSearch() }.buttonStyle(AccentButton())
             }
         }.padding(30)
     }

@@ -158,11 +158,11 @@ final class WorkspaceProposalLifecycleTests {
         WorkspaceActions.reveal(.aiDevelopment, layout: layout, library: f.library)
         try await host.settle()
         #expect(f.library.workspaceMode == .develop && !f.library.showsDetail)
-        #expect(host.accessibilityElements.contains { $0.accessibilityLabel() == "LLM-Modelle verwalten" },
-                "Model setup remains reachable without a selected photo")
-        for identifier in ["ai-development.model-tools", "ai-development.search"] {
-            #expect(host.accessibilityElements.contains { $0.accessibilityIdentifier() == identifier },
-                    "Existing model and search setup stays reachable without a selected photo")
+        #expect(host.accessibilityElements.contains { $0.accessibilityIdentifier() == "ai-models.open" },
+                "Central model setup remains reachable without a selected photo")
+        for identifier in ["ai-development.models", "ai-development.model-tools", "ai-development.search"] {
+            #expect(!host.accessibilityElements.contains { $0.accessibilityIdentifier() == identifier },
+                    "Development has no duplicate model manager or separate search sheet")
         }
         let selectPhoto = try #require(host.accessibilityElements.first {
             $0.accessibilityIdentifier() == "ai-development.select-photo"

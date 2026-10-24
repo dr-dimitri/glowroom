@@ -15,7 +15,6 @@ struct DevelopInspector: View {
     @EnvironmentObject private var maskWorkspace: InlineMaskWorkspace
     @EnvironmentObject private var developWorkspace: DevelopWorkspace
     @ViewState private var fulfilledReveal: UUID?
-    @ViewState private var showsModels = false
     @ViewState private var showsCompactHistogram = false
     @ViewState private var showsAdjustmentHelp = false
     @ViewState private var toneMigrationTarget: ToneMigrationTarget?
@@ -104,16 +103,15 @@ struct DevelopInspector: View {
                     if column == .adjustments {
                         Button("Foto auswählen") { WorkspaceActions.showGrid(layout, library: library) }
                             .accessibilityIdentifier("ai-development.select-photo")
-                        Button("LLM-Modelle verwalten …") { showsModels = true }
-                            .accessibilityLabel("LLM-Modelle verwalten")
-                        AIDevelopmentManagementControls(library: library).padding(12)
+                        Button("KI-Modelle …") { library.aiModelsDestination = .overview }
+                            .font(.system(size: 13))
+                            .accessibilityIdentifier("ai-models.open")
                     }
                     Spacer()
                 }
             }.background(Theme.sidebar)
                 .accessibilityElement(children: .contain)
                 .accessibilityIdentifier(column == .navigation ? "develop.navigation" : "develop.adjustments")
-                .sheet(isPresented: $showsModels) { LLMModelManagerView() }
                 .sheet(isPresented: $showsAdjustmentHelp) { DevelopAdjustmentsHelp() }
                 .sheet(item: $toneMigrationTarget) { target in
                     ToneProcessingMigrationView(canMigrate: canMigrate(target)) {

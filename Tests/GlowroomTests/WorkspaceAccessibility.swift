@@ -32,6 +32,11 @@ struct WorkspaceAccessibilityElement {
 
     func accessibilityIdentifier() -> String? { value(for: "accessibilityIdentifier") as? String }
     func accessibilityLabel() -> String? { value(for: "accessibilityLabel") as? String }
+    func accessibilityTitle() -> String? {
+        let title = value(for: "accessibilityTitle")
+        // AppKit menu cells expose their spoken title as an attributed string.
+        return (title as? String) ?? (title as? NSAttributedString)?.string
+    }
     func accessibilityValue() -> Any? { value(for: "accessibilityValue") }
     func accessibilityRole() -> NSAccessibility.Role? {
         (value(for: "accessibilityRole") as? String).map { NSAccessibility.Role(rawValue: $0) }

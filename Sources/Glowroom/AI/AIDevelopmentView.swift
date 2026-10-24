@@ -8,7 +8,6 @@ struct AIDevelopmentView: View {
     @EnvironmentObject private var workspace: DevelopWorkspace
     @StateObject private var model: AIDevelopmentModel
     @StateObject private var readiness: AICorrectionReadiness
-    @ViewState private var showsModels = false
     @ViewState private var showsIntent = false
     @ViewState private var showsChanges = false
 
@@ -43,11 +42,6 @@ struct AIDevelopmentView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Spacer(minLength: 0)
-                Button { showsModels = true } label: { Label("Modelle", systemImage: "externaldrive") }
-                    .accessibilityIdentifier("ai-development.models")
-            }
             order.disabled(model.isRunning)
             prerequisites
 
@@ -90,7 +84,9 @@ struct AIDevelopmentView: View {
             }
         }
         .font(.system(size: 13))
-        .sheet(isPresented: $showsModels, onDismiss: { Task { await readiness.refresh() } }) { LLMModelManagerView() }
+        .onChange(of: library.aiModelsDestination) { _, destination in
+            if destination == nil { Task { await readiness.refresh() } }
+        }
         .task { await readiness.refresh() }
         .onChange(of: editor.aiSnapshot(in: library)) { _, _ in
             model.invalidateIfNeeded(library: library, editor: editor)
@@ -157,12 +153,12 @@ struct AIDevelopmentView: View {
             ProgressView("Modell wird geprüft …").controlSize(.small)
         case .missing:
             Text("KI-Modell fehlt.").accessibilityIdentifier("ai-development.model-required")
-            Button("KI-Modell einrichten …") { showsModels = true }
+            Button("KI-Modell einrichten …") { library.aiModelsDestination = .corrections }
                 .accessibilityIdentifier("ai-development.setup-model")
         case .failed(let message):
             Text(message).textSelection(.enabled)
                 .accessibilityIdentifier("ai-development.model-error")
-            Button("Modell prüfen und einrichten …") { showsModels = true }
+            Button("Modell prüfen und einrichten …") { library.aiModelsDestination = .corrections }
                 .accessibilityIdentifier("ai-development.setup-model")
         case .ready: EmptyView()
         }

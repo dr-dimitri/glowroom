@@ -267,8 +267,7 @@ struct InlineMaskList: View {
     var maximumHeight: CGFloat = .infinity
     var onDragChanged: ((CGSize) -> Void)?
     var onDragEnded: (() -> Void)?
-    @ViewState private var showsSkySetup = false
-    @ViewState private var showsSubjectSetup = false
+    @Environment(\.openAIModels) private var openAIModels
 
     private var layers: [LocalAdjustment] { workspace.model?.settings.localAdjustments ?? [] }
 
@@ -316,8 +315,8 @@ struct InlineMaskList: View {
                     .help("Neue Maske hinzufügen").accessibilityLabel("Neue Maske")
                     .accessibilityIdentifier("local-mask.add")
                 Menu {
-                    Button("Himmelsmodell einrichten …") { showsSkySetup = true }
-                    Button("Motivmodell einrichten …") { showsSubjectSetup = true }
+                    Button("Himmel einrichten …") { openAIModels(.sky) }
+                    Button("Motiv und Hintergrund einrichten …") { openAIModels(.subject) }
                 } label: { Image(systemName: "ellipsis") }
                     .menuStyle(.borderlessButton).frame(width: 16)
                     .accessibilityLabel("Maskeneinstellungen")
@@ -358,8 +357,6 @@ struct InlineMaskList: View {
             .overlay { RoundedRectangle(cornerRadius: 7).strokeBorder(Theme.line) }
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("local-mask.list")
-            .sheet(isPresented: $showsSkySetup) { SkyMaskModelSetupView() }
-            .sheet(isPresented: $showsSubjectSetup) { SubjectMattingModelSetupView() }
     }
 
     private func maskRow(_ layer: LocalAdjustment) -> some View {

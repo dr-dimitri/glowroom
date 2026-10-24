@@ -1,5 +1,4 @@
 import SwiftUI
-import UniformTypeIdentifiers
 import GlowroomCore
 
 enum DevelopRepairMode: String, CaseIterable, Identifiable, Sendable {
@@ -34,9 +33,8 @@ struct DevelopRepairInspector: View {
     let asset: PhotoAsset
     @ObservedObject var workspace: DevelopWorkspace
     @EnvironmentObject private var editor: EditingModel
+    @Environment(\.openAIModels) private var openAIModels
     @ViewState private var actionTask: Task<Void, Never>?
-    @ViewState private var importsModel = false
-    @ViewState private var showsModelSetup = false
     @ViewState private var showsHelp = false
 
     private var ready: Bool { editor.canEdit && workspace.isOriginalCanvasReady && !workspace.repairBusy }
@@ -111,14 +109,6 @@ struct DevelopRepairInspector: View {
                 if selectedMode == .remove { await workspace.refreshRepairAIAvailability() }
             }
             .sheet(isPresented: $showsHelp) { repairHelp }
-            .fileImporter(isPresented: $importsModel, allowedContentTypes: [.folder, UTType(filenameExtension: "mlpackage") ?? .folder]) { result in
-                guard case .success(let url) = result else { return }
-                actionTask = Task {
-                    let scoped = url.startAccessingSecurityScopedResource()
-                    defer { if scoped { url.stopAccessingSecurityScopedResource() } }
-                    await workspace.importRepairAIModel(from: url)
-                }
-            }
     }
 
     private var modeControls: some View {
@@ -129,7 +119,6 @@ struct DevelopRepairInspector: View {
                     editor.endEditing(assetID: asset.id)
                     editor.selectEditingFunction(.repair, assetID: asset.id)
                     workspace.selectRepairMode(mode)
-                    showsModelSetup = false
                 } label: {
                     VStack(spacing: 4) {
                         modeSymbol(mode).frame(width: 18, height: 20)
@@ -211,23 +200,11 @@ struct DevelopRepairInspector: View {
             Toggle("Mit lokaler KI entfernen", isOn: $workspace.repairUsesAI)
                 .disabled(!ready || !workspace.repairAIReady)
                 .accessibilityIdentifier("develop.repair.generative")
-            Label(workspace.repairAIReady ? "LaMa verfügbar" : "LaMa nicht eingerichtet",
+            Label(workspace.repairAIReady ? "KI-Reparatur bereit" : "KI-Reparatur nicht eingerichtet",
                 systemImage: workspace.repairAIReady ? "checkmark.circle" : "arrow.down.circle")
                 .foregroundStyle(Theme.muted).accessibilityIdentifier("develop.repair.ai.availability")
-            Button(showsModelSetup ? "Einrichtung schließen" : "LaMa einrichten …") { showsModelSetup.toggle() }
+            Button("Reparatur einrichten …") { openAIModels(.repair) }
                 .disabled(workspace.repairBusy).accessibilityIdentifier("develop.repair.ai.setup")
-            if showsModelSetup {
-                if let modelName = workspace.repairAIModelName {
-                    Text(modelName).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
-                }
-                if workspace.repairAISetupProgress == nil && !workspace.repairAIReady {
-                    Button("LaMa herunterladen (ca. 217 MB)") { workspace.downloadRepairAIModel() }
-                        .disabled(!ready).accessibilityIdentifier("develop.repair.ai.download")
-                }
-                Button("Lokales Modell importieren …") { importsModel = true }
-                    .disabled(!ready).accessibilityIdentifier("develop.repair.ai.import")
-                Link("Modellquelle und Lizenzangaben", destination: DevelopRepairAIApprovedDownload.modelCard)
-            }
             if let progress = workspace.repairAISetupProgress {
                 Group {
                     if let fraction = progress.fraction { ProgressView(value: fraction) }

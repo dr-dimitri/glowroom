@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 
 @MainActor
-private final class SkySegModelDownloadState: ObservableObject {
+final class SkySegModelDownloadState: ObservableObject {
     @Published var file: URL?
     @Published var isBusy = false
     @Published var progress: SkyMaskSetupProgress?
@@ -81,13 +81,21 @@ private final class SkySegModelDownloadState: ObservableObject {
 /// Additional source-model download. Its status never claims that the ONNX
 /// export is installed as the app's active sky-recognition backend.
 struct SkySegModelDownloadView: View {
-    @StateObject private var state = SkySegModelDownloadState()
+    @StateObject private var state: SkySegModelDownloadState
+    private let embedded: Bool
+
+    @MainActor
+    init(state: SkySegModelDownloadState? = nil, embedded: Bool = false) {
+        _state = StateObject(wrappedValue: state ?? SkySegModelDownloadState())
+        self.embedded = embedded
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Skyseg zusätzlich herunterladen").font(.headline)
-            Text("Lade das U²-Net-Himmelsmodell als ONNX-Datei herunter (etwa 176 MB; mindestens 384 MB freier Speicher). Du kannst die geprüfte Datei anschließend im Finder öffnen. Die Himmelsmasken in Glowroom verwenden weiterhin das oben eingerichtete Apple-Modell.")
-                .font(.callout).foregroundStyle(.secondary)
+            LabeledContent("Download", value: ByteCountFormatter.string(fromByteCount: SkySegApprovedDownload.file.bytes, countStyle: .file))
+            LabeledContent("Freier Platz", value: "384 MB")
+            LabeledContent("Verwendung", value: "Quelldatei für eigene Arbeit")
             Link("JianyuanWang/skyseg · MIT-Lizenz", destination: SkySegApprovedDownload.modelCard)
             if state.file != nil {
                 Label("Skyseg-Datei heruntergeladen", systemImage: "checkmark.circle.fill")
@@ -96,7 +104,7 @@ struct SkySegModelDownloadView: View {
             if let progress = state.progress {
                 if let fraction = progress.fraction { ProgressView(value: fraction) }
                 else { ProgressView().controlSize(.small) }
-                Text(progress.text).font(.callout)
+                Text(progress.text).font(.system(size: 13))
             }
             if let error = state.errorMessage { Text(error).foregroundStyle(.red).textSelection(.enabled) }
             HStack {
@@ -111,6 +119,6 @@ struct SkySegModelDownloadView: View {
             }
         }
         .task { state.refresh() }
-        .onDisappear { state.cancel() }
+        .onDisappear { if !embedded { state.cancel() } }
     }
 }

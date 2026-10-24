@@ -84,32 +84,40 @@ final class LLMModelManagerModel: ObservableObject {
 
 struct LLMModelManagerView: View {
     @Environment(\.dismiss) private var dismiss
-    @StateObject private var model = LLMModelManagerModel()
+    @StateObject private var model: LLMModelManagerModel
+    private let embedded: Bool
+
+    @MainActor
+    init(model: LLMModelManagerModel? = nil, embedded: Bool = false) {
+        _model = StateObject(wrappedValue: model ?? LLMModelManagerModel())
+        self.embedded = embedded
+    }
     private let descriptor = LLMModelDescriptor.qwen35
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            Text("LLM-Modelle verwalten").font(.title2.bold())
+            Text("Bildkorrekturen").font(.title2.bold())
             VStack(alignment: .leading, spacing: 12) {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(descriptor.name).font(.headline)
-                        Text("4-Bit · Bild und Text · Apple Silicon").font(.callout).foregroundStyle(.secondary)
+                        Text("4-Bit · Bild und Text · Apple Silicon").font(.system(size: 13)).foregroundStyle(.secondary)
                     }
                     Spacer()
                     if model.installation != nil {
                         Label("Installiert", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
                     }
                 }
+                LabeledContent("Version", value: descriptor.revision)
                 LabeledContent("Modellgröße / Download", value: size(descriptor.downloadBytes))
                 LabeledContent("Belegt auf diesem Mac", value: size(model.occupiedBytes))
                 LabeledContent("Freier Platz für Einrichtung", value: size(descriptor.requiredDownloadFreeBytes))
                 Link("Modell und Lizenz ansehen", destination: URL(string: "https://huggingface.co/\(descriptor.repository)")!)
-                    .font(.callout)
+                    .font(.system(size: 13))
                 if let progress = model.progress {
                     if let fraction = progress.fraction { ProgressView(value: fraction) }
                     else { ProgressView().controlSize(.small) }
-                    Text(progress.text).font(.callout)
+                    Text(progress.text).font(.system(size: 13))
                     if progress.downloadedBytes > 0 {
                         Text("\(size(progress.downloadedBytes)) von \(size(progress.totalBytes))")
                             .font(.system(size: 13)).monospacedDigit().foregroundStyle(.secondary)
@@ -119,7 +127,7 @@ struct LLMModelManagerView: View {
                 }
                 if let error = model.errorMessage {
                     Label(error, systemImage: "exclamationmark.triangle")
-                        .font(.callout).foregroundStyle(.orange).textSelection(.enabled)
+                        .font(.system(size: 13)).foregroundStyle(.orange).textSelection(.enabled)
                 }
                 HStack {
                     if model.isDownloading {
@@ -138,16 +146,20 @@ struct LLMModelManagerView: View {
                     }
                 }
                 if !supportsLocalModel {
-                    Text("Dieses Modell benötigt einen Mac mit Apple Silicon.").font(.callout).foregroundStyle(.secondary)
+                    Text("Dieses Modell benötigt einen Mac mit Apple Silicon.").font(.system(size: 13)).foregroundStyle(.secondary)
                 }
             }.padding(16).background(.quaternary, in: RoundedRectangle(cornerRadius: 10))
-            HStack {
-                Spacer()
-                Button("Fertig") { dismiss() }.keyboardShortcut(.defaultAction).disabled(model.isBusy)
+            if !embedded {
+                HStack {
+                    Spacer()
+                    Button("Fertig") { dismiss() }.keyboardShortcut(.defaultAction).disabled(model.isBusy)
+                }
             }
-        }.padding(24).frame(width: 540)
-            .task { model.refresh() }
-            .onDisappear { model.cancel() }
+        }.font(.system(size: 13)).padding(embedded ? 0 : 24)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(width: embedded ? nil : 540)
+            .task { if !embedded { model.refresh() } }
+            .onDisappear { if !embedded { model.cancel() } }
     }
 
     private var supportsLocalModel: Bool {

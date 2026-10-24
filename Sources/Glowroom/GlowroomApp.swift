@@ -93,6 +93,9 @@ struct GlowroomApp: App {
                 .disabled(library.selectedIDs.isEmpty || !library.canExportJPEG || library.isProjecting || editor.isLoading || editor.isRestoring || editor.isClosing || exporter.isPresented)
             }
             CommandMenu("Bibliothek") {
+                Button("KI-Modelle …") { library.aiModelsDestination = .overview }
+                    .keyboardShortcut("m", modifiers: [.command, .option])
+                Divider()
                 Button("Bildinformationen exportieren …") { PhotoMetadataImportExportActions.export(using: photoMetadata) }
                     .disabled(!photoMetadata.canManage)
                 Button("Bildinformationen importieren …") { PhotoMetadataImportExportActions.import(using: photoMetadata) }

@@ -41,6 +41,7 @@ final class LibraryModel: ObservableObject {
     private var selectionAnchorID: String?
     private var isApplyingSelection = false
     private var emptySelectionKey: LibraryProjectionKey?
+    @Published var aiModelsDestination: AIModelsDestination?
     @Published var search = "" { didSet { scheduleProjection() } }
     @Published var searchMode: LibrarySearchMode = .literal {
         didSet { if searchMode == .literal { similarityReference = nil }; scheduleProjection() }
@@ -530,7 +531,26 @@ final class LibraryModel: ObservableObject {
         searchMode = .semantic
     }
 
-    var similarityScopeLabel: String {
+    var hasVisibleSearch: Bool {
+        minimumRating > 0 || similarityReference != nil || (searchMode == .literal
+            ? !search.isEmpty : !semanticQuery.isEmpty || !semanticLiteralFilter.isEmpty)
+    }
+
+    /// Reset only the presented search. The other mode keeps its separate query.
+    func resetVisibleSearch() {
+        minimumRating = 0
+        if similarityReference != nil {
+            semanticLiteralFilter = ""
+            stopFindingSimilarImages()
+        } else if searchMode == .literal {
+            search = ""
+        } else {
+            semanticQuery = ""
+            semanticLiteralFilter = ""
+        }
+    }
+
+    var searchScopeLabel: String {
         let scope: String
         switch selection {
         case .all: scope = "Gesamte Bibliothek"
@@ -539,11 +559,14 @@ final class LibraryModel: ObservableObject {
         case .folder(let id), .subfolder(let id, _):
             scope = catalog.folders.first { $0.id == id }?.name ?? "Gewählter Ordner"
         }
-        let path: String
-        if case .subfolder(_, let relativePath) = selection { path = " / \(relativePath)" } else { path = "" }
+        if case .subfolder(_, let relativePath) = selection { return scope + " / " + relativePath }
+        return scope
+    }
+
+    var similarityScopeLabel: String {
         let rating = minimumRating > 0 ? " · mindestens \(minimumRating) Sterne" : ""
         let literal = semanticLiteralFilter.isEmpty ? "" : " · wörtlich: \(semanticLiteralFilter)"
-        return scope + path + rating + literal
+        return searchScopeLabel + rating + literal
     }
 
     private func semanticScopeKey(_ scope: SemanticScope) -> LibraryProjectionKey {

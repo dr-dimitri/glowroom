@@ -3,6 +3,7 @@ import GlowroomCore
 
 struct PhotoMetadataSection: View {
     @ObservedObject var model: PhotoMetadataModel
+    @Environment(\.openAIModels) private var openAIModels
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -60,6 +61,8 @@ struct PhotoMetadataSection: View {
         } else if case .unavailable(let reason) = model.availability {
             Label(unavailability(reason), systemImage: "sparkles")
                 .foregroundStyle(Theme.muted).accessibilityIdentifier("metadata.unavailable")
+            Button("Bildinformationen einrichten …") { openAIModels(.metadata) }
+                .accessibilityIdentifier("metadata.setup")
             if canRecheck(reason) {
                 Button("Verfügbarkeit erneut prüfen") { Task { await model.refreshAvailability() } }
                     .disabled(model.isAnalyzing)
