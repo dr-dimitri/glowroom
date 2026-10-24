@@ -45,7 +45,7 @@ enum DevelopSharpening {
     static func additionalBytesPerPixel(settings: EditSettings) -> UInt64 {
         guard settings.sharpeningAmount > 0 else { return 0 }
         let halfFloatBytes: UInt64 = settings.sharpeningMasking > 0 ? 64 : 48
-        return settings.toneProcessingVersion == .consistentV2 ? 2 * halfFloatBytes : halfFloatBytes
+        return settings.usesFloatWorkingGraph ? 2 * halfFloatBytes : halfFloatBytes
     }
 
     private static func blur(_ image: CIImage, sigma: Double, extent: CGRect,

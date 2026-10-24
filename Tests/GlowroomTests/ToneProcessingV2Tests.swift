@@ -239,7 +239,11 @@ struct ToneProcessingV2Tests {
         let preview = try EditRenderer.render(source, settings: settings, session: session)
         let graph = try EditRenderer.filterGraph(source.image, settings: settings)
         let reference = try #require(session.context(for: .consistentV2).createCGImage(graph, from: graph.extent,
-            format: .RGBAh, colorSpace: Self.linearSpace, deferred: false))
+            format: .RGBAf, colorSpace: Self.linearSpace, deferred: false))
+        // V2 HDR output preserves the graph's 32-bit Float precision, including
+        // values above the half-float ceiling. Compare the same output contract.
+        #expect(preview.image.bitsPerComponent == 32 && preview.image.bitmapInfo.contains(.floatComponents))
+        #expect(reference.bitsPerComponent == 32 && reference.bitmapInfo.contains(.floatComponents))
         let actualValues = try read(CIImage(cgImage: preview.image))
         let referenceValues = try read(CIImage(cgImage: reference))
         for index in actualValues.indices { expectClose(actualValues[index], Double(referenceValues[index]), absolute: 0.000_1) }

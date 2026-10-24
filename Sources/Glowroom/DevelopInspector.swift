@@ -283,6 +283,7 @@ struct DevelopInspector: View {
                 toneProcessingSection(assetID: asset.id)
                 naturalBalanceSection(assetID: asset.id)
                 adjustmentSection("Tonwert", key: "tone", controls: Array(Adjustment.allCases.prefix(6)), assetID: asset.id)
+                LevelsInspector(assetID: asset.id, library: library).id("levels-\(asset.id)")
                 adjustmentSection("Präsenz", key: "presence", controls: Array(Adjustment.allCases.dropFirst(6).prefix(5)), assetID: asset.id)
             }
         case .details:

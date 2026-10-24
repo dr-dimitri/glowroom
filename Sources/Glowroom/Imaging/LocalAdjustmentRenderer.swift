@@ -139,7 +139,7 @@ enum LocalAdjustmentRenderer {
             var localSettings = adjustment.settings.editSettings
             localSettings.toneProcessingVersion = toneProcessingVersion
             let candidate = try EditRenderer.manualAdjustments(image, settings: localSettings,
-                extent: extent, scale: scale, preservesExtendedRange: preservesExtendedRange)
+                extent: extent, scale: scale, preservesExtendedRange: preservesExtendedRange, levelsScope: .local)
             let mask = try maskImage(adjustment.mask, extent: extent, cache: cache)
             guard let blended = blendKernel?.apply(extent: extent, arguments: [image, candidate, mask]) else {
                 throw EditRenderError.unavailable

@@ -41,11 +41,11 @@ struct AutoToneCurve: Sendable {
         return min(1, max(0, ((c[0] * t + c[1]) * t + c[2]) * t + c[3]))
     }
 
-    static func analyze(_ image: CGImage, amount: Double) throws -> Self {
+    static func analyze(_ image: CGImage, amount: Double, analysisIdentity: SourceAnalysisIdentity? = nil) throws -> Self {
         try Task.checkCancellation()
         let amount = amount.isFinite ? min(1, max(0, amount / 100)) : 0
         guard amount > 0 else { return Self(ordinates: abscissae) }
-        let analysis = try AutoToneAnalysisCache.shared.analysis(for: image)
+        let analysis = try AutoToneAnalysisCache.shared.analysis(for: image, identity: analysisIdentity)
         try Task.checkCancellation()
         return Self(ordinates: zip(abscissae, analysis.offsets).map { $0 + amount * $1 })
     }
@@ -143,11 +143,18 @@ struct AutoToneAnalysis: Sendable {
 }
 
 /// A small identity cache shares the original's analysis across slider changes.
-/// Weak source references avoid extending the decoded preview's lifetime and
-/// prevent a reused object address from matching a different image. The caller's
+/// Stable raster tokens share deterministic resizes without retaining pixels.
+/// Calls without tokens use weak references plus verified object identity to
+/// avoid extending source lifetimes or matching a reused address. The caller's
 /// bounded render workers provide concurrency; this cache creates no worker pool.
 final class AutoToneAnalysisCache: @unchecked Sendable {
     static let shared = AutoToneAnalysisCache()
+
+    private enum Key: Hashable {
+        case source(SourceAnalysisIdentity)
+        case image(ObjectIdentifier)
+        var isStable: Bool { if case .source = self { true } else { false } }
+    }
 
     private final class Entry {
         weak var image: CGImage?
@@ -167,7 +174,7 @@ final class AutoToneAnalysisCache: @unchecked Sendable {
     // first wait. It must not reenter the cache; production leaves it nil.
     private let didJoinInFlight: (@Sendable () -> Void)?
     // All mutable state, including each entry, is protected by condition.
-    private var entries: [ObjectIdentifier: Entry] = [:]
+    private var entries: [Key: Entry] = [:]
     private var access: UInt64 = 0
 
     init(maximumEntries: Int = 8,
@@ -178,15 +185,16 @@ final class AutoToneAnalysisCache: @unchecked Sendable {
         self.analyzeImage = analyze
     }
 
-    func analysis(for image: CGImage) throws -> AutoToneAnalysis {
-        let identity = ObjectIdentifier(image)
+    func analysis(for image: CGImage, identity: SourceAnalysisIdentity? = nil) throws -> AutoToneAnalysis {
+        let stable = identity.flatMap { $0.matches(image) ? $0 : nil }
+        let key = stable.map(Key.source) ?? .image(ObjectIdentifier(image))
         var reportedJoin = false
         while true {
             try Task.checkCancellation()
             condition.lock()
-            entries = entries.filter { $0.value.image != nil }
+            entries = entries.filter { $0.key.isStable || $0.value.image != nil }
             access &+= 1
-            if let entry = entries[identity], entry.image === image {
+            if let entry = entries[key], stable != nil || entry.image === image {
                 entry.lastAccess = access
                 if let analysis = entry.analysis {
                     condition.unlock()
@@ -218,19 +226,19 @@ final class AutoToneAnalysisCache: @unchecked Sendable {
                 return result
             }
             let entry = Entry(image: image, lastAccess: access)
-            entries[identity] = entry
+            entries[key] = entry
             condition.unlock()
             do {
                 let analysis = try analyzeImage(image)
                 try Task.checkCancellation()
                 condition.lock()
-                if entries[identity] === entry { entry.analysis = analysis }
+                if entries[key] === entry { entry.analysis = analysis }
                 condition.broadcast()
                 condition.unlock()
                 return analysis
             } catch {
                 condition.lock()
-                if entries[identity] === entry { entries.removeValue(forKey: identity) }
+                if entries[key] === entry { entries.removeValue(forKey: key) }
                 condition.broadcast()
                 condition.unlock()
                 // A canceled or failed producer must not poison future requests;
@@ -242,8 +250,9 @@ final class AutoToneAnalysisCache: @unchecked Sendable {
 }
 
 enum AutoToneRenderer {
-    static func apply(to image: CIImage, original: CGImage, amount: Double, extent: CGRect) throws -> CIImage {
-        let curve = try AutoToneCurve.analyze(original, amount: amount)
+    static func apply(to image: CIImage, original: CGImage, amount: Double, extent: CGRect,
+                      analysisIdentity: SourceAnalysisIdentity? = nil) throws -> CIImage {
+        let curve = try AutoToneCurve.analyze(original, amount: amount, analysisIdentity: analysisIdentity)
         guard !curve.isIdentity else { return image }
         let vectors = curve.coefficients.map { CIVector(x: $0[0], y: $0[1], z: $0[2], w: $0[3]) }
         guard let output = kernel?.apply(extent: extent, arguments: [image] + vectors) else {

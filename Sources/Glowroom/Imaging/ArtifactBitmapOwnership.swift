@@ -27,6 +27,6 @@ extension PreviewBitmap {
             throw ArtifactContractError.corruptArtifact
         }
         return PreviewBitmap(image: wrapped, sourceLongEdge: sourceLongEdge, memoryOwnership: memory, resourceOwner: owner,
-                             rangeProvenance: rangeProvenance)
+                             rangeProvenance: rangeProvenance, rangeSourceIdentity: rangeSourceIdentity)
     }
 }

@@ -181,11 +181,11 @@ struct NaturalBalanceAnalysis: Sendable {
 
 enum NaturalBalanceRenderer {
     static func apply(to image: CIImage, original: CGImage, amount: Double,
-                      colorAmount: Double, extent: CGRect) throws -> CIImage {
+                      colorAmount: Double, extent: CGRect, analysisIdentity: SourceAnalysisIdentity? = nil) throws -> CIImage {
         try Task.checkCancellation()
         let strength = amount.isFinite ? min(1, max(0, amount / 100)) : 0
         guard strength > 0 else { return image }
-        let analysis = try NaturalBalanceAnalysisCache.shared.analysis(for: original)
+        let analysis = try NaturalBalanceAnalysisCache.shared.analysis(for: original, identity: analysisIdentity)
         let curve = AutoToneCurve(ordinates: zip(AutoToneCurve.abscissae, analysis.offsets).map { $0 + strength * $1 })
         let color = colorAmount.isFinite ? min(1, max(0, colorAmount / 100)) : 0
         let boost = analysis.colorBoost * strength * color
