@@ -53,7 +53,7 @@ struct DevelopRepairCanvas: View {
                             (workspace.repairSelectedStrokeID == stroke.id ? Theme.accent : Color.white)
                                 .opacity(workspace.repairSelectedStrokeID == stroke.id ? 0.35 : 0.13)
                                 .frame(width: rect.width, height: rect.height)
-                                .mask { Image(decorative: image, scale: 1).resizable().luminanceToAlpha() }
+                                .mask { Image(decorative: image, scale: 1).resizable() }
                                 .position(x: rect.midX + delta.width * rect.width, y: rect.midY + delta.height * rect.height)
                                 .allowsHitTesting(false)
                         }
@@ -63,7 +63,7 @@ struct DevelopRepairCanvas: View {
                             let selected = workspace.repairSelectedCandidateIDs.contains(candidate.id)
                             (selected ? Color.orange : Color.gray).opacity(selected ? 0.4 : 0.15)
                                 .frame(width: rect.width, height: rect.height)
-                                .mask { Image(decorative: image, scale: 1).resizable().luminanceToAlpha() }
+                                .mask { Image(decorative: image, scale: 1).resizable() }
                                 .position(x: rect.midX, y: rect.midY).allowsHitTesting(false)
                         }
                     }
@@ -160,7 +160,7 @@ struct DevelopRepairCanvas: View {
         if event.phase == .began {
             guard rect.contains(event.startLocation), let point = normalized(event.startLocation, in: rect) else { return }
             finishPointer()
-            let choosesSource = NSEvent.modifierFlags.contains(.option)
+            let choosesSource = workspace.repairChoosesSource || NSEvent.modifierFlags.contains(.option)
                 || (workspace.repairMode == .clone && workspace.repairSource == nil && !inputQueue.hasScheduledSource)
             if !choosesSource, let hit = hit(at: event.startLocation, in: rect),
                let stroke = strokes.first(where: { $0.id == hit.id }) {
@@ -175,7 +175,7 @@ struct DevelopRepairCanvas: View {
             workspace.repairSelectedStrokeID = nil
             guard inputQueue.begin(asset: asset, workspace: workspace, editor: editor) else { return }
             let usesAI = workspace.repairMode == .remove && workspace.repairUsesAI
-            picksSource = (!usesAI && NSEvent.modifierFlags.contains(.option)) || (workspace.repairMode == .clone && workspace.repairSource == nil && !inputQueue.hasScheduledSource)
+            picksSource = (!usesAI && (workspace.repairChoosesSource || NSEvent.modifierFlags.contains(.option))) || (workspace.repairMode == .clone && workspace.repairSource == nil && !inputQueue.hasScheduledSource)
             path = [point]
         }
         if var drag = editDrag {
@@ -278,11 +278,13 @@ struct DevelopRepairCanvas: View {
         if filled { context.fill(dot, with: .color(.white)) }
         else { context.stroke(dot, with: .color(.white), lineWidth: 1.5) }
     }
-    private static func maskImage(_ mask: LocalMaskRaster) -> CGImage? {
+    static func maskImage(_ mask: LocalMaskRaster) -> CGImage? {
         guard let provider = CGDataProvider(data: mask.bytes as CFData) else { return nil }
-        return CGImage(width: mask.width, height: mask.height, bitsPerComponent: 8, bitsPerPixel: 8,
-            bytesPerRow: mask.width, space: CGColorSpaceCreateDeviceGray(), bitmapInfo: CGBitmapInfo(rawValue: 0),
-            provider: provider, decode: nil, shouldInterpolate: true, intent: .defaultIntent)
+        // Native alpha coverage keeps zero cells transparent even in an AppKit
+        // compositor without SwiftUI's luminance filter. Reuse the existing
+        // bounded bytes; no RGBA conversion or image-sized CPU pass is needed.
+        return CGImage(maskWidth: mask.width, height: mask.height, bitsPerComponent: 8, bitsPerPixel: 8,
+            bytesPerRow: mask.width, provider: provider, decode: [1, 0], shouldInterpolate: true)
     }
 }
 

@@ -127,7 +127,7 @@ struct DevelopRepairCanvasInputTests {
         #expect(await fixture.store.loadAll()[fixture.asset.id] == fixture.editor.settings(for: fixture.asset.id))
     }
 
-    @Test(arguments: ["cancel", "undo", "source"])
+    @Test(arguments: ["cancel", "undo", "source", "mode"])
     func interruptedExistingRepairDragsCannotCommitAStaleMovement(reason: String) async throws {
         let fixture = try await RepairCanvasFixture.make()
         let stroke = try DevelopRetouchStroke(source: LocalMaskPoint(x: 0.1, y: 0.15),
@@ -141,6 +141,7 @@ struct DevelopRepairCanvasInputTests {
         switch reason {
         case "undo": fixture.editor.undo(assetID: fixture.asset.id)
         case "source": fixture.workspace.bind(source: nil)
+        case "mode": fixture.workspace.selectRepairMode(.redEye)
         default: try host.cancel("cancel")
         }
         try host.send(.leftMouseUp, at: CGPoint(x: 0.4, y: 0.5))
@@ -162,8 +163,9 @@ struct DevelopRepairCanvasInputTests {
         try host.send(.leftMouseDown, at: CGPoint(x: 0.45, y: 0.5))
         try host.send(.leftMouseUp, at: CGPoint(x: 0.45, y: 0.5))
         try await fixture.waitForRepairs(2)
-        #expect(fixture.workspace.repairSelectedStrokeID == nil)
-        #expect(fixture.editor.settings(for: fixture.asset.id).developGeometry.retouchStrokes.first == original)
+        let strokes = fixture.editor.settings(for: fixture.asset.id).developGeometry.retouchStrokes
+        #expect(fixture.workspace.repairSelectedStrokeID == strokes.last?.id)
+        #expect(strokes.first == original)
         #expect(await fixture.editor.flush())
     }
 
@@ -282,7 +284,7 @@ struct DevelopRepairCanvasInputTests {
         #expect(await fixture.editor.flush())
     }
 
-    @Test(arguments: ["cancel", "reset", "undo", "source"])
+    @Test(arguments: ["cancel", "reset", "undo", "source", "mode"])
     func cancellationInvalidatesQueuedAndInFlightRepairs(reason: String) async throws {
         let gate = RepairCanvasSourceGate()
         let fixture = try await RepairCanvasFixture.make(source: { _, _, _, _ in try await gate.source() })
@@ -300,6 +302,7 @@ struct DevelopRepairCanvasInputTests {
         case "reset": fixture.workspace.resetRepairs(asset: fixture.asset, editor: fixture.editor)
         case "undo": fixture.editor.undo(assetID: fixture.asset.id)
         case "source": fixture.workspace.bind(source: nil)
+        case "mode": fixture.workspace.selectRepairMode(.heal)
         default: try host.cancel("cancel")
         }
         await gate.release(); await operation.value
@@ -479,6 +482,93 @@ struct DevelopRepairCanvasInputTests {
         #expect(await fixture.editor.flush())
     }
 
+    @Test(arguments: [DevelopRepairMode.remove, .heal])
+    func sourceActionSelectsTheNextClickWithoutPaintingAndUsesItForTheTarget(mode: DevelopRepairMode) async throws {
+        let fixture = try await RepairCanvasFixture.make(source: { _, _, _, _ in throw DevelopRepairAnalysisError.unavailable })
+        fixture.workspace.selectRepairMode(mode)
+        let host = RepairCanvasHost()
+        defer { host.close(); fixture.workspace.clear() }
+        try await host.mount(fixture, withInspector: true)
+        #expect(try host.pressInspectorControl("develop.repair.choose-source"))
+        #expect(fixture.workspace.repairChoosesSource)
+        let source = CGPoint(x: 0.2, y: 0.25), target = CGPoint(x: 0.7, y: 0.65)
+        try host.send(.leftMouseDown, at: source); try host.send(.leftMouseUp, at: source)
+        try await Task.sleep(for: .seconds(NSEvent.doubleClickInterval + 0.1))
+        #expect(fixture.workspace.repairSource == (try LocalMaskPoint(x: 0.2, y: 0.25)))
+        #expect(!fixture.workspace.repairChoosesSource)
+        #expect(fixture.editor.settings(for: fixture.asset.id) == .newEditingSettings)
+        try host.send(.leftMouseDown, at: target); try host.send(.leftMouseUp, at: target)
+        try await fixture.waitForRepairs(1)
+        let stroke = try #require(fixture.editor.settings(for: fixture.asset.id).developGeometry.retouchStrokes.first)
+        #expect(stroke.source == (try LocalMaskPoint(x: 0.2, y: 0.25)))
+        #expect(stroke.target == (try LocalMaskPoint(x: 0.7, y: 0.65)))
+        #expect(fixture.workspace.errorMessage == nil)
+        #expect(await fixture.editor.flush())
+    }
+
+    @Test func redEyeEllipseUsesStrengthAndIsOnePersistentUndoableCorrection() async throws {
+        let fixture = try await RepairCanvasFixture.make()
+        fixture.workspace.selectRepairMode(.redEye)
+        fixture.workspace.redEyeStrength = 0.65
+        let host = RepairCanvasHost()
+        defer { host.close(); fixture.workspace.clear() }
+        try await host.mount(fixture, withInspector: true, unifiedCanvas: true)
+        try host.send(.leftMouseDown, at: CGPoint(x: 0.3, y: 0.35))
+        try host.send(.leftMouseDragged, at: CGPoint(x: 0.5, y: 0.55))
+        #expect(fixture.editor.settings(for: fixture.asset.id).developGeometry.redEyeCorrections.isEmpty)
+        try host.send(.leftMouseUp, at: CGPoint(x: 0.5, y: 0.55))
+        let accepted = fixture.editor.settings(for: fixture.asset.id)
+        let correction = try #require(accepted.developGeometry.redEyeCorrections.first)
+        #expect(abs(correction.center.x - 0.4) < 0.000_001 && abs(correction.center.y - 0.45) < 0.000_001)
+        #expect(abs(correction.radiusX - 0.1) < 0.000_001 && abs(correction.radiusY - 0.1) < 0.000_001)
+        #expect(correction.strength == 0.65)
+        #expect(accepted.developGeometry.retouchStrokes.isEmpty)
+        #expect(host.doubleClicks == 0)
+        fixture.editor.undo(assetID: fixture.asset.id)
+        #expect(fixture.editor.settings(for: fixture.asset.id) == .newEditingSettings)
+        #expect(!fixture.editor.canUndo(assetID: fixture.asset.id))
+        fixture.editor.redo(assetID: fixture.asset.id)
+        #expect(fixture.editor.settings(for: fixture.asset.id) == accepted)
+        #expect(await fixture.editor.flush())
+        #expect(await fixture.store.loadAll()[fixture.asset.id] == accepted)
+    }
+
+    @Test(arguments: ["cancel", "mode", "undo", "source", "toolABA"])
+    func interruptedRedEyeEllipseCannotCreateALateCorrection(reason: String) async throws {
+        let fixture = try await RepairCanvasFixture.make()
+        fixture.workspace.selectRepairMode(.redEye)
+        fixture.editor.setSettings(EditSettings(exposure: 0.5), for: fixture.asset.id)
+        let host = RepairCanvasHost()
+        defer { host.close(); fixture.workspace.clear() }
+        try await host.mount(fixture, unifiedCanvas: true)
+        try host.send(.leftMouseDown, at: CGPoint(x: 0.3, y: 0.35))
+        try host.send(.leftMouseDragged, at: CGPoint(x: 0.5, y: 0.55))
+        let originalInput = try host.retainInput()
+        switch reason {
+        case "mode": fixture.workspace.selectRepairMode(.heal)
+        case "toolABA":
+            // These synchronous assignments can coalesce before SwiftUI's onChange.
+            // The workspace request must invalidate the old native gesture itself.
+            let request = fixture.workspace.repairRequest
+            fixture.workspace.tool = .basic
+            fixture.workspace.tool = .redEye
+            #expect(fixture.workspace.repairRequest != request)
+        case "undo": fixture.editor.undo(assetID: fixture.asset.id)
+        case "source": fixture.workspace.bind(source: nil)
+        default: try host.cancel("cancel")
+        }
+        try await host.settle()
+        // Image invalidation may remove the surface. Deliver a delayed native
+        // release to the original surface instead of requiring a replacement.
+        try host.send(.leftMouseUp, at: CGPoint(x: 0.5, y: 0.55), to: originalInput)
+        try await host.settle()
+        let settings = fixture.editor.settings(for: fixture.asset.id)
+        #expect(settings.developGeometry.redEyeCorrections.isEmpty)
+        #expect(settings.developGeometry.retouchStrokes.isEmpty)
+        #expect(settings.exposure == (reason == "undo" ? 0 : 0.5))
+        #expect(await fixture.editor.flush())
+    }
+
     @Test func choosingANewSourceInTheInspectorInvalidatesThePendingCanvasSourceClick() async throws {
         let fixture = try await RepairCanvasFixture.make()
         fixture.workspace.repairMode = .clone
@@ -593,13 +683,19 @@ private final class RepairCanvasHost {
         window.contentView = hosting; window.orderBack(nil)
     }
 
-    func mount(_ fixture: RepairCanvasFixture, withInspector: Bool = false, enablesDoubleClickZoom: Bool = true) async throws {
-        let canvas = DevelopRepairCanvas(asset: fixture.asset, workspace: fixture.workspace,
-            onDoubleClick: enablesDoubleClickZoom ? {
-                self.doubleClicks += 1
-                if self.replacesCanvasOnDoubleClick { self.replaceCanvasForZoom(fixture) }
-            } : nil)
-            .frame(width: size.width, height: size.height)
+    func mount(_ fixture: RepairCanvasFixture, withInspector: Bool = false, enablesDoubleClickZoom: Bool = true,
+               unifiedCanvas: Bool = false) async throws {
+        let onDoubleClick: (() -> Void)? = enablesDoubleClickZoom ? {
+            self.doubleClicks += 1
+            if self.replacesCanvasOnDoubleClick { self.replaceCanvasForZoom(fixture) }
+        } : nil
+        let canvas = Group {
+            if unifiedCanvas {
+                DevelopCanvasInteraction(asset: fixture.asset, workspace: fixture.workspace, onDoubleClick: onDoubleClick)
+            } else {
+                DevelopRepairCanvas(asset: fixture.asset, workspace: fixture.workspace, onDoubleClick: onDoubleClick)
+            }
+        }.frame(width: size.width, height: size.height)
         if withInspector {
             window.setContentSize(NSSize(width: 880, height: 760))
             hosting.rootView = AnyView(HStack(alignment: .top, spacing: 0) {
@@ -650,8 +746,13 @@ private final class RepairCanvasHost {
         input.keyDown(with: event)
     }
 
-    func send(_ type: NSEvent.EventType, at point: CGPoint, clickCount: Int = 1) throws {
-        let input = try inputView()
+    func retainInput() throws -> DevelopCropNativeInputView { try inputView() }
+
+    func send(_ type: NSEvent.EventType, at point: CGPoint, clickCount: Int = 1,
+              to retainedInput: DevelopCropNativeInputView? = nil) throws {
+        let input: DevelopCropNativeInputView
+        if let retainedInput { input = retainedInput }
+        else { input = try inputView() }
         let location = CGPoint(x: point.x * size.width, y: point.y * size.height)
         let event = try #require(NSEvent.mouseEvent(with: type, location: input.convert(location, to: nil),
             modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber,

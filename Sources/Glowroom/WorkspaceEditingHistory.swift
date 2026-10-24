@@ -3,14 +3,14 @@ import SwiftUI
 /// A function is selected explicitly. Hiding a panel, saving or comparing the
 /// original does not start another history. All sliders share adjustments.
 enum EditingFunction: Equatable {
-    case adjustments, crop, repair, redEye, masks, metadata, versions
+    case adjustments, crop, repair, masks, metadata, versions
 
     init(_ tool: DevelopCanvasTool) {
         switch tool {
         case .basic: self = .adjustments
         case .crop: self = .crop
-        case .repair: self = .repair
-        case .redEye: self = .redEye
+        // Canvas input differs; all four repair modes share one undo history.
+        case .repair, .redEye: self = .repair
         case .masks: self = .masks
         }
     }

@@ -1,0 +1,75 @@
+{
+  "baseline": {
+    "buildSeconds": 333.49,
+    "log": "/private/tmp/glowroom-197-baseline.log",
+    "result": "passed",
+    "suiteCount": 1,
+    "testCount": 1,
+    "testSeconds": 1.806,
+    "windowCases": 2
+  },
+  "evidence": {
+    "allScreenshotHashesVerified": true,
+    "finalSourceInventoryFileCount": 559,
+    "fixtureSHA256": "88c632eace5af7772fb12954766a0e9f0eaa9b763298672642a62a295abb8ce7",
+    "sameNeutralSettingsBeforeAfter": true,
+    "screenshotCount": 20,
+    "sourceInventoryFileCount": 559
+  },
+  "finalCleanAppBuild": {
+    "adHocSigningPassed": true,
+    "additionalCodesignStrictVerificationPassed": true,
+    "command": "./scripts/build-app.sh",
+    "exitCode": 0,
+    "infoPlistPassed": true,
+    "log": "/private/tmp/glowroom-197-build-verified.log",
+    "oldGeneratedOutputsRemovedAfterProcessCheck": true,
+    "output": "dist/Glowroom.app",
+    "packagingPassed": true,
+    "releaseCompileSeconds": 321.32,
+    "result": "passed",
+    "strictSignatureVerificationPassed": true
+  },
+  "finalHistoryIntegration": {
+    "buildSeconds": 47.8,
+    "issues": 0,
+    "log": "/private/tmp/glowroom-197-history-final.log",
+    "result": "passed",
+    "suiteCount": 4,
+    "testCount": 40,
+    "testSeconds": 50.918
+  },
+  "finalIntegration": {
+    "buildSeconds": 35.15,
+    "issues": 0,
+    "log": "/private/tmp/glowroom-197-final-tests-retry.log",
+    "nativeOverlayCases": 2,
+    "nativeOverlayTestSeconds": 0.616,
+    "result": "passed",
+    "screenshotTestSeconds": 9.974,
+    "screenshotWindowCases": 2,
+    "suiteCount": 23,
+    "testCount": 209,
+    "testSeconds": 68.826
+  },
+  "finalScreenshotCapture": {
+    "log": "/private/tmp/glowroom-197-screenshots-final.log",
+    "result": "passed",
+    "suiteCount": 1,
+    "testCount": 1,
+    "testSeconds": 9.897,
+    "usesFinalTestBinary": true,
+    "windowCases": 2
+  },
+  "initialIntegration": {
+    "buildSeconds": 151.08,
+    "failure": "Native red-eye source-switch test looked up a removed input surface for late mouseUp; harness retains original input for retry.",
+    "issues": 1,
+    "log": "/private/tmp/glowroom-197-final-tests.log",
+    "result": "failed",
+    "screenshotTestSeconds": 8.492,
+    "suiteCount": 22,
+    "testCount": 208,
+    "testSeconds": 67.742
+  }
+}

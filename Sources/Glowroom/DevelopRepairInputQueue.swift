@@ -94,6 +94,7 @@ final class DevelopRepairInputQueue {
             let command = commands.removeFirst()
             if command.selectsSource {
                 workspace.repairSource = command.path.first; workspace.errorMessage = nil
+                workspace.repairChoosesSource = false
                 continue
             }
             let token = generation

@@ -19,21 +19,25 @@ struct DevelopRepairInspectorTests {
             .environmentObject(fixture.editor))
 
         #expect(host.fittingHeight <= 900)
-        for name in ["mode.remove", "mode.heal", "mode.clone", "size", "feather", "choose-source", "objects", "overlay",
-            "visualize-spots", "threshold", "generative", "ai.download", "ai.import", "reset", "close", "detect-reflections", "detect-people", "detect-dust"] {
+        for name in ["mode.remove", "mode.heal", "mode.clone", "mode.redEye", "size", "feather", "choose-source", "objects", "overlay",
+            "visualize-spots", "generative", "ai.setup", "reset", "close", "detect-people", "detect-dust"] {
             let control = try #require(host.element(name), "Missing repair control: \(name)")
             let frame = control.accessibilityFrame()
             #expect(frame.width > 0 && frame.height > 0, "The \(name) control must have a native frame")
             #expect(host.screenFrame.insetBy(dx: -1, dy: -1).contains(frame), "The \(name) control must remain inside the inspector")
         }
         #expect(try #require(host.element("generative")).isAccessibilityEnabled() == false)
-        #expect(try #require(host.element("detect-reflections")).isAccessibilityEnabled() == false)
-        #expect(try #require(host.element("threshold")).isAccessibilityEnabled() == false)
+        #expect(host.element("detect-reflections") == nil)
+        #expect(host.element("ai.download") == nil && host.element("ai.import") == nil)
+        #expect(host.element("threshold") == nil)
         #expect(host.sliders.allSatisfy { $0.bounds.width >= 70 }, "Every slider must retain a usable native track")
         // Static SwiftUI text is exposed as AXValue, while controls commonly
         // expose AXLabel. Read both public attributes for actions and status.
-        #expect(host.accessibleText.contains("LaMa herunterladen (ca. 217 MB)"))
-        #expect(host.accessibleText.contains("Spiegelungsentfernung nicht verfügbar."))
+        #expect(host.accessibleText.contains("Entfernen"))
+        #expect(host.accessibleText.contains("Heilen"))
+        #expect(host.accessibleText.contains("Kopierstempel"))
+        #expect(host.accessibleText.contains("Rote Augen"))
+        #expect(!host.accessibleText.contains("Spiegelungsentfernung"))
         try host.snapshotIfRequested("repair-inspector-\(Int(width))")
         #expect(await fixture.editor.flush())
     }
@@ -54,10 +58,11 @@ struct DevelopRepairInspectorTests {
         defer { gate.releaseAll(); host.close(); fixture.workspace.clear() }
         let edited = EditSettings(exposure: 0.75)
         fixture.editor.setSettings(edited, for: fixture.asset.id)
-        fixture.workspace.repairMode = .heal
         try await host.mount(DevelopRepairInspector(asset: fixture.asset, workspace: fixture.workspace)
             .environmentObject(fixture.editor))
 
+        #expect(try #require(host.element("ai.setup")).accessibilityPerformPress())
+        try await host.settle()
         #expect(try #require(host.element("ai.download")).accessibilityPerformPress())
         let operation = try #require(fixture.workspace.repairTask)
         try await entered.wait("repair model download entered", until: { $0 })
@@ -107,7 +112,9 @@ struct DevelopRepairInspectorTests {
         try await host.settle()
         #expect(fixture.workspace.repairMode == .clone)
         #expect(fixture.workspace.repairSource == nil)
-        #expect(try #require(host.element("objects")).isAccessibilityEnabled() == false)
+        #expect(host.element("objects") == nil)
+        #expect(host.element("generative") == nil && host.element("ai.setup") == nil)
+        #expect(host.element("detect-people") == nil && host.element("detect-dust") == nil)
         fixture.workspace.repairSource = try LocalMaskPoint(x: 0.4, y: 0.5)
         #expect(try #require(host.element("choose-source")).accessibilityPerformPress())
         #expect(fixture.workspace.repairSource == nil)
@@ -126,6 +133,78 @@ struct DevelopRepairInspectorTests {
         size.sendAction(size.action, to: size.target)
         #expect(abs(fixture.workspace.repairRadius - 0.08) < 0.000_001)
         #expect(fixture.editor.settings(for: fixture.asset.id) == edited)
+        #expect(await fixture.editor.flush())
+    }
+
+    @Test(arguments: [280.0, 320.0])
+    func redEyeModeKeepsItsOwnControlsAndUndoableCorrections(width: Double) async throws {
+        let fixture = try await RepairInspectorFixture.make()
+        let host = RepairInspectorHost(width: width, height: 900)
+        defer { host.close(); fixture.workspace.clear() }
+        var baseline = EditSettings(exposure: 0.75)
+        baseline.developGeometry.retouchStrokes = [try DevelopRetouchStroke(
+            source: LocalMaskPoint(x: 0.1, y: 0.1), target: LocalMaskPoint(x: 0.5, y: 0.5), radius: 0.03)]
+        baseline.developGeometry.redEyeCorrections = try [0.3, 0.7].map { x in
+            try DevelopRedEyeCorrection(center: LocalMaskPoint(x: x, y: 0.4), radiusX: 0.03, radiusY: 0.04, strength: 0.8)
+        }
+        fixture.editor.setSettings(baseline, for: fixture.asset.id)
+        try await host.mount(DevelopRepairInspector(asset: fixture.asset, workspace: fixture.workspace)
+            .environmentObject(fixture.editor))
+
+        #expect(try #require(host.element("mode.redEye")).accessibilityPerformPress())
+        try await host.settle()
+        #expect(fixture.workspace.tool == .redEye)
+        #expect(try #require(host.element("mode.redEye")).accessibilityValue() as? String == "Ausgewählt")
+        for name in ["size", "feather", "choose-source", "generative", "ai.setup", "objects", "detect-people", "detect-dust"] {
+            #expect(host.element(name) == nil, "Red-eye mode must not expose the \(name) brush or AI action")
+        }
+        for name in ["red-eye.strength", "red-eye.count", "red-eye.remove-last", "red-eye.remove-all"] {
+            let control = try #require(host.element(name))
+            #expect(host.screenFrame.insetBy(dx: -1, dy: -1).contains(control.accessibilityFrame()))
+        }
+        #expect(try #require(host.element("red-eye.remove-last")).accessibilityPerformPress())
+        var oneEye = baseline
+        oneEye.developGeometry.redEyeCorrections.removeLast()
+        #expect(fixture.editor.settings(for: fixture.asset.id) == oneEye)
+        fixture.editor.undo(assetID: fixture.asset.id)
+        #expect(fixture.editor.settings(for: fixture.asset.id) == baseline)
+        try await host.settle()
+        #expect(try #require(host.element("red-eye.remove-all")).accessibilityPerformPress())
+        var noEyes = baseline
+        noEyes.developGeometry.redEyeCorrections = []
+        #expect(fixture.editor.settings(for: fixture.asset.id) == noEyes)
+        fixture.editor.undo(assetID: fixture.asset.id)
+        #expect(fixture.editor.settings(for: fixture.asset.id) == baseline)
+        #expect(try #require(host.element("mode.heal")).accessibilityPerformPress())
+        try await host.settle()
+        #expect(fixture.workspace.tool == .repair && fixture.workspace.repairMode == .heal)
+        #expect(host.element("red-eye.strength") == nil)
+        #expect(host.element("generative") == nil && host.element("ai.setup") == nil)
+        #expect(fixture.editor.settings(for: fixture.asset.id) == baseline)
+        #expect(await fixture.editor.flush())
+    }
+
+    @Test func enabledLocalAIHidesUnusedSourceAndFeatherControls() async throws {
+        let fixture = try await RepairInspectorFixture.make()
+        let host = RepairInspectorHost(width: 280, height: 900)
+        defer { host.close(); fixture.workspace.clear() }
+        try await host.mount(DevelopRepairInspector(asset: fixture.asset, workspace: fixture.workspace)
+            .environmentObject(fixture.editor))
+        fixture.workspace.repairAIReady = true
+        fixture.workspace.repairAIModelName = "LaMa-Test"
+        try await host.settle()
+        #expect(try #require(host.element("generative")).accessibilityPerformPress())
+        try await host.settle()
+        #expect(fixture.workspace.repairUsesAI)
+        #expect(host.element("choose-source") == nil)
+        #expect(host.element("feather") == nil)
+        #expect(host.accessibleText.contains("LaMa verfügbar"))
+        #expect(fixture.editor.settings(for: fixture.asset.id) == .newEditingSettings)
+        #expect(try #require(host.element("mode.clone")).accessibilityPerformPress())
+        try await host.settle()
+        #expect(host.element("generative") == nil)
+        #expect(try #require(host.element("feather")).isAccessibilityEnabled())
+        #expect(try #require(host.element("choose-source")).isAccessibilityEnabled())
         #expect(await fixture.editor.flush())
     }
 
@@ -192,8 +271,8 @@ struct DevelopRepairInspectorTests {
         try await host.mount(DevelopRepairInspector(asset: fixture.asset, workspace: fixture.workspace)
             .environmentObject(fixture.editor))
 
-        for name in ["mode.remove", "mode.heal", "mode.clone", "size", "feather", "choose-source", "objects", "overlay",
-            "visualize-spots", "threshold", "reset", "detect-people", "detect-dust"] {
+        for name in ["mode.remove", "mode.heal", "mode.clone", "mode.redEye", "size", "feather", "choose-source", "objects", "overlay",
+            "visualize-spots", "reset", "detect-people", "detect-dust"] {
             #expect(try #require(host.element(name)).isAccessibilityEnabled() == false, "The \(name) action needs the original image mapping")
         }
         #expect(try #require(host.element("close")).isAccessibilityEnabled())
@@ -207,9 +286,12 @@ struct DevelopRepairInspectorTests {
         let candidate = DevelopRepairCandidate(id: UUID(), label: "Person 1",
             mask: try LocalMaskRaster(width: 2, height: 2, bytes: Data([0, 0, 0, 255])),
             center: try LocalMaskPoint(x: 0.7, y: 0.7), radius: 0.08)
+        let unselected = DevelopRepairCandidate(id: UUID(), label: "Person 2",
+            mask: try LocalMaskRaster(width: 2, height: 2, bytes: Data([255, 0, 0, 0])),
+            center: try LocalMaskPoint(x: 0.2, y: 0.2), radius: 0.08)
         let fixture = try await RepairInspectorFixture.make(repairServices: .init(
             source: { _, _, _, _ in try LocalMaskPoint(x: 0.15, y: 0.15) },
-            object: { _, _, _ in candidate }, candidates: { _, _, _ in [candidate] }))
+            object: { _, _, _ in candidate }, candidates: { _, _, _ in [candidate, unselected] }))
         let host = RepairInspectorHost(width: 280, height: 780)
         defer { host.close(); fixture.workspace.clear() }
         try await host.mount(DevelopRepairInspector(asset: fixture.asset, workspace: fixture.workspace)
@@ -218,7 +300,8 @@ struct DevelopRepairInspectorTests {
         #expect(try #require(host.element("detect-people")).accessibilityPerformPress())
         try await waitUntil("repair candidate publication") { !fixture.workspace.repairCandidates.isEmpty }
         try await host.settle()
-        #expect(fixture.workspace.repairSelectedCandidateIDs == [candidate.id])
+        #expect(fixture.workspace.repairSelectedCandidateIDs == [candidate.id, unselected.id])
+        #expect(try #require(host.element("candidate." + unselected.id.uuidString)).accessibilityPerformPress())
         let candidateName = "candidate." + candidate.id.uuidString
         #expect(try #require(host.element(candidateName)).accessibilityPerformPress())
         try await host.settle()
@@ -234,7 +317,10 @@ struct DevelopRepairInspectorTests {
         let stroke = try #require(fixture.editor.settings(for: fixture.asset.id).developGeometry.retouchStrokes.first)
         #expect(stroke.target == candidate.center)
         #expect(stroke.mask == candidate.mask)
-        #expect(fixture.workspace.repairCandidates.isEmpty)
+        #expect(fixture.editor.settings(for: fixture.asset.id).developGeometry.retouchStrokes.count == 1)
+        #expect(stroke.target != unselected.center && stroke.mask != unselected.mask)
+        #expect(fixture.workspace.repairCandidates.map(\.id) == [unselected.id])
+        #expect(fixture.workspace.repairSelectedCandidateIDs.isEmpty)
         fixture.editor.undo(assetID: fixture.asset.id)
         #expect(fixture.editor.settings(for: fixture.asset.id).developGeometry.retouchStrokes.isEmpty)
         #expect(await fixture.editor.flush())
@@ -260,7 +346,7 @@ struct DevelopRepairInspectorTests {
         #expect(host.element("ai.accept") == nil)
         #expect(host.element("ai.discard") == nil)
         #expect(host.element("next-source") == nil)
-        for name in ["mode.remove", "size", "ai.import", "reset", "detect-people"] {
+        for name in ["mode.remove", "size", "ai.setup", "reset", "detect-people"] {
             #expect(try #require(host.element(name)).isAccessibilityEnabled())
         }
         fixture.editor.undo(assetID: fixture.asset.id)

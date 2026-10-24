@@ -3,7 +3,7 @@ import UniformTypeIdentifiers
 import GlowroomCore
 
 enum DevelopRepairMode: String, CaseIterable, Identifiable, Sendable {
-    case remove, heal, clone
+    case remove, heal, clone, redEye
     var id: Self { self }
     var retouchMode: DevelopRetouchMode { self == .clone ? .clone : .heal }
     var title: String {
@@ -11,6 +11,7 @@ enum DevelopRepairMode: String, CaseIterable, Identifiable, Sendable {
         case .remove: "Entfernen"
         case .heal: "Heilen"
         case .clone: "Kopierstempel"
+        case .redEye: "Rote Augen"
         }
     }
 }
@@ -35,11 +36,15 @@ struct DevelopRepairInspector: View {
     @EnvironmentObject private var editor: EditingModel
     @ViewState private var actionTask: Task<Void, Never>?
     @ViewState private var importsModel = false
+    @ViewState private var showsModelSetup = false
+    @ViewState private var showsHelp = false
 
     private var ready: Bool { editor.canEdit && workspace.isOriginalCanvasReady && !workspace.repairBusy }
-    private var strokes: [DevelopRetouchStroke] { editor.settings(for: asset.id).developGeometry.retouchStrokes }
+    private var geometry: DevelopGeometry { editor.settings(for: asset.id).developGeometry }
+    private var strokes: [DevelopRetouchStroke] { geometry.retouchStrokes }
+    private var selectedMode: DevelopRepairMode { workspace.tool == .redEye ? .redEye : workspace.repairMode }
     private var usesFrozenSelection: Bool {
-        workspace.repairMode == .remove && (workspace.repairUsesAI || workspace.repairObjectDetection)
+        selectedMode == .remove && (workspace.repairUsesAI || workspace.repairObjectDetection)
     }
     private var brushDiameterText: String {
         let size = workspace.sourceSize ?? CGSize(width: max(1, asset.pixelWidth), height: max(1, asset.pixelHeight))
@@ -48,46 +53,64 @@ struct DevelopRepairInspector: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Entfernen").fontWeight(.semibold)
+                Text("Reparieren").font(.system(size: 15, weight: .semibold))
                 Spacer(minLength: 0)
-                if workspace.repairBusy {
-                    ProgressView().controlSize(.mini).accessibilityLabel("Reparatur wird verarbeitet")
+                Button("Hilfe", systemImage: "questionmark.circle") { showsHelp = true }
+                    .labelStyle(.iconOnly).accessibilityIdentifier("develop.repair.help")
+            }
+            modeControls
+            if workspace.repairBusy {
+                HStack(spacing: 8) {
+                    ProgressView().controlSize(.small).accessibilityLabel("Reparatur wird verarbeitet")
+                    Text(workspace.repairAISetupProgress == nil ? "Reparatur läuft …" : "Modell wird eingerichtet …")
+                    Spacer(minLength: 0)
                     Button("Abbrechen") { cancelWork() }
-                        .controlSize(.mini).accessibilityIdentifier("develop.repair.cancel")
+                        .accessibilityIdentifier("develop.repair.cancel")
                 }
-            }.padding(.vertical, 10)
-            Divider()
-            mainControls
-            if workspace.canTryAnotherRepairSource(asset: asset, editor: editor) {
-                Button("Andere Quelle") { workspace.tryAnotherRepairSource(asset: asset, editor: editor) }
-                    .controlSize(.small).padding(.vertical, 10)
-                    .accessibilityIdentifier("develop.repair.next-source")
             }
             Divider()
-            HStack(spacing: 10) {
-                Spacer(minLength: 0)
-                Button("Zurücksetzen") {
+            if selectedMode == .redEye {
+                redEyeControls
+            } else {
+                brushControls
+                if selectedMode == .remove {
+                    Divider()
+                    aiControls
+                    Divider()
+                    detectionControls
+                }
+                if let status = workspace.repairStatus {
+                    Text(status).foregroundStyle(Theme.muted)
+                        .fixedSize(horizontal: false, vertical: true).accessibilityIdentifier("develop.repair.status")
+                }
+            }
+            if let error = workspace.errorMessage {
+                Text(error).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("develop.repair.error")
+            }
+            Divider()
+            if selectedMode != .redEye {
+                Button("Alle Reparaturen löschen") {
                     actionTask?.cancel()
                     workspace.resetRepairs(asset: asset, editor: editor)
-                }.disabled(!ready).accessibilityIdentifier("develop.repair.reset")
-                Divider().frame(height: 14)
+                }.disabled(!ready || strokes.isEmpty).accessibilityIdentifier("develop.repair.reset")
+            }
+            HStack {
+                Spacer(minLength: 0)
                 Button("Schließen") {
                     actionTask?.cancel()
                     editor.endEditing(assetID: asset.id)
                     workspace.closeRepair()
                 }.accessibilityIdentifier("develop.repair.close")
-            }.buttonStyle(.plain).padding(.vertical, 10)
-            Divider()
-            detectionControls
-            if let error = workspace.errorMessage {
-                Text(error).font(.system(size: 13)).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true)
-                    .padding(.vertical, 6).accessibilityIdentifier("develop.repair.error")
             }
-        }.font(.system(size: 11)).foregroundStyle(Theme.text)
+        }.font(.system(size: 13)).foregroundStyle(Theme.text).padding(.vertical, 10)
             .onDisappear { cancelWork(); editor.endEditing(assetID: asset.id) }
-            .task { await workspace.refreshRepairAIAvailability() }
+            .task(id: selectedMode) {
+                if selectedMode == .remove { await workspace.refreshRepairAIAvailability() }
+            }
+            .sheet(isPresented: $showsHelp) { repairHelp }
             .fileImporter(isPresented: $importsModel, allowedContentTypes: [.folder, UTType(filenameExtension: "mlpackage") ?? .folder]) { result in
                 guard case .success(let url) = result else { return }
                 actionTask = Task {
@@ -98,130 +121,152 @@ struct DevelopRepairInspector: View {
             }
     }
 
-    private var mainControls: some View {
+    private var modeControls: some View {
+        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
+            ForEach(DevelopRepairMode.allCases) { mode in
+                Button {
+                    actionTask?.cancel()
+                    editor.endEditing(assetID: asset.id)
+                    editor.selectEditingFunction(.repair, assetID: asset.id)
+                    workspace.selectRepairMode(mode)
+                    showsModelSetup = false
+                } label: {
+                    VStack(spacing: 4) {
+                        modeSymbol(mode).frame(width: 18, height: 20)
+                        Text(mode.title).fixedSize(horizontal: false, vertical: true)
+                    }.padding(.horizontal, 4).padding(.vertical, 5).frame(maxWidth: .infinity, minHeight: 48)
+                        .foregroundStyle(selectedMode == mode ? Theme.text : Theme.muted)
+                        .background(selectedMode == mode ? Theme.elevated : .clear,
+                            in: RoundedRectangle(cornerRadius: 5))
+                        .overlay(RoundedRectangle(cornerRadius: 5)
+                            .stroke(selectedMode == mode ? Theme.accent : Theme.line, lineWidth: selectedMode == mode ? 2 : 1))
+                }.buttonStyle(.plain).accessibilityLabel(mode.title)
+                    .accessibilityValue(selectedMode == mode ? "Ausgewählt" : "Nicht ausgewählt")
+                    .accessibilityIdentifier("develop.repair.mode." + mode.rawValue)
+            }
+        }.disabled(!ready)
+    }
+
+    private var brushControls: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 10) {
-                Text("Modus:").foregroundStyle(Theme.muted)
-                ForEach(DevelopRepairMode.allCases) { mode in
-                    Button {
-                        editor.endEditing(assetID: asset.id)
-                        workspace.cancelRepairWork()
-                        workspace.repairMode = mode
-                        workspace.repairSource = nil
-                    } label: {
-                        modeSymbol(mode).frame(width: 29, height: 27)
-                            .foregroundStyle(workspace.repairMode == mode ? Theme.accent : Theme.muted)
-                            .background(workspace.repairMode == mode ? Theme.elevated : .clear,
-                                in: RoundedRectangle(cornerRadius: 4))
-                    }.buttonStyle(.plain).help(mode.title).accessibilityLabel(mode.title)
-                        .accessibilityValue(workspace.repairMode == mode ? "Ausgewählt" : "Nicht ausgewählt")
-                        .accessibilityIdentifier("develop.repair.mode." + mode.rawValue)
-                }
-                Spacer(minLength: 0)
-            }.disabled(!ready)
-            sliderRow("Größe", value: $workspace.repairRadius, range: 0.0005...0.15,
+            sliderRow("Pinselgröße", value: $workspace.repairRadius, range: 0.0005...0.15,
                 valueText: brushDiameterText, identifier: "size", neutral: 0.035)
-                .help("Pinseldurchmesser in Pixeln der aktuellen Quellvorschau. Für Spinnfäden und feine Äste einen kleinen Pinsel wählen.")
             if !usesFrozenSelection {
                 sliderRow("Weiche Kante", value: $workspace.repairFeather, range: 0...1,
-                    valueText: "\(Int((workspace.repairFeather * 100).rounded()))", identifier: "feather", neutral: 0.5)
+                    valueText: "\(Int((workspace.repairFeather * 100).rounded())) %", identifier: "feather", neutral: 0.5)
             }
-            VStack(alignment: .leading, spacing: 3) {
-                Toggle("Lokale KI", isOn: $workspace.repairUsesAI)
-                    .disabled(!ready || !workspace.repairAIReady || workspace.repairMode != .remove)
-                    .accessibilityIdentifier("develop.repair.generative")
-                if let modelName = workspace.repairAIModelName {
-                    Text(modelName).font(.system(size: 13)).foregroundStyle(Theme.muted)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                if let progress = workspace.repairAISetupProgress {
-                    Group {
-                        if let fraction = progress.fraction { ProgressView(value: fraction) }
-                        else { ProgressView().controlSize(.small) }
-                    }.accessibilityIdentifier("develop.repair.ai.progress")
-                    Text(progress.text).font(.system(size: 13)).foregroundStyle(Theme.muted)
-                        .fixedSize(horizontal: false, vertical: true)
-                } else if !workspace.repairAIReady {
-                    Button("LaMa herunterladen (ca. 217 MB)") { workspace.downloadRepairAIModel() }
-                        .controlSize(.mini).disabled(!ready)
-                        .accessibilityIdentifier("develop.repair.ai.download")
-                    Link("Modellquelle und Lizenzangaben", destination: DevelopRepairAIApprovedDownload.modelCard)
-                        .font(.system(size: 10))
-                }
-                Button("Lokales Modell importieren …") { importsModel = true }
-                    .controlSize(.mini).disabled(!ready).accessibilityIdentifier("develop.repair.ai.import")
+            if selectedMode == .remove {
+                Toggle("Gemaltes Objekt auswählen", isOn: $workspace.repairObjectDetection)
+                    .disabled(!ready).accessibilityIdentifier("develop.repair.objects")
             }
-            Toggle("Objekte erkennen", isOn: $workspace.repairObjectDetection)
-                .disabled(!ready || workspace.repairMode != .remove)
-                .help("Das markierte Vordergrundobjekt erkennen und dessen Auswahl verwenden")
-                .accessibilityIdentifier("develop.repair.objects")
-            if workspace.repairMode != .remove || !workspace.repairUsesAI {
-                Button(workspace.repairMode == .clone ? "Neue Quelle wählen" : "Quelle automatisch nutzen") {
+            if selectedMode != .remove || !workspace.repairUsesAI {
+                if workspace.repairChoosesSource || (selectedMode == .clone && workspace.repairSource == nil) {
+                    Label("Quelle im Bild wählen", systemImage: "scope")
+                        .accessibilityIdentifier("develop.repair.source-status")
+                } else if workspace.repairSource != nil {
+                    Label("Quelle gesetzt", systemImage: "checkmark.circle")
+                        .accessibilityIdentifier("develop.repair.source-status")
+                }
+                Button("Neue Quelle im Bild wählen") {
                     editor.endEditing(assetID: asset.id)
-                    workspace.cancelRepairWork(clearCandidates: false)
-                    workspace.repairSource = nil
-                }.controlSize(.small).disabled(!ready)
-                    .help(workspace.repairMode == .clone
-                        ? "⌥-Klick im Bild setzt einen sauberen Quellbereich."
-                        : "⌥-Klick im Bild setzt einen sauberen Quellbereich. Die automatische Quelle wird für jede Reparatur neu gesucht.")
-                    .accessibilityIdentifier("develop.repair.choose-source")
+                    workspace.chooseRepairSource()
+                }.disabled(!ready).accessibilityIdentifier("develop.repair.choose-source")
+                if selectedMode != .clone && (workspace.repairSource != nil || workspace.repairChoosesSource) {
+                    Button("Automatische Quellwahl verwenden") {
+                        editor.endEditing(assetID: asset.id)
+                        workspace.cancelRepairWork(clearCandidates: false)
+                        workspace.repairSource = nil
+                        workspace.repairChoosesSource = false
+                    }.disabled(!ready).accessibilityIdentifier("develop.repair.automatic-source")
+                }
+            }
+            if workspace.canTryAnotherRepairSource(asset: asset, editor: editor) {
+                Button("Andere Quelle für letzte Reparatur") {
+                    workspace.tryAnotherRepairSource(asset: asset, editor: editor)
+                }.disabled(!ready).accessibilityIdentifier("develop.repair.next-source")
+            }
+            if let selected = workspace.repairSelectedStrokeID, strokes.contains(where: { $0.id == selected }) {
+                Button("Ausgewählte Reparatur löschen") {
+                    workspace.removeRepair(id: selected, asset: asset, editor: editor)
+                }.disabled(!ready).accessibilityIdentifier("develop.repair.delete-selected")
             }
             if !strokes.isEmpty {
-                if let selected = workspace.repairSelectedStrokeID, strokes.contains(where: { $0.id == selected }) {
-                    Button("Ausgewählte Reparatur löschen") {
-                        workspace.removeRepair(id: selected, asset: asset, editor: editor)
-                    }.controlSize(.small).disabled(!ready)
-                        .help("Entfernt die ausgewählte Maske einschließlich ihrer Punkte. Mit ⌘Z wiederherstellen.")
-                        .accessibilityIdentifier("develop.repair.delete-selected")
-                }
-                Button("Letzte Reparatur entfernen", action: removeLastStroke)
-                    .controlSize(.small).disabled(!ready)
-                    .accessibilityIdentifier("develop.repair.remove-last")
+                Button("Letzte Reparatur löschen", action: removeLastStroke)
+                    .disabled(!ready).accessibilityIdentifier("develop.repair.remove-last")
             }
-            Divider()
-            Picker("Werkzeugüberlagerung", selection: $workspace.repairOverlay) {
+            Picker("Markierungen", selection: $workspace.repairOverlay) {
                 ForEach(DevelopRepairOverlay.allCases) { overlay in Text(overlay.title).tag(overlay) }
             }.disabled(!ready).accessibilityIdentifier("develop.repair.overlay")
-            Toggle("Bereiche anzeigen", isOn: $workspace.repairVisualizesSpots)
-                .disabled(!ready).help("Kontrastreiche Flecken für die Staubsichtung hervorheben")
-                .accessibilityIdentifier("develop.repair.visualize-spots")
-            sliderRow("Empfindlichkeit", value: $workspace.repairSpotThreshold, range: 0...1,
-                valueText: "\(Int((workspace.repairSpotThreshold * 100).rounded()))", identifier: "threshold",
-                neutral: 0.5, enabled: workspace.repairVisualizesSpots)
-        }.padding(.vertical, 10)
+            Toggle("Staub hervorheben", isOn: $workspace.repairVisualizesSpots)
+                .disabled(!ready).accessibilityIdentifier("develop.repair.visualize-spots")
+            if workspace.repairVisualizesSpots {
+                sliderRow("Empfindlichkeit", value: $workspace.repairSpotThreshold, range: 0...1,
+                    valueText: "\(Int((workspace.repairSpotThreshold * 100).rounded())) %", identifier: "threshold", neutral: 0.5)
+            }
+        }
+    }
+
+    private var aiControls: some View {
+        VStack(alignment: .leading, spacing: 9) {
+            Toggle("Mit lokaler KI entfernen", isOn: $workspace.repairUsesAI)
+                .disabled(!ready || !workspace.repairAIReady)
+                .accessibilityIdentifier("develop.repair.generative")
+            Label(workspace.repairAIReady ? "LaMa verfügbar" : "LaMa nicht eingerichtet",
+                systemImage: workspace.repairAIReady ? "checkmark.circle" : "arrow.down.circle")
+                .foregroundStyle(Theme.muted).accessibilityIdentifier("develop.repair.ai.availability")
+            Button(showsModelSetup ? "Einrichtung schließen" : "LaMa einrichten …") { showsModelSetup.toggle() }
+                .disabled(workspace.repairBusy).accessibilityIdentifier("develop.repair.ai.setup")
+            if showsModelSetup {
+                if let modelName = workspace.repairAIModelName {
+                    Text(modelName).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
+                }
+                if workspace.repairAISetupProgress == nil && !workspace.repairAIReady {
+                    Button("LaMa herunterladen (ca. 217 MB)") { workspace.downloadRepairAIModel() }
+                        .disabled(!ready).accessibilityIdentifier("develop.repair.ai.download")
+                }
+                Button("Lokales Modell importieren …") { importsModel = true }
+                    .disabled(!ready).accessibilityIdentifier("develop.repair.ai.import")
+                Link("Modellquelle und Lizenzangaben", destination: DevelopRepairAIApprovedDownload.modelCard)
+            }
+            if let progress = workspace.repairAISetupProgress {
+                Group {
+                    if let fraction = progress.fraction { ProgressView(value: fraction) }
+                    else { ProgressView().controlSize(.small) }
+                }.accessibilityIdentifier("develop.repair.ai.progress")
+                Text(progress.text).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private var redEyeControls: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Pupille im Bild mit Ellipse markieren", systemImage: "oval")
+                .accessibilityIdentifier("develop.repair.red-eye.selection")
+            sliderRow("Stärke", value: $workspace.redEyeStrength, range: 0...1,
+                valueText: "\(Int((workspace.redEyeStrength * 100).rounded())) %", identifier: "red-eye.strength", neutral: 1)
+            Text(geometry.redEyeCorrections.count == 1 ? "1 Augenkorrektur" : "\(geometry.redEyeCorrections.count) Augenkorrekturen")
+                .foregroundStyle(Theme.muted).accessibilityIdentifier("develop.repair.red-eye.count")
+            Button("Letzte Augenkorrektur löschen") {
+                updateRedEyes { if !$0.redEyeCorrections.isEmpty { $0.redEyeCorrections.removeLast() } }
+            }.disabled(!ready || geometry.redEyeCorrections.isEmpty)
+                .accessibilityIdentifier("develop.repair.red-eye.remove-last")
+            Button("Alle Augenkorrekturen löschen") { updateRedEyes { $0.redEyeCorrections = [] } }
+                .disabled(!ready || geometry.redEyeCorrections.isEmpty)
+                .accessibilityIdentifier("develop.repair.red-eye.remove-all")
+        }
     }
 
     private var detectionControls: some View {
         VStack(alignment: .leading, spacing: 9) {
-            Text("Störende Elemente entfernen").fontWeight(.semibold).padding(.top, 10)
-            HStack {
-                Text("Spiegelungen").foregroundStyle(Theme.muted)
-                Spacer(minLength: 0)
-                Button("Erkennen") {}.controlSize(.mini).disabled(true)
-                    .accessibilityIdentifier("develop.repair.detect-reflections")
-            }
-            Text("Spiegelungsentfernung nicht verfügbar.")
-                .font(.system(size: 13)).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
-            Divider()
-            HStack {
-                Text("Personen")
-                Spacer(minLength: 0)
-                Button("Erkennen") { detect(.people) }.controlSize(.mini).disabled(!ready)
-                    .accessibilityLabel("Personen erkennen").accessibilityIdentifier("develop.repair.detect-people")
-            }
-            HStack {
-                Text("Staub")
-                Spacer(minLength: 0)
-                Button("Erkennen") { detect(.dust) }.controlSize(.mini).disabled(!ready)
-                    .accessibilityLabel("Staub erkennen").accessibilityIdentifier("develop.repair.detect-dust")
-            }
-            if let status = workspace.repairStatus {
-                Text(status).font(.system(size: 13)).foregroundStyle(Theme.muted)
-                    .fixedSize(horizontal: false, vertical: true).accessibilityIdentifier("develop.repair.status")
+            Text("Störungen erkennen").fontWeight(.semibold)
+            HStack(spacing: 8) {
+                Button("Personen erkennen") { detect(.people) }
+                    .disabled(!ready).accessibilityIdentifier("develop.repair.detect-people")
+                Button("Staub erkennen") { detect(.dust) }
+                    .disabled(!ready).accessibilityIdentifier("develop.repair.detect-dust")
             }
             if !workspace.repairCandidates.isEmpty {
-                Divider()
-                Text("Vorschläge").fontWeight(.semibold)
+                Text("Vorschläge auswählen").fontWeight(.semibold)
                 ForEach(workspace.repairCandidates) { candidate in
                     Toggle(candidate.label, isOn: Binding(
                         get: { workspace.repairSelectedCandidateIDs.contains(candidate.id) },
@@ -237,28 +282,54 @@ struct DevelopRepairInspector: View {
                     actionTask = Task { @MainActor in
                         await workspace.removeSelectedRepairCandidates(asset: asset, editor: editor)
                     }
-                }.controlSize(.small).disabled(!ready || workspace.repairSelectedCandidateIDs.isEmpty)
+                }.disabled(!ready || workspace.repairSelectedCandidateIDs.isEmpty)
                     .accessibilityIdentifier("develop.repair.remove-selected")
             }
-        }.padding(.bottom, 10)
+        }
+    }
+
+    private var repairHelp: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Reparieren").font(.system(size: 17, weight: .semibold))
+            Text("Entfernen und Heilen suchen eine passende Quelle. Mit ⌥-Klick wählen Sie selbst eine saubere Bildstelle. Beim Kopierstempel wählt auch der erste Klick die Quelle; anschließend malen Sie über das Ziel.")
+            Text("Markierungen zeigen die offene Quelle und das ausgefüllte Ziel. Klicken Sie eine Reparatur an, um sie auszuwählen. Ziehen Sie Quelle oder Ziel zum Verschieben; die Löschtaste entfernt die Auswahl.")
+            Text("Bei Rote Augen ziehen Sie eine Ellipse um die Pupille. Stärke gilt für die nächste Augenkorrektur.")
+            Text("Personen und Staub erkennen erzeugt nur Vorschläge. Erst Ausgewählte entfernen verändert das Foto. Jeder verarbeitete Pinselzug wird dagegen sofort aktiv. ⌘Z nimmt jede Reparatur zurück.")
+            Text("LaMa ergänzt kleine ausgewählte Stellen lokal. Prüfen Sie das Ergebnis im Bild. Die Ausgabe ist auf die sRGB-Vorschau mit 8 Bit begrenzt; große Auswahlen und HDR werden abgewiesen. LaMa ist nicht für Hintergrundersatz, Bildgenerierung oder Erweiterung freigegeben. Spiegelungsentfernung ist nicht verfügbar.")
+            HStack { Spacer(); Button("Hilfe schließen") { showsHelp = false }.keyboardShortcut(.cancelAction) }
+        }.font(.system(size: 13)).foregroundStyle(Theme.text).padding(24).frame(width: 500)
     }
 
     @ViewBuilder private func modeSymbol(_ mode: DevelopRepairMode) -> some View {
         switch mode {
-        case .remove: Image(systemName: "eraser.fill").font(.system(size: 19))
-        case .heal: Image(systemName: "bandage.fill").font(.system(size: 19))
-        case .clone: RepairStampSymbol().stroke(lineWidth: 1.6).frame(width: 19, height: 21)
+        case .remove: Image(systemName: "eraser.fill")
+        case .heal: Image(systemName: "bandage.fill")
+        case .clone: RepairStampSymbol().stroke(lineWidth: 1.4).frame(width: 16, height: 18)
+        case .redEye: Image(systemName: "eye")
         }
     }
 
     private func sliderRow(_ title: String, value: Binding<Double>, range: ClosedRange<Double>,
-                           valueText: String, identifier: String, neutral: Double, enabled: Bool = true) -> some View {
+                           valueText: String, identifier: String, neutral: Double) -> some View {
         HStack(spacing: 6) {
             Text(title).frame(width: 82, alignment: .leading)
             ResettableSlider(value: value, in: range, neutralValue: neutral).accessibilityLabel(title)
                 .accessibilityIdentifier("develop.repair." + identifier)
-            Text(valueText).monospacedDigit().frame(width: identifier == "size" ? 46 : 24, alignment: .trailing)
-        }.disabled(!ready || !enabled)
+            Text(valueText).monospacedDigit().frame(width: 46, alignment: .trailing)
+        }.disabled(!ready)
+    }
+
+    private func updateRedEyes(_ change: (inout DevelopGeometry) -> Void) {
+        guard ready else { return }
+        editor.endEditing(assetID: asset.id)
+        var settings = editor.settings(for: asset.id)
+        change(&settings.developGeometry)
+        settings = settings.normalized
+        do {
+            _ = try EditingSnapshot(settings: settings)
+            editor.setSettings(settings, for: asset.id)
+            workspace.errorMessage = nil
+        } catch { workspace.errorMessage = error.localizedDescription }
     }
 
     private func detect(_ kind: DevelopRepairDetectionKind) {

@@ -4,51 +4,12 @@ import GlowroomCore
 struct DevelopGeometryInspector: View {
     let asset: PhotoAsset
     @ObservedObject var workspace: DevelopWorkspace
-    @EnvironmentObject private var editor: EditingModel
-    private var geometry: DevelopGeometry { editor.settings(for: asset.id).developGeometry }
     var body: some View {
         if workspace.tool == .crop {
             DevelopCropInspector(asset: asset, workspace: workspace)
-        } else if workspace.tool == .repair {
+        } else if workspace.tool.isRepairTool {
             DevelopRepairInspector(asset: asset, workspace: workspace)
-        } else {
-            VStack(alignment: .leading, spacing: 14) {
-                HStack {
-                    Text(workspace.tool.title).font(.system(size: 13, weight: .semibold))
-                    Spacer()
-                    Button("Schließen") { workspace.tool = .basic }.buttonStyle(.bordered).controlSize(.small)
-                }
-                switch workspace.tool {
-                case .redEye: redEyeControls
-                default: EmptyView()
-                }
-                if let error = workspace.errorMessage { Text(error).font(.system(size: 13)).foregroundStyle(.orange) }
-            }.padding(.vertical, 8)
         }
-    }
-    private var redEyeControls: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            toolSlider("Stärke", value: $workspace.redEyeStrength, range: 0...1, neutral: 1)
-            Text("\(geometry.redEyeCorrections.count) Augenkorrekturen")
-                .font(.system(size: 10)).foregroundStyle(Theme.muted)
-            HStack {
-                Button("Letzte entfernen") { update { if !$0.redEyeCorrections.isEmpty { $0.redEyeCorrections.removeLast() } } }
-                Button("Alle löschen") { update { $0.redEyeCorrections = [] } }
-            }.controlSize(.small).disabled(geometry.redEyeCorrections.isEmpty)
-        }
-    }
-    private func toolSlider(_ title: String, value: Binding<Double>, range: ClosedRange<Double>, neutral: Double) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack { Text(title); Spacer(); Text("\(Int(value.wrappedValue * 100)) %").monospacedDigit() }.font(.system(size: 10))
-            ResettableSlider(value: value, in: range, neutralValue: neutral).accessibilityLabel(title)
-        }
-    }
-    private func update(_ change: (inout DevelopGeometry) -> Void) {
-        editor.endEditing(assetID: asset.id)
-        var settings = editor.settings(for: asset.id); change(&settings.developGeometry)
-        settings = settings.normalized
-        do { _ = try EditingSnapshot(settings: settings); editor.setSettings(settings, for: asset.id); workspace.errorMessage = nil }
-        catch { workspace.errorMessage = error.localizedDescription }
     }
 }
 
@@ -67,6 +28,7 @@ struct DevelopCanvasInteraction: View {
     @ViewState private var straighteningGesture = false
     @ViewState private var expectedCropRevision: Int64?
     @ViewState private var expectedCropSession: UUID?
+    @ViewState private var expectedRedEyeRequest: UUID?
     private var sourceSize: CGSize { workspace.sourceSize ?? CGSize(width: max(1, asset.pixelWidth), height: max(1, asset.pixelHeight)) }
     private var geometry: DevelopGeometry { editor.settings(for: asset.id).developGeometry }
 
@@ -80,6 +42,11 @@ struct DevelopCanvasInteraction: View {
     private struct WhiteBalanceInputIdentity: Hashable {
         let asset: String
         let source: AISourceIdentity?
+    }
+    private struct RedEyeInputIdentity: Hashable {
+        let asset: String
+        let source: AISourceIdentity?
+        let request: UUID
     }
     private struct LevelsInputIdentity: Hashable {
         let display: DevelopPreviewRenderIdentity?
@@ -141,6 +108,15 @@ struct DevelopCanvasInteraction: View {
                 } else if workspace.tool == .repair {
                     DevelopRepairCanvas(asset: asset, workspace: workspace, onDoubleClick: onDoubleClick)
                 } else {
+                    if workspace.tool == .redEye {
+                        ForEach(geometry.redEyeCorrections) { correction in
+                            Ellipse().stroke(Theme.accent, lineWidth: 1.5)
+                                .frame(width: correction.radiusX * 2 * rect.width, height: correction.radiusY * 2 * rect.height)
+                                .position(x: rect.minX + correction.center.x * rect.width,
+                                          y: rect.minY + correction.center.y * rect.height)
+                                .allowsHitTesting(false)
+                        }
+                    }
                     if workspace.tool == .redEye, let start, let current {
                         Ellipse().stroke(.white, style: StrokeStyle(lineWidth: 1, dash: [4]))
                             .frame(width: abs(current.x - start.x) * rect.width, height: abs(current.y - start.y) * rect.height)
@@ -150,11 +126,13 @@ struct DevelopCanvasInteraction: View {
                     if workspace.tool == .redEye {
                         DevelopCropInputSurface(onInput: { redEyeInput($0, rect: rect) }, onHover: { _ in },
                             isEnabled: editor.canEdit && workspace.isOriginalCanvasReady,
-                            inputIdentity: AnyHashable(WhiteBalanceInputIdentity(asset: asset.id, source: workspace.sourceIdentity)),
+                            inputIdentity: AnyHashable(RedEyeInputIdentity(asset: asset.id, source: workspace.sourceIdentity,
+                                request: workspace.repairRequest)),
                             cursor: { rect.contains($0) ? .crosshair : .arrow },
                             canvasLabel: workspace.tool.title + " auf dem Bild",
                             onCancel: { finishGesture() },
                             allowsViewportHitFallback: workspace.isOriginalCanvasReady && workspace.tool == .redEye)
+                            .accessibilityIdentifier("develop.red-eye.canvas")
                     }
                 }
             }
@@ -307,8 +285,10 @@ struct DevelopCanvasInteraction: View {
             editor.endEditing(assetID: asset.id); editor.beginEditing(assetID: asset.id)
             expectedCropRevision = editor.localRevision(for: asset.id)
             expectedCropSession = editor.aiEditSessionID
+            expectedRedEyeRequest = workspace.repairRequest
         }
-        guard start != nil, expectedCropRevision == editor.localRevision(for: asset.id),
+        guard start != nil, expectedRedEyeRequest == workspace.repairRequest,
+              expectedCropRevision == editor.localRevision(for: asset.id),
               expectedCropSession == editor.aiEditSessionID else {
             finishGesture()
             return
@@ -366,6 +346,7 @@ struct DevelopCanvasInteraction: View {
         if start != nil { editor.endEditing(assetID: asset.id) }
         start = nil; current = nil; originalCrop = nil; cropAction = nil; straighteningGesture = false
         expectedCropRevision = nil; expectedCropSession = nil
+        expectedRedEyeRequest = nil
         // The native picker owns hover cursor updates. Finishing a gesture
         // while it is active must not replace its stationary eyedropper.
         if !workspace.picksWhiteBalance || !workspace.isOriginalCanvasReady || !editor.canEdit { NSCursor.arrow.set() }
