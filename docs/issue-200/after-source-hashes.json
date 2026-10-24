@@ -596,5 +596,6 @@
     "scripts/verify-artifact-png-icc.swift": "e6fbecdaca2c4c0c7849792767ffab56231bc8a8160021f31a4f54d92560e1c2",
     "scripts/verify-artifact-png.swift": "7472f004810ad3950a08d215ad240cf5e9a69c59acba7b244814a43bb589e318"
   },
-  "scope": "Production sources, tests including opt-in harness, assets, package pins and scripts; excludes private fixtures and generated state."
+  "scope": "Production sources, tests including opt-in harness, assets, package pins and scripts; excludes private fixtures and generated state.",
+  "sourceCommit": "d812a7df8688eb3f696ed2b66bd4f1eb2f8c35cc"
 }

@@ -12,7 +12,7 @@
   "proposalState" : "absent",
   "scaleFactor" : 2,
   "screenshotSHA256" : "3613a48a44c0522bab6cda514fa7d1c05e80804cc4515b9d9317b911567c5a83",
-  "sourceCommit" : "cde266663c2af5eae578bd64247cad81c30fc03f+issue-200",
+  "sourceCommit" : "d812a7df8688eb3f696ed2b66bd4f1eb2f8c35cc",
   "state" : "develop",
   "steps" : [
     "Select Morgenlicht.png",

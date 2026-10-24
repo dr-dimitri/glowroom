@@ -12,7 +12,7 @@
   "proposalState" : "pending",
   "scaleFactor" : 2,
   "screenshotSHA256" : "255f9889de5df0b7de42dedcf1c110072e9d8d62d1873402637b4a29f7a827c4",
-  "sourceCommit" : "cde266663c2af5eae578bd64247cad81c30fc03f+issue-200",
+  "sourceCommit" : "d812a7df8688eb3f696ed2b66bd4f1eb2f8c35cc",
   "state" : "model-missing",
   "steps" : [
     "Open KI-Modelle → Suchindex",

@@ -38,7 +38,7 @@ Die Fensterinhaltsgrößen betragen **1000 × 660 pt** und **1440 × 900 pt**. D
 
 Die Metadatenantwort stammt ausdrücklich aus einem kontrollierten `PhotoMetadataSuggesting`. Fehlendes Suchmodell und Suchindexfehler stammen aus einem kontrollierten `SemanticSearchServing`. Der Fehler wird nach dem tatsächlichen Indexaufruf durch den normalen Fehlerpfad angezeigt. Das sind kontrollierte Testzustände, keine reale Modellinferenz, Modellqualifizierung oder Indexleistungsmessung. Die synthetische Landschaft belegt Layout und Bedienzustände, keine Qualität der KI-Segmentierung. Die Reparaturansicht liest ihre tatsächlich vorhandene lokale Verfügbarkeit; der Harness installiert kein Modell.
 
-Der Vorher-Quellstand ist `cde266663c2af5eae578bd64247cad81c30fc03f`. Eine getrennte Archivkopie erhält ausschließlich den [Baseline-Harness](baseline-harness.patch); `-Xswiftc -DGLOWROOM_200_BASELINE` kennzeichnet die Dateinamen als Vorher. Die [Baseline-Inventur](baseline-source-hashes.json) und [Nachher-Inventur](after-source-hashes.json) binden die Aufnahmen an Quellen, Ressourcen, Tests, Paketauflösung und Buildskripte. Die endgültige Nachher-Commitreferenz und Inventurprüfung sind noch einzutragen.
+Der Vorher-Quellstand ist `cde266663c2af5eae578bd64247cad81c30fc03f`. Eine getrennte Archivkopie erhält ausschließlich den [Baseline-Harness](baseline-harness.patch); `-Xswiftc -DGLOWROOM_200_BASELINE` kennzeichnet die Dateinamen als Vorher. Die [Baseline-Inventur](baseline-source-hashes.json) und [Nachher-Inventur](after-source-hashes.json) binden die Aufnahmen an Quellen, Ressourcen, Tests, Paketauflösung und Buildskripte. Die Nachher-Aufnahmen sind an Commit `d812a7df8688eb3f696ed2b66bd4f1eb2f8c35cc` gebunden. Sie entstanden vor dessen Erstellung auf dem durch das Inventar nachgewiesenen bytegleichen Quellstand; die Commitreferenz wird anschließend ausschließlich in Dokumentation und JSON-Metadaten festgeschrieben.
 
 Screenshots belegen sichtbare Anordnung und Zustände. Separate Testassertions prüfen benannte und horizontal erreichbare Werkzeugaktionen, den Rückweg aus dem Bildfokus, gezieltes Öffnen der Werkzeuge, genau einen kontrollierten Vorschlags-/Indexaufruf und unveränderte synthetische Originalbytes. Die regulären Speicher-, Konflikt-, Abbruch- und Bearbeitungstests bleiben dafür die funktionalen Nachweise.
 
@@ -70,12 +70,12 @@ GLOWROOM_WORKSPACE_SNAPSHOT_COMMIT=cde266663c2af5eae578bd64247cad81c30fc03f \
   -Xswiftc -DGLOWROOM_200_BASELINE
 ```
 
-Nachher im Aufgabencheckout; `working-tree` wird vor Veröffentlichung durch die nachgewiesene Quellreferenz ersetzt:
+Nachher im Aufgabencheckout mit dem geprüften Quellcommit:
 
 ```sh
 GLOWROOM_TEST_BUILD_PATH=/private/tmp/glowroom-200-visual-build \
 GLOWROOM_200_SNAPSHOTS=/private/tmp/glowroom-200-after \
-GLOWROOM_WORKSPACE_SNAPSHOT_COMMIT=working-tree \
+GLOWROOM_WORKSPACE_SNAPSHOT_COMMIT=d812a7df8688eb3f696ed2b66bd4f1eb2f8c35cc \
 ./scripts/test.sh --jobs 3 --no-parallel --filter UIClarityScreenshotTests
 ```
 
@@ -141,3 +141,5 @@ Der saubere vollständige Release-Build ist mit **391,99 Sekunden erfolgreich**.
 Ein erster sauberer Vorlauf bestand bereits in 414,21 Sekunden; das anschließende visuelle Review führte zur Exporthöhen- und Singular-Korrektur und erforderte einen neuen sauberen Build. Ein Zwischenlauf wurde dafür geordnet beendet (Exit 143). Sein konservativer Cleanup behielt die Sperre; ein weiterer Start scheiterte ausdrücklich an dieser Sperre. Vor deren Bereinigung wurden der beendete Besitzer sowie alle möglichen Compiler-/Icon-Prozesse geprüft. Es war kein App-Build mehr aktiv; nur der getrennte temporäre Testprozess lief. Erst danach wurden die inaktive Sperre und generierten Zwischenstände entfernt und der oben genannte erfolgreiche finale Build ausgeführt. Eine aktive Sperre wurde nicht entfernt.
 
 Nach dem finalen App-Build änderte sich nur noch der bestehende Test-Harness und die Abnahmedokumentation. Der abschließende SHA-256-Vergleich bestätigt unveränderte Produktions-/Build-Eingaben; für reine Test- und Dokumentationsnachpflege ist kein weiterer App-Build erforderlich.
+
+Die abschließende Commitbindung ändert ausschließlich diese Dokumentation und JSON-Metadaten. PNGs, Produktionsquellen, Tests und Build-Eingaben bleiben bytegleich; sämtliche Bild- und Quellhashes wurden erneut verifiziert. Dafür ist gemäß `AGENTS.md` kein erneuter App-Build erforderlich.
