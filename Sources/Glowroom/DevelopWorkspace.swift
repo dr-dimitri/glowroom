@@ -81,6 +81,7 @@ final class DevelopWorkspace: ObservableObject {
     @Published var repairUsesAI = false
     @Published var repairAIReady = false
     @Published var repairAIModelName: String?
+    @Published var repairAISetupProgress: SkyMaskSetupProgress?
     var repairTriedSourceStrokeID: UUID?
     var repairTriedSources: [LocalMaskPoint] = []
     var repairTask: Task<Void, Never>?

@@ -20,7 +20,7 @@ struct DevelopRepairInspectorTests {
 
         #expect(host.fittingHeight <= 900)
         for name in ["mode.remove", "mode.heal", "mode.clone", "size", "feather", "choose-source", "objects", "overlay",
-            "visualize-spots", "threshold", "generative", "ai.import", "reset", "close", "detect-reflections", "detect-people", "detect-dust"] {
+            "visualize-spots", "threshold", "generative", "ai.download", "ai.import", "reset", "close", "detect-reflections", "detect-people", "detect-dust"] {
             let control = try #require(host.element(name), "Missing repair control: \(name)")
             let frame = control.accessibilityFrame()
             #expect(frame.width > 0 && frame.height > 0, "The \(name) control must have a native frame")
@@ -32,9 +32,53 @@ struct DevelopRepairInspectorTests {
         #expect(host.sliders.allSatisfy { $0.bounds.width >= 70 }, "Every slider must retain a usable native track")
         // Static SwiftUI text is exposed as AXValue, while controls commonly
         // expose AXLabel. Read both public attributes for the explanatory copy.
-        #expect(host.accessibleText.contains("Kompatibles LaMa-Modell importieren, um kleine Bereiche lokal zu ergänzen."))
+        #expect(host.accessibleText.contains("LaMa herunterladen oder ein kompatibles Modell importieren, um kleine Bereiche lokal zu ergänzen."))
         #expect(host.accessibleText.contains("Das lokale Reparaturmodell trennt keine Spiegelungen. Diese Funktion ist nicht verfügbar."))
         try host.snapshotIfRequested("repair-inspector-\(Int(width))")
+        #expect(await fixture.editor.flush())
+    }
+
+    @Test(arguments: [280.0, 320.0])
+    func downloadStartsFromPaletteShowsProgressAndCanBeCanceled(width: Double) async throws {
+        let entered = TestStateSignal(false), gate = TestAsyncLatch()
+        var services = DevelopRepairServices.live
+        services.downloadModel = { progress in
+            progress(.init(text: "LaMa-Testdownload läuft …", fraction: 0.4))
+            entered.update { $0 = true }
+            await gate.wait()
+            try Task.checkCancellation()
+            throw RepairInspectorDownloadFailure.unexpectedCompletion
+        }
+        let fixture = try await RepairInspectorFixture.make(repairServices: services)
+        let host = RepairInspectorHost(width: width, height: 900)
+        defer { gate.releaseAll(); host.close(); fixture.workspace.clear() }
+        let edited = EditSettings(exposure: 0.75)
+        fixture.editor.setSettings(edited, for: fixture.asset.id)
+        fixture.workspace.repairMode = .heal
+        try await host.mount(DevelopRepairInspector(asset: fixture.asset, workspace: fixture.workspace)
+            .environmentObject(fixture.editor))
+
+        #expect(try #require(host.element("ai.download")).accessibilityPerformPress())
+        let operation = try #require(fixture.workspace.repairTask)
+        try await entered.wait("repair model download entered", until: { $0 })
+        try await waitUntil("repair model download progress") { fixture.workspace.repairAISetupProgress?.fraction == 0.4 }
+        try await host.settle()
+        #expect(fixture.workspace.repairBusy)
+        #expect(host.element("ai.download") == nil)
+        #expect(host.accessibleText.contains("LaMa-Testdownload läuft …"))
+        for name in ["ai.progress", "cancel", "ai.import"] {
+            let control = try #require(host.element(name))
+            #expect(host.screenFrame.insetBy(dx: -1, dy: -1).contains(control.accessibilityFrame()))
+        }
+        #expect(try #require(host.element("ai.import")).isAccessibilityEnabled() == false)
+        #expect(try #require(host.element("mode.heal")).isAccessibilityEnabled() == false)
+        #expect(try #require(host.element("cancel")).accessibilityPerformPress())
+        gate.releaseAll(); await operation.value
+        try await host.settle()
+        #expect(!fixture.workspace.repairBusy && fixture.workspace.repairAISetupProgress == nil)
+        #expect(try #require(host.element("ai.download")).isAccessibilityEnabled())
+        #expect(fixture.workspace.errorMessage == nil)
+        #expect(fixture.editor.settings(for: fixture.asset.id) == edited)
         #expect(await fixture.editor.flush())
     }
 
@@ -269,6 +313,8 @@ struct DevelopRepairInspectorTests {
         }
     }
 }
+
+private enum RepairInspectorDownloadFailure: Error { case unexpectedCompletion }
 
 @MainActor
 private struct RepairInspectorFixture {

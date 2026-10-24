@@ -3,9 +3,13 @@
     {
       "contains": "pixelsWide == 800 && $0.pixelsHigh == 800",
       "path": "Sources/Glowroom/DevelopRepairAIModelStore.swift"
+    },
+    {
+      "contains": "LocalModelRegistry.repairFiles",
+      "path": "Sources/Glowroom/DevelopRepairAIModelDownloadStore.swift"
     }
   ],
-  "cardVersion": 1,
+  "cardVersion": 2,
   "contract": {
     "colorSpace": "sRGB; straight RGB",
     "inputs": [
@@ -45,7 +49,7 @@
   },
   "conversion": {
     "evidence": "tools/lama-evaluation/README.md",
-    "method": "User-selected compatible package; no automatic download or publisher approval",
+    "method": "Optional pinned Core ML package download and explicit compatible user imports; each runtime is independently compiled and inventoried",
     "tools": {
       "upstream-converter": "unknown"
     }
@@ -63,8 +67,26 @@
     }
   },
   "package": {
+    "files": [
+      {
+        "bytes": 1101809,
+        "path": "Data/com.apple.CoreML/model.mlmodel",
+        "sha256": "06a100ef99e0fd16326a3a8c4a687d13f7b26f544ea906a75338932d8554f953"
+      },
+      {
+        "bytes": 215544960,
+        "path": "Data/com.apple.CoreML/weights/weight.bin",
+        "sha256": "d0541f6044a94cd4982bfdac074fc1ccfe11d8f1f590c299d6b5071b501fc184"
+      },
+      {
+        "bytes": 617,
+        "path": "Manifest.json",
+        "sha256": "c814fff3cedf827c044094545ef80b0280b6cb8dd0e5c0bcf69fd31921191e58"
+      }
+    ],
+    "folder": "LaMa.mlpackage",
     "kind": "user-import",
-    "limitations": "Reference inventory is evaluation-only, not an allowlist. App preserves explicit compatible user imports and binds each installation to its own complete inventory.",
+    "limitations": "Download files pin the optional repair package only. Compatible manual imports remain supported and each installation is bound to its own complete inventory. The separate referenceFiles preserve evaluation metadata; neither path qualifies general image generation, background replacement or outpainting.",
     "referenceFiles": [
       {
         "bytes": 1101809,
@@ -90,7 +112,7 @@
   },
   "qualification": {
     "limitations": [
-      "Existing installation approval is preserved; this migration does not newly qualify a model or hardware combination.",
+      "The optional pinned download uses the existing small-region repair importer; this change does not qualify general image generation, background replacement, outpainting or additional hardware combinations.",
       "A new release requires a separate native evidence report through the release-check command."
     ],
     "reports": [
@@ -126,8 +148,8 @@
     "repository": "mlboydaisuke/LaMa-CoreML",
     "revision": "5ed76e3799ab4cad31381750d29880c267477e18"
   },
-  "status": "user-import",
-  "task": "small-region-image-repair-user-import",
+  "status": "download-and-user-import",
+  "task": "small-region-image-repair",
   "trainingData": {
     "evidence": "docs/REPAIR-TOOLS.md",
     "limitations": "Exact training images, individual permissions and representativeness are unverified.",
