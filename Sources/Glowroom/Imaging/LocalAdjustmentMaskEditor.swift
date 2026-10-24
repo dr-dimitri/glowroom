@@ -263,6 +263,7 @@ struct InlineMaskCanvas: View {
 @MainActor
 struct InlineMaskList: View {
     @ObservedObject var workspace: InlineMaskWorkspace
+    @Environment(\.usesWorkspaceEditingHistory) private var usesWorkspaceEditingHistory
     var maximumHeight: CGFloat = .infinity
     var onDragChanged: ((CGSize) -> Void)?
     var onDragEnded: (() -> Void)?
@@ -331,12 +332,14 @@ struct InlineMaskList: View {
             }.frame(height: InlineMaskPaletteLayout.listHeight(layerCount: layers.count, maximumHeight: maximumHeight))
             Divider().frame(height: 1)
             HStack(spacing: 9) {
-                Button { workspace.undo() } label: { Image(systemName: "arrow.uturn.backward") }
-                    .disabled(workspace.model?.canUndo != true).help("Maskenänderung rückgängig")
-                    .accessibilityLabel("Maskenänderung rückgängig").accessibilityIdentifier("local-mask.undo")
-                Button { workspace.redo() } label: { Image(systemName: "arrow.uturn.forward") }
-                    .disabled(workspace.model?.canRedo != true).help("Maskenänderung wiederholen").accessibilityLabel("Maskenänderung wiederholen")
-                    .accessibilityIdentifier("local-mask.redo")
+                if !usesWorkspaceEditingHistory {
+                    Button { workspace.undo() } label: { Image(systemName: "arrow.uturn.backward") }
+                        .disabled(workspace.model?.canUndo != true).help("Maskenänderung rückgängig")
+                        .accessibilityLabel("Maskenänderung rückgängig").accessibilityIdentifier("local-mask.undo")
+                    Button { workspace.redo() } label: { Image(systemName: "arrow.uturn.forward") }
+                        .disabled(workspace.model?.canRedo != true).help("Maskenänderung wiederholen").accessibilityLabel("Maskenänderung wiederholen")
+                        .accessibilityIdentifier("local-mask.redo")
+                }
                 Spacer(minLength: 0)
                 Toggle("Überlagerung", isOn: $workspace.showsOverlay).toggleStyle(.checkbox)
                     .accessibilityIdentifier("local-mask.overlay")
@@ -395,6 +398,7 @@ struct InlineMaskList: View {
 @MainActor
 struct InlineMaskInspector: View {
     @ObservedObject var workspace: InlineMaskWorkspace
+    @Environment(\.usesWorkspaceEditingHistory) private var usesWorkspaceEditingHistory
     @ViewState private var showsCreator = false
     @ViewState private var showsWhiteBalance = false
 
@@ -412,7 +416,7 @@ struct InlineMaskInspector: View {
                         .accessibilityLabel(showsCreator ? "Maskenauswahl schließen" : "Neue Maske hinzufügen")
                         .accessibilityIdentifier("local-mask.show-creator")
                 }
-                if !workspace.showsMaskList {
+                if !usesWorkspaceEditingHistory && !workspace.showsMaskList {
                     Button { workspace.undo() } label: { Image(systemName: "arrow.uturn.backward") }
                         .buttonStyle(.plain).disabled(workspace.model?.canUndo != true)
                         .help("Maskenänderung rückgängig").accessibilityLabel("Maskenänderung rückgängig")
@@ -430,14 +434,10 @@ struct InlineMaskInspector: View {
                     InlineMaskCreator(workspace: workspace)
                 }
                 if let selected = workspace.selected { maskControls(selected, model: model).id(model.inputContextID) }
-                if workspace.selected != nil {
-                    Text(workspace.instruction).font(.system(size: 10)).foregroundStyle(Theme.muted)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
                 if model.isLoading { ProgressView("Bild wird geladen").controlSize(.small) }
                 if model.isGenerating {
                     HStack {
-                        Text("Maskenberechnung läuft").font(.caption).foregroundStyle(Theme.muted)
+                        Text("Maskenberechnung läuft").font(.system(size: 13)).foregroundStyle(Theme.muted)
                         Spacer()
                         Button("Abbrechen") { model.cancelInference() }
                             .accessibilityLabel("Maskenberechnung abbrechen")
@@ -445,7 +445,7 @@ struct InlineMaskInspector: View {
                     }
                 }
                 if let message = workspace.errorMessage ?? model.errorMessage ?? workspace.brush.errorMessage {
-                    Text(message).font(.caption).foregroundStyle(.orange).textSelection(.enabled)
+                    Text(message).font(.system(size: 13)).foregroundStyle(.orange).textSelection(.enabled)
                 }
             }
         }.padding(.vertical, 4)

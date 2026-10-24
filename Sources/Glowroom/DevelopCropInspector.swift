@@ -75,12 +75,8 @@ struct DevelopCropInspector: View {
                 }
             }.padding(.vertical, 10).disabled(!editor.canEdit)
             Divider()
-            Text(workspace.isStraightening
-                ? "Eine waagerechte oder senkrechte Bezugslinie im Bild ziehen. Der Winkel wird sofort angezeigt."
-                : "Eck- oder Seitengriff ziehen. Im Rahmen ziehen verschiebt die Auswahl, auch mit Drei-Finger-Ziehen. Außerhalb einen neuen Rahmen aufziehen.")
-                .font(.system(size: 10)).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true).padding(.top, 10)
             if let error = workspace.errorMessage {
-                Text(error).font(.caption).foregroundStyle(.orange).padding(.top, 6)
+                Text(error).font(.system(size: 13)).foregroundStyle(.orange).padding(.top, 6)
             }
             Divider().padding(.top, 10)
             HStack(spacing: 10) {

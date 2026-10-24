@@ -85,7 +85,7 @@ final class AIDevelopmentModel: ObservableObject {
     func start(library: LibraryModel, editor: EditingModel, workspace: DevelopWorkspace) -> Task<Void, Never>? {
         guard !isRunning else { return nil }
         discard()
-        guard library.isAIDeveloping, !library.comparesOriginal, !library.comparesCurrentSourceWithoutSettings,
+        guard library.isDeveloping, !library.comparesOriginal, !library.comparesCurrentSourceWithoutSettings,
               workspace.tool == .basic, let assetID = library.selectedID else { return nil }
         NSApp?.keyWindow?.makeFirstResponder(nil)
         editor.selectEditingFunction(.adjustments, assetID: assetID)
@@ -110,12 +110,26 @@ final class AIDevelopmentModel: ObservableObject {
         isCurrentContext = { [weak library, weak editor, weak workspace] in
             guard let library, let editor, let workspace else { return false }
             return Self.matchesEditingContext(snapshot, editor.localEditingAnchorSnapshot(in: library))
-                && library.isAIDeveloping
+                && library.isDeveloping
                 && !library.comparesOriginal && !library.comparesCurrentSourceWithoutSettings
                 && workspace.tool == .basic && workspace.sourceIdentity == snapshot.source
                 && workspace.originalBitmap.map { ObjectIdentifier($0.image) } == bitmapID
         }
         subscriptions.removeAll()
+        // Published values invalidate synchronously at navigation boundaries.
+        // A rapid leave/return must not evade the deferred snapshot check below.
+        library.$workspaceMode.dropFirst().sink { [weak self] mode in
+            if mode == .library { self?.invalidateEditingContext() }
+        }.store(in: &subscriptions)
+        workspace.$tool.dropFirst().sink { [weak self] tool in
+            if tool != .basic { self?.invalidateEditingContext() }
+        }.store(in: &subscriptions)
+        library.$comparesOriginal.dropFirst().sink { [weak self] comparing in
+            if comparing { self?.invalidateEditingContext() }
+        }.store(in: &subscriptions)
+        library.$comparesCurrentSourceWithoutSettings.dropFirst().sink { [weak self] comparing in
+            if comparing { self?.invalidateEditingContext() }
+        }.store(in: &subscriptions)
         editor.objectWillChange.merge(with: library.objectWillChange, workspace.objectWillChange)
             .sink { [weak self] in
                 Task { @MainActor [weak self] in self?.invalidateContextIfNeeded() }
@@ -147,7 +161,7 @@ final class AIDevelopmentModel: ObservableObject {
                 self.sourceStamp = result.1
                 self.maskPreview = result.2
                 self.status = self.proposal?.changes.isEmpty == true
-                    ? "Das Modell schlägt bei dieser Stärke keine Änderung vor." : "Prüfe den Vorschlag vor dem Übernehmen."
+                    ? "Keine Änderung vorgeschlagen." : "Vorschlag bereit."
             } catch {
                 guard let self else { return }
                 if error is CancellationError || Task.isCancelled {
@@ -198,10 +212,10 @@ final class AIDevelopmentModel: ObservableObject {
                 self.subscriptions.removeAll(); self.isCurrentContext = nil
                 if !applied { self.status = "Der Vorschlag konnte nicht gespeichert werden." }
                 else if proposal.createdMaskID != nil {
-                    self.status = "Maske hinzugefügt. Sie steht in allen Entwicklungsansichten unter „Masken“ bereit. Kontur dort bei Bedarf verfeinern. Mit ⌘Z rückgängig machen."
+                    self.status = "Maske hinzugefügt."
                 } else if let name = proposal.targetName {
-                    self.status = "Vorschlag nur auf „\(name)“ übernommen. Werte unter „Masken“ prüfen. Mit ⌘Z rückgängig machen."
-                } else { self.status = "Vorschlag übernommen. Werte unter „Entwickeln“ prüfen. Mit ⌘Z rückgängig machen." }
+                    self.status = "Vorschlag auf „\(name)“ übernommen."
+                } else { self.status = "Vorschlag übernommen." }
             } catch {
                 guard let self, self.expected == expected, !Task.isCancelled else { return }
                 self.expected = nil; self.proposal = nil; self.sourceStamp = nil; self.maskPreview = nil
@@ -231,8 +245,13 @@ final class AIDevelopmentModel: ObservableObject {
 
     private func invalidateContextIfNeeded() {
         if expected != nil, isCurrentContext?() != true {
-            discard(); status = AIDevelopmentError.staleContext.localizedDescription
+            invalidateEditingContext()
         }
+    }
+
+    private func invalidateEditingContext() {
+        guard expected != nil else { return }
+        discard(); status = AIDevelopmentError.staleContext.localizedDescription
     }
 
     func cancel() {

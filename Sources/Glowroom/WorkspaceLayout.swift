@@ -6,7 +6,7 @@ enum LibraryWorkspace: String, Equatable {
 }
 
 enum WorkspaceTool: String, CaseIterable, Codable, Identifiable {
-    case edit, details, aiDevelopment, metadata, versions
+    case edit, color, details, aiDevelopment, metadata, versions
 
     var id: String { rawValue }
 
@@ -15,9 +15,10 @@ enum WorkspaceTool: String, CaseIterable, Codable, Identifiable {
 
     var title: String {
         switch self {
-        case .edit: "Bearbeiten"
+        case .edit: "Licht"
+        case .color: "Farbe"
         case .details: "Details"
-        case .aiDevelopment: "AI Entwickeln"
+        case .aiDevelopment: "KI-Korrektur"
         case .metadata: "Bildinformationen"
         case .versions: "Bildstände"
         }
@@ -26,6 +27,7 @@ enum WorkspaceTool: String, CaseIterable, Codable, Identifiable {
     var symbol: String {
         switch self {
         case .edit: "slider.horizontal.3"
+        case .color: "paintpalette"
         case .details: "viewfinder"
         case .aiDevelopment: "sparkles"
         case .metadata: "info.circle"
@@ -136,7 +138,23 @@ struct WorkspacePanels: Codable, Equatable {
 struct WorkspaceFocusOrigin: Codable, Equatable {
     var developing: Bool
     var showsDetail: Bool
+    // Decoding only: WorkspaceLayoutModel removes this legacy workspace marker.
     var aiDeveloping: Bool? = nil
+
+    init(developing: Bool, showsDetail: Bool, aiDeveloping: Bool? = nil) {
+        self.developing = developing
+        self.showsDetail = showsDetail
+        self.aiDeveloping = aiDeveloping
+    }
+
+    private enum CodingKeys: String, CodingKey { case developing, showsDetail, aiDeveloping }
+
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        developing = (try? values.decode(Bool.self, forKey: .developing)) ?? true
+        showsDetail = (try? values.decode(Bool.self, forKey: .showsDetail)) ?? true
+        aiDeveloping = try? values.decode(Bool.self, forKey: .aiDeveloping)
+    }
 }
 
 @MainActor
@@ -194,7 +212,23 @@ final class WorkspaceLayoutModel: ObservableObject {
         develop = saved?.develop ?? .developDefault
         focus = saved?.focus ?? .focusDefault
         isFocused = saved?.isFocused ?? false
-        focusOrigin = saved?.focusOrigin ?? WorkspaceFocusOrigin(developing: true, showsDetail: true)
+        let origin = saved?.focusOrigin ?? WorkspaceFocusOrigin(developing: true, showsDetail: true)
+        focusOrigin = WorkspaceFocusOrigin(developing: origin.developing || origin.aiDeveloping == true,
+                                           showsDetail: origin.showsDetail)
+        // The previous AI workspace used the same panel preferences. Keep those
+        // dimensions and groups, but restore its task inside the common inspector.
+        if origin.aiDeveloping == true {
+            let restoreCorrection: (inout WorkspacePanels) -> Void = { panels in
+                if panels.singleGroup {
+                    panels.openGroups = panels.openGroups.filter(\.isNavigationTool)
+                }
+                panels.openGroups.insert(.aiDevelopment)
+            }
+            restoreCorrection(&focus)
+            // Focus return restores the former AI task in the normal inspector too.
+            restoreCorrection(&develop)
+            persist()
+        }
     }
 
     func panels(developing: Bool) -> WorkspacePanels {
@@ -214,8 +248,9 @@ final class WorkspaceLayoutModel: ObservableObject {
 
     func enterFocus(developing: Bool = true, showsDetail: Bool = true, aiDeveloping: Bool = false) {
         guard !isFocused else { return }
-        focusOrigin = WorkspaceFocusOrigin(developing: developing, showsDetail: showsDetail,
-                                           aiDeveloping: aiDeveloping ? true : nil)
+        // Accept the old entry argument defensively, but never persist a second
+        // development context again.
+        focusOrigin = WorkspaceFocusOrigin(developing: developing || aiDeveloping, showsDetail: showsDetail)
         isFocused = true
     }
 

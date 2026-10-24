@@ -21,8 +21,8 @@ struct SemanticSearchControlsView: View {
                         Button("Ähnlichkeitssuche beenden") { model.stopFindingSimilarImages() }
                             .font(.system(size: 10))
                     }
-                    Text("Suchumfang: \(model.similarityScopeLabel) · Referenzfoto ausgeschlossen.")
-                        .font(.system(size: 10)).foregroundStyle(Theme.muted)
+                    Text("Suchumfang: \(model.similarityScopeLabel)")
+                        .font(.system(size: 13)).foregroundStyle(Theme.muted)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 HStack(spacing: 10) {
@@ -32,15 +32,10 @@ struct SemanticSearchControlsView: View {
                     Stepper("Top \(min(500, max(1, model.semanticTopK)))", value: $model.semanticTopK, in: 1...500)
                         .font(.system(size: 10)).fixedSize()
                 }
-                Text(model.similarityReference == nil
-                     ? "Relevanz innerhalb aller aktiven Filter · höchstens \(min(500, max(1, model.semanticTopK))) Treffer. Scores sind keine Wahrscheinlichkeiten. Eine leere Bildsuche zeigt die normale Bibliothek."
-                     : "Visuelle Ähnlichkeit · höchstens \(min(500, max(1, model.semanticTopK))) Treffer. Keine Wahrscheinlichkeit und kein Duplikatnachweis. Ein aktueller Indexvektor wird ohne erneute Bild- oder Textinferenz verwendet.")
-                    .font(.system(size: 10)).foregroundStyle(Theme.muted)
-                    .fixedSize(horizontal: false, vertical: true)
             }
             if let error = model.semanticError {
                 Label(error, systemImage: "exclamationmark.triangle")
-                    .font(.system(size: 10)).fixedSize(horizontal: false, vertical: true)
+                    .font(.system(size: 13)).fixedSize(horizontal: false, vertical: true)
                 Button("Zur wörtlichen Suche") { model.searchMode = .literal }.font(.system(size: 10))
             }
             DisclosureGroup("Lokales Suchmodell und Suchindex", isExpanded: Binding(
@@ -75,13 +70,13 @@ struct SemanticSearchControlsView: View {
             if let descriptor = model.semanticState.modelDescriptor {
                 Text("Modell: \(descriptor.modelID) · \(descriptor.releaseID)").textSelection(.enabled)
                 if let bytes = model.semanticState.installedBytes {
-                    Text("Installiert: \(ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)) · ausschließlich auf diesem Mac")
+                    Text("Installiert: \(ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file))")
                 }
-            } else { Text("Optionales lokales DE-/EN-Bild-Text-Modell · aktive Dateien höchstens 1 GiB") }
+            } else { Text("Kein Suchmodell eingerichtet.") }
             Picker("Indexumfang", selection: $model.semanticScope) {
                 ForEach(LibraryModel.SemanticScope.allCases) { scope in Text(scope.label).tag(scope) }
             }.pickerStyle(.menu).disabled(model.semanticOperationLabel != nil)
-            Text("Gewählter Umfang: \(model.semanticScope.label) · \(model.semanticScopeCount) Bilder. Keine Begrenzung auf die aktuellen Top-Treffer.")
+            Text("Gewählter Umfang: \(model.semanticScope.label) · \(model.semanticScopeCount) Bilder")
                 .fixedSize(horizontal: false, vertical: true)
             Text("\(model.semanticState.indexedCount) gültig · \(model.semanticState.missingCount) fehlend · \(model.semanticState.staleCount) veraltet · \(model.semanticState.totalCount) im geprüften Umfang")
                 .foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
@@ -105,12 +100,10 @@ struct SemanticSearchControlsView: View {
                         Button("Suchindex löschen …", role: .destructive) { deletion = .index }
                         Button("Suchmodell entfernen …", role: .destructive) { deletion = .model }
                     }.disabled(!model.canManageSemanticSearch)
-                }
+                }.font(.system(size: 11))
             }
             if let notice = model.semanticState.notice { Text(notice).foregroundStyle(Theme.muted) }
-            Text("Kein Modellladen oder vollständiger Bildscan beim Appstart. Modellimport und Indexaufbau starten getrennt. Abgeschlossene Indexeinträge bleiben nach Abbruch erhalten.")
-                .foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
-        }.font(.system(size: 10))
+        }.font(.system(size: 13))
     }
 
     private func chooseModel() {
@@ -134,7 +127,8 @@ private struct SemanticModelReviewPresenter: View {
                     Text("Quelle: \(review.sourceURL.path)").textSelection(.enabled)
                     Text("Modell: \(review.descriptor.modelID) · \(review.descriptor.releaseID)")
                     Text("Quelldateien: \(ByteCountFormatter.string(fromByteCount: review.sourceBytes, countStyle: .file))")
-                    Text("Aktive Dateien: höchstens \(ByteCountFormatter.string(fromByteCount: review.maximumInstalledBytes, countStyle: .file)); zusätzlich vorübergehend \(ByteCountFormatter.string(fromByteCount: review.stagingBytesRequired, countStyle: .file)) freier Platz für Prüfung und Kompilierung.")
+                    LabeledContent("Maximale Installation", value: ByteCountFormatter.string(fromByteCount: review.maximumInstalledBytes, countStyle: .file))
+                    LabeledContent("Zusätzlich freier Platz", value: ByteCountFormatter.string(fromByteCount: review.stagingBytesRequired, countStyle: .file))
                     ScrollView {
                         VStack(alignment: .leading, spacing: 12) {
                             ForEach(Array(review.licenses.enumerated()), id: \.offset) { _, license in
@@ -143,13 +137,12 @@ private struct SemanticModelReviewPresenter: View {
                             }
                         }
                     }.frame(height: 220)
-                    Text("Das Paket wird vor dem Laden gegen die in Glowroom festgelegten Größen und Prüfsummen geprüft. Es gibt keinen automatischen Download und keinen Indexstart durch den Import.")
                     HStack {
                         Button("Abbrechen", role: .cancel) { model.dismissSemanticImport(id: review.id) }
                         Spacer()
                         Button("Importieren") { model.installSemanticModel(reviewID: review.id) }
                     }
-                }.font(.system(size: 11)).padding(24).frame(width: 580)
+                }.font(.system(size: 13)).padding(24).frame(width: 580)
             }
     }
 }

@@ -76,14 +76,16 @@ final class LibraryModel: ObservableObject {
     @Published var sort: PhotoSort = .date { didSet { scheduleProjection() } }
     @Published var minimumRating = 0 { didSet { scheduleProjection() } }
     @Published var gridSize: Double = 210
-    @Published var workspaceMode: LibraryWorkspace = .library
-    // Both editing workspaces share the established preview and filmstrip
-    // plumbing. Repeated `true` assignments preserve the chosen AI workspace.
+    @Published var workspaceMode: LibraryWorkspace = .library {
+        didSet {
+            // Accept legacy callers/preferences without recreating a third workspace.
+            if workspaceMode == .aiDevelop { workspaceMode = .develop }
+        }
+    }
     var isDeveloping: Bool {
         get { workspaceMode != .library }
         set { if !newValue { workspaceMode = .library } else if workspaceMode == .library { workspaceMode = .develop } }
     }
-    var isAIDeveloping: Bool { workspaceMode == .aiDevelop }
     @Published var comparesOriginal = false {
         didSet { if comparesOriginal { comparesCurrentSourceWithoutSettings = false; previewComparisonLayout = .single } }
     }

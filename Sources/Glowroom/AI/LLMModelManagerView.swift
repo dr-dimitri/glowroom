@@ -90,8 +90,6 @@ struct LLMModelManagerView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             Text("LLM-Modelle verwalten").font(.title2.bold())
-            Text("Lade ein Modell für AI Entwickeln herunter. Nach der Einrichtung laufen Bildanalyse und Korrekturvorschläge lokal auf diesem Mac.")
-                .font(.callout).foregroundStyle(.secondary)
             VStack(alignment: .leading, spacing: 12) {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 4) {
@@ -106,8 +104,6 @@ struct LLMModelManagerView: View {
                 LabeledContent("Modellgröße / Download", value: size(descriptor.downloadBytes))
                 LabeledContent("Belegt auf diesem Mac", value: size(model.occupiedBytes))
                 LabeledContent("Freier Platz für Einrichtung", value: size(descriptor.requiredDownloadFreeBytes))
-                Text("Downloadgröße: \(descriptor.downloadBytes.formatted()) Byte. Der freie Platz für die Einrichtung schließt temporäre Download-Dateien ein.")
-                    .font(.caption).foregroundStyle(.secondary)
                 Link("Modell und Lizenz ansehen", destination: URL(string: "https://huggingface.co/\(descriptor.repository)")!)
                     .font(.callout)
                 if let progress = model.progress {
@@ -116,7 +112,7 @@ struct LLMModelManagerView: View {
                     Text(progress.text).font(.callout)
                     if progress.downloadedBytes > 0 {
                         Text("\(size(progress.downloadedBytes)) von \(size(progress.totalBytes))")
-                            .font(.caption).monospacedDigit().foregroundStyle(.secondary)
+                            .font(.system(size: 13)).monospacedDigit().foregroundStyle(.secondary)
                     }
                 } else if model.isBusy {
                     ProgressView("Modell wird geprüft …").controlSize(.small)
@@ -145,8 +141,6 @@ struct LLMModelManagerView: View {
                     Text("Dieses Modell benötigt einen Mac mit Apple Silicon.").font(.callout).foregroundStyle(.secondary)
                 }
             }.padding(16).background(.quaternary, in: RoundedRectangle(cornerRadius: 10))
-            Text("Das Löschen gibt den Modellspeicher frei. Fotos, übernommene Korrekturen und ihre Rückgängig-Schritte bleiben erhalten.")
-                .font(.caption).foregroundStyle(.secondary)
             HStack {
                 Spacer()
                 Button("Fertig") { dismiss() }.keyboardShortcut(.defaultAction).disabled(model.isBusy)

@@ -295,8 +295,8 @@ enum DevelopCanvasTool: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var title: String {
         switch self {
-        case .basic: "Grundeinstellungen"
-        case .crop: "Zuschneiden und Drehen"
+        case .basic: "Anpassen"
+        case .crop: "Zuschneiden"
         case .repair: "Reparieren"
         case .redEye: "Rote Augen"
         case .masks: "Maskieren"
@@ -459,9 +459,6 @@ struct DevelopHistogram: View {
                 clipButton("Schattenwarnung", symbol: "triangle.fill", active: $workspace.showsShadows, count: workspace.analysis?.shadows ?? 0, color: .blue)
                 clipButton("Lichterwarnung", symbol: "triangle.fill", active: $workspace.showsHighlights, count: workspace.analysis?.highlights ?? 0, color: .red)
             }
-            Text("sRGB · SDR-Vorschau").font(.system(size: 10)).foregroundStyle(Theme.muted)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .help("Bearbeitete SDR-Vorschau; keine Sensorclipping-, HDR- oder präzise Levels-Messung.")
             HStack(spacing: 4) {
                 ForEach(0..<3) { channel in
                     Toggle(["R", "G", "B"][channel], isOn: Binding(
@@ -501,8 +498,6 @@ struct DevelopHistogram: View {
                     Text("0 %"); Spacer(); Text("50 %"); Spacer(); Text("100 %")
                 }
             }.font(.system(size: 8)).foregroundStyle(Theme.muted)
-            Text(workspace.scopePreferences.mode == .histogram ? "sRGB-Codewert → · Höhe = Häufigkeit" : "Bildposition → · Höhe = sRGB · Helligkeit = Dichte")
-                .font(.system(size: 8)).foregroundStyle(Theme.muted).lineLimit(2)
             HStack(spacing: 5) {
                 Text(asset.iso.map { "ISO \($0)" } ?? "ISO —")
                 Spacer(minLength: 0); Text(asset.focalLength ?? "— mm")

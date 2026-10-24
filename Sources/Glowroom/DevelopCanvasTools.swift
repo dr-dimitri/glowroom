@@ -18,20 +18,16 @@ struct DevelopGeometryInspector: View {
                     Spacer()
                     Button("Schließen") { workspace.tool = .basic }.buttonStyle(.bordered).controlSize(.small)
                 }
-                Text("Unbeschnittene Quelle · Änderungen werden nicht destruktiv gespeichert.")
-                    .font(.system(size: 10)).foregroundStyle(Theme.muted)
                 switch workspace.tool {
                 case .redEye: redEyeControls
                 default: EmptyView()
                 }
-                if let error = workspace.errorMessage { Text(error).font(.caption).foregroundStyle(.orange) }
+                if let error = workspace.errorMessage { Text(error).font(.system(size: 13)).foregroundStyle(.orange) }
             }.padding(.vertical, 8)
         }
     }
     private var redEyeControls: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Ziehe eine Ellipse um die rote Pupille. Nur rotdominante Pixel innerhalb der Auswahl werden abgedunkelt.")
-                .font(.system(size: 11)).foregroundStyle(Theme.muted)
             toolSlider("Stärke", value: $workspace.redEyeStrength, range: 0...1, neutral: 1)
             Text("\(geometry.redEyeCorrections.count) Augenkorrekturen")
                 .font(.system(size: 10)).foregroundStyle(Theme.muted)

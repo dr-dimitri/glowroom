@@ -18,11 +18,11 @@ final class WorkspaceProposalLifecycleTests {
     deinit { try? FileManager.default.removeItem(at: directory) }
 
     @Test(arguments: [NSSize(width: 1_000, height: 660), NSSize(width: 1_440, height: 900)])
-    func aiDevelopmentHasItsOwnWorkspaceAndKeepsModelManagementWithoutSelection(size: NSSize) async throws {
+    func unifiedDevelopmentKeepsPhotoAndHistoryAcrossCorrectionGroups(size: NSSize) async throws {
         let f = try await fixture()
         let host = WorkspaceSectionTestHost(size: size)
         defer { host.close() }
-        let suite = "Glowroom-AIWorkspace-\(UUID())"
+        let suite = "Glowroom-UnifiedWorkspace-\(UUID())"
         let defaults = try #require(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
         let layout = WorkspaceLayoutModel(defaults: defaults)
@@ -30,50 +30,102 @@ final class WorkspaceProposalLifecycleTests {
             suggestor: LocalPhotoMetadataSuggestor(service: ImageAnalysisService(
                 provider: UnavailableImageAnalysisProvider(reason: .sdkUnavailable), budget: AIResourceBudget())),
             library: f.library, editor: f.editor)
-        let exporter = JPEGExportModel(preferences: nil)
         try await host.mount(LibraryView(model: f.library, dataDirectory: directory)
-            .environmentObject(f.editor).environmentObject(exporter).environmentObject(layout).environmentObject(metadata))
+            .environmentObject(f.editor).environmentObject(JPEGExportModel(preferences: nil))
+            .environmentObject(layout).environmentObject(metadata))
+        layout.update(developing: true) { $0.singleGroup = true }
+        let baseline = try #require(f.editor.aiSnapshot(in: f.library))
+        let selection = f.library.selectedIDs
         WorkspaceActions.reveal(.aiDevelopment, layout: layout, library: f.library)
         try await host.settle()
-        #expect(f.library.workspaceMode == .aiDevelop && f.library.isDeveloping)
-        #expect(host.accessibilityElements.contains { $0.accessibilityIdentifier() == "workspace.ai-develop" })
-        #expect(host.accessibilityElements.contains { $0.accessibilityIdentifier() == "ai-workspace.inspector" })
+        #expect(f.library.workspaceMode == .develop && f.library.isDeveloping)
+        #expect(host.accessibilityElements.contains { $0.accessibilityIdentifier() == "workspace.develop" })
+        #expect(!host.accessibilityElements.contains { $0.accessibilityIdentifier() == "workspace.ai-develop" })
+        #expect(!host.accessibilityElements.contains { $0.accessibilityLabel() == "AI Entwickeln" })
+        #expect(host.accessibilityElements.contains { $0.accessibilityIdentifier() == "workspace.group.aiDevelopment" })
         #expect(host.accessibilityElements.contains { $0.accessibilityIdentifier() == "ai-development.generate" })
-        #expect(!host.accessibilityElements.contains { $0.accessibilityIdentifier() == "develop.adjustments" })
-        #expect(!host.accessibilityElements.contains { $0.accessibilityIdentifier() == "workspace.group.aiDevelopment" })
-        #expect(await f.service.requests.isEmpty, "Opening the AI workspace must not start analysis or inference")
-        if let path = ProcessInfo.processInfo.environment["GLOWROOM_WORKSPACE_SNAPSHOTS"] {
-            let output = URL(fileURLWithPath: path, isDirectory: true)
-            try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
-            try host.snapshot(to: output.appendingPathComponent("ai-develop-\(Int(size.width)).png"))
+        for identifier in ["workspace.undo", "workspace.redo", "workspace.saveStatus", "workspace.compare"] {
+            #expect(host.accessibilityElements.filter { $0.accessibilityIdentifier() == identifier }.count == 1,
+                    "\(identifier) has one owner in unified Develop")
         }
-        WorkspaceActions.toggleFocus(layout, library: f.library)
+        #expect(await f.service.requests.isEmpty, "Opening a correction group must not start inference")
+        try await snapshot(host, layout: layout, name: "develop-ai", size: size)
+
+        try await wait("zoom control ready") {
+            host.accessibilityElements.contains {
+                $0.accessibilityIdentifier() == "workspace.zoom" && $0.isAccessibilityEnabled()
+            }
+        }
+        let zoom = try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == "workspace.zoom" })
+        try #require(zoom.accessibilityPerformPress())
         try await host.settle()
-        #expect(layout.focusOrigin.aiDeveloping == true && f.library.isAIDeveloping)
-        WorkspaceActions.toggleFocus(layout, library: f.library)
-        try await host.settle()
-        #expect(!layout.isFocused && f.library.isAIDeveloping)
+        let zoomLabel = try #require(host.accessibilityElements.first {
+            $0.accessibilityIdentifier() == "workspace.zoom"
+        }?.accessibilityLabel())
+        #expect(zoomLabel == "Einpassen")
         WorkspaceActions.reveal(.edit, layout: layout, library: f.library)
         try await host.settle()
-        #expect(f.library.workspaceMode == .develop)
         #expect(host.accessibilityElements.contains { $0.accessibilityIdentifier() == "develop.adjustments" })
-        #expect(!host.accessibilityElements.contains { $0.accessibilityIdentifier() == "ai-workspace.inspector" })
+        #expect(host.accessibilityElements.first { $0.accessibilityIdentifier() == "workspace.zoom" }?.accessibilityLabel() == zoomLabel)
+        #expect(f.editor.aiSnapshot(in: f.library) == baseline)
+        #expect(f.library.selectedIDs == selection)
+        // Return to the same fitted view for comparable acceptance screenshots.
+        let fit = try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == "workspace.zoom" })
+        try #require(fit.accessibilityPerformPress())
+        try await host.settle()
+        try await snapshot(host, layout: layout, name: "develop-light", size: size)
+        WorkspaceActions.reveal(.color, layout: layout, library: f.library)
+        WorkspaceActions.reveal(.details, layout: layout, library: f.library)
+        try await host.settle()
+        #expect(f.editor.aiSnapshot(in: f.library) == baseline)
         WorkspaceActions.toggleFocus(layout, library: f.library)
+        try await host.settle()
+        #expect(layout.isFocused && f.library.workspaceMode == .develop)
+        try await snapshot(host, layout: layout, name: "develop-focus", size: size)
         WorkspaceActions.reveal(.aiDevelopment, layout: layout, library: f.library)
         try await host.settle()
         WorkspaceActions.toggleFocus(layout, library: f.library)
         try await host.settle()
-        #expect(f.library.workspaceMode == .develop, "Leaving focus restores the original workspace even after an AI switch")
+        #expect(!layout.isFocused && f.library.workspaceMode == .develop)
+        #expect(f.editor.aiSnapshot(in: f.library) == baseline)
+        #expect(f.library.selectedIDs == selection)
+        #expect(!f.editor.canUndo(assetID: baseline.assetID))
         f.library.selectedID = nil
-        try await host.settle()
         WorkspaceActions.reveal(.aiDevelopment, layout: layout, library: f.library)
         try await host.settle()
-        #expect(f.library.isAIDeveloping && !f.library.showsDetail)
-        #expect(host.accessibilityElements.contains { $0.accessibilityIdentifier() == "ai-workspace.inspector" })
-        #expect(host.accessibilityElements.contains { $0.accessibilityLabel() == "LLM-Modelle verwalten" })
+        #expect(f.library.workspaceMode == .develop && !f.library.showsDetail)
+        #expect(host.accessibilityElements.contains { $0.accessibilityLabel() == "LLM-Modelle verwalten" },
+                "Model setup remains reachable without a selected photo")
+        for identifier in ["ai-development.model-tools", "ai-development.search"] {
+            #expect(host.accessibilityElements.contains { $0.accessibilityIdentifier() == identifier },
+                    "Existing model and search setup stays reachable without a selected photo")
+        }
         #expect(await f.service.requests.isEmpty)
         #expect(await metadata.finishSaving())
         #expect(await f.library.finishSaving())
+    }
+
+    private func snapshot(_ host: WorkspaceSectionTestHost, layout: WorkspaceLayoutModel,
+                          name: String, size: NSSize) async throws {
+        guard let path = ProcessInfo.processInfo.environment["GLOWROOM_WORKSPACE_SNAPSHOTS"] else { return }
+        let output = URL(fileURLWithPath: path, isDirectory: true)
+        try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
+        // Only opt-in visual evidence waits for asynchronous preview pixels.
+        try await Task.sleep(for: .seconds(2))
+        try await host.settle()
+        let filename = "\(name)-\(Int(size.width))"
+        try host.snapshot(to: output.appendingPathComponent(filename + ".png"))
+        let panels = layout.panels(developing: true)
+        let metadata: [String: Any] = [
+            "sourceCommit": ProcessInfo.processInfo.environment["GLOWROOM_WORKSPACE_SNAPSHOT_COMMIT"] ?? "working-tree",
+            "windowWidthPoints": size.width, "windowHeightPoints": size.height,
+            "state": name, "focused": layout.isFocused,
+            "activeGroups": panels.openGroups.map(\.rawValue).sorted(),
+            "fixture": ProcessInfo.processInfo.environment["GLOWROOM_WORKSPACE_SNAPSHOT_FIXTURE"] ?? "synthetic-1x1",
+            "macOS": ProcessInfo.processInfo.operatingSystemVersionString
+        ]
+        try JSONSerialization.data(withJSONObject: metadata, options: [.prettyPrinted, .sortedKeys])
+            .write(to: output.appendingPathComponent(filename + ".json"))
     }
 
     @Test(arguments: [NSSize(width: 1_000, height: 660), NSSize(width: 1_440, height: 900)])
@@ -277,7 +329,7 @@ final class WorkspaceProposalLifecycleTests {
         let navigator = try #require(elements.first { $0.accessibilityIdentifier() == "workspace.navigator" })
         let masks = try #require(elements.first { $0.accessibilityIdentifier() == "develop.tool.masks" })
         #expect(navigator.accessibilityFrame().maxX <= masks.accessibilityFrame().minX)
-        for tool in WorkspaceTool.allCases where tool != .aiDevelopment {
+        for tool in WorkspaceTool.allCases {
             #expect(elements.filter { $0.accessibilityIdentifier() == "workspace.group.\(tool.rawValue)" }.count == 1)
         }
 
@@ -416,7 +468,10 @@ final class WorkspaceProposalLifecycleTests {
         try await wait("inline mask canvas loads without a sheet") {
             mask.canvasSize != nil && host.sheet == nil && host.accessibilityElements.contains { $0.accessibilityIdentifier() == "local-mask.canvas" }
         }
+        try await host.settle()
+        assertSharedHistoryOwner(host)
         mask.add(.brush)
+        let unpaintedSettings = mask.settings
         let canvas = try #require(mask.canvasSize)
         let painted = try MaskDocument(canvasSize: canvas, strokes: [MaskStroke(points: [
             MaskPoint(x: Double(canvas.width) * 0.25, y: Double(canvas.height) * 0.5),
@@ -425,20 +480,33 @@ final class WorkspaceProposalLifecycleTests {
         mask.updateSelected { $0.mask.shape = .brush(painted) }
         let paintedSettings = mask.settings
         do {
-            try await wait("inline palette enables undo") {
-                host.accessibilityElements.first { $0.accessibilityIdentifier() == "local-mask.undo" }?.isAccessibilityEnabled() == true
+            try await wait("shared workspace history enables mask undo") {
+                host.accessibilityElements.first { $0.accessibilityIdentifier() == "workspace.undo" }?.isAccessibilityEnabled() == true
             }
         } catch {
             try? host.snapshot(to: URL(fileURLWithPath: "/private/tmp/glowroom-inline-mask-lifecycle-failure.png"))
             Issue.record("Inline palette: developing=\(f.library.isDeveloping), detail=\(f.library.showsDetail), source=\(mask.source != nil), canUndo=\(mask.canUndo), layers=\(mask.settings.localAdjustments.count); AX=\(host.accessibilityElements.compactMap { $0.accessibilityIdentifier() })")
             throw error
         }
+        assertSharedHistoryOwner(host)
+        let sharedUndo = try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == "workspace.undo" })
+        #expect(sharedUndo.accessibilityPerformPress())
+        try await host.settle()
+        #expect(mask.settings == unpaintedSettings && f.editor.settings(for: assetID) == unpaintedSettings)
+        let sharedRedo = try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == "workspace.redo" })
+        #expect(sharedRedo.accessibilityPerformPress())
+        try await host.settle()
+        #expect(mask.settings == paintedSettings && f.editor.settings(for: assetID) == paintedSettings)
         WorkspaceActions.toggleFocus(layout, library: f.library)
         WorkspaceActions.toggleTools(layout, library: f.library)
         WorkspaceActions.toggleLibrary(layout, library: f.library)
         WorkspaceActions.toggleFilmstrip(layout, library: f.library)
+        // Keep the canonical history visible while the same mask controls float
+        // over the image because their ordinary inspector is hidden.
+        layout.update(developing: true) { $0.showsLibrary = true; $0.showsTools = false }
         try await host.settle()
         #expect(host.sheet == nil)
+        assertSharedHistoryOwner(host)
         #expect(mask.settings == paintedSettings && mask.canUndo)
         // Showing a hidden panel preserves its history. A dock/menu reveal is
         // navigation and starts the destination's editing history.
@@ -446,6 +514,7 @@ final class WorkspaceProposalLifecycleTests {
         try await host.settle()
         #expect(mask.settings == paintedSettings && mask.canUndo)
         #expect(host.accessibilityElements.contains { $0.accessibilityIdentifier() == "local-mask.canvas" })
+        assertSharedHistoryOwner(host)
         #expect(f.editor.settings(for: assetID) == paintedSettings)
         #expect(try Data(contentsOf: original) == originalBytes)
 
@@ -467,6 +536,13 @@ final class WorkspaceProposalLifecycleTests {
         }
         #expect(host.sheet == nil)
         let replacedSource = try #require(f.editor.aiSnapshot(in: f.library)).source
+        // Source invalidation closes the model session before SwiftUI remounts
+        // the replacement inspector. Exercise the newly rendered control.
+        try await wait("replacement inspector mounts its mask tool") {
+            host.accessibilityElements.contains {
+                $0.accessibilityIdentifier() == "develop.tool.masks" && $0.isAccessibilityEnabled()
+            }
+        }
         let reopenAfterReplacement = try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == "develop.tool.masks" })
         #expect(reopenAfterReplacement.accessibilityPerformPress())
         try await wait("replacement gets a new inline canvas") { mask.source == replacedSource && mask.canvasSize != nil && mask.settings == beforeReplacement }
@@ -884,6 +960,16 @@ final class WorkspaceProposalLifecycleTests {
         #expect(await f.library.finishSaving())
     }
 
+    private func assertSharedHistoryOwner(_ host: WorkspaceSectionTestHost) {
+        for identifier in ["workspace.undo", "workspace.redo"] {
+            #expect(host.accessibilityElements.filter { $0.accessibilityIdentifier() == identifier }.count == 1)
+        }
+        for identifier in ["local-mask.undo", "local-mask.redo"] {
+            #expect(!host.accessibilityElements.contains { $0.accessibilityIdentifier() == identifier },
+                    "Inline and floating mask controls use the same canonical history")
+        }
+    }
+
     private func sections(_ f: WorkspaceProposalFixture) -> some View {
         ImageAnalysisSection(model: f.analysis)
     }
@@ -904,7 +990,11 @@ final class WorkspaceProposalLifecycleTests {
     private func fixture() async throws -> WorkspaceProposalFixture {
         let photos = directory.appendingPathComponent("Photos")
         try FileManager.default.createDirectory(at: photos, withIntermediateDirectories: true)
-        let png = try #require(Data(base64Encoded: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="))
+        let tinyPNG = try #require(Data(base64Encoded: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="))
+        let png: Data
+        if let path = ProcessInfo.processInfo.environment["GLOWROOM_WORKSPACE_SNAPSHOT_FIXTURE"] {
+            png = try Data(contentsOf: URL(fileURLWithPath: path))
+        } else { png = tinyPNG }
         let folder = LibraryFolder(url: photos)
         let assets = try ["A.png", "B.png"].map { name in
             let url = photos.appendingPathComponent(name)

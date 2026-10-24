@@ -76,6 +76,31 @@ struct DevelopWorkspaceTests {
         await #expect(throws: CancellationError.self) { _ = try await task.value }
     }
 
+    @Test @MainActor func canvasToolChangesRetainTheDecodedPhotoAndViewport() async throws {
+        let workspace = DevelopWorkspace()
+        defer { workspace.clear() }
+        let original = try bitmap(width: 30, height: 20) { _, _ in [25, 50, 75, 255] }
+        let rendered = try bitmap(width: 15, height: 10) { _, _ in [50, 75, 100, 255] }
+        let identity = source("shared-tools")
+        workspace.bind(source: identity)
+        workspace.receive(rendered, sourceBitmap: original)
+        try await wait { !workspace.isAnalyzing && workspace.sourceAnalysis != nil }
+        workspace.photoViewport.toggleZoom(at: CGPoint(x: 0.7, y: 0.6))
+        let anchor = workspace.photoViewport.anchor
+        let histogram = try #require(workspace.analysis).channels
+        let sourceHistogram = try #require(workspace.sourceAnalysis).channels
+        for tool in DevelopCanvasTool.allCases {
+            workspace.tool = tool
+            workspace.bind(source: identity)
+            #expect(workspace.sourceIdentity == identity)
+            #expect(workspace.originalBitmap?.image === original.image)
+            #expect(workspace.navigatorImage === rendered.image)
+            #expect(workspace.analysis?.channels == histogram && workspace.sourceAnalysis?.channels == sourceHistogram)
+            #expect(workspace.photoViewport.isZoomed && workspace.photoViewport.anchor == anchor)
+            #expect(!workspace.isAnalyzing, "A tool change reuses the accepted preview and its analysis")
+        }
+    }
+
     @Test @MainActor func sourceBindingClearsPickerAndRejectsLateAnalysisFromThePreviousImage() async throws {
         let gate = DevelopAnalysisGate()
         let workspace = DevelopWorkspace(analyze: { await gate.analyze($0) })
