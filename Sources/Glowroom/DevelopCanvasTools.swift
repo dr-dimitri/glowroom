@@ -31,11 +31,16 @@ struct DevelopCanvasInteraction: View {
     @ViewState private var expectedRedEyeRequest: UUID?
     private var sourceSize: CGSize { workspace.sourceSize ?? CGSize(width: max(1, asset.pixelWidth), height: max(1, asset.pixelHeight)) }
     private var geometry: DevelopGeometry { editor.settings(for: asset.id).developGeometry }
+    private var canvasReady: Bool {
+        workspace.tool == .crop && !workspace.picksWhiteBalance
+            ? workspace.isCropCanvasReady(for: geometry.optics) : workspace.isOriginalCanvasReady
+    }
 
     private struct CropInputIdentity: Hashable {
         let asset: String
         let source: AISourceIdentity?
         let angle: Double
+        let optics: DevelopOpticsSettings
         let straightening: Bool
         let magnification: CGFloat
     }
@@ -80,29 +85,29 @@ struct DevelopCanvasInteraction: View {
                         .accessibilityIdentifier("develop.levels.canvas")
                 } else if workspace.picksWhiteBalance {
                     DevelopCropInputSurface(onInput: { whiteBalanceInput($0, rect: rect) }, onHover: { _ in },
-                        isEnabled: editor.canEdit && workspace.isOriginalCanvasReady,
+                        isEnabled: editor.canEdit && canvasReady,
                         inputIdentity: AnyHashable(WhiteBalanceInputIdentity(asset: asset.id, source: workspace.sourceIdentity)),
                         cursor: { DevelopWhiteBalanceCursor.cursor(at: $0, in: rect,
-                            isEnabled: workspace.picksWhiteBalance && editor.canEdit && workspace.isOriginalCanvasReady) },
+                            isEnabled: workspace.picksWhiteBalance && editor.canEdit && canvasReady) },
                         canvasLabel: "Neutrale Fläche für Weißabgleich wählen",
-                        allowsViewportHitFallback: workspace.isOriginalCanvasReady && workspace.picksWhiteBalance)
+                        allowsViewportHitFallback: canvasReady && workspace.picksWhiteBalance)
                 } else if workspace.tool == .crop {
                     cropOutline(rect, displayScale: fit * photoCanvasMagnification)
                         .scaleEffect(fit).rotationEffect(.degrees(angle))
-                        .opacity(workspace.isOriginalCanvasReady ? 1 : 0)
+                        .opacity(canvasReady ? 1 : 0)
                     // Native input remains in viewport coordinates. Inverse-map
                     // it once, rather than relying on AppKit layer transforms.
                     DevelopCropInputSurface(onInput: { event in
                         cropInput(event, rect: rect, viewport: viewport.size, angle: angle, scale: fit)
                     }, onHover: { point in
                         if point == nil { NSCursor.arrow.set() }
-                    }, isEnabled: editor.canEdit && workspace.isOriginalCanvasReady,
+                    }, isEnabled: editor.canEdit && canvasReady,
                         inputIdentity: AnyHashable(CropInputIdentity(asset: asset.id, source: workspace.sourceIdentity,
-                            angle: angle, straightening: workspace.isStraightening,
+                            angle: angle, optics: geometry.optics, straightening: workspace.isStraightening,
                             magnification: photoCanvasMagnification)),
                         cursor: { point in cropCursor(at: point, rect: rect, viewport: viewport.size, angle: angle, scale: fit) },
                         onDoubleClick: onDoubleClick,
-                        allowsViewportHitFallback: workspace.isOriginalCanvasReady && workspace.tool == .crop)
+                        allowsViewportHitFallback: canvasReady && workspace.tool == .crop)
                         .accessibilityLabel(workspace.isStraightening ? "Bezugslinie zum Ausrichten auf dem Bild ziehen" : workspace.tool.title + " auf dem Bild")
                         .accessibilityIdentifier("develop.interactive-canvas")
                 } else if workspace.tool == .repair {
@@ -125,19 +130,19 @@ struct DevelopCanvasInteraction: View {
                     }
                     if workspace.tool == .redEye {
                         DevelopCropInputSurface(onInput: { redEyeInput($0, rect: rect) }, onHover: { _ in },
-                            isEnabled: editor.canEdit && workspace.isOriginalCanvasReady,
+                            isEnabled: editor.canEdit && canvasReady,
                             inputIdentity: AnyHashable(RedEyeInputIdentity(asset: asset.id, source: workspace.sourceIdentity,
                                 request: workspace.repairRequest)),
                             cursor: { rect.contains($0) ? .crosshair : .arrow },
                             canvasLabel: workspace.tool.title + " auf dem Bild",
                             onCancel: { finishGesture() },
-                            allowsViewportHitFallback: workspace.isOriginalCanvasReady && workspace.tool == .redEye)
+                            allowsViewportHitFallback: canvasReady && workspace.tool == .redEye)
                             .accessibilityIdentifier("develop.red-eye.canvas")
                     }
                 }
             }
             .onChange(of: viewport.size) { _, _ in finishGesture() }
-        }.allowsHitTesting(workspace.levelsPicker != nil || (workspace.isOriginalCanvasReady && (workspace.tool != .basic || workspace.picksWhiteBalance)))
+        }.allowsHitTesting(workspace.levelsPicker != nil || (canvasReady && (workspace.tool != .basic || workspace.picksWhiteBalance)))
             .onChange(of: workspace.tool) { _, _ in finishGesture() }
             .onChange(of: workspace.picksWhiteBalance) { _, _ in finishGesture() }
             .onChange(of: workspace.levelsPicker) { _, _ in finishGesture() }
@@ -146,7 +151,7 @@ struct DevelopCanvasInteraction: View {
             .onChange(of: asset.id) { _, _ in finishGesture() }
             .onChange(of: sourceSize) { _, _ in finishGesture() }
             .onChange(of: workspace.sourceIdentity) { _, _ in finishGesture() }
-            .onChange(of: workspace.isOriginalCanvasReady) { _, ready in if !ready { finishGesture() } }
+            .onChange(of: canvasReady) { _, ready in if !ready { finishGesture() } }
             .onChange(of: editor.canEdit) { _, canEdit in if !canEdit { finishGesture() } }
             .onDisappear { finishGesture(); NSCursor.arrow.set() }
     }
@@ -209,7 +214,7 @@ struct DevelopCanvasInteraction: View {
 
     private func cropInput(_ event: DevelopCropInputEvent, rect: CGRect, viewport: CGSize, angle: Double, scale: CGFloat) {
         if event.phase == .cancelled { finishGesture(); return }
-        guard editor.canEdit, workspace.isOriginalCanvasReady,
+        guard editor.canEdit, canvasReady,
               let location = DevelopCropCanvasPresentation.canvasPoint(from: event.location, viewport: viewport, angle: angle, scale: scale),
               let initial = DevelopCropCanvasPresentation.canvasPoint(from: event.startLocation, viewport: viewport, angle: angle, scale: scale) else { return }
         if event.phase == .began {
@@ -263,7 +268,7 @@ struct DevelopCanvasInteraction: View {
     }
 
     private func cropCursor(at point: CGPoint, rect: CGRect, viewport: CGSize, angle: Double, scale: CGFloat) -> NSCursor {
-        guard editor.canEdit, workspace.isOriginalCanvasReady,
+        guard editor.canEdit, canvasReady,
               let location = DevelopCropCanvasPresentation.canvasPoint(from: point, viewport: viewport, angle: angle, scale: scale) else { return .arrow }
         if straighteningGesture || workspace.isStraightening { return .crosshair }
         let action = cropAction ?? DevelopCropInteraction.dragAction(at: location, crop: geometry.crop, imageRect: rect,
@@ -278,7 +283,7 @@ struct DevelopCanvasInteraction: View {
     private func redEyeInput(_ event: DevelopCropInputEvent, rect: CGRect) {
         if event.phase == .cancelled { finishGesture(); return }
         guard event.kind == .pointer, workspace.tool == .redEye,
-              editor.canEdit, workspace.isOriginalCanvasReady else { return }
+              editor.canEdit, canvasReady else { return }
         if event.phase == .began {
             guard let initial = normalized(event.startLocation, rect: rect) else { return }
             start = initial; current = initial
@@ -311,7 +316,7 @@ struct DevelopCanvasInteraction: View {
     private func whiteBalanceInput(_ event: DevelopCropInputEvent, rect: CGRect) {
         if event.phase == .cancelled { finishGesture(); return }
         guard event.kind == .pointer, workspace.picksWhiteBalance,
-              editor.canEdit, workspace.isOriginalCanvasReady else { return }
+              editor.canEdit, canvasReady else { return }
         if event.phase == .began {
             guard let initial = normalized(event.startLocation, rect: rect) else { return }
             start = initial
@@ -324,7 +329,9 @@ struct DevelopCanvasInteraction: View {
         }
     }
     private func pickWhiteBalance(_ point: CGPoint) {
-        guard let rgb = workspace.sourceAnalysis?.rgb(at: point),
+        guard let mapping = try? DevelopCanvasCoordinateMapping(sourceSize: sourceSize),
+              let source = mapping.sourcePoint(at: point, in: CGRect(x: 0, y: 0, width: 1, height: 1), clamp: true),
+              let rgb = workspace.sourceAnalysis?.rgb(at: CGPoint(x: source.x, y: source.y)),
               let correction = DevelopWhiteBalance.neutralizing(sRGBRed: rgb.0, green: rgb.1, blue: rgb.2, alpha: rgb.3) else {
             workspace.errorMessage = "Wähle eine mittlere, deckende graue Fläche ohne ausgefressene Lichter oder tiefes Schwarz."
             return
@@ -349,6 +356,6 @@ struct DevelopCanvasInteraction: View {
         expectedRedEyeRequest = nil
         // The native picker owns hover cursor updates. Finishing a gesture
         // while it is active must not replace its stationary eyedropper.
-        if !workspace.picksWhiteBalance || !workspace.isOriginalCanvasReady || !editor.canEdit { NSCursor.arrow.set() }
+        if !workspace.picksWhiteBalance || !canvasReady || !editor.canEdit { NSCursor.arrow.set() }
     }
 }

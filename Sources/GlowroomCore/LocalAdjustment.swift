@@ -90,7 +90,10 @@ public enum LocalMaskShape: Hashable, Sendable, Codable {
 }
 
 public struct LocalAdjustmentMask: Codable, Hashable, Sendable {
+    /// Legacy fields are retained only for the legacy wire representation. New
+    /// composition encoding contains no inactive duplicate shape or refinement.
     public var shape: LocalMaskShape
+    public private(set) var composition: LocalMaskComposition?
     /// Ordered brush/erase corrections on top of the original selection.
     /// Its initial canvas stays empty; strokes refine rather than replace shape.
     public var refinement: MaskDocument?
@@ -104,11 +107,45 @@ public struct LocalAdjustmentMask: Codable, Hashable, Sendable {
     public init(shape: LocalMaskShape, isInverted: Bool = false, opacity: Double = 1, feather: Double = 0.5,
                 refinement: MaskDocument? = nil) throws {
         self.shape = shape; self.isInverted = isInverted; self.opacity = opacity; self.feather = feather
-        self.refinement = refinement
+        self.refinement = refinement; self.composition = nil
         try validate()
     }
+    public init(composition: LocalMaskComposition, isInverted: Bool = false, opacity: Double = 1) throws {
+        // Empty fixed-size placeholder keeps unused legacy state small and stable.
+        self.shape = .brush(try MaskDocument(canvasSize: .init(width: 1, height: 1)))
+        self.refinement = nil; self.feather = 0
+        self.composition = composition; self.isInverted = isInverted; self.opacity = opacity
+        try validate()
+    }
+    public mutating func setComposition(_ composition: LocalMaskComposition) throws {
+        self = try Self(composition: composition, isInverted: isInverted, opacity: opacity)
+    }
+    /// Conversion is invoked only when a second component is actually accepted.
+    public func convertedToComposition(name: String) throws -> LocalMaskComposition {
+        if let composition { return composition }
+        return try .init(components: [.init(name: name, shape: shape, refinement: refinement, feather: feather)])
+    }
+    public var componentCount: Int { composition?.components.count ?? 1 }
+    public var resourceUsage: LocalMaskResourceUsage {
+        var result = LocalMaskResourceUsage()
+        if let composition {
+            for component in composition.components { result.include(shape: component.shape, refinement: component.refinement) }
+        } else { result.include(shape: shape, refinement: refinement) }
+        return result
+    }
+    /// Includes disabled components because they still own payloads and history.
+    public var selectionMasks: [LocalAdjustmentMask] {
+        get throws {
+            if let composition { return try composition.components.map { try $0.selectionMask() } }
+            return [self]
+        }
+    }
     public func validate() throws {
-        try shape.validate()
+        if let composition {
+            try composition.validate()
+            let placeholder = LocalMaskShape.brush(try MaskDocument(canvasSize: .init(width: 1, height: 1)))
+            guard feather == 0, refinement == nil, shape == placeholder else { throw ArtifactContractError.invalidValue("composed mask legacy fields") }
+        } else { try shape.validate() }
         if let refinement {
             try refinement.validate()
             guard !refinement.isInverted else { throw ArtifactContractError.invalidValue("local mask refinement") }
@@ -123,12 +160,30 @@ public struct LocalAdjustmentMask: Codable, Hashable, Sendable {
         result.feather = feather.isFinite ? min(max(feather, 0), 1) : 0
         return result
     }
-    private enum CodingKeys: String, CodingKey { case shape, isInverted, opacity, feather, refinement }
+    private enum CodingKeys: String, CodingKey { case shape, isInverted, opacity, feather, refinement, composition }
     public init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
-        try self.init(shape: values.decode(LocalMaskShape.self, forKey: .shape), isInverted: values.decode(Bool.self, forKey: .isInverted),
-                      opacity: values.decode(Double.self, forKey: .opacity), feather: values.decode(Double.self, forKey: .feather),
-                      refinement: values.decodeIfPresent(MaskDocument.self, forKey: .refinement))
+        if values.contains(.composition) {
+            guard !values.contains(.shape), !values.contains(.feather), !values.contains(.refinement) else {
+                throw ArtifactContractError.invalidValue("mixed local mask representation")
+            }
+            try self.init(composition: values.decode(LocalMaskComposition.self, forKey: .composition),
+                isInverted: values.decode(Bool.self, forKey: .isInverted), opacity: values.decode(Double.self, forKey: .opacity))
+        } else {
+            try self.init(shape: values.decode(LocalMaskShape.self, forKey: .shape), isInverted: values.decode(Bool.self, forKey: .isInverted),
+                          opacity: values.decode(Double.self, forKey: .opacity), feather: values.decode(Double.self, forKey: .feather),
+                          refinement: values.decodeIfPresent(MaskDocument.self, forKey: .refinement))
+        }
+    }
+    public func encode(to encoder: Encoder) throws {
+        try validate()
+        var values = encoder.container(keyedBy: CodingKeys.self)
+        try values.encode(isInverted, forKey: .isInverted); try values.encode(opacity, forKey: .opacity)
+        if let composition { try values.encode(composition, forKey: .composition) }
+        else {
+            try values.encode(shape, forKey: .shape); try values.encode(feather, forKey: .feather)
+            try values.encodeIfPresent(refinement, forKey: .refinement)
+        }
     }
 }
 
@@ -209,6 +264,7 @@ public struct LocalAdjustmentSettings: Codable, Hashable, Sendable {
 
 public struct LocalAdjustment: Codable, Hashable, Identifiable, Sendable {
     public static let maximumCount = 16
+    public static let maximumTotalComponents = 64
     /// Four maximum-size mattes fit without weakening the aggregate bound.
     /// Smaller selections may still occupy all sixteen local layers.
     public static let maximumTotalRasterBytes = 16 * 1_024 * 1_024

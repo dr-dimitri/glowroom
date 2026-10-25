@@ -19,7 +19,7 @@ struct DevelopCropInspectorTests {
             .environmentObject(fixture.editor))
 
         #expect(host.fittingHeight <= 410, "All crop controls must fit below the histogram without scrolling")
-        for name in ["aspect", "lock", "angle", "straighten", "auto", "reset", "close"] {
+        for name in ["aspect", "lock", "angle", "straighten", "auto", "distortion", "constrain", "distortion.reset", "reset", "close"] {
             let control = try #require(host.element(name), "Missing crop control: \(name)")
             let frame = control.accessibilityFrame()
             #expect(frame.width > 0 && frame.height > 0, "The \(name) control must have a visible native frame")
@@ -27,7 +27,7 @@ struct DevelopCropInspectorTests {
         }
         let angleSlider = try #require(host.sliders.first)
         #expect(angleSlider.bounds.width >= 70, "The angle control must retain enough track for pointer input")
-        #expect(host.element("constrain") == nil)
+        #expect(host.element("constrain") != nil)
         #expect(host.element("overlay") == nil)
         let removedLabels = ["Auf Bild beschränken", "Werkzeugüberlagerung", "90° nach links drehen",
             "90° nach rechts drehen", "Horizontal spiegeln", "Vertikal spiegeln"]
@@ -50,6 +50,7 @@ struct DevelopCropInspectorTests {
         edited.developGeometry.constrainToImage = false
         edited.developGeometry.flipHorizontal = true
         edited.developGeometry.flipVertical = true
+        edited.developGeometry.optics = try DevelopOpticsSettings(distortion: 60)
         edited.developGeometry.retouchStrokes = [try DevelopRetouchStroke(
             source: LocalMaskPoint(x: 0.1, y: 0.1), target: LocalMaskPoint(x: 0.4, y: 0.4), radius: 0.03)]
         fixture.editor.setSettings(edited, for: fixture.asset.id)
@@ -66,6 +67,7 @@ struct DevelopCropInspectorTests {
         #expect(result.developGeometry.straightenAngle == 0)
         #expect(result.developGeometry.constrainToImage)
         #expect(!result.developGeometry.flipHorizontal && !result.developGeometry.flipVertical)
+        #expect(result.developGeometry.optics.isNeutral)
         #expect(result.exposure == edited.exposure)
         #expect(result.developGeometry.retouchStrokes == edited.developGeometry.retouchStrokes)
         #expect(fixture.workspace.tool == .crop)

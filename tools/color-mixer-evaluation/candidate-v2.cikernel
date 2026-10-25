@@ -1,0 +1,84 @@
+// LC2 eight-band candidate v2. Evaluation only, extended-linear sRGB.
+// Linear-sRGB/OkLab coefficients: Björn Ottosson, 2021-01-25 matrices
+// https://bottosson.github.io/posts/oklab/ (public domain / MIT).
+float mixerRoot(float value) {
+    float root = pow(abs(value), 1.0 / 3.0);
+    return value < 0.0 ? -root : root;
+}
+float mixerRising(float hue, float left, float right) {
+    return 0.5 - 0.5 * cos(3.141592653589793 * (hue - left) / (right - left));
+}
+kernel vec4 glowroomColorMixerCandidateV2(__sample original,
+    vec4 hues0, vec4 saturations0, vec4 lightnesses0,
+    vec4 hues1, vec4 saturations1, vec4 lightnesses1) {
+    if (original.a <= 0.0) return vec4(0.0);
+    if (original.r == original.g && original.g == original.b) return original;
+    vec3 rgb = original.rgb / original.a;
+    vec3 lms = vec3(
+        0.4122214708 * rgb.r + 0.5363325363 * rgb.g + 0.0514459929 * rgb.b,
+        0.2119034982 * rgb.r + 0.6806995451 * rgb.g + 0.1073969566 * rgb.b,
+        0.0883024619 * rgb.r + 0.2817188376 * rgb.g + 0.6299787005 * rgb.b);
+    lms = vec3(mixerRoot(lms.x), mixerRoot(lms.y), mixerRoot(lms.z));
+
+    vec3 lab = vec3(
+        0.2104542553 * lms.x + 0.7936177850 * lms.y - 0.0040720468 * lms.z,
+        1.9779984951 * lms.x - 2.4285922050 * lms.y + 0.4505937099 * lms.z,
+        0.0259040371 * lms.x + 0.7827717662 * lms.y - 0.8086757660 * lms.z);
+    vec3 sourceRoots = vec3(lab.x + 0.3963377774 * lab.y + 0.2158037573 * lab.z,
+                            lab.x - 0.1055613458 * lab.y - 0.0638541728 * lab.z,
+                            lab.x - 0.0894841775 * lab.y - 1.2914855480 * lab.z);
+    float chroma = length(lab.yz);
+    if (chroma == 0.0) return original;
+    float hue = atan(lab.z, lab.y);
+    if (hue < 0.0) hue += 6.283185307179586;
+    float circle = hue;
+    if (circle < 0.5102275497563948) circle += 6.283185307179586;
+    vec4 w0 = vec4(0.0);
+    vec4 w1 = vec4(0.0);
+    float w;
+    if (circle < 0.9211103989444132) {
+        w = mixerRising(circle, 0.5102275497563948, 0.9211103989444132);
+        w0.r = 1.0 - w; w0.g = w;
+    } else if (circle < 1.9158345171210678) {
+        w = mixerRising(circle, 0.9211103989444132, 1.9158345171210678);
+        w0.g = 1.0 - w; w0.b = w;
+    } else if (circle < 2.4870128323373986) {
+        w = mixerRising(circle, 1.9158345171210678, 2.4870128323373986);
+        w0.b = 1.0 - w; w0.a = w;
+    } else if (circle < 3.3993594220581693) {
+        w = mixerRising(circle, 2.4870128323373986, 3.3993594220581693);
+        w0.a = 1.0 - w; w1.r = w;
+    } else if (circle < 4.604695960947877) {
+        w = mixerRising(circle, 3.3993594220581693, 4.604695960947877);
+        w1.r = 1.0 - w; w1.g = w;
+    } else if (circle < 5.127324348702114) {
+        w = mixerRising(circle, 4.604695960947877, 5.127324348702114);
+        w1.g = 1.0 - w; w1.b = w;
+    } else if (circle < 5.999419057316489) {
+        w = mixerRising(circle, 5.127324348702114, 5.999419057316489);
+        w1.b = 1.0 - w; w1.a = w;
+    } else {
+        w = mixerRising(circle, 5.999419057316489, 6.793412856935981);
+        w1.a = 1.0 - w; w0.r = w;
+    }
+    vec3 shift = vec3(dot(w0, hues0) + dot(w1, hues1),
+                      dot(w0, saturations0) + dot(w1, saturations1),
+                      dot(w0, lightnesses0) + dot(w1, lightnesses1));
+    if (shift.x == 0.0 && shift.y == 0.0 && shift.z == 0.0) return original;
+    float damping = min(chroma / 0.12, 1.0);
+    hue += 0.5 * shift.x * damping;
+    chroma = max(0.0, chroma * (1.0 + shift.y));
+    lab.x += 0.2 * shift.z * damping * sqrt(max(lab.x, 0.05));
+    lab.y = chroma * cos(hue); lab.z = chroma * sin(hue);
+    lms = vec3(lab.x + 0.3963377774 * lab.y + 0.2158037573 * lab.z,
+               lab.x - 0.1055613458 * lab.y - 0.0638541728 * lab.z,
+               lab.x - 0.0894841775 * lab.y - 1.2914855480 * lab.z);
+    // v2: original RGB + inverse-OkLab delta. Factor the cubic
+    // difference to avoid subtracting two large HDR cubes.
+    vec3 delta = lms - sourceRoots;
+    lms = delta * (3.0 * sourceRoots * sourceRoots + 3.0 * sourceRoots * delta + delta * delta);
+    rgb = vec3(4.0767416621 * lms.x - 3.3077115913 * lms.y + 0.2309699292 * lms.z,
+              -1.2684380046 * lms.x + 2.6097574011 * lms.y - 0.3413193965 * lms.z,
+              -0.0041960863 * lms.x - 0.7034186147 * lms.y + 1.7076147010 * lms.z);
+    return vec4(original.rgb + rgb * original.a, original.a);
+}

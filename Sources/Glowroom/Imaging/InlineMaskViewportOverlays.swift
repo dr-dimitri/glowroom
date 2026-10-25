@@ -55,7 +55,7 @@ struct InlineMaskViewportOverlays: View {
     var body: some View {
         GeometryReader { viewport in
             let layout = InlineMaskPaletteLayout(viewport: viewport.size)
-            let paletteSize = layout.size(layerCount: workspace.model?.settings.localAdjustments.count ?? 0)
+            let paletteSize = layout.size(layerCount: workspace.maskPaletteRowCount)
             let origin = layout.clamp(paletteOrigin ?? layout.defaultOrigin(paletteSize: paletteSize), paletteSize: paletteSize)
             ZStack(alignment: .topLeading) {
                 if showsMaskList {

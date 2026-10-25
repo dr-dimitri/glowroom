@@ -100,18 +100,28 @@ enum LocalAdjustmentRenderer {
             if layer.settings.texture != 0 { bytesPerPixel += plane }
             if layer.settings.clarity != 0 { bytesPerPixel += plane }
             var rasterPlanes: UInt64 = 0
-            switch layer.mask.shape {
-            case .brush:
-                rasterPlanes += 1
-                if layer.mask.feather > 0 { bytesPerPixel += plane }
-            case .subject(let raster), .sky(let raster):
-                guard add(UInt64(raster.bytes.count)) else { return nil }
-                if layer.mask.feather > 0 { bytesPerPixel += plane }
-            case .linear, .radial: break
+            guard let selections = try? layer.mask.selectionMasks else { return nil }
+            if let composition = layer.mask.composition {
+                // Each component retains its base coverage, post-inversion
+                // strength and ordered combine plane, plus initial empty
+                // coverage. Feather/refinement planes are counted below.
+                // No per-component worker or CPU readback is introduced.
+                bytesPerPixel += UInt64(3 * composition.components.count + 1) * plane
             }
-            if let refinement = layer.mask.refinement, !refinement.strokes.isEmpty {
-                rasterPlanes += 2
-                bytesPerPixel += 3 * plane // Two clamp planes and their composed coverage.
+            for selection in selections {
+                switch selection.shape {
+                case .brush:
+                    rasterPlanes += 1
+                    if selection.feather > 0 { bytesPerPixel += plane }
+                case .subject(let raster), .sky(let raster):
+                    guard add(UInt64(raster.bytes.count)) else { return nil }
+                    if selection.feather > 0 { bytesPerPixel += plane }
+                case .linear, .radial: break
+                }
+                if let refinement = selection.refinement, !refinement.strokes.isEmpty {
+                    rasterPlanes += 2
+                    bytesPerPixel += 3 * plane // Two clamp planes and composed coverage.
+                }
             }
             let intermediates = pixels.partialValue.multipliedReportingOverflow(by: bytesPerPixel)
             guard !intermediates.overflow, add(intermediates.partialValue) else { return nil }
@@ -160,8 +170,25 @@ enum LocalAdjustmentRenderer {
     static func maskImage(_ mask: LocalAdjustmentMask, extent: CGRect,
                           cache: LocalMaskImageCache?) throws -> CIImage {
         try Task.checkCancellation()
-        let mask = mask.normalized
-        try mask.shape.validate()
+        try mask.validate()
+        if let composition = mask.composition {
+            var coverage = CIImage(color: CIColor(red: 0, green: 0, blue: 0, alpha: 1)).cropped(to: extent)
+            // The saved order is observable. Graph construction stays serial;
+            // Core Image schedules independent coverage nodes and their pixels.
+            for component in composition.components where component.isEnabled {
+                try Task.checkCancellation()
+                let selection = try maskImage(component.selectionMask(), extent: extent, cache: cache)
+                let operation: Double = component.operation == .add ? 0 : component.operation == .subtract ? 1 : 2
+                guard let next = compositionKernel?.apply(extent: extent, arguments: [coverage, selection, operation]) else {
+                    throw EditRenderError.unavailable
+                }
+                coverage = next
+            }
+            guard let result = strengthKernel?.apply(extent: extent, arguments: [coverage, mask.isInverted ? 1.0 : 0.0, mask.opacity]) else {
+                throw EditRenderError.unavailable
+            }
+            return result
+        }
         let size = CIVector(x: extent.width, y: extent.height)
         let image: CIImage
         let usesGaussianFeather: Bool
@@ -275,6 +302,15 @@ enum LocalAdjustmentRenderer {
         kernel vec4 glowroomLocalStrength(__sample mask, float inverted, float opacity) {
             float weight = mix(clamp(mask.r, 0.0, 1.0), 1.0 - clamp(mask.r, 0.0, 1.0), inverted) * opacity;
             return vec4(vec3(weight), 1.0);
+        }
+        """)
+
+    private static let compositionKernel = CIColorKernel(source: """
+        kernel vec4 glowroomLocalComposition(__sample accumulated, __sample component, float operation) {
+            float a = clamp(accumulated.r, 0.0, 1.0);
+            float b = clamp(component.r, 0.0, 1.0);
+            float result = operation < 0.5 ? max(a, b) : (operation < 1.5 ? a * (1.0 - b) : a * b);
+            return vec4(vec3(result), 1.0);
         }
         """)
 

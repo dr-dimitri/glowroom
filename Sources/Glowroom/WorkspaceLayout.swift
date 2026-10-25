@@ -197,7 +197,7 @@ struct WorkspacePanels: Codable, Equatable {
         libraryWidth = Self.bounded(libraryWidth, fallback: navigation ? 300 : 218, range: leftRange)
         toolsWidth = Self.bounded(toolsWidth, fallback: 320, range: WorkspaceLayoutMetrics.toolsRange)
         filmstripHeight = Self.bounded(filmstripHeight, fallback: 98, range: WorkspaceLayoutMetrics.filmstripRange)
-        openAdjustmentGroups.formIntersection(["tone", "presence", "sharpening", "noise", "levels"])
+        openAdjustmentGroups.formIntersection(["tone", "presence", "sharpening", "noise", "levels", "curves"])
         if singleGroup {
             let firstNavigation = WorkspaceTool.allCases.first { $0.isNavigationTool && openGroups.contains($0) }
             let firstAdjustment = WorkspaceTool.allCases.first { !$0.isNavigationTool && openGroups.contains($0) }

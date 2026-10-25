@@ -11,12 +11,13 @@ final class InlineMaskWorkspace: ObservableObject {
     @Published private(set) var asset: PhotoAsset?
     @Published private(set) var source: AISourceIdentity?
     @Published var showsOverlay = true
+    @Published var showsSelectedComponentOverlay = true
     @Published var comparesBefore = false
     @Published var showsObjectCreator = false
     @Published var erases = false {
         didSet {
             brush.cancelStroke()
-            brush.mode = brushMode(isInverted: selected?.mask.isInverted ?? false)
+            brush.mode = brushMode(isInverted: editableMask?.isInverted ?? false)
         }
     }
     @Published var refines = false { didSet { finishGesture() } }
@@ -53,7 +54,17 @@ final class InlineMaskWorkspace: ObservableObject {
     }
 
     var selected: LocalAdjustment? { model?.selected }
+    var editableMask: LocalAdjustmentMask? { model?.selectedMask }
+    var canCreateComponent: Bool { isCurrent && model?.canAddComponent == true && !blocksMaskInput }
+    var overlayModeTitle: String {
+        model?.selectedComponent == nil || !showsSelectedComponentOverlay ? "Gesamtmaske" : "Bestandteil: \(model?.selectedComponent?.name ?? "")"
+    }
     var showsMaskList: Bool { isPresented && model?.settings.localAdjustments.isEmpty == false }
+    var maskPaletteRowCount: Int {
+        model?.settings.localAdjustments.reduce(0) { count, layer in
+            count + 1 + (layer.mask.composition.map { $0.components.count + 1 } ?? 0)
+        } ?? 0
+    }
     /// Follows the visible request, not a canceled native operation's lifetime.
     /// Source changes hide its status before asynchronous reconciliation closes it.
     var showsCalculationStatus: Bool { isCurrent && (model?.isGenerating == true || objectMask.isRunning) }
@@ -86,8 +97,8 @@ final class InlineMaskWorkspace: ObservableObject {
         isCurrent && self.source == source && selected?.id == layerID && model?.isGenerating == false && !blocksMaskInput
     }
     var usesBrush: Bool {
-        guard let selected else { return false }
-        switch selected.mask.shape {
+        guard let editableMask else { return false }
+        switch editableMask.shape {
         case .brush, .subject, .sky: return true
         case .linear, .radial: return refines
         }
@@ -95,16 +106,26 @@ final class InlineMaskWorkspace: ObservableObject {
     var displayMask: LocalAdjustmentMask? {
         if let proposal = objectMask.proposal { return proposal.layer.mask }
         guard var mask = selected?.mask else { return nil }
-        if let document = brush.previewDocument, brush.source == source {
-            if case .brush = mask.shape { mask.shape = .brush(document) }
-            else if !document.strokes.isEmpty { mask.refinement = document }
+        var selection = editableMask
+        if let document = brush.previewDocument, brush.source == source, selection != nil {
+            if case .brush = selection!.shape { selection!.shape = .brush(document) }
+            else if !document.strokes.isEmpty { selection!.refinement = document }
         }
+        if let componentID = model?.selectedComponentID, var composition = mask.composition,
+           let index = composition.components.firstIndex(where: { $0.id == componentID }), let selection {
+            if showsSelectedComponentOverlay { return selection }
+            composition.components[index].shape = selection.shape
+            composition.components[index].refinement = selection.refinement
+            composition.components[index].feather = selection.feather
+            composition.components[index].isInverted = selection.isInverted
+            try? mask.setComposition(composition)
+        } else if mask.composition == nil, let selection { mask = selection }
         return mask
     }
     var instruction: String {
         guard !comparesBefore else { return "Stand vor den Maskenänderungen." }
-        guard let selected else { return "Neue Maske hinzufügen, anschließend den Bereich wählen." }
-        switch selected.mask.shape {
+        guard let editableMask else { return selected == nil ? "Neue Maske hinzufügen, anschließend den Bereich wählen." : "Bestandteil hinzufügen oder auswählen." }
+        switch editableMask.shape {
         case .brush: return erases ? "Ziehen entfernt Bereiche aus der Pinselmaske." : "Ziehen malt die Pinselmaske."
         case .linear: return refines ? "Mit Pinsel ergänzen oder mit Radierer abziehen." : "Endpunkte verschieben oder einen neuen Verlauf ziehen."
         case .radial: return refines ? "Mit Pinsel ergänzen oder mit Radierer abziehen." : "Mitte oder Griffe verschieben; außerhalb eine neue Ellipse ziehen."
@@ -127,7 +148,7 @@ final class InlineMaskWorkspace: ObservableObject {
         self.editor = editor; self.library = library; self.anchor = anchor
         self.developWorkspace = developWorkspace
         openingSettings = settings; acceptedSettings = settings; errorMessage = nil
-        showsOverlay = true; comparesBefore = false; erases = false; refines = false; showsObjectCreator = false
+        showsOverlay = true; showsSelectedComponentOverlay = true; comparesBefore = false; erases = false; refines = false; showsObjectCreator = false
         isPresented = true
         model.acceptSettings = { [weak self] settings in self?.accept(settings) == true }
         model.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &subscriptions)
@@ -143,6 +164,16 @@ final class InlineMaskWorkspace: ObservableObject {
             self.brush.cancelStroke(); self.model?.endChange(); self.refines = false
             self.showsOverlay = true
             self.syncBrush(selectedID: selectedID)
+        }.store(in: &subscriptions)
+        model.$selectedComponentID.dropFirst().sink { [weak self] _ in
+            guard let self else { return }
+            self.brush.cancelStroke(); self.refines = false; self.showsOverlay = true
+            let token = self.session
+            Task { [weak self] in
+                await Task.yield()
+                guard let self, self.session == token else { return }
+                self.syncBrush()
+            }
         }.store(in: &subscriptions)
         // These publishers announce before mutation. Reconcile on the next actor
         // turn, coalescing rapid edits and allowing an accepted opening save.
@@ -222,6 +253,10 @@ final class InlineMaskWorkspace: ObservableObject {
         finishGesture(); model?.selectedID = id; showsOverlay = true
     }
     func delete(_ id: UUID) { finishGesture(); model?.delete(id) }
+    func selectComponent(_ id: UUID, in layerID: UUID) {
+        finishGesture(); model?.selectedID = layerID; model?.selectedComponentID = id
+        showsOverlay = true; showsSelectedComponentOverlay = true; syncBrush()
+    }
 
     @discardableResult
     func requestObjectMask() -> Task<Void, Never>? {
@@ -305,11 +340,19 @@ final class InlineMaskWorkspace: ObservableObject {
         guard let selected = settings.localAdjustments.first(where: { $0.id == selectedID }) else {
             syncingBrush = true; brush.discard(); syncingBrush = false; return
         }
+        let mask: LocalAdjustmentMask
+        if let composition = selected.mask.composition {
+            guard let component = composition.components.first(where: { $0.id == model.selectedComponentID }),
+                  let selection = try? component.selectionMask() else {
+                syncingBrush = true; brush.discard(); syncingBrush = false; return
+            }
+            mask = selection
+        } else { mask = selected.mask }
         let document: MaskDocument
-        if case .brush(let saved) = selected.mask.shape { document = saved }
-        else if let saved = selected.mask.refinement { document = saved }
+        if case .brush(let saved) = mask.shape { document = saved }
+        else if let saved = mask.refinement { document = saved }
         else { guard let empty = try? MaskDocument(canvasSize: canvas) else { return }; document = empty }
-        let mode = brushMode(isInverted: selected.mask.isInverted)
+        let mode = brushMode(isInverted: mask.isInverted)
         if brush.mode != mode { brush.cancelStroke(); brush.mode = mode }
         guard brush.document != document || brush.source != source else { return }
         syncingBrush = true
@@ -326,14 +369,14 @@ final class InlineMaskWorkspace: ObservableObject {
         erases != isInverted ? .erase : .brush
     }
     private func installBrush(_ document: MaskDocument) {
-        guard let model, let selected else { return }
+        guard let model, let mask = editableMask else { return }
         syncingBrush = true
-        if case .brush = selected.mask.shape { model.updateSelected { $0.mask.shape = .brush(document) } }
-        else if !document.strokes.isEmpty || selected.mask.refinement != nil { model.updateSelected { $0.mask.refinement = document } }
+        if case .brush = mask.shape { model.updateSelectedMask { $0.shape = .brush(document) } }
+        else if !document.strokes.isEmpty || mask.refinement != nil { model.updateSelectedMask { $0.refinement = document } }
         syncingBrush = false
         let accepted: MaskDocument?
-        if case .brush(let saved)? = model.selected?.mask.shape { accepted = saved }
-        else { accepted = model.selected?.mask.refinement }
+        if case .brush(let saved)? = model.selectedMask?.shape { accepted = saved }
+        else { accepted = model.selectedMask?.refinement }
         if !document.strokes.isEmpty, accepted != document {
             errorMessage = model.errorMessage
             // MaskEditingModel is still publishing this value. Correct its

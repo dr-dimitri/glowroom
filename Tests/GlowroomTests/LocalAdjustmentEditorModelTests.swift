@@ -260,6 +260,71 @@ struct LocalAdjustmentEditorModelTests {
         #expect(await restarted.flush())
     }
 
+    @Test func componentCreationSelectionGroupedEditingAndUndoPreserveLegacyAndStableIDs() async throws {
+        let bitmap = try bitmap()
+        let model = LocalAdjustmentEditorModel(settings: .neutral, loader: { _ in bitmap })
+        await model.load(source: source("components"))
+        model.add(.linear)
+        let legacy = model.settings
+        model.addComponent(.radial, operation: .intersect)
+        let composed = model.settings
+        let first = try #require(model.selected?.mask.composition?.components.first)
+        let second = try #require(model.selectedComponent)
+        #expect(model.selected?.mask.composition?.components.count == 2)
+        #expect(second.operation == .intersect)
+        model.undo(); #expect(model.settings == legacy)
+        model.redo(); #expect(model.settings == composed && model.selectedComponentID == second.id)
+        model.beginChange()
+        for i in 1...10 { model.updateSelectedMask { $0.feather = Double(i) / 10 } }
+        model.endChange(); model.undo()
+        #expect(model.settings == composed)
+        model.updateComponent(first.id) { $0.isEnabled = false }
+        #expect(model.settings == composed)
+        #expect(model.errorMessage?.contains(first.name) == true)
+        model.deleteComponent(first.id)
+        #expect(model.settings == composed)
+        model.deleteComponent(second.id)
+        #expect(model.selected?.mask.composition?.components.map(\.id) == [first.id])
+        model.undo(); #expect(model.settings == composed)
+        model.close()
+    }
+
+    @Test func lateAutomaticComponentCannotReplaceAnotherSelectedTarget() async throws {
+        let bitmap = try bitmap(), gate = LocalMaskInferenceGate()
+        let model = LocalAdjustmentEditorModel(settings: .neutral, loader: { _ in bitmap }, generator: { _, _, _ in await gate.generate() })
+        await model.load(source: source("component-late"))
+        model.add(.linear); model.add(.radial)
+        let accepted = model.settings
+        model.addComponent(.subject, operation: .subtract)
+        await gate.waitForStart()
+        model.selectedID = model.settings.localAdjustments.first?.id
+        await gate.release(); await model.waitForInference()
+        #expect(model.settings == accepted)
+        #expect(!model.isGenerating)
+        model.close()
+    }
+
+    @Test func composedFrozenMasksSurviveEditorRestartBackupAndRestoreWithoutModels() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("Glowroom-ComposedMasks-\(UUID())")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let editor = EditingModel(directory: directory)
+        try await waitLoaded(editor)
+        let raster = try LocalMaskRaster(width: 2, height: 1, bytes: Data([64, 192]))
+        let components = try [LocalMaskComponent(name: "Himmel", shape: .sky(raster), feather: 0),
+            LocalMaskComponent(name: "Verlauf", operation: .intersect, shape: .linear(start: .init(x: 0, y: 0), end: .init(x: 1, y: 1)))]
+        let layer = try LocalAdjustment(name: "Himmel geschnitten", mask: .init(composition: .init(components: components)), settings: .init(exposure: 0.5))
+        let settings = EditSettings(localAdjustments: [layer])
+        editor.setSettings(settings, for: "composed")
+        #expect(await editor.flush())
+        let backup = try #require(await editor.createBackup())
+        editor.reset(assetID: "composed"); #expect(await editor.flush())
+        #expect(await editor.restoreBackup(from: backup))
+        let reopened = EditingModel(directory: directory)
+        try await waitLoaded(reopened)
+        #expect(reopened.settings(for: "composed") == settings)
+        #expect(await reopened.flush())
+    }
+
     private func bitmap() throws -> PreviewBitmap {
         let data = Data(repeating: 100, count: 40 * 20 * 4)
         let provider = try #require(CGDataProvider(data: data as CFData))

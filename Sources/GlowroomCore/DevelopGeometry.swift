@@ -174,16 +174,19 @@ public struct DevelopGeometry: Codable, Hashable, Sendable {
     public var constrainToImage: Bool
     public var flipHorizontal: Bool
     public var flipVertical: Bool
+    public var optics: DevelopOpticsSettings
     public var retouchStrokes: [DevelopRetouchStroke]
     public var redEyeCorrections: [DevelopRedEyeCorrection]
 
     public init(crop: DevelopCropRect? = nil, quarterTurns: Int = 0,
                 straightenAngle: Double = 0, constrainToImage: Bool = true,
                 flipHorizontal: Bool = false, flipVertical: Bool = false,
+                optics: DevelopOpticsSettings = .neutral,
                 retouchStrokes: [DevelopRetouchStroke] = [], redEyeCorrections: [DevelopRedEyeCorrection] = []) {
         self.crop = crop; self.quarterTurns = quarterTurns
         self.straightenAngle = straightenAngle; self.constrainToImage = constrainToImage
         self.flipHorizontal = flipHorizontal; self.flipVertical = flipVertical
+        self.optics = optics
         self.retouchStrokes = retouchStrokes; self.redEyeCorrections = redEyeCorrections
     }
 
@@ -212,7 +215,7 @@ public struct DevelopGeometry: Codable, Hashable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case crop, quarterTurns, straightenAngle, constrainToImage, flipHorizontal, flipVertical, retouchStrokes, redEyeCorrections
+        case crop, quarterTurns, straightenAngle, constrainToImage, flipHorizontal, flipVertical, optics, retouchStrokes, redEyeCorrections
     }
     public init(from decoder: Decoder) throws {
         let value = try decoder.container(keyedBy: CodingKeys.self)
@@ -222,6 +225,7 @@ public struct DevelopGeometry: Codable, Hashable, Sendable {
                   constrainToImage: try value.decodeIfPresent(Bool.self, forKey: .constrainToImage) ?? true,
                   flipHorizontal: try value.decode(Bool.self, forKey: .flipHorizontal),
                   flipVertical: try value.decode(Bool.self, forKey: .flipVertical),
+                  optics: try value.decodeIfPresent(DevelopOpticsSettings.self, forKey: .optics) ?? .neutral,
                   retouchStrokes: try value.decode([DevelopRetouchStroke].self, forKey: .retouchStrokes),
                   redEyeCorrections: try value.decode([DevelopRedEyeCorrection].self, forKey: .redEyeCorrections))
         try validate()
@@ -237,6 +241,7 @@ public struct DevelopGeometry: Codable, Hashable, Sendable {
         if !constrainToImage { try value.encode(constrainToImage, forKey: .constrainToImage) }
         try value.encode(flipHorizontal, forKey: .flipHorizontal)
         try value.encode(flipVertical, forKey: .flipVertical)
+        if !optics.isNeutral { try value.encode(optics, forKey: .optics) }
         try value.encode(retouchStrokes, forKey: .retouchStrokes)
         try value.encode(redEyeCorrections, forKey: .redEyeCorrections)
     }

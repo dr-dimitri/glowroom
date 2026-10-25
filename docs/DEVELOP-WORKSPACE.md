@@ -66,9 +66,9 @@ Der interaktive KI-Assistent, Lookvorschläge und die KI-Anbietereinstellungen s
 
 ## Licht, Farbe und Details
 
-Die rechte Palette kennzeichnet **Globale Korrekturen** ausdrücklich. **Licht** enthält natürlichen Bildausgleich, **Einzelregler automatisch setzen**, die sechs Lichtregler (Belichtung, Kontrast, Lichter, Tiefen, Weiß, Schwarz), **HDR · erweiterter Tonwertbereich** und **Erweiterte Levels**. **Farbe** enthält Profil, Weißabgleich mit **Neutralgrau wählen**, Dynamik/Sättigung und **Schwarzweiß**. **Details** enthält die einklappbare **Präsenz** mit Struktur, Klarheit und Dunst entfernen sowie Detailvorschau, Schärfen und Entrauschen. Lokale Masken verwenden dieselben Reglernamen und kennzeichnen ihren Bereich als **Lokale Korrekturen · Licht**, Farbe und Präsenz.
+Die rechte Palette kennzeichnet **Globale Korrekturen** ausdrücklich. **Licht** enthält natürlichen Bildausgleich, **Einzelregler automatisch setzen**, die sechs Lichtregler (Belichtung, Kontrast, Lichter, Tiefen, Weiß, Schwarz), **HDR · erweiterter Tonwertbereich**, **Erweiterte Levels** und **Kurven**. **Farbe** enthält Profil, Weißabgleich mit **Neutralgrau wählen**, Dynamik/Sättigung und **Schwarzweiß**. **Details** enthält die einklappbare **Präsenz** mit Struktur, Klarheit und Dunst entfernen sowie Detailvorschau, Schärfen und Entrauschen. Lokale Masken verwenden dieselben Reglernamen und kennzeichnen ihren Bereich als **Lokale Korrekturen · Licht**, Farbe und Präsenz.
 
-Alle drei Fachgruppen lassen sich unabhängig öffnen. Der sichtbare **Einzelgruppenmodus** begrenzt offene Gruppen je Spalte und bleibt zusätzlich im Kontextmenü erreichbar. Offene Gruppen, Präsenz und erweiterte Levels werden je Arbeitsbereich gespeichert. Die IDs vorhandener Präferenzen bleiben kompatibel. **Zurücksetzen** neben einer Untergruppe nennt seinen Umfang per zugänglichem Namen; **Alle Bildkorrekturen zurücksetzen** setzt alle Korrekturen einschließlich Zuschnitt und Masken zurück; aktive Bildquelle und Tonwertverarbeitung bleiben erhalten. Geänderte Gruppen und Werte bleiben sichtbar markiert.
+Alle drei Fachgruppen lassen sich unabhängig öffnen. Der sichtbare **Einzelgruppenmodus** begrenzt offene Gruppen je Spalte und bleibt zusätzlich im Kontextmenü erreichbar. Offene Gruppen, Präsenz, erweiterte Levels und Kurven werden je Arbeitsbereich gespeichert. Die IDs vorhandener Präferenzen bleiben kompatibel. **Zurücksetzen** neben einer Untergruppe nennt seinen Umfang per zugänglichem Namen; **Alle Bildkorrekturen zurücksetzen** setzt alle Korrekturen einschließlich Zuschnitt und Masken zurück; aktive Bildquelle und Tonwertverarbeitung bleiben erhalten. Geänderte Gruppen und Werte bleiben sichtbar markiert.
 
 Die Schaltfläche **Hilfe zu Korrekturen** öffnet Erläuterungen mit 14 pt. Bedienaktionen und Werte der globalen Korrekturen und Levels verwenden mindestens 13 pt; permanente erklärende Absätze entfallen. Hilfe erläutert die unterschiedlichen Aufgaben von natürlichem Bildausgleich, Einzelregler-Automatik, Levels-Automatik und KI-Auftrag. Fehler und Fortschritt bleiben eigenständige lesbare Statusanzeigen. Bei aktivem HDR zeigt Licht den Status des gerenderten HDR-Pfads. Zusätzliche Anzeigehelligkeit hängt vom Display und dessen verfügbarer Reserve ab; die Hilfe nennt die unveränderten Exportgrenzen.
 
@@ -318,3 +318,25 @@ Verarbeitungsversion wird dabei niemals automatisch umgestellt.
 Der Stimmungsschutz ist eine konservative Grenze, keine automatische
 Motivklassifikation. Auch gesättigte helle Motive können deshalb unverändert
 bleiben; die Rückmeldung benennt vorsichtig die Tonwertverteilung.
+
+## Punktkurven und radiale Verzeichnung
+
+**Licht → Kurven** bietet Master/R/G/B-Kanalwahl und eine monotone Punktkurve.
+Punkte lassen sich wählen, hinzufügen, ziehen, über Eingangs-/Ausgangszahlen
+und zugängliche Schritttasten ändern sowie löschen; Endpunkte bleiben erhalten.
+**Reset** setzt den gewählten Kanal zurück. Pro Kanal gelten 2–16 Punkte,
+mindestens 0,001 Eingangsabstand und nicht fallende Ausgänge. Ungültige
+Eingaben erhalten die gültige Kurve. Eine Drag-Geste ist ein Undo-Schritt.
+Die Stufe liegt nach Levels und vor Präsenz/Schwarzweiß. Negative Werte und
+HDR über 1 werden mit Steigung 1 fortgesetzt; Alpha bleibt erhalten.
+[Formeln, Versions- und Prüfvertrag](DEVELOP-COLOR.md).
+
+**Zuschneiden** bietet **Verzeichnung** von −100 bis +100, ein Raster sowie
+Reset und **Auf gültige Bildfläche begrenzen**. Neutral 0 erhält den bisherigen
+Graphen. Die radiale Korrektur bezieht sich auf das orientierte vollständige
+Bild vor dem Zuschnitt und wird mit der affinen Geometrie in einem Sampling
+verbunden. Ohne Begrenzung bleiben Bereiche außerhalb der Quelle transparent.
+Masken, Retusche und Weißabgleich verwenden weiterhin die vollständige
+Quellbildfläche vor räumlichen Korrekturen. Gespeicherte Quellpunkte werden
+nicht umgeschrieben; die finale Darstellung und Detailauswahl verwenden
+den gemeinsamen Geometrieplan. [Koordinatenvertrag](DEVELOP-GEOMETRY.md).

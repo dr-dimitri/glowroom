@@ -230,7 +230,7 @@ struct DevelopDetailCanvas: View {
                 DevelopCropInputSurface(onInput: { event in
                     guard ready, workspace.picksDetail, event.kind == .pointer, event.phase == .ended,
                           DevelopDetailGeometry.normalizedPoint(event.startLocation, imageRect: rect) != nil,
-                          let point = DevelopDetailGeometry.normalizedPoint(event.location, imageRect: rect) else { return }
+                          let point = detailPoint(event.location, in: rect) else { return }
                     workspace.detailCenter = point
                     workspace.detailFitsImage = false
                     workspace.picksDetail = false
@@ -238,7 +238,7 @@ struct DevelopDetailCanvas: View {
                 }, onHover: { location in
                     guard let location else { NSCursor.arrow.set(); return }
                     guard ready, workspace.picksDetail,
-                          let point = DevelopDetailGeometry.normalizedPoint(location, imageRect: rect) else { return }
+                          let point = detailPoint(location, in: rect) else { return }
                     // Only move the existing image layer; pointer updates need
                     // no render/decode work or asynchronous worker per event.
                     if workspace.detailCenter != point { workspace.detailCenter = point }
@@ -255,5 +255,19 @@ struct DevelopDetailCanvas: View {
                     canvasIdentifier: "develop.detail-canvas", allowsViewportHitFallback: ready)
             }
         }.onDisappear { NSCursor.arrow.set() }
+    }
+
+    private func detailPoint(_ location: CGPoint, in rect: CGRect) -> CGPoint? {
+        guard let point = DevelopDetailGeometry.normalizedPoint(location, imageRect: rect) else { return nil }
+        guard !geometry.optics.isNeutral else { return point }
+        // Use the accepted adaptive raster, as the Levels picker does. The
+        // roundtrip rejects transparent warped margins without decoding again.
+        guard let display = workspace.levelsDisplay,
+              DevelopCanvasMapping(display.identity.settings.developGeometry) == DevelopCanvasMapping(geometry),
+              let mapping = try? DevelopCanvasCoordinateMapping(sourceSize: CGSize(
+                width: display.frame.actualInput.image.width, height: display.frame.actualInput.image.height), geometry: geometry),
+              let source = mapping.sourcePoint(at: location, in: rect),
+              let output = mapping.viewPoint(for: source, in: rect) else { return nil }
+        return CGPoint(x: (output.x - rect.minX) / rect.width, y: (output.y - rect.minY) / rect.height)
     }
 }

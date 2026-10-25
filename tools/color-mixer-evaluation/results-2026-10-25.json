@@ -1,0 +1,841 @@
+{
+  "schemaVersion": 1,
+  "fixtureSHA256": "115244030b14b9073d538de92557d0eb9551ef01e9468021caa98d32310734d2",
+  "productionDecision": "no-go",
+  "candidates": [
+    {
+      "candidateVersion": 1,
+      "backend": "Core Image native RGBAf (execution device unspecified)",
+      "os": "Version 27.0.1 (Build 26A434)",
+      "fixtureCount": 4295,
+      "settingsCount": 5,
+      "linearRGBTolerance": 0.0001,
+      "numericalDecision": "no-go",
+      "productionDecision": "no-go",
+      "failureCount": 42,
+      "failures": [
+        {
+          "settings": "blue-moderate",
+          "fixture": "hdr-8-5-0.25",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.00018807290874178761
+        },
+        {
+          "settings": "blue-moderate",
+          "fixture": "hdr-8-5-1",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.00018807290874178761
+        },
+        {
+          "settings": "blue-moderate",
+          "fixture": "hdr-8-6-0.25",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.000396728515625
+        },
+        {
+          "settings": "blue-moderate",
+          "fixture": "hdr-8-6-1",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.000396728515625
+        },
+        {
+          "settings": "blue-moderate",
+          "fixture": "hdr-10-5-0.25",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.000338735280564606
+        },
+        {
+          "settings": "blue-moderate",
+          "fixture": "hdr-10-5-1",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.000338735280564606
+        },
+        {
+          "settings": "blue-moderate",
+          "fixture": "hdr-10-6-0.25",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.001220703125
+        },
+        {
+          "settings": "blue-moderate",
+          "fixture": "hdr-10-6-1",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.001220703125
+        },
+        {
+          "settings": "mixed-moderate",
+          "fixture": "hdr-6-2-0.25",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.00017337665799743718
+        },
+        {
+          "settings": "mixed-moderate",
+          "fixture": "hdr-6-2-1",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.00017337665799743718
+        },
+        {
+          "settings": "mixed-moderate",
+          "fixture": "hdr-6-6-0.25",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.00011903245459166101
+        },
+        {
+          "settings": "mixed-moderate",
+          "fixture": "hdr-6-6-1",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.00011903245459166101
+        },
+        {
+          "settings": "mixed-moderate",
+          "fixture": "hdr-8-0-0.25",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.0002450794288506586
+        },
+        {
+          "settings": "mixed-moderate",
+          "fixture": "hdr-8-0-1",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.0002450794288506586
+        },
+        {
+          "settings": "mixed-moderate",
+          "fixture": "hdr-8-2-0.25",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.00021087998609914393
+        },
+        {
+          "settings": "mixed-moderate",
+          "fixture": "hdr-8-2-1",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.00021087998609914393
+        },
+        {
+          "settings": "mixed-moderate",
+          "fixture": "hdr-8-3-0.25",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.0003754404204130424
+        },
+        {
+          "settings": "mixed-moderate",
+          "fixture": "hdr-8-3-1",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.0003754404204130424
+        },
+        {
+          "settings": "mixed-moderate",
+          "fixture": "hdr-8-4-0.25",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.0004394176537161343
+        },
+        {
+          "settings": "mixed-moderate",
+          "fixture": "hdr-8-4-1",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.0004394176537161343
+        },
+        {
+          "settings": "mixed-moderate",
+          "fixture": "hdr-8-5-0.25",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.00019599189189989374
+        },
+        {
+          "settings": "mixed-moderate",
+          "fixture": "hdr-8-5-1",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.00019599189189989374
+        },
+        {
+          "settings": "mixed-moderate",
+          "fixture": "hdr-8-6-0.25",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.0005811064261251886
+        },
+        {
+          "settings": "mixed-moderate",
+          "fixture": "hdr-8-6-1",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.0005811064261251886
+        },
+        {
+          "settings": "mixed-moderate",
+          "fixture": "hdr-8-7-0.25",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.00037733262894334985
+        },
+        {
+          "settings": "mixed-moderate",
+          "fixture": "hdr-8-7-1",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.00037733262894334985
+        },
+        {
+          "settings": "mixed-moderate",
+          "fixture": "hdr-10-0-0.25",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.0012324198789883667
+        },
+        {
+          "settings": "mixed-moderate",
+          "fixture": "hdr-10-0-1",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.0012324198789883667
+        },
+        {
+          "settings": "mixed-moderate",
+          "fixture": "hdr-10-1-0.25",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.0005868176275498627
+        },
+        {
+          "settings": "mixed-moderate",
+          "fixture": "hdr-10-1-1",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.0005868176275498627
+        },
+        {
+          "settings": "mixed-moderate",
+          "fixture": "hdr-10-2-0.25",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.0007574442358873057
+        },
+        {
+          "settings": "mixed-moderate",
+          "fixture": "hdr-10-2-1",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.0007574442358873057
+        },
+        {
+          "settings": "mixed-moderate",
+          "fixture": "hdr-10-3-0.25",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.0012282265681733406
+        },
+        {
+          "settings": "mixed-moderate",
+          "fixture": "hdr-10-3-1",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.0012282265681733406
+        },
+        {
+          "settings": "mixed-moderate",
+          "fixture": "hdr-10-4-0.25",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.0024747398295517087
+        },
+        {
+          "settings": "mixed-moderate",
+          "fixture": "hdr-10-4-1",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.0024747398295517087
+        },
+        {
+          "settings": "mixed-moderate",
+          "fixture": "hdr-10-5-0.25",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.00034895909300303174
+        },
+        {
+          "settings": "mixed-moderate",
+          "fixture": "hdr-10-5-1",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.00034895909300303174
+        },
+        {
+          "settings": "mixed-moderate",
+          "fixture": "hdr-10-6-0.25",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.001656719330640044
+        },
+        {
+          "settings": "mixed-moderate",
+          "fixture": "hdr-10-6-1",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.001656719330640044
+        },
+        {
+          "settings": "mixed-moderate",
+          "fixture": "hdr-10-7-0.25",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.001271371994562287
+        },
+        {
+          "settings": "mixed-moderate",
+          "fixture": "hdr-10-7-1",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.001271371994562287
+        }
+      ],
+      "summaries": [
+        {
+          "settings": "neutral",
+          "kind": "neutral",
+          "finite": true,
+          "alphaError": 0.0,
+          "neutralIdentityError": 0.0,
+          "grayIdentityError": 0.0,
+          "orangeIsolationError": 0.0,
+          "groups": {
+            "gray": {
+              "maximumLinearRGBError": 0,
+              "worstFixture": "gray-0-0"
+            },
+            "circle": {
+              "maximumLinearRGBError": 0.0,
+              "worstFixture": "circle-0"
+            },
+            "p3": {
+              "maximumLinearRGBError": 0.0,
+              "worstFixture": "p3-0-0.25"
+            },
+            "hdr": {
+              "maximumLinearRGBError": 0.0,
+              "worstFixture": "hdr-1-0-0.25"
+            },
+            "boundary": {
+              "maximumLinearRGBError": 0.0,
+              "worstFixture": "boundary-0-left"
+            },
+            "patch": {
+              "maximumLinearRGBError": 0,
+              "worstFixture": "patch-skin-0"
+            }
+          }
+        },
+        {
+          "settings": "blue-moderate",
+          "kind": "moderate",
+          "finite": true,
+          "alphaError": 0.0,
+          "neutralIdentityError": 0.0,
+          "grayIdentityError": 0.0,
+          "orangeIsolationError": 0.0,
+          "groups": {
+            "gray": {
+              "maximumLinearRGBError": 0,
+              "worstFixture": "gray-0-0"
+            },
+            "circle": {
+              "maximumLinearRGBError": 2.6127439681222775e-06,
+              "worstFixture": "circle-2128"
+            },
+            "p3": {
+              "maximumLinearRGBError": 1.3596878704058568e-06,
+              "worstFixture": "p3-8-0.25"
+            },
+            "hdr": {
+              "maximumLinearRGBError": 0.001220703125,
+              "worstFixture": "hdr-10-6-0.25"
+            },
+            "boundary": {
+              "maximumLinearRGBError": 1.0862562723756852e-06,
+              "worstFixture": "boundary-6-left"
+            },
+            "patch": {
+              "maximumLinearRGBError": 5.178743275047193e-07,
+              "worstFixture": "patch-sky-0.25"
+            }
+          }
+        },
+        {
+          "settings": "mixed-moderate",
+          "kind": "moderate",
+          "finite": true,
+          "alphaError": 0.0,
+          "neutralIdentityError": 0.0,
+          "grayIdentityError": 0.0,
+          "orangeIsolationError": 0.0,
+          "groups": {
+            "gray": {
+              "maximumLinearRGBError": 0,
+              "worstFixture": "gray-0-0"
+            },
+            "circle": {
+              "maximumLinearRGBError": 3.545213255629065e-06,
+              "worstFixture": "circle-3419"
+            },
+            "p3": {
+              "maximumLinearRGBError": 2.700571442915134e-06,
+              "worstFixture": "p3-8-0.25"
+            },
+            "hdr": {
+              "maximumLinearRGBError": 0.0024747398295517087,
+              "worstFixture": "hdr-10-4-0.25"
+            },
+            "boundary": {
+              "maximumLinearRGBError": 1.0475887015637397e-06,
+              "worstFixture": "boundary-6-right"
+            },
+            "patch": {
+              "maximumLinearRGBError": 7.32135281733548e-07,
+              "worstFixture": "patch-skin-0.25"
+            }
+          }
+        },
+        {
+          "settings": "extreme--1",
+          "kind": "extreme",
+          "finite": true,
+          "alphaError": 0.0,
+          "neutralIdentityError": 0.0,
+          "grayIdentityError": 0.0,
+          "orangeIsolationError": 0.0,
+          "groups": {
+            "gray": {
+              "maximumLinearRGBError": 0,
+              "worstFixture": "gray-0-0"
+            },
+            "circle": {
+              "maximumLinearRGBError": 4.683345449230103e-07,
+              "worstFixture": "circle-669"
+            },
+            "p3": {
+              "maximumLinearRGBError": 2.2799201382373013e-07,
+              "worstFixture": "p3-3-0.25"
+            },
+            "hdr": {
+              "maximumLinearRGBError": 0.0004281570958255543,
+              "worstFixture": "hdr-10-3-0.25"
+            },
+            "boundary": {
+              "maximumLinearRGBError": 2.7248256385947744e-07,
+              "worstFixture": "boundary-0-right"
+            },
+            "patch": {
+              "maximumLinearRGBError": 2.0948894037184362e-07,
+              "worstFixture": "patch-near-lms-zero-0.25"
+            }
+          }
+        },
+        {
+          "settings": "extreme-1",
+          "kind": "extreme",
+          "finite": true,
+          "alphaError": 0.0,
+          "neutralIdentityError": 0.0,
+          "grayIdentityError": 0.0,
+          "orangeIsolationError": 0.0,
+          "groups": {
+            "gray": {
+              "maximumLinearRGBError": 0,
+              "worstFixture": "gray-0-0"
+            },
+            "circle": {
+              "maximumLinearRGBError": 9.717467996050999e-06,
+              "worstFixture": "circle-2688"
+            },
+            "p3": {
+              "maximumLinearRGBError": 7.454230683379137e-06,
+              "worstFixture": "p3-8-0.25"
+            },
+            "hdr": {
+              "maximumLinearRGBError": 0.003775375842678841,
+              "worstFixture": "hdr-10-6-0.25"
+            },
+            "boundary": {
+              "maximumLinearRGBError": 3.909211501396115e-06,
+              "worstFixture": "boundary-0-at"
+            },
+            "patch": {
+              "maximumLinearRGBError": 0.00029284188335232386,
+              "worstFixture": "patch-near-lms-zero-0.25"
+            }
+          }
+        }
+      ],
+      "missingProductionEvidence": [
+        "Natural-photo and saturated P3 visual acceptance, including banding and hue fringes",
+        "Product integration, persistence/backup/undo and stale-result acceptance",
+        "Native 1000 x 660, keyboard and VoiceOver acceptance"
+      ]
+    },
+    {
+      "candidateVersion": 2,
+      "backend": "Core Image native RGBAf (execution device unspecified)",
+      "os": "Version 27.0.1 (Build 26A434)",
+      "fixtureCount": 4295,
+      "settingsCount": 5,
+      "linearRGBTolerance": 0.0001,
+      "numericalDecision": "no-go",
+      "productionDecision": "no-go",
+      "failureCount": 32,
+      "failures": [
+        {
+          "settings": "blue-moderate",
+          "fixture": "hdr-8-6-0.25",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.000152587890625
+        },
+        {
+          "settings": "blue-moderate",
+          "fixture": "hdr-8-6-1",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.000152587890625
+        },
+        {
+          "settings": "blue-moderate",
+          "fixture": "hdr-10-5-0.25",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.00039761500602253363
+        },
+        {
+          "settings": "blue-moderate",
+          "fixture": "hdr-10-5-1",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.00039761500602253363
+        },
+        {
+          "settings": "blue-moderate",
+          "fixture": "hdr-10-6-0.25",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.000732421875
+        },
+        {
+          "settings": "blue-moderate",
+          "fixture": "hdr-10-6-1",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.000732421875
+        },
+        {
+          "settings": "mixed-moderate",
+          "fixture": "hdr-8-0-0.25",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.00012290573431528173
+        },
+        {
+          "settings": "mixed-moderate",
+          "fixture": "hdr-8-0-1",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.00012290573431528173
+        },
+        {
+          "settings": "mixed-moderate",
+          "fixture": "hdr-8-2-0.25",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.0002509395314973517
+        },
+        {
+          "settings": "mixed-moderate",
+          "fixture": "hdr-8-2-1",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.0002509395314973517
+        },
+        {
+          "settings": "mixed-moderate",
+          "fixture": "hdr-8-4-0.25",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.00018332867087167415
+        },
+        {
+          "settings": "mixed-moderate",
+          "fixture": "hdr-8-4-1",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.00018332867087167415
+        },
+        {
+          "settings": "mixed-moderate",
+          "fixture": "hdr-8-6-0.25",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.00028206017634602176
+        },
+        {
+          "settings": "mixed-moderate",
+          "fixture": "hdr-8-6-1",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.00028206017634602176
+        },
+        {
+          "settings": "mixed-moderate",
+          "fixture": "hdr-8-7-0.25",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.00026975582483146354
+        },
+        {
+          "settings": "mixed-moderate",
+          "fixture": "hdr-8-7-1",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.00026975582483146354
+        },
+        {
+          "settings": "mixed-moderate",
+          "fixture": "hdr-10-0-0.25",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.0002554438499373646
+        },
+        {
+          "settings": "mixed-moderate",
+          "fixture": "hdr-10-0-1",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.0002554438499373646
+        },
+        {
+          "settings": "mixed-moderate",
+          "fixture": "hdr-10-1-0.25",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.0007154146642278647
+        },
+        {
+          "settings": "mixed-moderate",
+          "fixture": "hdr-10-1-1",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.0007154146642278647
+        },
+        {
+          "settings": "mixed-moderate",
+          "fixture": "hdr-10-2-0.25",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.00030302070831567107
+        },
+        {
+          "settings": "mixed-moderate",
+          "fixture": "hdr-10-2-1",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.00030302070831567107
+        },
+        {
+          "settings": "mixed-moderate",
+          "fixture": "hdr-10-3-0.25",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.0004971635606807467
+        },
+        {
+          "settings": "mixed-moderate",
+          "fixture": "hdr-10-3-1",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.0004971635606807467
+        },
+        {
+          "settings": "mixed-moderate",
+          "fixture": "hdr-10-4-0.25",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.001402821915178265
+        },
+        {
+          "settings": "mixed-moderate",
+          "fixture": "hdr-10-4-1",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.001402821915178265
+        },
+        {
+          "settings": "mixed-moderate",
+          "fixture": "hdr-10-5-0.25",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.0002940652498182317
+        },
+        {
+          "settings": "mixed-moderate",
+          "fixture": "hdr-10-5-1",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.0002940652498182317
+        },
+        {
+          "settings": "mixed-moderate",
+          "fixture": "hdr-10-6-0.25",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.0010708858940233767
+        },
+        {
+          "settings": "mixed-moderate",
+          "fixture": "hdr-10-6-1",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.0010708858940233767
+        },
+        {
+          "settings": "mixed-moderate",
+          "fixture": "hdr-10-7-0.25",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.0005439340670818638
+        },
+        {
+          "settings": "mixed-moderate",
+          "fixture": "hdr-10-7-1",
+          "reason": "linear RGB error exceeds fixed gate",
+          "error": 0.0005439340670818638
+        }
+      ],
+      "summaries": [
+        {
+          "settings": "neutral",
+          "kind": "neutral",
+          "finite": true,
+          "alphaError": 0.0,
+          "neutralIdentityError": 0.0,
+          "grayIdentityError": 0.0,
+          "orangeIsolationError": 0.0,
+          "groups": {
+            "gray": {
+              "maximumLinearRGBError": 0,
+              "worstFixture": "gray-0-0"
+            },
+            "circle": {
+              "maximumLinearRGBError": 0.0,
+              "worstFixture": "circle-0"
+            },
+            "p3": {
+              "maximumLinearRGBError": 0.0,
+              "worstFixture": "p3-0-0.25"
+            },
+            "hdr": {
+              "maximumLinearRGBError": 0.0,
+              "worstFixture": "hdr-1-0-0.25"
+            },
+            "boundary": {
+              "maximumLinearRGBError": 0.0,
+              "worstFixture": "boundary-0-left"
+            },
+            "patch": {
+              "maximumLinearRGBError": 0,
+              "worstFixture": "patch-skin-0"
+            }
+          }
+        },
+        {
+          "settings": "blue-moderate",
+          "kind": "moderate",
+          "finite": true,
+          "alphaError": 0.0,
+          "neutralIdentityError": 0.0,
+          "grayIdentityError": 0.0,
+          "orangeIsolationError": 0.0,
+          "groups": {
+            "gray": {
+              "maximumLinearRGBError": 0,
+              "worstFixture": "gray-0-0"
+            },
+            "circle": {
+              "maximumLinearRGBError": 2.3031473943557756e-06,
+              "worstFixture": "circle-2974"
+            },
+            "p3": {
+              "maximumLinearRGBError": 2.222519277172985e-06,
+              "worstFixture": "p3-8-0.25"
+            },
+            "hdr": {
+              "maximumLinearRGBError": 0.000732421875,
+              "worstFixture": "hdr-10-6-0.25"
+            },
+            "boundary": {
+              "maximumLinearRGBError": 8.103102017154029e-08,
+              "worstFixture": "boundary-5-left"
+            },
+            "patch": {
+              "maximumLinearRGBError": 8.606153780420234e-08,
+              "worstFixture": "patch-negative-lms-0.25"
+            }
+          }
+        },
+        {
+          "settings": "mixed-moderate",
+          "kind": "moderate",
+          "finite": true,
+          "alphaError": 0.0,
+          "neutralIdentityError": 0.0,
+          "grayIdentityError": 0.0,
+          "orangeIsolationError": 0.0,
+          "groups": {
+            "gray": {
+              "maximumLinearRGBError": 0,
+              "worstFixture": "gray-0-0"
+            },
+            "circle": {
+              "maximumLinearRGBError": 3.940941928792796e-06,
+              "worstFixture": "circle-2974"
+            },
+            "p3": {
+              "maximumLinearRGBError": 3.5634028497932846e-06,
+              "worstFixture": "p3-8-0.25"
+            },
+            "hdr": {
+              "maximumLinearRGBError": 0.001402821915178265,
+              "worstFixture": "hdr-10-4-0.25"
+            },
+            "boundary": {
+              "maximumLinearRGBError": 7.407728294522853e-07,
+              "worstFixture": "boundary-4-right"
+            },
+            "patch": {
+              "maximumLinearRGBError": 6.089705730794037e-07,
+              "worstFixture": "patch-orange-0.25"
+            }
+          }
+        },
+        {
+          "settings": "extreme--1",
+          "kind": "extreme",
+          "finite": true,
+          "alphaError": 0.0,
+          "neutralIdentityError": 0.0,
+          "grayIdentityError": 0.0,
+          "orangeIsolationError": 0.0,
+          "groups": {
+            "gray": {
+              "maximumLinearRGBError": 0,
+              "worstFixture": "gray-0-0"
+            },
+            "circle": {
+              "maximumLinearRGBError": 2.8662419537806016e-06,
+              "worstFixture": "circle-678"
+            },
+            "p3": {
+              "maximumLinearRGBError": 1.1972834850215719e-06,
+              "worstFixture": "p3-3-0.25"
+            },
+            "hdr": {
+              "maximumLinearRGBError": 0.0015743899016342766,
+              "worstFixture": "hdr-10-3-0.25"
+            },
+            "boundary": {
+              "maximumLinearRGBError": 1.0526925028342404e-06,
+              "worstFixture": "boundary-0-right"
+            },
+            "patch": {
+              "maximumLinearRGBError": 7.636197600913164e-07,
+              "worstFixture": "patch-orange-0.25"
+            }
+          }
+        },
+        {
+          "settings": "extreme-1",
+          "kind": "extreme",
+          "finite": true,
+          "alphaError": 0.0,
+          "neutralIdentityError": 0.0,
+          "grayIdentityError": 0.0,
+          "orangeIsolationError": 0.0,
+          "groups": {
+            "gray": {
+              "maximumLinearRGBError": 0,
+              "worstFixture": "gray-0-0"
+            },
+            "circle": {
+              "maximumLinearRGBError": 8.921379253568062e-06,
+              "worstFixture": "circle-2688"
+            },
+            "p3": {
+              "maximumLinearRGBError": 6.412585342285837e-06,
+              "worstFixture": "p3-8-0.25"
+            },
+            "hdr": {
+              "maximumLinearRGBError": 0.0033116127183348,
+              "worstFixture": "hdr-10-6-0.25"
+            },
+            "boundary": {
+              "maximumLinearRGBError": 3.0877737540180306e-06,
+              "worstFixture": "boundary-5-right"
+            },
+            "patch": {
+              "maximumLinearRGBError": 0.000293075438156265,
+              "worstFixture": "patch-near-lms-zero-0.25"
+            }
+          }
+        }
+      ],
+      "missingProductionEvidence": [
+        "Natural-photo and saturated P3 visual acceptance, including banding and hue fringes",
+        "Product integration, persistence/backup/undo and stale-result acceptance",
+        "Native 1000 x 660, keyboard and VoiceOver acceptance"
+      ]
+    }
+  ]
+}

@@ -417,6 +417,42 @@ struct CompactMaskLayoutTests {
         #expect(await fixture.library.finishSaving())
     }
 
+    @Test func componentControlsAndSelectedComponentRemainAccessibleInMinimumWorkspace() async throws {
+        // A 1000×660 workspace leaves a 300×460 inspector next to its canvas.
+        let fixture = try await CompactMaskFixture.make()
+        let inspector = CompactMaskHost(width: 300, height: 460)
+        let palette = CompactMaskHost(width: 250, height: 240)
+        defer { inspector.close(); palette.close(); fixture.close() }
+        fixture.model.add(.linear)
+        fixture.model.addComponent(.radial, operation: .intersect)
+        let component = try #require(fixture.model.selectedComponent)
+        try await inspector.mount(LocalMaskComponentControls(workspace: fixture.workspace, model: fixture.model).padding(12))
+        try await palette.mount(InlineMaskList(workspace: fixture.workspace, maximumHeight: 240))
+        #expect(inspector.fittingHeight <= 460)
+        for identifier in ["local-mask.component.add", "local-mask.component.name", "local-mask.component.operation", "local-mask.component.invert", "local-mask.component.overlay-mode", "local-mask.component.overlay-label"] {
+            let control = try inspector.element(identifier)
+            #expect(control.isAccessibilityEnabled())
+            let frame = control.accessibilityFrame()
+            #expect(frame.width > 0 && frame.height > 0)
+            #expect(inspector.screenFrame.insetBy(dx: -1, dy: -1).contains(frame))
+        }
+        let componentIdentifier = "local-mask.component.select.\(component.id.uuidString)"
+        if !palette.elements.contains(where: { $0.accessibilityIdentifier() == componentIdentifier }) {
+            let tree = palette.elements.prefix(100).map {
+                "\($0.accessibilityIdentifier() ?? "nil") | \($0.accessibilityLabel() ?? "nil") | \($0.accessibilityRole()?.rawValue ?? "nil")"
+            }.joined(separator: "\n")
+            Issue.record("Component palette AX tree: \(tree)")
+        }
+        try palette.snapshotIfRequested("mask-components-palette")
+        let selected = try palette.element("local-mask.component.select.\(component.id.uuidString)")
+        #expect(selected.isAccessibilityEnabled())
+        #expect(palette.screenFrame.insetBy(dx: -1, dy: -1).contains(selected.accessibilityFrame()))
+        #expect(try inspector.element("local-mask.component.invert").accessibilityPerformPress())
+        try await inspector.settle()
+        #expect(fixture.model.selectedComponent?.isInverted == true)
+        #expect(await fixture.library.finishSaving())
+    }
+
     @Test func floatingMaskListKeepsItsHeightWhenTheLayerLimitIsReached() async throws {
         let fixture = try await CompactMaskFixture.make()
         let host = CompactMaskHost(width: 250, height: 260)

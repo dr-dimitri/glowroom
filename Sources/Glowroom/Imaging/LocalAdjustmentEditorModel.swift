@@ -56,7 +56,11 @@ final class LocalAdjustmentEditorModel: ObservableObject {
         didSet {
             guard oldValue != selectedID else { return }
             endChange(); inputContextID = UUID()
+            selectedComponentID = settings.localAdjustments.first(where: { $0.id == selectedID })?.mask.composition?.components.first?.id
         }
+    }
+    @Published var selectedComponentID: UUID? {
+        didSet { if oldValue != selectedComponentID { endChange(); inputContextID = UUID() } }
     }
     @Published private(set) var bitmap: PreviewBitmap?
     @Published private(set) var canvasSize: ArtifactPixelSize?
@@ -70,13 +74,14 @@ final class LocalAdjustmentEditorModel: ObservableObject {
     private struct HistoryState {
         let layers: [LocalAdjustment]
         let selectedID: UUID?
+        let selectedComponentID: UUID?
     }
     private var history = BoundedEditingHistory<HistoryState> { state in
         var footprint = EditingHistoryFootprint.layers(state.layers)
-        footprint.metadataBytes += MemoryLayout<UUID?>.stride
+        footprint.metadataBytes += 2 * MemoryLayout<UUID?>.stride
         return footprint
     }
-    private var historyState: HistoryState { .init(layers: settings.localAdjustments, selectedID: selectedID) }
+    private var historyState: HistoryState { .init(layers: settings.localAdjustments, selectedID: selectedID, selectedComponentID: selectedComponentID) }
     private var groupStart: HistoryState? { history.group() }
     var historyStateCount: Int { history.count }
     var historyByteCount: Int { history.byteCount }
@@ -100,16 +105,97 @@ final class LocalAdjustmentEditorModel: ObservableObject {
         self.loader = loader
         self.generator = generator
         selectedID = settings.localAdjustments.first?.id
+        selectedComponentID = settings.localAdjustments.first?.mask.composition?.components.first?.id
     }
 
     var selected: LocalAdjustment? { settings.localAdjustments.first { $0.id == selectedID } }
+    var selectedComponent: LocalMaskComponent? {
+        selected?.mask.composition?.components.first { $0.id == selectedComponentID }
+    }
+    var selectedMask: LocalAdjustmentMask? {
+        if let component = selectedComponent { return try? component.selectionMask() }
+        guard selected?.mask.composition == nil else { return nil }
+        return selected?.mask
+    }
+    var canAddComponent: Bool {
+        guard let selected, canvasSize != nil, !isLoading, !isGenerating else { return false }
+        let count = selected.mask.composition?.components.count ?? 1
+        let total = settings.localAdjustments.reduce(0) { $0 + $1.mask.componentCount }
+        return count < LocalMaskComposition.maximumComponents && total + 1 <= LocalAdjustment.maximumTotalComponents
+    }
     var hasActiveChange: Bool { groupStart != nil }
+
+    /// Edits the selected component, or the unchanged legacy single selection.
+    func updateSelectedMask(_ update: (inout LocalAdjustmentMask) -> Void) {
+        guard let index = settings.localAdjustments.firstIndex(where: { $0.id == selectedID }),
+              var selection = selectedMask else { return }
+        update(&selection)
+        var layers = settings.localAdjustments
+        do {
+            try selection.validate()
+            if var composition = layers[index].mask.composition,
+               let componentIndex = composition.components.firstIndex(where: { $0.id == selectedComponentID }) {
+                composition.components[componentIndex].shape = selection.shape
+                composition.components[componentIndex].refinement = selection.refinement
+                composition.components[componentIndex].feather = selection.feather
+                composition.components[componentIndex].isInverted = selection.isInverted
+                try layers[index].mask.setComposition(composition)
+            } else { layers[index].mask = selection }
+            try install(layers)
+        } catch { errorMessage = Self.message(for: error) }
+    }
+    func updateComponent(_ id: UUID, _ update: (inout LocalMaskComponent) -> Void) {
+        guard let index = settings.localAdjustments.firstIndex(where: { $0.id == selectedID }),
+              var composition = settings.localAdjustments[index].mask.composition,
+              let componentIndex = composition.components.firstIndex(where: { $0.id == id }) else { return }
+        update(&composition.components[componentIndex])
+        var layers = settings.localAdjustments
+        do { try layers[index].mask.setComposition(composition); try install(layers) }
+        catch { errorMessage = Self.message(for: error) }
+    }
+    func deleteComponent(_ id: UUID) {
+        endChange(); cancelInference()
+        guard let index = settings.localAdjustments.firstIndex(where: { $0.id == selectedID }),
+              var composition = settings.localAdjustments[index].mask.composition,
+              let removed = composition.components.firstIndex(where: { $0.id == id }) else { return }
+        composition.components.remove(at: removed)
+        var layers = settings.localAdjustments
+        do {
+            try layers[index].mask.setComposition(composition)
+            guard try install(layers) else { return }
+            if selectedComponentID == id { selectedComponentID = composition.components.first?.id }
+        } catch { errorMessage = Self.message(for: error) }
+    }
+    func addComponent(_ kind: LocalMaskCreation, operation: LocalMaskOperation) {
+        endChange()
+        guard canAddComponent, let canvasSize else { return }
+        do {
+            switch kind {
+            case .brush: try appendComponent(kind.title, shape: .brush(MaskDocument(canvasSize: canvasSize)), operation: operation)
+            case .linear: try appendComponent(kind.title, shape: .linear(start: .init(x: 0.5, y: 0.2), end: .init(x: 0.5, y: 0.8)), operation: operation)
+            case .radial: try appendComponent(kind.title, shape: .radial(center: .init(x: 0.5, y: 0.5), radiusX: 0.3, radiusY: 0.3, rotation: 0), operation: operation)
+            case .subject, .sky: generate(kind == .subject ? .subject : .sky, componentOperation: operation)
+            case .background: generate(.subject, isBackground: true, componentOperation: operation)
+            }
+        } catch { errorMessage = Self.message(for: error) }
+    }
+    private func appendComponent(_ name: String, shape: LocalMaskShape, feather: Double = 0.5, operation: LocalMaskOperation) throws {
+        guard let index = settings.localAdjustments.firstIndex(where: { $0.id == selectedID }) else { return }
+        var layers = settings.localAdjustments
+        var composition = try layers[index].mask.convertedToComposition(name: layers[index].name)
+        let component = try LocalMaskComponent(name: name, operation: operation, shape: shape, feather: feather)
+        composition.components.append(component)
+        try layers[index].mask.setComposition(composition)
+        guard try install(layers) else { return }
+        selectedComponentID = component.id
+    }
 
     /// Reopening the inline inspector starts from the current accepted edit.
     func reset(settings: EditSettings) {
         close()
         self.settings = settings
         selectedID = settings.localAdjustments.first?.id
+        restoreComponentSelection(nil)
     }
 
     func load(source: AISourceIdentity) async {
@@ -129,7 +215,7 @@ final class LocalAdjustmentEditorModel: ObservableObject {
         } catch is CancellationError {
             if token == session { isLoading = false; self.source = nil; bitmap = nil; canvasSize = nil }
         }
-        catch { if token == session { errorMessage = error.localizedDescription; isLoading = false } }
+        catch { if token == session { errorMessage = Self.message(for: error); isLoading = false } }
     }
 
     func add(_ kind: LocalMaskCreation) {
@@ -150,7 +236,7 @@ final class LocalAdjustmentEditorModel: ObservableObject {
             case .background:
                 generate(.subject, isBackground: true)
             }
-        } catch { errorMessage = error.localizedDescription }
+        } catch { errorMessage = Self.message(for: error) }
     }
 
     private func append(_ name: String, shape: LocalMaskShape, feather: Double = 0.5) throws {
@@ -171,7 +257,7 @@ final class LocalAdjustmentEditorModel: ObservableObject {
             guard try install(settings.localAdjustments + [layer]) else { return false }
             selectedID = layer.id
             return true
-        } catch { errorMessage = error.localizedDescription; return false }
+        } catch { errorMessage = Self.message(for: error); return false }
     }
 
     func updateSelected(_ update: (inout LocalAdjustment) -> Void) {
@@ -179,7 +265,7 @@ final class LocalAdjustmentEditorModel: ObservableObject {
         var layers = settings.localAdjustments
         update(&layers[index])
         layers[index].settings = layers[index].settings.normalized
-        do { try install(layers) } catch { errorMessage = error.localizedDescription }
+        do { try install(layers) } catch { errorMessage = Self.message(for: error) }
     }
 
     func deleteSelected() {
@@ -196,7 +282,7 @@ final class LocalAdjustmentEditorModel: ObservableObject {
             guard try install(layers) else { return }
             if selectedID == id { selectedID = layers.isEmpty ? nil : layers[min(index, layers.count - 1)].id }
         }
-        catch { errorMessage = error.localizedDescription }
+        catch { errorMessage = Self.message(for: error) }
     }
 
     func moveSelected(by offset: Int) {
@@ -206,7 +292,7 @@ final class LocalAdjustmentEditorModel: ObservableObject {
         guard settings.localAdjustments.indices.contains(destination), destination != index else { return }
         var layers = settings.localAdjustments
         layers.swapAt(index, destination)
-        do { try install(layers) } catch { errorMessage = error.localizedDescription }
+        do { try install(layers) } catch { errorMessage = Self.message(for: error) }
     }
 
     func duplicateSelected() {
@@ -217,7 +303,7 @@ final class LocalAdjustmentEditorModel: ObservableObject {
                 mask: selected.mask, settings: selected.settings, isEnabled: selected.isEnabled)
             guard try install(settings.localAdjustments + [duplicate]) else { return }
             selectedID = duplicate.id
-        } catch { errorMessage = error.localizedDescription }
+        } catch { errorMessage = Self.message(for: error) }
     }
 
     func beginChange() { history.beginGroup(historyState) }
@@ -234,7 +320,7 @@ final class LocalAdjustmentEditorModel: ObservableObject {
         history.popUndo()
         inputContextID = UUID()
         history.appendRedo(historyState); settings = candidate
-        restoreSelection(previous.selectedID); updateHistory()
+        restoreSelection(previous.selectedID); restoreComponentSelection(previous.selectedComponentID); updateHistory()
     }
     func redo() {
         cancelInference()
@@ -245,7 +331,7 @@ final class LocalAdjustmentEditorModel: ObservableObject {
         history.popRedo()
         inputContextID = UUID()
         history.appendUndo(historyState); settings = candidate
-        restoreSelection(next.selectedID); updateHistory()
+        restoreSelection(next.selectedID); restoreComponentSelection(next.selectedComponentID); updateHistory()
     }
     private func restoreSelection(_ preferredID: UUID?) {
         // A restored creation must select that mask again, even when another
@@ -256,6 +342,13 @@ final class LocalAdjustmentEditorModel: ObservableObject {
         // Reassigning the same @Published value would look like selection to
         // the workspace and reveal the overlay after a correction-only undo.
         if selectedID != restoredID { selectedID = restoredID }
+    }
+    private func restoreComponentSelection(_ preferredID: UUID?) {
+        let restoredID = selected?.mask.composition?.components.contains(where: { $0.id == preferredID }) == true
+            ? preferredID : selected?.mask.composition?.components.first?.id
+        // Avoid publishing an unchanged selection during correction-only undo:
+        // the workspace would otherwise reveal the selection overlay again.
+        if selectedComponentID != restoredID { selectedComponentID = restoredID }
     }
     @discardableResult private func install(_ layers: [LocalAdjustment]) throws -> Bool {
         guard settings.localAdjustments != layers else { return true }
@@ -277,9 +370,12 @@ final class LocalAdjustmentEditorModel: ObservableObject {
         canRedo = history.canRedo()
     }
 
-    private func generate(_ kind: AutomaticMaskKind, isBackground: Bool = false) {
+    private func generate(_ kind: AutomaticMaskKind, isBackground: Bool = false, componentOperation: LocalMaskOperation? = nil) {
         guard !isGenerating, let bitmap, let source else { return }
         let token = UUID(), currentSession = session
+        let componentTarget = componentOperation == nil ? nil : selectedID
+        let componentBaseline = componentOperation == nil ? nil : selected?.mask
+        let componentContext = inputContextID
         operation = token; isGenerating = true; errorMessage = nil
         let sourceURL: URL?
         if case .original(let original) = source { sourceURL = URL(fileURLWithPath: original.standardizedPath) }
@@ -294,10 +390,15 @@ final class LocalAdjustmentEditorModel: ObservableObject {
                 // The inferred matte already carries edge coverage. A broad
                 // default blur would close small background gaps and produce
                 // halos; explicit feather edits and saved masks stay unchanged.
-                try self.append(name, shape: kind == .subject ? .subject(raster) : .sky(raster), feather: 0)
+                let shape: LocalMaskShape = kind == .subject ? .subject(raster) : .sky(raster)
+                if let componentOperation {
+                    guard self.selectedID == componentTarget, self.selected?.mask == componentBaseline,
+                          self.inputContextID == componentContext else { throw CancellationError() }
+                    try self.appendComponent(name, shape: shape, feather: 0, operation: componentOperation)
+                } else { try self.append(name, shape: shape, feather: 0) }
             } catch is CancellationError { }
             catch {
-                if let self, self.session == currentSession, self.operation == token { self.errorMessage = error.localizedDescription }
+                if let self, self.session == currentSession, self.operation == token { self.errorMessage = Self.message(for: error) }
             }
             if let self, self.operation == token { self.operation = nil; self.isGenerating = false; self.inference = nil }
         }
@@ -323,4 +424,8 @@ final class LocalAdjustmentEditorModel: ObservableObject {
         history.removeAll(); errorMessage = nil; updateHistory()
     }
     func waitForInference() async { if let inference { await inference.value } }
+    nonisolated private static func message(for error: any Error) -> String {
+        if case ArtifactContractError.invalidValue(let detail) = error, detail.hasPrefix("Erster aktiver Bestandteil") { return detail }
+        return error.localizedDescription
+    }
 }

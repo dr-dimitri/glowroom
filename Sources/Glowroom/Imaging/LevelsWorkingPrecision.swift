@@ -7,7 +7,7 @@ extension EditSettings {
     /// New Levels use Float even on a legacy tone receipt. This selects buffer
     /// precision only: the saved tone algorithm and its kernels stay unchanged.
     var usesFloatWorkingGraph: Bool {
-        toneProcessingVersion == .consistentV2 || !levels.isNeutral
+        toneProcessingVersion == .consistentV2 || !levels.isNeutral || !toneCurves.isNeutral
     }
 
     /// Reuse the existing conservative Float allocation plan without changing
@@ -19,7 +19,9 @@ extension EditSettings {
     /// Two additional RGBAf planes cover the node/range reduction and, when
     /// later filters are active, its final finite-value proof. No CPU full-frame
     /// buffer or histogram is allocated by Levels.
-    var additionalLevelsBytesPerPixel: UInt64 { levels.isNeutral ? 0 : 32 }
+    var additionalLevelsBytesPerPixel: UInt64 {
+        (levels.isNeutral ? 0 : 32) + (toneCurves.isNeutral ? 0 : 32)
+    }
 }
 
 extension PreviewBitmap {

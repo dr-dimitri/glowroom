@@ -114,7 +114,9 @@ Nach Entrauschung, Bildausgleich sowie Profil und Weißabgleich folgen:
 4. Dehaze und Farbregler nach den bestehenden Formeln, danach Decoding.
 5. Globale Tonwertkorrektur (Levels) in vorzeichenrichtiger sRGB-Domäne, danach
    wieder Decoding. Neutrale Levels überspringen diese zusätzliche Stufe.
-6. Präsenz, Schwarzweiß und Schärfen; lokale Masken erben dieselbe Prozessversion.
+6. Optionale globale Punktkurven: R/G/B vor Master in vorzeichenrichtiger
+   sRGB-Domäne, danach Decoding. Identität überspringt die Stufe vollständig.
+7. Präsenz, Schwarzweiß und Schärfen; lokale Masken erben dieselbe Prozessversion.
 
 Für das Encoding gilt betragsweise `12.92*x` bis `0.0031308`, sonst
 `1.055*x^(1/2.4)-0.055`; das Vorzeichen bleibt erhalten. Das Decoding verwendet
@@ -381,3 +383,123 @@ Die Quellfläche zählt bereits im Basisplan; Schärfung bleibt separat erfasst.
 ## Bedienordnung der Korrekturen (#196)
 
 **Licht** besitzt die sechs globalen Lichtregler, natürlichen Bildausgleich, Einzelregler-Automatik, HDR und erweiterte Levels. **Farbe** besitzt Profil, Weißabgleich, Dynamik/Sättigung und Schwarzweiß. **Details** besitzt Präsenz, Detailvorschau, Schärfen und Entrauschen. HDR bleibt in `developColor.hdrEnabled` gespeichert; nur seine Bedienung und Änderungsanzeige gehören nun zu Licht. Das Öffnen/Schließen einer Gruppe verändert keine Einstellungen oder Tonwertversion. HDR-/Exportverträge, Levels-Kanäle und Clamps sowie die Bildberechnungen bleiben unverändert. Hilfe öffnet sich ausdrücklich in normaler Textgröße.
+
+## Globale Punktkurven (Version 1, #214)
+
+Unter **Licht → Kurven** lassen sich RGB-Master, Rot, Grün und Blau getrennt
+formen. Kanal und Punkt sind über Menüs wählbar. Doppelklick auf die Kurve
+oder **+** fügt einen Punkt hinzu; Ziehen, numerische Koordinaten und die
+zugänglichen Eingang-/Ausgangsschritttasten verändern ihn. **−** löscht einen
+inneren Punkt, **Reset** setzt den gewählten Kanal zurück. Die Endpunkte bei
+x=0 und x=1 bleiben vorhanden. Eine Drag-Geste ist ein Undo-Schritt. Bei
+kleinem Fenster bleibt der Editor im normalen scrollbaren Licht-Inspektor.
+
+Jeder Kanal besitzt 2–16 Punkte mit x/y in 0–1. x steigt streng mit mindestens
+0,001 Abstand, y fällt nie. Ungültige Zahlen, Kreuzungen, zu enge Punkte und
+beschädigte persistierte Daten werden abgewiesen. Die UI erhält den letzten
+gültigen Stand. Zusätzliche Punkte auf y=x sind wirkungslos. Solange alle vier Kurven
+wirkungslos sind, hält der Editor solche Punkte ausschließlich als lokalen
+Entwurf; sie erzeugen keine Revision, Speicherung oder Undo-Aktion. Erst eine
+wirksame Kurvenänderung übernimmt die vollständige Punktliste dauerhaft.
+Beim Rückweg zur vollständigen Identität bleiben zusätzliche Punkte nur im
+Editor, der gespeicherte Stand ist wieder die kanonische Zweipunkt-Identität.
+Ein Neustart verwirft ausschließlich diese wirkungslosen Entwurfspunkte.
+Damit bleiben historische Snapshotbytes unverändert und SQL-Snapshot,
+Speicherbeleg und nächster erwarteter Speicherstand stimmen exakt überein.
+Direktes Encoding nichtkanonischer `EditSettings` mit einer weggelassenen
+Mehrpunkt-Identität wird abgewiesen; eine alleinstehende
+`ToneCurveSettings`-Darstellung kann ihre expliziten Punkte roundtrippen.
+
+Der Vertrag `toneCurves.version=1`, `transferFunction=signedSRGB` ist unabhängig
+von der bestehenden Tonwertversion. Die Stufe läuft global **nach Levels, vor
+Präsenz und Schwarzweiß**, auf ungepremultipliziertem RGB im bereits vorhandenen
+linearen sRGB-Arbeitsraum: vorzeichenrichtig kodieren, zuerst Einzelkanal und
+danach Master auswerten, dekodieren, Originalalpha anwenden. Kein Kanalworker,
+keine LUT- oder 8-Bit-Quantisierung und kein zusätzliches RAW-Decodieren.
+
+Die mathematische Spezifikation ist monotone kubische Hermite-Interpolation:
+für Punkte `(x_i,y_i)` gelten `d_i=(y_(i+1)−y_i)/(x_(i+1)−x_i)`,
+`m_0=d_0`, `m_n=d_(n−1)` und innere `m_i=(d_(i−1)+d_i)/2`.
+Jedes Segment wird in Reihenfolge begrenzt: bei `d_i=0` beide angrenzenden
+Tangenten auf 0 setzen; sonst `a=m_i/d_i`, `b=m_(i+1)/d_i` und bei
+`a²+b²>9` beide Tangenten mit `3/sqrt(a²+b²)` multiplizieren.
+Mit `t=(x−x_i)/h`, `h=x_(i+1)−x_i` ist
+`f=(2t³−3t²+1)y_i+(t³−2t²+t)h*m_i+(−2t³+3t²)y_(i+1)+(t³−t²)h*m_(i+1)`.
+Unter 0 gilt `f(x)=y_0+x`, über 1 `f(x)=y_n+x−1`: negative Gamutwerte und
+HDR werden ohne implizite SDR-Begrenzung mit Steigung 1 fortgesetzt.
+
+Der tatsächliche Float-Kernel wertet die äquivalente Bernstein-Form mit
+Kontrollwerten `y_i`, `y_i+h*m_i/3`, `y_(i+1)−h*m_(i+1)/3`, `y_(i+1)`
+aus. Höchstens 32 Kurvenidentitäten halten vorbereitete Koeffizienten und
+kompilierte Kernel vor. Die Vorschau hält einen kleinen, nach Quelle,
+Präfix, Arbeitspräzision und Levels versionierten Eingangsbereichsnachweis;
+Punktbewegungen verwenden ihn erneut. Änderungen vor der Kurve entwerten ihn.
+Auch eingefrorene Retuscheflächen halten getrennte Levels-/Kurvennachweise
+für ihre tatsächlichen Pixel und ihre Platzierung vor. Entfernte oder veränderte
+Flächen werden vor dem nächsten Nachweis aus dem Cache entfernt; maximal
+das aktuelle Ersatzpixelbudget von 2,56 MB bleibt als geteilte immutable
+Speicherreferenz erhalten. Bei späteren räumlichen oder lokalen Stufen bleibt
+die notwendige abschließende Einpixel-Prüfung auf endliche Ergebnisse aktiv.
+Dies ist eine begründete Ausnahme vom Ziel „kein CPU-Readback je Drag“ in
+#214: Ein bereits bewiesener Kurvenausgang kann erst in einer nachgelagerten
+Präsenz-, Schärfe-, lokalen oder Geometriestufe überlaufen. Diese vom
+aktuellen Kurvenwert abhängige Sicherheitsreduktion lässt sich nicht durch
+einen unveränderten Eingangsnachweis ersetzen. Sie überträgt genau einen
+RGBAf-Pixel (16 Byte) innerhalb des bestehenden Workers; es wird kein
+vollständiges Raster zurückgelesen. Ein unsicheres Ergebnis darf nicht als
+Vorschau oder Export veröffentlicht werden. Ohne solche Folgestufen genügt
+der gecachte Bereichsnachweis, und Punktbewegungen führen keinen
+zusätzlichen Readback aus.
+Die Speicherzulassung rechnet zusätzliche Float-Proof-/Zwischenflächen ein;
+Undo zählt auch die maximal 64 Kurvenpunkte. Nicht darstellbare Floatwerte
+werden vor Veröffentlichung zurückgewiesen; die bisherige Vorschau bleibt
+erhalten. Die bestehende begrenzte Pipeline verwirft überholte Ergebnisse.
+
+`ToneCurveSettingsTests` prüft Kontrollpunkte, Monotonie, konstante Abschnitte,
+Minimalabstände, Grenzen, alte Snapshotbytes/Hashes und SQL-Backup/Restore.
+`ToneCurveRendererTests` vergleicht den wirklichen Kernel gegen eine getrennte
+Double-Hermite-Referenz bei **4097 Eingangswerten je Kanal**: Identität,
+moderate S-Kurve, einzelne R/G/B-Kurven und kombinierte Kanal-/Masterkurve.
+Der unveränderte Grenzwert beträgt **0,0001 absolut im kodierten Ausgang**.
+Zusätzliche synthetische Tests erfassen extreme gültige Punkte, HDR-Grau,
+P3-Koordinaten in linearem sRGB, negative Werte, Teilalpha, Vorschau-/Exportgraph,
+Range-Cache, Undo/Redo und Neustart. Die Tests benötigen keine lokalen Fotos.
+Die quantitative Auswertung und die native Sichtprüfung werden im
+Änderungsbericht getrennt von diesen Prüfverträgen ausgewiesen.
+
+## Selektiver Farbmischer (#216)
+
+Der vorgeschriebene Kandidat und eine explizit versionierte Float-Alternative
+verfehlen das numerische HDR-Gate. Deshalb wird kein Farbmischer im Produkt
+aktiviert. Formeln, feste Fixtures, reproduzierbare Auswertung und Grenzen
+stehen in [COLOR-MIXER-EVALUATION.md](COLOR-MIXER-EVALUATION.md). Die
+bisherige Dynamik-/Sättigungsverarbeitung bleibt erhalten.
+
+### Optionale RAW-Abnahme für Kurven, Maskenkomponenten und Optik
+
+`AlgorithmRAWValidationTests` verwendet ausschließlich eine ausdrücklich per
+`GLOWROOM_ALGORITHM_RAW_INPUT` angegebene lokale RAW-Datei. Ohne die Variable
+meldet Swift Testing einen begründeten Skip; CI benötigt keine privaten Fotos.
+Nach dem Testbuild jeden Eingang separat und ohne konkurrierenden Build oder
+Benchmark ausführen:
+
+```sh
+GLOWROOM_ALGORITHM_RAW_INPUT=/absoluter/Pfad/zum/Bild.CR3 ./scripts/test.sh --skip-build --filter AlgorithmRAWValidationTests
+```
+
+Der Test verwendet den echten App-Decoder ohne eingebettete Kameravorschau,
+den bestehenden Quellcache, eine begrenzte Renderlane und eine eigene Session.
+Ein kalter App-Cache, warmer Quell-/Ausgabecache, zwei neue Warmeinstellungen
+und acht schnell zusammengefasste Kurven-/Optik-/Maskenkorrekturen prüfen
+Decodezahl, neueste angenommene Einstellungen, Workergrenze und Range-Reuse.
+Angefordert werden 2400 Pixel; gegebenenfalls kleinere durch das vorhandene
+Maskenbudget zugelassene Rastermaße werden gesondert berichtet. Die Quelle
+wird vor und nach der Prüfung gestreamt gehasht und niemals geschrieben,
+kopiert oder hochgeladen. Der Test schreibt nur numerisches JSON unter `/tmp/`.
+
+Diese Debug-Prüfung misst Request-bis-Bitmap-Latenz und kumulatives Darwin-
+Prozess-Peak-RSS, einschließlich Testprozess, Decoder, CI-Staging und gehaltener
+Frames. Sie misst keine native Eingabe-bis-Display-Latenz oder isolierte GPU-
+Speicherbelegung. OS-, ImageIO-, Treiber- und Shadercaches werden nicht geleert;
+Quellhashing vor der Messung kann den Dateicache wärmen. Die Werte belegen
+weder einen Leistungsgewinn noch eine allgemeine Bildqualitätsbewertung.

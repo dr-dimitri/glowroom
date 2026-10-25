@@ -23,8 +23,9 @@ struct DevelopGeometryPlan: Hashable, Sendable {
     /// Absolute bottom-left Core Image coordinates. Canvas consumers use the
     /// explicitly top-left point methods below instead of applying this matrix.
     let inputToOutput: CGAffineTransform
-    private let outputToInput: CGAffineTransform
-    private let clampsRotatedInput: Bool
+    let outputToInput: CGAffineTransform
+    let clampsRotatedInput: Bool
+    let radial: DevelopRadialMapping?
 
     var outputSize: (width: Int, height: Int) {
         (Int(outputExtent.width), Int(outputExtent.height))
@@ -35,8 +36,13 @@ struct DevelopGeometryPlan: Hashable, Sendable {
         try geometry.validate()
         try Self.validateExtent(sourceExtent)
         self.sourceExtent = sourceExtent
+        radial = geometry.optics.isNeutral ? nil : try DevelopRadialMapping(extent: sourceExtent, optics: geometry.optics)
         let localCrop = try Self.cropRect(width: Int(sourceExtent.width), height: Int(sourceExtent.height), crop: geometry.crop)
-        let crop = localCrop.offsetBy(dx: sourceExtent.minX, dy: sourceExtent.minY)
+        var crop = localCrop.offsetBy(dx: sourceExtent.minX, dy: sourceExtent.minY)
+        if geometry.constrainToImage, let radial {
+            crop = crop.intersection(radial.validRect(in: sourceExtent))
+            guard !crop.isNull, crop.width >= 1, crop.height >= 1 else { throw EditRenderError.unavailable }
+        }
         cropRect = crop
         var planned = [Step(inputCrop: crop, clampsInput: false,
             transform: CGAffineTransform(translationX: -crop.minX, y: -crop.minY), outputCrop: nil)]
@@ -99,7 +105,9 @@ struct DevelopGeometryPlan: Hashable, Sendable {
             guard let bounded = Self.bounded(input, in: cropRect) else { return nil }
             source = bounded
         }
-        return CGPoint(x: source.x - sourceExtent.minX, y: sourceExtent.maxY - source.y)
+        let sampled = radial?.source(fromWarp: source) ?? source
+        guard let sampled = Self.bounded(sampled, in: sourceExtent) else { return nil }
+        return CGPoint(x: sampled.x - sourceExtent.minX, y: sourceExtent.maxY - sampled.y)
     }
 
     /// Forward counterpart for visible source points; discarded crop/rotation
@@ -107,7 +115,12 @@ struct DevelopGeometryPlan: Hashable, Sendable {
     /// belong to the existing canvas geometry, outside this pixel-only plan.
     func outputPoint(fromInputTopLeft point: CGPoint) -> CGPoint? {
         guard let point = Self.bounded(point, in: CGRect(origin: .zero, size: sourceExtent.size)) else { return nil }
-        let input = CGPoint(x: sourceExtent.minX + point.x, y: sourceExtent.maxY - point.y)
+        let source = CGPoint(x: sourceExtent.minX + point.x, y: sourceExtent.maxY - point.y)
+        let input: CGPoint
+        if let radial {
+            guard let warped = radial.warp(fromSource: source) else { return nil }
+            input = warped
+        } else { input = source }
         guard Self.bounded(input, in: cropRect) != nil,
               let output = Self.bounded(input.applying(inputToOutput), in: outputExtent) else { return nil }
         return CGPoint(x: output.x - outputExtent.minX, y: outputExtent.maxY - output.y)
@@ -115,7 +128,7 @@ struct DevelopGeometryPlan: Hashable, Sendable {
 
     static func == (lhs: Self, rhs: Self) -> Bool {
         lhs.sourceExtent == rhs.sourceExtent && lhs.cropRect == rhs.cropRect &&
-            lhs.outputExtent == rhs.outputExtent && lhs.steps == rhs.steps
+            lhs.outputExtent == rhs.outputExtent && lhs.steps == rhs.steps && lhs.radial == rhs.radial
     }
 
     func hash(into hasher: inout Hasher) {
@@ -124,6 +137,7 @@ struct DevelopGeometryPlan: Hashable, Sendable {
             hasher.combine(rect.width); hasher.combine(rect.height)
         }
         rect(sourceExtent); rect(cropRect); rect(outputExtent)
+        hasher.combine(radial)
         for step in steps {
             hasher.combine(step.inputCrop != nil)
             if let input = step.inputCrop { rect(input) }

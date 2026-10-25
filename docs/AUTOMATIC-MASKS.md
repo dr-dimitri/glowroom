@@ -234,3 +234,16 @@ Dieser Test lädt nichts herunter. Er installiert und kompiliert das echte Model
 API-Grundlagen: [Vision-Vordergrundfreistellung](https://developer.apple.com/documentation/vision/vngenerateforegroundinstancemaskrequest), [Apples Modellkarte](https://huggingface.co/apple/coreml-detr-semantic-segmentation) und [Core-ML-Beispielanwendung des Herausgebers](https://github.com/huggingface/coreml-examples/tree/main/SemanticSegmentationSample).
 
 Algorithmische Grundlage: [Guided Image Filtering, He, Sun und Tang](https://people.csail.mit.edu/kaiming/eccv10/index.html), insbesondere die RGB-geführte lokale Regression für Maskenverfeinerung. Bei der Untersuchung diente Lightcrafts gemeinsame bildgeführte Maskenverfeinerung als Architekturvergleich. Die Umsetzung in Glowroom verwendet Core Image und enthält keine kopierte Lightcraft-Implementierung.
+
+## Automatische Auswahl als Maskenbestandteil
+
+**Bestandteil hinzufügen** kann die vorhandenen Motiv-, Himmel- und
+Hintergrundauswahlen direkt als benannte Komponente einer lokalen Maske übernehmen.
+Erst das erfolgreich geprüfte Ergebnis konvertiert gegebenenfalls die bisherige
+Einzelmaske und fügt die neue Komponente atomar hinzu. Abbruch, Quellenwechsel,
+Undo oder ein inzwischen geänderter Zielbestandteil erhalten den angenommenen
+Stand. Eine unverändert gespeicherte Gray8-Auswahl bleibt modellunabhängig; Regler-
+und Pinseländerungen lösen keine neue Inferenz aus. Die Reihenfolge und die
+Softmasken-Operationen sind in [MASK-EDITING.md](MASK-EDITING.md#editierbare-bestandteile-und-softmasken-komposition)
+festgelegt. Automatische Raster aller Bestandteile teilen sich weiterhin das
+16-MiB-Budget je Foto; einzelne Komponenten erhalten kein zusätzliches Kontingent.

@@ -37,6 +37,8 @@ public struct EditSettings: Codable, Hashable, Sendable {
     public var developGeometry: DevelopGeometry
     /// Optional global levels node; neutral values remain absent on the wire.
     public var levels: LevelsSettings
+    /// Global point curves, after Levels; identity remains absent on the wire.
+    public var toneCurves: ToneCurveSettings
 
     public init(exposure: Double = 0, contrast: Double = 0, highlights: Double = 0,
                 shadows: Double = 0, whites: Double = 0, blacks: Double = 0,
@@ -49,6 +51,7 @@ public struct EditSettings: Codable, Hashable, Sendable {
                 naturalBalanceColorAmount: Double = 50, localAdjustments: [LocalAdjustment] = [],
                 developColor: DevelopColorSettings = .neutral, developGeometry: DevelopGeometry = .neutral,
                 levels: LevelsSettings = .neutral,
+                toneCurves: ToneCurveSettings = .neutral,
                 toneProcessingVersion: ToneProcessingVersion = .legacyV1) {
         self.toneProcessingVersion = toneProcessingVersion
         self.exposure = exposure
@@ -75,6 +78,7 @@ public struct EditSettings: Codable, Hashable, Sendable {
         self.developColor = developColor
         self.developGeometry = developGeometry
         self.levels = levels
+        self.toneCurves = toneCurves
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -86,7 +90,7 @@ public struct EditSettings: Codable, Hashable, Sendable {
         case localAdjustments
         case developColor, developGeometry
         case toneProcessingVersion
-        case levels
+        case levels, toneCurves
     }
 
     public init(from decoder: Decoder) throws {
@@ -129,12 +133,18 @@ public struct EditSettings: Codable, Hashable, Sendable {
         developGeometry = values.contains(.developGeometry)
             ? try values.decode(DevelopGeometry.self, forKey: .developGeometry) : .neutral
         levels = values.contains(.levels) ? try values.decode(LevelsSettings.self, forKey: .levels) : .neutral
+        toneCurves = values.contains(.toneCurves) ? try values.decode(ToneCurveSettings.self, forKey: .toneCurves) : .neutral
         try levels.validate()
+        try toneCurves.validate()
         try developGeometry.validate()
         try validateLocalAdjustments()
     }
 
     public func encode(to encoder: Encoder) throws {
+        // Reject aggregate payloads before JSONEncoder materializes Base64 or
+        // point arrays, including callers encoding settings without a snapshot.
+        try validateLocalAdjustments()
+        try developGeometry.validate()
         var values = encoder.container(keyedBy: CodingKeys.self)
         // V1's historical absence is canonical, including nested provenance.
         // Adding a metadata field would change signed artifact manifest bytes.
@@ -164,27 +174,23 @@ public struct EditSettings: Codable, Hashable, Sendable {
         if !developGeometry.isNeutral { try values.encode(developGeometry, forKey: .developGeometry) }
         try levels.validate()
         if !levels.isNeutral { try values.encode(levels, forKey: .levels) }
+        try toneCurves.validate()
+        guard toneCurves == toneCurves.normalized else { throw ArtifactContractError.invalidValue("noncanonical tone curves") }
+        if !toneCurves.isNeutral { try values.encode(toneCurves, forKey: .toneCurves) }
     }
 
     public func validateLocalAdjustments() throws {
         guard localAdjustments.count <= LocalAdjustment.maximumCount,
               Set(localAdjustments.map(\.id)).count == localAdjustments.count else { throw ArtifactContractError.limitExceeded }
-        var rasterBytes = 0, brushPoints = 0, brushStrokes = 0
+        var rasterBytes = 0, brushPoints = 0, brushStrokes = 0, components = 0
         for adjustment in localAdjustments {
             try adjustment.validate()
-            if let refinement = adjustment.mask.refinement {
-                brushStrokes += refinement.strokes.count
-                brushPoints += refinement.strokes.reduce(0) { $0 + $1.points.count }
-            }
-            switch adjustment.mask.shape {
-            case .subject(let raster), .sky(let raster): rasterBytes += raster.bytes.count
-            case .brush(let document):
-                brushStrokes += document.strokes.count
-                brushPoints += document.strokes.reduce(0) { $0 + $1.points.count }
-            default: break
-            }
+            let usage = adjustment.mask.resourceUsage
+            rasterBytes += usage.rasterBytes; brushPoints += usage.brushPoints; brushStrokes += usage.brushStrokes
+            components += adjustment.mask.componentCount
         }
-        guard rasterBytes <= LocalAdjustment.maximumTotalRasterBytes,
+        guard components <= LocalAdjustment.maximumTotalComponents,
+              rasterBytes <= LocalAdjustment.maximumTotalRasterBytes,
               brushPoints <= LocalAdjustment.maximumTotalBrushPoints,
               brushStrokes <= LocalAdjustment.maximumTotalBrushStrokes else { throw ArtifactContractError.limitExceeded }
     }
@@ -226,7 +232,7 @@ public struct EditSettings: Codable, Hashable, Sendable {
                     naturalBalanceAmount: clamp(naturalBalanceAmount, 0...100),
                     naturalBalanceColorAmount: clamp(naturalBalanceColorAmount, 0...100),
                     localAdjustments: localAdjustments.map(\.normalized), developColor: developColor.normalized,
-                    developGeometry: developGeometry.normalized, levels: levels.normalized,
+                    developGeometry: developGeometry.normalized, levels: levels.normalized, toneCurves: toneCurves.normalized,
                     toneProcessingVersion: toneProcessingVersion)
     }
 
@@ -234,6 +240,7 @@ public struct EditSettings: Codable, Hashable, Sendable {
         var effective = normalized
         // Processing version is cache/persistence identity, not an active edit.
         effective.toneProcessingVersion = .legacyV1
+        if effective.toneCurves.isNeutral { effective.toneCurves = .neutral }
         // A saved color preference has no rendering effect until explicitly enabled.
         if effective.naturalBalanceAmount == 0 {
             effective.naturalBalanceColorAmount = Self.neutral.naturalBalanceColorAmount

@@ -262,11 +262,11 @@ struct DevelopRepairCanvas: View {
         path = []; picksSource = false; editDrag = nil
     }
     private func normalized(_ point: CGPoint, in rect: CGRect) -> LocalMaskPoint? {
-        guard rect.width > 0, rect.height > 0 else { return nil }
-        return try? LocalMaskPoint(x: min(1, max(0, (point.x - rect.minX) / rect.width)), y: min(1, max(0, (point.y - rect.minY) / rect.height)))
+        (try? DevelopCanvasCoordinateMapping(sourceSize: sourceSize))?.sourcePoint(at: point, in: rect, clamp: true)
     }
     private func canvas(_ point: LocalMaskPoint, in rect: CGRect) -> CGPoint {
-        CGPoint(x: rect.minX + point.x * rect.width, y: rect.minY + point.y * rect.height)
+        (try? DevelopCanvasCoordinateMapping(sourceSize: sourceSize))?.viewPoint(for: point, in: rect)
+            ?? CGPoint(x: rect.minX + point.x * rect.width, y: rect.minY + point.y * rect.height)
     }
     private func pin(_ center: CGPoint, in context: inout GraphicsContext, filled: Bool, selected: Bool = false) {
         let dot = Path(ellipseIn: CGRect(x: center.x - 4, y: center.y - 4, width: 8, height: 8))

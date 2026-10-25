@@ -110,6 +110,7 @@ public struct EditingSnapshot: Codable, Hashable, Sendable {
         try settings.validateLocalAdjustments()
         try settings.developGeometry.validate()
         try settings.levels.validate()
+        try settings.toneCurves.validate()
         schemaVersion = 2; self.source = source; self.settings = settings
     }
     private enum CodingKeys: String, CodingKey { case schemaVersion, source, settings }
@@ -131,6 +132,7 @@ public struct EditingSnapshot: Codable, Hashable, Sendable {
         static let developGeometry = SettingKey(stringValue: "developGeometry")!
         static let toneProcessingVersion = SettingKey(stringValue: "toneProcessingVersion")!
         static let levels = SettingKey(stringValue: "levels")!
+        static let toneCurves = SettingKey(stringValue: "toneCurves")!
         init?(stringValue: String) { self.stringValue = stringValue }
         init?(intValue: Int) { return nil }
     }
@@ -151,6 +153,7 @@ public struct EditingSnapshot: Codable, Hashable, Sendable {
         if !settings.developColor.isNeutral { try controls.encode(settings.developColor, forKey: .developColor) }
         if !settings.developGeometry.isNeutral { try controls.encode(settings.developGeometry, forKey: .developGeometry) }
         if !settings.levels.isNeutral { try controls.encode(settings.levels, forKey: .levels) }
+        if !settings.toneCurves.isNeutral { try controls.encode(settings.toneCurves, forKey: .toneCurves) }
     }
     public static func == (lhs: Self, rhs: Self) -> Bool {
         lhs.schemaVersion == rhs.schemaVersion && lhs.source == rhs.source && lhs.settings == rhs.settings

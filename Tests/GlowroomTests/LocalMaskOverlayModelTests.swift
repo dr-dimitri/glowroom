@@ -35,7 +35,7 @@ struct LocalMaskOverlayModelTests {
         #expect(model.image === finalImage, "Keep the last frame while its replacement renders")
     }
 
-    @Test(arguments: ["source", "layer", "canvas", "hide"])
+    @Test(arguments: ["source", "layer", "canvas", "hide", "component", "mode"])
     func changedCanvasRejectsLateNativeFrameAndKeepsItsSlotUntilReturn(_ change: String) async throws {
         let fake = OverlayRenderGate()
         let model = LocalMaskOverlayModel(renderer: { try await fake.render($0) })
@@ -44,7 +44,8 @@ struct LocalMaskOverlayModelTests {
         model.update(first)
         try await fake.started.wait("old canvas render") { $0.count == 1 }
         let next = try request(layerID: change == "layer" ? UUID() : first.layerID,
-            sourceName: change == "source" ? "second" : "first", width: change == "canvas" ? 64 : 32)
+            sourceName: change == "source" ? "second" : "first", width: change == "canvas" ? 64 : 32,
+            componentID: change == "component" ? UUID() : nil, showsComponent: change == "mode")
         model.update(change == "hide" ? nil : next)
         #expect(model.image == nil)
         #expect(fake.started.value.count == 1, "Cancellation cannot release occupied native work")
@@ -85,11 +86,12 @@ struct LocalMaskOverlayModelTests {
     }
 
     private func request(layerID: UUID = UUID(), sourceName: String = "first", width: Int = 32,
-                         opacity: Double = 1) throws -> LocalMaskOverlayRequest {
+                         opacity: Double = 1, componentID: UUID? = nil, showsComponent: Bool = false) throws -> LocalMaskOverlayRequest {
         .init(source: .original(.init(fileURL: URL(fileURLWithPath: "/nonexistent/\(sourceName)"),
                                      modifiedAt: .distantPast, fileSize: 1)),
               canvas: try .init(width: width, height: 16), layerID: layerID,
-              mask: try .init(shape: .linear(start: .init(x: 0, y: 0), end: .init(x: 1, y: 1)), opacity: opacity))
+              mask: try .init(shape: .linear(start: .init(x: 0, y: 0), end: .init(x: 1, y: 1)), opacity: opacity),
+              componentID: componentID, showsComponent: showsComponent)
     }
 
     private func image(width: Int) throws -> CGImage {

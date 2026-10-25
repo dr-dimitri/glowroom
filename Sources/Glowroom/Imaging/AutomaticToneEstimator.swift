@@ -96,7 +96,7 @@ actor AutomaticToneEstimator {
                                                settings: EditSettings) throws -> Int64 {
         let base = try estimatedAdditionalBytes(sourceBytes: Int64(bitmap.byteCost),
             width: bitmap.image.width, height: bitmap.image.height, version: .consistentV2,
-            ownsSource: bitmap.memoryOwnership != nil, levelsActive: true)
+            ownsSource: bitmap.memoryOwnership != nil, levelsActive: true, toneCurvesActive: !settings.toneCurves.isNeutral)
         func product(_ a: Int64, _ b: Int64) throws -> Int64 {
             let value = a.multipliedReportingOverflow(by: b)
             guard a >= 0, b >= 0, !value.overflow else { throw ArtifactResourceError.capacityExceeded }
@@ -171,7 +171,8 @@ actor AutomaticToneEstimator {
     static func levelsAnalysisAdditionalBytes(bitmap: PreviewBitmap, settings: EditSettings, validating: Bool) throws -> Int64 {
         let base = try Self.estimatedAdditionalBytes(sourceBytes: Int64(bitmap.byteCost),
             width: bitmap.image.width, height: bitmap.image.height, version: .consistentV2,
-            ownsSource: bitmap.memoryOwnership != nil, levelsActive: validating && !settings.levels.isNeutral)
+            ownsSource: bitmap.memoryOwnership != nil, levelsActive: validating && !settings.levels.isNeutral,
+            toneCurvesActive: validating && !settings.toneCurves.isNeutral)
         // Retouch sampling can use the same frozen replacement prefix; final
         // validation additionally includes local compositing and geometry.
         guard let local = LocalAdjustmentRenderer.estimatedAdditionalBytes(adjustments: validating ? settings.localAdjustments : [],
@@ -215,7 +216,7 @@ actor AutomaticToneEstimator {
             let planned = try Self.estimatedAdditionalBytes(sourceBytes: Int64(bitmap.byteCost),
                 width: bitmap.image.width, height: bitmap.image.height,
                 version: settings.toneProcessingVersion, ownsSource: bitmap.memoryOwnership != nil,
-                levelsActive: !settings.levels.isNeutral)
+                levelsActive: !settings.levels.isNeutral, toneCurvesActive: !settings.toneCurves.isNeutral)
             phase = try await resources.acquire(kind: .codec, bytes: planned, priority: .interactive,
                                                 retaining: bitmap.memoryOwnership.map { [$0] } ?? [])
         }
@@ -232,7 +233,8 @@ actor AutomaticToneEstimator {
     /// V2 retains the full source graph until its Float readback is downsampled.
     /// This is a conservative allocation plan, not a process/GPU memory limit.
     static func estimatedAdditionalBytes(sourceBytes: Int64, width: Int, height: Int,
-                                         version: ToneProcessingVersion, ownsSource: Bool, levelsActive: Bool = false) throws -> Int64 {
+                                         version: ToneProcessingVersion, ownsSource: Bool, levelsActive: Bool = false,
+                                         toneCurvesActive: Bool = false) throws -> Int64 {
         guard sourceBytes >= 0, width > 0, height > 0 else { throw ArtifactResourceError.invalidRequest }
         let scratch: Int64
         let buffers: Int64
@@ -248,10 +250,10 @@ actor AutomaticToneEstimator {
             scratch = sourceImport.partialValue
             // Proxy, candidate/output, RGBA8 histogram buffers and bounded
             // native half-float scratch; no full-source Float analysis exists.
-            buffers = Int64(proxyWidth * proxyHeight) * (levelsActive ? 144 : 64) + 3 * 1_024 * 8
+            buffers = Int64(proxyWidth * proxyHeight) * (64 + (levelsActive ? 80 : 0) + (toneCurvesActive ? 80 : 0)) + 3 * 1_024 * 8
         case .consistentV2:
             let pixels = Int64(width).multipliedReportingOverflow(by: Int64(height))
-            let native = pixels.partialValue.multipliedReportingOverflow(by: levelsActive ? 128 : 96)
+            let native = pixels.partialValue.multipliedReportingOverflow(by: 96 + (levelsActive ? 32 : 0) + (toneCurvesActive ? 32 : 0))
             guard !pixels.overflow, !native.overflow else { throw ArtifactResourceError.capacityExceeded }
             scratch = native.partialValue
             buffers = Int64(FloatAnalysis.maximumWorkingBytes)
