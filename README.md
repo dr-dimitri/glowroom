@@ -60,6 +60,27 @@ Die Oberfläche verwendet lesbare Feldnamen, Werte und Zustände. Fachliche Erkl
 
 Die Kopfzeile bietet **Bibliothek** und **Entwickeln**. Im gemeinsamen Entwickeln stehen **KI-Korrektur**, **Licht**, **Farbe** und **Details** neben den Werkzeugen zum Zuschneiden, Maskieren und Reparieren bereit. **KI-Korrektur** erstellt lokale Qwen3.5-4B-Korrekturvorschläge. Gesucht wird in der Bibliothek; die Einrichtung steht zentral unter **KI-Modelle** bereit. Bildtexte und Tags werden im gemeinsamen Formular **Bildinformationen** manuell bearbeitet oder mit KI vorgeschlagen. Vor dem Start sind **Auftrag** und **Zielbereich** sichtbar. Kurze Auftragsvorgaben gelten für den nächsten ausdrücklich angeforderten Vorschlag. **Aktueller Stand** und **Vorschlag** vergleichen die gerenderte Korrektur auf derselben Bildfläche; ein Vorschlag ist deutlich gekennzeichnet. Erst **Übernehmen** aktiviert die geprüften Werte als einen rückgängig machbaren Schritt in den regulären Licht-/Farbreglern. **Verwerfen** entfernt den Vorschlag. Export und Speicherung verwenden bis zur Übernahme den angenommenen Stand. **KI-Modelle → KI-Korrektur** bietet Download, Abbruch, Löschen und Speicheranzeigen. Das erste Modell benötigt etwa **3,06 GB** sowie Apple Silicon und Metal. [Bedienung, Grenzen und Tests](docs/AI-DEVELOPMENT.md).
 
+## Persönliche Vorgaben und Serienübernahme
+
+Unter **Entwickeln → Entwicklungsvorgaben** lassen sich persönliche Reglerkombinationen
+speichern, umbenennen, löschen sowie als `.glowroompreset` importieren und exportieren.
+Wähle **Licht**, **Tonwertkorrektur**, **Farbe** und **Details** einzeln aus. **Vorschau**
+bleibt unverbindlich; erst **Übernehmen** erzeugt einen regulären Undo-Schritt.
+Diese Vorgaben funktionieren offline ohne KI-Modell und sind unabhängig von kreativen
+Farbprofilen und den Auftragsvorgaben der KI-Korrektur. Die Prozessversion muss zum
+Zielbild passen. [Format und Bedienung](docs/DEVELOP-PRESETS.md).
+
+**Einstellungen kopieren** und **Auf ausgewählte Fotos übertragen …** übernehmen
+dieselben Einstellungsgruppen auf eine eingefrorene Auswahl. Zuschnitt, Masken,
+Retuschen, Bildquelle und HDR-Ausgabe bleiben erhalten. Jedes Zielfoto wird einzeln
+gespeichert; Abbrechen erhält bereits gespeicherte Erfolge. Rückgängig gilt je Foto
+innerhalb des vorhandenen History-Budgets. [Ablauf und Grenzen](docs/DEVELOP-TRANSFER.md).
+
+Regler, Entwickeln-Menüs und reguläre numerische KI-Korrekturen teilen den
+[versionierten Entwicklungsbefehlskatalog](docs/DEVELOP-COMMANDS.md) mit expliziten
+Foto-/Quelladressen, Konfliktprüfung und begrenzter Wiederholungsabsicherung.
+[Gemeinsame Abnahme von Befehlen, Vorgaben und Serienübernahme](docs/ARCHITECTURE-213-219-VALIDATION.md).
+
 ## Kurven, Maskenkomponenten und Optik
 
 **Licht → Kurven** ergänzt globale Master-/RGB-Punktkurven nach Levels und vor
@@ -274,7 +295,7 @@ Der Bildausgleich wirkt vor den manuellen Reglern. Vorhandene Einstellungen blei
 
 Die Werte lassen sich über Schieberegler oder Zahlenfelder ändern. Alle Schieberegler verwenden eine dünne neutralgraue Schiene, feine Skalenstriche und einen tropfenförmigen Griff. **Umschalt-Doppelklick auf einen Tonwertregler oder seine Beschriftung** berechnet für Belichtung, Kontrast, Lichter, Tiefen, Weiß oder Schwarz einen bildabhängigen Automatikwert. Nur dieser Regler wird geändert; die übrigen Einstellungen bleiben erhalten. Die Berechnung berücksichtigt die anderen globalen Korrekturen und verwendet die bereits decodierte Bildbasis. Wiederholen derselben Geste bei unveränderten übrigen Werten addiert keine weitere Korrektur. Details und Grenzen stehen unter [Entwickeln](docs/DEVELOP-WORKSPACE.md#automatikwert-pro-tonwertregler).
 
-**Aktuelle Quelle ohne Regler** vergleicht mit der aktiven Bildbasis ohne zusätzliche Anpassungen; **Importiertes Original anzeigen** zeigt die importierte Originaldatei ohne Bearbeitung. Eine Reglerbewegung, abgeschlossene Zahleneingabe oder automatische Tonwertkorrektur bildet einen Rückgängig-Schritt; **⌘Z** nimmt die letzte Änderung zurück, weiteres Drücken jeweils die nächste. **⇧⌘Z** oder die Pfeile unten wiederholen Änderungen. Die Historie bleibt ohne feste Schrittgrenze bis zur Auswahl einer anderen Funktion erhalten. Speichern, derselbe Funktionsaufruf und das Aus-/Einblenden von Seitenbereichen löschen sie nicht. **Zurücksetzen** neben einer Untergruppe setzt deren Regler zurück; **Alle Bildkorrekturen zurücksetzen** setzt alle Korrekturen einschließlich Zuschnitt und Masken zurück und erhält aktive Bildquelle sowie Tonwertverarbeitung. Ein Doppelklick ohne Umschalttaste auf einen Regler oder seine Beschriftung setzt diesen Wert zurück. Rückgängig-Verläufe gelten für die laufende Sitzung; die aktuellen Werte bleiben nach einem Neustart erhalten.
+**Aktuelle Quelle ohne Regler** vergleicht mit der aktiven Bildbasis ohne zusätzliche Anpassungen; **Importiertes Original anzeigen** zeigt die importierte Originaldatei ohne Bearbeitung. Eine Reglerbewegung, abgeschlossene Zahleneingabe oder automatische Tonwertkorrektur bildet einen Rückgängig-Schritt; **⌘Z** nimmt die letzte Änderung zurück, weiteres Drücken jeweils die nächste. **⇧⌘Z** oder die Pfeile unten wiederholen Änderungen. Die Historie bleibt innerhalb des gemeinsamen Budgets von 64 MiB und 256 Zuständen bis zur Auswahl einer anderen Funktion erhalten. Speichern, derselbe Funktionsaufruf und das Aus-/Einblenden von Seitenbereichen löschen sie nicht. **Zurücksetzen** neben einer Untergruppe setzt deren Regler zurück; **Alle Bildkorrekturen zurücksetzen** setzt alle Korrekturen einschließlich Zuschnitt und Masken zurück und erhält aktive Bildquelle sowie Tonwertverarbeitung. Ein Doppelklick ohne Umschalttaste auf einen Regler oder seine Beschriftung setzt diesen Wert zurück. Rückgängig-Verläufe gelten für die laufende Sitzung; die aktuellen Werte bleiben nach einem Neustart erhalten.
 
 Raster, Filmstreifen und Einzelansicht zeigen die gespeicherten Bearbeitungen. Die RAW-Basis im Entwickeln-Modul wird aus dem Original erzeugt, ohne eine eingebettete Kamera-Vorschau als Bearbeitungsbasis zu verwenden. Bearbeitungsbasen werden verlustfrei zwischengespeichert. Reglerbewegungen verwenden diese Basis erneut; veraltete Renderaufträge können neuere Ergebnisse nicht überschreiben. Core Image führt die Bildfilter auf seinem verfügbaren Backend aus (auf dem geprüften Apple-Silicon-Mac über Metal). Unveränderte Entrauschungs- und Bildausgleichsstufen des ausgewählten Bildes sowie die begrenzte Bildanalyse werden wiederverwendet. Originaldateien und gespeicherte Bearbeitungsparameter bleiben davon unberührt.
 

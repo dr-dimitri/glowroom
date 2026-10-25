@@ -8,6 +8,46 @@ import SwiftUI
 @Suite("AI development review transactions", .timeLimit(.minutes(2)))
 @MainActor
 struct AIDevelopmentModelTests {
+    @Test func presetPreviewRevokesAIProposalAcceptanceIncludingDelayedValidation() async throws {
+        let entered = TestAsyncLatch(), release = TestAsyncLatch()
+        let f = try await AIDevelopmentFixture.make(validateSource: { _, _ in
+            entered.releaseAll(); await release.wait()
+        })
+        defer { release.releaseAll(); f.remove() }
+        await (try #require(f.start())).value
+        let ai = try #require(f.workspace.aiCorrectionPreview)
+        f.workspace.presetPreview = ai
+        #expect(!f.model.canApplyProposal)
+        #expect(f.model.apply(library: f.library, editor: f.editor) == nil)
+        await (try #require(f.start())).value
+        let work = try #require(f.model.apply(library: f.library, editor: f.editor))
+        await entered.wait()
+        f.workspace.presetPreview = ai
+        release.releaseAll(); await work.value
+        #expect(f.editor.settings(for: f.assetID) == .neutral)
+        #expect(f.workspace.presetPreview != nil && f.workspace.aiCorrectionPreview == nil)
+        #expect(!f.model.canApplyProposal && !f.model.isRunning)
+        #expect(await f.editor.finishSaving())
+    }
+
+    @Test func lateAIResultCannotReplaceNewerPersonalPreviewRequest() async throws {
+        let entered = TestAsyncLatch(), release = TestAsyncLatch()
+        let f = try await AIDevelopmentFixture.make(renderCorrection: { bitmap, _, _, _ in
+            entered.releaseAll(); await release.wait(); return bitmap
+        })
+        defer { release.releaseAll(); f.remove() }
+        let work = try #require(f.start()); await entered.wait()
+        _ = f.workspace.beginCorrectionPreview()
+        let personal = AICorrectionPreview(snapshot: try #require(f.editor.aiSnapshot(in: f.library)),
+            settings: EditSettings(exposure: -1), bitmap: try #require(f.workspace.originalBitmap))
+        f.workspace.presetPreview = personal
+        release.releaseAll(); await work.value
+        #expect(f.model.proposal == nil && !f.model.canApplyProposal)
+        #expect(f.workspace.aiCorrectionPreview == nil && f.workspace.presetPreview?.settings == personal.settings)
+        #expect(f.editor.settings(for: f.assetID) == .neutral)
+        #expect(await f.editor.finishSaving())
+    }
+
     @Test func slidersAndProposalDoNotWriteUntilExplicitAcceptance() async throws {
         let f = try await AIDevelopmentFixture.make()
         defer { f.remove() }
