@@ -209,7 +209,8 @@ struct DetailView: View {
     private func developCanvas(asset: PhotoAsset) -> some View {
         GeometryReader { viewport in
             let source = developWorkspace.sourceSize ?? CGSize(width: max(1, asset.pixelWidth), height: max(1, asset.pixelHeight))
-            let angle = usesNativeCropInput && developWorkspace.isOriginalCanvasReady
+            let angle = usesNativeCropInput && developWorkspace.isCropCanvasReady(
+                for: editor.settings(for: asset.id).developGeometry.optics)
                 ? editor.settings(for: asset.id).developGeometry.straightenAngle : 0
             let fit = DevelopCropCanvasPresentation.fittingScale(sourceSize: source, viewport: viewport.size, angle: angle)
             ZStack {
@@ -333,6 +334,12 @@ struct DetailView: View {
             settings.developGeometry.constrainToImage = true
             settings.developGeometry.flipHorizontal = false
             settings.developGeometry.flipVertical = false
+            // Spatial tools retain their established complete source canvas.
+            // Crop previews the optical canvas itself, before its final crop;
+            // source painting/picking deliberately uses the identity mapping.
+            if developWorkspace.tool == .crop && !developWorkspace.picksWhiteBalance {
+                if !settings.developGeometry.optics.isNeutral { settings.developGeometry.constrainToImage = false }
+            } else { settings.developGeometry.optics = .neutral }
         }
         return settings
     }

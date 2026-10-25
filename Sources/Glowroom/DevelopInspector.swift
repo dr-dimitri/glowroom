@@ -390,6 +390,37 @@ struct DevelopInspector: View {
                             }
                         }))
                     .id("levels-\(asset.id)")
+                let curvesSource = editor.snapshot(for: asset.id).source
+                DisclosureGroup("Kurven", isExpanded: Binding(
+                    get: { panels.openAdjustmentGroups.contains("curves") },
+                    set: { expanded in
+                        finishInput(assetID: asset.id)
+                        layout.update(developing: library.isDeveloping) {
+                            if expanded { $0.openAdjustmentGroups.insert("curves") }
+                            else { $0.openAdjustmentGroups.remove("curves") }
+                        }
+                    })) {
+                    ToneCurveEditor(settings: Binding(
+                        get: { editor.settings(for: asset.id).toneCurves },
+                        set: { curves in
+                            guard editor.canEdit, library.canModify, library.selectedID == asset.id,
+                                  editor.snapshot(for: asset.id).source == curvesSource,
+                                  !library.comparesOriginal, !library.comparesCurrentSourceWithoutSettings,
+                                  (try? curves.validate()) != nil else { return }
+                            developWorkspace.endLevelsPicker()
+                            editor.selectEditingFunction(.adjustments, assetID: asset.id, cancelsActiveInput: false)
+                            var next = editor.settings(for: asset.id); next.toneCurves = curves
+                            editor.setSettings(next, for: asset.id)
+                        }), onEditingChanged: { editing in
+                            if editing { beginAdjustment(assetID: asset.id) }
+                            else { editor.endEditing(assetID: asset.id) }
+                        })
+                    .disabled(!editor.canEdit || !library.canModify || library.comparesOriginal || library.comparesCurrentSourceWithoutSettings)
+                    .id("curves-\(asset.id)")
+                    .id(curvesSource)
+                }
+                .font(.system(size: 13)).padding(.vertical, 6)
+                .accessibilityIdentifier("develop.curves")
             }
         case .color:
             VStack(alignment: .leading, spacing: 5) {
@@ -545,7 +576,7 @@ struct DevelopInspector: View {
                     || settings.highlights != 0 || settings.shadows != 0
                     || settings.whites != 0 || settings.blacks != 0
                     || settings.autoToneAmount != 0 || settings.naturalBalanceAmount != 0
-                    || !settings.levels.isNeutral || settings.developColor.hdrEnabled
+                    || !settings.levels.isNeutral || !settings.toneCurves.isNeutral || settings.developColor.hdrEnabled
             case .color:
                 var color = settings.developColor
                 color.hdrEnabled = false

@@ -40,18 +40,29 @@ struct EditingHistoryFootprint {
         var result = Self()
         for layer in layers {
             result.metadataBytes += 512 + layer.name.utf8.count
-            switch layer.mask.shape {
-            case .subject(let raster), .sky(let raster): result.include(raster.bytes)
-            case .brush(let document): result.include(document)
-            case .linear, .radial: break
+            func includeSelection(shape: LocalMaskShape, refinement: MaskDocument?) {
+                switch shape {
+                case .subject(let raster), .sky(let raster): result.include(raster.bytes)
+                case .brush(let document): result.include(document)
+                case .linear, .radial: break
+                }
+                if let refinement { result.include(refinement) }
             }
-            if let refinement = layer.mask.refinement { result.include(refinement) }
+            if let composition = layer.mask.composition {
+                for component in composition.components {
+                    result.metadataBytes += 384 + component.name.utf8.count
+                    includeSelection(shape: component.shape, refinement: component.refinement)
+                }
+            } else { includeSelection(shape: layer.mask.shape, refinement: layer.mask.refinement) }
         }
         return result
     }
 
     static func snapshot(_ snapshot: EditingSnapshot) -> Self {
         var result = layers(snapshot.settings.localAdjustments)
+        let curves = snapshot.settings.toneCurves
+        result.metadataBytes += [curves.master, curves.red, curves.green, curves.blue]
+            .reduce(0) { $0 + $1.points.count * MemoryLayout<ToneCurvePoint>.stride }
         let geometry = snapshot.settings.developGeometry
         result.metadataBytes += 512 + geometry.redEyeCorrections.count * 128
         for stroke in geometry.retouchStrokes {

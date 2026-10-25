@@ -48,8 +48,16 @@ enum EditRenderer {
         private var balanceKey: BalanceKey?
         private var levelsRangeKey: LevelsRangeKey?
         private var levelsRange: LevelsRenderer.InputRange?
+        private var toneCurveRangeKey: LevelsRangeKey?
+        private var toneCurveRange: LevelsRenderer.InputRange?
         private var rangeMeasurements = 0
         private var rangeCacheHits = 0
+        private var toneRangeMeasurements = 0
+        private var toneRangeCacheHits = 0
+        private struct ReplacementRangeID: Hashable { let strokeID: UUID; let includesLevels: Bool }
+        private var replacementRanges: [ReplacementRangeID: ReplacementRangeEntry] = [:]
+        private var replacementRangeMeasurements = 0
+        private var replacementRangeCacheHits = 0
         fileprivate let localMaskCache = LocalMaskImageCache()
 
         private struct LevelsRangeKey: Equatable {
@@ -60,7 +68,7 @@ enum EditRenderer {
             let upstream: EditSettings
             let precise: Bool
 
-            init(bitmap: PreviewBitmap, settings: EditSettings) {
+            init(bitmap: PreviewBitmap, settings: EditSettings, includesLevels: Bool = false) {
                 source = bitmap.rangeSourceIdentity
                 width = bitmap.image.width; height = bitmap.image.height
                 sourceLongEdge = bitmap.sourceLongEdge
@@ -68,7 +76,8 @@ enum EditRenderer {
                 var upstream = settings
                 // The node's input cannot depend on its own curve, or anything
                 // after it. Keep version, profiles, WB, noise, balance and tone.
-                upstream.levels = .neutral
+                if !includesLevels { upstream.levels = .neutral }
+                upstream.toneCurves = .neutral
                 upstream.texture = 0; upstream.clarity = 0
                 upstream.sharpeningAmount = 0; upstream.sharpeningRadius = 1
                 upstream.sharpeningDetail = 25; upstream.sharpeningMasking = 0
@@ -86,6 +95,89 @@ enum EditRenderer {
         func levelsRangeDiagnostics() -> LevelsRangeDiagnostics {
             lock.lock(); defer { lock.unlock() }
             return LevelsRangeDiagnostics(measurements: rangeMeasurements, cacheHits: rangeCacheHits)
+        }
+        func toneCurveRangeDiagnostics() -> LevelsRangeDiagnostics {
+            lock.lock(); defer { lock.unlock() }
+            return LevelsRangeDiagnostics(measurements: toneRangeMeasurements, cacheHits: toneRangeCacheHits)
+        }
+        func replacementToneCurveRangeDiagnostics() -> LevelsRangeDiagnostics {
+            lock.lock(); defer { lock.unlock() }
+            return LevelsRangeDiagnostics(measurements: replacementRangeMeasurements, cacheHits: replacementRangeCacheHits)
+        }
+        func replacementRangeEntryCount() -> Int {
+            lock.lock(); defer { lock.unlock() }
+            return replacementRanges.count
+        }
+
+        private enum ReplacementPayloadIdentity: Equatable {
+            case small(Data)
+            case storage(UInt, Int)
+            init(_ data: Data) {
+                if data.count <= 256 { self = .small(data) }
+                else { self = data.withUnsafeBytes { .storage(UInt(bitPattern: $0.baseAddress!), $0.count) } }
+            }
+        }
+        private struct ReplacementRangeEntry {
+            let upstream: LevelsRangeKey
+            let payload: ReplacementPayloadIdentity
+            // Retain only current immutable storage: this prevents an address
+            // being reused for different pixels while its proof is cached.
+            let owner: Data
+            let bounds: DevelopCropRect
+            let width: Int
+            let height: Int
+            let offsetX: Double
+            let offsetY: Double
+            let range: LevelsRenderer.InputRange
+        }
+
+        fileprivate func prepareReplacementToneCurveRanges(bitmap: PreviewBitmap, settings: EditSettings) {
+            lock.lock(); defer { lock.unlock() }
+            guard cachesPrefix, bitmap.resourceOwner == nil, bitmap.byteCost <= sourceByteLimit,
+                  !settings.toneCurves.isNeutral else { replacementRanges.removeAll(); return }
+            var active: [UUID: DevelopRetouchReplacement] = [:]
+            for stroke in settings.developGeometry.retouchStrokes where stroke.opacity > 0 {
+                guard let replacement = stroke.replacement else { continue }
+                // Direct renderer callers can supply invalid duplicate IDs.
+                // Retire proofs and let the geometry validator report the
+                // controlled error instead of trapping in Dictionary.init.
+                guard active.updateValue(replacement, forKey: stroke.id) == nil else {
+                    replacementRanges.removeAll(); return
+                }
+            }
+            // At most the current geometry's frozen payload budget (2.56 MB)
+            // survives. No old-photo, deleted-ROI or old-upstream owner remains.
+            replacementRanges = replacementRanges.filter { id, entry in
+                guard let replacement = active[id.strokeID] else { return false }
+                return entry.upstream == LevelsRangeKey(bitmap: bitmap, settings: settings, includesLevels: id.includesLevels)
+                    && entry.payload == ReplacementPayloadIdentity(replacement.rgba) && entry.bounds == replacement.bounds
+                    && entry.width == replacement.width && entry.height == replacement.height
+                    && entry.offsetX == replacement.offsetX && entry.offsetY == replacement.offsetY
+            }
+        }
+
+        fileprivate func replacementToneCurveInputRange(_ image: CIImage, bitmap: PreviewBitmap,
+            settings: EditSettings, strokeID: UUID, replacement: DevelopRetouchReplacement,
+            extent: CGRect, includesLevels: Bool = true) throws -> LevelsRenderer.InputRange {
+            let id = ReplacementRangeID(strokeID: strokeID, includesLevels: includesLevels)
+            let key = LevelsRangeKey(bitmap: bitmap, settings: settings, includesLevels: includesLevels)
+            let payload = ReplacementPayloadIdentity(replacement.rgba)
+            lock.lock(); defer { lock.unlock() }
+            let mayCache = cachesPrefix && bitmap.resourceOwner == nil && bitmap.byteCost <= sourceByteLimit
+            if mayCache, let entry = replacementRanges[id], entry.upstream == key,
+               entry.payload == payload, entry.bounds == replacement.bounds,
+               entry.width == replacement.width, entry.height == replacement.height,
+               entry.offsetX == replacement.offsetX, entry.offsetY == replacement.offsetY {
+                replacementRangeCacheHits += 1; return entry.range
+            }
+            replacementRangeMeasurements += 1
+            let range = try LevelsRenderer.inputRange(of: image, extent: extent, context: context(for: settings))
+            if mayCache {
+                replacementRanges[id] = ReplacementRangeEntry(upstream: key, payload: payload, owner: replacement.rgba,
+                    bounds: replacement.bounds, width: replacement.width, height: replacement.height,
+                    offsetX: replacement.offsetX, offsetY: replacement.offsetY, range: range)
+            }
+            return range
         }
 
         fileprivate func levelsInputRange(_ image: CIImage, bitmap: PreviewBitmap,
@@ -105,6 +197,19 @@ enum EditRenderer {
             // queue or concurrent full-image reduction is introduced here.
             let range = try LevelsRenderer.inputRange(of: image, extent: extent, context: context(for: settings))
             if cachesPrefix { levelsRangeKey = key; levelsRange = range }
+            return range
+        }
+
+        fileprivate func toneCurveInputRange(_ image: CIImage, bitmap: PreviewBitmap,
+                                             settings: EditSettings, extent: CGRect) throws -> LevelsRenderer.InputRange {
+            let key = LevelsRangeKey(bitmap: bitmap, settings: settings, includesLevels: true)
+            lock.lock(); defer { lock.unlock() }
+            if cachesPrefix, toneCurveRangeKey == key, let toneCurveRange {
+                toneRangeCacheHits += 1; return toneCurveRange
+            }
+            toneRangeMeasurements += 1
+            let range = try LevelsRenderer.inputRange(of: image, extent: extent, context: context(for: settings))
+            if cachesPrefix { toneCurveRangeKey = key; toneCurveRange = range }
             return range
         }
 
@@ -150,6 +255,7 @@ enum EditRenderer {
                     balanced = nil
                     noise = nil
                     balanceKey = nil
+                    replacementRanges.removeAll()
                     context.clearCaches()
                     preciseContext.clearCaches()
                     lock.unlock()
@@ -171,6 +277,12 @@ enum EditRenderer {
                 balanced = nil
                 noise = nil
                 balanceKey = nil
+                // Deterministic adaptive resizes can rematerialize a CGImage
+                // while retaining the same range identity. Keep valid proofs;
+                // the full source/upstream key still retires stale owners.
+                replacementRanges = replacementRanges.filter {
+                    $0.value.upstream == LevelsRangeKey(bitmap: bitmap, settings: settings, includesLevels: $0.key.includesLevels)
+                }
                 // Old-photo intermediates cannot help this source. This is a
                 // thread-safe cache hint; in-flight renders keep their resources.
                 context.clearCaches()
@@ -305,13 +417,16 @@ enum EditRenderer {
                        priority: PreviewPriority = .selected) throws -> PreviewBitmap {
         try Task.checkCancellation()
         let settings = settings.normalized
+        let session = priority == .selected ? interactive : background
+        session.prepareReplacementToneCurveRanges(bitmap: bitmap, settings: settings)
         guard !settings.isNeutral else { return bitmap }
-        return try render(bitmap, settings: settings, session: priority == .selected ? interactive : background)
+        return try render(bitmap, settings: settings, session: session)
     }
 
     static func render(_ bitmap: PreviewBitmap, settings: EditSettings, session: Session) throws -> PreviewBitmap {
         try Task.checkCancellation()
         let settings = settings.normalized
+        session.prepareReplacementToneCurveRanges(bitmap: bitmap, settings: settings)
         guard !settings.isNeutral else { return bitmap }
         let original = bitmap.image
         guard original.width > 0, original.height > 0,
@@ -351,6 +466,8 @@ enum EditRenderer {
                 sourcePixelScale: bitmap.sourcePixelScale, context: context,
                 levelsInputRange: { image in
                     try session.levelsInputRange(image, bitmap: bitmap, settings: settings, extent: extent)
+                }, toneCurveInputRange: { image in
+                    try session.toneCurveInputRange(image, bitmap: bitmap, settings: settings, extent: extent)
                 }, validatesLevelsOutput: false)
             // Artifact mask allocations belong to this render's admitted phase;
             // retaining their CPU rasters in a global cache would outlive it.
@@ -361,7 +478,7 @@ enum EditRenderer {
             toneProcessingVersion: settings.toneProcessingVersion)
             let replacements = try replacementImages(original, settings: settings, extent: extent,
                 scale: scale, maskCache: maskCache, sourcePixelScale: bitmap.sourcePixelScale, context: context,
-                analysisIdentity: SourceAnalysisIdentity(bitmap: bitmap))
+                analysisIdentity: SourceAnalysisIdentity(bitmap: bitmap), rangeSession: session, rangeBitmap: bitmap)
             let developed = try DevelopGeometryRenderer.apply(to: image,
                 geometry: settings.developGeometry, extent: extent, replacementImages: replacements)
             if needsLevelsOutputValidation(settings, includingDocumentStages: true) {
@@ -424,6 +541,8 @@ enum EditRenderer {
             sourcePixelScale: bitmap.sourcePixelScale, context: context,
             levelsInputRange: { image in
                 try session.levelsInputRange(image, bitmap: bitmap, settings: settings, extent: extent)
+            }, toneCurveInputRange: { image in
+                try session.toneCurveInputRange(image, bitmap: bitmap, settings: settings, extent: extent)
             }, validatesLevelsOutput: false)
         if needsLevelsOutputValidation(settings, includingDocumentStages: false) {
             try LevelsRenderer.validateFiniteOutput(image, context: context)
@@ -471,6 +590,7 @@ enum EditRenderer {
                                   sourcePixelScale: Double = 1, levelsScope: LevelsScope = .global,
                                   context: CIContext? = nil,
                                   levelsInputRange: ((CIImage) throws -> LevelsRenderer.InputRange)? = nil,
+                                  toneCurveInputRange: ((CIImage) throws -> LevelsRenderer.InputRange)? = nil,
                                   validatesLevelsOutput: Bool = true) throws -> CIImage {
         try Task.checkCancellation()
         let extended = preservesExtendedRange || settings.developColor.hdrEnabled
@@ -480,6 +600,11 @@ enum EditRenderer {
             let range = try levelsInputRange?(image)
             image = try LevelsRenderer.apply(to: image, settings: settings.levels, extent: extent,
                 context: context, inputRange: range)
+        }
+        if levelsScope == .global, !settings.toneCurves.isNeutral {
+            let range = try toneCurveInputRange?(image)
+            image = try ToneCurveRenderer.apply(to: image, settings: settings.toneCurves, extent: extent,
+                                                context: context ?? background.context(for: settings), inputRange: range)
         }
         try Task.checkCancellation()
         if settings.texture != 0 || settings.clarity != 0 {
@@ -506,7 +631,7 @@ enum EditRenderer {
     }
 
     private static func needsLevelsOutputValidation(_ settings: EditSettings, includingDocumentStages: Bool) -> Bool {
-        guard !settings.levels.isNeutral else { return false }
+        guard !settings.levels.isNeutral || !settings.toneCurves.isNeutral else { return false }
         if settings.texture != 0 || settings.clarity != 0 || settings.developColor.isMonochrome ||
             settings.sharpeningAmount > 0 { return true }
         return includingDocumentStages && (settings.localAdjustments.contains { $0.isEffective } ||
@@ -546,8 +671,12 @@ enum EditRenderer {
     private static func replacementImages(_ original: CGImage, settings: EditSettings, extent: CGRect,
                                           scale: Double, maskCache: LocalMaskImageCache?,
                                           sourcePixelScale: Double = 1, context: CIContext,
-                                          analysisIdentity: SourceAnalysisIdentity? = nil) throws -> [UUID: CIImage] {
+                                          analysisIdentity: SourceAnalysisIdentity? = nil,
+                                          rangeSession: Session? = nil, rangeBitmap: PreviewBitmap? = nil) throws -> [UUID: CIImage] {
         var result: [UUID: CIImage] = [:]
+        if let rangeSession, let rangeBitmap {
+            rangeSession.prepareReplacementToneCurveRanges(bitmap: rangeBitmap, settings: settings)
+        }
         let input = CIImage(cgImage: original)
         // Each frozen ROI gets the identical source color pipeline. The actual
         // retouch pass keeps stored order and applies its mask/opacity once;
@@ -561,7 +690,19 @@ enum EditRenderer {
             let base = try prefix(candidate, original: original, settings: settings, extent: extent, scale: scale,
                                   analysisIdentity: analysisIdentity)
             let global = try manualAdjustments(base, settings: settings, extent: extent, scale: scale,
-                sourcePixelScale: sourcePixelScale, context: context, validatesLevelsOutput: false)
+                sourcePixelScale: sourcePixelScale, context: context, levelsInputRange: { image in
+                    if let rangeSession, let rangeBitmap {
+                        return try rangeSession.replacementToneCurveInputRange(image, bitmap: rangeBitmap, settings: settings,
+                            strokeID: stroke.id, replacement: replacement, extent: extent, includesLevels: false)
+                    }
+                    return try LevelsRenderer.inputRange(of: image, extent: extent, context: context)
+                }, toneCurveInputRange: { image in
+                    if let rangeSession, let rangeBitmap {
+                        return try rangeSession.replacementToneCurveInputRange(image, bitmap: rangeBitmap, settings: settings,
+                            strokeID: stroke.id, replacement: replacement, extent: extent)
+                    }
+                    return try LevelsRenderer.inputRange(of: image, extent: extent, context: context)
+                }, validatesLevelsOutput: false)
             result[stroke.id] = try LocalAdjustmentRenderer.apply(to: global, adjustments: settings.localAdjustments,
                 extent: extent, scale: scale, cache: maskCache, preservesExtendedRange: settings.developColor.hdrEnabled,
             toneProcessingVersion: settings.toneProcessingVersion)

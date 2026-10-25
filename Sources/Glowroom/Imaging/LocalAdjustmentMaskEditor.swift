@@ -35,7 +35,8 @@ struct InlineMaskCanvas: View {
         guard workspace.isCurrent, workspace.showsOverlay, !workspace.comparesBefore,
               let source = workspace.source, let canvas = workspace.canvasSize,
               let layerID = workspace.displayMaskID, let mask = workspace.displayMask else { return nil }
-        return .init(source: source, canvas: canvas, layerID: layerID, mask: mask)
+        return .init(source: source, canvas: canvas, layerID: layerID, mask: mask,
+            componentID: workspace.model?.selectedComponentID, showsComponent: workspace.showsSelectedComponentOverlay)
     }
     private enum Handle { case start, end, center, radiusX, radiusY, new }
     private struct GradientGesture {
@@ -58,7 +59,7 @@ struct InlineMaskCanvas: View {
                         onHover: { cursor = $0 }, isEnabled: acceptsInput,
                         inputIdentity: AnyHashable(CanvasInputIdentity(source: workspace.source,
                             layerID: workspace.selected?.id, refines: workspace.refines,
-                            erases: workspace.erases, inverted: workspace.selected?.mask.isInverted,
+                            erases: workspace.erases, inverted: workspace.editableMask?.isInverted,
                             context: workspace.model?.inputContextID, magnification: photoCanvasMagnification,
                             width: viewport.size.width, height: viewport.size.height)), cursor: { _ in .arrow },
                         canvasLabel: "Lokale Maske auf dem Bild zeichnen", onCancel: { cancelGesture() },
@@ -74,7 +75,7 @@ struct InlineMaskCanvas: View {
         }
         .onChange(of: workspace.model?.selectedID) { _, _ in cancelGesture() }
         .onChange(of: workspace.model?.inputContextID) { _, _ in cancelGesture() }
-        .onChange(of: workspace.selected?.mask.isInverted) { _, _ in cancelGesture() }
+        .onChange(of: workspace.editableMask?.isInverted) { _, _ in cancelGesture() }
         .onChange(of: workspace.refines) { _, _ in cancelGesture() }
         .onChange(of: workspace.erases) { _, _ in cancelGesture() }
         .onChange(of: photoCanvasMagnification) { _, _ in cancelGesture() }
@@ -111,8 +112,13 @@ struct InlineMaskCanvas: View {
     private var gradientHandles: some View {
         let magnification = photoCanvasMagnification
         return Canvas { context, size in
-            guard let shape = workspace.selected?.mask.shape else { return }
-            func pixel(_ point: LocalMaskPoint) -> CGPoint { CGPoint(x: point.x * size.width, y: point.y * size.height) }
+            guard let shape = workspace.editableMask?.shape else { return }
+            // Mask tools deliberately display the unwarped source canvas; use
+            // the same geometry contract as finished-image pickers.
+            guard let mapping = try? DevelopCanvasCoordinateMapping(sourceSize: size) else { return }
+            func pixel(_ point: LocalMaskPoint) -> CGPoint {
+                mapping.viewPoint(for: point, in: CGRect(origin: .zero, size: size)) ?? .zero
+            }
             func dot(_ point: CGPoint, radius: Double = 4) {
                 let radius = radius / Double(magnification)
                 let path = Path(ellipseIn: CGRect(x: point.x - radius, y: point.y - radius, width: radius * 2, height: radius * 2))
@@ -178,52 +184,55 @@ struct InlineMaskCanvas: View {
                 cancelGesture(); return
             }
         } else { inputIdentity = InputIdentity(source: source, layerID: selected.id, context: model.inputContextID) }
-        guard let point = try? MaskPoint(x: location.x, y: location.y),
-              let native = geometry.viewToCanvas(point) else {
+        guard workspace.editableMask != nil,
+              let point = try? MaskPoint(x: location.x, y: location.y),
+              let native = geometry.viewToCanvas(point),
+              let mapping = try? DevelopCanvasCoordinateMapping(sourceSize: CGSize(width: geometry.canvasSize.width, height: geometry.canvasSize.height)),
+              let normalized = mapping.sourcePoint(at: CGPoint(x: native.x, y: native.y),
+                in: CGRect(x: 0, y: 0, width: geometry.canvasSize.width, height: geometry.canvasSize.height)) else {
             workspace.brush.breakStrokeSegment(); return
         }
         if workspace.usesBrush {
             if let document = workspace.brush.document,
-               let point = try? MaskPoint(x: native.x * Double(document.canvasSize.width) / Double(geometry.canvasSize.width),
-                y: native.y * Double(document.canvasSize.height) / Double(geometry.canvasSize.height)) {
+               let point = try? MaskPoint(x: normalized.x * Double(document.canvasSize.width),
+                y: normalized.y * Double(document.canvasSize.height)) {
                 workspace.brush.appendPoint(point)
             }
             return
         }
-        guard let normalized = try? LocalMaskPoint(x: native.x / Double(geometry.canvasSize.width), y: native.y / Double(geometry.canvasSize.height)) else { return }
         if gesture == nil {
-            gesture = GradientGesture(handle: nearestHandle(to: normalized, shape: selected.mask.shape, geometry: geometry),
-                initial: selected.mask.shape, start: normalized)
+            gesture = GradientGesture(handle: nearestHandle(to: normalized, shape: workspace.editableMask?.shape ?? selected.mask.shape, geometry: geometry),
+                initial: workspace.editableMask?.shape ?? selected.mask.shape, start: normalized)
             model.beginChange()
         }
         guard let gesture else { return }
         switch gesture.initial {
         case .linear(let start, let end):
             switch gesture.handle {
-            case .start: if normalized != end { model.updateSelected { $0.mask.shape = .linear(start: normalized, end: end) } }
-            case .end: if normalized != start { model.updateSelected { $0.mask.shape = .linear(start: start, end: normalized) } }
+            case .start: if normalized != end { model.updateSelectedMask { $0.shape = .linear(start: normalized, end: end) } }
+            case .end: if normalized != start { model.updateSelectedMask { $0.shape = .linear(start: start, end: normalized) } }
             case .center:
                 let dx = min(1 - max(start.x, end.x), max(-min(start.x, end.x), normalized.x - gesture.start.x))
                 let dy = min(1 - max(start.y, end.y), max(-min(start.y, end.y), normalized.y - gesture.start.y))
                 let a = clampedPoint(x: start.x + dx, y: start.y + dy), b = clampedPoint(x: end.x + dx, y: end.y + dy)
-                if a != b { model.updateSelected { $0.mask.shape = .linear(start: a, end: b) } }
-            default: if gesture.start != normalized { model.updateSelected { $0.mask.shape = .linear(start: gesture.start, end: normalized) } }
+                if a != b { model.updateSelectedMask { $0.shape = .linear(start: a, end: b) } }
+            default: if gesture.start != normalized { model.updateSelectedMask { $0.shape = .linear(start: gesture.start, end: normalized) } }
             }
         case .radial(let center, let rx, let ry, let rotation):
             switch gesture.handle {
             case .center:
                 let moved = clampedPoint(x: center.x + normalized.x - gesture.start.x, y: center.y + normalized.y - gesture.start.y)
-                model.updateSelected { $0.mask.shape = .radial(center: moved, radiusX: rx, radiusY: ry, rotation: rotation) }
+                model.updateSelectedMask { $0.shape = .radial(center: moved, radiusX: rx, radiusY: ry, rotation: rotation) }
             case .radiusX:
                 let aspect = Double(geometry.canvasSize.height) / Double(geometry.canvasSize.width)
                 let radius = max(0.002, abs((normalized.x - center.x) * cos(rotation) + (normalized.y - center.y) * aspect * sin(rotation)))
-                model.updateSelected { $0.mask.shape = .radial(center: center, radiusX: radius, radiusY: ry, rotation: rotation) }
+                model.updateSelectedMask { $0.shape = .radial(center: center, radiusX: radius, radiusY: ry, rotation: rotation) }
             case .radiusY:
                 let aspect = Double(geometry.canvasSize.width) / Double(geometry.canvasSize.height)
                 let radius = max(0.002, abs(-(normalized.x - center.x) * aspect * sin(rotation) + (normalized.y - center.y) * cos(rotation)))
-                model.updateSelected { $0.mask.shape = .radial(center: center, radiusX: rx, radiusY: radius, rotation: rotation) }
+                model.updateSelectedMask { $0.shape = .radial(center: center, radiusX: rx, radiusY: radius, rotation: rotation) }
             default:
-                model.updateSelected { $0.mask.shape = .radial(center: gesture.start,
+                model.updateSelectedMask { $0.shape = .radial(center: gesture.start,
                     radiusX: max(0.002, abs(normalized.x - gesture.start.x)), radiusY: max(0.002, abs(normalized.y - gesture.start.y)), rotation: 0) }
             }
         default: break
@@ -268,6 +277,7 @@ struct InlineMaskList: View {
     var onDragChanged: ((CGSize) -> Void)?
     var onDragEnded: (() -> Void)?
     @Environment(\.openAIModels) private var openAIModels
+    @ViewState private var collapsedComponents: Set<UUID> = []
 
     private var layers: [LocalAdjustment] { workspace.model?.settings.localAdjustments ?? [] }
 
@@ -326,15 +336,32 @@ struct InlineMaskList: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(spacing: 3) {
-                        ForEach(layers, id: \.id) { layer in maskRow(layer).id(layer.id) }
+                        ForEach(layers, id: \.id) { layer in
+                            VStack(alignment: .leading, spacing: 2) {
+                                maskRow(layer)
+                                if let composition = layer.mask.composition {
+                                    DisclosureGroup("Bestandteile (\(composition.components.count))", isExpanded: Binding(
+                                        get: { !collapsedComponents.contains(layer.id) },
+                                        set: { if $0 { collapsedComponents.remove(layer.id) } else { collapsedComponents.insert(layer.id) } })) {
+                                        ForEach(composition.components) { component in componentRow(component, layerID: layer.id).id(component.id) }
+                                    }.font(.system(size: 12)).padding(.horizontal, 5)
+                                        .accessibilityElement(children: .contain)
+                                        .accessibilityIdentifier("local-mask.components.\(layer.id.uuidString)")
+                                }
+                            }.id(layer.id)
+                        }
                     }
                 }.accessibilityIdentifier("local-mask.list-scroll")
-                    .task(id: workspace.model?.selectedID) {
-                        // New masks, undo and redo can select a row beyond
-                        // the four visible slots. Keep that row reachable.
-                        if let selectedID = workspace.model?.selectedID { proxy.scrollTo(selectedID, anchor: .center) }
+                    .task(id: "\(workspace.model?.selectedID?.uuidString ?? "")/\(workspace.model?.selectedComponentID?.uuidString ?? "")") {
+                        if let componentID = workspace.model?.selectedComponentID, let selectedID = workspace.model?.selectedID {
+                            collapsedComponents.remove(selectedID)
+                            await Task.yield()
+                            proxy.scrollTo(componentID, anchor: .center)
+                        } else if let selectedID = workspace.model?.selectedID {
+                            proxy.scrollTo(selectedID, anchor: .center)
+                        }
                     }
-            }.frame(height: InlineMaskPaletteLayout.listHeight(layerCount: layers.count, maximumHeight: maximumHeight))
+            }.frame(height: InlineMaskPaletteLayout.listHeight(layerCount: workspace.maskPaletteRowCount, maximumHeight: maximumHeight))
             Divider().frame(height: 1)
             HStack(spacing: 9) {
                 if !usesWorkspaceEditingHistory {
@@ -392,6 +419,31 @@ struct InlineMaskList: View {
             .font(.system(size: 13)).padding(.horizontal, 4).frame(height: 28)
             .background(selected ? Theme.accent.opacity(0.10) : Color.clear, in: RoundedRectangle(cornerRadius: 4))
             .overlay { RoundedRectangle(cornerRadius: 4).strokeBorder(selected ? Theme.accent.opacity(0.65) : Color.clear) }
+    }
+
+    private func componentRow(_ component: LocalMaskComponent, layerID: UUID) -> some View {
+        let selected = workspace.model?.selectedID == layerID && workspace.model?.selectedComponentID == component.id
+        return HStack(spacing: 4) {
+            Button { workspace.selectComponent(component.id, in: layerID) } label: {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(component.name).lineLimit(1)
+                    Text(component.operation.title).font(.system(size: 11)).foregroundStyle(Theme.muted)
+                }.frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
+            }.buttonStyle(.plain).accessibilityLabel("Bestandteil auswählen: \(component.name), \(component.operation.title)")
+                .accessibilityAddTraits(selected ? .isSelected : [])
+                .accessibilityIdentifier("local-mask.component.select.\(component.id.uuidString)")
+            Button {
+                workspace.selectComponent(component.id, in: layerID)
+                workspace.model?.updateComponent(component.id) { $0.isEnabled.toggle() }
+            } label: { Image(systemName: component.isEnabled ? "eye" : "eye.slash").frame(width: 19, height: 24) }
+                .buttonStyle(.plain).accessibilityLabel("Bestandteil \(component.name) \(component.isEnabled ? "deaktivieren" : "aktivieren")")
+            Button(role: .destructive) {
+                workspace.selectComponent(component.id, in: layerID); workspace.model?.deleteComponent(component.id)
+            } label: { Image(systemName: "trash").frame(width: 19, height: 24) }
+                .buttonStyle(.plain).accessibilityLabel("Bestandteil löschen: \(component.name)")
+        }.padding(.leading, 8).padding(.vertical, 2)
+            .background(selected ? Theme.accent.opacity(0.1) : .clear, in: RoundedRectangle(cornerRadius: 3))
+            .disabled(workspace.blocksMaskInput)
     }
 
     private func symbol(for shape: LocalMaskShape) -> String {
@@ -494,7 +546,7 @@ struct InlineMaskInspector: View {
     }
 
     private var featherResetValue: Double {
-        switch workspace.selected?.mask.shape {
+        switch workspace.editableMask?.shape {
         case .subject, .sky: 0
         default: 0.5
         }
@@ -502,6 +554,8 @@ struct InlineMaskInspector: View {
 
     private func maskControls(_ layer: LocalAdjustment, model: LocalAdjustmentEditorModel) -> some View {
         VStack(alignment: .leading, spacing: 1) {
+            Divider()
+            LocalMaskComponentControls(workspace: workspace, model: model)
             Divider()
             if workspace.usesBrush {
                 HStack {
@@ -524,7 +578,7 @@ struct InlineMaskInspector: View {
                 TextField("Maskenname", text: Binding(get: { workspace.selected?.name ?? "" }, set: { name in
                     if !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { model.updateSelected { $0.name = String(name.prefix(64)) } }
                 })).textFieldStyle(.roundedBorder).accessibilityLabel("Maskenname")
-                Toggle("Umkehren", isOn: Binding(get: { workspace.selected?.mask.isInverted ?? false }, set: { value in model.updateSelected { $0.mask.isInverted = value } })).toggleStyle(.checkbox).fixedSize()
+                Toggle("Gesamtmaske umkehren", isOn: Binding(get: { workspace.selected?.mask.isInverted ?? false }, set: { value in model.updateSelected { $0.mask.isInverted = value } })).toggleStyle(.checkbox).fixedSize()
                     .accessibilityIdentifier("local-mask.invert")
                 Menu {
                     Button("Maske duplizieren", systemImage: "plus.square.on.square") { workspace.finishGesture(); model.duplicateSelected() }
@@ -537,16 +591,16 @@ struct InlineMaskInspector: View {
                     .menuStyle(.borderlessButton).frame(width: 16).accessibilityLabel("Aktionen für diese Maske")
             }.font(.system(size: 13)).controlSize(.small).frame(minHeight: 28)
             valueSlider("Maskenstärke", value: Binding(get: { workspace.selected?.mask.opacity ?? 1 }, set: { value in model.updateSelected { $0.mask.opacity = value } }), range: 0...1, neutral: 1, model: model)
-            valueSlider("Weiche Kante", value: Binding(get: { workspace.selected?.mask.feather ?? 0 }, set: { value in model.updateSelected { $0.mask.feather = value } }), range: 0...1, neutral: featherResetValue, model: model)
-            if case .radial = layer.mask.shape {
+            valueSlider("Weiche Kante", value: Binding(get: { workspace.editableMask?.feather ?? 0 }, set: { value in model.updateSelectedMask { $0.feather = value } }), range: 0...1, neutral: featherResetValue, model: model)
+            if case .radial? = workspace.editableMask?.shape {
                 valueSlider("Drehung", value: Binding(get: {
-                    if case .radial(_, _, _, let angle)? = workspace.selected?.mask.shape { return angle * 180 / .pi }; return 0
+                    if case .radial(_, _, _, let angle)? = workspace.editableMask?.shape { return angle * 180 / .pi }; return 0
                 }, set: { value in
-                    model.updateSelected { if case .radial(let center, let rx, let ry, _) = $0.mask.shape { $0.mask.shape = .radial(center: center, radiusX: rx, radiusY: ry, rotation: value * .pi / 180) } }
+                    model.updateSelectedMask { if case .radial(let center, let rx, let ry, _) = $0.shape { $0.shape = .radial(center: center, radiusX: rx, radiusY: ry, rotation: value * .pi / 180) } }
                 }), range: -180...180, model: model)
             }
-            if case .linear = layer.mask.shape { refinementToggle }
-            else if case .radial = layer.mask.shape { refinementToggle }
+            if case .linear? = workspace.editableMask?.shape { refinementToggle }
+            else if case .radial? = workspace.editableMask?.shape { refinementToggle }
             Divider()
             Button("Lokale Regler zurücksetzen", systemImage: "arrow.counterclockwise") {
                 workspace.finishGesture(); model.updateSelected { $0.settings = .neutral }

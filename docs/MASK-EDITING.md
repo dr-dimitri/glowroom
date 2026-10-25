@@ -189,3 +189,51 @@ Der integrierte Lauf vom 17. Oktober 2026 auf dem vorhandenen Apple-Silicon-Mac 
 Das unabhängige Gegenreview umfasste Core-Geometrie, UI-/Worker-Schnittstellen, Speicherzulassung, Artefaktrollen und Backup-/Restoreclosure. Befunde zu temporären Strichgrenzen, Quellenkohärenz und Speicheranrechnung wurden vor Abschluss korrigiert und gezielt geprüft. Der separat erfasste Bestandsfehler [#41](https://github.com/dr-dimitri/glowroom/issues/41) im Quellenstempel der Bildanalyse wird hier nicht mitbehoben.
 
 Die manuelle Prüfung verwendet ausschließlich den separaten Katalog `/tmp/PicEdit-Issue11/Catalog` mit synthetischen JPEGs (1600 × 1067 Querformat und 1000 × 1500 Hochformat) sowie einer TIFF mit EXIF-Orientierung 6 (1067 × 1600 orientiert). Auf der 2x-Retina-Ansicht wurden Pinsel, Radierer, Cursor, Toolbar-Undo/Redo, Löschen, Invertierung, Deckkraft, Einpassen, 100 % und Pan bedient. Bild und Overlay bleiben deckungsgleich; Letterboxing erzeugt keinen Strich. Wiederöffnen und Bildwechsel starten ohne früheren Entwurf. Native Cmd-Z-Menürouting verdrängte die ursprünglich versuchten lokalen Buttonshortcuts; diese irreführenden Shortcutangaben wurden entfernt. Masken-Undo/Redo erfolgt über die beschrifteten Toolbarbuttons. Es wurden keine persönlichen Fotos, RAWs oder tatsächlichen Modelle für diesen UI-Lauf verwendet. Die UI-Verbindung war beim ersten Abruf verzögert; die folgenden Interaktionen wurden direkt geprüft.
+
+## Editierbare Bestandteile und Softmasken-Komposition
+
+Unter **Maskieren → Bestandteile → Bestandteil hinzufügen** lassen sich Pinsel,
+lineare und radiale Verläufe sowie eingefrorene Motiv-/Himmels-/Hintergrundraster
+zu einer Maske verbinden. Die Maskenliste klappt die benannten Bestandteile auf;
+dort lassen sie sich auswählen, aktivieren und löschen. Der Inspektor erlaubt
+Umbenennen, die Verknüpfung sowie eine eigene Invertierung. Die Überlagerung nennt
+ausdrücklich **Bestandteil** oder **Gesamtmaske**. Pinsel und Verlaufgriffe bearbeiten
+immer den ausgewählten Bestandteil. Eine Änderungsgeste bildet einen Undo-Schritt;
+Undo stellt auch gelöschte Bestandteile und ihre IDs wieder her.
+
+Die flache versionierte Liste beginnt auf leerer Abdeckung. Der erste aktive
+Bestandteil muss **Hinzufügen** verwenden. Danach gelten in gespeicherter Reihenfolge
+`max(a,b)` (Hinzufügen), `a*(1-b)` (Abziehen) und `a*b` (Schneiden). Weiche Teildeckung
+bleibt erhalten. Pro Bestandteil folgen auf Grundform und Pinselverfeinerung die
+bisherige Weichheitssemantik und anschließend seine Invertierung. Gesamtinvertierung
+und Maskenstärke wirken zuletzt; es gibt keine weitere Gesamtweichzeichnung.
+Deaktivieren oder Löschen, das eine erste aktive Subtraktion oder Schnittmenge
+hinterließe, wird mit dem Namen des betroffenen ersten Bestandteils abgelehnt.
+Eine leere oder vollständig deaktivierte Liste besitzt leere Abdeckung.
+
+Bis zum ersten tatsächlich angenommenen zusätzlichen Bestandteil bleibt die alte
+Einzelmaskendarstellung unverändert, einschließlich kanonischer Bytes und Hashes.
+Die Konvertierung übernimmt Form, Verfeinerung und Weichheit in den ersten
+Bestandteil; äußere Invertierung und Deckkraft bleiben an der Gesamtmaske.
+Bestehende normierte Quellpunkte werden nicht umgeschrieben. Das Maskenwerkzeug
+zeigt bewusst die unverzerrte orientierte Quelle; neue Punkte verwenden den
+zentralen Geometrievertrag mit neutraler Darstellungsgeometrie. Die abschließende
+Bildgeometrie wirkt anschließend auf Foto und bereits angewandte lokale Korrektur.
+
+Es gelten höchstens 16 Bestandteile je Maske, 64 je Foto und weiterhin 16 lokale
+Korrekturen. Jede bestehende Einzelmaske zählt als eine logische Komponente gegen
+die Fotogrenze; ihr Speicherformat bleibt unverändert. Auch deaktivierte Bestandteile zählen gegen die gemeinsamen Grenzen:
+16 MiB Rasterdaten, 16.384 Pinselpunkte, 1024 Striche und 32 MiB Settings-JSON.
+JSON-Preflight zählt diese Lasten vor dem Decodieren von Rasterdaten. Auch direktes
+Settings-Encoding prüft die Gesamtbudgets vor dem Materialisieren von Base64- und
+Punktarrays. Vorschau,
+Überlagerung, Export und Undo berücksichtigen zusätzliche Maskenflächen und
+Payloads in ihren bestehenden Speicherbudgets. Die geordnete Verknüpfung bleibt
+im selben Core-Image-Auftrag; es entstehen keine Tasks oder RAW-Decodes je
+Bestandteil. Core Image plant die unabhängigen Maskenpixel parallel.
+
+Synthetische skalare und Float-Kernel-Tests prüfen Teildeckungen, Reihenfolge,
+Invertierung, Legacy-Konvertierung und die Komponenten-/Gesamtbudgets ohne lokale
+Fotos. Kontrollierte verspätete KI-Ergebnisse dürfen kein inzwischen ausgewähltes
+anderes Ziel ersetzen. Die gespeicherten Raster benötigen bei Neustart und
+Backup-Wiederherstellung weder ein installiertes noch ein erneut geladenes Modell.

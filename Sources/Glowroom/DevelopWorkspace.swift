@@ -55,6 +55,12 @@ final class DevelopWorkspace: ObservableObject {
     @Published private(set) var displayedMapping: DevelopCanvasMapping?
     @Published private(set) var hdrDisplayed = false
     var isOriginalCanvasReady: Bool { sourceIdentity != nil && displayedMapping == .original }
+    func isCropCanvasReady(for optics: DevelopOpticsSettings) -> Bool {
+        guard sourceIdentity != nil, let displayedMapping, displayedMapping.optics == optics else { return false }
+        // A new slider value cannot accept crop input over an older optical
+        // frame. The source tools keep their stricter identity-canvas gate.
+        return displayedMapping == .original || displayedMapping.isCompleteOpticalCanvas
+    }
     func markDisplayed(source: AISourceIdentity, settings: EditSettings) {
         guard source == sourceIdentity else { return }
         let mapping = DevelopCanvasMapping(settings.developGeometry)
@@ -299,10 +305,15 @@ struct DevelopCanvasMapping: Hashable {
     let flipsY: Bool
     let angle: Double
     let constrainsToImage: Bool
+    let optics: DevelopOpticsSettings
     init(_ geometry: DevelopGeometry) {
         crop = geometry.crop; turns = geometry.quarterTurns
         flipsX = geometry.flipHorizontal; flipsY = geometry.flipVertical
         angle = geometry.straightenAngle; constrainsToImage = geometry.constrainToImage
+        optics = geometry.optics
+    }
+    var isCompleteOpticalCanvas: Bool {
+        crop == nil && turns == 0 && !flipsX && !flipsY && angle == 0 && !constrainsToImage
     }
     static let original = Self(.neutral)
 }

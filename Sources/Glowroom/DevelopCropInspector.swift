@@ -39,7 +39,7 @@ struct DevelopCropInspector: View {
                     Spacer()
                     Button(workspace.isAutoStraightening ? "Horizont wird ermittelt …" : "Automatisch ausrichten", action: straightenAutomatically)
                         .buttonStyle(.bordered).controlSize(.small)
-                        .disabled(workspace.isAutoStraightening || !workspace.isOriginalCanvasReady)
+                        .disabled(workspace.isAutoStraightening || !workspace.isCropCanvasReady(for: geometry.optics))
                         .help("Erkannten Horizont automatisch waagerecht ausrichten")
                         .accessibilityIdentifier("develop.crop.auto")
                 }
@@ -69,6 +69,25 @@ struct DevelopCropInspector: View {
                 }
             }.padding(.vertical, 10).disabled(!editor.canEdit)
             Divider()
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 6) {
+                    Text("Verzeichnung")
+                    ResettableSlider(value: Binding(get: { geometry.optics.distortion }, set: { value in
+                        guard let optics = try? DevelopOpticsSettings(distortion: value) else { return }
+                        update(atomic: false) { $0.optics = optics }
+                    }), in: -100...100, step: 1, onEditingChanged: { editing in
+                        if editing { editor.endEditing(assetID: asset.id); editor.beginEditing(assetID: asset.id) }
+                        else { editor.endEditing(assetID: asset.id) }
+                    }).accessibilityLabel("Radiale Verzeichnung").accessibilityIdentifier("develop.crop.distortion")
+                    Text("\(Int(geometry.optics.distortion))").monospacedDigit().frame(width: 32, alignment: .trailing)
+                }
+                Toggle("Auf gültige Bildfläche begrenzen", isOn: Binding(get: { geometry.constrainToImage }, set: { enabled in
+                    update { $0.constrainToImage = enabled }
+                })).accessibilityIdentifier("develop.crop.constrain")
+                Button("Verzeichnung zurücksetzen") { update { $0.optics = .neutral } }
+                    .buttonStyle(.plain).accessibilityIdentifier("develop.crop.distortion.reset")
+            }.padding(.vertical, 10).disabled(!editor.canEdit)
+            Divider()
             if let error = workspace.errorMessage {
                 Text(error).font(.system(size: 13)).foregroundStyle(.orange).padding(.top, 6)
             }
@@ -81,6 +100,7 @@ struct DevelopCropInspector: View {
                     update {
                         $0.crop = nil; $0.quarterTurns = 0; $0.straightenAngle = 0; $0.constrainToImage = true
                         $0.flipHorizontal = false; $0.flipVertical = false
+                        $0.optics = .neutral
                     }
                 }.disabled(!editor.canEdit).accessibilityIdentifier("develop.crop.reset")
                 Divider().frame(height: 14)

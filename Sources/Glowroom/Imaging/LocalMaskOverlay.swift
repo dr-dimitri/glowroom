@@ -7,9 +7,18 @@ struct LocalMaskOverlayRequest: Equatable, Sendable {
     let canvas: ArtifactPixelSize
     let layerID: UUID
     let mask: LocalAdjustmentMask
+    let componentID: UUID?
+    let showsComponent: Bool
+
+    init(source: AISourceIdentity, canvas: ArtifactPixelSize, layerID: UUID, mask: LocalAdjustmentMask,
+         componentID: UUID? = nil, showsComponent: Bool = false) {
+        self.source = source; self.canvas = canvas; self.layerID = layerID; self.mask = mask
+        self.componentID = componentID; self.showsComponent = showsComponent
+    }
 
     func sharesCanvas(with other: Self) -> Bool {
         source == other.source && canvas == other.canvas && layerID == other.layerID
+            && componentID == other.componentID && showsComponent == other.showsComponent
     }
 }
 
@@ -99,8 +108,14 @@ actor LocalMaskOverlayWorker {
         // The overlay is display-only. Keep its geometry aspect-preserving and
         // its bitmap bounded independently of the camera's native resolution.
         let factor = min(1, Double(Self.maximumDimension) / Double(max(size.width, size.height)))
-        let width = max(1, Int((Double(size.width) * factor).rounded()))
-        let height = max(1, Int((Double(size.height) * factor).rounded()))
+        try mask.validate()
+        let requestedWidth = max(1, Int((Double(size.width) * factor).rounded()))
+        let requestedHeight = max(1, Int((Double(size.height) * factor).rounded()))
+        // Use the same component-aware admission as photo rendering. A complex
+        // overlay must not bypass the worker's bounded intermediate-mask plan.
+        let layer = try LocalAdjustment(name: "Überlagerung", mask: mask, settings: .init(exposure: 1))
+        let admitted = try LocalAdjustmentRenderer.previewSize(width: requestedWidth, height: requestedHeight, adjustments: [layer])
+        let width = admitted.width, height = admitted.height
         let extent = CGRect(x: 0, y: 0, width: width, height: height)
         let image = try PipelineTrace.measure(.maskOverlayGraph) {
             let scalar = try LocalAdjustmentRenderer.maskImage(mask, extent: extent, cache: maskCache)

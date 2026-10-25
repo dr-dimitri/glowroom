@@ -130,6 +130,8 @@ public enum ArtifactJSONCodec {
         case let v as MaskRasterTransform: try v.validate()
         case let v as LocalAdjustment: try v.validate()
         case let v as LocalAdjustmentMask: try v.validate()
+        case let v as LocalMaskComposition: try v.validate()
+        case let v as LocalMaskComponent: try v.validate()
         case let v as LocalMaskShape: try v.validate()
         case let v as LocalAdjustmentSettings:
             guard v == v.normalized else { throw ArtifactContractError.invalidValue("local adjustment settings") }
@@ -138,6 +140,9 @@ public enum ArtifactJSONCodec {
             try v.validateLocalAdjustments()
             try v.developGeometry.validate()
             try v.levels.validate()
+            try v.toneCurves.validate()
+        case let v as ToneCurveSettings: try v.validate()
+        case let v as ToneCurve: try v.validate()
         case let v as LevelsSettings: try v.validate()
         case let v as LevelsCurve: try v.validate()
         case let v as DevelopColorSettings:
@@ -164,7 +169,7 @@ public enum ArtifactJSONCodec {
         let editEnvelope = type == EditingSnapshot.self || type == EditSettings.self || type == EditingExpectedState.self
             || type == GeneratedArtifact.self || type == GeneratedArtifactManifest.self || type == GenerationProvenance.self
             || type == LocalAdjustment.self || type == LocalAdjustmentMask.self || type == LocalMaskShape.self
-            || type == LocalMaskRaster.self || type == DevelopGeometry.self
+            || type == LocalMaskRaster.self || type == LocalMaskComposition.self || type == LocalMaskComponent.self || type == DevelopGeometry.self
         let maximum = maximum ?? (editEnvelope ? EditSettings.maximumEncodedBytes : 65_536)
         guard maximum > 0, maximum <= 67_108_864,data.count <= maximum else { throw ArtifactContractError.limitExceeded }
         do {
@@ -183,6 +188,21 @@ struct ArtifactJSONScanner {
     private(set) var rootMembers: [String:Range<Int>] = [:]
     private(set) var entryRanges: [Range<Int>] = []
     private var offset = 0, values = 0
+    private struct LocalBudget {
+        var components = 0, rasterBytes = 0, points = 0, strokes = 0
+    }
+    private var localBudgets: [LocalBudget] = []
+    private mutating func countLocal(components: Int = 0, rasterBytes: Int = 0, points: Int = 0, strokes: Int = 0) throws {
+        guard !localBudgets.isEmpty else { return }
+        let i = localBudgets.count - 1
+        localBudgets[i].components += components; localBudgets[i].rasterBytes += rasterBytes
+        localBudgets[i].points += points; localBudgets[i].strokes += strokes
+        let b = localBudgets[i]
+        guard b.components <= LocalAdjustment.maximumTotalComponents,
+              b.rasterBytes <= LocalAdjustment.maximumTotalRasterBytes,
+              b.points <= LocalAdjustment.maximumTotalBrushPoints,
+              b.strokes <= LocalAdjustment.maximumTotalBrushStrokes else { throw ArtifactContractError.limitExceeded }
+    }
     private let depthLimit: Int, valueLimit: Int, rasterStringLimit: Int, replacementStringLimit: Int
     init(_ data:Data,maximum:Int) {
         bytes = data; depthLimit = 64; valueLimit = 2_000_000
@@ -221,10 +241,24 @@ struct ArtifactJSONScanner {
                 if depth == 0 { rootMembers[key] = memberStart..<offset }
                 if take(125) { break }; guard take(44) else { throw PhotoMetadataError.validation(.malformedJSON) }
             }
+            if path.last == "mask", !keys.contains("composition"), !localBudgets.isEmpty {
+                // A historical single selection is one logical component too.
+                try countLocal(components: 1)
+            }
         case 91:
+            let localLayers = path.last == "localAdjustments"
+            if localLayers { localBudgets.append(LocalBudget()) }
+            defer { if localLayers { localBudgets.removeLast() } }
             offset += 1; var count = 0
             if take(93) { return }
             while true {
+                if localLayers, count >= LocalAdjustment.maximumCount { throw ArtifactContractError.limitExceeded }
+                if path.last == "components" {
+                    guard count < LocalMaskComposition.maximumComponents else { throw ArtifactContractError.limitExceeded }
+                    try countLocal(components: 1)
+                }
+                if path.last == "points" { try countLocal(points: 1) }
+                if path.last == "strokes" { try countLocal(strokes: 1) }
                 whitespace(); let start = offset
                 try value(depth:depth+1,path:path+["[]"]); count += 1
                 if false {
@@ -234,7 +268,13 @@ struct ArtifactJSONScanner {
                 }
                 if take(93) { break }; guard take(44) else { throw PhotoMetadataError.validation(.malformedJSON) }
             }
-        case 34: _ = try string(maximum: stringLimit(at: path))
+        case 34:
+            let text = try string(maximum: stringLimit(at: path))
+            if path.last == "bytes", !localBudgets.isEmpty {
+                // Count Base64 payload size before Codable allocates decoded mattes.
+                let padding = text.hasSuffix("==") ? 2 : text.hasSuffix("=") ? 1 : 0
+                try countLocal(rasterBytes: max(0, text.utf8.count / 4 * 3 - padding))
+            }
         case 110: try literal("null")
         case 116: try literal("true")
         case 102: try literal("false")

@@ -31,6 +31,9 @@ enum DevelopGeometryRenderer {
         let geometry = geometry.normalized
         try geometry.validate()
         try validateExtent(extent)
+        // Validate the whole spatial tail before building repair masks or
+        // replacement graphs, including the radial allocation limits.
+        let plan = try DevelopGeometryPlan(sourceExtent: extent, geometry: geometry)
         var image = input.cropped(to: extent)
         // Stored patch order is observable on overlapping targets. The immutable
         // pre-retouch input is the clone/heal source for every operation.
@@ -70,7 +73,23 @@ enum DevelopGeometryRenderer {
             }
             image = result
         }
-        let plan = try DevelopGeometryPlan(sourceExtent: extent, geometry: geometry)
+        if let radial = plan.radial {
+            // The inverse affine tail and radial warp share one resampling.
+            // Never clamp the source: unconstrained outside samples are clear.
+            let t = plan.outputToInput, crop = plan.cropRect
+            guard let warped = radialWarpKernel?.apply(extent: plan.outputExtent,
+                roiCallback: { _, _ in extent },
+                arguments: [image, CIVector(x: t.a, y: t.b, z: t.c, w: t.d),
+                    CIVector(x: t.tx, y: t.ty), CIVector(x: radial.centerX, y: radial.centerY),
+                    radial.coefficient, radial.radiusSquared,
+                    CIVector(x: crop.minX, y: crop.minY, z: crop.maxX, w: crop.maxY),
+                    plan.clampsRotatedInput ? 1.0 : 0.0,
+                    CIVector(x: extent.minX, y: extent.minY, z: extent.maxX, w: extent.maxY)]) else {
+                throw EditRenderError.unavailable
+            }
+            try Task.checkCancellation()
+            return warped
+        }
         // Keep the established crop/clamp/transform order. The inverse picker
         // consumes these same planned matrices rather than recomputing angles.
         for step in plan.steps {
@@ -151,6 +170,16 @@ enum DevelopGeometryRenderer {
         }
         for eye in geometry.redEyeCorrections where eye.strength > 0 {
             guard addPlanes(16) else { return nil }
+        }
+        if !geometry.optics.isNeutral {
+            guard let plan = try? DevelopGeometryPlan(sourceExtent: CGRect(x: 0, y: 0, width: width, height: height), geometry: geometry),
+                  addPlanes(16) else { return nil }
+            let output = UInt64(plan.outputSize.width).multipliedReportingOverflow(by: UInt64(plan.outputSize.height))
+            guard !output.overflow else { return nil }
+            let outputBytes = output.partialValue.multipliedReportingOverflow(by: 16)
+            guard !outputBytes.overflow else { return nil }
+            let sum = maskBytes.addingReportingOverflow(outputBytes.partialValue)
+            guard !sum.overflow else { return nil }; maskBytes = sum.partialValue
         }
         let planesBytes = fullPixels.partialValue.multipliedReportingOverflow(by: planes)
         guard !planesBytes.overflow else { return nil }
@@ -298,6 +327,28 @@ enum DevelopGeometryRenderer {
             if (preservesSampleRange < 0.5) { replacement = max(vec3(0.0), replacement); }
             vec3 color = mix(base.rgb, replacement, clamp(mask.r * opacity, 0.0, 1.0));
             return vec4(color * original.a, original.a);
+        }
+        """)
+    private static let radialWarpKernel = CIKernel(source: """
+        kernel vec4 radialGeometry(sampler original, vec4 matrix, vec2 translation, vec2 center,
+                                  float k, float radiusSquared, vec4 crop, float constrainedRotation,
+                                  vec4 sourceBounds) {
+            vec2 p = destCoord();
+            vec2 warped = vec2(matrix.x * p.x + matrix.z * p.y,
+                               matrix.y * p.x + matrix.w * p.y) + translation;
+            if (constrainedRotation > 0.5) {
+                warped = clamp(warped, crop.xy + vec2(0.5), crop.zw - vec2(0.5));
+            } else if (warped.x < crop.x || warped.y < crop.y || warped.x > crop.z || warped.y > crop.w) {
+                return vec4(0.0);
+            }
+            vec2 delta = warped - center;
+            vec2 source = center + delta * (1.0 + k * dot(delta, delta) / radiusSquared);
+            // CIWarpKernel's implicit sampler extends edge pixels even when
+            // its input is cropped. An explicit domain check must precede the
+            // one and only color sample, including for analytic CIImage inputs.
+            if (source.x < sourceBounds.x || source.y < sourceBounds.y ||
+                source.x > sourceBounds.z || source.y > sourceBounds.w) return vec4(0.0);
+            return sample(original, samplerTransform(original, source));
         }
         """)
     private static let redEyeKernel = CIColorKernel(source: """

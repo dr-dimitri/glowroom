@@ -60,6 +60,27 @@ Die Oberfläche verwendet lesbare Feldnamen, Werte und Zustände. Fachliche Erkl
 
 Die Kopfzeile bietet **Bibliothek** und **Entwickeln**. Im gemeinsamen Entwickeln stehen **KI-Korrektur**, **Licht**, **Farbe** und **Details** neben den Werkzeugen zum Zuschneiden, Maskieren und Reparieren bereit. **KI-Korrektur** erstellt lokale Qwen3.5-4B-Korrekturvorschläge. Gesucht wird in der Bibliothek; die Einrichtung steht zentral unter **KI-Modelle** bereit. Bildtexte und Tags werden im gemeinsamen Formular **Bildinformationen** manuell bearbeitet oder mit KI vorgeschlagen. Vor dem Start sind **Auftrag** und **Zielbereich** sichtbar. Kurze Auftragsvorgaben gelten für den nächsten ausdrücklich angeforderten Vorschlag. **Aktueller Stand** und **Vorschlag** vergleichen die gerenderte Korrektur auf derselben Bildfläche; ein Vorschlag ist deutlich gekennzeichnet. Erst **Übernehmen** aktiviert die geprüften Werte als einen rückgängig machbaren Schritt in den regulären Licht-/Farbreglern. **Verwerfen** entfernt den Vorschlag. Export und Speicherung verwenden bis zur Übernahme den angenommenen Stand. **KI-Modelle → KI-Korrektur** bietet Download, Abbruch, Löschen und Speicheranzeigen. Das erste Modell benötigt etwa **3,06 GB** sowie Apple Silicon und Metal. [Bedienung, Grenzen und Tests](docs/AI-DEVELOPMENT.md).
 
+## Kurven, Maskenkomponenten und Optik
+
+**Licht → Kurven** ergänzt globale Master-/RGB-Punktkurven nach Levels und vor
+Präsenz. Monotone Zwischenpunkte, numerische Koordinaten und kanalweiser Reset
+bewahren den gespeicherten Farb-/HDR-Vertrag. [Bedienung und Formeln](docs/DEVELOP-COLOR.md).
+
+Eine lokale Maske kann bis zu 16 editierbare Bestandteile durch **Hinzufügen**,
+**Abziehen** und **Schneiden** kombinieren, insgesamt höchstens 64 pro Foto.
+Automatische Raster bleiben eingefroren und funktionieren ohne installiertes
+Modell weiter. [Maskenkomponenten und Grenzen](docs/MASK-EDITING.md).
+
+**Zuschneiden → Verzeichnung** bietet eine manuelle radiale Korrektur mit Raster,
+Reset und **Auf gültige Bildfläche begrenzen**. Vorschau und Export teilen die
+Abbildung; Masken und Retusche behalten ihre ursprünglichen Quellkoordinaten.
+[Koordinatenvertrag und Grenzen](docs/DEVELOP-GEOMETRY.md).
+
+Der Achtband-Farbmischer bleibt nach dem
+[numerischen HDR-No-Go](docs/COLOR-MIXER-EVALUATION.md) eine Entwickler-Evaluation.
+Die feste Qualitätsgrenze wird von beiden geprüften Kandidaten überschritten;
+es wird kein unqualifizierter Farbmischer aktiviert.
+
 ## Bibliothek verwenden
 
 Die Bibliotheksleiste hält Suche, Ansicht, Bewertungsfilter, Suchmodus, Sortierung und **Ordner aktualisieren** in einer Zeile. Bei schmaler Bildfläche fasst das Trichtersymbol **Filter & Sortierung** Bewertungs- und Sortieroptionen zusammen; Suchfeld und aktiver Suchmodus bleiben direkt erreichbar. Ordnername und Fotoanzahl entfallen im oberen Bildbereich; die Ordner bleiben links in der Navigation sichtbar.
