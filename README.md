@@ -6,6 +6,16 @@ Eine native Fotobibliothek für macOS, entwickelt mit SwiftUI und AppKit. Die An
 
 Der **Bildfokus** bietet mehr Bildfläche und Werkzeuge nach Bedarf. Die Bedienwege und Zustandsregeln stehen unter [Bildfokus und Arbeitsbereiche](docs/WORKSPACE-LAYOUT.md).
 
+**Vergleich → Als Referenz setzen** fixiert ein Foto für den [Fotovergleich](docs/DEVELOP-WORKSPACE.md); rechts bleibt das aktive Foto bearbeitbar. **Bildstände → Bildstand sichern …** speichert benannte Zwischenstände mit Miniaturen, unverbindlicher Vorschau und ausdrücklicher Wiederherstellung. Der optionale [lokale MCP-Zugang](docs/MCP.md) teilt die geöffnete Sitzung mit externen Clients; Korrekturvorschläge benötigen weiterhin sichtbares **Übernehmen** in Glowroom.
+
+Der gemeinsam vorbereitete Auftrag **Neue Maske mit Korrektur** bleibt nach dem
+[No-Go aus #221](docs/AI-EDIT-PLAN-EVALUATION.md) deaktiviert. Die gemessene Zielwahl
+und Motivmaske verfehlten das Qualitätsgate; der bestehende explizite Ablauf
+„Maske erzeugen, prüfen, lokal korrigieren“ bleibt nutzbar.
+
+Der [gemeinsame Abschluss von #224](docs/issue-224/README.md) ordnet alle elf
+Arbeitspakete, ihre Produktfreigaben und die zugehörigen Prüfungen zu.
+
 Die vereinfachte Oberfläche aus #201 ist mit allen acht Teilaufgaben umgesetzt. Der [gemeinsame Abschluss](docs/issue-201/README.md) bündelt Funktionszuordnung, zusammengeführte PRs und native Abnahmen. Das [UI-Konzept für gemeinsames Entwickeln mit KI-Unterstützung](docs/ui-concept-2026-10/README.md) erhält die ursprünglichen Konzepte und Ausgangsaufnahmen als historische Grundlage.
 
 ## Starten
@@ -41,6 +51,8 @@ GLOWROOM_BUILD_JOBS=1 ./scripts/build-app.sh --debug
 `1` führt Kompilierung und Icon-Erzeugung nacheinander aus. Erlaubt sind ganze Zahlen von 1 bis 1024; bei nicht verfügbarer Hardware-Erkennung verwendet das Skript einen Worker. Validierung, Signierung und Veröffentlichung warten auf beide Schritte. Schlägt ein Schritt fehl, bleibt das vorhandene App-Bundle erhalten. Bei Abbruch werden die eigenen Worker und nachgewiesenen Nachfahren auch über Prozessgruppen hinweg beendet. Prozessstartdaten und Benutzerkennung schützen die Zuordnung; fremde Prozesse werden nicht anhand ihres Namens oder Buildpfads ausgewählt.
 
 Ein Lock unter `dist/.glowroom-build.lock` verhindert konkurrierende Bundle-Builds im selben Checkout. Unabhängige Pakettests können mit einem getrennten Build-Verzeichnis gleichzeitig laufen. Nach einem nicht abfangbaren Prozessabbruch oder einem fehlgeschlagenen Worker-Wait können Lock und Staging bewusst zurückbleiben. Gleiches gilt, wenn die vollständige Beendigung eigener Nachfahren nicht nachgewiesen werden kann. Die im Lock gespeicherte PID allein genügt dann nicht: auch noch aktive Compiler-/Icon-Nachfahren und deren Build-Verzeichnisse prüfen. Erst nach bestätigter Prozessruhe dürfen die in der Fehlermeldung genannten eigenen Lock-/Stagingreste manuell entfernt und der Build neu gestartet werden. Aktive Sperren und Ergebnisse bleiben erhalten.
+
+Vor dem Start der Worker prüft das Skript, dass die lokale Prozessübersicht und die eigene Prozessidentität lesbar sind. Fehlt diese Berechtigung, endet der Build vor dem Forken mit einer passenden Meldung. Ein noch nicht über seine geprüfte Identität freigegebener Worker wartet höchstens zehn Sekunden auf sein Startsignal und beendet sich anschließend selbst. Auch `scripts/test-build-app.sh` benötigt Prozessprüfung: seine isolierten Fixtures werden nur bei bestätigter Prozessruhe entfernt; bei unvollständigem Nachweis bleiben sie mit einer Fehlermeldung erhalten.
 
 ## Neuer Name und frischer Datenbereich
 

@@ -1,0 +1,94 @@
+{
+  "cases": [
+    {
+      "cold_pass": true,
+      "id": "sky-0",
+      "passed_both": true,
+      "warm_pass": true
+    },
+    {
+      "cold_pass": true,
+      "id": "sky-1",
+      "passed_both": true,
+      "warm_pass": true
+    },
+    {
+      "cold_pass": true,
+      "id": "sky-2",
+      "passed_both": true,
+      "warm_pass": true
+    },
+    {
+      "cold_pass": false,
+      "id": "subject-0",
+      "passed_both": false,
+      "warm_pass": false
+    },
+    {
+      "cold_pass": false,
+      "id": "subject-1",
+      "passed_both": false,
+      "warm_pass": false
+    }
+  ],
+  "completed_cases": 5,
+  "concurrent_work": "Developer compilation ran concurrently with bounded CPU jobs. Latency is descriptive under that load, not an isolated performance benchmark.",
+  "contract": 1,
+  "decision": "NO-GO",
+  "false_positive_negative_plans": 0,
+  "latency_ms": {
+    "cold-app-cache": {
+      "count": 5,
+      "maximum": 134794.340416,
+      "median": 117397.537583,
+      "minimum": 108647.428125
+    },
+    "explicit-reference": {
+      "count": 5,
+      "maximum": 70887.318708,
+      "median": 63600.26020700001,
+      "minimum": 56339.989917
+    },
+    "warm-app-cache": {
+      "count": 5,
+      "maximum": 117261.775459,
+      "median": 111492.591625,
+      "minimum": 109466.356125
+    }
+  },
+  "maximum_possible_negative_refusals": 8,
+  "maximum_possible_positive_passes": 10,
+  "measured_negative_cases": 0,
+  "measured_positive_cases": 5,
+  "measurement_limits": "Synthetic 384x256 images; no general photo-quality claim. High-water RSS is cumulative Darwin whole-process bytes, including test runtime and native caches. Cold means new app source/render caches; OS, model validation and shader caches are not flushed. Model services release weights after each inference. Native editor acceptance remains required even for a numerical pass.",
+  "model_revisions": {
+    "qwen_revision": "0e7ffd5c629ef7719d4cbc04069232580bfa9d9c",
+    "sky_revision": "bfcb6e4210d7289310082d7c93bf9a1417b3699f",
+    "subject_revision": "5d6b6f8adcb5b417c871b1d84ceaae9871355b7f"
+  },
+  "native_cancellation": "Not exercised by this matrix; deterministic contract tests cover cancellation and retained inference admission",
+  "negative_refusals_both_caches": 0,
+  "planned_cases": 20,
+  "positive_passes_both_caches": 3,
+  "process_cumulative_peak_rss_bytes": 3533963264,
+  "product_release": "Requires full native editor acceptance in addition to this numerical gate",
+  "schema_error_runs": 0,
+  "stopped_early": true,
+  "unmeasured_cases": [
+    "subject-2",
+    "background-0",
+    "background-1",
+    "background-2",
+    "object-0",
+    "object-1",
+    "object-2",
+    "absent-0",
+    "absent-1",
+    "absent-2",
+    "absent-3",
+    "multiple-0",
+    "multiple-1",
+    "multiple-2",
+    "multiple-3"
+  ]
+}

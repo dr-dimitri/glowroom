@@ -273,7 +273,7 @@ private struct AsyncPhotoView: View {
 
 /// AppKit explicitly opts HDR images into EDR. On an SDR display the system
 /// presents a constrained rendition; no alternate source decode is started.
-private struct DevelopImageView: NSViewRepresentable {
+struct DevelopImageView: NSViewRepresentable {
     let image: NSImage
     let hdr: Bool
     func makeNSView(context: Context) -> NSImageView {

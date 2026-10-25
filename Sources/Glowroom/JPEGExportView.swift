@@ -56,7 +56,7 @@ struct JPEGExportView: View {
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 5) {
                 Text("Foto exportieren").font(.system(size: 20, weight: .semibold))
-                Text(model.sourceName).font(.system(size: 13)).foregroundStyle(Theme.muted)
+                Text(model.sourceName + " · Angenommener Bildstand").font(.system(size: 13)).foregroundStyle(Theme.muted)
                     .lineLimit(1).truncationMode(.middle)
             }
             Spacer()

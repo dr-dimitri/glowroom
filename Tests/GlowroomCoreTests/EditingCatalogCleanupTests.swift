@@ -10,6 +10,7 @@ struct EditingCatalogCleanupTests {
         let request = try GenerationCommitRequest(commitID: .init(), assetID: f.id, draft: draft,
             expected: .init(parent), expectedParentSource: draft.artifact.provenance.parentSource, nextRevision: 2)
         let generated = try await f.repository.commitGenerated(request)
+        _ = try await f.repository.saveNamedVariant(id: .init(), name: "Benannter Rasterstand", for: f.id, snapshot: generated.stored.snapshot, expected: .init(generated.stored))
         let backup = f.directory.appendingPathComponent("manual-retained.glowroombackup")
         let backupBytes = Data("explicit backup remains available".utf8)
         try backupBytes.write(to: backup)
@@ -17,7 +18,7 @@ struct EditingCatalogCleanupTests {
         let cleaned = try await f.repository.reconcileCatalog(empty.catalog, reference: empty.reference)
         #expect(cleaned.byAsset.isEmpty && cleaned.tombstones.isEmpty)
         #expect(cleaned.storeEpoch != generated.stored.version.storeEpoch)
-        for table in ["edit_revisions", "editing_snapshots", "editing_variants", "artifact_commits", "generated_artifacts"] {
+        for table in ["edit_revisions", "editing_snapshots", "editing_variants", "editing_variant_metadata", "artifact_commits", "generated_artifacts"] {
             #expect(try editingScalar(f.repository.fileURL, "SELECT count(*) FROM \(table)") == 0)
         }
         #expect(try await f.repository.committed(request.commitID) == nil)

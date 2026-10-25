@@ -1,0 +1,484 @@
+{
+  "cases": [
+    {
+      "id": "sky-0",
+      "negative": false,
+      "runs": [
+        {
+          "cumulative_process_peak_rss_bytes": 2185347072,
+          "exposure": -1,
+          "iou": 0.9923906226526332,
+          "pass": "cold-app-cache",
+          "pass_gate": true,
+          "plan": true,
+          "stages": [
+            {
+              "ms": "10.913",
+              "stage": "prepare",
+              "success": "true"
+            },
+            {
+              "ms": "56517.947917",
+              "stage": "target",
+              "success": "true"
+            },
+            {
+              "ms": "4574.6512920000005",
+              "stage": "mask",
+              "success": "true"
+            },
+            {
+              "ms": "57493.881959",
+              "stage": "correction",
+              "success": "true"
+            }
+          ],
+          "target": "sky",
+          "total_ms": 118620.107291
+        },
+        {
+          "cumulative_process_peak_rss_bytes": 2913255424,
+          "exposure": -1,
+          "iou": 0.9923906226526332,
+          "pass": "warm-app-cache",
+          "pass_gate": true,
+          "plan": true,
+          "stages": [
+            {
+              "ms": "0.95175",
+              "stage": "prepare",
+              "success": "true"
+            },
+            {
+              "ms": "53391.107375",
+              "stage": "target",
+              "success": "true"
+            },
+            {
+              "ms": "531.658875",
+              "stage": "mask",
+              "success": "true"
+            },
+            {
+              "ms": "57548.762875",
+              "stage": "correction",
+              "success": "true"
+            }
+          ],
+          "target": "sky",
+          "total_ms": 111492.591625
+        },
+        {
+          "exposure": -1,
+          "iou": 0.9923906226526332,
+          "pass": "explicit-reference",
+          "plan": true,
+          "stages": [
+            {
+              "ms": "423.362541",
+              "stage": "prepare",
+              "success": "true"
+            },
+            {
+              "ms": "439.922458",
+              "stage": "mask",
+              "success": "true"
+            },
+            {
+              "ms": "62736.975208",
+              "stage": "correction",
+              "success": "true"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sky-1",
+      "negative": false,
+      "runs": [
+        {
+          "cumulative_process_peak_rss_bytes": 2972975104,
+          "exposure": 0.5,
+          "iou": 0.9938626901173494,
+          "pass": "cold-app-cache",
+          "pass_gate": true,
+          "plan": true,
+          "stages": [
+            {
+              "ms": "5.567375",
+              "stage": "prepare",
+              "success": "true"
+            },
+            {
+              "ms": "54467.71625",
+              "stage": "target",
+              "success": "true"
+            },
+            {
+              "ms": "442.723917",
+              "stage": "mask",
+              "success": "true"
+            },
+            {
+              "ms": "56000.367417",
+              "stage": "correction",
+              "success": "true"
+            }
+          ],
+          "target": "sky",
+          "total_ms": 110936.711875
+        },
+        {
+          "cumulative_process_peak_rss_bytes": 2972975104,
+          "exposure": 0.5,
+          "iou": 0.9938626901173494,
+          "pass": "warm-app-cache",
+          "pass_gate": true,
+          "plan": true,
+          "stages": [
+            {
+              "ms": "0.876375",
+              "stage": "prepare",
+              "success": "true"
+            },
+            {
+              "ms": "53416.248084",
+              "stage": "target",
+              "success": "true"
+            },
+            {
+              "ms": "450.227666",
+              "stage": "mask",
+              "success": "true"
+            },
+            {
+              "ms": "55566.68125",
+              "stage": "correction",
+              "success": "true"
+            }
+          ],
+          "target": "sky",
+          "total_ms": 109466.356125
+        },
+        {
+          "exposure": 0.5,
+          "iou": 0.9938626901173494,
+          "pass": "explicit-reference",
+          "plan": true,
+          "stages": [
+            {
+              "ms": "12.34525",
+              "stage": "prepare",
+              "success": "true"
+            },
+            {
+              "ms": "480.257208",
+              "stage": "mask",
+              "success": "true"
+            },
+            {
+              "ms": "55847.387459",
+              "stage": "correction",
+              "success": "true"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sky-2",
+      "negative": false,
+      "runs": [
+        {
+          "cumulative_process_peak_rss_bytes": 3266461696,
+          "exposure": -1,
+          "iou": 0.9934867287622438,
+          "pass": "cold-app-cache",
+          "pass_gate": true,
+          "plan": true,
+          "stages": [
+            {
+              "ms": "2.021",
+              "stage": "prepare",
+              "success": "true"
+            },
+            {
+              "ms": "53130.908834",
+              "stage": "target",
+              "success": "true"
+            },
+            {
+              "ms": "493.704542",
+              "stage": "mask",
+              "success": "true"
+            },
+            {
+              "ms": "54999.862167",
+              "stage": "correction",
+              "success": "true"
+            }
+          ],
+          "target": "sky",
+          "total_ms": 108647.428125
+        },
+        {
+          "cumulative_process_peak_rss_bytes": 3266461696,
+          "exposure": -1,
+          "iou": 0.9934867287622438,
+          "pass": "warm-app-cache",
+          "pass_gate": true,
+          "plan": true,
+          "stages": [
+            {
+              "ms": "0.6935",
+              "stage": "prepare",
+              "success": "true"
+            },
+            {
+              "ms": "53138.40475",
+              "stage": "target",
+              "success": "true"
+            },
+            {
+              "ms": "480.521167",
+              "stage": "mask",
+              "success": "true"
+            },
+            {
+              "ms": "55915.43225",
+              "stage": "correction",
+              "success": "true"
+            }
+          ],
+          "target": "sky",
+          "total_ms": 109556.092458
+        },
+        {
+          "exposure": -1,
+          "iou": 0.9934867287622438,
+          "pass": "explicit-reference",
+          "plan": true,
+          "stages": [
+            {
+              "ms": "5.116",
+              "stage": "prepare",
+              "success": "true"
+            },
+            {
+              "ms": "459.077125",
+              "stage": "mask",
+              "success": "true"
+            },
+            {
+              "ms": "70423.125583",
+              "stage": "correction",
+              "success": "true"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "subject-0",
+      "negative": false,
+      "runs": [
+        {
+          "cumulative_process_peak_rss_bytes": 3266461696,
+          "exposure": -1,
+          "iou": 0.09248402594317406,
+          "pass": "cold-app-cache",
+          "pass_gate": false,
+          "plan": true,
+          "stages": [
+            {
+              "ms": "11.288542",
+              "stage": "prepare",
+              "success": "true"
+            },
+            {
+              "ms": "59289.734583",
+              "stage": "target",
+              "success": "true"
+            },
+            {
+              "ms": "9449.822",
+              "stage": "mask",
+              "success": "true"
+            },
+            {
+              "ms": "66009.269333",
+              "stage": "correction",
+              "success": "true"
+            }
+          ],
+          "target": "background",
+          "total_ms": 134794.340416
+        },
+        {
+          "cumulative_process_peak_rss_bytes": 3444883456,
+          "exposure": -1,
+          "iou": 0.09248402594317406,
+          "pass": "warm-app-cache",
+          "pass_gate": false,
+          "plan": true,
+          "stages": [
+            {
+              "ms": "2.494541",
+              "stage": "prepare",
+              "success": "true"
+            },
+            {
+              "ms": "58504.625292",
+              "stage": "target",
+              "success": "true"
+            },
+            {
+              "ms": "283.984041",
+              "stage": "mask",
+              "success": "true"
+            },
+            {
+              "ms": "56411.35375",
+              "stage": "correction",
+              "success": "true"
+            }
+          ],
+          "target": "background",
+          "total_ms": 115223.544125
+        },
+        {
+          "exposure": -1,
+          "iou": 9.724033631508148e-05,
+          "pass": "explicit-reference",
+          "plan": true,
+          "stages": [
+            {
+              "ms": "5.456958",
+              "stage": "prepare",
+              "success": "true"
+            },
+            {
+              "ms": "8126.238",
+              "stage": "mask",
+              "success": "true"
+            },
+            {
+              "ms": "55426.762709",
+              "stage": "correction",
+              "success": "true"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "subject-1",
+      "negative": false,
+      "runs": [
+        {
+          "cumulative_process_peak_rss_bytes": 3491643392,
+          "exposure": 0.5,
+          "iou": 0.09234614042413337,
+          "pass": "cold-app-cache",
+          "pass_gate": false,
+          "plan": true,
+          "stages": [
+            {
+              "ms": "4.432833",
+              "stage": "prepare",
+              "success": "true"
+            },
+            {
+              "ms": "53493.446875",
+              "stage": "target",
+              "success": "true"
+            },
+            {
+              "ms": "7567.439042",
+              "stage": "mask",
+              "success": "true"
+            },
+            {
+              "ms": "56299.908667",
+              "stage": "correction",
+              "success": "true"
+            }
+          ],
+          "target": "background",
+          "total_ms": 117397.537583
+        },
+        {
+          "cumulative_process_peak_rss_bytes": 3533963264,
+          "exposure": 0.5,
+          "iou": 0.09234614042413337,
+          "pass": "warm-app-cache",
+          "pass_gate": false,
+          "plan": true,
+          "stages": [
+            {
+              "ms": "2.109333",
+              "stage": "prepare",
+              "success": "true"
+            },
+            {
+              "ms": "53587.181167",
+              "stage": "target",
+              "success": "true"
+            },
+            {
+              "ms": "287.313458",
+              "stage": "mask",
+              "success": "true"
+            },
+            {
+              "ms": "63364.409708",
+              "stage": "correction",
+              "success": "true"
+            }
+          ],
+          "target": "background",
+          "total_ms": 117261.775459
+        },
+        {
+          "exposure": 0.5,
+          "iou": 7.303685525641807e-06,
+          "pass": "explicit-reference",
+          "plan": true,
+          "stages": [
+            {
+              "ms": "8.117",
+              "stage": "prepare",
+              "success": "true"
+            },
+            {
+              "ms": "8228.872042",
+              "stage": "mask",
+              "success": "true"
+            },
+            {
+              "ms": "62535.634958",
+              "stage": "correction",
+              "success": "true"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "cases_completed": 5,
+  "concurrent_work": "Bounded CPU developer compilation ran in parallel. Latency is descriptive under that load, not an isolated performance benchmark.",
+  "contract": 1,
+  "decision": "NO-GO",
+  "iou_threshold": 0.6,
+  "limits": "Synthetic 384x256 images; no general photo-quality claim. High-water RSS is cumulative Darwin whole-process bytes, including test runtime and native caches. Cold means new app source/render caches; OS, model validation and shader caches are not flushed. Model services release weights after each inference. Native editor acceptance remains required even for a numerical pass.",
+  "negative_refusals": 0,
+  "positive_passes": 3,
+  "product_enabled": false,
+  "qwen_revision": "0e7ffd5c629ef7719d4cbc04069232580bfa9d9c",
+  "run_termination": "Identified swift-test process interrupted after completed evidence was saved; OS process exit confirmed. No accepted app writes were involved.",
+  "sky_revision": "bfcb6e4210d7289310082d7c93bf9a1417b3699f",
+  "stop_reason": "Two positive cases failed in both cache passes; at most ten of twelve can succeed, below the unchanged eleven-case threshold. Further inference was stopped after five fully measured cases. Fifteen cases remain explicitly unmeasured.",
+  "stopped_early": true,
+  "subject_revision": "5d6b6f8adcb5b417c871b1d84ceaae9871355b7f"
+}

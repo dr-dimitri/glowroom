@@ -29,6 +29,15 @@ struct ArtifactVariantsLoadIdentity: Hashable {
     let isReady: Bool
 }
 
+enum VariantViewingMode: Sendable { case preview, before }
+struct VariantViewingState {
+    let variant: EditingVariant
+    let mode: VariantViewingMode
+    let source: ResolvedEditingSource
+    let sourceStamp: ImageAnalysisSourceStamp
+    let lease: ArtifactLease?
+}
+
 @MainActor
 final class EditingModel: ObservableObject, GeneratedArtifactAccepting {
     @Published private(set) var snapshotsByAsset: [String: EditingSnapshot] = [:]
@@ -43,6 +52,11 @@ final class EditingModel: ObservableObject, GeneratedArtifactAccepting {
     @Published private(set) var isClosing = false { didSet { if oldValue != isClosing { advanceAIEditGeneration() } } }
     @Published private(set) var hasPendingChanges = false
     @Published private(set) var variants: [EditingVariant] = []
+    @Published private(set) var variantViewingState: VariantViewingState?
+    @Published private(set) var isManagingVariants = false
+    private var variantViewingRequest = UUID()
+    private var variantWriteTask: Task<Bool, Never>?
+    var isViewingVariant: Bool { variantViewingState?.mode == .preview }
     @Published private(set) var isLoadingVariants = false
     @Published private(set) var variantsReloadID = UUID()
     private var variantsAssetID: String?
@@ -121,7 +135,7 @@ final class EditingModel: ObservableObject, GeneratedArtifactAccepting {
         guard let directory else { return [] }
         return ["cloud-usage.sqlite", "cloud-usage.sqlite-journal", "cloud-usage.sqlite-wal", "cloud-usage.sqlite-shm"].map { directory.appendingPathComponent($0) }
     }
-    var canEdit: Bool { canRetainLocalEditingAnchor && !isAutomaticBackupMaintenance }
+    var canEdit: Bool { canRetainLocalEditingAnchor && !isAutomaticBackupMaintenance && !isViewingVariant }
     /// Brief automatic-backup admission fences preserve source-bound workspaces
     /// and their generations; their inputs resume after the same state reopens.
     var canRetainLocalEditingAnchor: Bool { !isLoading && !isReadOnly && !isRestoring && !isBackingUp && !isClosing && !isCommitting && !commits.values.contains(where: \.failed) && library?.isUpdatingCatalog != true && library?.isLoading != true && library?.isReadOnly != true }
@@ -134,9 +148,9 @@ final class EditingModel: ObservableObject, GeneratedArtifactAccepting {
     private var catalogAllowsEditingMaintenance: Bool {
         library?.isLoading != true && library?.isUpdatingCatalog != true && library?.isImporting != true
     }
-    var canBackUp: Bool { !isLoading && !isRestoring && !isBackingUp && !isClosing && !isCommitting && database != nil && storeEpoch != nil && catalogAllowsEditingMaintenance }
-    var canRestore: Bool { !isLoading && !isRestoring && !isBackingUp && !isClosing && !isCommitting && database != nil && (storeEpoch != nil || recoverDatabase != nil) && catalogAllowsEditingMaintenance }
-    func beginTermination() { isClosing = true }
+    var canBackUp: Bool { !isManagingVariants && !isLoading && !isRestoring && !isBackingUp && !isClosing && !isCommitting && database != nil && storeEpoch != nil && catalogAllowsEditingMaintenance }
+    var canRestore: Bool { !isManagingVariants && !isLoading && !isRestoring && !isBackingUp && !isClosing && !isCommitting && database != nil && (storeEpoch != nil || recoverDatabase != nil) && catalogAllowsEditingMaintenance }
+    func beginTermination() { closeVariantPreview(); isClosing = true }
     func cancelTermination() { isClosing = false }
 
     convenience init(directory: URL) {
@@ -172,6 +186,7 @@ final class EditingModel: ObservableObject, GeneratedArtifactAccepting {
     }
     convenience init(database: any EditingPersistence) { self.init(loader: { EditingModelDependencies(database: database) }) }
     func invalidateSourcesForCoordination() {
+        closeVariantPreview()
         sourceStateIsCoherent = false; isReadOnly = true
         aiEditSessionID = UUID(); aiEditGeneration = 0
     }
@@ -251,23 +266,117 @@ final class EditingModel: ObservableObject, GeneratedArtifactAccepting {
         variants = []; variantsAssetID = nil; isLoadingVariants = false
     }
     func selectVariant(_ variant: EditingVariant) async {
+        closeVariantPreview()
         guard canEdit, variantsAssetID == variant.assetID, variants.contains(where: { $0.id == variant.id }),
               let library, library.selectedID == variant.assetID else { return }
-        selectEditingFunction(.versions, assetID: variant.assetID)
         guard let expected = aiSnapshot(in: library), expected.assetID == variant.assetID else { return }
         do {
-            if case .artifact(let id) = variant.snapshot.source {
-                guard let artifacts, let storeID = artifactStoreID else { throw ArtifactContractError.missingArtifact }
-                let descriptor = try await artifacts.descriptor(id)
-                let lease = try await artifacts.acquireLease(ids: [id], purpose: .activeEditing)
-                guard aiSnapshot(in: library) == expected else { return }
-                artifactFingerprints[id] = .init(storeID: storeID, artifactID: id, manifestSHA256: descriptor.manifestSHA256, raster: descriptor.raster)
-                leases[id] = lease
-            }
+            guard let asset = library.selectedAsset else { return }
+            let (source, retainedLease) = try await retainViewingSource(for: asset, snapshot: variant.snapshot)
+            _ = try await PreviewSourceStamp.capture(for: .init(source: source.identity, pixelSize: 64))
             guard aiSnapshot(in: library) == expected else { return }
+            if case .artifact(let fingerprint, _) = source {
+                artifactFingerprints[fingerprint.artifactID] = fingerprint
+                if let retainedLease { leases[fingerprint.artifactID] = retainedLease }
+            }
+            selectEditingFunction(.versions, assetID: variant.assetID)
             let revision = localRevision(for: variant.assetID)
             endEditing(assetID: variant.assetID); setSnapshot(variant.snapshot, for: variant.assetID)
             if localRevision(for: variant.assetID) != revision { library.comparesOriginal = false; library.comparesCurrentSourceWithoutSettings = false }
+        } catch { errorMessage = error.localizedDescription }
+    }
+    /// Resolve a frozen viewing snapshot while retaining artifact ownership.
+    /// Metadata/native checks run in the existing background source services.
+    func retainViewingSource(for asset: PhotoAsset, snapshot: EditingSnapshot) async throws -> (ResolvedEditingSource, ArtifactLease?) {
+        var fingerprints = artifactFingerprints
+        var lease: ArtifactLease?
+        if case .artifact(let id) = snapshot.source {
+            guard let artifacts, let storeID = artifactStoreID else { throw ArtifactContractError.missingArtifact }
+            lease = try await artifacts.acquireLease(ids: [id], purpose: .activeEditing)
+            let descriptor = try await artifacts.descriptor(id)
+            fingerprints[id] = .init(storeID: storeID, artifactID: id, manifestSHA256: descriptor.manifestSHA256, raster: descriptor.raster)
+        }
+        let source = try EditingSourceResolver.resolve(asset: asset, snapshot: snapshot, intent: .currentEditing, artifacts: fingerprints)
+        return (source, lease)
+    }
+    func closeVariantPreview() {
+        variantViewingRequest = UUID()
+        if variantViewingState != nil { variantViewingState = nil; advanceAIEditGeneration() }
+    }
+    func viewVariant(_ variant: EditingVariant, mode: VariantViewingMode) async {
+        guard !isLoading, !isRestoring, !isClosing, let library, library.selectedID == variant.assetID,
+              let asset = library.selectedAsset, variants.contains(where: { $0.id == variant.id }) else { return }
+        let request = UUID(); variantViewingRequest = request
+        let session = library.aiSelectionSessionID, generation = library.aiSelectionGeneration
+        do {
+            let (source, lease) = try await retainViewingSource(for: asset, snapshot: variant.snapshot)
+            let stamp = try await PreviewSourceStamp.capture(for: PreviewRequest(source: source.identity, pixelSize: 2048))
+            guard !Task.isCancelled, variantViewingRequest == request, library.selectedID == asset.id,
+                  library.aiSelectionSessionID == session, library.aiSelectionGeneration == generation,
+                  variants.contains(where: { $0.id == variant.id }), !isRestoring, !isClosing else { return }
+            endEditing(assetID: asset.id)
+            library.closePhotoComparison()
+            variantViewingState = .init(variant: variant, mode: mode, source: source, sourceStamp: stamp, lease: lease)
+            advanceAIEditGeneration()
+            if mode == .before { library.showPreviewComparison(.leftRight) }
+        } catch { if variantViewingRequest == request { errorMessage = error.localizedDescription } }
+    }
+    func saveNamedVariant(name: String, assetID: String) async {
+        guard !Task.isCancelled, canEdit, !isManagingVariants, library?.selectedID == assetID, let database else { return }
+        do {
+            let name = try EditingVariantName.validated(name)
+            let captured = snapshot(for: assetID), revision = localRevision(for: assetID)
+            endEditing(assetID: assetID)
+            isManagingVariants = true; defer { isManagingVariants = false }
+            guard await flush(), snapshot(for: assetID) == captured, localRevision(for: assetID) == revision,
+                  let expected = persistedState(for: assetID), canEdit else { throw ArtifactContractError.staleSnapshot }
+            try Task.checkCancellation()
+            // After admission the captured write belongs to its original photo,
+            // even if UI selection or the initiating observer disappears.
+            let admission = try registerWrite(), id = EditingVariantID()
+            let accepted = Task {
+                if let gate, let admission {
+                    return try await gate.withAcceptedWrite(admission) {
+                        try await database.saveNamedVariant(id: id, name: name, for: assetID, snapshot: captured, expected: expected)
+                    }
+                }
+                return try await database.saveNamedVariant(id: id, name: name, for: assetID, snapshot: captured, expected: expected)
+            }
+            let completion = Task { do { _ = try await accepted.value; return true } catch { return false } }
+            variantWriteTask = completion
+            defer { variantWriteTask = nil }
+            _ = try await accepted.value
+            invalidateVariants(); notice = "Bildstand gesichert."
+        } catch is CancellationError { }
+        catch { errorMessage = error.localizedDescription }
+    }
+    func renameVariant(_ variant: EditingVariant, name: String) async {
+        await mutateVariantMetadata(variant, name: name)
+    }
+    func removeNamedVariant(_ variant: EditingVariant) async {
+        await mutateVariantMetadata(variant, name: nil)
+    }
+    private func mutateVariantMetadata(_ variant: EditingVariant, name: String?) async {
+        guard !Task.isCancelled, canRetainLocalEditingAnchor, !isAutomaticBackupMaintenance, !isManagingVariants,
+              variants.contains(where: { $0.id == variant.id && $0.assetID == variant.assetID }), let database else { return }
+        do {
+            let validatedName = try name.map { try EditingVariantName.validated($0) }
+            let admission = try registerWrite()
+            isManagingVariants = true; defer { isManagingVariants = false }
+            let operation: @Sendable () async throws -> Void = {
+                if let validatedName { try await database.renameVariant(variant.id, for: variant.assetID, name: validatedName) }
+                else { try await database.removeNamedVariant(variant.id, for: variant.assetID) }
+            }
+            let accepted = Task {
+                if let gate, let admission { try await gate.withAcceptedWrite(admission) { try await operation() } }
+                else { try await operation() }
+            }
+            let completion = Task { do { try await accepted.value; return true } catch { return false } }
+            variantWriteTask = completion
+            defer { variantWriteTask = nil }
+            try await accepted.value
+            if variantViewingState?.variant.id == variant.id { closeVariantPreview() }
+            invalidateVariants()
         } catch { errorMessage = error.localizedDescription }
     }
     func setSettings(_ settings: EditSettings, for assetID: String) {
@@ -374,6 +483,7 @@ final class EditingModel: ObservableObject, GeneratedArtifactAccepting {
         return try gate.registerAcceptedWrite(domain: .editing, session: startup)
     }
     private func apply(_ value: EditingSnapshot, for assetID: String, admission: CatalogAcceptedWriteAdmission?) {
+        if value.source != snapshot(for: assetID).source { closeVariantPreview() }
         advanceAIEditGeneration()
         let revision = revisionsByAsset[assetID, default: 0] + 1
         revisionsByAsset[assetID] = revision; snapshotsByAsset[assetID] = value
@@ -478,10 +588,11 @@ final class EditingModel: ObservableObject, GeneratedArtifactAccepting {
         let wasClosing = isClosing
         isClosing = true
         defer { if !wasClosing { isClosing = false } }
+        let variantsSaved = await variantWriteTask?.value ?? true
         let commitsSaved = await awaitAcceptedCommits()
         let saved = await flushPending()
         await drainAutomaticBackup()
-        return commitsSaved && (saved || (isReadOnly && pending.isEmpty))
+        return variantsSaved && commitsSaved && (saved || (isReadOnly && pending.isEmpty))
     }
 
     private func scheduleSave(immediately: Bool = false) {
@@ -509,6 +620,7 @@ final class EditingModel: ObservableObject, GeneratedArtifactAccepting {
         if aiEditGeneration == .max { aiEditSessionID = UUID(); aiEditGeneration = 0 } else { aiEditGeneration += 1 }
     }
     private func install(_ state: EditingStoreState) {
+        closeVariantPreview()
         invalidateVariants()
         storeEpoch = state.storeEpoch; baselines = state.byAsset.mapValues { EditingExpectedState($0) }
         for (id, revision) in state.tombstones { baselines[id] = try? EditingExpectedState(storeEpoch: state.storeEpoch, revision: revision, snapshot: nil) }

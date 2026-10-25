@@ -15,7 +15,7 @@ struct AIDevelopmentView: View {
     init(library: LibraryModel, model: AIDevelopmentModel? = nil,
          checkModel: AICorrectionReadiness.CheckModel? = nil) {
         self.library = library
-        _model = StateObject(wrappedValue: model ?? AIDevelopmentModel())
+        _model = StateObject(wrappedValue: model ?? LocalMCPController.shared.correction)
         // Injected services can run without installed weights in native tests.
         let check: AICorrectionReadiness.CheckModel = checkModel ?? (model == nil
             ? { try await AICorrectionReadiness.installedModel() } : { true })
@@ -36,6 +36,7 @@ struct AIDevelopmentView: View {
     }
 
     private var validRequest: Bool {
+        if model.requestMode != .correction { return !model.intent.instruction.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
         guard let id = model.intent.targetMaskID else { return true }
         return layers.contains { $0.id == id && $0.isEnabled && $0.mask.opacity > 0 }
     }
@@ -98,6 +99,13 @@ struct AIDevelopmentView: View {
 
     private var order: some View {
         VStack(alignment: .leading, spacing: 8) {
+            if model.permitsEditPlans {
+                Picker("Auftragsart", selection: $model.requestMode) {
+                    Text("Vorhandenen Bereich korrigieren").tag(AIDevelopmentModel.RequestMode.correction)
+                    Text("Neue Maske mit Korrektur").tag(AIDevelopmentModel.RequestMode.maskCorrection)
+                }.accessibilityIdentifier("ai-development.request-mode")
+            }
+            if model.requestMode == .correction {
             Picker("Zielbereich", selection: $model.intent.targetMaskID) {
                 Text("Gesamtes Bild").tag(Optional<UUID>.none)
                 ForEach(layers) { layer in
@@ -108,15 +116,19 @@ struct AIDevelopmentView: View {
                     Text("Maske nicht mehr verfügbar").tag(Optional(id))
                 }
             }.accessibilityIdentifier("ai-development.scope")
+            }
             Text("Auftrag").fontWeight(.medium)
             TextField("Zum Beispiel: natürliches Licht, wärmere Farben", text: $model.intent.instruction, axis: .vertical)
                 .textFieldStyle(.roundedBorder).lineLimit(2...3)
                 .accessibilityIdentifier("ai-development.instruction")
             Menu("Auftragsvorgabe wählen") {
-                ForEach(["Natürliches Licht und ausgewogene Farben", "Schatten behutsam aufhellen", "Wärmere Farben", "Zurückhaltende Farben"], id: \.self) { instruction in
+                ForEach(model.requestMode == .maskCorrection
+                    ? ["Den Himmel etwas dunkler machen", "Das Motiv aufhellen", "Den Hintergrund kühler machen", "Den roten Ball aufhellen"]
+                    : ["Natürliches Licht und ausgewogene Farben", "Schatten behutsam aufhellen", "Wärmere Farben", "Zurückhaltende Farben"], id: \.self) { instruction in
                     Button(instruction) { model.intent.instruction = instruction }
                 }
             }.accessibilityIdentifier("ai-development.presets")
+            if model.requestMode == .correction {
             DisclosureGroup("Erweiterte Auftragsvorgaben", isExpanded: $showsIntent) {
                 Picker("Stärke des nächsten Vorschlags", selection: $model.intent.strength) {
                     Text("Dezent").tag(0.25)
@@ -127,6 +139,7 @@ struct AIDevelopmentView: View {
                     }
                 }.accessibilityIdentifier("ai-development.strength")
             }
+            }
         }
     }
 
@@ -136,9 +149,13 @@ struct AIDevelopmentView: View {
             Button("Foto auswählen") { library.workspaceMode = .library }
                 .accessibilityIdentifier("ai-development.select-photo")
         } else if !validRequest {
-            Text(AIDevelopmentError.unavailableMask.localizedDescription)
-            Button("Gesamtes Bild verwenden") { model.intent.targetMaskID = nil }
-                .accessibilityIdentifier("ai-development.reset-scope")
+            if model.requestMode == .maskCorrection {
+                Text("Beschreibe genau einen Zielbereich und seine Licht- oder Farbkorrektur.")
+            } else {
+                Text(AIDevelopmentError.unavailableMask.localizedDescription)
+                Button("Gesamtes Bild verwenden") { model.intent.targetMaskID = nil }
+                    .accessibilityIdentifier("ai-development.reset-scope")
+            }
         } else if library.comparesOriginal || library.comparesCurrentSourceWithoutSettings {
             Text("Importiertes Original oder Quelle ohne Regler wird angezeigt.")
             Button("Aktuellen Stand anzeigen") { library.showPreviewComparison(.single) }
@@ -168,10 +185,20 @@ struct AIDevelopmentView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Korrekturvorschlag").fontWeight(.medium)
             Text(proposal.targetName.map { "Zielbereich: \($0)" } ?? "Zielbereich: Gesamtes Bild")
+            if proposal.includesMaskCorrection { Text("Neue Maske").fontWeight(.medium) }
             if workspace.aiCorrectionPreview != nil {
                 HStack(spacing: 6) {
                     comparisonButton("Aktueller Stand", proposal: false, identifier: "current")
                     comparisonButton("Vorschlag", proposal: true, identifier: "proposal")
+                }
+                if proposal.includesMaskCorrection {
+                    Button {
+                        library.showPreviewComparison(.single)
+                        model.showReview(.selection, workspace: workspace)
+                    } label: {
+                        Label("Auswahl anzeigen", systemImage: model.reviewDisplay == .selection ? "checkmark.circle.fill" : "circle")
+                    }.accessibilityIdentifier("ai-development.selection")
+                        .accessibilityValue(model.reviewDisplay == .selection ? "Aktiv" : "Inaktiv")
                 }
             }
             HStack {
@@ -199,14 +226,14 @@ struct AIDevelopmentView: View {
             workspace.picksWhiteBalance = false
             workspace.picksDetail = false
             workspace.endLevelsPicker()
-            workspace.showsAICorrectionProposal = proposal
+            model.showReview(proposal ? .proposal : .current, workspace: workspace)
         } label: {
-            Label(title, systemImage: workspace.correctionDisplay(library: library, editor: editor)?.showsProposal == proposal
+            Label(title, systemImage: (model.reviewDisplay != .selection && workspace.correctionDisplay(library: library, editor: editor)?.showsProposal == proposal)
                   ? "checkmark.circle.fill" : "circle")
                 .frame(maxWidth: .infinity)
         }
-            .tint(workspace.correctionDisplay(library: library, editor: editor)?.showsProposal == proposal ? Theme.accent : nil)
-            .accessibilityValue(workspace.correctionDisplay(library: library, editor: editor)?.showsProposal == proposal ? "Aktiv" : "Inaktiv")
+            .tint((model.reviewDisplay != .selection && workspace.correctionDisplay(library: library, editor: editor)?.showsProposal == proposal) ? Theme.accent : nil)
+            .accessibilityValue((model.reviewDisplay != .selection && workspace.correctionDisplay(library: library, editor: editor)?.showsProposal == proposal) ? "Aktiv" : "Inaktiv")
             .accessibilityIdentifier("ai-development.\(identifier)")
     }
 }

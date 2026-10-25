@@ -150,6 +150,7 @@ public actor EditingRepository:CoordinatedEditingStoring {
                   sqlite3_column_double(s,3).isFinite,variants < 100_000 else {throw EditingRepositoryError.invalidDatabase}
             try ArtifactValueValidation.identifier(assetID);let snapshot = try ArtifactJSONCodec.decode(EditingSnapshot.self,from:EditingSQLite.blob(s,2,maximum:EditSettings.maximumEncodedBytes));try check(snapshot);variants += 1
         }
+        try validateVariantMetadata(on: db)
         for a in descriptors.values {
             if case .artifact(let parent) = a.provenance.parentSource {
                 guard let p = descriptors[parent.artifactID],p.manifestSHA256 == parent.manifestSHA256,p.raster == parent.raster else {throw ArtifactContractError.missingArtifact}
@@ -328,13 +329,18 @@ public actor EditingRepository:CoordinatedEditingStoring {
     }
     func readVariants(_ id:String) throws -> [EditingVariant] {
         try ArtifactValueValidation.identifier(id);let db = try connection()
-        return try sql.read(db) {try EditingSQLite.statement(db,"SELECT id,snapshot,created_at FROM editing_variants WHERE asset_id=? ORDER BY created_at,id") {s in
+        return try sql.read(db) { try Self.readVariants(id, on: db) }
+    }
+    static func readVariants(_ id: String, on db: OpaquePointer) throws -> [EditingVariant] {
+        try EditingSQLite.statement(db,"SELECT id,snapshot,created_at FROM editing_variants WHERE asset_id=? ORDER BY created_at,id") {s in
             try EditingSQLite.bind(id,1,s);var result:[EditingVariant] = []
             try EditingSQLite.consume(s) {s in
                 let uuid = try EditingSQLite.text(s,0,maximum:36);guard let raw = UUID(uuidString:uuid),uuid == raw.uuidString.lowercased() else {throw EditingRepositoryError.invalidDatabase}
                 let snapshot = try ArtifactJSONCodec.decode(EditingSnapshot.self,from:EditingSQLite.blob(s,1,maximum:EditSettings.maximumEncodedBytes))
-                result.append(.init(id:.init(rawValue:raw),assetID:id,snapshot:snapshot,createdAt:Date(timeIntervalSinceReferenceDate:sqlite3_column_double(s,2))))
+                let variantID = EditingVariantID(rawValue: raw)
+                let metadata = try Self.variantMetadata(variantID, on: db)
+                result.append(.init(id:variantID,assetID:id,snapshot:snapshot,createdAt:Date(timeIntervalSinceReferenceDate:sqlite3_column_double(s,2)),name:metadata.0,creationKind:metadata.1))
             };return result
-        }}
+        }
     }
 }

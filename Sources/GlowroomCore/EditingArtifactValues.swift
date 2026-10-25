@@ -499,13 +499,30 @@ public struct GeneratedArtifact: Codable, Hashable, Sendable {
     // Manifest digest covers canonical {schemaVersion,id,raster,provenance,resources};
     // it is stored outside those bytes to avoid a recursive self-hash.
 }
-public struct EditingVariant: Sendable {
+public enum EditingVariantCreationKind: String, Codable, Sendable { case automatic, named }
+
+/// Human labels are metadata; they never participate in signed snapshot bytes.
+public enum EditingVariantName {
+    public static func validated(_ proposed: String) throws -> String {
+        let value = proposed.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !value.isEmpty, value.count <= 120, value.utf8.count <= 512, !value.utf8.contains(0) else {
+            throw ArtifactContractError.invalidValue("Bildstandname: 1–120 Zeichen und höchstens 512 UTF-8-Bytes")
+        }
+        return value
+    }
+}
+public struct EditingVariant: Sendable, Equatable {
     public let id: EditingVariantID
     public let assetID: String
     public let snapshot: EditingSnapshot
     public let createdAt: Date
-    public init(id: EditingVariantID, assetID: String, snapshot: EditingSnapshot, createdAt: Date) {
+    public let name: String?
+    public let creationKind: EditingVariantCreationKind
+    public var displayName: String { name ?? (snapshot.source == .original ? "Original mit Reglern" : "Generierter Bildstand") }
+    public init(id: EditingVariantID, assetID: String, snapshot: EditingSnapshot, createdAt: Date,
+                name: String? = nil, creationKind: EditingVariantCreationKind = .automatic) {
         self.id = id; self.assetID = assetID; self.snapshot = snapshot; self.createdAt = createdAt
+        self.name = name; self.creationKind = creationKind
     }
 }
 

@@ -83,6 +83,16 @@ process_snapshot() {
     LC_ALL=C /bin/ps -axo pid=,ppid=,state=,lstart=,uid= 2>/dev/null |
         /usr/bin/awk '{$1=$1; print}'
 }
+require_process_inspection() {
+    local expected snapshot pid parent state identity
+    expected="$(process_identity "$$")" || return 1
+    [[ -n "$expected" ]] || return 1
+    snapshot="$(process_snapshot)" || return 1
+    while read -r pid parent state identity; do
+        if [[ "$pid" == "$$" && "$identity" == "$expected" && "$state" != Z* ]]; then return 0; fi
+    done <<< "$snapshot"
+    return 1
+}
 freeze_process() {
     local pid="$1" expected="$2" metadata state identity attempt
     [[ "$(process_identity "$pid")" == "$expected" ]] || return 1
@@ -231,6 +241,10 @@ cleanup() {
 trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
+if ! require_process_inspection; then
+    echo "Local process inspection is required before build workers can start. Run the build with process-inspection permission." >&2
+    exit 1
+fi
 printf '%s\n' "$$" > "$LOCK/pid"
 STAGING="$(mktemp -d "$ROOT/dist/.glowroom-build.XXXXXX")"
 mkdir -p "$BUILD_PATH/ModuleCache" "$BUILD_PATH/IconModuleCache"
@@ -266,13 +280,29 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 PLIST
 
 ICONSET="$STAGING/AppIcon.iconset"
+await_worker_launch() {
+    local launch_file="$1" deadline=$((SECONDS + 10))
+    # A failed identity lookup can leave the parent unable to prove cleanup.
+    # An unadmitted worker must nevertheless stop itself instead of waiting
+    # forever for a launch file its failed parent may never publish.
+    while [[ ! -f "$launch_file" ]]; do
+        if (( SECONDS >= deadline )); then
+            echo "Worker launch was not admitted within 10 seconds." >&2
+            return 1
+        fi
+        sleep 0.01
+    done
+}
 build_product() {
-    while [[ ! -f "$STAGING/compile.start" ]]; do sleep 0.01; done
+    await_worker_launch "$STAGING/compile.start" || return 1
     "$ROOT/scripts/prepare-mlx-runtime.sh" "$BUILD_PATH/MLXRuntime"
     swift build "${BUILD_ARGS[@]}" --product Glowroom
+    # Both products share SwiftPM state, so their builds stay ordered. The MCP
+    # adapter reuses the already compiled core and has no MLX dependency itself.
+    swift build "${BUILD_ARGS[@]}" --product GlowroomMCP
 }
 create_icon() {
-    while [[ ! -f "$STAGING/icon.start" ]]; do sleep 0.01; done
+    await_worker_launch "$STAGING/icon.start" || return 1
     # Independent, persistent caches prevent compiler/icon workers contending
     # for the same module files and avoid recompiling imports on every build.
     export CLANG_MODULE_CACHE_PATH="$BUILD_PATH/IconModuleCache"
@@ -320,9 +350,11 @@ set +m
 
 BIN_PATH="$(swift build "${BUILD_ARGS[@]}" --show-bin-path)"
 cp "$BIN_PATH/Glowroom" "$APP/Contents/MacOS/Glowroom"
+cp "$BIN_PATH/GlowroomMCP" "$APP/Contents/MacOS/GlowroomMCP"
 cp "$BUILD_PATH/MLXRuntime/mlx.metallib" "$APP/Contents/Resources/mlx.metallib"
 cp "$BUILD_PATH/MLXRuntime/MLX-LICENSE.txt" "$APP/Contents/Resources/MLX-LICENSE.txt"
 chmod 755 "$APP/Contents/MacOS/Glowroom"
+chmod 755 "$APP/Contents/MacOS/GlowroomMCP"
 
 # SwiftPM dependency and application resources are independent immutable bundles.
 # Bundle.module resolves them from the application Resources directory at runtime.

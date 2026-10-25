@@ -16,6 +16,7 @@ struct LibraryView: View {
     @ViewState<Bool> private var showsWorkspaceErrors = false
     @StateObject private var maskWorkspace = InlineMaskWorkspace()
     @StateObject private var developWorkspace: DevelopWorkspace
+    @StateObject private var localMCP = LocalMCPController.shared
     @ViewState private var focusReturnRequest: FocusReturnRequest?
     @ViewState private var pendingToolReveal: UUID?
 
@@ -112,6 +113,8 @@ struct LibraryView: View {
             developWorkspace.levelsPicker != nil || developWorkspace.automaticLevelsBusy
         }, action: { event in handleKey(event) }))
         .onAppear {
+            localMCP.bind(library: model, editor: editor, workspace: developWorkspace, directory: dataDirectory,
+                reveal: { WorkspaceActions.reveal(.aiDevelopment, layout: layout, library: model) })
             editor.developCommands.bind(workspace: developWorkspace, masks: maskWorkspace)
             if layout.isFocused, model.selectedAsset != nil {
                 model.showsDetail = true
@@ -136,6 +139,7 @@ struct LibraryView: View {
             focusedWorkspaceControl = request.target
         }
         .onChange(of: model.showsDetail) { _, detail in if !detail {
+            model.closePhotoComparison()
             // Empty search results are a selection change, not a request to leave focus.
             // Explicit grid commands use WorkspaceActions.showGrid instead.
             if !layout.isFocused && model.selectedAsset != nil { model.isDeveloping = false }
@@ -143,6 +147,7 @@ struct LibraryView: View {
             model.previewComparisonLayout = .single
         } }
         .onChange(of: model.selectedID) { old, current in
+            editor.closeVariantPreview()
             pendingToolReveal = nil
             if let old { editor.endEditing(assetID: old) }
             maskWorkspace.cancel()
@@ -153,8 +158,21 @@ struct LibraryView: View {
             if layout.isFocused, model.selectedAsset != nil { model.showsDetail = true; model.isDeveloping = true }
         }
         .onChange(of: previewSourceIdentity) { _, source in
+            editor.closeVariantPreview()
             maskWorkspace.reconcile()
             developWorkspace.bind(source: source)
+        }
+        .onChange(of: model.isPhotoComparison) { _, comparing in
+            if comparing {
+                developWorkspace.endLevelsPicker()
+                developWorkspace.picksWhiteBalance = false
+                developWorkspace.picksDetail = false
+                developWorkspace.cancelRepairWork()
+                developWorkspace.tool = .basic
+            }
+        }
+        .onChange(of: maskWorkspace.isPresented) { _, presented in
+            if presented { model.closePhotoComparison() }
         }
         .onChange(of: model.editingRenderIntent) { _, _ in
             developWorkspace.endLevelsPicker()
@@ -170,17 +188,19 @@ struct LibraryView: View {
             }
         }
         .onChange(of: developWorkspace.picksWhiteBalance) { _, picking in
-            if picking { model.previewComparisonLayout = .single }
+            if picking { model.closePhotoComparison(); model.previewComparisonLayout = .single }
         }
         .onChange(of: developWorkspace.picksDetail) { _, picking in
-            if picking { model.previewComparisonLayout = .single }
+            if picking { model.closePhotoComparison(); model.previewComparisonLayout = .single }
         }
         .onChange(of: developWorkspace.levelsPicker) { _, picker in
-            if picker != nil { model.previewComparisonLayout = .single }
+            if picker != nil { model.closePhotoComparison(); model.previewComparisonLayout = .single }
         }
         .onChange(of: model.selection) { _, _ in model.reconcileSelection() }
         .onChange(of: model.search) { _, _ in model.reconcileSelection() }
         .onChange(of: model.minimumRating) { _, _ in model.reconcileSelection() }
+        .onDisappear { localMCP.revoke() }
+        .sheet(isPresented: $localMCP.showsSettings) { LocalMCPSettingsView(model: localMCP) }
         .sheet(item: $model.aiModelsDestination, onDismiss: {
             Task {
                 async let masks: Void = maskWorkspace.objectMask.refreshModels()
@@ -204,7 +224,10 @@ struct LibraryView: View {
             if loading != true { finishToolReveal(resuming: true) }
         }
         .onChange(of: developWorkspace.tool) { previous, current in
-            if previous != current { model.previewComparisonLayout = .single }
+            if previous != current {
+                model.previewComparisonLayout = .single
+                if current != .basic { model.closePhotoComparison() }
+            }
             if let id = model.selectedID { editor.endEditing(assetID: id) }
             developWorkspace.picksWhiteBalance = false
             developWorkspace.repairSource = nil
@@ -411,7 +434,11 @@ struct LibraryView: View {
                     Image(systemName: "exclamationmark.circle")
                 }
             }.accessibilityIdentifier("workspace.ai-models")
-            Menu("Ansicht") { WorkspaceViewCommands(layout: layout, library: model) }
+            Menu("Ansicht") {
+                WorkspaceViewCommands(layout: layout, library: model)
+                Divider()
+                Button("Lokaler MCP-Zugang …") { localMCP.showsSettings = true }
+            }
                 .menuStyle(.borderlessButton).fixedSize()
             Menu {
                 Button("Bearbeitungen sichern …") { EditingBackupActions.create(using: editor) }.disabled(!editor.canBackUp)
@@ -749,7 +776,9 @@ struct LibraryView: View {
         case 125: model.navigate(model.showsDetail ? 1 : model.gridColumnCount, extending: extending)
         case 126: model.navigate(model.showsDetail ? -1 : -model.gridColumnCount, extending: extending)
         case 53:
-            if developWorkspace.levelsPicker != nil || developWorkspace.automaticLevelsBusy { developWorkspace.endLevelsPicker() }
+            if editor.variantViewingState != nil { editor.closeVariantPreview() }
+            else if model.isPhotoComparison { model.closePhotoComparison() }
+            else if developWorkspace.levelsPicker != nil || developWorkspace.automaticLevelsBusy { developWorkspace.endLevelsPicker() }
             else if developWorkspace.picksDetail { developWorkspace.picksDetail = false }
             else if layout.isFocused { WorkspaceActions.toggleFocus(layout, library: model) }
             else { model.showsDetail = false }

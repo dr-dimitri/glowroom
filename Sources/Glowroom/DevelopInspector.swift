@@ -815,6 +815,10 @@ struct AdjustmentSlider: View {
 
     private var numericValue: Binding<Double> {
         Binding(get: { value }, set: { newValue in
+            // Focus/formatting can echo an unchanged displayed value. For
+            // example 0.7000000000000002 is displayed and parsed as 0.7.
+            // Do not open history or dispatch an edit for that floating echo.
+            guard !Self.isUnchangedNumericInput(newValue, current: value) else { return }
             // TextField parses valid prefixes while typing (3, then 35). Keep
             // the complete entry in one undo group until submit or focus loss.
             onEditingChanged(true)
@@ -849,6 +853,14 @@ struct AdjustmentSlider: View {
                 .onDisappear { onEditingChanged(false) }
         }.frame(minHeight: 28)
             .accessibilityIdentifier("develop.adjustment.\(control.rawValue)")
+    }
+
+    static func isUnchangedNumericInput(_ input: Double, current: Double) -> Bool {
+        if input == current { return true }
+        guard input.isFinite, current.isFinite else { return false }
+        // A few representable floating values cover parsing/step arithmetic
+        // noise without suppressing any visible numeric edit.
+        return abs(input - current) <= 4 * max(input.ulp, current.ulp)
     }
 
     private func resetValue() {

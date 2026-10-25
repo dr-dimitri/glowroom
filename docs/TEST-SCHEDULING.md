@@ -1,5 +1,35 @@
 # Parallele Scheduling-Tests
 
+## Vollständige native Abnahme
+
+Für die vollständige native Workspace-Abnahme steht `scripts/test-isolated.py`
+bereit. Der Runner entdeckt den gesamten SDK-Testkatalog, prüft dessen vollständige
+und überschneidungsfreie Aufteilung und führt App-Suites in frischen Prozessen
+aus. Er verlangt erfolgreichen Exit, den tatsächlichen Swift-Testing-Abschluss
+und passende xUnit-Einträge; ein früher Exit 0 ist kein bestandener Test. Für einen
+bereits gebauten Teststand:
+
+```sh
+GLOWROOM_TEST_BUILD_PATH=.build-224-tests python3 scripts/test-isolated.py \
+  --skip-build --report-directory /private/tmp/glowroom-isolated-new-run
+```
+
+Der Ausgabeordner muss neu sein. Der gewöhnliche parallele Testlauf bleibt
+unverändert. Die zusätzliche Isolation ist bei AppKit-Fokus, Popuptracking und
+Fensteranimationen sinnvoll, weil diese Ressourcen pro Prozess geteilt sind.
+Der [Abschluss aus #224](issue-224/README.md) dokumentiert den gesamten grünen
+Katalog, getrennte optionale Modellfälle sowie den vorausgehenden Parallelstress.
+
+Die neuen nativen Vergleichs-/Variantenprüfungen treiben den ganzen asynchronen
+Ablauf über einen begrenzten CFRunLoop-perform-Block weiter. So kann ein Ende der
+AppKit-Tracking-Schleife nicht den äußeren Testprozess vorzeitig erfolgreich
+beenden. Kindprozesse brauchen zusätzlich einen sitzungsgebundenen Endbeleg nach
+allen fatalen UI-Assertions und geordneten Checkpoints. Echte Feldklicks prüfen
+ihren tatsächlichen nativen Texteditor als FirstResponder; reine SwiftUI-Hitproxy-
+Identität ersetzt diesen Funktionsnachweis nicht.
+
+## Suspendierende Scheduling-Fakes
+
 Die Testkorrektur zu [Issue #62](https://github.com/dr-dimitri/glowroom/issues/62) trennt das Warten auf eine kontrollierte Fake-Operation vom Blockieren eines Betriebssystemthreads. Ein synchrones `DispatchSemaphore.wait` innerhalb mehrerer `Task.detached`-Fakes kann die kooperativen Threads belegen, auf denen auch die Teststeuerung ihre Freigaben ausführen müsste. Ein längerer Timeout oder ein serieller Gesamtlauf behebt diese Abhängigkeit nicht.
 
 Die Preview- und Adjusted-Preview-Tests verwenden dafür suspendierende Fakes. `TestAsyncLatch` ignoriert bewusst den Abbruch der simulierten nativen Arbeit, bis der Test `releaseAll()` ausführt. Die Pipelines halten ihren Workerplatz weiterhin bis zur tatsächlichen Rückkehr. Die vorhandenen synchronen Decoder und Renderer laufen unverändert innerhalb derselben begrenzten Hintergrundworker; optionale interne `asyncDecoder`-/`asyncRenderer`-Abhängigkeiten ermöglichen die suspendierenden Testdoubles. Kurze separate Tests prüfen auch die synchronen Pfade, Fehler, Priorität und Ausführung außerhalb des MainActor.

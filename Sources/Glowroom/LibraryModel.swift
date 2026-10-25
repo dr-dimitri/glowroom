@@ -29,7 +29,11 @@ final class LibraryModel: ObservableObject {
     /// selected photos. Keep direct assignments compatible with single selection.
     @Published var selectedID: String? {
         didSet {
-            if oldValue != selectedID { advanceAISelectionGeneration() }
+            if isPhotoComparison, selectedID == photoComparisonReference?.asset.id {
+                selectedID = oldValue == photoComparisonReference?.asset.id ? nil : oldValue
+                return
+            }
+            if oldValue != selectedID { advanceAISelectionGeneration(); photoComparisonNavigationGeneration &+= 1 }
             guard !isApplyingSelection else { return }
             selectedIDs = selectedID.map { [$0] } ?? []
             selectionAnchorID = selectedID
@@ -88,14 +92,29 @@ final class LibraryModel: ObservableObject {
         set { if !newValue { workspaceMode = .library } else if workspaceMode == .library { workspaceMode = .develop } }
     }
     @Published var comparesOriginal = false {
-        didSet { if comparesOriginal { comparesCurrentSourceWithoutSettings = false; previewComparisonLayout = .single } }
+        didSet { if comparesOriginal { closePhotoComparison(); comparesCurrentSourceWithoutSettings = false; previewComparisonLayout = .single } }
     }
     @Published var comparesCurrentSourceWithoutSettings = false {
-        didSet { if comparesCurrentSourceWithoutSettings { comparesOriginal = false; previewComparisonLayout = .single } }
+        didSet { if comparesCurrentSourceWithoutSettings { closePhotoComparison(); comparesOriginal = false; previewComparisonLayout = .single } }
     }
+    @Published private(set) var photoComparisonReference: PhotoComparisonReference?
+    @Published private(set) var isPhotoComparison = false
+    @Published var photoComparisonZoomLinked = true
+    @Published var advancesAfterPhotoRating = false
+    @Published private(set) var isPinningPhotoReference = false
+    private var photoReferenceRequest = UUID()
+    private var photoComparisonNavigationGeneration: UInt64 = 0
+    private var pendingComparisonRatings = 0
+    private var ratingMutationIDs: [String: UUID] = [:]
+    private var favoriteMutationIDs: [String: UUID] = [:]
+    // A complete accepted catalog shares its array storage with the writer's
+    // durable snapshot. Failed optimistic fields revert to this confirmed value.
+    private var confirmedMutationCatalog: LibraryCatalog?
+    private var confirmedMutationRevision = 0
     @Published var previewComparisonLayout: PreviewComparisonLayout = .single
     private(set) var lastPreviewComparisonLayout: PreviewComparisonLayout = .leftRight
     func showPreviewComparison(_ layout: PreviewComparisonLayout) {
+        isPhotoComparison = false
         comparesOriginal = false
         comparesCurrentSourceWithoutSettings = false
         if layout != .single { lastPreviewComparisonLayout = layout }
@@ -705,6 +724,10 @@ final class LibraryModel: ObservableObject {
     /// Also used by imports and tests to wait for the latest, not an obsolete, request.
     func waitForProjection() async {
         if let mutationTask { await mutationTask.value }
+        await waitForProjectionWork()
+    }
+
+    private func waitForProjectionWork() async {
         refreshRecentProjectionIfNeeded()
         while deferredProjectionTask != nil || projectionTask != nil {
             if let task = deferredProjectionTask { await task.value }
@@ -738,6 +761,7 @@ final class LibraryModel: ObservableObject {
         if loaded.updated && !hasPendingRelocation { applyPhotoMetadataCatalogResult(try await saveAcceptedCatalog(loaded.catalog)) }
         else { applyPhotoMetadataCatalogResult(loaded.metadata) }
         catalog = loaded.catalog; catalogNeedsSave = false
+        confirmedMutationCatalog = loaded.catalog; confirmedMutationRevision = revision
         reportCleanupFailure(loaded.metadata)
         await waitForProjection()
         reconcileSelection()
@@ -905,24 +929,139 @@ final class LibraryModel: ObservableObject {
         return assets.firstIndex { $0.id == id }
     }
 
+    /// Completion belongs to this accepted mutation, rather than a later flush.
+    /// Comparing requires a durable result before advancing or retaining stars.
+    /// Ordinary library writes keep the existing dirty-value retry contract.
     func setRating(_ rating: Int, for id: String? = nil) {
         guard canModifyCatalog, let index = assetIndex(for: id ?? selectedID) else { return }
+        let assetID = assets[index].id, oldValue = assets[index].rating, value = min(5, max(0, rating))
+        let mutationID = UUID()
+        let comparisonReceipt = isPhotoComparison && selectedID == assetID
+        guard value != oldValue else { return }
+        let advance = ratingAdvance(for: assetID)
         do {
             let admission = try registerCatalogWrite()
+            if advance != nil { pendingComparisonRatings += 1 }
+            if confirmedMutationCatalog == nil { confirmedMutationCatalog = catalog }
+            ratingMutationIDs[assetID] = mutationID
             catalogNeedsSave = true
-            catalog.assets[index].rating = min(5, max(0, rating))
-            persist(admission: admission)
+            catalog.assets[index].rating = value
+            persist(admission: admission) { success in
+                if !success, comparisonReceipt, self.ratingMutationIDs[assetID] == mutationID,
+                   let index = self.assetIndex(for: assetID), self.assets[index].rating == value {
+                    self.catalog.assets[index].rating = self.confirmedMutationCatalog?.assets.first { $0.id == assetID }?.rating ?? oldValue
+                }
+                if self.ratingMutationIDs[assetID] == mutationID { self.ratingMutationIDs.removeValue(forKey: assetID) }
+                await self.finishRatingAdvance(advance, success: success)
+            }
         } catch { errorMessage = error.localizedDescription }
     }
 
     func toggleFavorite(_ id: String? = nil) {
         guard canModifyCatalog, let index = assetIndex(for: id ?? selectedID) else { return }
+        let assetID = assets[index].id, oldValue = assets[index].isFavorite
+        let mutationID = UUID()
+        let comparisonReceipt = isPhotoComparison && selectedID == assetID
+        let advance = ratingAdvance(for: assetID)
         do {
             let admission = try registerCatalogWrite()
+            if advance != nil { pendingComparisonRatings += 1 }
+            if confirmedMutationCatalog == nil { confirmedMutationCatalog = catalog }
+            favoriteMutationIDs[assetID] = mutationID
             catalogNeedsSave = true
             catalog.assets[index].isFavorite.toggle()
-            persist(admission: admission)
+            persist(admission: admission) { success in
+                if !success, comparisonReceipt, self.favoriteMutationIDs[assetID] == mutationID,
+                   let index = self.assetIndex(for: assetID), self.assets[index].isFavorite == !oldValue {
+                    self.catalog.assets[index].isFavorite = self.confirmedMutationCatalog?.assets.first { $0.id == assetID }?.isFavorite ?? oldValue
+                }
+                if self.favoriteMutationIDs[assetID] == mutationID { self.favoriteMutationIDs.removeValue(forKey: assetID) }
+                await self.finishRatingAdvance(advance, success: success)
+            }
         } catch { errorMessage = error.localizedDescription }
+    }
+
+    private struct RatingAdvance {
+        let candidateID: String
+        let nextID: String?
+        let navigation: UInt64
+        let view: LibraryProjectionKey
+    }
+    private func ratingAdvance(for id: String) -> RatingAdvance? {
+        guard isPhotoComparison, advancesAfterPhotoRating, selectedID == id else { return nil }
+        let candidates = visibleAssets.filter { $0.id != photoComparisonReference?.asset.id }
+        let next = candidates.firstIndex { $0.id == id }.flatMap { index in
+            candidates.indices.contains(index + 1) ? candidates[index + 1].id : nil
+        }
+        return RatingAdvance(candidateID: id, nextID: next,
+            navigation: photoComparisonNavigationGeneration, view: projectionKey)
+    }
+    private func finishRatingAdvance(_ advance: RatingAdvance?, success: Bool) async {
+        guard let advance else { return }
+        // Membership mutations wait for accepted catalog saves. Waiting for
+        // mutationTask here would create a save→mutation→save cycle.
+        await waitForProjectionWork()
+        pendingComparisonRatings -= 1
+        guard success, isPhotoComparison, !isClosing, !isUpdatingCatalog, !isImporting,
+              selectedID == advance.candidateID,
+              photoComparisonNavigationGeneration == advance.navigation,
+              projectionKey == advance.view else { reconcileSelection(); return }
+        if let nextID = advance.nextID, let next = visibleAssets.first(where: { $0.id == nextID }) {
+            select(next)
+        }
+        // At the end retain the last reviewed candidate, even if its rating
+        // removed it from the current filter. There is no wrap to the first.
+    }
+
+    var canStartPhotoComparison: Bool {
+        guard let reference = photoComparisonReference, let selectedID else { return false }
+        return assets.contains(where: { $0.id == reference.asset.id }) && selectedID != reference.asset.id
+            && visibleAssets.contains(where: { $0.id == selectedID })
+    }
+    func pinPhotoReference(_ asset: PhotoAsset, editor: EditingModel, startComparison: Bool = false) async {
+        guard !isClosing, !editor.isLoading, !editor.isRestoring, !isPinningPhotoReference,
+              assets.contains(where: { $0.id == asset.id }) else { return }
+        let request = UUID(), snapshot = editor.snapshot(for: asset.id), revision = editor.localRevision(for: asset.id)
+        let previousReference = photoComparisonReference
+        photoReferenceRequest = request; isPinningPhotoReference = true
+        defer { if photoReferenceRequest == request { isPinningPhotoReference = false } }
+        do {
+            guard await editor.flush() else { throw ArtifactContractError.staleSnapshot }
+            let (source, lease) = try await editor.retainViewingSource(for: asset, snapshot: snapshot)
+            let stamp = try await PreviewSourceStamp.capture(for: PreviewRequest(source: source.identity,
+                pixelSize: 2_400, allowsEmbeddedPreview: false))
+            guard !Task.isCancelled, !isClosing, photoReferenceRequest == request,
+                  editor.localRevision(for: asset.id) == revision, editor.snapshot(for: asset.id) == snapshot,
+                  assets.contains(where: { $0.id == asset.id && $0.modifiedAt == asset.modifiedAt && $0.fileSize == asset.fileSize }) else {
+                throw ArtifactContractError.staleSnapshot
+            }
+            let resumesComparison = startComparison || isPhotoComparison
+            // A newly pinned candidate may itself be the new reference. Disable
+            // the two-pane mode before publishing that identity, then reopen only
+            // when there is still a distinct, explicitly selected visible photo.
+            isPhotoComparison = false
+            photoComparisonReference = PhotoComparisonReference(asset: asset, snapshot: snapshot,
+                source: source, sourceStamp: stamp, lease: lease)
+            if startComparison, let previousReference, selectedID == asset.id,
+               let candidate = visibleAssets.first(where: { $0.id == previousReference.asset.id && $0.id != asset.id }) {
+                select(candidate)
+            }
+            if resumesComparison { openPhotoComparison() }
+        } catch {
+            if photoReferenceRequest == request, !Task.isCancelled { errorMessage = "Referenz konnte nicht fixiert werden.\n\n" + error.localizedDescription }
+        }
+    }
+    func openPhotoComparison() {
+        guard photoComparisonReference != nil, canStartPhotoComparison else {
+            notice = "Für den Fotovergleich eine Referenz und ein zweites sichtbares Foto wählen."; return
+        }
+        comparesOriginal = false; comparesCurrentSourceWithoutSettings = false; previewComparisonLayout = .single
+        isPhotoComparison = true; showsDetail = true
+    }
+    func closePhotoComparison(clearReference: Bool = false) {
+        isPhotoComparison = false
+        photoReferenceRequest = UUID(); isPinningPhotoReference = false
+        if clearReference { photoComparisonReference = nil }
     }
 
     func contains(_ asset: PhotoAsset, in folder: LibraryFolder) -> Bool {
@@ -952,6 +1091,10 @@ final class LibraryModel: ObservableObject {
         NSApp?.keyWindow?.makeFirstResponder(nil)
         let visible = visibleAssets
         guard let target = visible.firstIndex(where: { $0.id == asset.id }) else { return }
+        if isPhotoComparison, asset.id == photoComparisonReference?.asset.id {
+            notice = "Die Referenz links ist fixiert. Rechts ein anderes Foto wählen."
+            return
+        }
         if extending {
             let anchor = selectionAnchorID ?? selectedID ?? asset.id
             let start = visible.firstIndex { $0.id == anchor } ?? target
@@ -982,21 +1125,25 @@ final class LibraryModel: ObservableObject {
         // Selection is short UI bookkeeping with shared focus/anchor state.
         // Keep it ordered on MainActor instead of starting background workers.
         isApplyingSelection = true
+        let active = isPhotoComparison && activeID == photoComparisonReference?.asset.id
+            ? visibleAssets.first(where: { ids.contains($0.id) && $0.id != photoComparisonReference?.asset.id })?.id
+            : activeID
         selectedIDs = ids
-        selectedID = activeID
+        selectedID = active
         isApplyingSelection = false
         emptySelectionKey = ids.isEmpty ? projection?.key : nil
         if activeID == nil { showsDetail = false }
     }
     func reconcileSelection() {
         guard !isProjecting else { return }
+        if pendingComparisonRatings > 0, isPhotoComparison { return }
         if case .subfolder(let id, let path) = selection {
             if let folder = folders.first(where: { $0.id == id }) {
                 if !folderTree(for: folder).contains(relativePath: path) { selection = .folder(id) }
             } else { selection = .all }
         }
         guard !isProjecting else { return }
-        let visible = visibleAssets
+        let visible = visibleAssets.filter { !isPhotoComparison || $0.id != photoComparisonReference?.asset.id }
         let visibleIDs = Set(visible.map(\.id))
         var ids = selectedIDs.intersection(visibleIDs)
         let deliberatelyEmpty = selectedIDs.isEmpty && emptySelectionKey == projection?.key
@@ -1010,7 +1157,7 @@ final class LibraryModel: ObservableObject {
     }
     func navigate(_ delta: Int, extending: Bool = false) {
         NSApp?.keyWindow?.makeFirstResponder(nil)
-        let visible = visibleAssets
+        let visible = visibleAssets.filter { !isPhotoComparison || $0.id != photoComparisonReference?.asset.id }
         guard !visible.isEmpty else { return }
         let target: Int
         if let index = visible.firstIndex(where: { $0.id == selectedID }) {
@@ -1034,8 +1181,9 @@ final class LibraryModel: ObservableObject {
             try await prepareCatalogCleanup?()
         }
         revision += 1
+        let acceptedRevision = revision
         var value: CatalogWriteMetadata
-        do { value = try await writer.save(snapshot, revision: revision) }
+        do { value = try await writer.save(snapshot, revision: acceptedRevision) }
         catch {
             // A pre-import cleanup may already have committed another store's
             // epoch before a later participant failed. Never reuse that local
@@ -1043,6 +1191,7 @@ final class LibraryModel: ObservableObject {
             if membershipChanged { isReadOnly = true }
             throw error
         }
+        recordConfirmedMutationCatalog(snapshot, revision: acceptedRevision)
         if value.editingPruned {
             do { try await synchronizeEditing?() }
             catch { value.cleanupError = error.localizedDescription }
@@ -1073,7 +1222,12 @@ final class LibraryModel: ObservableObject {
         }
     }
 
-    private func persist(admission: CatalogAcceptedWriteAdmission?) {
+    private func recordConfirmedMutationCatalog(_ snapshot: LibraryCatalog, revision: Int) {
+        guard revision >= confirmedMutationRevision else { return }
+        confirmedMutationCatalog = snapshot; confirmedMutationRevision = revision
+    }
+
+    private func persist(admission: CatalogAcceptedWriteAdmission?, completion: @escaping @MainActor (Bool) async -> Void = { _ in }) {
         revision += 1
         let snapshot = catalog, number = revision, id = UUID()
         // Registration happened synchronously BEFORE the caller changed local
@@ -1082,9 +1236,14 @@ final class LibraryModel: ObservableObject {
             defer { catalogSaveTasks.removeValue(forKey: id) }
             do {
                 let value = try await withCatalogAdmission(admission) { try await self.writer.save(snapshot, revision: number) }
+                recordConfirmedMutationCatalog(snapshot, revision: number)
                 if catalog == snapshot { catalogNeedsSave = false }
                 applyPhotoMetadataCatalogResult(value)
-            } catch { errorMessage = "Änderungen konnten nicht gespeichert werden.\n\n" + error.localizedDescription }
+                await completion(true)
+            } catch {
+                errorMessage = "Änderungen konnten nicht gespeichert werden.\n\n" + error.localizedDescription
+                await completion(false)
+            }
         }
     }
 
@@ -1111,6 +1270,7 @@ final class LibraryModel: ObservableObject {
             coordinationIDs = Set(pending.map { $0.value.body.operationID })
             let current = try await writer.recoveryCatalog()
             catalog = current.catalog; metadataCatalogReference = current.reference
+            confirmedMutationCatalog = current.catalog; confirmedMutationRevision = revision
             var receipts: [MetadataCatalogChangeReceipt] = []
             if let metadata = metadataStore as? any CoordinatedPhotoMetadataStoring {
                 for journal in pending {
@@ -1158,6 +1318,7 @@ final class LibraryModel: ObservableObject {
     }
 
     func beginTermination() {
+        closePhotoComparison(clearReference: true)
         projectionNeedsResumption = projectionNeedsResumption || projectionTask != nil || deferredProjectionTask != nil
         isClosing = true; importTask?.cancel(); queuedImports = []
         projectionTask?.cancel(); projectionTask = nil; isProjecting = false

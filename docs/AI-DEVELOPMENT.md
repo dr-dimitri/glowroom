@@ -1,5 +1,15 @@
 # KI-Korrektur in Entwickeln
 
+Der [lokale MCP-Zugang](MCP.md) kann unterstützte globale numerische Werte als
+externen Vorschlag in derselben Prüfoberfläche vorbereiten. Er benötigt kein
+Qwen-Modell; erst das sichtbare **Übernehmen** ändert den angenommenen Stand.
+Der neue gemeinsame Auftrag **Neue Maske mit Korrektur** wird gesondert über das
+[Qualitätsgate aus #221](AI-EDIT-PLAN-EVALUATION.md) mit **No-Go** abgeschlossen:
+Zielwahl und automatische Motivmaske verfehlten zwei positive Fälle, sodass die
+Go-Schwelle nicht mehr erreichbar war. Der Einstieg bleibt verborgen.
+Bestehende automatische Masken und Korrekturen auf bereits
+angenommenen Masken bleiben unabhängig davon verfügbar.
+
 **KI-Korrektur** ist eine Gruppe im gemeinsamen Arbeitsbereich **Entwickeln**. Kopfzeile und Darstellungsmenü bieten **Bibliothek** und **Entwickeln**. Der Gruppenwechsel zu **Licht**, **Farbe** oder **Details** verwendet dasselbe Foto, dieselbe Vorschau, denselben Bildstand und dieselbe Speicherung. Im Bildfokus öffnen Menü und Dock dieselben Gruppen.
 
 Die KI-Gruppe enthält den ausdrücklich auszulösenden Qwen-Auftrag; die gemeinsame Suche steht in der Bibliothek bereit. Bildtexte und Tags werden im gemeinsamen Formular **Bildinformationen** in Bibliothek, Entwickeln und Bildfokus manuell bearbeitet oder mit **Mit KI vorschlagen** angefordert. Der eigenständige KI-Bildtextbereich entfällt. Die Funktionen verwenden ihre jeweiligen Modelle; Qwen ersetzt weder Masken-/Suchmodelle noch den lokalen Systemanbieter für Bildtexte. Manuelle Angaben bleiben auch bei nicht verfügbarem Bildtextanbieter möglich. [Bedienung und Speicherung der Bildinformationen](PHOTO-METADATA.md).
