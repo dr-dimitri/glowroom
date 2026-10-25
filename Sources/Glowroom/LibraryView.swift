@@ -112,6 +112,7 @@ struct LibraryView: View {
             developWorkspace.levelsPicker != nil || developWorkspace.automaticLevelsBusy
         }, action: { event in handleKey(event) }))
         .onAppear {
+            editor.developCommands.bind(workspace: developWorkspace, masks: maskWorkspace)
             if layout.isFocused, model.selectedAsset != nil {
                 model.showsDetail = true
                 model.workspaceMode = .develop
@@ -288,22 +289,26 @@ struct LibraryView: View {
     private var editingHistory: WorkspaceEditingHistory {
         let id = model.selectedID
         let masks = maskWorkspace.isPresented
+        let allowed = editor.developCommands.availability(in: model, permitsActiveInput: true,
+            permitsToolHistory: true).isAvailable
         return WorkspaceEditingHistory(
-            canUndo: editor.canEdit && (masks ? maskWorkspace.model?.canUndo == true : id.map { editor.canUndo(assetID: $0) } == true),
-            canRedo: editor.canEdit && (masks ? maskWorkspace.model?.canRedo == true : id.map { editor.canRedo(assetID: $0) } == true),
+            canUndo: allowed && (masks ? maskWorkspace.model?.canUndo == true : id.map { editor.canUndo(assetID: $0) } == true),
+            canRedo: allowed && (masks ? maskWorkspace.model?.canRedo == true : id.map { editor.canRedo(assetID: $0) } == true),
             undo: { performHistory(redo: false) }, redo: { performHistory(redo: true) },
-            canReset: editor.canEdit && !masks && id != nil,
+            canReset: allowed && !masks && id != nil,
             reset: {
                 guard let id = model.selectedID, !maskWorkspace.isPresented else { return }
                 NSApp.keyWindow?.makeFirstResponder(nil)
                 ResettableNativeSlider.cancelInputs(in: NSApp.keyWindow?.contentView)
                 developWorkspace.cancelRepairWork()
-                editor.reset(assetID: id)
+                if developWorkspace.tool == .basic { editor.developCommands.performHistory(.reset, in: model) }
+                else { editor.reset(assetID: id) }
             }, allowsComparison: !masks)
     }
 
     private func performHistory(redo: Bool) {
-        guard let id = model.selectedID else { return }
+        guard let id = model.selectedID, editor.developCommands.availability(in: model,
+            permitsActiveInput: true, permitsToolHistory: true).isAvailable else { return }
         // Commit a numeric field and cancel native tracking before restoring a
         // snapshot. A later native callback must not overwrite the restored edit.
         NSApp.keyWindow?.makeFirstResponder(nil)
@@ -312,7 +317,9 @@ struct LibraryView: View {
             if redo { maskWorkspace.redo() } else { maskWorkspace.undo() }
         } else {
             developWorkspace.cancelRepairWork()
-            if redo { editor.redo(assetID: id) } else { editor.undo(assetID: id) }
+            if developWorkspace.tool == .basic {
+                editor.developCommands.performHistory(redo ? .redo : .undo, in: model)
+            } else if redo { editor.redo(assetID: id) } else { editor.undo(assetID: id) }
         }
     }
 

@@ -104,6 +104,9 @@ final class EditingModel: ObservableObject, GeneratedArtifactAccepting {
     weak var library: LibraryModel?
     private(set) var aiEditSessionID = UUID()
     private(set) var aiEditGeneration: UInt64 = 0
+    lazy var developCommands = DevelopCommandDispatcher(editor: self)
+    lazy var developTransfer = DevelopTransferModel(editor: self)
+    private var activeTransferJobID: UUID?
 
     var semanticProtectedURLs: [URL] {
         guard let directory else { return [] }
@@ -749,6 +752,84 @@ extension EditingModel {
         return !ManagedFileProtection.protects(target, directory: directory)
     }
 
+}
+
+extension EditingModel {
+    func transferTarget(assetID: String) -> DevelopTransferTarget? {
+        guard canEdit, !assetID.isEmpty, !hasActiveEditing(assetID: assetID), let storeEpoch else { return nil }
+        return .init(assetID: assetID, snapshot: snapshot(for: assetID), revision: localRevision(for: assetID),
+                     sessionID: aiEditSessionID, storeEpoch: storeEpoch)
+    }
+
+    /// All dependent state acceptance and SQL writes remain ordered. The short
+    /// commit fence prevents a later slider from replacing the accepted row in
+    /// the debounce queue before this exact transfer becomes durable.
+    func commitTransfer(_ patch: DevelopSettingsPatch, target: DevelopTransferTarget,
+                        admissionCheck: @escaping @MainActor () -> DevelopTransferCommitResult? = { nil }) async -> DevelopTransferCommitResult {
+        func matches() -> Bool {
+            aiEditSessionID == target.sessionID && storeEpoch == target.storeEpoch
+                && localRevision(for: target.assetID) == target.revision
+                && snapshot(for: target.assetID) == target.snapshot
+        }
+        guard canEdit, !hasActiveEditing(assetID: target.assetID) else { return .skipped("Bearbeitung gesperrt") }
+        guard matches() else { return .skipped("Foto wurde seit der Planung bearbeitet") }
+        if Task.isCancelled { return .cancelled }
+        if let result = admissionCheck() { return result }
+        let settings: EditSettings
+        do { settings = try patch.applying(to: target.snapshot.settings) }
+        catch { return .skipped(error.localizedDescription) }
+        guard settings != target.snapshot.settings else { return .unchanged }
+        guard nextRevisionAvailable(for: target.assetID) else { return .failed(errorMessage ?? "Versionsgrenze erreicht") }
+        isCommitting = true
+        defer { isCommitting = false }
+        // Finish earlier accepted input first. Cancellation here can stop this
+        // target, while the existing save ownership still completes earlier work.
+        guard await flushPending() else { return .failed(errorMessage ?? "Speichern fehlgeschlagen") }
+        guard matches(), !isRestoring, !isBackingUp, !isClosing, !isReadOnly else {
+            return .skipped("Bearbeitung oder Katalog wurde geändert")
+        }
+        if Task.isCancelled { return .cancelled }
+        if let result = admissionCheck() { return result }
+        do {
+            let value = try EditingSnapshot(source: target.snapshot.source, settings: settings)
+            let admission = try registerWrite()
+            selectEditingFunction(.adjustments, assetID: target.assetID)
+            endEditing(assetID: target.assetID)
+            histories.clearRedo(target.assetID)
+            appendUndo(target.snapshot, for: target.assetID)
+            apply(value, for: target.assetID, admission: admission)
+            let revision = localRevision(for: target.assetID)
+            // Acceptance is the cancellation boundary. This independently owned
+            // save task must outlive an observing sheet or cancelled caller.
+            let accepted = Task { await self.flushPending() }
+            guard await accepted.value,
+                  baselines[target.assetID]?.revision == revision,
+                  baselines[target.assetID]?.snapshot == value,
+                  baselines[target.assetID]?.storeEpoch == target.storeEpoch else {
+                return .failed(errorMessage ?? "Übernahme wurde nicht dauerhaft bestätigt")
+            }
+            return .changed(.init(assetID: target.assetID, revision: revision,
+                sessionID: target.sessionID, storeEpoch: target.storeEpoch))
+        } catch { return .failed(error.localizedDescription) }
+    }
+
+    func canUndoTransfer(_ receipt: DevelopTransferReceipt) -> Bool {
+        canEdit && aiEditSessionID == receipt.sessionID && storeEpoch == receipt.storeEpoch
+            && localRevision(for: receipt.assetID) == receipt.revision
+            && editingFunction(assetID: receipt.assetID) == .adjustments
+            && histories.canUndo(receipt.assetID)
+    }
+
+    func beginTransferJob(id: UUID) -> Bool {
+        guard activeTransferJobID == nil else { return false }
+        activeTransferJobID = id; return true
+    }
+
+    func finishTransferJob(id: UUID, didSave: Bool) {
+        guard activeTransferJobID == id else { return }
+        activeTransferJobID = nil
+        if didSave { scheduleAutomaticBackup() }
+    }
 }
 
 /// A single metadata worker for explicit generation capture, without opening

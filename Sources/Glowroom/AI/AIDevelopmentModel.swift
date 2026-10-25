@@ -130,6 +130,7 @@ final class AIDevelopmentModel: ObservableObject {
         let bitmapStamp = workspace.originalSourceStamp
         expected = snapshot
         previewWorkspace = workspace
+        let previewRequest = workspace.beginCorrectionPreview()
         isCurrentContext = { [weak library, weak editor, weak workspace] in
             guard let library, let editor, let workspace else { return false }
             return Self.matchesEditingContext(snapshot, editor.localEditingAnchorSnapshot(in: library))
@@ -198,6 +199,9 @@ final class AIDevelopmentModel: ObservableObject {
                 self.sourceStamp = result.1
                 self.maskPreview = result.2
                 if let preview = result.3 {
+                    guard workspace.correctionPreviewRequestID == previewRequest else {
+                        self.discard(); self.status = "Eine neuere Vorschau ist aktiv."; return
+                    }
                     workspace.aiCorrectionPreview = AICorrectionPreview(snapshot: snapshot,
                         settings: result.0.settings, bitmap: preview)
                     workspace.showsAICorrectionProposal = true
@@ -242,13 +246,23 @@ final class AIDevelopmentModel: ObservableObject {
                 guard let self, self.expected == expected,
                       Self.matchesEditingContext(expected, editor.localEditingAnchorSnapshot(in: library)), self.isCurrentContext?() == true,
                       !editor.hasActiveEditing(assetID: expected.assetID) else { return }
+                guard self.canApplyProposal else {
+                    self.status = "Erstelle die Vorschau erneut, bevor du sie übernimmst."; return
+                }
                 guard editor.canEdit else {
                     self.status = "Automatische Sicherung läuft. Übernimm den Vorschlag anschließend erneut."
                     return
                 }
                 // Source IO precedes this synchronous main-actor transaction.
                 // The final snapshot check and ordinary undo/write stay atomic.
-                editor.setSettings(proposal.settings, for: expected.assetID)
+                if proposal.targetName == nil, proposal.createdMaskID == nil {
+                    guard editor.developCommands.applyNumericSettings(proposal.settings,
+                        assetID: expected.assetID, in: library) else { return }
+                } else {
+                    // Mask actions keep their existing typed adapter and local
+                    // semantics; the numeric command catalog does not claim them.
+                    editor.setSettings(proposal.settings, for: expected.assetID)
+                }
                 let applied = editor.settings(for: expected.assetID) == proposal.settings
                 self.clearCorrectionPreview()
                 self.expected = nil; self.proposal = nil; self.sourceStamp = nil; self.maskPreview = nil

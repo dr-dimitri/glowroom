@@ -34,7 +34,18 @@ final class DevelopWorkspace: ObservableObject {
     var levelsRequest = UUID()
     let detailPosition = DevelopDetailPosition()
     let photoViewport = PhotoViewportState()
-    @Published var aiCorrectionPreview: AICorrectionPreview?
+    @Published var aiCorrectionPreview: AICorrectionPreview? {
+        didSet { if aiCorrectionPreview != nil { presetPreview = nil } }
+    }
+    @Published var presetPreview: AICorrectionPreview? {
+        didSet { if presetPreview != nil { aiCorrectionPreview = nil } }
+    }
+    private(set) var correctionPreviewRequestID = UUID()
+    func beginCorrectionPreview() -> UUID {
+        correctionPreviewRequestID = UUID()
+        aiCorrectionPreview = nil; presetPreview = nil
+        return correctionPreviewRequestID
+    }
     @Published var showsAICorrectionProposal = true
     @Published var previewReloadID = UUID()
     @Published private(set) var isFinalPreviewReady = false
@@ -270,7 +281,9 @@ final class DevelopWorkspace: ObservableObject {
         isAutoStraightening = false
     }
     func clear() {
+        correctionPreviewRequestID = UUID()
         aiCorrectionPreview = nil
+        presetPreview = nil
         showsAICorrectionProposal = true
         isFinalPreviewReady = false
         photoViewport.reset()

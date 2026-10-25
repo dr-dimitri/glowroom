@@ -48,7 +48,7 @@ extension DevelopWorkspace {
         guard library.isDeveloping, library.previewComparisonLayout == .single,
               !library.comparesOriginal, !library.comparesCurrentSourceWithoutSettings,
               tool == .basic, !picksWhiteBalance, !picksDetail, levelsPicker == nil,
-              let preview = aiCorrectionPreview,
+              let preview = presetPreview ?? aiCorrectionPreview,
               preview.matches(editor.localEditingAnchorSnapshot(in: library)) else { return nil }
         return AICorrectionDisplay(preview: preview, showsProposal: showsAICorrectionProposal)
     }

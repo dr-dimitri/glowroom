@@ -73,6 +73,7 @@ struct DevelopInspector: View {
                                         DevelopGeometryInspector(asset: asset, workspace: developWorkspace)
                                             .id(asset.id).id(developWorkspace.tool.isRepairTool ? .repair : developWorkspace.tool)
                                     } else {
+                                        DevelopPresetsPanel(library: library)
                                         adjustmentNavigation
                                         ForEach(groups, id: \.self) { tool in toolGroup(tool, asset: asset) }
                                     }
@@ -484,30 +485,41 @@ struct DevelopInspector: View {
     }
 
     private func editingHistory(assetID: String) -> some View {
-        HStack(spacing: 8) {
+        let allowed = editor.developCommands.availability(in: library, permitsActiveInput: true,
+            permitsToolHistory: true).isAvailable
+        return HStack(spacing: 8) {
             if column == .navigation {
                 Button {
                     finishInput(assetID: assetID)
                     ResettableNativeSlider.cancelInputs(in: NSApp.keyWindow?.contentView)
                     if maskWorkspace.isPresented { maskWorkspace.undo() }
-                    else { developWorkspace.cancelRepairWork(); editor.undo(assetID: assetID) }
+                    else {
+                        developWorkspace.cancelRepairWork()
+                        if developWorkspace.tool == .basic { editor.developCommands.performHistory(.undo, in: library) }
+                        else { editor.undo(assetID: assetID) }
+                    }
                 } label: { Label("Rückgängig", systemImage: "arrow.uturn.backward").frame(maxWidth: .infinity) }
-                    .disabled(!editor.canEdit || (maskWorkspace.isPresented ? maskWorkspace.model?.canUndo != true : !editor.canUndo(assetID: assetID)))
+                    .disabled(!allowed || (maskWorkspace.isPresented ? maskWorkspace.model?.canUndo != true : !editor.canUndo(assetID: assetID)))
                     .accessibilityIdentifier("workspace.undo")
                 Button {
                     finishInput(assetID: assetID)
                     ResettableNativeSlider.cancelInputs(in: NSApp.keyWindow?.contentView)
                     if maskWorkspace.isPresented { maskWorkspace.redo() }
-                    else { developWorkspace.cancelRepairWork(); editor.redo(assetID: assetID) }
+                    else {
+                        developWorkspace.cancelRepairWork()
+                        if developWorkspace.tool == .basic { editor.developCommands.performHistory(.redo, in: library) }
+                        else { editor.redo(assetID: assetID) }
+                    }
                 } label: { Label("Wiederholen", systemImage: "arrow.uturn.forward").frame(maxWidth: .infinity) }
-                    .disabled(!editor.canEdit || (maskWorkspace.isPresented ? maskWorkspace.model?.canRedo != true : !editor.canRedo(assetID: assetID)))
+                    .disabled(!allowed || (maskWorkspace.isPresented ? maskWorkspace.model?.canRedo != true : !editor.canRedo(assetID: assetID)))
                     .accessibilityIdentifier("workspace.redo")
             } else {
                 Button("Alle Bildkorrekturen zurücksetzen") {
                     finishInput(assetID: assetID)
-                    editor.reset(assetID: assetID)
+                    if developWorkspace.tool == .basic { editor.developCommands.performHistory(.reset, in: library) }
+                    else { editor.reset(assetID: assetID) }
                 }.frame(maxWidth: .infinity)
-                    .disabled(maskWorkspace.isPresented || !editor.canEdit || editor.settings(for: assetID).isNeutral)
+                    .disabled(maskWorkspace.isPresented || !allowed || editor.settings(for: assetID).isNeutral)
                     .accessibilityIdentifier("workspace.reset")
             }
         }.buttonStyle(.bordered).controlSize(.small).font(.system(size: 13))
@@ -550,7 +562,7 @@ struct DevelopInspector: View {
 
     private func setAdjustmentSettings(_ settings: EditSettings, for assetID: String) {
         editor.selectEditingFunction(.adjustments, assetID: assetID, cancelsActiveInput: false)
-        editor.setSettings(settings, for: assetID)
+        editor.developCommands.applyNumericSettings(settings, assetID: assetID, in: library)
     }
 
     private func beginAdjustment(assetID: String) {
