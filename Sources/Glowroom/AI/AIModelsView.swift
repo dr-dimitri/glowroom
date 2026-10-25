@@ -234,8 +234,6 @@ struct AIModelsView: View {
         Button { selection = destination } label: {
             Label(destination.title, systemImage: selection == destination ? "checkmark.circle.fill" : destination.symbol)
         }
-        .accessibilityValue(selection == destination ? "Ausgewählt" : "Nicht ausgewählt")
-        .accessibilityAddTraits(selection == destination ? .isSelected : [])
         .accessibilityIdentifier(identifier)
     }
 

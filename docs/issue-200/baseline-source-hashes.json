@@ -559,7 +559,7 @@
     "Tests/GlowroomTests/ToneMemoryBudgetTests.swift": "e7c20d8479bcb206a970e9256d25137e87b37bc874b8013e63a1db140897778e",
     "Tests/GlowroomTests/ToneProcessingPerformanceTests.swift": "0fc5c577a6031774ad597120ae717f00ade665187db622c90f124f7575684429",
     "Tests/GlowroomTests/ToneProcessingV2Tests.swift": "d2b50c709504027b3a05d7b2ec84557824442c497131bc11a6d950fc2fd52a6b",
-    "Tests/GlowroomTests/UIClarityScreenshotTests.swift": "1cc0a96a8396866a80a037d79849cca3dc90466a4903f0fb58c588620f431e44",
+    "Tests/GlowroomTests/UIClarityScreenshotTests.swift": "6db89449ea0157dc1a71b805d0865a7f605b4db06ab52a10b10a646b1d99e0f9",
     "Tests/GlowroomTests/UnifiedObjectMaskAcceptanceTests.swift": "ebc22e861e8db770ead9e0af61f1c670223f5b17d75a8d2e5e5911d5e6fc6636",
     "Tests/GlowroomTests/WorkspaceAccessibility.swift": "5e15a61ac83736131d28e03af521b19693b6ff800df0cc7242e92999c89203cb",
     "Tests/GlowroomTests/WorkspaceColumnResizeTests.swift": "95696c660a6e1abb413ee996df1df47e6bde26adda2b6d035eae41baca994c38",

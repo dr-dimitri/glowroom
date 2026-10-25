@@ -12,7 +12,7 @@
   "proposalState" : "pending",
   "scaleFactor" : 2,
   "screenshotSHA256" : "a8d22b3fb8df568e5155275599878d714e8a0d82967b3cfae321503e6642b7bd",
-  "sourceCommit" : "d812a7df8688eb3f696ed2b66bd4f1eb2f8c35cc",
+  "sourceCommit" : "cde266663c2af5eae578bd64247cad81c30fc03f+issue-200-without-voiceover",
   "state" : "focus",
   "steps" : [
     "Enter Bildfokus",

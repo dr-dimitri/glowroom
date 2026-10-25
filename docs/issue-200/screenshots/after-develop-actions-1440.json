@@ -12,7 +12,7 @@
   "proposalState" : "absent",
   "scaleFactor" : 2,
   "screenshotSHA256" : "978c7aff2470bc9a30975c59ecd079f8f36bb8cf01edc197e6537d0a7327e1b0",
-  "sourceCommit" : "d812a7df8688eb3f696ed2b66bd4f1eb2f8c35cc",
+  "sourceCommit" : "cde266663c2af5eae578bd64247cad81c30fc03f+issue-200-without-voiceover",
   "state" : "develop-actions",
   "steps" : [
     "Keep Entwickeln and KI-Korrektur open",

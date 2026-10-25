@@ -12,7 +12,7 @@
   "proposalState" : "pending",
   "scaleFactor" : 2,
   "screenshotSHA256" : "42c3807a39d01ad28fef928e71c3422f34ca454081e89fb86d7b96a13458802f",
-  "sourceCommit" : "d812a7df8688eb3f696ed2b66bd4f1eb2f8c35cc",
+  "sourceCommit" : "cde266663c2af5eae578bd64247cad81c30fc03f+issue-200-without-voiceover",
   "state" : "model-error",
   "steps" : [
     "Restore controlled model availability",

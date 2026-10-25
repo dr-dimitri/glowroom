@@ -238,7 +238,7 @@ final class DevelopCropNativeInputView: NSView {
         allowedTouchTypes = [.indirect]
         wantsRestingTouches = false
         // SwiftUI accessibility modifiers do not expose this native surface's
-        // own element; keep the canvas discoverable to VoiceOver and UI tests.
+        // own element; keep the canvas discoverable to native UI tests.
         setAccessibilityElement(true)
         setAccessibilityRole(.group)
         setAccessibilityIdentifier("develop.interactive-canvas")

@@ -136,7 +136,6 @@ struct DevelopRepairInspector: View {
                         }
                 }.buttonStyle(.plain).accessibilityLabel(mode.title)
                     .accessibilityValue(selectedMode == mode ? "Ausgewählt" : "Nicht ausgewählt")
-                    .accessibilityAddTraits(selectedMode == mode ? .isSelected : [])
                     .accessibilityIdentifier("develop.repair.mode." + mode.rawValue)
             }
         }.disabled(!ready)

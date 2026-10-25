@@ -507,13 +507,11 @@ struct InlineMaskInspector: View {
                 HStack {
                     Button { workspace.erases = false } label: {
                         Label("Pinsel", systemImage: workspace.erases ? "paintbrush.pointed" : "checkmark.circle.fill")
-                    }.accessibilityValue(workspace.erases ? "Inaktiv" : "Aktiv")
-                        .accessibilityAddTraits(workspace.erases ? [] : .isSelected)
+                    }
                         .accessibilityIdentifier("local-mask.paint")
                     Button { workspace.erases = true } label: {
                         Label("Radierer", systemImage: workspace.erases ? "checkmark.circle.fill" : "eraser")
-                    }.accessibilityValue(workspace.erases ? "Aktiv" : "Inaktiv")
-                        .accessibilityAddTraits(workspace.erases ? .isSelected : [])
+                    }
                         .accessibilityIdentifier("local-mask.erase")
                 }.buttonStyle(.bordered)
                 Button("Pinselstriche löschen", systemImage: "trash.slash") { workspace.brush.clear() }

@@ -207,7 +207,6 @@ struct AIDevelopmentView: View {
         }
             .tint(workspace.correctionDisplay(library: library, editor: editor)?.showsProposal == proposal ? Theme.accent : nil)
             .accessibilityValue(workspace.correctionDisplay(library: library, editor: editor)?.showsProposal == proposal ? "Aktiv" : "Inaktiv")
-            .accessibilityAddTraits(workspace.correctionDisplay(library: library, editor: editor)?.showsProposal == proposal ? .isSelected : [])
             .accessibilityIdentifier("ai-development.\(identifier)")
     }
 }

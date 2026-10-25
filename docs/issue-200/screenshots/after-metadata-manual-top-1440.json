@@ -12,7 +12,7 @@
   "proposalState" : "absent",
   "scaleFactor" : 2,
   "screenshotSHA256" : "84d5a057bbba91f15bdbd94d3de9e507aa4cba35f038b6e069e13f00ddce8dc1",
-  "sourceCommit" : "d812a7df8688eb3f696ed2b66bd4f1eb2f8c35cc",
+  "sourceCommit" : "cde266663c2af5eae578bd64247cad81c30fc03f+issue-200-without-voiceover",
   "state" : "metadata-manual-top",
   "steps" : [
     "Open Bildinformationen",

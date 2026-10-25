@@ -160,7 +160,6 @@ struct DevelopInspector: View {
                 }.buttonStyle(.plain).help(tool.title).accessibilityLabel(tool.title)
                     .accessibilityIdentifier("develop.tool.\(tool.rawValue)")
                     .accessibilityValue(toolIsActive(tool) ? "Aktiv" : "Inaktiv")
-                    .accessibilityAddTraits(toolIsActive(tool) ? .isSelected : [])
                     .disabled(!editor.canEdit || !library.canModify || library.comparesOriginal || library.comparesCurrentSourceWithoutSettings
                               || (maskWorkspace.model?.isGenerating ?? false))
             }
@@ -259,7 +258,6 @@ struct DevelopInspector: View {
                 }.buttonStyle(.plain).foregroundStyle(developWorkspace.picksWhiteBalance ? Theme.accent : Theme.muted)
                     .help("Neutralgrau im Foto wählen")
                     .accessibilityIdentifier("develop.white-balance-picker")
-                    .accessibilityValue(developWorkspace.picksWhiteBalance ? "Aktiv" : "Inaktiv")
                     .disabled(developWorkspace.sourceAnalysis == nil)
                 Spacer(minLength: 0)
             }

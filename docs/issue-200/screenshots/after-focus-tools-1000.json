@@ -12,7 +12,7 @@
   "proposalState" : "pending",
   "scaleFactor" : 2,
   "screenshotSHA256" : "15d41ca5b443aa904303b9cc47433b41988c070accb37d89d5a20b8f873ae58c",
-  "sourceCommit" : "d812a7df8688eb3f696ed2b66bd4f1eb2f8c35cc",
+  "sourceCommit" : "cde266663c2af5eae578bd64247cad81c30fc03f+issue-200-without-voiceover",
   "state" : "focus-tools",
   "steps" : [
     "In Bildfokus activate Licht in dock",

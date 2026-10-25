@@ -1,6 +1,6 @@
 diff --git a/Tests/GlowroomTests/UIClarityScreenshotTests.swift b/Tests/GlowroomTests/UIClarityScreenshotTests.swift
 new file mode 100644
-index 0000000..b37cb97
+index 0000000..85608b4
 --- /dev/null
 +++ b/Tests/GlowroomTests/UIClarityScreenshotTests.swift
 @@ -0,0 +1,396 @@
@@ -201,7 +201,7 @@ index 0000000..b37cb97
 +            try await host.mount(root())
 +            host.prepareManualInteraction()
 +            // An opt-in, bounded manual inspection window; Task.sleep services
-+            // the main run loop so keyboard and VoiceOver remain interactive.
++            // the main run loop so keyboard navigation remains interactive.
 +            try await Task.sleep(for: .seconds(min(duration, 180)))
 +        }
 +        #expect(await suggestor.requests == 1)

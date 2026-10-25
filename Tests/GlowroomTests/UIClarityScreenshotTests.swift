@@ -195,7 +195,7 @@ struct UIClarityScreenshotTests {
             try await host.mount(root())
             host.prepareManualInteraction()
             // An opt-in, bounded manual inspection window; Task.sleep services
-            // the main run loop so keyboard and VoiceOver remain interactive.
+            // the main run loop so keyboard navigation remains interactive.
             try await Task.sleep(for: .seconds(min(duration, 180)))
         }
         #expect(await suggestor.requests == 1)

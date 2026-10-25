@@ -1,10 +1,10 @@
 # Reparaturwerkzeuge
 
-Stand: 24. Oktober 2026.
+Stand: 25. Oktober 2026.
 
 ## Bedienung
 
-In **Entwickeln → Reparieren** stehen die vier beschrifteten Modi **Entfernen**, **Heilen**, **Kopierstempel** und **Rote Augen** bereit. Der aktive Modus trägt ein sichtbares Häkchen und eine Umrandung; der Auswahlzustand ist auch für VoiceOver zugänglich. Rote Augen besitzt keinen zusätzlichen Einstieg in der Werkzeugleiste; ein eigener KI-Reparatureinstieg entfällt ebenfalls. Die orientierte, unbeschnittene Quelle bleibt sichtbar.
+In **Entwickeln → Reparieren** stehen die vier beschrifteten Modi **Entfernen**, **Heilen**, **Kopierstempel** und **Rote Augen** bereit. Der aktive Modus trägt ein sichtbares Häkchen und eine Umrandung. Rote Augen besitzt keinen zusätzlichen Einstieg in der Werkzeugleiste; ein eigener KI-Reparatureinstieg entfällt ebenfalls. Die orientierte, unbeschnittene Quelle bleibt sichtbar.
 
 Die Palette zeigt passende Aktionen statt dauerhafter Erklärabsätze. **Hilfe** öffnet die Bedienung und Grenzen in einem eigenen Dialog mit 13-Punkt-Schrift. Status und Fehler sind ebenfalls mindestens 13 Punkt groß.
 

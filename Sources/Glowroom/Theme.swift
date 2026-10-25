@@ -28,7 +28,6 @@ struct IconButton: View {
                 .frame(width: 32, height: 30)
                 .background(active ? Theme.accent.opacity(0.09) : Color.clear, in: RoundedRectangle(cornerRadius: 6))
         }.buttonStyle(.plain).help(help).accessibilityLabel(help)
-            .accessibilityAddTraits(active ? .isSelected : [])
     }
 }
 
@@ -55,7 +54,6 @@ struct RatingStars: View {
                 if let onChange {
                     Button { onChange(star == rating ? 0 : star) } label: { starImage(star) }
                         .buttonStyle(.plain).help("\(star) Sterne").accessibilityLabel("\(star) Sterne bewerten")
-                        .accessibilityAddTraits(star == rating ? .isSelected : [])
                 } else { starImage(star) }
             }
         }.accessibilityElement(children: onChange == nil ? .ignore : .contain)
