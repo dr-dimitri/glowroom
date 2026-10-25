@@ -1,14 +1,16 @@
 # Glowroom: ein gemeinsamer Entwicklungsbereich mit KI-Unterstützung
 
+Der [Abschluss von Issue #201](../issue-201/README.md) ordnet die gelieferten Teilaufgaben und ihre funktionalen und visuellen Nachweise den gemeinsamen Kriterien zu. Dieses Dokument bewahrt das ursprüngliche Konzept und die historischen Ausgangsbelege.
+
 **Status: UX-01 bis UX-08 umgesetzt.** Die gemeinsame Entwickeln-Navigation aus [Issue #193](https://github.com/dr-dimitri/glowroom/issues/193) verwendet jetzt KI-Korrektur, Licht, Farbe und Details in einem Inspector. [Native UX-01-Abnahme](../issue-193/README.md). [Issue #194](https://github.com/dr-dimitri/glowroom/issues/194) ergänzt den gerenderten Korrekturvorschlag mit Übernahmeprüfung: [native UX-02-Abnahme](../issue-194/README.md). UX-03 bündelt die KI-Objektmasken mit manueller Maskierung: [native Abnahme](../issue-195/README.md). UX-04 ordnet Licht, Farbe und Details, erhält erweiterte Levels und verlagert technische Tonwertmigration in Bildstände: [native Abnahme](../issue-196/README.md). UX-05 vereint die Reparaturmodi und lokalen KI-Einstieg: [native Abnahme](../issue-197/README.md). UX-06 führt manuelle Bildinformationen und KI-Bildtexte in einem Formular zusammen: [Bedienung](../PHOTO-METADATA.md), [native Abnahme](../issue-198/README.md). UX-07 bündelt Suche und Modellverwaltung: [Bedienung](../AI-MODELS.md), [native Abnahme](../issue-199/README.md). UX-08 ergänzt klare Aufgabennamen, lesbare Zustände, ausdrücklich geöffnete Hilfe und die übergreifende [native Text-/Layoutabnahme](../issue-200/README.md). Die manuelle VoiceOver-Abnahme wurde auf ausdrücklichen Nutzerwunsch vom 25.10.2026 aus dem Umfang genommen. Die folgenden Konzeptgrafiken bleiben als ursprüngliche Konzepte gekennzeichnet. Die ursprüngliche Analyse stammt vom 24.10.2026, Quellcommit `c11089624d0b56cd1eabc2280e89d21d16f022f6`.
 
 Ziel ist eine Oberfläche, in der der Anwender eine fotografische Aufgabe auswählt und die passende manuelle oder KI-gestützte Funktion dort findet. Die vom Nutzer bereitgestellten Lightroom-Classic-Bilder dienen als Referenz für große Bildfläche, seitliche Funktionsgruppen, Histogramm, Bibliotheksraster und Filmstreifen. Die privaten Referenzaufnahmen werden nicht im Repository veröffentlicht. Lightroom-Funktionen, die Glowroom nicht besitzt, sind kein Bestandteil dieses Konzepts.
 
-## Zielansichten
+## Ursprüngliche Zielansichten und gelieferte Bedienung
 
 ### Entwickeln
 
-![Konzept: gemeinsames Entwickeln, noch nicht implementiert](concept-develop.png)
+![Ursprüngliches Konzept: gemeinsames Entwickeln, keine App-Aufnahme](concept-develop.png)
 
 Nur **Bibliothek** und **Entwickeln** bleiben Hauptbereiche. Der Bildfokus ist eine Darstellungsoption. Links stehen Navigator, Bildinformationen und Bildstände; rechts Histogramm und eine beschriftete Werkzeugauswahl: **Anpassen**, **Zuschneiden**, **Maskieren**, **Reparieren**. Auswahl, Zoom, Bildstand und übernommene Bearbeitungen bleiben bei Werkzeugwechseln erhalten.
 
@@ -43,9 +45,11 @@ Die Bibliothek konzentriert sich auf Finden, Auswählen und Beschreiben. Ein Suc
 
 **KI-Modelle** ist ein einziger zentraler Verwaltungsdialog, erreichbar auch ohne Foto. Werkzeuge bieten bei Bedarf einen direkten Einrichtungslink auf die passende Funktion im selben Dialog. Modellnamen, technische Versionen, Lizenz, Größe und Diagnose gehören in dessen Details. Fortschritt, Downloadgröße bei einer Downloadentscheidung, Abbruch und aktuelle Nichtverfügbarkeit bleiben sichtbar. Systemanbieter für Bildtexte dürfen nicht fälschlich als Qwen-Download dargestellt werden.
 
-## Welche Dopplungen entfallen?
+## Zusammengeführte Einstiege
 
-| Heute | Ziel und Zuständigkeit |
+Die linke Spalte beschreibt den historischen Ausgangsstand der Konzeptanalyse. Die rechte Spalte ordnet die Umsetzung den inzwischen gelieferten Teilaufgaben zu; deren native Nachweise sind oben verlinkt.
+
+| Historischer Ausgangsstand | Gelieferte Zuordnung |
 | --- | --- |
 | Entwickeln und AI Entwickeln ersetzen wechselseitig den rechten Inspector | Ein Entwickeln-Bereich; UX-01 |
 | Direkte Bildregler und ähnlich aussehende KI-Auftragsregler | Ein Satz direkter Regler; expliziter Vorschlagsablauf; UX-02 |
@@ -58,7 +62,7 @@ Die Bibliothek konzentriert sich auf Finden, Auswählen und Beschreiben. Ein Suc
 | Rückgängig/Wiederholen im KI-Inspector zusätzlich zur linken Entwicklungsspalte | Ein sichtbares, kontextgerechtes Paar; Menü und Kürzel bleiben; UX-01 |
 | Erklärender Kleindruck über interne Abläufe und technische Details | Verständliche Namen, direkte Rückmeldung, optionale Hilfe; UX-08 |
 
-In der Bibliotheks-Einzelbildansicht sind Bibliotheksfilter oben und Filmstreifenfilter unten gleichzeitig sichtbar (auch im beigefügten Screenshot). UX-07 reduziert dort Filter und Sortierung auf einen sichtbaren Ort. Im Entwickeln-Filmstreifen bleibt der kontextuelle Zugriff erhalten. Gemeinsame Komponenten, Tastenkürzel und Menübefehle bedienen denselben Zustand. Vergleich und Speicherstatus besitzen bereits zentrale Stellen und dürfen durch die Zusammenführung keine neuen Kopien erhalten.
+In der historischen Bibliotheks-Einzelbildansicht waren Bibliotheksfilter oben und Filmstreifenfilter unten gleichzeitig sichtbar, wie die Ausgangsaufnahme zeigt. UX-07 hat dort Filter und Sortierung auf einen sichtbaren Ort reduziert. Im Entwickeln-Filmstreifen bleibt der kontextuelle Zugriff erhalten. Gemeinsame Komponenten, Tastenkürzel und Menübefehle bedienen denselben Zustand. Vergleich und Speicherstatus behalten ihre zentralen Stellen.
 
 ## Texte und Zustände
 
@@ -70,7 +74,7 @@ Bestehende Ausführungs- und Verfügbarkeitsgrenzen gelten weiter. Nicht impleme
 
 ## Nachprüfbare Ausgangsaufnahmen
 
-Die Dateien unter `screenshots/` sind **native Aufnahmen vorhandener SwiftUI-/AppKit-Views aus dem unveränderten Quellstand**, erzeugt durch bestehende UI-Tests. Sie zeigen isolierte Testfenster mit den synthetischen 1×1-PNG-Fixtures `A.png` und `B.png` und Testdiensten, keine privaten Fotos und keine reale KI-Inferenz. Die einfache Bildfläche ist beabsichtigt: geprüft wird die Oberfläche. Einzelne Aufnahmen enthalten noch Ladeanzeigen der Bild-/Thumbnail-Vorschau; sie belegen die Anordnung, keinen abgeschlossenen Render- oder KI-Vorgang. Die Testfenster liegen außerhalb des sichtbaren Desktops; der Benutzerkatalog wird nicht verwendet.
+Die Dateien unter `screenshots/` sind **native Aufnahmen der damaligen SwiftUI-/AppKit-Views aus dem unveränderten Analyse-Quellstand `c11089624d0b56cd1eabc2280e89d21d16f022f6`**, erzeugt durch die damals bestehenden UI-Tests. Sie zeigen isolierte Testfenster mit den synthetischen 1×1-PNG-Fixtures `A.png` und `B.png` und Testdiensten, keine privaten Fotos und keine reale KI-Inferenz. Die einfache Bildfläche ist beabsichtigt: geprüft wurde die Oberfläche. Einzelne Aufnahmen enthalten noch Ladeanzeigen der Bild-/Thumbnail-Vorschau; sie belegen die damalige Anordnung, keinen abgeschlossenen Render- oder KI-Vorgang. Die Testfenster lagen außerhalb des sichtbaren Desktops; der Benutzerkatalog wurde nicht verwendet.
 
 | Screenshot | Testfenster in pt | Was er belegt |
 | --- | --- | --- |
@@ -88,11 +92,11 @@ GLOWROOM_WORKSPACE_SNAPSHOTS=/private/tmp/glowroom-ui-audit-20261024 \
   --filter 'WorkspaceProposalLifecycleTests/(aiDevelopmentHasItsOwnWorkspaceAndKeepsModelManagementWithoutSelection|mountedLibraryKeepsFocusReturnPathWhenSearchTemporarilyRemovesSelection)'
 ```
 
-Die beiden parameterisierten Testfälle erzeugen jeweils Aufnahmen bei 1000 × 660 und 1440 × 900 pt. Die verwendeten PNG-Pixelmaße, Dateihashes und Testergebnisse werden in [evidence.json](evidence.json) festgehalten. Die UI-Testfälle bleiben aufgrund gemeinsamem AppKit-Zustand geordnet; unabhängige Quellanalysen und das Review erfolgen parallel. Kein Screenshot ist ein Nachher-Nachweis für die noch offene Umsetzung.
+Die beiden damaligen parameterisierten Testfälle erzeugten jeweils Aufnahmen bei 1000 × 660 und 1440 × 900 pt. Die verwendeten PNG-Pixelmaße, Dateihashes und Testergebnisse stehen in [evidence.json](evidence.json). Die UI-Testfälle wurden aufgrund gemeinsamem AppKit-Zustand geordnet ausgeführt; unabhängige Quellanalysen und das Review erfolgten parallel. Diese Ausgangsaufnahmen sind keine Nachher-Nachweise. Die tatsächlichen Vorher-/Nachher-Abnahmen stehen in den oben verlinkten Dokumentationen zu UX-01 bis UX-08.
 
-## Abnahme der späteren Umsetzung
+## Abnahmekriterien und Nachweise
 
-Jedes Issue verlangt eigene Vorher-/Nachher-Aufnahmen desselben Bildes, Bildstands, Zooms und Werkzeugzustands. Je Aufnahme Quellcommit, macOS-Version, Fenstergröße **in pt**, Skalierungsfaktor, Fixture-ID, Schritte und erwartete sichtbare Kriterien dokumentieren. Bilder direkt im Issue oder zugehörigen PR einbetten, zusätzlich dauerhafte Links auf den geprüften Stand verwenden. Aufnahmen allein belegen keine korrekte Speicherung oder Abbruchbehandlung.
+Für die Umsetzung wurden eigene Vorher-/Nachher-Aufnahmen desselben Bildes, Bildstands, Zooms und Werkzeugzustands verlangt. Die oben verlinkten Teilabnahmen dokumentieren je Aufnahme Quellstand, macOS-Version, Fenstergröße **in pt**, Skalierungsfaktor, Fixture, Schritte und Zustand sowie die jeweiligen Prüfgrenzen. Der [Abschluss von Issue #201](../issue-201/README.md) führt diese Nachweise zusammen. Aufnahmen allein belegen keine korrekte Speicherung oder Abbruchbehandlung.
 
 | Prüfzustand | Sichtbare Kriterien und ergänzende Prüfung |
 | --- | --- |
@@ -109,13 +113,13 @@ Jedes Issue verlangt eigene Vorher-/Nachher-Aufnahmen desselben Bildes, Bildstan
 
 Für anschauliche veröffentlichbare Abnahmebilder `scripts/make-demo-library.swift` in einem neuen temporären Verzeichnis verwenden. Reale Modellqualität separat mit geeigneten, veröffentlichbaren Fotos und festgelegtem Modell prüfen. `Fixtures/LocalTestImages/test_picture1.jpg` bis `test_picture7.jpg` sind optional lokale Testdaten und werden ebenso wie erkennbare Ableitungen nicht veröffentlicht. In CI dürfen diese Dateien nicht vorausgesetzt werden.
 
-## Umsetzungsschnitt und Reihenfolge
+## Umsetzungsschnitt und Architektur
 
-UX-01 schafft den gemeinsamen Rahmen. UX-02 bis UX-07 liefern getrennte fachliche Teilaufgaben; Arbeiten am gemeinsamen Inspector müssen vorab koordiniert werden. UX-08 gilt als gemeinsamer Text-/Zugänglichkeitsvertrag ab Beginn und führt abschließend die End-to-End-Abnahme aus. Die zentrale Verwaltung aus UX-07 liefert die Einrichtungsziele für UX-02/03/05/06 und ist ohne ausgewähltes Foto erreichbar. Ein abgeschlossenes Teilissue darf seine bestehenden Bedienwege nicht vor Ersatz entfernen.
+UX-01 schuf den gemeinsamen Rahmen. UX-02 bis UX-07 lieferten die fachlichen Teilbereiche; UX-08 ergänzte die übergreifende Text-/Layoutabnahme und Tastaturprüfung. Die zentrale Verwaltung aus UX-07 liefert die Einrichtungsziele für UX-02/03/05/06 und ist ohne ausgewähltes Foto erreichbar. Arbeiten am gemeinsamen Inspector und der Ersatz bestehender Bedienwege bleiben bei späteren Änderungen zu koordinieren.
 
 Die dokumentierte Architektur bleibt Maßstab: kurze UI-Zustandsänderungen auf dem MainActor; Bildanalyse, Modellarbeit, Rendering und I/O im Hintergrund, vorhandene begrenzte Ressourcenbudgets und Caches wiederverwenden. Keine Inferenz bei bloßem Panelwechsel, keine erneute RAW-Decodierung je Reglerbewegung. Schreibtransaktionen, angenommene Bearbeitungen und Backups bleiben geordnet. Keine Leistungsverbesserung ohne Messung behaupten.
 
-Bei der Implementierung README und die Fachanleitungen `WORKSPACE-LAYOUT.md`, `DEVELOP-WORKSPACE.md`, `AI-DEVELOPMENT.md`, `PHOTO-METADATA.md`, `SEMANTIC-SEARCH.md`, `MASK-EDITING.md` und `REPAIR-TOOLS.md` entsprechend dem tatsächlich gelieferten Stand aktualisieren. Bestehende Anleitungen beschreiben bis dahin weiterhin die laufende App.
+README und die Fachanleitungen `WORKSPACE-LAYOUT.md`, `DEVELOP-WORKSPACE.md`, `AI-DEVELOPMENT.md`, `PHOTO-METADATA.md`, `SEMANTIC-SEARCH.md`, `MASK-EDITING.md` und `REPAIR-TOOLS.md` wurden mit den jeweiligen Teilaufgaben auf die gelieferte Bedienung aktualisiert. Die historischen Konzeptgrafiken und Ausgangsaufnahmen in diesem Verzeichnis bleiben erhalten.
 
 ## Issues und Prüfung dieses Konzepts
 
@@ -132,4 +136,4 @@ Bei der Implementierung README und die Fachanleitungen `WORKSPACE-LAYOUT.md`, `D
 | UX-07 | [Bildsuche in der Bibliothek bündeln und KI-Modelle zentral verwalten](https://github.com/dr-dimitri/glowroom/issues/199) |
 | UX-08 | [Kleinsthinweise durch klare Bedienung ersetzen und die neue Oberfläche visuell abnehmen](https://github.com/dr-dimitri/glowroom/issues/200) |
 
-Der ursprüngliche Konzeptauftrag umfasste ausschließlich Dokumentation, Konzeptgrafiken und Issues und erforderte deshalb gemäß `AGENTS.md` keinen sauberen App-Build. Die Implementierung von UX-01 wird separat mit Build, Tests und [nativer Abnahme](../issue-193/README.md) geprüft. Der gezielte UI-Testlauf dient der reproduzierbaren Ist-Dokumentation, nicht dem Nachweis einer implementierten neuen Oberfläche. Zwei unabhängige Reviews prüften Quellenbelege, Bildkennzeichnung, Links, Issue-Abgrenzung und den vollständigen Dokumentationsdiff. Dabei wurden die fehlende Zuordnung von Rote Augen, die zunächst übersehene Filterdopplung, der fehlende sichtbare KI-Zielbereich und ein uneinheitlicher Parametername korrigiert und erneut geprüft. Keine offenen Review-Befunde. Der vorhandene UI-Snapshot-Lauf bestand mit zwei parameterisierten Tests, vier Fällen und einer Suite; SVG-XML, lokale Dokumentlinks sowie Screenshot-Hashes und -Maße wurden geprüft.
+Der ursprüngliche Konzeptauftrag umfasste ausschließlich Dokumentation, Konzeptgrafiken und Issues und erforderte deshalb gemäß `AGENTS.md` keinen sauberen App-Build. Sein gezielter UI-Testlauf diente der reproduzierbaren Dokumentation des damaligen Zustands. Zwei unabhängige Reviews prüften Quellenbelege, Bildkennzeichnung, Links, Issue-Abgrenzung und den vollständigen Dokumentationsdiff. Dabei wurden die fehlende Zuordnung von Rote Augen, die zunächst übersehene Filterdopplung, der fehlende sichtbare KI-Zielbereich und ein uneinheitlicher Parametername korrigiert und erneut geprüft. Das Konzeptreview endete ohne offene Befunde. Der damalige UI-Snapshot-Lauf bestand mit zwei parameterisierten Tests, vier Fällen und einer Suite; SVG-XML, lokale Dokumentlinks sowie Screenshot-Hashes und -Maße wurden geprüft. Die späteren Implementierungen von UX-01 bis UX-08 haben ihre eigenen Reviews, funktionalen Prüfungen, sauberen App-Builds und nativen Abnahmen in den oben verlinkten Teilabnahmen dokumentiert; der [Abschluss von Issue #201](../issue-201/README.md) ordnet sie den gemeinsamen Kriterien zu.
