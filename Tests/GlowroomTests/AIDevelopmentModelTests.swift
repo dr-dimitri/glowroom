@@ -8,6 +8,56 @@ import SwiftUI
 @Suite("AI development review transactions", .timeLimit(.minutes(2)))
 @MainActor
 struct AIDevelopmentModelTests {
+    @Test func externalNumericProposalUsesVisibleAcceptanceAndOneUndo() async throws {
+        let f = try await AIDevelopmentFixture.make()
+        defer { f.remove() }
+        let stamp = ImageAnalysisSourceStamp(device: 1, inode: 1, byteCount: 1, modifiedSeconds: 1,
+            modifiedNanoseconds: 0, changedSeconds: 1, changedNanoseconds: 0)
+        let bitmap = try #require(f.workspace.originalBitmap)
+        f.workspace.receive(bitmap, sourceBitmap: bitmap, sourceStamp: stamp)
+        let snapshot = try #require(f.editor.aiSnapshot(in: f.library))
+        try await f.model.prepareExternal(snapshot: snapshot, patch: .init([.init(.exposure, 1)]), requestID: "external-1",
+            library: f.library, editor: f.editor, workspace: f.workspace)
+        #expect(f.editor.settings(for: f.assetID) == .neutral)
+        #expect(!f.editor.canUndo(assetID: f.assetID))
+        #expect(f.model.canApplyProposal && f.model.proposal?.settings.exposure == 1)
+        let host = WorkspaceSectionTestHost(size: NSSize(width: 420, height: 1_100))
+        defer { host.close() }
+        try await host.mount(AIDevelopmentView(library: f.library, model: f.model)
+            .environmentObject(f.editor).environmentObject(f.workspace).frame(width: 380))
+        let apply = try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == "ai-development.apply" })
+        try #require(apply.accessibilityPerformPress())
+        try await waitForTestState("external proposal accepted", state: { @MainActor in f.model.proposal == nil && !f.model.isRunning }, until: { $0 })
+        #expect(f.editor.settings(for: f.assetID).exposure == 1)
+        #expect(f.model.externalOutcome == "accepted")
+        await (try #require(f.start())).value
+        #expect(f.model.proposal != nil && f.model.externalRequestID == nil)
+        #expect(f.model.lastExternalResult?.id == "external-1" && f.model.lastExternalResult?.state == "accepted")
+        f.model.discard()
+        f.editor.undo(assetID: f.assetID)
+        #expect(f.editor.settings(for: f.assetID) == .neutral)
+        #expect(!f.editor.canUndo(assetID: f.assetID))
+        #expect(await f.editor.flush())
+        try await host.unmount()
+    }
+
+    @Test func externalProposalCannotSurviveSelectionRoundTripOrChangeUnsupportedValues() async throws {
+        let f = try await AIDevelopmentFixture.make()
+        defer { f.remove() }
+        let bitmap = try #require(f.workspace.originalBitmap)
+        f.workspace.receive(bitmap, sourceBitmap: bitmap, sourceStamp: .init(device: 1, inode: 1, byteCount: 1,
+            modifiedSeconds: 1, modifiedNanoseconds: 0, changedSeconds: 1, changedNanoseconds: 0))
+        let snapshot = try #require(f.editor.aiSnapshot(in: f.library))
+        f.library.selectedID = nil; f.library.selectedID = f.assetID
+        await #expect(throws: MCPFailure.self) {
+            try await f.model.prepareExternal(snapshot: snapshot, patch: .init([.init(.exposure, 1)]),
+                library: f.library, editor: f.editor, workspace: f.workspace)
+        }
+        #expect(f.model.proposal == nil && !f.editor.canUndo(assetID: f.assetID))
+        #expect(f.editor.settings(for: f.assetID) == .neutral)
+        #expect(await f.editor.flush())
+    }
+
     @Test func presetPreviewRevokesAIProposalAcceptanceIncludingDelayedValidation() async throws {
         let entered = TestAsyncLatch(), release = TestAsyncLatch()
         let f = try await AIDevelopmentFixture.make(validateSource: { _, _ in

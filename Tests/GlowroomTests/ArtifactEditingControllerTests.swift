@@ -8,6 +8,16 @@ import Testing
 @Suite("Artifact editing controller", .serialized, .timeLimit(.minutes(1)))
 @MainActor
 struct ArtifactEditingControllerTests {
+    @Test func duplicateVariantNamesHaveDistinctTimestampsWithinOneSecond() throws {
+        let snapshot = try EditingSnapshot(settings: .neutral)
+        let first = EditingVariant(id: .init(), assetID: "photo", snapshot: snapshot,
+            createdAt: Date(timeIntervalSince1970: 1_700_000_000.125), name: "Druck", creationKind: .named)
+        let second = EditingVariant(id: .init(), assetID: "photo", snapshot: snapshot,
+            createdAt: Date(timeIntervalSince1970: 1_700_000_000.250), name: "Druck", creationKind: .named)
+        #expect(first.displayName == second.displayName)
+        #expect(first.displayTimestamp != second.displayTimestamp)
+    }
+
     @Test func acceptedCommitSurvivesObserverCancelSelectionAndClosingAndIsOneUndo() async throws {
         let f = try await fixture(); defer { try? FileManager.default.removeItem(at: f.directory) }
         do {
@@ -396,6 +406,79 @@ struct ArtifactEditingControllerTests {
         #expect(f.editor.variants.map(\.id) == [next.id])
     }
 
+    @Test func namedVariantPreviewAndBeforeAreTransientAndRestoreIsOneUndoStep() async throws {
+        let f = try await fixture(); defer { try? FileManager.default.removeItem(at: f.directory) }
+        let assetID = f.assets[0].id
+        var settings = f.editor.settings(for: assetID); settings.exposure = 0.75
+        f.editor.setSettings(settings, for: assetID)
+        #expect(await f.editor.flush())
+        await f.editor.saveNamedVariant(name: "  Warm  ", assetID: assetID)
+        await f.editor.loadVariants(f.editor.variantsLoadIdentity(assetID: assetID, expanded: true))
+        let variant = try #require(f.editor.variants.first)
+        #expect(variant.name == "Warm" && variant.snapshot == f.editor.snapshot(for: assetID))
+        settings.exposure = -0.5; f.editor.setSettings(settings, for: assetID)
+        #expect(await f.editor.flush())
+        let snapshot = f.editor.snapshot(for: assetID), revision = f.editor.localRevision(for: assetID)
+        let history = f.editor.historyStateCount
+        await f.editor.viewVariant(variant, mode: .preview)
+        #expect(f.editor.isViewingVariant && !f.editor.canEdit)
+        #expect(f.editor.localRevision(for: assetID) == revision && f.editor.historyStateCount == history)
+        var blocked = settings; blocked.contrast = 30
+        f.editor.setSettings(blocked, for: assetID)
+        #expect(f.editor.snapshot(for: assetID) == snapshot)
+        f.editor.closeVariantPreview()
+        #expect(f.editor.canEdit && f.editor.localRevision(for: assetID) == revision)
+        await f.editor.viewVariant(variant, mode: .before)
+        #expect(!f.editor.isViewingVariant && f.editor.canEdit && f.library.previewComparisonLayout == .leftRight)
+        #expect(f.editor.snapshot(for: assetID) == snapshot && f.editor.localRevision(for: assetID) == revision)
+        await f.editor.selectVariant(variant)
+        #expect(f.editor.variantViewingState == nil && f.editor.snapshot(for: assetID) == variant.snapshot)
+        #expect(f.editor.localRevision(for: assetID) == revision + 1)
+        f.editor.undo(assetID: assetID)
+        #expect(f.editor.snapshot(for: assetID) == snapshot)
+        f.editor.redo(assetID: assetID)
+        #expect(f.editor.snapshot(for: assetID) == variant.snapshot)
+        #expect(await f.editor.flush())
+    }
+
+    @Test func namedVariantMetadataChangesDoNotChangeAcceptedSnapshotOrRevision() async throws {
+        let f = try await fixture(); defer { try? FileManager.default.removeItem(at: f.directory) }
+        let assetID = f.assets[0].id
+        await f.editor.saveNamedVariant(name: "Zwischenstand", assetID: assetID)
+        await f.editor.loadVariants(f.editor.variantsLoadIdentity(assetID: assetID, expanded: true))
+        let variant = try #require(f.editor.variants.first)
+        let snapshot = f.editor.snapshot(for: assetID), revision = f.editor.localRevision(for: assetID)
+        await f.editor.renameVariant(variant, name: "Neuer Name")
+        await f.editor.loadVariants(f.editor.variantsLoadIdentity(assetID: assetID, expanded: true))
+        #expect(f.editor.variants.first?.name == "Neuer Name")
+        let renamed = try #require(f.editor.variants.first)
+        await f.editor.removeNamedVariant(renamed)
+        await f.editor.loadVariants(f.editor.variantsLoadIdentity(assetID: assetID, expanded: true))
+        #expect(f.editor.variants.isEmpty)
+        #expect(f.editor.snapshot(for: assetID) == snapshot && f.editor.localRevision(for: assetID) == revision)
+        #expect(!f.editor.canUndo(assetID: assetID))
+    }
+
+    @Test func terminationDrainsAnAcceptedNamedVariantWrite() async throws {
+        let f = try await fixture(); defer { try? FileManager.default.removeItem(at: f.directory) }
+        defer { Task { await f.store.releaseNamedVariantWrite() } }
+        let assetID = f.assets[0].id
+        await f.store.blockNextNamedVariantWrite()
+        let save = Task { await f.editor.saveNamedVariant(name: "Noch speichern", assetID: assetID) }
+        try await wait { await f.store.namedVariantWriteWaiting }
+        #expect(f.editor.isManagingVariants && !f.editor.canBackUp && !f.editor.canRestore)
+        var finished = false
+        let termination = Task { let result = await f.editor.finishSaving(); finished = true; return result }
+        // An accepted row remains owned until the actual repository returns.
+        for _ in 0..<20 { await Task.yield() }
+        #expect(!finished)
+        await f.store.releaseNamedVariantWrite()
+        await save.value
+        #expect(await termination.value)
+        #expect(await f.store.variants(for: assetID).first?.name == "Noch speichern")
+        #expect(!f.editor.isManagingVariants)
+    }
+
     private func fixture(gate: CatalogLifecycleGate? = nil) async throws -> ControllerFixture {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("Glowroom-Artifact-Controller-" + UUID().uuidString)
         let photos = directory.appendingPathComponent("Photos"); try FileManager.default.createDirectory(at: photos, withIntermediateDirectories: true)
@@ -486,6 +569,9 @@ private actor ControllerEditingStore: EditingPersistence {
     private(set) var automaticCopyStarted = false, automaticPruneRequested = false, automaticPruneFinished = false
     private(set) var automaticBackupCount = 0, snapshotSaveWaiting = false
     private var variantsByAsset: [String: [EditingVariant]] = [:]
+    private var shouldBlockNamedVariantWrite = false
+    private var namedVariantContinuation: CheckedContinuation<Void, Never>?
+    private(set) var namedVariantWriteWaiting = false
     private var shouldBlockVariantRead = false, shouldRotateRestoreEpoch = false
     private var variantReadContinuations: [Int: CheckedContinuation<Void, Never>] = [:]
     private(set) var variantReadCount = 0
@@ -547,6 +633,29 @@ private actor ControllerEditingStore: EditingPersistence {
         return receipt
     }
     func committed(_ id: EditingCommitID) -> ArtifactCommitReceipt? { receipts[id] }
+    func blockNextNamedVariantWrite() { shouldBlockNamedVariantWrite = true }
+    func releaseNamedVariantWrite() {
+        shouldBlockNamedVariantWrite = false
+        namedVariantContinuation?.resume(); namedVariantContinuation = nil; namedVariantWriteWaiting = false
+    }
+    func saveNamedVariant(id: EditingVariantID, name: String, for assetID: String, snapshot: EditingSnapshot, expected: EditingExpectedState) async throws -> EditingVariant {
+        let current = values[assetID]
+        guard expected.storeEpoch == epoch, expected.revision == current?.version.revision, expected.snapshot == current?.snapshot else { throw ArtifactContractError.staleSnapshot }
+        if shouldBlockNamedVariantWrite {
+            shouldBlockNamedVariantWrite = false; namedVariantWriteWaiting = true
+            await withCheckedContinuation { namedVariantContinuation = $0 }
+        }
+        let variant = EditingVariant(id: id, assetID: assetID, snapshot: snapshot, createdAt: Date(), name: try EditingVariantName.validated(name), creationKind: .named)
+        variantsByAsset[assetID, default: []].append(variant); return variant
+    }
+    func renameVariant(_ id: EditingVariantID, for assetID: String, name: String) throws {
+        guard let index = variantsByAsset[assetID]?.firstIndex(where: { $0.id == id }), let previous = variantsByAsset[assetID]?[index] else { throw ArtifactContractError.staleSnapshot }
+        variantsByAsset[assetID]?[index] = .init(id: id, assetID: assetID, snapshot: previous.snapshot, createdAt: previous.createdAt, name: try EditingVariantName.validated(name), creationKind: previous.creationKind)
+    }
+    func removeNamedVariant(_ id: EditingVariantID, for assetID: String) throws {
+        guard variantsByAsset[assetID]?.first(where: { $0.id == id })?.creationKind == .named else { throw ArtifactContractError.invalidCapability }
+        variantsByAsset[assetID]?.removeAll(where: { $0.id == id })
+    }
     func setVariants(_ variants: [EditingVariant], for assetID: String) { variantsByAsset[assetID] = variants }
     func blockNextVariantRead() { shouldBlockVariantRead = true }
     func releaseVariantReads() {

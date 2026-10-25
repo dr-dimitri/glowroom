@@ -30,6 +30,10 @@ final class EditingSQLite: @unchecked Sendable {
         "artifact_commits":"CREATE TABLE artifact_commits(id TEXT PRIMARY KEY NOT NULL, request_sha TEXT NOT NULL, receipt BLOB NOT NULL)",
         "editing_remaps":"CREATE TABLE editing_remaps(id TEXT PRIMARY KEY NOT NULL, phase TEXT NOT NULL CHECK(phase IN ('prepared','databaseCommitted','catalogCommitted','completed','aborted')), journal BLOB NOT NULL)"
     ]
+    static let variantMetadataSchema = "CREATE TABLE editing_variant_metadata(variant_id TEXT PRIMARY KEY NOT NULL REFERENCES editing_variants(id) ON DELETE CASCADE, name TEXT NOT NULL, creation_kind TEXT NOT NULL CHECK(creation_kind IN ('automatic','named')))"
+    static func hasVariantMetadata(_ db: OpaquePointer) throws -> Bool {
+        try scalar(db, "SELECT count(*) FROM sqlite_schema WHERE type='table' AND name='editing_variant_metadata'") == 1
+    }
     static let legacySchemas = [
         "edit_revisions":"CREATE TABLE edit_revisions (asset_id TEXT PRIMARY KEY NOT NULL, revision INTEGER NOT NULL CHECK(revision >= 0))",
         "adjustments":"CREATE TABLE adjustments (asset_id TEXT PRIMARY KEY NOT NULL REFERENCES edit_revisions(asset_id), settings BLOB NOT NULL, updated_at REAL NOT NULL)"
@@ -108,6 +112,12 @@ final class EditingSQLite: @unchecked Sendable {
                 try Self.exec(db,"COMMIT")
             } catch { try? Self.exec(db,"ROLLBACK"); throw error }
         }
+        // Additive metadata migration leaves canonical snapshots and descriptors byte-identical.
+        if try !Self.hasVariantMetadata(db) {
+            try Self.exec(db, "BEGIN IMMEDIATE")
+            do { try Self.exec(db, Self.variantMetadataSchema); try Self.exec(db, "COMMIT") }
+            catch { try? Self.exec(db, "ROLLBACK"); throw error }
+        }
         let pageSize = try Self.scalar(db,"PRAGMA page_size")
         guard pageSize > 0,pageSize <= 65_536 else {throw EditingRepositoryError.invalidDatabase}
         try Self.exec(db,"PRAGMA max_page_count=\(536_870_912/pageSize);PRAGMA synchronous=FULL;PRAGMA foreign_keys=ON;PRAGMA trusted_schema=OFF")
@@ -162,7 +172,8 @@ final class EditingSQLite: @unchecked Sendable {
     static func schema(_ db:OpaquePointer,version:Int) throws {
         guard version == 1 || version == 2 else { throw EditingRepositoryError.unsupportedVersion(version) }
         guard try scalar(db,"PRAGMA application_id") == Int64(applicationID),try scalar(db,"PRAGMA user_version") == Int64(version) else { throw EditingRepositoryError.invalidDatabase }
-        let expected = version == 1 ? legacySchemas : schemas
+        var expected = version == 1 ? legacySchemas : schemas
+        if version == 2, try hasVariantMetadata(db) { expected["editing_variant_metadata"] = variantMetadataSchema }
         func normal(_ text:String) -> String { text.replacingOccurrences(of:"IF NOT EXISTS ",with:"").split(whereSeparator:\.isWhitespace).joined(separator:" ") }
         var names = Set<String>(), indexes = Set<String>()
         try rows(db,"SELECT type,name,tbl_name,sql FROM sqlite_schema") { s in

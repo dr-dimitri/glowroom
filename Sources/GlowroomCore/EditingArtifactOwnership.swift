@@ -206,6 +206,9 @@ public protocol EditingPersistence: Actor {
     func commitGenerated(_ request: GenerationCommitRequest) async throws -> ArtifactCommitReceipt
     func committed(_ commitID: EditingCommitID) async throws -> ArtifactCommitReceipt?
     func variants(for assetID: String) async throws -> [EditingVariant]
+    func saveNamedVariant(id: EditingVariantID, name: String, for assetID: String, snapshot: EditingSnapshot, expected: EditingExpectedState) async throws -> EditingVariant
+    func renameVariant(_ id: EditingVariantID, for assetID: String, name: String) async throws
+    func removeNamedVariant(_ id: EditingVariantID, for assetID: String) async throws
     func createBackup(automatic: Bool) async throws -> URL
     /// Stores with exclusive backup maintenance must await `maintenance(true)`
     /// before closing gate admission and `maintenance(false)` after finishing or
@@ -247,6 +250,9 @@ public protocol EditingPersistence: Actor {
 }
 
 public extension EditingPersistence {
+    func saveNamedVariant(id: EditingVariantID, name: String, for assetID: String, snapshot: EditingSnapshot, expected: EditingExpectedState) async throws -> EditingVariant { throw ArtifactContractError.unsupportedFormat }
+    func renameVariant(_ id: EditingVariantID, for assetID: String, name: String) async throws { throw ArtifactContractError.unsupportedFormat }
+    func removeNamedVariant(_ id: EditingVariantID, for assetID: String) async throws { throw ArtifactContractError.unsupportedFormat }
     func createAutomaticBackup(maintenance: @escaping @Sendable (Bool) async throws -> Void) async throws -> URL {
         try await createBackup(automatic: true)
     }

@@ -103,3 +103,17 @@ xcrun swiftc -module-cache-path /tmp/glowroom-artifact-codec-modules scripts/ver
 ```
 
 Die optionale Lastprüfung nutzt ein deterministisches 4096×4096-RGBA8-P3-Raster, echte Artefakt-/SQL-/Paketimplementierungen und ein frisches Restoreverzeichnis ohne Original. Rohdaten bleiben unter einem neuen temporären UUID-Verzeichnis. Beobachtete Ressourcenreservierungen und Prozess-RSS werden getrennt ausgewiesen. Testseitige Vergleichsdecodierung gehört nicht zum Produktionsbudget; Timing beginnt nach Store-/Basiseinrichtung. Private Fotos, Kamera-RAWs und Modelle werden nicht verwendet.
+
+## Benannte Bildstände (#223)
+
+Datum und Uhrzeit werden bis zu Millisekunden angezeigt, damit gleichnamige
+Bildstände auch bei mehreren Sicherungen innerhalb derselben Minute unterscheidbar
+bleiben. Die stabile Varianten-ID bleibt ihre Identität.
+
+Die bestehende Arbeitsbereichsgruppe **Bildstände** zeigt Sichern und Liste direkt, ohne zweite verschachtelte Aufklappzeile. **Bildstand sichern …** wartet auf angenommene Bearbeitungen und sichert deren vollständigen Snapshot mit stabiler Varianten-ID. Der Name wird außen getrimmt und muss 1–120 Graphemcluster sowie höchstens 512 UTF-8-Bytes enthalten. Gleiche Namen sind erlaubt. Speichern bindet Foto-ID, Snapshot und erwartete persistierte Revision; ein zwischenzeitlicher Edit erzeugt einen Konflikt. Umbenennen verändert ausschließlich Metadaten. Nur ausdrücklich benannte Einträge lassen sich entfernen. Raster bleiben durch aktive Quellen, andere Varianten, Provenienz und Leases geschützt; dieser Bedienweg löscht keine Rasterdateien direkt.
+
+Namen und Erstellungsart stehen in der additiven, strikt validierten SQL-Tabelle `editing_variant_metadata`. Bestehende Tabellen, kanonische Snapshotbytes und Artefakt-Manifesthashes werden dabei nicht umgeschrieben. Einträge ohne Metadaten behalten ihre bisherigen abgeleiteten Namen und die Erstellungsart `automatic`. Geschlossene ältere SQL-/Paketbackups ohne die optionale Tabelle bleiben lesbar. Neue Pakete übernehmen die Metadaten zusammen mit SQL; regulärer Restore und ausdrückliche Recovery stellen sie wieder her. Katalogbereinigung entfernt sie über die Variantenreferenz mit.
+
+**Vorschau** ist ein flüchtiger Betrachtungszustand mit gesperrten Bearbeitungen; **Als Vorher vergleichen** zeigt dagegen den aktiven, weiter bearbeitbaren Stand rechts. Beide ändern weder Revision noch Undo oder Exportquelle. **Wiederherstellen** ist eine ausdrückliche normale Snapshotübernahme mit einem Undo-Schritt. Schließen, Escape und Foto-/Quellenwechsel beenden die Betrachtung. Der Exportdialog benennt den angenommenen Bildstand als Quelle. Bei fehlenden oder ersetzten Quellen erscheint ein Fehler; es gibt keinen Ersatz durch das Original.
+
+Sichtbare Miniaturen und Bildstandvorschauen nutzen ausschließlich die bestehenden begrenzten Decode-/Renderdienste und deren Quellcache. Der zusätzliche Ansichtskontext enthält Varianten-ID, nativen Quellstempel, Snapshotwerte, Größe und den Farbvertrag. Die Decode-Identität verwendet ausschließlich Quelle, nativen Stempel, Größe und Farbvertrag; mehrere Bildstände derselben RAW teilen deshalb dieselbe decodierte Basis. Der Rendercache ergänzt die Snapshotwerte. Es entsteht kein eigener Workerpool. Native Stempel werden vor und nach dem Rendern geprüft; ein verspätetes Ergebnis eines entfernten oder gewechselten Eintrags wird nicht veröffentlicht.

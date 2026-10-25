@@ -1,0 +1,162 @@
+[
+  {
+    "direction": -1,
+    "id": "sky-0",
+    "instruction": "Den Himmel dunkler machen, nur die Belichtung ändern.",
+    "kind": "sky",
+    "negative": false,
+    "scene": 0
+  },
+  {
+    "direction": 1,
+    "id": "sky-1",
+    "instruction": "Den Himmel heller machen, nur die Belichtung ändern.",
+    "kind": "sky",
+    "negative": false,
+    "scene": 1
+  },
+  {
+    "direction": -1,
+    "id": "sky-2",
+    "instruction": "Den Himmel dunkler machen, nur die Belichtung ändern.",
+    "kind": "sky",
+    "negative": false,
+    "scene": 2
+  },
+  {
+    "direction": -1,
+    "id": "subject-0",
+    "instruction": "Den Motiv dunkler machen, nur die Belichtung ändern.",
+    "kind": "subject",
+    "negative": false,
+    "scene": 0
+  },
+  {
+    "direction": 1,
+    "id": "subject-1",
+    "instruction": "Den Motiv heller machen, nur die Belichtung ändern.",
+    "kind": "subject",
+    "negative": false,
+    "scene": 1
+  },
+  {
+    "direction": -1,
+    "id": "subject-2",
+    "instruction": "Den Motiv dunkler machen, nur die Belichtung ändern.",
+    "kind": "subject",
+    "negative": false,
+    "scene": 2
+  },
+  {
+    "direction": -1,
+    "id": "background-0",
+    "instruction": "Den Hintergrund dunkler machen, nur die Belichtung ändern.",
+    "kind": "background",
+    "negative": false,
+    "scene": 0
+  },
+  {
+    "direction": 1,
+    "id": "background-1",
+    "instruction": "Den Hintergrund heller machen, nur die Belichtung ändern.",
+    "kind": "background",
+    "negative": false,
+    "scene": 1
+  },
+  {
+    "direction": -1,
+    "id": "background-2",
+    "instruction": "Den Hintergrund dunkler machen, nur die Belichtung ändern.",
+    "kind": "background",
+    "negative": false,
+    "scene": 2
+  },
+  {
+    "direction": -1,
+    "id": "object-0",
+    "instruction": "Den roten Ball dunkler machen, nur die Belichtung ändern.",
+    "kind": "object",
+    "negative": false,
+    "scene": 0
+  },
+  {
+    "direction": 1,
+    "id": "object-1",
+    "instruction": "Den roten Ball heller machen, nur die Belichtung ändern.",
+    "kind": "object",
+    "negative": false,
+    "scene": 1
+  },
+  {
+    "direction": -1,
+    "id": "object-2",
+    "instruction": "Den roten Ball dunkler machen, nur die Belichtung ändern.",
+    "kind": "object",
+    "negative": false,
+    "scene": 2
+  },
+  {
+    "direction": -1,
+    "id": "absent-0",
+    "instruction": "Den Himmel dunkler machen.",
+    "kind": "unsupported",
+    "negative": true,
+    "scene": 3
+  },
+  {
+    "direction": -1,
+    "id": "absent-1",
+    "instruction": "Den Hund dunkler machen.",
+    "kind": "unsupported",
+    "negative": true,
+    "scene": 3
+  },
+  {
+    "direction": -1,
+    "id": "absent-2",
+    "instruction": "Den grünen Baum dunkler machen.",
+    "kind": "unsupported",
+    "negative": true,
+    "scene": 3
+  },
+  {
+    "direction": -1,
+    "id": "absent-3",
+    "instruction": "Den gelben Bus dunkler machen.",
+    "kind": "unsupported",
+    "negative": true,
+    "scene": 3
+  },
+  {
+    "direction": -1,
+    "id": "multiple-0",
+    "instruction": "Himmel dunkler und Motiv heller",
+    "kind": "unsupported",
+    "negative": true,
+    "scene": 0
+  },
+  {
+    "direction": -1,
+    "id": "multiple-1",
+    "instruction": "Ball und Himmel dunkler",
+    "kind": "unsupported",
+    "negative": true,
+    "scene": 1
+  },
+  {
+    "direction": -1,
+    "id": "multiple-2",
+    "instruction": "Hintergrund kühler und Ball heller",
+    "kind": "unsupported",
+    "negative": true,
+    "scene": 2
+  },
+  {
+    "direction": -1,
+    "id": "multiple-3",
+    "instruction": "Motiv dunkler und Himmel wärmer",
+    "kind": "unsupported",
+    "negative": true,
+    "scene": 0
+  }
+]

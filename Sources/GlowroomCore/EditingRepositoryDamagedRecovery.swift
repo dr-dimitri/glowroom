@@ -67,6 +67,7 @@ extension EditingRepository {
                     try EditingSQLite.bind(variant.id.canonicalString,1,s);try EditingSQLite.bind(variant.assetID,2,s);try EditingSQLite.bind(ArtifactJSONCodec.encode(variant.snapshot),3,s)
                     guard sqlite3_bind_double(s,4,variant.createdAt.timeIntervalSinceReferenceDate) == SQLITE_OK else {throw EditingRepositoryError.storageFailure};try EditingSQLite.done(s)
                 }
+                try Self.writeVariantMetadata(variant, on: db)
             }
             try Self.validateRows(db,2);return try Self.readState(db,version:2)
         }

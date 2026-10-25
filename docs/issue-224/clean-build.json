@@ -1,0 +1,20 @@
+{
+  "binaries": {
+    "dist/Glowroom.app/Contents/MacOS/Glowroom": "e87557ee6f83eb4d21fa0c8e300e7b6839d1ff171be05aa0a78a45086eac7e0e",
+    "dist/Glowroom.app/Contents/MacOS/GlowroomMCP": "a2ebf15cb01d71751522b4cb0a02c4edc1dbe6a7da909d20334d8953e6d55e9d"
+  },
+  "buildCommand": "GLOWROOM_BUILD_JOBS=3 ./scripts/build-app.sh",
+  "cleanedPaths": [
+    ".build",
+    ".build-app",
+    "dist/Glowroom.app"
+  ],
+  "independentTestPath": ".build-224-tests",
+  "packagePinsChanged": false,
+  "result": "passed",
+  "schemaVersion": 1,
+  "signatureVerification": "codesign --verify --deep --strict: passed",
+  "sourceFileCount": 335,
+  "sourceTreeSHA256": "f18417ba34291eed82905be2684dead57d9f164356cdee7f384603a701b21e36",
+  "toolchain": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)\nTarget: arm64-apple-macosx27.0.0"
+}

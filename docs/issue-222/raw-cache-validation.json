@@ -1,0 +1,33 @@
+{
+  "decode_count": 3,
+  "measurements": [
+    {
+      "candidate_height": 1600,
+      "candidate_width": 2400,
+      "phase": "B_cold",
+      "visible_pair_ms": 5955.379209
+    },
+    {
+      "candidate_height": 1600,
+      "candidate_width": 2400,
+      "phase": "C_cold",
+      "visible_pair_ms": 401.880416
+    },
+    {
+      "candidate_height": 1600,
+      "candidate_width": 2400,
+      "phase": "B_warm",
+      "visible_pair_ms": 0.037792
+    }
+  ],
+  "originals_unchanged": true,
+  "process_cumulative_peak_rss_bytes": 558415872,
+  "requested_long_edge": 2400,
+  "schema_version": 1,
+  "scope": "Three explicitly supplied local RAWs, existing bounded pipelines, fresh app memory caches, no disk cache or embedded previews. First pair cold, C cold, then B warm with fixed A. OS/ImageIO/GPU caches are not flushed. Latency covers two materialized preview frames, not native input-to-display. Darwin ru_maxrss is the whole test-process cumulative high-water, not isolated stage allocations. No speedup, pixel quality or cross-device claim. No original or rendered photo is copied, saved or uploaded.",
+  "source_sha256": [
+    "d25f2c61821f61767defacbfd9b2a0d2f77488007c5acec007806e85f1ec12d7",
+    "fcef1ceb8ec7c34b043ba2689cef887d8eadfc5dd36a929589345835071e5418",
+    "d5a22bdb3eb3eb457bb85b5126b5fa3dc773b04e2ac1de636f373a317c10c0c0"
+  ]
+}

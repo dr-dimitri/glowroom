@@ -1,0 +1,51 @@
+{
+  "images": "Synthetic fixtures only. Post-delete transient-render screenshot is not used as a completed-render proof.",
+  "records": [
+    {
+      "issue": 222,
+      "logSHA256": "1058ab73893009278614d0a9e4a41db55721e9b94f72ca1552df8497d8b16d38",
+      "nativeCheckpointsPerWindow": 13,
+      "proof": "Fatal native assertions, token-bound completion record, child exit and Swift Testing success; early exit 0 rejected.",
+      "sizes": [
+        [
+          1000,
+          660
+        ],
+        [
+          1440,
+          900
+        ]
+      ],
+      "status": "passed"
+    },
+    {
+      "issue": 223,
+      "logSHA256": "90383721912d6fab98ad39aacd1fb7355ae964a963d8c8575a9341e25c7d7f4a",
+      "nativeCheckpointsPerWindow": 12,
+      "proof": "Fatal native assertions, token-bound completion record, child exit and Swift Testing success; early exit 0 rejected.",
+      "sizes": [
+        [
+          1000,
+          660
+        ]
+      ],
+      "status": "passed"
+    },
+    {
+      "issue": 221,
+      "proof": "Controlled provider; actual selection/current/proposal buttons and atomic acceptance. Native model qualification remains No-Go.",
+      "sizes": [
+        [
+          1000,
+          660
+        ],
+        [
+          1440,
+          900
+        ]
+      ],
+      "status": "candidate-ui-passed-product-disabled"
+    }
+  ],
+  "schemaVersion": 1
+}

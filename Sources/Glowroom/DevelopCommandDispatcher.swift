@@ -193,7 +193,7 @@ final class DevelopCommandDispatcher {
         else { throw DevelopCommandError.staleTarget }
     }
 
-    private static func retentionCost(_ settings: EditSettings) -> Int {
+    static func retentionCost(_ settings: EditSettings) -> Int {
         // Count ownership without encoding, hashing, copying or reading pixels.
         var bytes = 4_096
         for layer in settings.localAdjustments {

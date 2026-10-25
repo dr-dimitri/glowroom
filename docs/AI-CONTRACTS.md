@@ -6,6 +6,26 @@ Der eigenständige Arbeitsbereich [AI Entwickeln](AI-DEVELOPMENT.md) ergänzt je
 
 ## Datenfluss und Quellenbezug
 
+Der optionale [MCP-Zugang](MCP.md) verwendet denselben typisierten numerischen
+Befehlskatalog und die sichtbare KI-Prüfoberfläche. Er ist standardmäßig aus,
+an Katalog und Sitzung gebunden und erteilt externen Clients keine direkte
+Schreibberechtigung. Bildvorschauen benötigen eine zusätzliche Freigabe;
+Quellen-, Bearbeitungs-, Auswahl- und Arbeitsbereichswechsel entwerten alte
+Aufträge. Antwortdaten enthalten undurchsichtige IDs und keine Originalpfade
+oder unangeforderten EXIF-/GPS-Daten.
+
+`AIEditPlan` Version 1 erweitert den Forschungsvertrag um genau eine neue
+semantische Rastermaske mit lokalen Zielwerten. Modelloutput bleibt auf eine
+typisierte Zielbeschreibung und die zehn bereits geprüften Korrekturwerte
+begrenzt. Masken- und Qwen-Stufen teilen die bestehende Ressourcenadmission und
+halten keine Lease während des Wartens auf den jeweils anderen Dienst. Die
+vollständige Ergebnisannahme verwendet die normale Editortransaktion mit einem
+Undo-Schritt; ein Fehler erzeugt keine neutrale Restmaske. Die
+[20-Fälle-Qualifizierung](AI-EDIT-PLAN-EVALUATION.md) ist mit **No-Go** entschieden:
+Nach zwei fehlgeschlagenen Positivfällen war die unveränderte Go-Schwelle
+unerreichbar. Der neue Einstieg bleibt gesperrt, der vorhandene
+explizite Masken-/Korrekturweg bleibt nutzbar.
+
 `GlowroomCore/AI` enthält gemeinsame `Sendable`-Werttypen, Quellenidentität, Bearbeitungssnapshots, Parameterzuordnung sowie die getrennten Analyse-, Such- und Bildgenerierungsverträge. Ein Modell erhält keine Schreibrechte auf Katalog, Bearbeitungsdatenbank, Originaldateien oder Shell. Bestätigte Metadaten und Bearbeitungen werden ausschließlich über die vorhandenen App- und Speicherpfade übernommen.
 
 `AIEditingSnapshot` erfasst Foto, Quelle, Einstellungen, unabhängige Bearbeitungs-/Auswahltokens und gegebenenfalls die persistierte Bearbeitungsrevision. Die Originalidentität enthält standardisierten Dateipfad, Änderungszeit und Dateigröße aus dem Katalog. Das ist eine Änderungskennung, kein kryptografischer Beweis identischer Pixel. Ein Artefaktfingerprint ergänzt Store-ID, Artefakt-ID, Manifest-/Rasterhash und Geometrie.

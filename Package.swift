@@ -24,7 +24,7 @@ if requestedTool == "editing", ProcessInfo.processInfo.environment["GLOWROOM_BEN
 let package = Package(
     name: "Glowroom",
     platforms: [.macOS(.v14)],
-    products: [.executable(name: "Glowroom", targets: ["Glowroom"])],
+    products: [.executable(name: "Glowroom", targets: ["Glowroom"]), .executable(name: "GlowroomMCP", targets: ["GlowroomMCP"])],
     dependencies: [
         .package(url: "https://github.com/huggingface/swift-transformers.git", revision: "e37cacea74498bba66002bb83ecafee3e4ab8884"),
         // Newer Collections condition on compiler 6.4 APIs absent from SDK 26.5.
@@ -38,6 +38,7 @@ let package = Package(
     targets: [
         .systemLibrary(name: "CSQLite"),
         .target(name: "GlowroomCore", dependencies: ["CSQLite"]),
+        .executableTarget(name: "GlowroomMCP", dependencies: ["GlowroomCore"]),
         .executableTarget(name: "Glowroom", dependencies: ["GlowroomCore", "CSQLite", .product(name: "Tokenizers", package: "swift-transformers"), .product(name: "Hub", package: "swift-transformers"), .product(name: "MLX", package: "mlx-swift"), .product(name: "MLXVLM", package: "mlx-swift-lm"), .product(name: "MLXLMCommon", package: "mlx-swift-lm"), .product(name: "MLXGuidedGeneration", package: "mlx-swift-lm")], resources: [.process("AI/Resources"), .process("Resources")], swiftSettings: appSettings),
         .testTarget(name: "GlowroomCoreTests", dependencies: ["GlowroomCore", "CSQLite"]),
         .testTarget(name: "GlowroomTests", dependencies: ["Glowroom", "GlowroomCore"])

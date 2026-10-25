@@ -4,6 +4,13 @@ set -euo pipefail
 # Exercise build orchestration without compiling Swift or replacing the user's app.
 # Fixtures have independent roots, caches, mock tools and publication directories.
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+# Fail before creating fixtures or forking a build when the caller cannot prove
+# ownership for cleanup (for example, a sandbox that denies ps).
+if [[ -z "$(LC_ALL=C /bin/ps -p "$$" -o lstart=,uid= 2>/dev/null || true)" ]] ||
+   ! LC_ALL=C /bin/ps -axo pid=,ppid=,state=,lstart=,uid= >/dev/null 2>&1; then
+    echo "Build orchestration tests require local process-inspection permission; no fixtures or workers were started." >&2
+    exit 1
+fi
 TEST_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/glowroom-build-tests.XXXXXX")"
 ACTIVE_PID=""
 ACTIVE_IDENTITY=""
@@ -20,6 +27,7 @@ signal_fixture() {
     if [[ "$(fixture_identity "$pid")" == "$identity" ]]; then kill -"$signal" "$pid" 2>/dev/null || true; fi
 }
 cleanup() {
+    local result=$? snapshot pid state command unsafe=0
     if [[ -n "$ACTIVE_PID" ]]; then
         signal_fixture "$ACTIVE_PID" "$ACTIVE_IDENTITY" TERM
         wait "$ACTIVE_PID" 2>/dev/null || true
@@ -29,7 +37,20 @@ cleanup() {
         wait "$SENTINEL_PID" 2>/dev/null || true
     fi
     signal_fixture "$ORPHAN_PID" "$ORPHAN_IDENTITY" KILL
-    rm -rf -- "$TEST_ROOT"
+    # Paths are used only to conservatively retain data, never to select a
+    # process to signal. Unknown/live workers must keep their fixture intact.
+    if snapshot="$(LC_ALL=C /bin/ps -axo pid=,state=,command= 2>/dev/null)"; then
+        while read -r pid state command; do
+            if [[ "$state" != Z* && "$command" == *"$TEST_ROOT/"* ]]; then unsafe=1; break; fi
+        done <<< "$snapshot"
+    else unsafe=1
+    fi
+    if (( unsafe != 0 )); then
+        echo "Retaining $TEST_ROOT because test-worker termination could not be verified." >&2
+        (( result != 0 )) || result=1
+    else rm -rf -- "$TEST_ROOT"
+    fi
+    exit "$result"
 }
 trap cleanup EXIT
 trap 'exit 130' INT
@@ -135,6 +156,7 @@ case "$tool" in
         if [[ "$role" == compile ]]; then
             mkdir -p "$MOCK_ROOT/bin"
             printf '#!/bin/sh\nexit 0\n' > "$MOCK_ROOT/bin/Glowroom"
+            printf '#!/bin/sh\nexit 0\n' > "$MOCK_ROOT/bin/GlowroomMCP"
             mkdir -p "$MOCK_ROOT/bin/Glowroom_Glowroom.bundle/nested" "$MOCK_ROOT/bin/Tokenizer Resources.bundle"
             printf 'approved manifest fixture\n' > "$MOCK_ROOT/bin/Glowroom_Glowroom.bundle/nested/manifest.json"
             printf 'dependency resource fixture\n' > "$MOCK_ROOT/bin/Tokenizer Resources.bundle/data.txt"
@@ -217,6 +239,7 @@ assert_retained() {
 }
 assert_success() {
     [[ -x "$CASE/dist/Glowroom.app/Contents/MacOS/Glowroom" ]] || fail "Missing executable"
+    [[ -x "$CASE/dist/Glowroom.app/Contents/MacOS/GlowroomMCP" ]] || fail "Missing MCP adapter"
     [[ -f "$CASE/dist/Glowroom.app/Contents/Resources/AppIcon.icns" ]] || fail "Missing icon"
     cmp "$CASE/bin/Glowroom_Glowroom.bundle/nested/manifest.json" "$CASE/dist/Glowroom.app/Contents/Resources/Glowroom_Glowroom.bundle/nested/manifest.json" || fail "Application resources changed or missing"
     cmp "$CASE/bin/Tokenizer Resources.bundle/data.txt" "$CASE/dist/Glowroom.app/Contents/Resources/Tokenizer Resources.bundle/data.txt" || fail "Dependency resources changed or missing"
@@ -234,6 +257,46 @@ wait_for_file() {
     done
     fail "Timed out waiting for $1"
 }
+
+new_case process-inspection-denied
+cat > "$CASE/deny-ps" <<'MOCKPS'
+#!/bin/sh
+exit 1
+MOCKPS
+chmod +x "$CASE/deny-ps"
+sed "s|/bin/ps|$CASE/deny-ps|g" "$CASE/scripts/build-app.sh" > "$CASE/scripts/build-app-denied.sh"
+mv "$CASE/scripts/build-app-denied.sh" "$CASE/scripts/build-app.sh"
+if run_build parallel 4; then fail "Started a build without process-inspection permission"; fi
+/usr/bin/grep -q 'process inspection is required before build workers' "$CASE/output.log" || fail "Missing process-inspection preflight diagnostic"
+[[ ! -f "$CASE/compile.started" && ! -f "$CASE/icon.started" ]] || fail "Started workers before process-inspection preflight"
+assert_previous_app
+assert_clean
+pass "Unavailable process inspection fails before any build worker is launched"
+
+new_case unadmitted-worker
+# Fault injection affects only this copied fixture: inspection succeeds for the
+# parent preflight but fails for the just-forked worker. Shorten its real bounded
+# admission wait so this regression stays quick without changing production.
+sed -e '/^process_identity() {/a\
+    [[ "$1" == "$$" ]] || return 1
+' -e 's/deadline=$((SECONDS + 10))/deadline=$((SECONDS + 1))/' \
+    -e '/^COMPILE_PID=\$!$/a\
+printf "%s\\n" "$COMPILE_PID" > "$ROOT/unadmitted.pid"
+' "$CASE/scripts/build-app.sh" > "$CASE/scripts/build-app-unadmitted.sh"
+mv "$CASE/scripts/build-app-unadmitted.sh" "$CASE/scripts/build-app.sh"
+if run_build parallel 4; then fail "Ignored failed worker identity admission"; fi
+wait_for_file "$CASE/unadmitted.pid"
+ORPHAN_PID="$(cat "$CASE/unadmitted.pid")"
+ORPHAN_IDENTITY="$(fixture_identity "$ORPHAN_PID" || true)"
+for ((attempt = 0; attempt < 250; attempt++)); do
+    [[ -n "$ORPHAN_IDENTITY" && "$(fixture_identity "$ORPHAN_PID")" == "$ORPHAN_IDENTITY" ]] || break
+    sleep 0.02
+done
+if [[ -n "$ORPHAN_IDENTITY" && "$(fixture_identity "$ORPHAN_PID")" == "$ORPHAN_IDENTITY" ]]; then fail "Unadmitted worker waited indefinitely for its launch file"; fi
+ORPHAN_PID=""; ORPHAN_IDENTITY=""
+assert_previous_app
+assert_retained
+pass "Unadmitted workers expire their launch wait even when process proof fails"
 
 new_case parallel
 run_build parallel 4 || { cat "$CASE/output.log" >&2; fail "Parallel build failed"; }

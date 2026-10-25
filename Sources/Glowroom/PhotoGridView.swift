@@ -102,6 +102,10 @@ private struct PhotoContextMenu: View {
 
     var body: some View {
         Button("In Einzelbildansicht öffnen") { model.select(asset); model.showsDetail = true }
+        Button("Als Referenz setzen") {
+            editor.closeVariantPreview()
+            Task { await model.pinPhotoReference(asset, editor: editor) }
+        }.disabled(model.isPinningPhotoReference || editor.isLoading || editor.isRestoring)
         Button("Ähnliche Bilder finden") { model.select(asset); model.findSimilarImages() }
             .disabled(!model.hasSemanticService)
         Button(exportCount > 1 ? "\(exportCount) Fotos als JPEG exportieren …" : "Foto als JPEG exportieren …") {
@@ -133,7 +137,7 @@ struct DetailView: View {
     @Environment(\.aiCorrectionDisplay) private var correctionDisplay
     private var comparesBeforeAfter: Bool { model.previewComparisonLayout != .single && !maskWorkspace.isPresented }
     private var usesNativeCropInput: Bool {
-        !comparesBeforeAfter && model.isDeveloping && developWorkspace.tool == .crop && model.editingRenderIntent == .currentEditing
+        !comparesBeforeAfter && !model.isPhotoComparison && !editor.isViewingVariant && model.isDeveloping && developWorkspace.tool == .crop && model.editingRenderIntent == .currentEditing
             && !maskWorkspace.isPresented && !developWorkspace.picksWhiteBalance
     }
     private var usesPhotoNavigationInput: Bool {
@@ -154,7 +158,7 @@ struct DetailView: View {
                 DevelopPhotoHeader(asset: asset, previewLabel: previewLabel)
                     .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { photoHeaderHeight = $0 }
                 GeometryReader { geometry in
-                    if comparesBeforeAfter {
+                    if comparesBeforeAfter || model.isPhotoComparison || editor.isViewingVariant {
                         developCanvas(asset: asset)
                             .padding(18)
                             .frame(width: geometry.size.width, height: geometry.size.height)
@@ -184,10 +188,13 @@ struct DetailView: View {
                     }
                     .environment(\.editingProgressIsCovered, maskWorkspace.showsCalculationStatus
                         || developWorkspace.repairBusy || developWorkspace.isAutoStraightening)
-                    .contextMenu { PhotoContextMenu(asset: asset, model: model) }
+                    .contextMenu {
+                        if !model.isPhotoComparison { PhotoContextMenu(asset: asset, model: model) }
+                    }
                     .accessibilityElement(children: .contain)
                     .accessibilityLabel("Bildfläche")
                     .accessibilityIdentifier("workspace.canvas")
+                if model.isPhotoComparison { photoComparisonControls(asset) }
                 canvasControls(asset)
                 if !model.isDeveloping, layout.panels(developing: false).showsFilmstrip {
                     // Include the actual header height when capture data wraps on narrow canvases.
@@ -214,16 +221,34 @@ struct DetailView: View {
                 ? editor.settings(for: asset.id).developGeometry.straightenAngle : 0
             let fit = DevelopCropCanvasPresentation.fittingScale(sourceSize: source, viewport: viewport.size, angle: angle)
             ZStack {
-                if comparesBeforeAfter {
+                if let viewing = editor.variantViewingState, viewing.mode == .preview {
+                    FrozenVariantPreview(state: viewing)
+                        .environment(\.developPreviewSink, nil).environment(\.developPreviewPending, nil)
+                        .environment(\.aiCorrectionDisplay, nil)
+                } else if model.isPhotoComparison, let reference = model.photoComparisonReference {
+                    PhotoComparisonCanvas(referenceIdentity: reference.identity, candidateIdentity: asset.id,
+                        referenceRatio: PhotoComparisonAspectRatio.ratio(asset: reference.asset, snapshot: reference.snapshot, source: reference.source),
+                        candidateRatio: imageAspectRatio(for: asset), linked: model.photoComparisonZoomLinked) {
+                        FrozenPhotoReferencePreview(reference: reference,
+                            available: model.assets.contains(where: { $0.id == reference.asset.id && $0.modifiedAt == reference.asset.modifiedAt && $0.fileSize == reference.asset.fileSize }),
+                            validationGeneration: model.aiSelectionGeneration)
+                    } candidate: {
+                        EditingPhotoPreview(asset: asset, intent: .currentEditing,
+                            settingsOverride: editor.settings(for: asset.id), developing: true)
+                    }
+                } else if comparesBeforeAfter {
                     PreviewComparisonView(layout: model.previewComparisonLayout,
                         navigationIdentity: AnyHashable(NavigationIdentity(asset: asset.id,
                             source: developWorkspace.sourceIdentity, comparesOriginal: false,
                             comparesSource: false, comparisonLayout: model.previewComparisonLayout)),
                         zoomed: zoomed, zoomAnchor: comparisonZoomAnchor,
                         imageAspectRatio: imageAspectRatio(for: asset),
-                        beforeImageAspectRatio: CGFloat(max(1, asset.pixelWidth)) / CGFloat(max(1, asset.pixelHeight)),
+                        beforeImageAspectRatio: editor.variantViewingState.map { PhotoComparisonAspectRatio.ratio(asset: asset, snapshot: $0.variant.snapshot, source: $0.source) }
+                            ?? CGFloat(max(1, asset.pixelWidth)) / CGFloat(max(1, asset.pixelHeight)),
                         onClick: { toggleZoom(at: $0) }) {
-                        EditingPhotoPreview(asset: asset, intent: .importedOriginal, developing: true)
+                        if let viewing = editor.variantViewingState, viewing.mode == .before {
+                            FrozenVariantPreview(state: viewing).environment(\.aiCorrectionDisplay, nil)
+                        } else { EditingPhotoPreview(asset: asset, intent: .importedOriginal, developing: true) }
                     } after: {
                         EditingPhotoPreview(asset: asset, intent: .currentEditing,
                             settingsOverride: editor.settings(for: asset.id), developing: true)
@@ -266,7 +291,7 @@ struct DetailView: View {
                             .aspectRatio(contentMode: .fit).allowsHitTesting(false)
                     }
                 }
-                if usesPhotoNavigationInput && !comparesBeforeAfter {
+                if usesPhotoNavigationInput && !comparesBeforeAfter && !model.isPhotoComparison && !editor.isViewingVariant {
                     DevelopCropInputSurface(onInput: { _ in }, onHover: { _ in }, isEnabled: true,
                         inputIdentity: AnyHashable(NavigationIdentity(asset: asset.id,
                             source: developWorkspace.sourceIdentity, comparesOriginal: model.comparesOriginal,
@@ -296,7 +321,7 @@ struct DetailView: View {
     }
 
     private var navigatorAvailable: Bool {
-        !comparesBeforeAfter && !maskWorkspace.isPresented && !developWorkspace.tool.usesOriginalCanvas
+        !comparesBeforeAfter && !model.isPhotoComparison && !editor.isViewingVariant && !maskWorkspace.isPresented && !developWorkspace.tool.usesOriginalCanvas
             && !developWorkspace.picksWhiteBalance && model.editingRenderIntent == .currentEditing
     }
 
@@ -318,6 +343,8 @@ struct DetailView: View {
     }
 
     private var previewLabel: String {
+        if let viewing = editor.variantViewingState { return " · " + (viewing.mode == .preview ? "Vorschau: " : "Vergleich: ") + viewing.variant.displayName }
+        if model.isPhotoComparison { return " · Fotovergleich · rechts aktiv" }
         if let correctionDisplay { return " · " + correctionDisplay.title }
         if comparesBeforeAfter { return " · " + model.previewComparisonLayout.title }
         if model.comparesOriginal { return " · Importiertes Original" }
@@ -371,13 +398,15 @@ struct DetailView: View {
             }.buttonStyle(.plain).help(zoomed ? "Einpassen · Klick auf das Bild · Drei-Finger-Ziehen zum Verschieben" : "Vergrößern · Klick auf das Bild")
                 .accessibilityLabel(zoomed ? "Einpassen" : "Vergrößern")
                 .accessibilityIdentifier("workspace.zoom")
-            Button { model.showPreviewComparison(.single) } label: {
+                .disabled(model.isPhotoComparison || editor.isViewingVariant)
+            Button { editor.closeVariantPreview(); model.showPreviewComparison(.single) } label: {
                 Image(systemName: "rectangle").frame(width: 24, height: 30)
                     .foregroundStyle(!comparesBeforeAfter && model.editingRenderIntent == .currentEditing ? Theme.accent : Theme.text)
             }.buttonStyle(.plain).disabled(maskWorkspace.isPresented)
                 .accessibilityLabel("Einzelbild · Aktuelle Bearbeitung").accessibilityIdentifier("workspace.single-preview")
                 .help("Einzelbild · Aktuelle Bearbeitung")
             Button {
+                editor.closeVariantPreview()
                 model.showPreviewComparison(comparesBeforeAfter ? .single : model.lastPreviewComparisonLayout)
             } label: {
                 Image(systemName: comparesBeforeAfter ? model.previewComparisonLayout.symbol : model.lastPreviewComparisonLayout.symbol)
@@ -386,17 +415,44 @@ struct DetailView: View {
                 .accessibilityLabel("Vorher/Nachher").accessibilityValue(comparesBeforeAfter ? "Aktiv" : "Inaktiv")
                 .accessibilityIdentifier("workspace.compare-toggle").help("Vorher/Nachher ein-/ausschalten")
             Menu {
+                Button("Als Referenz setzen") {
+                    editor.closeVariantPreview()
+                    Task { await model.pinPhotoReference(asset, editor: editor) }
+                }.disabled(model.isPinningPhotoReference)
+                if let reference = model.photoComparisonReference {
+                    Button("Fotovergleich öffnen") { editor.closeVariantPreview(); model.openPhotoComparison() }
+                        .disabled(!model.canStartPhotoComparison)
+                    Button("Referenz aktualisieren") {
+                        Task {
+                            guard let current = model.assets.first(where: { $0.id == reference.asset.id }) else {
+                                model.notice = "Referenz nicht mehr in der Bibliothek"; return
+                            }
+                            await model.pinPhotoReference(current, editor: editor)
+                        }
+                    }.disabled(model.isPinningPhotoReference)
+                    Button("Referenz austauschen") {
+                        editor.closeVariantPreview()
+                        Task { await model.pinPhotoReference(asset, editor: editor, startComparison: true) }
+                    }.disabled(model.isPinningPhotoReference)
+                    Button("Referenz entfernen") { model.closePhotoComparison(clearReference: true) }
+                } else {
+                    Text("Zuerst eine Referenz setzen und ein anderes Foto wählen")
+                }
+                if model.isPhotoComparison {
+                    Button("Fotovergleich schließen") { model.closePhotoComparison() }.accessibilityIdentifier("workspace.photo-comparison.close")
+                }
+                Divider()
                 ForEach(PreviewComparisonLayout.allCases.filter { $0 != .single }) { comparison in
-                    Button { model.showPreviewComparison(comparison) } label: {
+                    Button { editor.closeVariantPreview(); model.showPreviewComparison(comparison) } label: {
                         Label(comparison.title, systemImage: model.previewComparisonLayout == comparison ? "checkmark" : comparison.symbol)
                     }
                 }
                 Divider()
-                Button("Einzelbild · Aktuelle Bearbeitung") { model.showPreviewComparison(.single) }
-                Button { model.comparesOriginal = true; model.comparesCurrentSourceWithoutSettings = false } label: {
+                Button("Einzelbild · Aktuelle Bearbeitung") { editor.closeVariantPreview(); model.showPreviewComparison(.single) }
+                Button { editor.closeVariantPreview(); model.comparesOriginal = true; model.comparesCurrentSourceWithoutSettings = false } label: {
                     Label("Importiertes Original", systemImage: model.comparesOriginal ? "checkmark" : "circle")
                 }
-                Button { model.comparesOriginal = false; model.comparesCurrentSourceWithoutSettings = true } label: {
+                Button { editor.closeVariantPreview(); model.comparesOriginal = false; model.comparesCurrentSourceWithoutSettings = true } label: {
                     Label("Aktuelle Quelle ohne Regler", systemImage: model.comparesCurrentSourceWithoutSettings ? "checkmark" : "circle")
                 }
             } label: {
@@ -416,7 +472,45 @@ struct DetailView: View {
             .overlay(alignment: .top) { Rectangle().fill(Theme.line).frame(height: 1) }
     }
 
+    private func photoComparisonControls(_ asset: PhotoAsset) -> some View {
+        // Two short rows keep every primary action visible in a narrow canvas;
+        // no fit-dependent menu hides the zoom or review-advance controls.
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 10) {
+                Button { model.photoComparisonZoomLinked.toggle() } label: {
+                    Label("Zoom koppeln", systemImage: model.photoComparisonZoomLinked ? "checkmark.circle.fill" : "circle")
+                }.accessibilityIdentifier("workspace.photo-comparison.link-zoom")
+                    .accessibilityValue(model.photoComparisonZoomLinked ? "Aktiv" : "Inaktiv")
+                Button { model.advancesAfterPhotoRating.toggle() } label: {
+                    Label("Nach Bewertung weiter", systemImage: model.advancesAfterPhotoRating ? "checkmark.circle.fill" : "circle")
+                }.accessibilityIdentifier("workspace.photo-comparison.advance")
+                    .accessibilityValue(model.advancesAfterPhotoRating ? "Aktiv" : "Inaktiv")
+                Spacer(minLength: 0)
+            }
+            HStack(spacing: 10) {
+                Menu("Referenz") {
+                    Button("Referenz austauschen") { Task { await model.pinPhotoReference(asset, editor: editor, startComparison: true) } }
+                    Button("Referenz aktualisieren") {
+                        guard let id = model.photoComparisonReference?.asset.id,
+                              let reference = model.assets.first(where: { $0.id == id }) else {
+                            model.notice = "Referenz nicht mehr in der Bibliothek"; return
+                        }
+                        Task { await model.pinPhotoReference(reference, editor: editor) }
+                    }
+                }.accessibilityIdentifier("workspace.photo-comparison.reference-actions")
+                    .disabled(model.isPinningPhotoReference)
+                Spacer(minLength: 0)
+                Button("Fotovergleich schließen") { model.closePhotoComparison() }
+                    .accessibilityIdentifier("workspace.photo-comparison.close")
+            }
+        }.font(.system(size: 13)).controlSize(.small).buttonStyle(.borderless)
+            .padding(.horizontal, 10).padding(.vertical, 6)
+            .background(Theme.panel).accessibilityElement(children: .contain)
+            .accessibilityIdentifier("workspace.photo-comparison-controls")
+    }
+
     private var comparisonTitle: String {
+        if model.isPhotoComparison { return "Fotovergleich" }
         if comparesBeforeAfter { return model.previewComparisonLayout.title }
         if model.comparesOriginal { return "Importiertes Original" }
         if model.comparesCurrentSourceWithoutSettings { return "Aktuelle Quelle ohne Regler" }

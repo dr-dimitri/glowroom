@@ -139,6 +139,7 @@ extension EditingRepository {
                     try EditingSQLite.bind(variant.id.canonicalString,1,s);try EditingSQLite.bind(variant.assetID,2,s);try EditingSQLite.bind(ArtifactJSONCodec.encode(variant.snapshot),3,s)
                     guard sqlite3_bind_double(s,4,variant.createdAt.timeIntervalSinceReferenceDate) == SQLITE_OK else {throw EditingRepositoryError.storageFailure};try EditingSQLite.done(s)
                 }
+                try Self.writeVariantMetadata(variant, on: db)
             }
             try EditingSQLite.statement(db,"UPDATE editing_state SET store_epoch=? WHERE singleton=1") {s in try EditingSQLite.bind(newEpoch.uuidString.lowercased(),1,s);try EditingSQLite.done(s)}
             try Self.validateRows(db,2)
@@ -161,7 +162,8 @@ extension EditingRepository {
             if version == 2 {
                 try EditingSQLite.rows(db,"SELECT id,asset_id,snapshot,created_at FROM editing_variants") {s in
                     let text = try EditingSQLite.text(s,0,maximum:36);guard let uuid = UUID(uuidString:text) else {throw EditingRepositoryError.invalidDatabase}
-                    variants.append(.init(id:.init(rawValue:uuid),assetID:try EditingSQLite.text(s,1,maximum:16_384),snapshot:try ArtifactJSONCodec.decode(EditingSnapshot.self,from:EditingSQLite.blob(s,2,maximum:EditSettings.maximumEncodedBytes)),createdAt:Date(timeIntervalSinceReferenceDate:sqlite3_column_double(s,3))))
+                    let variantID = EditingVariantID(rawValue: uuid), metadata = try Self.variantMetadata(variantID, on: db)
+                    variants.append(.init(id:variantID,assetID:try EditingSQLite.text(s,1,maximum:16_384),snapshot:try ArtifactJSONCodec.decode(EditingSnapshot.self,from:EditingSQLite.blob(s,2,maximum:EditSettings.maximumEncodedBytes)),createdAt:Date(timeIntervalSinceReferenceDate:sqlite3_column_double(s,3)),name:metadata.0,creationKind:metadata.1))
                 }
             };return (state,variants)
         }) else {throw EditingRepositoryError.invalidDatabase}
