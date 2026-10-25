@@ -6,7 +6,7 @@ Eine native Fotobibliothek für macOS, entwickelt mit SwiftUI und AppKit. Die An
 
 Der **Bildfokus** bietet mehr Bildfläche und Werkzeuge nach Bedarf. Die Bedienwege und Zustandsregeln stehen unter [Bildfokus und Arbeitsbereiche](docs/WORKSPACE-LAYOUT.md).
 
-Das [UI-Konzept für gemeinsames Entwickeln mit KI-Unterstützung](docs/ui-concept-2026-10/README.md) dokumentiert die gemeinsame Anordnung, Aufgaben-Issues sowie native Ausgangsaufnahmen. Der gemeinsame Arbeitsbereich aus #193 ist umgesetzt; die weiterführenden Werkzeugkonzepte bleiben den Folgeissues zugeordnet.
+Die vereinfachte Oberfläche aus #201 ist mit allen acht Teilaufgaben umgesetzt. Der [gemeinsame Abschluss](docs/issue-201/README.md) bündelt Funktionszuordnung, zusammengeführte PRs und native Abnahmen. Das [UI-Konzept für gemeinsames Entwickeln mit KI-Unterstützung](docs/ui-concept-2026-10/README.md) erhält die ursprünglichen Konzepte und Ausgangsaufnahmen als historische Grundlage.
 
 ## Starten
 
