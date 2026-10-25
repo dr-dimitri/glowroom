@@ -33,7 +33,7 @@ struct IconButton: View {
 
 struct AccentButton: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label.font(.system(size: 12, weight: .semibold))
+        configuration.label.font(.system(size: 13, weight: .semibold))
             .foregroundStyle(Theme.background).padding(.horizontal, 17).padding(.vertical, 11)
             .background(Theme.accent.opacity(configuration.isPressed ? 0.75 : 1), in: RoundedRectangle(cornerRadius: 7))
     }
@@ -41,7 +41,7 @@ struct AccentButton: ButtonStyle {
 
 struct SectionLabel: View {
     let text: String
-    var body: some View { Text(text.uppercased()).font(.system(size: 9, weight: .semibold)).tracking(1.7).foregroundStyle(Theme.muted) }
+    var body: some View { Text(text).font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.muted) }
 }
 
 struct RatingStars: View {

@@ -10,12 +10,12 @@ enum AIModelsDestination: String, Identifiable, CaseIterable {
     var title: String {
         switch self {
         case .overview: "Alle Modelle"
-        case .corrections: "Bildkorrekturen"
+        case .corrections: "KI-Korrektur"
         case .subject: "Motiv und Hintergrund"
         case .sky: "Himmel"
-        case .repair: "Reparatur"
+        case .repair: "Reparieren"
         case .search: "Bildsuche"
-        case .metadata: "Bildtexte"
+        case .metadata: "Bildinformationen"
         case .index: "Suchindex"
         }
     }
@@ -67,10 +67,8 @@ struct AIModelsView: View {
                     .disabled(modelOperationActive)
             }
             HStack(spacing: 10) {
-                Button("Alle Modelle", systemImage: "square.grid.2x2") { selection = .overview }
-                    .accessibilityIdentifier("ai-models.overview")
-                Button("Suchindex", systemImage: "externaldrive") { selection = .index }
-                    .accessibilityIdentifier("ai-models.index")
+                navigationButton(.overview, identifier: "ai-models.overview")
+                navigationButton(.index, identifier: "ai-models.index")
                 if (library.semanticState.isIndexing || library.semanticOperationLabel != nil)
                     && selection != .index && selection != .search {
                     ProgressView().controlSize(.small)
@@ -123,6 +121,7 @@ struct AIModelsView: View {
                     Text(status(function)).fixedSize(horizontal: false, vertical: true)
                         .accessibilityIdentifier("ai-models.status." + function.rawValue)
                     Button(action(function)) { selection = function }
+                        .accessibilityLabel(function.title + ": " + action(function))
                         .accessibilityIdentifier("ai-models.card." + function.rawValue)
                 }.padding(14).frame(maxWidth: .infinity, minHeight: 118, alignment: .topLeading)
                     .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
@@ -159,7 +158,7 @@ struct AIModelsView: View {
 
     private var imageTextDetails: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Bildtexte").font(.title2.bold())
+            Text("Bildinformationen").font(.title2.bold())
             Text(status(.metadata))
             LabeledContent("Anbieter", value: "Apple · lokales Systemmodell")
             LabeledContent("Version", value: ProcessInfo.processInfo.operatingSystemVersionString)
@@ -231,11 +230,18 @@ struct AIModelsView: View {
         status(function) == "Einrichten" ? "Einrichten …" : "Details und Aktionen …"
     }
 
+    private func navigationButton(_ destination: AIModelsDestination, identifier: String) -> some View {
+        Button { selection = destination } label: {
+            Label(destination.title, systemImage: selection == destination ? "checkmark.circle.fill" : destination.symbol)
+        }
+        .accessibilityIdentifier(identifier)
+    }
+
     private var help: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("KI-Modelle · Hilfe").font(.title2.bold())
             Text("Wähle eine Funktion, um Modell, Version, Lizenz, Platzbedarf und Einrichtung zu sehen. Download und Import starten ausschließlich über die benannte Aktion. Laufende Arbeit bleibt beim Wechsel zwischen Karten erreichbar.")
-            Text("Bildkorrekturen und beschriebene Objekte verwenden das lokale Qwen-Modell. Bildtexte verwenden die separat geprüfte Bildfähigkeit des Apple-Systemmodells. Die Verfügbarkeit dieser Funktionen kann unterschiedlich sein.")
+            Text("KI-Korrektur und beschriebene Objekte verwenden das lokale Qwen-Modell. Bildinformationen verwenden die separat geprüfte Bildfähigkeit des Apple-Systemmodells für Titel, Beschreibung und Tags. Die Verfügbarkeit dieser Funktionen kann unterschiedlich sein.")
             Text("Das Suchmodell berechnet Bildinhalte. Der Suchindex speichert die daraus erstellten Einträge für den gewählten Katalogumfang. Modell und Index werden getrennt verwaltet; beide lassen sich entfernen, ohne Originalbilder oder übernommene Bearbeitungen zu ändern.")
             HStack { Spacer(); Button("Fertig") { showsHelp = false } }
         }.font(.system(size: 13)).padding(24).frame(width: 580)
@@ -322,7 +328,7 @@ struct RepairModelManagerView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Reparatur").font(.title2.bold())
+            Text("Reparieren").font(.title2.bold())
             Label(model.installation == nil ? "Einrichten" : "Bereit", systemImage: model.installation == nil ? "arrow.down.circle" : "checkmark.circle")
             LabeledContent("Modell", value: model.installation?.displayName ?? "LaMa · Core ML")
             LabeledContent("Version", value: DevelopRepairAIApprovedDownload.revision)
@@ -341,7 +347,7 @@ struct RepairModelManagerView: View {
             } else {
                 HStack {
                     if model.installation == nil {
-                        Button("LaMa herunterladen und einrichten") { model.download() }
+                        Button("Reparaturmodell herunterladen") { model.download() }
                             .buttonStyle(.borderedProminent).accessibilityIdentifier("repair-model.download")
                     }
                     Button("Modell importieren …") { importsModel = true }

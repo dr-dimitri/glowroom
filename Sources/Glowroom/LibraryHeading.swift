@@ -256,9 +256,9 @@ struct LibrarySearchStatusView: View {
         } else if model.semanticScopeIsReady, model.semanticState.indexGenerationID == nil {
             status("Suchindex fehlt", action: "Suchindex vorbereiten", destination: .index)
         } else if model.semanticState.staleCount > 0 {
-            status("Suchindex veraltet · \(model.semanticState.staleCount) Bilder", action: "Suchindex aktualisieren", destination: .index)
+            status("Suchindex veraltet · \(model.semanticState.staleCount) \(model.semanticState.staleCount == 1 ? "Bild" : "Bilder")", action: "Suchindex aktualisieren", destination: .index)
         } else if model.semanticState.missingCount > 0 {
-            status("Suchindex unvollständig · \(model.semanticState.missingCount) Bilder fehlen", action: "Suchindex fortsetzen", destination: .index)
+            status("Suchindex unvollständig · \(model.semanticState.missingCount) \(model.semanticState.missingCount == 1 ? "Bild fehlt" : "Bilder fehlen")", action: "Suchindex fortsetzen", destination: .index)
         }
     }
 

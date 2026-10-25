@@ -99,7 +99,8 @@ struct DevelopInspector: View {
                     Rectangle().fill(Theme.line).frame(height: 1)
                     editingHistory(assetID: asset.id)
                 } else {
-                    Text("Wähle ein Foto zum Bearbeiten.").font(.callout).foregroundStyle(Theme.muted).padding(24)
+                    Label("Kein Foto ausgewählt", systemImage: "photo")
+                        .font(.system(size: 13)).foregroundStyle(Theme.muted).padding(24)
                     if column == .adjustments {
                         Button("Foto auswählen") { WorkspaceActions.showGrid(layout, library: library) }
                             .accessibilityIdentifier("ai-development.select-photo")
@@ -150,6 +151,12 @@ struct DevelopInspector: View {
                     }.frame(maxWidth: .infinity).frame(height: 58)
                         .foregroundStyle(toolIsActive(tool) ? Color.white.opacity(0.9) : Theme.muted)
                         .background(toolIsActive(tool) ? Color.white.opacity(0.09) : .clear)
+                        .overlay(alignment: .topTrailing) {
+                            if toolIsActive(tool) {
+                                Image(systemName: "checkmark.circle.fill").font(.system(size: 13))
+                                    .padding(3).accessibilityHidden(true)
+                            }
+                        }
                 }.buttonStyle(.plain).help(tool.title).accessibilityLabel(tool.title)
                     .accessibilityIdentifier("develop.tool.\(tool.rawValue)")
                     .accessibilityValue(toolIsActive(tool) ? "Aktiv" : "Inaktiv")
@@ -246,7 +253,8 @@ struct DevelopInspector: View {
             Divider()
             HStack {
                 Button { developWorkspace.picksWhiteBalance.toggle() } label: {
-                    Label("Neutralgrau wählen", systemImage: "eyedropper").font(.system(size: 13))
+                    Label(developWorkspace.picksWhiteBalance ? "Neutralgrau wählen · aktiv" : "Neutralgrau wählen",
+                        systemImage: developWorkspace.picksWhiteBalance ? "checkmark.circle.fill" : "eyedropper").font(.system(size: 13))
                 }.buttonStyle(.plain).foregroundStyle(developWorkspace.picksWhiteBalance ? Theme.accent : Theme.muted)
                     .help("Neutralgrau im Foto wählen")
                     .accessibilityIdentifier("develop.white-balance-picker")

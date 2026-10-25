@@ -46,7 +46,7 @@ struct FolderTreeRow: View {
                         Text(node.photoCount.formatted()).font(.system(size: 9, design: .monospaced)).foregroundStyle(active ? Theme.accent : Theme.muted)
                     }.foregroundStyle(active ? Theme.accent : Color.white.opacity(0.68))
                         .frame(height: 33).contentShape(Rectangle())
-                }.buttonStyle(.plain).help(url.path).accessibilityLabel("\(node.name), \(node.photoCount) Fotos")
+                }.buttonStyle(.plain).help(url.path).accessibilityLabel("\(node.name), \(node.photoCount) \(node.photoCount == 1 ? "Foto" : "Fotos")")
             }
             .padding(.leading, 4 + CGFloat(min(depth, 7)) * 11).padding(.trailing, 10)
             .background(active ? Theme.accent.opacity(0.085) : Color.clear, in: RoundedRectangle(cornerRadius: 6))

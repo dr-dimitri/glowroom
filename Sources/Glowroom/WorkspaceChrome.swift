@@ -347,7 +347,7 @@ private extension WorkspaceTool {
         case .color: return "Farbe"
         case .details: return "Details"
         case .aiDevelopment: return "KI-Korrektur"
-        case .metadata: return "Informationen"
+        case .metadata: return "Bildinformationen"
         case .versions: return "Bildstände"
         }
     }

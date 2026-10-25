@@ -283,8 +283,14 @@ private final class CancellationChild: @unchecked Sendable {
     }
 
     func close() {
-        if process.isRunning { Darwin.kill(process.processIdentifier, SIGKILL) }
-        process.waitUntilExit()
+        // Normal paths have already been reaped by supervisor.finish(). A
+        // second waitUntilExit() stalled the native test host after that
+        // confirmation. Only a still-running child needs the cleanup wait;
+        // this also retains containment when launch/protocol setup fails.
+        if process.isRunning {
+            Darwin.kill(process.processIdentifier, SIGKILL)
+            process.waitUntilExit()
+        }
         try? input.fileHandleForWriting.close()
         try? output.fileHandleForReading.close()
     }

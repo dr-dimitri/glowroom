@@ -128,7 +128,7 @@ struct DevelopScopePlot: View {
             }
         }.background(Color.black.opacity(0.25))
             .overlay {
-                if preferences.channelMask == 0 { Text("Kein Kanal ausgewählt").font(.caption).foregroundStyle(.secondary) }
+                if preferences.channelMask == 0 { Text("Kein Kanal ausgewählt").font(.system(size: 13)).foregroundStyle(.secondary) }
             }
             .accessibilityLabel(preferences.mode.title + " der bearbeiteten sRGB-SDR-Vorschau")
             .accessibilityValue(preferences.visibleChannels.map { ["Rot", "Grün", "Blau"][$0] }.joined(separator: ", ") + "; Zählerskala " + preferences.scale.title)

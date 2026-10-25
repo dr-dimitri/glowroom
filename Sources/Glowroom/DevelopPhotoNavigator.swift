@@ -24,10 +24,10 @@ struct DevelopPhotoNavigator: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text("Navigator").font(.system(size: 12, weight: .medium))
+                Text("Navigator").font(.system(size: 13, weight: .medium))
                 Spacer(minLength: 0)
                 Text(viewport.isZoomed ? "2×" : "Einpassen")
-                    .font(.system(size: 10)).foregroundStyle(Theme.muted)
+                    .font(.system(size: 13)).foregroundStyle(Theme.muted)
             }.frame(height: 26)
             GeometryReader { available in
                 if let image {
@@ -67,7 +67,7 @@ struct DevelopPhotoNavigator: View {
                 .accessibilityLabel("Navigator: \(asset.fileName)")
                 .accessibilityValue(viewport.isZoomed ? "Vergrößert, sichtbaren Ausschnitt verschieben" : "Ganzes Bild")
                 .accessibilityIdentifier("workspace.navigator")
-            Text(asset.fileName).font(.system(size: 10)).foregroundStyle(Theme.muted)
+            Text(asset.fileName).font(.system(size: 13)).foregroundStyle(Theme.muted)
                 .lineLimit(1).truncationMode(.middle)
         }.padding(.bottom, 16)
             .onChange(of: viewport.isZoomed) { _, _ in dragOffset = nil }

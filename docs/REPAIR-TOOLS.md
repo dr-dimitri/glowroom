@@ -1,10 +1,10 @@
 # Reparaturwerkzeuge
 
-Stand: 24. Oktober 2026.
+Stand: 25. Oktober 2026.
 
 ## Bedienung
 
-In **Entwickeln → Reparieren** stehen die vier beschrifteten Modi **Entfernen**, **Heilen**, **Kopierstempel** und **Rote Augen** bereit. Der aktive Modus hat eine farbige Umrandung. Rote Augen besitzt keinen zusätzlichen Einstieg in der Werkzeugleiste; ein eigener KI-Reparatureinstieg entfällt ebenfalls. Die orientierte, unbeschnittene Quelle bleibt sichtbar.
+In **Entwickeln → Reparieren** stehen die vier beschrifteten Modi **Entfernen**, **Heilen**, **Kopierstempel** und **Rote Augen** bereit. Der aktive Modus trägt ein sichtbares Häkchen und eine Umrandung. Rote Augen besitzt keinen zusätzlichen Einstieg in der Werkzeugleiste; ein eigener KI-Reparatureinstieg entfällt ebenfalls. Die orientierte, unbeschnittene Quelle bleibt sichtbar.
 
 Die Palette zeigt passende Aktionen statt dauerhafter Erklärabsätze. **Hilfe** öffnet die Bedienung und Grenzen in einem eigenen Dialog mit 13-Punkt-Schrift. Status und Fehler sind ebenfalls mindestens 13 Punkt groß.
 
@@ -49,9 +49,9 @@ Spiegelungsentfernung wird nicht als Werkzeug oder nutzbare Aktion angeboten; di
 
 ## Optionale lokale KI
 
-Nur im Modus **Entfernen** erscheint **Mit lokaler KI entfernen** mit dem Status **KI-Reparatur bereit** beziehungsweise **KI-Reparatur nicht eingerichtet**. **Reparatur einrichten …** öffnet **KI-Modelle → Reparatur**.
+Nur im Modus **Entfernen** erscheint **Mit lokaler KI entfernen** mit dem Status **KI-Reparatur bereit** beziehungsweise **KI-Reparatur nicht eingerichtet**. **Reparatur einrichten …** öffnet **KI-Modelle → Reparieren**.
 
-**LaMa herunterladen und einrichten** (ca. 217 MB) lädt das kompatible Core-ML-Paket direkt von Hugging Face und richtet es anschließend automatisch ein. Eine lokale Modelldatei muss dafür nicht vorher beschafft werden. Die Aktion ist bei fehlendem Modell verfügbar; sie startet ausschließlich nach einem Klick. **Modellquelle und Lizenzangaben** öffnet die Modellkarte. Fortschritt und die anschließende Prüfung/Kompilierung erscheinen in der zentralen Modellverwaltung; **Abbrechen** beendet eine noch nicht abgeschlossene Einrichtung. Die Einrichtung ist vom Foto und Werkzeug unabhängig. Nach erfolgreicher Einrichtung lässt sich **Mit lokaler KI entfernen** im Werkzeug aktivieren. Es werden keine Gewichte mit der App gebündelt und keine Bilder an einen Cloudanbieter gesendet.
+**Reparaturmodell herunterladen** (ca. 217 MB) lädt das kompatible Core-ML-Paket direkt von Hugging Face und richtet es anschließend automatisch ein. Eine lokale Modelldatei muss dafür nicht vorher beschafft werden. Die Aktion ist bei fehlendem Modell verfügbar; sie startet ausschließlich nach einem Klick. **Modellquelle und Lizenzangaben** öffnet die Modellkarte. Fortschritt und die anschließende Prüfung/Kompilierung erscheinen in der zentralen Modellverwaltung; **Abbrechen** beendet eine noch nicht abgeschlossene Einrichtung. Die Einrichtung ist vom Foto und Werkzeug unabhängig. Nach erfolgreicher Einrichtung lässt sich **Mit lokaler KI entfernen** im Werkzeug aktivieren. Es werden keine Gewichte mit der App gebündelt und keine Bilder an einen Cloudanbieter gesendet.
 
 Der Download verwendet `mlboydaisuke/LaMa-CoreML`, Revision `5ed76e3799ab4cad31381750d29880c267477e18`, und prüft die drei Paketdateien gegen die in der App festgelegten Größen und SHA-256-Hashes. Höchstens zwei Übertragungen laufen gleichzeitig; die großen Gewichte werden auf die Festplatte gestreamt. Mindestens 1 GiB freier Speicher wird für Download und Einrichtung verlangt. Temporäre Download-Dateien werden nach Erfolg, Fehler oder Abbruch entfernt. Erst das vollständig geprüfte und nativ kompilierte Modell wird aktiv; eine bisherige Installation bleibt bei Fehlern oder Abbruch erhalten. Ein Abbruch nach bereits abgeschlossener Veröffentlichung entfernt das fertig installierte Modell nicht.
 

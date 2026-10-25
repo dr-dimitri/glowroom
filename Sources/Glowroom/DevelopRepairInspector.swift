@@ -129,6 +129,11 @@ struct DevelopRepairInspector: View {
                             in: RoundedRectangle(cornerRadius: 5))
                         .overlay(RoundedRectangle(cornerRadius: 5)
                             .stroke(selectedMode == mode ? Theme.accent : Theme.line, lineWidth: selectedMode == mode ? 2 : 1))
+                        .overlay(alignment: .topTrailing) {
+                            if selectedMode == mode {
+                                Image(systemName: "checkmark.circle.fill").padding(4).accessibilityHidden(true)
+                            }
+                        }
                 }.buttonStyle(.plain).accessibilityLabel(mode.title)
                     .accessibilityValue(selectedMode == mode ? "Ausgewählt" : "Nicht ausgewählt")
                     .accessibilityIdentifier("develop.repair.mode." + mode.rawValue)
@@ -217,7 +222,7 @@ struct DevelopRepairInspector: View {
 
     private var redEyeControls: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Label("Pupille im Bild mit Ellipse markieren", systemImage: "oval")
+            Label("Pupillenauswahl · Ellipse", systemImage: "oval")
                 .accessibilityIdentifier("develop.repair.red-eye.selection")
             sliderRow("Stärke", value: $workspace.redEyeStrength, range: 0...1,
                 valueText: "\(Int((workspace.redEyeStrength * 100).rounded())) %", identifier: "red-eye.strength", neutral: 1)

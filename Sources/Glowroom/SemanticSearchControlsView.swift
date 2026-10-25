@@ -94,7 +94,7 @@ struct SemanticSearchControlsView: View {
             Picker("Indexumfang", selection: $model.semanticScope) {
                 ForEach(LibraryModel.SemanticScope.allCases) { scope in Text(scope.label).tag(scope) }
             }.pickerStyle(.menu).disabled(model.semanticOperationLabel != nil || model.semanticState.isIndexing)
-            Text("\(model.semanticScope.label) · \(model.semanticScopeCount) Bilder")
+            Text("\(model.semanticScope.label) · \(model.semanticScopeCount) \(model.semanticScopeCount == 1 ? "Bild" : "Bilder")")
                 .fixedSize(horizontal: false, vertical: true)
             Text("\(model.semanticState.indexedCount) aktuell · \(model.semanticState.missingCount) fehlend · \(model.semanticState.staleCount) veraltet")
                 .foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)

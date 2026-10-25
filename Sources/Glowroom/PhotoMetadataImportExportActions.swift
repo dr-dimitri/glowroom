@@ -9,7 +9,6 @@ enum PhotoMetadataImportExportActions {
         NSApp.keyWindow?.makeFirstResponder(nil)
         let panel = NSSavePanel()
         panel.title = "Bildinformationen exportieren"
-        panel.message = "Sichert bestätigte Titel, Beschreibungen und Tags. Bearbeitungssicherungen enthalten diese Angaben nicht."
         panel.allowedContentTypes = [.json]; panel.allowsOtherFileTypes = false
         panel.nameFieldStringValue = "Glowroom-Bildinformationen.json"
         guard panel.runModal() == .OK, let url = panel.url else { return }
@@ -19,7 +18,6 @@ enum PhotoMetadataImportExportActions {
         NSApp.keyWindow?.makeFirstResponder(nil)
         let panel = NSOpenPanel()
         panel.title = "Bildinformationen importieren"
-        panel.message = "Ergänzt fehlende bestätigte Einträge. Bestehende Angaben werden erst nach ausdrücklicher Konfliktentscheidung geändert."
         panel.allowedContentTypes = [.json]; panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false; panel.canChooseFiles = true
         guard panel.runModal() == .OK, let url = panel.url else { return }
@@ -41,7 +39,7 @@ struct PhotoMetadataImportPresenter: View {
                     Text("Bildinformationen importieren").font(.headline)
                     Text(review.sourceURL.path).textSelection(.enabled)
                     Text("\(review.entryCount) Einträge · \(review.missingCount) fehlend · \(review.unassignedCount) nicht zugeordnet")
-                    Text("Fehlende Einträge werden ergänzt. Nicht zugeordnete Daten bleiben getrennt; Dateinamen allein ordnen keine Bilder zu.")
+                    Label("Nicht zugeordnete Angaben bleiben getrennt", systemImage: "arrow.triangle.branch")
                     ScrollView {
                         LazyVStack(alignment: .leading, spacing: 14) {
                             ForEach(review.conflicts) { conflict in
@@ -66,11 +64,10 @@ struct PhotoMetadataImportPresenter: View {
                             }
                         }
                     }.frame(minHeight: 160, maxHeight: 380)
-                    Text("Ohne Feldauswahl bleiben vorhandene Angaben erhalten. Der ganze Import wird atomar übernommen; bei geänderter Revision muss er erneut geprüft werden.")
                     HStack {
                         Button("Abbrechen", role: .cancel) { model.dismissImport(id: review.id) }
                         Spacer()
-                        Button("Auswahl importieren") {
+                        Button("Fehlende Einträge und Auswahl importieren") {
                             let decisions = review.conflicts.map { conflict in
                                 let selection = fields[conflict.id, default: []]
                                 return MetadataImportDecision(conflictID: conflict.id, expectedVersion: conflict.expectedVersion,
@@ -79,7 +76,7 @@ struct PhotoMetadataImportPresenter: View {
                             model.confirmImport(id: review.id, decisions: decisions)
                         }.disabled(!model.canManage)
                     }
-                }.font(.system(size: 11)).padding(24).frame(width: 650)
+                }.font(.system(size: 13)).padding(24).frame(width: 650)
             }
     }
     private func label(_ field: PhotoMetadataField) -> String {

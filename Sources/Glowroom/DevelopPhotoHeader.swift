@@ -51,7 +51,7 @@ struct DevelopPhotoHeader: View {
                 }
             }
         }
-        .font(.system(size: 11))
+        .font(.system(size: 13))
         .padding(.horizontal, 18).padding(.vertical, 7)
         .frame(maxWidth: .infinity, minHeight: 30, alignment: .leading)
         .background(Theme.chrome)

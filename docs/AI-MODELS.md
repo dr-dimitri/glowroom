@@ -1,6 +1,6 @@
 # KI-Modelle
 
-**KI-Modelle** steht in der Kopfzeile sowie im Menü **Bibliothek** auch ohne ausgewähltes Foto bereit (⌥⌘M). Die Karten sind nach Aufgaben benannt: **Bildkorrekturen**, **Motiv und Hintergrund**, **Himmel**, **Reparatur**, **Bildsuche** und **Bildtexte**. **Suchindex** ist ein eigener Zugang für die Katalogdaten. Werkzeugaktionen **Einrichten** öffnen direkt die passende Karte im selben Dialog.
+**KI-Modelle** steht in der Kopfzeile sowie im Menü **Bibliothek** auch ohne ausgewähltes Foto bereit (⌥⌘M). Die Karten sind nach Aufgaben benannt: **KI-Korrektur**, **Motiv und Hintergrund**, **Himmel**, **Reparieren**, **Bildsuche** und **Bildinformationen**. **Suchindex** ist ein eigener Zugang für die Katalogdaten. Werkzeugaktionen **Einrichten** öffnen direkt die passende Karte im selben Dialog.
 
 Die Übersicht zeigt den tatsächlichen Einrichtungszustand. Die geöffneten Details enthalten Modellname, Version beziehungsweise festgelegte Revision, Lizenz, Downloadgröße und benötigten Speicher. Bildinformationen verwenden den verfügbaren lokalen Systemanbieter; sie sind kein Qwen-Download. Nicht qualifizierte Forschungsmodelle werden durch diese Übersicht nicht verfügbar.
 

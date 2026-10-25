@@ -577,8 +577,8 @@ struct LibraryView: View {
                 Button("Abbrechen") { model.cancelImport() }.buttonStyle(.plain).foregroundStyle(Theme.accent)
             } else {
                 Image(systemName: "photo.stack").font(.system(size: 10))
-                Text(editor.notice ?? model.notice ?? "\(model.visibleAssets.count) Fotos · \(model.folders.count) Ordner").lineLimit(1)
-                if model.notice != nil || editor.notice != nil { Button { model.notice = nil; editor.notice = nil } label: { Image(systemName: "xmark").font(.system(size: 8)) }.buttonStyle(.plain) }
+                Text(editor.notice ?? model.notice ?? "\(model.visibleAssets.count) \(model.visibleAssets.count == 1 ? "Foto" : "Fotos") · \(model.folders.count) Ordner").lineLimit(1)
+                if model.notice != nil || editor.notice != nil { Button { model.notice = nil; editor.notice = nil } label: { Image(systemName: "xmark").font(.system(size: 8)) }.buttonStyle(.plain).accessibilityLabel("Statusmeldung schließen") }
             }
             Spacer()
             if !model.selectedIDs.isEmpty {

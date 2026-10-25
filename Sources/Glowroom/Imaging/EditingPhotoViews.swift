@@ -14,7 +14,7 @@ struct EditingThumbnail: View {
                 priority: priority, settings: source.settings, source: source.identity)
                 .overlay(alignment: .bottomLeading) {
                     if editor.showsImportedOriginalFallback {
-                        Text("Original").font(.caption2).padding(4).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 4))
+                        Text("Original").font(.system(size: 13)).padding(4).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 4))
                             .help("Original ohne Bearbeitungen. Die Bearbeitungsdatenbank ist nicht verfügbar; gespeicherte Bearbeitungen bleiben erhalten.")
                     }
                 }
@@ -45,14 +45,14 @@ struct EditingPhotoPreview: View {
                 .overlay(alignment: .top) {
                     if editor.showsImportedOriginalFallback, intent != .importedOriginal {
                         Text("Original ohne Bearbeitungen · Bearbeitungsdatenbank nicht verfügbar")
-                            .font(.caption).padding(8).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 6)).padding(8)
+                            .font(.system(size: 13)).padding(8).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 6)).padding(8)
                     }
                 }
         } else {
             VStack(spacing: 8) {
                 Image(systemName: "exclamationmark.triangle").foregroundStyle(.orange)
                 Text("Gespeicherte Bildquelle nicht verfügbar")
-                Text("Prüfe das Bearbeitungspaket oder stelle eine vollständige Sicherung wieder her.").font(.caption)
+                Text("Prüfe das Bearbeitungspaket oder stelle eine vollständige Sicherung wieder her.").font(.system(size: 13))
             }.padding().accessibilityLabel("Gespeicherte Bildquelle nicht verfügbar")
         }
     }

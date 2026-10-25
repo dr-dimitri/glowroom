@@ -228,7 +228,7 @@ struct PreviewComparisonView<Before: View, After: View>: View {
             .frame(width: frame.width, height: frame.height, alignment: .topLeading)
             .clipped()
             .overlay(alignment: layout.isSplit && layout.isHorizontal && isAfter ? .topTrailing : .topLeading) {
-                Text(label).font(.system(size: 11, weight: .medium))
+                Text(label).font(.system(size: 13, weight: .medium))
                     .padding(.horizontal, 8).padding(.vertical, 4)
                     .background(Theme.canvas.opacity(0.85), in: RoundedRectangle(cornerRadius: 4))
                     .padding(10).allowsHitTesting(false)
@@ -251,7 +251,7 @@ struct PreviewComparisonView<Before: View, After: View>: View {
                     .overlay { RoundedRectangle(cornerRadius: 5).strokeBorder(Theme.muted.opacity(0.7)) }
                     .overlay {
                         Image(systemName: layout.isHorizontal ? "arrow.left.and.right" : "arrow.up.and.down")
-                            .font(.system(size: 10, weight: .semibold)).foregroundStyle(Theme.text)
+                            .font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.text)
                     }
                     .frame(width: layout.isHorizontal ? 26 : 36, height: layout.isHorizontal ? 36 : 26)
                     .allowsHitTesting(false)

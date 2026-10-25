@@ -42,7 +42,7 @@ dieselbe Maske bereit. Eine KI-Korrektur auf dieser vorhandenen Maske wird über
 [KI-Korrektur → Zielbereich](AI-DEVELOPMENT.md) angefordert.
 
 Fehlende Installationen führen direkt zu **KI-Modell einrichten …** oder
-**Motivmodell einrichten …**. Diese Aktionen öffnen die Karten **Bildkorrekturen** beziehungsweise **Motiv und Hintergrund** in **KI-Modelle** und starten
+**Motivmodell einrichten …**. Diese Aktionen öffnen die Karten **KI-Korrektur** beziehungsweise **Motiv und Hintergrund** in **KI-Modelle** und starten
 keine Fotoanalyse. Die Modellinformationen stehen in der ausdrücklich geöffneten
 Hilfe beziehungsweise den Einrichtungsansichten. Nicht erkannte Objekte,
 fehlende Modelle, leere Auswahlen oder ungültige Antworten erzeugen keine
