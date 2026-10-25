@@ -597,5 +597,5 @@
     "scripts/verify-artifact-png.swift": "7472f004810ad3950a08d215ad240cf5e9a69c59acba7b244814a43bb589e318"
   },
   "scope": "Production sources, tests including opt-in harness, assets, package pins and scripts; excludes private fixtures and generated state.",
-  "sourceCommit": "cde266663c2af5eae578bd64247cad81c30fc03f+issue-200-without-voiceover"
+  "sourceCommit": "5c042a4ba17c7df1fcb88adc237cb86681a7a13b"
 }

@@ -12,7 +12,7 @@
   "proposalState" : "absent",
   "scaleFactor" : 2,
   "screenshotSHA256" : "75c7db56542f396b99e7067f7e24f52da54c3c7bd4daaa261e436264424ac202",
-  "sourceCommit" : "cde266663c2af5eae578bd64247cad81c30fc03f+issue-200-without-voiceover",
+  "sourceCommit" : "5c042a4ba17c7df1fcb88adc237cb86681a7a13b",
   "state" : "mask",
   "steps" : [
     "Open Maskieren using its named toolbar action",

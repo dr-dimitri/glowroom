@@ -12,7 +12,7 @@
   "proposalState" : "pending",
   "scaleFactor" : 2,
   "screenshotSHA256" : "a513816b70b309cb6fe47fd0b3d30bd1673201d137c775339aed44fb0100cc7b",
-  "sourceCommit" : "cde266663c2af5eae578bd64247cad81c30fc03f+issue-200-without-voiceover",
+  "sourceCommit" : "5c042a4ba17c7df1fcb88adc237cb86681a7a13b",
   "state" : "metadata-proposal",
   "steps" : [
     "Confirm manual values",

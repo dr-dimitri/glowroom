@@ -38,7 +38,7 @@ Die Fensterinhaltsgrößen betragen **1000 × 660 pt** und **1440 × 900 pt**. D
 
 Die Metadatenantwort stammt ausdrücklich aus einem kontrollierten `PhotoMetadataSuggesting`. Fehlendes Suchmodell und Suchindexfehler stammen aus einem kontrollierten `SemanticSearchServing`. Der Fehler wird nach dem tatsächlichen Indexaufruf durch den normalen Fehlerpfad angezeigt. Das sind kontrollierte Testzustände, keine reale Modellinferenz, Modellqualifizierung oder Indexleistungsmessung. Die synthetische Landschaft belegt Layout und Bedienzustände, keine Qualität der KI-Segmentierung. Die Reparaturansicht liest ihre tatsächlich vorhandene lokale Verfügbarkeit; der Harness installiert kein Modell.
 
-Der Vorher-Quellstand ist `cde266663c2af5eae578bd64247cad81c30fc03f`. Eine getrennte Archivkopie erhält ausschließlich den [Baseline-Harness](baseline-harness.patch); `-Xswiftc -DGLOWROOM_200_BASELINE` kennzeichnet die Dateinamen als Vorher. Die [Baseline-Inventur](baseline-source-hashes.json) und [Nachher-Inventur](after-source-hashes.json) binden die Aufnahmen an Quellen, Ressourcen, Tests, Paketauflösung und Buildskripte. Die Nachher-Aufnahmen sind an den finalen Implementierungscommit `cde266663c2af5eae578bd64247cad81c30fc03f+issue-200-without-voiceover` gebunden. Sie entstanden vor dessen Erstellung auf dem durch das Inventar nachgewiesenen bytegleichen Quellstand; die Commitreferenz wird anschließend ausschließlich in Dokumentation und JSON-Metadaten festgeschrieben.
+Der Vorher-Quellstand ist `cde266663c2af5eae578bd64247cad81c30fc03f`. Eine getrennte Archivkopie erhält ausschließlich den [Baseline-Harness](baseline-harness.patch); `-Xswiftc -DGLOWROOM_200_BASELINE` kennzeichnet die Dateinamen als Vorher. Die [Baseline-Inventur](baseline-source-hashes.json) und [Nachher-Inventur](after-source-hashes.json) binden die Aufnahmen an Quellen, Ressourcen, Tests, Paketauflösung und Buildskripte. Die Nachher-Aufnahmen sind an den finalen Implementierungscommit `5c042a4ba17c7df1fcb88adc237cb86681a7a13b` gebunden. Sie entstanden vor dessen Erstellung auf dem durch das Inventar nachgewiesenen bytegleichen Quellstand; die Commitreferenz wird anschließend ausschließlich in Dokumentation und JSON-Metadaten festgeschrieben.
 
 Screenshots belegen sichtbare Anordnung und Zustände. Separate Testassertions prüfen benannte und horizontal erreichbare Werkzeugaktionen, den Rückweg aus dem Bildfokus, gezieltes Öffnen der Werkzeuge, genau einen kontrollierten Vorschlags-/Indexaufruf und unveränderte synthetische Originalbytes. Die regulären Speicher-, Konflikt-, Abbruch- und Bearbeitungstests bleiben dafür die funktionalen Nachweise.
 
@@ -75,7 +75,7 @@ Nachher im Aufgabencheckout mit dem geprüften Quellcommit:
 ```sh
 GLOWROOM_TEST_BUILD_PATH=/private/tmp/glowroom-200-visual-build \
 GLOWROOM_200_SNAPSHOTS=/private/tmp/glowroom-200-after \
-GLOWROOM_WORKSPACE_SNAPSHOT_COMMIT=cde266663c2af5eae578bd64247cad81c30fc03f+issue-200-without-voiceover \
+GLOWROOM_WORKSPACE_SNAPSHOT_COMMIT=5c042a4ba17c7df1fcb88adc237cb86681a7a13b \
 ./scripts/test.sh --jobs 3 --no-parallel --filter UIClarityScreenshotTests
 ```
 

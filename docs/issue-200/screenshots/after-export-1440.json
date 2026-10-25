@@ -12,7 +12,7 @@
   "proposalState" : "pending",
   "scaleFactor" : 2,
   "screenshotSHA256" : "b11e5c039469dd8f782a6ee53ae72cceef9e477a96b8ba23f77c6e561b8b78cd",
-  "sourceCommit" : "cde266663c2af5eae578bd64247cad81c30fc03f+issue-200-without-voiceover",
+  "sourceCommit" : "5c042a4ba17c7df1fcb88adc237cb86681a7a13b",
   "state" : "export",
   "steps" : [
     "Open native Foto exportieren view",
