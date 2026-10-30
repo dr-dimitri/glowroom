@@ -56,7 +56,7 @@ enum PreviewDecoder {
                         requiredSize = min(requiredSize, sourceLongEdge)
                     }
                     if isUsefulEmbeddedPreview(preview, requestedSize: requiredSize) {
-                        return PreviewBitmap(image: preview, sourceLongEdge: sourceLongEdge)
+                        return PreviewBitmap(image: try materializedGrayscaleThumbnail(preview), sourceLongEdge: sourceLongEdge)
                     }
                 }
                 try Task.checkCancellation()
@@ -74,9 +74,37 @@ enum PreviewDecoder {
                 throw PreviewFailure.unsupportedOrDamaged
             }
             try Task.checkCancellation()
-            return PreviewBitmap(image: image, sourceLongEdge: sourceLongEdge,
+            return PreviewBitmap(image: try materializedGrayscaleThumbnail(image), sourceLongEdge: sourceLongEdge,
                 rangeProvenance: request.allowsHDR ? .extended(nominalSDRWhite: 1) : .sdrDecoded)
         }
+    }
+
+    /// ImageIO can return a private 16-bit gray/alpha thumbnail provider that
+    /// exposes valid samples to its encoder but uploads as transparent black
+    /// through Core Image. Give that layout an ordinary, immutable data provider
+    /// without converting colors, precision, byte order, orientation or alpha.
+    /// Reusing the private provider itself does not fix its Core Image upload.
+    private static func materializedGrayscaleThumbnail(_ image: CGImage) throws -> CGImage {
+        guard image.bitsPerComponent == 16, image.bitsPerPixel == 32,
+              let space = image.colorSpace, space.model == .monochrome,
+              [.first, .last, .premultipliedFirst, .premultipliedLast].contains(image.alphaInfo) else { return image }
+        try Task.checkCancellation()
+        // The normal decoder worker already limits previews to 4096 pixels per
+        // edge and bounds concurrent decodes. This one transient Gray16+alpha
+        // backing is at most 64 MiB (plus row padding); the ImageIO thumbnail is
+        // released by the enclosing autoreleasepool, and the retained cache cost
+        // remains the returned image's actual bytesPerRow * height.
+        let byteCount = image.bytesPerRow.multipliedReportingOverflow(by: image.height)
+        guard !byteCount.overflow, byteCount.partialValue > 0,
+              let data = image.dataProvider?.data, CFDataGetLength(data) >= byteCount.partialValue,
+              let provider = CGDataProvider(data: data),
+              let result = CGImage(width: image.width, height: image.height,
+                bitsPerComponent: image.bitsPerComponent, bitsPerPixel: image.bitsPerPixel,
+                bytesPerRow: image.bytesPerRow, space: space, bitmapInfo: image.bitmapInfo,
+                provider: provider, decode: image.decode, shouldInterpolate: image.shouldInterpolate,
+                intent: image.renderingIntent) else { throw PreviewFailure.unsupportedOrDamaged }
+        try Task.checkCancellation()
+        return result
     }
 
     private static func isCameraRAW(_ source: CGImageSource) -> Bool {

@@ -171,7 +171,7 @@ struct DevelopGeometryRendererTests {
         #expect(pixel(result, width: 128, x: 96, y: 72) == pixel(original, width: 128, x: 96, y: 72))
     }
 
-    @Test func boundedHealingMatchesThePreviousFullFrameRingAtMaskEdgesAndFeatheredPaths() throws {
+    @Test func boundedHealingMatchesFullFrameLocalCorrectionAtMaskEdgesAndFeatheredPaths() throws {
         let source = try fixture { x, y in
             (UInt8((x * 3 + y) % 220), UInt8((y * 2 + x) % 200), UInt8((x + y * 3) % 230),
              [UInt8](arrayLiteral: 0, 32, 128, 255)[(x / 7 + y / 9) % 4])
@@ -217,7 +217,7 @@ struct DevelopGeometryRendererTests {
         #expect(zip(actual, expected).allSatisfy { abs($0 - $1) <= 1 })
     }
 
-    @Test func boundedHealingRetainsTheFullFrameNearlyTransparentRingCutoff() throws {
+    @Test func smallTranslucentRepairsMatchTheirSurroundingsWithoutAFullFrameWeightCutoff() throws {
         let target = try LocalMaskPoint(x: 0.75, y: 0.5)
         var cells = Data(count: 256 * 256); cells[128 * 256 + 192] = 255
         let stroke = try DevelopRetouchStroke(source: .init(x: 0.25, y: 0.5), target: target, radius: 0.000_001,
@@ -228,9 +228,12 @@ struct DevelopGeometryRendererTests {
                 return (gray, gray, gray, alpha)
             }
             let actual = try pixels(render(source, geometry: .init(retouchStrokes: [stroke])))
-            let expected = try pixels(fullFrameHealingReference(source, stroke: stroke,
-                expectedRingAlpha: alpha == 4 ? 0.000_000_001...0.000_000_999 : 0.000_001_001...0.000_1))
-            #expect(actual == expected, "The full-frame alpha cutoff must remain unchanged at source alpha \(alpha)")
+            let expected = try pixels(fullFrameHealingReference(source, stroke: stroke))
+            #expect(zip(actual, expected).allSatisfy { abs($0 - $1) <= 1 })
+            let original = try pixels(source)
+            #expect(zip(pixel(actual, width: 512, x: 385, y: 257),
+                        pixel(original, width: 512, x: 385, y: 257)).allSatisfy { abs($0 - $1) <= 1 },
+                    "A clean translucent target must not inherit the darker donor tone")
         }
     }
 
@@ -580,9 +583,72 @@ struct DevelopGeometryRendererTests {
             format: .RGBA8, colorSpace: source.colorSpace!, deferred: false))
     }
 
-    /// The previous complete-image surroundings graph is retained only here as
-    /// an independent regression reference for ROI clipping and normalization.
-    private func fullFrameHealingReference(_ source: CGImage, stroke: DevelopRetouchStroke,
+    /// Full-frame reference catches accidental ROI clipping of mask interpolation,
+    /// donor exclusions and Gaussian support. Quality is checked independently in
+    /// DevelopRepairQualityTests against known clean image fields.
+    private func fullFrameHealingReference(_ source: CGImage, stroke: DevelopRetouchStroke) throws -> CGImage {
+        let input = CIImage(cgImage: source), extent = input.extent
+        let coverage = try DevelopRetouchMaskRenderer.coverage(for: stroke, extent: extent)
+        let translation = CGAffineTransform(translationX: (stroke.target.x - stroke.source.x) * extent.width,
+            y: (stroke.source.y - stroke.target.y) * extent.height)
+        let shifted = input.clampedToExtent().transformed(by: translation)
+        let donorSelection = coverage.transformed(by: translation)
+        let radius = CGFloat(stroke.radius) * min(extent.width, extent.height)
+        let expanded = coverage.applyingFilter("CIMorphologyMaximum", parameters: [
+            kCIInputRadiusKey: max(1, radius * 0.5)
+        ]).cropped(to: extent)
+        let differenceKernel = try #require(CIColorKernel(source: """
+            kernel vec4 referenceDifference(__sample target, __sample donor, __sample mask,
+                                             __sample expanded, __sample donorMask, vec4 bounds) {
+                vec2 p = destCoord();
+                if (p.x < bounds.x || p.y < bounds.y || p.x >= bounds.z || p.y >= bounds.w) { return vec4(0.0); }
+                float outside = (mask.r > 0.000001 || donorMask.r > 0.000001 || expanded.r <= 0.000001) ? 0.0 : 1.0;
+                float weight = outside * min(target.a, donor.a);
+                if (weight <= 0.0) { return vec4(0.0); }
+                return vec4((unpremultiply(target).rgb - unpremultiply(donor).rgb) * weight, weight);
+            }
+            """))
+        let difference = try #require(differenceKernel.apply(extent: extent,
+            arguments: [input, shifted, coverage, expanded, donorSelection,
+                CIVector(x: extent.minX, y: extent.minY, z: extent.maxX, w: extent.maxY)]))
+        let local = difference.applyingFilter("CIGaussianBlur", parameters: [kCIInputRadiusKey: max(1, radius * 0.6)])
+        let context = try #require(DevelopRetouchMaskRenderer.healingContextBounds(for: stroke, extent: extent))
+        let normalization = context.isNull || context.isEmpty ? 1 : extent.width * extent.height / (context.width * context.height)
+        // Condition the full-frame reduction before accumulation, rather than
+        // multiplying its already rounded result. This preserves tiny signed
+        // differences in RGBAh and gives the same per-ROI weight threshold while
+        // still checking every input pixel in the complete-image reference.
+        let scaleKernel = try #require(CIColorKernel(source: """
+            kernel vec4 referenceReductionScale(__sample weighted, float factor) { return weighted * factor; }
+            """))
+        let conditioned = try #require(scaleKernel.apply(extent: extent, arguments: [difference, normalization]))
+        let average = conditioned.applyingFilter("CIAreaAverage", parameters: [kCIInputExtentKey: CIVector(cgRect: extent)])
+            .clampedToExtent()
+        let correctionKernel = try #require(CIColorKernel(source: """
+            kernel vec4 referenceCorrection(__sample local, __sample average) {
+                vec3 fallback = average.a > 0.000001 ? average.rgb / average.a : vec3(0.0);
+                if (local.a <= 0.00001) { return vec4(fallback, 1.0); }
+                vec3 correction = mix(fallback, local.rgb / local.a, smoothstep(0.00001, 0.0001, local.a));
+                return vec4(correction, 1.0);
+            }
+            """))
+        let correction = try #require(correctionKernel.apply(extent: extent, arguments: [local, average]))
+        let composite = try #require(CIColorKernel(source: """
+            kernel vec4 referenceLocalHeal(__sample original, __sample donor, __sample mask,
+                                           __sample correction, float opacity) {
+                vec3 replacement = max(vec3(0.0), unpremultiply(donor).rgb + correction.rgb);
+                vec3 color = mix(unpremultiply(original).rgb, replacement, clamp(mask.r * opacity, 0.0, 1.0));
+                return vec4(color * original.a, original.a);
+            }
+            """))
+        let graph = try #require(composite.apply(extent: extent,
+            arguments: [input, shifted, coverage, correction, stroke.opacity]))
+        return try #require(EditRenderer.maskCompositingContext().createCGImage(graph, from: extent,
+            format: .RGBA8, colorSpace: source.colorSpace!, deferred: false))
+    }
+
+    /// Previous production healing, retained for explicit before/after photo diagnostics.
+    func previousHealingReference(_ source: CGImage, stroke: DevelopRetouchStroke,
                                            expectedRingAlpha: ClosedRange<Float>? = nil) throws -> CGImage {
         let input = CIImage(cgImage: source), extent = input.extent
         let coverage = try DevelopRetouchMaskRenderer.coverage(for: stroke, extent: extent)

@@ -13,7 +13,7 @@ enum DevelopGeometryRenderer {
         let sampled = try DevelopRetouchMaskRenderer.replacement(replacement, extent: extent)
         let coverage = CIImage(color: .white).cropped(to: sampled.extent)
         guard let result = strokeKernel?.apply(extent: extent,
-            arguments: [original, sampled, coverage, zero, zero, 1.0, 0.0]) else { throw EditRenderError.unavailable }
+            arguments: [original, sampled, coverage, zero, 1.0, 0.0]) else { throw EditRenderError.unavailable }
         return result
     }
 
@@ -129,10 +129,11 @@ enum DevelopGeometryRenderer {
                     guard context.width < CGFloat(UInt64.max), context.height < CGFloat(UInt64.max) else { return nil }
                     let contextPixels = UInt64(ceil(context.width)).multipliedReportingOverflow(by: UInt64(ceil(context.height)))
                     guard !contextPixels.overflow else { return nil }
-                    // Dilation, ring, cropped source/target, weighted colors and
-                    // a sampling reserve: seven bounded float RGBA intermediates.
-                    // Two reductions and their normalizations are 1-pixel images.
-                    let contextBytes = contextPixels.partialValue.multipliedReportingOverflow(by: 112)
+                    // Dilation, shifted selection, cropped source/target,
+                    // weighted difference, blur, normalized correction and a
+                    // sampling reserve: eight bounded float RGBA planes. The
+                    // fallback reduction and its reserve are 1-pixel images.
+                    let contextBytes = contextPixels.partialValue.multipliedReportingOverflow(by: 128)
                     guard !contextBytes.overflow else { return nil }
                     let withReductions = contextBytes.partialValue.addingReportingOverflow(64)
                     guard !withReductions.overflow else { return nil }
@@ -224,7 +225,8 @@ enum DevelopGeometryRenderer {
     private static func applyStroke(_ stroke: DevelopRetouchStroke, to image: CIImage,
                                     shiftedSource: CIImage, radius: CGFloat, extent: CGRect,
                                     replacementImage: CIImage? = nil) throws -> CIImage {
-        var coverage = try DevelopRetouchMaskRenderer.coverage(for: stroke, extent: extent)
+        let raster = try DevelopRetouchMaskRenderer.coverageResult(for: stroke, extent: extent)
+        var coverage = raster.image
         let sampled: CIImage
         if let replacement = stroke.replacement {
             if let replacementImage { sampled = replacementImage }
@@ -233,11 +235,14 @@ enum DevelopGeometryRenderer {
             // explicit bounds must never turn into transparent/black samples.
             coverage = coverage.cropped(to: DevelopRetouchMaskRenderer.replacementBounds(replacement, extent: extent))
         } else { sampled = shiftedSource }
-        var sourceMean = zero, targetMean = zero
-        if stroke.mode == .heal && stroke.replacement == nil {
-            // The selected object must not bias its replacement color. Compare
-            // matching surrounding rings in target/source coordinates instead
-            // of averaging pixels inside the object being removed.
+        var correction = zero
+        // A raster without zero coverage has no unselected comparison pixels,
+        // whether it came from a path or a stored mask. Its correction is zero.
+        // Avoid constructing an empty native reduction/blur graph in this case.
+        if stroke.mode == .heal && stroke.replacement == nil && raster.hasUnselectedPixels {
+            // Transfer the donor's detail while matching illumination locally
+            // along the selection. Like Lightcraft's normalized convolution,
+            // the correction uses only clean surroundings, never the object.
             guard let context = DevelopRetouchMaskRenderer.healingContextBounds(for: stroke, extent: extent) else {
                 throw EditRenderError.unavailable
             }
@@ -249,35 +254,36 @@ enum DevelopGeometryRenderer {
                 let outside = coverage.applyingFilter("CIMorphologyMaximum", parameters: [
                     kCIInputRadiusKey: max(1, radius * 0.5)
                 ]).cropped(to: context)
-                guard let ring = ringKernel?.apply(extent: context, arguments: [coverage, outside]) else {
+                // A nearby donor's exterior can reach back into the object.
+                // Exclude that translated selection from both sides of the
+                // comparison, with one common alpha weight for valid pairs.
+                let shiftedCoverage = coverage.transformed(by: CGAffineTransform(
+                    translationX: (stroke.target.x - stroke.source.x) * extent.width,
+                    y: (stroke.source.y - stroke.target.y) * extent.height))
+                guard let difference = healingDifferenceKernel?.apply(extent: context,
+                    arguments: [image.cropped(to: context), shiftedSource.cropped(to: context),
+                        coverage, outside, shiftedCoverage,
+                        CIVector(x: context.minX, y: context.minY, z: context.maxX, w: context.maxY)]) else {
                     throw EditRenderError.unavailable
                 }
-                let normalization = context.width * context.height / (extent.width * extent.height)
-                sourceMean = try weightedMean(shiftedSource.cropped(to: context), coverage: ring,
-                    extent: context, normalization: normalization)
-                targetMean = try weightedMean(image.cropped(to: context), coverage: ring,
-                    extent: context, normalization: normalization)
+                // Signed RGB carries weighted target-minus-donor; alpha carries
+                // its common weight. The kernel explicitly zeros samples outside
+                // this ROI even when Core Image fuses it into the Gaussian graph.
+                // Do not extend edge values into the missing surroundings.
+                let blurred = difference.applyingFilter("CIGaussianBlur", parameters: [
+                    kCIInputRadiusKey: max(1, radius * 0.6)
+                ]).cropped(to: context)
+                let average = difference.applyingFilter("CIAreaAverage", parameters: [
+                    kCIInputExtentKey: CIVector(cgRect: context)
+                ]).clampedToExtent()
+                guard let local = healingCorrectionKernel?.apply(extent: context,
+                    arguments: [blurred, average]) else { throw EditRenderError.unavailable }
+                correction = local
             }
         }
         guard let result = strokeKernel?.apply(extent: extent, arguments: [image, sampled,
-            coverage, sourceMean, targetMean, stroke.opacity, replacementImage == nil ? 0.0 : 1.0]) else { throw EditRenderError.unavailable }
+            coverage, correction, stroke.opacity, replacementImage == nil ? 0.0 : 1.0]) else { throw EditRenderError.unavailable }
         return result
-    }
-
-    private static func weightedMean(_ image: CIImage, coverage: CIImage, extent: CGRect,
-                                     normalization: CGFloat) throws -> CIImage {
-        guard let weighted = weightedKernel?.apply(extent: extent, arguments: [image, coverage]) else {
-            throw EditRenderError.unavailable
-        }
-        // Alpha in the reduction is the total valid weight, so unpremultiplying
-        // computes an alpha-weighted mean and ignores transparent source pixels.
-        let average = weighted.applyingFilter("CIAreaAverage", parameters: [kCIInputExtentKey: CIVector(cgRect: extent)])
-        // Restore the full-frame reduction's common RGBA normalization. RGB / A
-        // is unchanged, and the historical empty/near-transparent-ring cutoff
-        // retains exactly the same meaning even for a tiny selection ROI.
-        guard let normalized = meanNormalizationKernel?.apply(extent: average.extent,
-            arguments: [average, normalization]) else { throw EditRenderError.unavailable }
-        return normalized.clampedToExtent()
     }
 
     private static let zero = CIImage(color: .black)
@@ -296,32 +302,45 @@ enum DevelopGeometryRenderer {
             return vec4(color * original.a, original.a);
         }
         """)
-    private static let ringKernel = CIColorKernel(source: """
-        kernel vec4 retouchRing(__sample selected, __sample expanded) {
-            // Exclude every selected/feathered pixel, not just the opaque core.
-            float weight = selected.r > 0.000001 ? 0.0 : clamp(expanded.r, 0.0, 1.0);
-            return vec4(weight, weight, weight, 1.0);
+    private static let healingDifferenceKernel = CIColorKernel(source: """
+        kernel vec4 retouchHealingDifference(__sample target, __sample source,
+                                             __sample selected, __sample expanded, __sample sourceSelected, vec4 bounds) {
+            // Extent metadata alone does not constrain a fused sampler's
+            // reconstruction domain. A Gaussian may request surrounding pixels.
+            vec2 p = destCoord();
+            if (p.x < bounds.x || p.y < bounds.y || p.x >= bounds.z || p.y >= bounds.w) { return vec4(0.0); }
+            // Both selections include the feather, independently of opacity.
+            // Use support, not the tiny antialiasing/feather value at the outer
+            // edge. Sparse fractional weights would underflow a half-float
+            // reduction and destabilize the normalized color correction.
+            float ring = (selected.r > 0.000001 || sourceSelected.r > 0.000001 || expanded.r <= 0.000001)
+                ? 0.0 : 1.0;
+            float weight = ring * min(target.a, source.a);
+            if (weight <= 0.0) { return vec4(0.0); }
+            vec3 delta = unpremultiply(target).rgb - unpremultiply(source).rgb;
+            return vec4(delta * weight, weight);
         }
         """)
-    private static let weightedKernel = CIColorKernel(source: """
-        kernel vec4 retouchWeightedColor(__sample color, __sample coverage) {
-            return color * coverage.r;
-        }
-        """)
-    private static let meanNormalizationKernel = CIColorKernel(source: """
-        kernel vec4 retouchMeanNormalization(__sample average, float normalization) {
-            return average * normalization;
+    private static let healingCorrectionKernel = CIColorKernel(source: """
+        kernel vec4 retouchHealingCorrection(__sample local, __sample average) {
+            vec3 fallback = vec3(0.0);
+            if (average.a > 0.000001) { fallback = average.rgb / average.a; }
+            // Never divide an unsupported sample. A later zero blend weight
+            // would not make an infinite or undefined intermediate safe.
+            if (local.a <= 0.00001) { return vec4(fallback, 1.0); }
+            vec3 correction = local.rgb / local.a;
+            // Broad mask interiors can exceed the blur's support. Fade into
+            // the clean ring mean for weights 1e-5...1e-4; an empty ring yields
+            // zero. This avoids division noise and abrupt fallback boundaries.
+            float support = smoothstep(0.00001, 0.0001, local.a);
+            return vec4(mix(fallback, correction, support), 1.0);
         }
         """)
     private static let strokeKernel = CIColorKernel(source: """
         kernel vec4 retouchStroke(__sample original, __sample sampled, __sample mask,
-                                 __sample sourceMean, __sample targetMean, float opacity, float preservesSampleRange) {
+                                 __sample correction, float opacity, float preservesSampleRange) {
             vec4 base = unpremultiply(original);
-            vec3 correction = vec3(0.0);
-            if (sourceMean.a > 0.000001 && targetMean.a > 0.000001) {
-                correction = unpremultiply(targetMean).rgb - unpremultiply(sourceMean).rgb;
-            }
-            vec3 replacement = unpremultiply(sampled).rgb + correction;
+            vec3 replacement = unpremultiply(sampled).rgb + correction.rgb;
             // A prepared color candidate already followed the source's gamut
             // policy. Keep negative working-space values needed for Display P3.
             if (preservesSampleRange < 0.5) { replacement = max(vec3(0.0), replacement); }
