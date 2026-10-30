@@ -20,9 +20,9 @@ Formatentscheidungen erfolgen seriell; die datenparallele Pixelverarbeitung
 übernimmt weiterhin Core Image.
 
 Der persistente Vorschaucache enthält unveränderte Decoder-Basisbilder, keine
-entwickelten Ergebnisse. Decoder und gespeichertes Basisformat ändern sich
-nicht, daher ist keine Cache-Versionsanhebung nötig. Entwickelte RAM-Caches
-leben nur bis zum Prozessende und verrechnen die tatsächliche Rastergröße.
+entwickelten Ergebnisse. Das gespeicherte Basisformat bleibt unverändert;
+entwickelte RAM-Caches leben nur bis zum Prozessende und verrechnen die
+tatsächliche Rastergröße.
 
 Die Tests `GrayscaleSourceRenderingTests` erzeugen ihre PNG-/TIFF-Fixtures in
 temporären Verzeichnissen. Sie prüfen echte monochrome Decoder-Ausgaben,
@@ -35,3 +35,26 @@ Basisbildes. Private Testbilder und reale Kataloge sind nicht erforderlich.
 GLOWROOM_TEST_BUILD_PATH=/tmp/glowroom-tests-147 ./scripts/test.sh --jobs 2 \
   --filter 'GrayscaleSourceRenderingTests|DevelopColorAdjustmentTests|AdjustedPreviewPipelineTests|PreviewDiskCacheTests|EditRendererTests'
 ```
+
+## Korrektur für transparente 16-Bit-Vorschauen (31. Oktober 2026)
+
+Bei der Reparaturregression wurde ein ImageIO-Sonderfall reproduziert: Bestimmte
+16-Bit-Graustufen-Thumbnails mit Alpha enthielten korrekte native Pixel, wurden
+von Core Image aber als transparentes Schwarz eingelesen. Die vorhandenen
+PNG-/TIFF-Tests erkannten dadurch leere Vorschauen und abweichende Ergebnisse
+nach dem Wiederöffnen des Vorschaucaches.
+
+Der Decoder überführt ausschließlich dieses Thumbnail-Layout in einen normalen
+unveränderlichen Datenprovider. Native Bytes, Präzision, Alpha, Byteordnung,
+Profil, bereits angewendete Orientierung und Rendering-Intent bleiben erhalten;
+es erfolgt keine Farbkonvertierung. Das bloße Wiederverwenden des privaten
+ImageIO-Providers reichte in der nativen Gegenprobe nicht aus.
+
+Die Arbeit bleibt im begrenzten Hintergrunddecoder mit Abbruchprüfungen. Bei
+höchstens 4.096 Pixeln je Kante entsteht vorübergehend ein weiterer
+Graustufen-/Alpha-Puffer von höchstens 64 MiB zuzüglich Zeilenpadding. Der alte
+Thumbnail wird mit dem Decoder-Autoreleasepool freigegeben, der dauerhafte
+Cachebedarf bleibt `bytesPerRow * height`. Vorhandene persistente Basisbilder
+werden bereits aus normalen PNG-Daten geöffnet und enthalten dieselben Pixel;
+eine Cache-Versionsänderung ist deshalb nicht erforderlich. Die bestehenden
+Präzisions-, Alpha-, HDR- und Cache-Prüfungen behalten ihre Toleranzen.

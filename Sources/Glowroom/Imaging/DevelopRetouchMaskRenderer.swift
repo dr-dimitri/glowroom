@@ -10,6 +10,14 @@ import GlowroomCore
 enum DevelopRetouchMaskRenderer {
     static let maximumPathRasterDimension = 2_048
 
+    struct Coverage {
+        let image: CIImage
+        /// False proves that reconstruction cannot leave any clean exterior:
+        /// positive Gray8 cells stay positive under clamped interpolation.
+        /// True is conservative; interpolation may cover a very small zero cell.
+        let hasUnselectedPixels: Bool
+    }
+
     static func rasterSize(width: Int, height: Int) -> (width: Int, height: Int)? {
         guard width > 0, height > 0 else { return nil }
         let factor = min(1, Double(maximumPathRasterDimension) / Double(max(width, height)))
@@ -18,6 +26,10 @@ enum DevelopRetouchMaskRenderer {
     }
 
     static func coverage(for stroke: DevelopRetouchStroke, extent: CGRect) throws -> CIImage {
+        try coverageResult(for: stroke, extent: extent).image
+    }
+
+    static func coverageResult(for stroke: DevelopRetouchStroke, extent: CGRect) throws -> Coverage {
         let bytes: Data, width: Int, height: Int
         if let mask = stroke.mask {
             bytes = mask.bytes; width = mask.width; height = mask.height
@@ -37,10 +49,22 @@ enum DevelopRetouchMaskRenderer {
         }
         // CGImage's top-row convention matches the oriented source. Coverage
         // has no color profile; ICC conversion would alter its feather weights.
-        return CIImage(cgImage: bitmap, options: [.colorSpace: NSNull()])
+        // Clamp the raster before scaling so reconstruction at the first/last
+        // cell cannot mix in transparent pixels outside its backing image.
+        // Otherwise a lazy blur graph can make a full selection fade at image
+        // corners, while a simpler clone graph renders the same mask opaque.
+        let image = CIImage(cgImage: bitmap, options: [.colorSpace: NSNull()])
+            .clampedToExtent()
             .transformed(by: CGAffineTransform(a: extent.width / CGFloat(width), b: 0,
                 c: 0, d: extent.height / CGFloat(height), tx: extent.minX, ty: extent.minY))
             .cropped(to: extent)
+        // Reuse the bytes already needed by the image. Ordinary selections
+        // find an exterior zero immediately; a filled raster needs one bounded
+        // scan, without another rasterization or a Core Image readback.
+        try Task.checkCancellation()
+        let hasUnselectedPixels = bytes.contains(0)
+        try Task.checkCancellation()
+        return Coverage(image: image, hasUnselectedPixels: hasUnselectedPixels)
     }
 
     /// Bounds the nonzero coverage and the complete surrounding comparison
