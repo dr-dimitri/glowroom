@@ -138,7 +138,10 @@ struct DevelopRepairInspector: View {
                     .accessibilityValue(selectedMode == mode ? "Ausgewählt" : "Nicht ausgewählt")
                     .accessibilityIdentifier("develop.repair.mode." + mode.rawValue)
             }
-        }.disabled(!ready)
+        // Switching modes only changes UI state and cancels unfinished work.
+        // Keep it reachable during source search/inference and preview handoff;
+        // only operations that use image coordinates need the ready gate.
+        }.disabled(!editor.canEdit)
     }
 
     private var brushControls: some View {

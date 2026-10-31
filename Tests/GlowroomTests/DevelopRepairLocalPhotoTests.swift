@@ -65,7 +65,9 @@ struct DevelopRepairLocalPhotoTests {
             try png(try #require(input.cropping(to: crop)), output.appendingPathComponent(name + "-damaged.png"))
             for (choice, donor) in choices {
                 let stroke = try DevelopRetouchStroke(source: donor, target: target, radius: radius, feather: 0.25, path: path)
-                let previous = try DevelopGeometryRendererTests().previousHealingReference(input, stroke: stroke)
+                // Compare against the immediately preceding local ring-delta
+                // algorithm, rather than the older single global correction.
+                let previous = try DevelopGeometryRendererTests().ringHealingReference(input, stroke: stroke)
                 let extent = CGRect(x: 0, y: 0, width: width, height: height)
                 let graph = try DevelopGeometryRenderer.apply(to: CIImage(cgImage: input),
                     geometry: .init(retouchStrokes: [stroke]), extent: extent)

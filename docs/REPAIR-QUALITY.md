@@ -1,6 +1,6 @@
 # Qualität der lokalen Reparatur
 
-Stand: 31. Oktober 2026. Gilt für Heilen und Entfernen ohne KI; Bedienung und technische Grenzen stehen in [REPAIR-TOOLS.md](REPAIR-TOOLS.md).
+Historisches Prüfprotokoll zur ersten örtlichen Anpassung (PR #228, 31. Oktober 2026). Die nachfolgende Korrektur für zu helle Quellbereiche und blockierte Modustasten ist in [REPAIR-BRIGHTNESS.md](REPAIR-BRIGHTNESS.md) dokumentiert. Aktuelle Bedienung und technische Grenzen stehen in [REPAIR-TOOLS.md](REPAIR-TOOLS.md).
 
 ## Änderung und Referenz
 

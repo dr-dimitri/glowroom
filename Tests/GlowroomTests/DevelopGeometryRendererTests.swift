@@ -583,10 +583,105 @@ struct DevelopGeometryRendererTests {
             format: .RGBA8, colorSpace: source.colorSpace!, deferred: false))
     }
 
-    /// Full-frame reference catches accidental ROI clipping of mask interpolation,
-    /// donor exclusions and Gaussian support. Quality is checked independently in
-    /// DevelopRepairQualityTests against known clean image fields.
+    /// Full-image reference uses separate target and donor tone fields. Unlike
+    /// production it never clips samples or Gaussian output to the repair ROI.
+    /// The independent known-background fixtures assess the resulting quality.
     private func fullFrameHealingReference(_ source: CGImage, stroke: DevelopRetouchStroke) throws -> CGImage {
+        let input = CIImage(cgImage: source), extent = input.extent
+        let raster = try DevelopRetouchMaskRenderer.coverageResult(for: stroke, extent: extent)
+        let coverage = raster.image
+        let translation = CGAffineTransform(translationX: (stroke.target.x - stroke.source.x) * extent.width,
+            y: (stroke.source.y - stroke.target.y) * extent.height)
+        let shifted = input.clampedToExtent().transformed(by: translation)
+        let radius = CGFloat(stroke.radius) * min(extent.width, extent.height)
+        let expanded = coverage.applyingFilter("CIMorphologyMaximum", parameters: [
+            kCIInputRadiusKey: max(1, radius * 0.5)
+        ]).cropped(to: extent)
+        let samplesKernel = try #require(CIColorKernel(source: """
+            kernel vec4 referenceSamples(__sample color, __sample excluded, __sample expanded, vec4 bounds) {
+                vec2 p = destCoord();
+                if (p.x < bounds.x || p.y < bounds.y || p.x >= bounds.z || p.y >= bounds.w ||
+                    excluded.r > 0.000001 || expanded.r <= 0.000001 || color.a <= 0.0) { return vec4(0.0); }
+                return color;
+            }
+            """))
+        let bounds = CIVector(x: extent.minX, y: extent.minY, z: extent.maxX, w: extent.maxY)
+        let targetSamples = try #require(samplesKernel.apply(extent: extent, arguments: [input, coverage, expanded, bounds]))
+        let donorSamples = try #require(samplesKernel.apply(extent: extent,
+            arguments: [shifted, coverage.transformed(by: translation), expanded, bounds]))
+        let targetLocal = targetSamples.applyingFilter("CIGaussianBlur", parameters: [kCIInputRadiusKey: max(1, radius * 0.6)])
+        let donorLocal = donorSamples.applyingFilter("CIGaussianBlur", parameters: [kCIInputRadiusKey: max(1, radius * 0.2)])
+        let context = try #require(DevelopRetouchMaskRenderer.healingContextBounds(for: stroke, extent: extent))
+        let positionBounds = context.isNull || context.isEmpty ? extent : context
+        let positionVector = CIVector(x: positionBounds.minX, y: positionBounds.minY,
+            z: positionBounds.maxX, w: positionBounds.maxY)
+        let momentsKernel = try #require(CIColorKernel(source: """
+            kernel vec4 referencePositions(__sample weighted, vec4 bounds) {
+                vec2 relative = (destCoord() - bounds.xy) / (bounds.zw - bounds.xy);
+                return vec4(relative * weighted.a, 0.0, weighted.a);
+            }
+            """))
+        let moments = try #require(momentsKernel.apply(extent: extent, arguments: [targetSamples, positionVector]))
+        let localMoments = moments.applyingFilter("CIGaussianBlur", parameters: [kCIInputRadiusKey: max(1, radius * 0.6)])
+        let normalization = context.isNull || context.isEmpty ? 1 : extent.width * extent.height / (context.width * context.height)
+        let scaleKernel = try #require(CIColorKernel(source: """
+            kernel vec4 referenceToneScale(__sample weighted, float factor) { return weighted * factor; }
+            """))
+        func average(_ samples: CIImage) throws -> CIImage {
+            // Keep per-ROI support thresholds without hiding pixels from this
+            // full-frame oracle; condition before the half-float reduction.
+            let conditioned = try #require(scaleKernel.apply(extent: extent, arguments: [samples, normalization]))
+            return conditioned.applyingFilter("CIAreaAverage", parameters: [kCIInputExtentKey: CIVector(cgRect: extent)])
+                .clampedToExtent()
+        }
+        let composite = try #require(CIKernel(source: """
+            vec3 referenceTone(vec4 local, vec4 average) {
+                vec3 fallback = average.rgb / average.a;
+                if (local.a <= 0.00001) { return fallback; }
+                return mix(fallback, local.rgb / local.a, smoothstep(0.00001, 0.0001, local.a));
+            }
+            kernel vec4 referenceSeparatedHeal(sampler original, sampler sampled, sampler mask,
+                sampler target, sampler targetMean, sampler donor, sampler donorMean,
+                sampler positions, sampler positionMean, vec4 positionBounds, vec4 imageBounds,
+                float gradientStep, float opacity, float hasExterior) {
+                vec2 p = destCoord();
+                vec4 base = sample(original, samplerTransform(original, p));
+                vec4 source = sample(sampled, samplerTransform(sampled, p));
+                float weight = sample(mask, samplerTransform(mask, p)).r;
+                vec4 targetAverage = sample(targetMean, samplerTransform(targetMean, p));
+                vec4 donorAverage = sample(donorMean, samplerTransform(donorMean, p));
+                vec4 positionAverage = sample(positionMean, samplerTransform(positionMean, p));
+                vec3 correction = vec3(0.0);
+                if (hasExterior > 0.5 && targetAverage.a > 0.000001 && donorAverage.a > 0.000001 && positionAverage.a > 0.000001) {
+                    vec2 centroid = referenceTone(sample(positions, samplerTransform(positions, p)), positionAverage).xy;
+                    vec2 offset = positionBounds.xy + centroid * (positionBounds.zw - positionBounds.xy) - p;
+                    vec2 lo = max(imageBounds.xy + vec2(0.5), p - vec2(gradientStep));
+                    vec2 hi = min(imageBounds.zw - vec2(0.5), p + vec2(gradientStep));
+                    vec3 left = referenceTone(sample(donor, samplerTransform(donor, vec2(lo.x, p.y))), donorAverage);
+                    vec3 right = referenceTone(sample(donor, samplerTransform(donor, vec2(hi.x, p.y))), donorAverage);
+                    vec3 bottom = referenceTone(sample(donor, samplerTransform(donor, vec2(p.x, lo.y))), donorAverage);
+                    vec3 top = referenceTone(sample(donor, samplerTransform(donor, vec2(p.x, hi.y))), donorAverage);
+                    correction = referenceTone(sample(target, samplerTransform(target, p)), targetAverage)
+                        - referenceTone(sample(donor, samplerTransform(donor, p)), donorAverage)
+                        - (right - left) / max(0.000001, hi.x - lo.x) * offset.x
+                        - (top - bottom) / max(0.000001, hi.y - lo.y) * offset.y;
+                }
+                vec3 replacement = max(vec3(0.0), unpremultiply(source).rgb + correction);
+                vec3 color = mix(unpremultiply(base).rgb, replacement, clamp(weight * opacity, 0.0, 1.0));
+                return vec4(color * base.a, base.a);
+            }
+            """))
+        let graph = try #require(composite.apply(extent: extent, roiCallback: { _, _ in extent },
+            arguments: [input, shifted, coverage, targetLocal, try average(targetSamples),
+                donorLocal, try average(donorSamples), localMoments, try average(moments), positionVector,
+                bounds, max(1, radius * 0.1), stroke.opacity, raster.hasUnselectedPixels ? 1.0 : 0.0]))
+        return try #require(EditRenderer.maskCompositingContext().createCGImage(graph, from: extent,
+            format: .RGBA8, colorSpace: source.colorSpace!, deferred: false))
+    }
+
+    /// Immediate pre-fix production algorithm: local target-minus-donor ring
+    /// correction, retained only for explicit before/after photo diagnostics.
+    func ringHealingReference(_ source: CGImage, stroke: DevelopRetouchStroke) throws -> CGImage {
         let input = CIImage(cgImage: source), extent = input.extent
         let coverage = try DevelopRetouchMaskRenderer.coverage(for: stroke, extent: extent)
         let translation = CGAffineTransform(translationX: (stroke.target.x - stroke.source.x) * extent.width,
