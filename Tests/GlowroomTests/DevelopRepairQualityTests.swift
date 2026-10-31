@@ -10,6 +10,82 @@ import Testing
 /// gamma, photographic judgement or private fixture is hidden in the limits.
 @Suite("Repair quality against clean synthetic backgrounds")
 struct DevelopRepairQualityTests {
+    @Test func matchingSourceAndTargetGradientsStayAlignedAwayFromTheStrokeCenter() throws {
+        let size = 256
+        let input = fixture(width: size, height: size) { x, y in
+            if hypot(Double(x) + 0.5 - 192, Double(y) + 0.5 - 128) < 18 { return gray(0.02) }
+            // Both source and target have the exact same smooth slope. Healing
+            // should remove the defect without bending that known illumination.
+            return gray(0.45 + 0.004 * (Float(x % 128) + 0.5 - 64))
+        }
+        let target = try LocalMaskPoint(x: 0.75, y: 0.5)
+        let stroke = try DevelopRetouchStroke(source: .init(x: 0.25, y: 0.5), target: target,
+            radius: 0.09375, feather: 0.4, path: [target])
+        let output = try render(input, stroke: stroke)
+        for x in [180, 186, 192, 198, 204] {
+            let expected: Float = 0.45 + 0.004 * (Float(x) + 0.5 - 192)
+            #expect(abs(pixel(output, width: size, height: size, x: x, y: 128).x - expected) < 0.01,
+                "A matched illumination gradient must stay straight across the repaired disk at x=\(x)")
+        }
+    }
+
+    @Test(arguments: [false, true], [0.35, 1.0])
+    func donorHighlightOrShadowDoesNotChangeTheRepairedBackground(darkDonor: Bool, alpha: Double) throws {
+        let target = try LocalMaskPoint(x: 0.75, y: 0.5)
+        let opacity = alpha < 1 ? 0.6 : 1.0
+        func stroke(_ mode: DevelopRetouchMode) throws -> DevelopRetouchStroke {
+            try .init(mode: mode, source: .init(x: 0.25, y: 0.5), target: target,
+                radius: 0.09375, feather: 0.4, opacity: opacity, path: [target])
+        }
+        func input(_ size: Int) -> CIImage {
+            fixture(width: size, height: size) { x, y in
+                let nx = (Double(x) + 0.5) / Double(size), ny = (Double(y) + 0.5) / Double(size)
+                if nx < 0.5 {
+                    // A broad donor highlight/shadow has a different center
+                    // and ring brightness. Fine texture is independent of it.
+                    let distanceSquared = pow((nx - 0.25) / 0.07, 2) + pow((ny - 0.5) / 0.07, 2)
+                    let illumination = 0.4 + (darkDonor ? -0.25 : 0.25) * exp(-distanceSquared / 2)
+                    let detail = (x * 256 / size) % 4 < 2 ? -0.02 : 0.02
+                    let value = Float(illumination + detail)
+                    return SIMD4(value, value, value, 0.6)
+                }
+                let object = hypot(nx - 0.75, ny - 0.5) < 0.075
+                let value: Float = object ? 0.04 : Float(0.3 + 0.3 * ny)
+                return SIMD4(value, value, value, Float(alpha))
+            }
+        }
+        let original = input(256)
+        let healed = try render(original, stroke: stroke(.heal))
+        for (x, detail): (Int, Float) in [(192, -0.02), (194, 0.02)] {
+            let expected = (0.04 * Float(1 - opacity)
+                + (0.3 + 0.3 * 128.5 / 256 + detail) * Float(opacity)) * Float(alpha)
+            let actual = pixel(healed, width: 256, height: 256, x: x, y: 128)
+            for channel in 0..<3 {
+                #expect(abs(actual[channel] - expected) < 0.025 * Float(alpha),
+                    "The copied highlight/shadow must yield to the known target illumination")
+            }
+            #expect(abs(actual.w - Float(alpha)) < 0.0002)
+        }
+        let detail = pixel(healed, width: 256, height: 256, x: 194, y: 128).x
+            - pixel(healed, width: 256, height: 256, x: 192, y: 128).x
+        #expect(abs(detail / Float(alpha * opacity) - 0.04) < 0.006,
+            "Removing broad donor lighting must retain its fine texture")
+        let cloned = try render(original, stroke: stroke(.clone))
+        let donor = pixel(read(original), width: 256, height: 256, x: 64, y: 128).x / 0.6
+        let expectedClone = (0.04 * Float(1 - opacity) + donor * Float(opacity)) * Float(alpha)
+        #expect(abs(pixel(cloned, width: 256, height: 256, x: 192, y: 128).x - expectedClone) < 0.001)
+        if alpha == 1 {
+            let exported = try render(input(512), stroke: stroke(.heal))
+            let software = try render(original, stroke: stroke(.heal), softwareRenderer: true)
+            #expect(zip(healed, software).allSatisfy { abs($0 - $1) < 0.005 })
+            for x in [192, 194] {
+                let small = pixel(healed, width: 256, height: 256, x: x, y: 128)
+                let large = pixel(exported, width: 512, height: 512, x: x * 2, y: 256)
+                #expect(abs(small.x - large.x) < 0.006)
+            }
+        }
+    }
+
     @Test(arguments: [false, true])
     func nearbyCleanDonorDoesNotPickUpTheRemovedObjectInItsSurroundings(redObject: Bool) throws {
         let width = 256, height = 160

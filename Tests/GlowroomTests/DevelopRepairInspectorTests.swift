@@ -290,6 +290,82 @@ struct DevelopRepairInspectorTests {
     }
 
     @Test
+    func modeButtonsStayUsableWhileWaitingForOriginalCanvas() async throws {
+        let fixture = try await RepairInspectorFixture.make(prepareCanvas: false)
+        let host = RepairInspectorHost(width: 280, height: 900)
+        defer { host.close(); fixture.workspace.clear() }
+        try await host.mount(DevelopRepairInspector(asset: fixture.asset, workspace: fixture.workspace)
+            .environmentObject(fixture.editor))
+
+        for mode in DevelopRepairMode.allCases {
+            let button = try #require(host.element("mode." + mode.rawValue))
+            #expect(button.isAccessibilityEnabled())
+            #expect(button.accessibilityPerformPress())
+            try await host.settle()
+            #expect(fixture.workspace.repairMode == mode)
+            #expect(fixture.workspace.tool == (mode == .redEye ? .redEye : .repair))
+            #expect(try #require(host.element("mode." + mode.rawValue)).accessibilityValue() as? String == "Ausgewählt")
+            let imageControl = mode == .redEye ? "red-eye.strength" : "size"
+            #expect(try #require(host.element(imageControl)).isAccessibilityEnabled() == false)
+        }
+        #expect(fixture.editor.settings(for: fixture.asset.id) == .newEditingSettings)
+        #expect(!fixture.editor.canUndo(assetID: fixture.asset.id))
+        #expect(await fixture.editor.flush())
+    }
+
+    @Test(arguments: DevelopRepairMode.allCases)
+    func modeButtonsCancelPendingCorrectionAndRetainAcceptedRepair(mode: DevelopRepairMode) async throws {
+        let entered = TestStateSignal(false), gate = TestAsyncLatch()
+        var services = DevelopRepairServices.live
+        services.source = { _, _, _, _ in
+            entered.update { $0 = true }
+            // Model a native worker that returns even after cancellation.
+            await gate.wait()
+            return try LocalMaskPoint(x: 0.2, y: 0.2)
+        }
+        let fixture = try await RepairInspectorFixture.make(repairServices: services)
+        let host = RepairInspectorHost(width: 280, height: 900)
+        defer { gate.releaseAll(); host.close(); fixture.workspace.clear() }
+        fixture.editor.selectEditingFunction(.repair, assetID: fixture.asset.id)
+        fixture.workspace.repairSource = try LocalMaskPoint(x: 0.15, y: 0.15)
+        let path = [try LocalMaskPoint(x: 0.5, y: 0.5)]
+        func beginRepair() {
+            fixture.workspace.applyRepair(path: path, asset: fixture.asset, editor: fixture.editor,
+                expectedRevision: fixture.editor.localRevision(for: fixture.asset.id),
+                expectedSession: fixture.editor.aiEditSessionID)
+        }
+        beginRepair()
+        await (try #require(fixture.workspace.repairTask)).value
+        let accepted = fixture.editor.settings(for: fixture.asset.id)
+        #expect(accepted.developGeometry.retouchStrokes.count == 1)
+        fixture.workspace.repairSource = nil
+        try await host.mount(DevelopRepairInspector(asset: fixture.asset, workspace: fixture.workspace)
+            .environmentObject(fixture.editor))
+        beginRepair()
+        let operation = try #require(fixture.workspace.repairTask)
+        try await entered.wait("repair source pending before toolbar mode switch", until: { $0 })
+        try await host.settle()
+        #expect(fixture.workspace.repairBusy)
+        for candidate in DevelopRepairMode.allCases {
+            #expect(try #require(host.element("mode." + candidate.rawValue)).isAccessibilityEnabled())
+        }
+        #expect(try #require(host.element("size")).isAccessibilityEnabled() == false)
+        #expect(try #require(host.element("mode." + mode.rawValue)).accessibilityPerformPress())
+        try await host.settle()
+        #expect(fixture.workspace.repairMode == mode)
+        #expect(fixture.workspace.tool == (mode == .redEye ? .redEye : .repair))
+        #expect(!fixture.workspace.repairBusy && fixture.workspace.repairTask == nil)
+        gate.releaseAll(); await operation.value
+        #expect(fixture.editor.settings(for: fixture.asset.id) == accepted)
+        fixture.editor.undo(assetID: fixture.asset.id)
+        #expect(fixture.editor.settings(for: fixture.asset.id) == .newEditingSettings)
+        #expect(!fixture.editor.canUndo(assetID: fixture.asset.id))
+        fixture.editor.redo(assetID: fixture.asset.id)
+        #expect(fixture.editor.settings(for: fixture.asset.id) == accepted)
+        #expect(await fixture.editor.flush())
+    }
+
+    @Test
     func editingActionsStayDisabledUntilOriginalCanvasIsReady() async throws {
         let fixture = try await RepairInspectorFixture.make(prepareCanvas: false)
         let host = RepairInspectorHost(width: 280, height: 900)
@@ -297,7 +373,7 @@ struct DevelopRepairInspectorTests {
         try await host.mount(DevelopRepairInspector(asset: fixture.asset, workspace: fixture.workspace)
             .environmentObject(fixture.editor))
 
-        for name in ["mode.remove", "mode.heal", "mode.clone", "mode.redEye", "size", "feather", "choose-source", "objects", "overlay",
+        for name in ["size", "feather", "choose-source", "objects", "overlay",
             "visualize-spots", "reset", "detect-people", "detect-dust"] {
             #expect(try #require(host.element(name)).isAccessibilityEnabled() == false, "The \(name) action needs the original image mapping")
         }

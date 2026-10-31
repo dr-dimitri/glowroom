@@ -130,12 +130,13 @@ enum DevelopGeometryRenderer {
                     let contextPixels = UInt64(ceil(context.width)).multipliedReportingOverflow(by: UInt64(ceil(context.height)))
                     guard !contextPixels.overflow else { return nil }
                     // Dilation, shifted selection, cropped source/target,
-                    // weighted difference, blur, normalized correction and a
-                    // sampling reserve: eight bounded float RGBA planes. The
-                    // fallback reduction and its reserve are 1-pixel images.
-                    let contextBytes = contextPixels.partialValue.multipliedReportingOverflow(by: 128)
+                    // two weighted colors, target position moments, their three
+                    // blurs, normalized correction and a sampling reserve:
+                    // twelve bounded float RGBA planes. The three fallback
+                    // reductions/reserves are 1-pixel images.
+                    let contextBytes = contextPixels.partialValue.multipliedReportingOverflow(by: 192)
                     guard !contextBytes.overflow else { return nil }
-                    let withReductions = contextBytes.partialValue.addingReportingOverflow(64)
+                    let withReductions = contextBytes.partialValue.addingReportingOverflow(192)
                     guard !withReductions.overflow else { return nil }
                     let sum = maskBytes.addingReportingOverflow(withReductions.partialValue)
                     guard !sum.overflow else { return nil }; maskBytes = sum.partialValue
@@ -240,9 +241,10 @@ enum DevelopGeometryRenderer {
         // whether it came from a path or a stored mask. Its correction is zero.
         // Avoid constructing an empty native reduction/blur graph in this case.
         if stroke.mode == .heal && stroke.replacement == nil && raster.hasUnselectedPixels {
-            // Transfer the donor's detail while matching illumination locally
-            // along the selection. Like Lightcraft's normalized convolution,
-            // the correction uses only clean surroundings, never the object.
+            // Separate donor texture from its local illumination, then infer
+            // replacement illumination from the clean target surroundings.
+            // Comparing only the two outer rings would retain a broad bright
+            // or dark feature at the donor's center inside the repaired area.
             guard let context = DevelopRetouchMaskRenderer.healingContextBounds(for: stroke, extent: extent) else {
                 throw EditRenderError.unavailable
             }
@@ -255,29 +257,48 @@ enum DevelopGeometryRenderer {
                     kCIInputRadiusKey: max(1, radius * 0.5)
                 ]).cropped(to: context)
                 // A nearby donor's exterior can reach back into the object.
-                // Exclude that translated selection from both sides of the
-                // comparison, with one common alpha weight for valid pairs.
+                // Exclude that translated selection from donor tone samples,
+                // including samples inside the copied area. Target tone uses
+                // only its own clean exterior; both means normalize alpha.
                 let shiftedCoverage = coverage.transformed(by: CGAffineTransform(
                     translationX: (stroke.target.x - stroke.source.x) * extent.width,
                     y: (stroke.source.y - stroke.target.y) * extent.height))
-                guard let difference = healingDifferenceKernel?.apply(extent: context,
-                    arguments: [image.cropped(to: context), shiftedSource.cropped(to: context),
-                        coverage, outside, shiftedCoverage,
-                        CIVector(x: context.minX, y: context.minY, z: context.maxX, w: context.maxY)]) else {
+                let bounds = CIVector(x: context.minX, y: context.minY, z: context.maxX, w: context.maxY)
+                guard let targetSamples = healingSamplesKernel?.apply(extent: context,
+                    arguments: [image.cropped(to: context), coverage, outside, bounds]),
+                      let donorSamples = healingSamplesKernel?.apply(extent: context,
+                    arguments: [shiftedSource.cropped(to: context), shiftedCoverage, outside, bounds]) else {
                     throw EditRenderError.unavailable
                 }
-                // Signed RGB carries weighted target-minus-donor; alpha carries
-                // its common weight. The kernel explicitly zeros samples outside
-                // this ROI even when Core Image fuses it into the Gaussian graph.
-                // Do not extend edge values into the missing surroundings.
-                let blurred = difference.applyingFilter("CIGaussianBlur", parameters: [
+                // Target interpolation reaches across the selected object.
+                // The narrower donor low-pass removes broad source lighting
+                // while retaining fine texture. Both scales follow the stored
+                // radius in source coordinates, including preview/export.
+                let targetTone = targetSamples.applyingFilter("CIGaussianBlur", parameters: [
                     kCIInputRadiusKey: max(1, radius * 0.6)
                 ]).cropped(to: context)
-                let average = difference.applyingFilter("CIAreaAverage", parameters: [
+                let donorTone = donorSamples.applyingFilter("CIGaussianBlur", parameters: [
+                    kCIInputRadiusKey: max(1, radius * 0.2)
+                ]).cropped(to: context)
+                guard let moments = healingMomentsKernel?.apply(extent: context,
+                    arguments: [targetSamples, bounds]) else { throw EditRenderError.unavailable }
+                let localMoments = moments.applyingFilter("CIGaussianBlur", parameters: [
+                    kCIInputRadiusKey: max(1, radius * 0.6)
+                ]).cropped(to: context)
+                let targetAverage = targetSamples.applyingFilter("CIAreaAverage", parameters: [
                     kCIInputExtentKey: CIVector(cgRect: context)
                 ]).clampedToExtent()
+                let donorAverage = donorSamples.applyingFilter("CIAreaAverage", parameters: [
+                    kCIInputExtentKey: CIVector(cgRect: context)
+                ]).clampedToExtent()
+                let momentAverage = moments.applyingFilter("CIAreaAverage", parameters: [
+                    kCIInputExtentKey: CIVector(cgRect: context)
+                ]).clampedToExtent()
+                let gradientStep = max(1, radius * 0.1)
                 guard let local = healingCorrectionKernel?.apply(extent: context,
-                    arguments: [blurred, average]) else { throw EditRenderError.unavailable }
+                    roiCallback: { _, rect in rect.insetBy(dx: -gradientStep, dy: -gradientStep) },
+                    arguments: [targetTone, targetAverage, donorTone, donorAverage,
+                        localMoments, momentAverage, bounds, gradientStep]) else { throw EditRenderError.unavailable }
                 correction = local
             }
         }
@@ -302,38 +323,72 @@ enum DevelopGeometryRenderer {
             return vec4(color * original.a, original.a);
         }
         """)
-    private static let healingDifferenceKernel = CIColorKernel(source: """
-        kernel vec4 retouchHealingDifference(__sample target, __sample source,
-                                             __sample selected, __sample expanded, __sample sourceSelected, vec4 bounds) {
+    private static let healingSamplesKernel = CIColorKernel(source: """
+        kernel vec4 retouchHealingSamples(__sample color, __sample excluded, __sample expanded, vec4 bounds) {
             // Extent metadata alone does not constrain a fused sampler's
             // reconstruction domain. A Gaussian may request surrounding pixels.
             vec2 p = destCoord();
             if (p.x < bounds.x || p.y < bounds.y || p.x >= bounds.z || p.y >= bounds.w) { return vec4(0.0); }
-            // Both selections include the feather, independently of opacity.
+            // Selections include the feather, independently of opacity.
             // Use support, not the tiny antialiasing/feather value at the outer
             // edge. Sparse fractional weights would underflow a half-float
             // reduction and destabilize the normalized color correction.
-            float ring = (selected.r > 0.000001 || sourceSelected.r > 0.000001 || expanded.r <= 0.000001)
-                ? 0.0 : 1.0;
-            float weight = ring * min(target.a, source.a);
-            if (weight <= 0.0) { return vec4(0.0); }
-            vec3 delta = unpremultiply(target).rgb - unpremultiply(source).rgb;
-            return vec4(delta * weight, weight);
+            if (excluded.r > 0.000001 || expanded.r <= 0.000001 || color.a <= 0.0) { return vec4(0.0); }
+            // Premultiplied RGB already carries exactly this alpha weight.
+            return color;
         }
         """)
-    private static let healingCorrectionKernel = CIColorKernel(source: """
-        kernel vec4 retouchHealingCorrection(__sample local, __sample average) {
-            vec3 fallback = vec3(0.0);
-            if (average.a > 0.000001) { fallback = average.rgb / average.a; }
+    private static let healingMomentsKernel = CIColorKernel(source: """
+        kernel vec4 retouchHealingMoments(__sample weighted, vec4 bounds) {
+            vec2 p = destCoord();
+            if (p.x < bounds.x || p.y < bounds.y || p.x >= bounds.z || p.y >= bounds.w) { return vec4(0.0); }
+            // Bounded 0...1 coordinates avoid large absolute image positions
+            // in the half-float weighted moment/blur intermediates.
+            vec2 relative = (p - bounds.xy) / (bounds.zw - bounds.xy);
+            return vec4(relative * weighted.a, 0.0, weighted.a);
+        }
+        """)
+    private static let healingCorrectionKernel = CIKernel(source: """
+        vec3 normalizedTone(vec4 local, vec4 average) {
+            vec3 fallback = average.rgb / average.a;
             // Never divide an unsupported sample. A later zero blend weight
             // would not make an infinite or undefined intermediate safe.
-            if (local.a <= 0.00001) { return vec4(fallback, 1.0); }
-            vec3 correction = local.rgb / local.a;
+            if (local.a <= 0.00001) { return fallback; }
+            vec3 tone = local.rgb / local.a;
             // Broad mask interiors can exceed the blur's support. Fade into
-            // the clean ring mean for weights 1e-5...1e-4; an empty ring yields
-            // zero. This avoids division noise and abrupt fallback boundaries.
+            // the clean mean for weights 1e-5...1e-4. This avoids division
+            // noise and abrupt fallback boundaries.
             float support = smoothstep(0.00001, 0.0001, local.a);
-            return vec4(mix(fallback, correction, support), 1.0);
+            return mix(fallback, tone, support);
+        }
+        kernel vec4 retouchHealingCorrection(sampler target, sampler targetAverage,
+            sampler donor, sampler donorAverage, sampler moments, sampler momentAverage, vec4 bounds, float gradientStep) {
+            vec2 p = destCoord();
+            if (p.x < bounds.x || p.y < bounds.y || p.x >= bounds.z || p.y >= bounds.w) { return vec4(0.0); }
+            vec4 targetMean = sample(targetAverage, samplerTransform(targetAverage, p));
+            vec4 donorMean = sample(donorAverage, samplerTransform(donorAverage, p));
+            vec4 positionMean = sample(momentAverage, samplerTransform(momentAverage, p));
+            // An empty exterior or completely invalid donor gives no reliable
+            // color match. Keep the uncorrected donor, including full masks.
+            if (targetMean.a <= 0.000001 || donorMean.a <= 0.000001 || positionMean.a <= 0.000001) { return vec4(0.0); }
+            vec3 targetTone = normalizedTone(sample(target, samplerTransform(target, p)), targetMean);
+            vec3 donorTone = normalizedTone(sample(donor, samplerTransform(donor, p)), donorMean);
+            vec2 centroid = normalizedTone(sample(moments, samplerTransform(moments, p)), positionMean).xy;
+            vec2 offset = bounds.xy + centroid * (bounds.zw - bounds.xy) - p;
+            // The outer ring is asymmetric away from the brush center. Keep
+            // the donor's first-order trend in that extrapolation, otherwise a
+            // matching source/target gradient would bend into a bright halo.
+            // Clamp differences at the image/context edge, never sample a zero
+            // exterior as if it were a dark source pixel.
+            vec2 lo = max(bounds.xy + vec2(0.5), p - vec2(gradientStep));
+            vec2 hi = min(bounds.zw - vec2(0.5), p + vec2(gradientStep));
+            vec3 left = normalizedTone(sample(donor, samplerTransform(donor, vec2(lo.x, p.y))), donorMean);
+            vec3 right = normalizedTone(sample(donor, samplerTransform(donor, vec2(hi.x, p.y))), donorMean);
+            vec3 bottom = normalizedTone(sample(donor, samplerTransform(donor, vec2(p.x, lo.y))), donorMean);
+            vec3 top = normalizedTone(sample(donor, samplerTransform(donor, vec2(p.x, hi.y))), donorMean);
+            vec3 slopeX = (right - left) / max(0.000001, hi.x - lo.x);
+            vec3 slopeY = (top - bottom) / max(0.000001, hi.y - lo.y);
+            return vec4(targetTone - donorTone - slopeX * offset.x - slopeY * offset.y, 1.0);
         }
         """)
     private static let strokeKernel = CIColorKernel(source: """
