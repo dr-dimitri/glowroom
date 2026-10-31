@@ -709,6 +709,22 @@ private final class RepairCanvasHost {
         hosting.layoutSubtreeIfNeeded()
         try await Task.sleep(for: .milliseconds(40))
         hosting.layoutSubtreeIfNeeded(); hosting.displayIfNeeded()
+        if withInspector && fixture.workspace.tool != .redEye {
+            let disclosure = try #require(WorkspaceAccessibilityElement.descendants(of: hosting).first {
+                $0.accessibilityRole() == .button &&
+                    ($0.accessibilityIdentifier() == "develop.repair.more-options" || $0.accessibilityLabel() == "Weitere Optionen")
+            }, "Missing repair options disclosure")
+            try #require(disclosure.accessibilityPerformPress())
+            let deadline = ContinuousClock.now + .seconds(5)
+            while !WorkspaceAccessibilityElement.descendants(of: hosting).contains(where: {
+                $0.accessibilityIdentifier() == "develop.repair.choose-source"
+            }) {
+                guard ContinuousClock.now < deadline else {
+                    throw TestSchedulingTimeout(operation: "mount expanded repair inspector", lastState: "source controls are not accessible")
+                }
+                try await settle()
+            }
+        }
         #expect(try inputView().inputEnabled)
     }
 

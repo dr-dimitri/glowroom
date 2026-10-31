@@ -75,9 +75,12 @@ struct DevelopRepairScreenshotTests {
         await workspace.refreshRepairAIAvailability()
         #expect(!workspace.repairAIReady)
         try await capture("remove-missing-model")
+        try await host.setOptionsExpanded(true)
         try await host.reveal(identifier: "develop.repair.detect-dust")
         try await capture("detection-actions")
         if baseline { #expect(await editor.finishSaving()); return }
+        try await host.setOptionsExpanded(false)
+        try await host.scrollToTop()
 
         try await host.press("develop.repair.ai.setup")
         #expect(modelDestination == .repair)
@@ -94,6 +97,7 @@ struct DevelopRepairScreenshotTests {
         let clone = try #require(editor.settings(for: asset.id).developGeometry.retouchStrokes.first)
         workspace.repairSelectedStrokeID = clone.id
         try await mount()
+        try await host.setOptionsExpanded(true)
         try await capture("clone-source-target")
         editor.undo(assetID: asset.id)
         #expect(editor.settings(for: asset.id).developGeometry.retouchStrokes.isEmpty)
@@ -103,6 +107,7 @@ struct DevelopRepairScreenshotTests {
         try await mount()
 
         try await host.press("develop.repair.mode.remove")
+        try await host.setOptionsExpanded(true)
         await workspace.detectRepairCandidates(.dust)
         // Detection is explicitly controlled above; the same real list, mask and action are used.
         try await wait { workspace.repairCandidates.count == 2 }
@@ -115,6 +120,8 @@ struct DevelopRepairScreenshotTests {
         #expect(editor.settings(for: asset.id).developGeometry.retouchStrokes.count == 1)
         try await mount()
         workspace.repairOverlay = .never
+        try await host.setOptionsExpanded(false)
+        try await host.scrollToTop()
         try await capture("accepted-removal", evidence: "real removal composition for one selected synthetic dust candidate; other candidate unchanged; no model inference")
         editor.undo(assetID: asset.id)
         #expect(editor.settings(for: asset.id).developGeometry.retouchStrokes.isEmpty)
@@ -223,6 +230,23 @@ private final class RepairAcceptanceHost {
     func press(_ identifier: String) async throws {
         let element = try #require(elements.first { $0.accessibilityIdentifier() == identifier }, "Missing \(identifier)")
         try #require(element.accessibilityPerformPress()); try await settle()
+    }
+    func setOptionsExpanded(_ expanded: Bool) async throws {
+        let disclosure = try #require(elements.first {
+            $0.accessibilityRole() == .button &&
+                ($0.accessibilityIdentifier() == "develop.repair.more-options" || $0.accessibilityLabel() == "Weitere Optionen")
+        }, "Missing repair options disclosure")
+        let current = try #require(disclosure.accessibilityValue() as? String) == "Ausgeklappt"
+        if current != expanded {
+            try #require(disclosure.accessibilityPerformPress())
+        }
+        let deadline = ContinuousClock.now + .seconds(5)
+        while elements.contains(where: { $0.accessibilityIdentifier() == "develop.repair.choose-source" }) != expanded {
+            guard ContinuousClock.now < deadline else {
+                throw TestSchedulingTimeout(operation: "set native repair options", lastState: "expanded content visibility has not settled")
+            }
+            try await settle()
+        }
     }
     func send(_ type: NSEvent.EventType, normalized: CGPoint) async throws {
         var pending: [NSView] = [hosting]

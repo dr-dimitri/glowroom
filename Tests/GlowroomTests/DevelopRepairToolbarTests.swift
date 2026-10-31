@@ -46,11 +46,12 @@ struct DevelopRepairToolbarTests {
         let source = AISourceIdentity.original(.init(fileURL: imageURL, modifiedAt: asset.modifiedAt, fileSize: asset.fileSize))
         workspace.bind(source: source)
         workspace.markDisplayed(source: source, settings: .newEditingSettings)
-        let host = WorkspaceSectionTestHost(size: NSSize(width: width, height: 900))
+        let host = WorkspaceSectionTestHost(size: NSSize(width: width, height: 900),
+            appearance: NSAppearance(named: .darkAqua))
         defer { host.close(); workspace.clear() }
         try await host.mount(RepairToolbarInspector(library: library)
             .environmentObject(editor).environmentObject(metadata).environmentObject(layout)
-            .environmentObject(masks).environmentObject(workspace))
+            .environmentObject(masks).environmentObject(workspace).preferredColorScheme(.dark))
         func control(_ identifier: String) throws -> WorkspaceAccessibilityElement {
             try #require(host.accessibilityElements.first { $0.accessibilityIdentifier() == identifier }, "Missing inspector control: \(identifier)")
         }
@@ -64,12 +65,28 @@ struct DevelopRepairToolbarTests {
             #expect(!elements.contains { $0.accessibilityLabel() == "Mit KI reparieren" })
             #expect(!elements.contains { $0.accessibilityIdentifier() == "workspace.ai-develop" })
             #expect(try control("develop.tool.repair").accessibilityLabel() == "Reparieren")
+            let frames = try DevelopCanvasTool.toolbarCases.map { tool in
+                let button = try control("develop.tool.\(tool.rawValue)")
+                #expect(button.accessibilityLabel() == tool.title)
+                return button.accessibilityFrame()
+            }
+            let firstFrame = try #require(frames.first)
+            for frame in frames {
+                #expect(abs(frame.midY - firstFrame.midY) < 1, "All four icons share a compact row")
+                #expect(frame.height >= 32 && frame.height <= 42)
+                #expect(frame.width >= 44, "Icon-only tools retain a generous click target")
+            }
         }
         try assertSingleRetouchEntry()
         #expect(try control("develop.tool.repair").accessibilityValue() as? String == "Inaktiv")
         #expect(try control("develop.tool.repair").accessibilityPerformPress())
         try await host.settle()
         #expect(workspace.tool == .repair)
+        if let path = ProcessInfo.processInfo.environment["GLOWROOM_REPAIR_SNAPSHOTS"] {
+            let output = URL(fileURLWithPath: path, isDirectory: true)
+            try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
+            try host.snapshot(to: output.appendingPathComponent("repair-toolbar-panel-\(Int(width)).png"))
+        }
         #expect(try control("develop.repair.mode.redEye").accessibilityPerformPress())
         try await host.settle()
         #expect(workspace.tool == .redEye)

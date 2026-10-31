@@ -18,9 +18,9 @@ struct DevelopRepairInspectorTests {
         try await host.mount(DevelopRepairInspector(asset: fixture.asset, workspace: fixture.workspace)
             .environmentObject(fixture.editor))
 
-        #expect(host.fittingHeight <= 900)
-        for name in ["mode.remove", "mode.heal", "mode.clone", "mode.redEye", "size", "feather", "choose-source", "objects", "overlay",
-            "visualize-spots", "generative", "ai.setup", "reset", "close", "detect-people", "detect-dust"] {
+        #expect(host.fittingHeight <= 550, "The main repair controls should fit without a long palette")
+        for name in ["mode.remove", "mode.heal", "mode.clone", "mode.redEye", "size", "feather", "objects", "overlay",
+            "visualize-spots", "threshold", "generative", "ai.setup", "more-options", "reset", "close"] {
             let control = try #require(host.element(name), "Missing repair control: \(name)")
             let frame = control.accessibilityFrame()
             #expect(frame.width > 0 && frame.height > 0, "The \(name) control must have a native frame")
@@ -29,7 +29,18 @@ struct DevelopRepairInspectorTests {
         #expect(try #require(host.element("generative")).isAccessibilityEnabled() == false)
         #expect(host.element("detect-reflections") == nil)
         #expect(host.element("ai.download") == nil && host.element("ai.import") == nil)
-        #expect(host.element("threshold") == nil)
+        #expect(try #require(host.element("threshold")).isAccessibilityEnabled() == false)
+        #expect(host.element("choose-source") == nil && host.element("detect-dust") == nil,
+            "Secondary actions start inside the collapsed options disclosure")
+        let modeFrames = try DevelopRepairMode.allCases.map {
+            try #require(host.element("mode." + $0.rawValue)).accessibilityFrame()
+        }
+        let firstMode = try #require(modeFrames.first)
+        #expect(modeFrames.allSatisfy { abs($0.midY - firstMode.midY) <= 1 }, "All modes share one compact row")
+        #expect(modeFrames.allSatisfy { $0.width >= 28 && $0.height >= 28 }, "Icon controls keep usable hit targets")
+        let reset = try #require(host.element("reset")).accessibilityFrame()
+        let close = try #require(host.element("close")).accessibilityFrame()
+        #expect(abs(reset.midY - close.midY) <= 1, "Reset and close share the footer")
         #expect(host.sliders.allSatisfy { $0.bounds.width >= 70 }, "Every slider must retain a usable native track")
         // Static SwiftUI text is exposed as AXValue, while controls commonly
         // expose AXLabel. Read both public attributes for actions and status.
@@ -39,6 +50,22 @@ struct DevelopRepairInspectorTests {
         #expect(host.accessibleText.contains("Rote Augen"))
         #expect(!host.accessibleText.contains("Spiegelungsentfernung"))
         try host.snapshotIfRequested("repair-inspector-\(Int(width))")
+        fixture.workspace.repairOverlay = .automatic
+        try await host.settle()
+        let automaticOverlay = try #require(host.element("overlay")).accessibilityFrame()
+        #expect(automaticOverlay.width > 0 && automaticOverlay.height > 0)
+        #expect(host.screenFrame.insetBy(dx: -1, dy: -1).contains(automaticOverlay),
+            "The longest overlay choice must fit beside Werkzeugüberlagerung")
+        try host.snapshotIfRequested("repair-inspector-automatic-\(Int(width))")
+        fixture.workspace.repairOverlay = .always
+        try await host.settle()
+        try await host.expandOptions()
+        for name in ["choose-source", "detect-people", "detect-dust"] {
+            let control = try #require(host.element(name), "Missing expanded repair action: \(name)")
+            #expect(control.isAccessibilityEnabled())
+            #expect(host.screenFrame.insetBy(dx: -1, dy: -1).contains(control.accessibilityFrame()))
+        }
+        try host.snapshotIfRequested("repair-inspector-options-\(Int(width))")
         #expect(await fixture.editor.flush())
     }
 
@@ -123,6 +150,7 @@ struct DevelopRepairInspectorTests {
         fixture.editor.setSettings(edited, for: fixture.asset.id)
         try await host.mount(DevelopRepairInspector(asset: fixture.asset, workspace: fixture.workspace)
             .environmentObject(fixture.editor))
+        try await host.expandOptions()
 
         #expect(fixture.workspace.repairObjectDetection)
         #expect(try #require(host.element("objects")).accessibilityPerformPress())
@@ -216,6 +244,7 @@ struct DevelopRepairInspectorTests {
         defer { host.close(); fixture.workspace.clear() }
         try await host.mount(DevelopRepairInspector(asset: fixture.asset, workspace: fixture.workspace)
             .environmentObject(fixture.editor))
+        try await host.expandOptions()
         fixture.workspace.repairAIReady = true
         fixture.workspace.repairAIModelName = "LaMa-Test"
         try await host.settle()
@@ -268,6 +297,7 @@ struct DevelopRepairInspectorTests {
         fixture.editor.setSettings(edited, for: fixture.asset.id)
         try await host.mount(DevelopRepairInspector(asset: fixture.asset, workspace: fixture.workspace)
             .environmentObject(fixture.editor))
+        try await host.expandOptions()
 
         #expect(try #require(host.element("remove-last")).accessibilityPerformPress())
         var oneRepair = edited
@@ -372,9 +402,10 @@ struct DevelopRepairInspectorTests {
         defer { host.close(); fixture.workspace.clear() }
         try await host.mount(DevelopRepairInspector(asset: fixture.asset, workspace: fixture.workspace)
             .environmentObject(fixture.editor))
+        try await host.expandOptions()
 
         for name in ["size", "feather", "choose-source", "objects", "overlay",
-            "visualize-spots", "reset", "detect-people", "detect-dust"] {
+            "visualize-spots", "threshold", "reset", "detect-people", "detect-dust"] {
             #expect(try #require(host.element(name)).isAccessibilityEnabled() == false, "The \(name) action needs the original image mapping")
         }
         #expect(try #require(host.element("close")).isAccessibilityEnabled())
@@ -398,6 +429,7 @@ struct DevelopRepairInspectorTests {
         defer { host.close(); fixture.workspace.clear() }
         try await host.mount(DevelopRepairInspector(asset: fixture.asset, workspace: fixture.workspace)
             .environmentObject(fixture.editor))
+        try await host.expandOptions()
 
         #expect(try #require(host.element("detect-people")).accessibilityPerformPress())
         try await waitUntil("repair candidate publication") { !fixture.workspace.repairCandidates.isEmpty }
@@ -444,6 +476,7 @@ struct DevelopRepairInspectorTests {
         fixture.editor.setSettings(repaired, for: fixture.asset.id)
         try await host.mount(DevelopRepairInspector(asset: fixture.asset, workspace: fixture.workspace)
             .environmentObject(fixture.editor))
+        try await host.expandOptions()
 
         #expect(host.element("ai.accept") == nil)
         #expect(host.element("ai.discard") == nil)
@@ -473,6 +506,7 @@ struct DevelopRepairInspectorTests {
         let original = try #require(fixture.editor.settings(for: fixture.asset.id).developGeometry.retouchStrokes.last)
         try await host.mount(DevelopRepairInspector(asset: fixture.asset, workspace: fixture.workspace)
             .environmentObject(fixture.editor))
+        try await host.expandOptions()
         #expect(host.element("ai.accept") == nil)
         #expect(host.element("ai.discard") == nil)
         #expect(try #require(host.element("next-source")).isAccessibilityEnabled())
@@ -588,6 +622,21 @@ private final class RepairInspectorHost {
 
     func element(_ name: String) -> WorkspaceAccessibilityElement? {
         elements.first { $0.accessibilityIdentifier() == "develop.repair." + name }
+    }
+
+    func expandOptions() async throws {
+        let disclosure = try #require(elements.first {
+            $0.accessibilityRole() == .button &&
+                ($0.accessibilityIdentifier() == "develop.repair.more-options" || $0.accessibilityLabel() == "Weitere Optionen")
+        }, "Missing repair options disclosure")
+        try #require(disclosure.accessibilityPerformPress())
+        let deadline = ContinuousClock.now + .seconds(5)
+        while element("choose-source") == nil {
+            guard ContinuousClock.now < deadline else {
+                throw TestSchedulingTimeout(operation: "expand native repair options", lastState: "source controls are not accessible")
+            }
+            try await settle()
+        }
     }
 
     func modelElement(_ name: String) -> WorkspaceAccessibilityElement? {
