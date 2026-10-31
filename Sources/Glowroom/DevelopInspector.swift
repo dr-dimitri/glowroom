@@ -133,7 +133,7 @@ struct DevelopInspector: View {
     }
 
     private func developToolStrip(_ asset: PhotoAsset) -> some View {
-        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 3), count: 3), spacing: 3) {
+        HStack(spacing: 3) {
             ForEach(DevelopCanvasTool.toolbarCases) { tool in
                 Button {
                     finishInput(assetID: asset.id)
@@ -146,19 +146,18 @@ struct DevelopInspector: View {
                         developWorkspace.tool = tool
                     }
                 } label: {
-                    VStack(spacing: 4) {
-                        Image(systemName: tool.symbol).font(.system(size: 16))
-                        Text(tool.title).font(.system(size: 13)).lineLimit(2)
-                    }.frame(maxWidth: .infinity).frame(height: 58)
+                    Image(systemName: tool.symbol).font(.system(size: 18))
+                        .frame(maxWidth: .infinity).frame(height: 38)
                         .foregroundStyle(toolIsActive(tool) ? Color.white.opacity(0.9) : Theme.muted)
-                        .background(toolIsActive(tool) ? Color.white.opacity(0.09) : .clear)
-                        .overlay(alignment: .topTrailing) {
+                        .background(toolIsActive(tool) ? Color.white.opacity(0.09) : .clear,
+                            in: RoundedRectangle(cornerRadius: 4))
+                        .overlay(alignment: .bottom) {
                             if toolIsActive(tool) {
-                                Image(systemName: "checkmark.circle.fill").font(.system(size: 13))
-                                    .padding(3).accessibilityHidden(true)
+                                Capsule().fill(Theme.accent).frame(width: 18, height: 2)
+                                    .padding(.bottom, 3).accessibilityHidden(true)
                             }
                         }
-                }.buttonStyle(.plain).help(tool.title).accessibilityLabel(tool.title)
+                }.buttonStyle(.plain).delayedTooltip(tool.title).accessibilityLabel(tool.title)
                     .accessibilityIdentifier("develop.tool.\(tool.rawValue)")
                     .accessibilityValue(toolIsActive(tool) ? "Aktiv" : "Inaktiv")
                     .disabled(!editor.canEdit || !library.canModify || library.comparesOriginal || library.comparesCurrentSourceWithoutSettings

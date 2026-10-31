@@ -36,6 +36,7 @@ struct DevelopRepairInspector: View {
     @Environment(\.openAIModels) private var openAIModels
     @ViewState private var actionTask: Task<Void, Never>?
     @ViewState private var showsHelp = false
+    @ViewState private var showsMoreOptions = false
 
     private var ready: Bool { editor.canEdit && workspace.isOriginalCanvasReady && !workspace.repairBusy }
     private var geometry: DevelopGeometry { editor.settings(for: asset.id).developGeometry }
@@ -51,13 +52,12 @@ struct DevelopRepairInspector: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Text("Reparieren").font(.system(size: 15, weight: .semibold))
                 Spacer(minLength: 0)
-                Button("Hilfe", systemImage: "questionmark.circle") { showsHelp = true }
-                    .labelStyle(.iconOnly).accessibilityIdentifier("develop.repair.help")
-            }
+                Text(selectedMode.title).font(.system(size: 15, weight: .semibold))
+                    .accessibilityIdentifier("develop.repair.title")
+            }.padding(.bottom, 2)
             modeControls
             if workspace.repairBusy {
                 HStack(spacing: 8) {
@@ -68,17 +68,20 @@ struct DevelopRepairInspector: View {
                         .accessibilityIdentifier("develop.repair.cancel")
                 }
             }
-            Divider()
+            sectionDivider
             if selectedMode == .redEye {
                 redEyeControls
             } else {
                 brushControls
                 if selectedMode == .remove {
-                    Divider()
                     aiControls
-                    Divider()
-                    detectionControls
+                    Toggle("Objekte erkennen", isOn: $workspace.repairObjectDetection)
+                        .disabled(!ready).accessibilityIdentifier("develop.repair.objects")
                 }
+                sourceStatus
+                additionalControls
+                sectionDivider
+                overlayControls
                 if let status = workspace.repairStatus {
                     Text(status).foregroundStyle(Theme.muted)
                         .fixedSize(horizontal: false, vertical: true).accessibilityIdentifier("develop.repair.status")
@@ -88,22 +91,24 @@ struct DevelopRepairInspector: View {
                 Text(error).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("develop.repair.error")
             }
-            Divider()
-            if selectedMode != .redEye {
-                Button("Alle Reparaturen löschen") {
-                    actionTask?.cancel()
-                    workspace.resetRepairs(asset: asset, editor: editor)
-                }.disabled(!ready || strokes.isEmpty).accessibilityIdentifier("develop.repair.reset")
-            }
+            sectionDivider
             HStack {
                 Spacer(minLength: 0)
+                if selectedMode != .redEye {
+                    Button("Zurücksetzen") {
+                        actionTask?.cancel()
+                        workspace.resetRepairs(asset: asset, editor: editor)
+                    }.disabled(!ready || strokes.isEmpty).accessibilityIdentifier("develop.repair.reset")
+                        .help("Alle Reparaturen löschen")
+                    Rectangle().fill(Theme.line).frame(width: 1, height: 16).padding(.horizontal, 4)
+                }
                 Button("Schließen") {
                     actionTask?.cancel()
                     editor.endEditing(assetID: asset.id)
                     workspace.closeRepair()
                 }.accessibilityIdentifier("develop.repair.close")
-            }
-        }.font(.system(size: 13)).foregroundStyle(Theme.text).padding(.vertical, 10)
+            }.buttonStyle(.plain).padding(.vertical, 2)
+        }.font(.system(size: 13)).foregroundStyle(Theme.text).toggleStyle(.checkbox).padding(.vertical, 10)
             .onDisappear { cancelWork(); editor.endEditing(assetID: asset.id) }
             .task(id: selectedMode) {
                 if selectedMode == .remove { await workspace.refreshRepairAIAvailability() }
@@ -111,8 +116,13 @@ struct DevelopRepairInspector: View {
             .sheet(isPresented: $showsHelp) { repairHelp }
     }
 
+    private var sectionDivider: some View {
+        Rectangle().fill(Theme.line).frame(height: 1).accessibilityHidden(true)
+    }
+
     private var modeControls: some View {
-        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
+        HStack(spacing: 6) {
+            Text("Modus:").foregroundStyle(Theme.muted)
             ForEach(DevelopRepairMode.allCases) { mode in
                 Button {
                     actionTask?.cancel()
@@ -120,24 +130,22 @@ struct DevelopRepairInspector: View {
                     editor.selectEditingFunction(.repair, assetID: asset.id)
                     workspace.selectRepairMode(mode)
                 } label: {
-                    VStack(spacing: 4) {
-                        modeSymbol(mode).frame(width: 18, height: 20)
-                        Text(mode.title).fixedSize(horizontal: false, vertical: true)
-                    }.padding(.horizontal, 4).padding(.vertical, 5).frame(maxWidth: .infinity, minHeight: 48)
-                        .foregroundStyle(selectedMode == mode ? Theme.text : Theme.muted)
+                    modeSymbol(mode).font(.system(size: 18)).frame(width: 32, height: 32)
+                        .foregroundStyle(selectedMode == mode ? Theme.accent : Theme.muted)
                         .background(selectedMode == mode ? Theme.elevated : .clear,
-                            in: RoundedRectangle(cornerRadius: 5))
-                        .overlay(RoundedRectangle(cornerRadius: 5)
-                            .stroke(selectedMode == mode ? Theme.accent : Theme.line, lineWidth: selectedMode == mode ? 2 : 1))
-                        .overlay(alignment: .topTrailing) {
-                            if selectedMode == mode {
-                                Image(systemName: "checkmark.circle.fill").padding(4).accessibilityHidden(true)
-                            }
+                            in: RoundedRectangle(cornerRadius: 4))
+                        .overlay(alignment: .bottom) {
+                            Rectangle().fill(selectedMode == mode ? Theme.accent : .clear)
+                                .frame(width: 18, height: 2).accessibilityHidden(true)
                         }
-                }.buttonStyle(.plain).accessibilityLabel(mode.title)
+                }.buttonStyle(.plain).delayedTooltip(mode.title).accessibilityLabel(mode.title)
                     .accessibilityValue(selectedMode == mode ? "Ausgewählt" : "Nicht ausgewählt")
                     .accessibilityIdentifier("develop.repair.mode." + mode.rawValue)
             }
+            Spacer(minLength: 0)
+            Button("Hilfe", systemImage: "questionmark.circle") { showsHelp = true }
+                .labelStyle(.iconOnly).buttonStyle(.plain).foregroundStyle(Theme.muted)
+                .help("Hilfe zu Reparieren").accessibilityIdentifier("develop.repair.help")
         // Switching modes only changes UI state and cancels unfinished work.
         // Keep it reachable during source search/inference and preview handoff;
         // only operations that use image coordinates need the ready gate.
@@ -146,24 +154,55 @@ struct DevelopRepairInspector: View {
 
     private var brushControls: some View {
         VStack(alignment: .leading, spacing: 10) {
-            sliderRow("Pinselgröße", value: $workspace.repairRadius, range: 0.0005...0.15,
+            sliderRow("Größe", value: $workspace.repairRadius, range: 0.0005...0.15,
                 valueText: brushDiameterText, identifier: "size", neutral: 0.035)
             if !usesFrozenSelection {
                 sliderRow("Weiche Kante", value: $workspace.repairFeather, range: 0...1,
                     valueText: "\(Int((workspace.repairFeather * 100).rounded())) %", identifier: "feather", neutral: 0.5)
             }
-            if selectedMode == .remove {
-                Toggle("Gemaltes Objekt auswählen", isOn: $workspace.repairObjectDetection)
-                    .disabled(!ready).accessibilityIdentifier("develop.repair.objects")
+        }
+    }
+
+    @ViewBuilder private var sourceStatus: some View {
+        if selectedMode != .remove || !workspace.repairUsesAI {
+            if workspace.repairChoosesSource || (selectedMode == .clone && workspace.repairSource == nil) {
+                Label("Quelle im Bild wählen", systemImage: "scope")
+                    .accessibilityIdentifier("develop.repair.source-status")
+            } else if workspace.repairSource != nil {
+                Label("Quelle gesetzt", systemImage: "checkmark.circle")
+                    .accessibilityIdentifier("develop.repair.source-status")
             }
+        }
+    }
+
+    private var additionalControls: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            // An explicit button keeps the disclosure's entire native hit area
+            // inside narrow inspectors, including its accessibility action.
+            Button { showsMoreOptions.toggle() } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: showsMoreOptions ? "chevron.down" : "chevron.right")
+                        .font(.system(size: 10, weight: .semibold)).frame(width: 10).accessibilityHidden(true)
+                    Text("Weitere Optionen")
+                    Spacer(minLength: 0)
+                }.foregroundStyle(Theme.muted).contentShape(Rectangle())
+            }.buttonStyle(.plain).accessibilityLabel("Weitere Optionen")
+                .accessibilityValue(showsMoreOptions ? "Ausgeklappt" : "Eingeklappt")
+                .accessibilityIdentifier("develop.repair.more-options")
+            if showsMoreOptions {
+                VStack(alignment: .leading, spacing: 10) {
+                    sourceControls
+                    if selectedMode == .remove {
+                        detectionControls
+                    }
+                }.padding(.bottom, 2)
+            }
+        }
+    }
+
+    private var sourceControls: some View {
+        VStack(alignment: .leading, spacing: 10) {
             if selectedMode != .remove || !workspace.repairUsesAI {
-                if workspace.repairChoosesSource || (selectedMode == .clone && workspace.repairSource == nil) {
-                    Label("Quelle im Bild wählen", systemImage: "scope")
-                        .accessibilityIdentifier("develop.repair.source-status")
-                } else if workspace.repairSource != nil {
-                    Label("Quelle gesetzt", systemImage: "checkmark.circle")
-                        .accessibilityIdentifier("develop.repair.source-status")
-                }
                 Button("Neue Quelle im Bild wählen") {
                     editor.endEditing(assetID: asset.id)
                     workspace.chooseRepairSource()
@@ -191,14 +230,27 @@ struct DevelopRepairInspector: View {
                 Button("Letzte Reparatur löschen", action: removeLastStroke)
                     .disabled(!ready).accessibilityIdentifier("develop.repair.remove-last")
             }
-            Picker("Markierungen", selection: $workspace.repairOverlay) {
-                ForEach(DevelopRepairOverlay.allCases) { overlay in Text(overlay.title).tag(overlay) }
-            }.disabled(!ready).accessibilityIdentifier("develop.repair.overlay")
-            Toggle("Staub hervorheben", isOn: $workspace.repairVisualizesSpots)
-                .disabled(!ready).accessibilityIdentifier("develop.repair.visualize-spots")
-            if workspace.repairVisualizesSpots {
-                sliderRow("Empfindlichkeit", value: $workspace.repairSpotThreshold, range: 0...1,
-                    valueText: "\(Int((workspace.repairSpotThreshold * 100).rounded())) %", identifier: "threshold", neutral: 0.5)
+        }
+    }
+
+    private var overlayControls: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 6) {
+                Text("Werkzeugüberlagerung:").foregroundStyle(Theme.muted)
+                Picker("Werkzeugüberlagerung", selection: $workspace.repairOverlay) {
+                    ForEach(DevelopRepairOverlay.allCases) { overlay in Text(overlay.title).tag(overlay) }
+                }.labelsHidden().pickerStyle(.menu).buttonStyle(.borderless).fixedSize()
+                    .disabled(!ready).accessibilityIdentifier("develop.repair.overlay")
+                Spacer(minLength: 0)
+            }
+            HStack(spacing: 10) {
+                Toggle("Bereiche anzeigen", isOn: $workspace.repairVisualizesSpots)
+                    .fixedSize().disabled(!ready).accessibilityIdentifier("develop.repair.visualize-spots")
+                ResettableSlider(value: $workspace.repairSpotThreshold, in: 0...1, neutralValue: 0.5)
+                    .disabled(!ready || !workspace.repairVisualizesSpots)
+                    .accessibilityLabel("Empfindlichkeit der Fleckenansicht")
+                    .accessibilityValue("\(Int((workspace.repairSpotThreshold * 100).rounded())) %")
+                    .accessibilityIdentifier("develop.repair.threshold")
             }
         }
     }
@@ -297,7 +349,7 @@ struct DevelopRepairInspector: View {
     private func sliderRow(_ title: String, value: Binding<Double>, range: ClosedRange<Double>,
                            valueText: String, identifier: String, neutral: Double) -> some View {
         HStack(spacing: 6) {
-            Text(title).frame(width: 82, alignment: .leading)
+            Text(title).frame(width: 90, alignment: .leading)
             ResettableSlider(value: value, in: range, neutralValue: neutral).accessibilityLabel(title)
                 .accessibilityIdentifier("develop.repair." + identifier)
             Text(valueText).monospacedDigit().frame(width: 46, alignment: .trailing)
